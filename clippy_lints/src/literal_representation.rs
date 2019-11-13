@@ -233,53 +233,16 @@ impl<'a> DigitInfo<'a> {
 
         let (integer, fraction, exponent) = &self.split_digit_parts();
 
-        let int_digits: Vec<_> = integer.chars().rev().filter(|&c| c != '_').collect();
-        let int_part_hint = int_digits
-            .chunks(group_size)
-            .map(|chunk| chunk.iter().rev().collect())
-            .rev()
-            .collect::<Vec<String>>()
-            .join("_");
-
-        // Pad leading hexidecimal group with zeros
-        if self.radix == Radix::Hexadecimal {
-            debug_assert!(group_size > 0);
-            let first_group_size = (int_digits.len() + group_size - 1) % group_size + 1;
-            for _ in 0..group_size - first_group_size {
-                output.push('0');
-            }
-        }
-
-        output.push_str(&int_part_hint);
+        Self::group_digits(&mut output, integer, group_size, true, self.radix == Radix::Hexadecimal);
 
         if let Some(fraction) = fraction {
-            let frac_part_hint = fraction
-                .chars()
-                .filter(|&c| c != '_')
-                .collect::<Vec<_>>()
-                .chunks(group_size)
-                .map(|chunk| chunk.iter().collect())
-                .collect::<Vec<String>>()
-                .join("_");
-
             output.push('.');
-            output.push_str(&frac_part_hint);
+            Self::group_digits(&mut output, fraction, group_size, false, false);
         }
 
         if let Some((separator, exponent)) = exponent {
-            let after_e_hint = exponent
-                .chars()
-                .rev()
-                .filter(|&c| c != '_')
-                .collect::<Vec<_>>()
-                .chunks(group_size)
-                .map(|chunk| chunk.iter().rev().collect())
-                .rev()
-                .collect::<Vec<String>>()
-                .join("_");
-
             output.push(*separator);
-            output.push_str(&after_e_hint);
+            Self::group_digits(&mut output, exponent, group_size, true, false);
         }
 
         if let Some(suffix) = self.suffix {
@@ -295,6 +258,38 @@ impl<'a> DigitInfo<'a> {
         }
 
         output
+    }
+
+    fn group_digits(output: &mut String, input: &str, group_size: usize, partial_group_first: bool, pad: bool) {
+        debug_assert!(group_size > 0);
+
+        let mut digits = input.chars().filter(|&c| c != '_');
+
+        let first_group_size;
+
+        if partial_group_first {
+            first_group_size = (digits.clone().count() + group_size - 1) % group_size + 1;
+            if pad {
+                for _ in 0..group_size - first_group_size {
+                    output.push('0');
+                }
+            }
+        } else {
+            first_group_size = group_size;
+        }
+
+        for _ in 0..first_group_size {
+            if let Some(digit) = digits.next() {
+                output.push(digit);
+            }
+        }
+
+        for (c, i) in digits.zip((0..group_size).cycle()) {
+            if i == 0 {
+                output.push('_');
+            }
+            output.push(c);
+        }
     }
 }
 
