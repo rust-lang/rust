@@ -173,7 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let count = this
             .read_scalar(count_op)?
             .to_machine_usize(&*this.tcx)?
-            .min(1 << (ptr_size - 1))
+            .min((1 << (ptr_size - 1)) - 1) // max value of target `isize`
             .min(isize::max_value() as u64);
         // Reading zero bytes should not change `buf`.
         if count == 0 {
@@ -193,8 +193,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let result = handle
                 .file
                 .read(&mut bytes)
-                // `File::read` never returns a value larger than `i64::max_value()`, so this
-                // unwrap cannot fail.
+                // `File::read` never returns a value larger than `count`, so this cannot fail.
                 .map(|c| i64::try_from(c).unwrap());
 
             match result {
@@ -230,7 +229,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let count = this
             .read_scalar(count_op)?
             .to_machine_usize(&*this.tcx)?
-            .min(1 << (ptr_size - 1))
+            .min((1 << (ptr_size - 1)) - 1) // max value of target `isize`
             .min(isize::max_value() as u64);
         // Writing zero bytes should not change `buf`.
         if count == 0 {
