@@ -123,7 +123,7 @@ impl Radix {
 }
 
 #[derive(Debug)]
-pub(super) struct DigitInfo<'a> {
+pub(super) struct NumericLiteral<'a> {
     /// Which radix the literal was represented in.
     crate radix: Radix,
     /// The radix prefix, if present.
@@ -140,12 +140,12 @@ pub(super) struct DigitInfo<'a> {
     crate suffix: Option<&'a str>,
 }
 
-impl<'a> DigitInfo<'a> {
-    fn from_lit(src: &'a str, lit: &Lit) -> Option<DigitInfo<'a>> {
+impl<'a> NumericLiteral<'a> {
+    fn from_lit(src: &'a str, lit: &Lit) -> Option<NumericLiteral<'a>> {
         if lit.kind.is_numeric() && src.chars().next().map_or(false, |c| c.is_digit(10)) {
             let (unsuffixed, suffix) = split_suffix(&src, &lit.kind);
             let float = if let LitKind::Float(..) = lit.kind { true } else { false };
-            Some(DigitInfo::new(unsuffixed, suffix, float))
+            Some(NumericLiteral::new(unsuffixed, suffix, float))
         } else {
             None
         }
@@ -400,21 +400,21 @@ impl LiteralDigitGrouping {
 
         if_chain! {
             if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(mut digit_info) = DigitInfo::from_lit(&src, &lit);
+            if let Some(mut num_lit) = NumericLiteral::from_lit(&src, &lit);
             then {
-                if !Self::check_for_mistyped_suffix(cx, lit.span, &mut digit_info) {
+                if !Self::check_for_mistyped_suffix(cx, lit.span, &mut num_lit) {
                     return;
                 }
 
                 let result = (|| {
 
-                    let integral_group_size = Self::get_group_size(digit_info.integer.split('_'), in_macro)?;
-                    if let Some(fraction) = digit_info.fraction {
+                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), in_macro)?;
+                    if let Some(fraction) = num_lit.fraction {
                         let fractional_group_size = Self::get_group_size(fraction.rsplit('_'), in_macro)?;
 
                         let consistent = Self::parts_consistent(integral_group_size,
                                                                 fractional_group_size,
-                                                                digit_info.integer.len(),
+                                                                num_lit.integer.len(),
                                                                 fraction.len());
                         if !consistent {
                             return Err(WarningType::InconsistentDigitGrouping);
@@ -425,7 +425,7 @@ impl LiteralDigitGrouping {
 
 
                 if let Err(warning_type) = result {
-                    warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
+                    warning_type.display(&num_lit.grouping_hint(), cx, lit.span)
                 }
             }
         }
@@ -435,25 +435,25 @@ impl LiteralDigitGrouping {
     fn check_for_mistyped_suffix(
         cx: &EarlyContext<'_>,
         span: syntax_pos::Span,
-        digit_info: &mut DigitInfo<'_>,
+        num_lit: &mut NumericLiteral<'_>,
     ) -> bool {
-        if digit_info.suffix.is_some() {
+        if num_lit.suffix.is_some() {
             return true;
         }
 
-        let (part, mistyped_suffixes, missing_char) = if let Some((_, exponent)) = &mut digit_info.exponent {
+        let (part, mistyped_suffixes, missing_char) = if let Some((_, exponent)) = &mut num_lit.exponent {
             (exponent, &["32", "64"][..], 'f')
-        } else if let Some(fraction) = &mut digit_info.fraction {
+        } else if let Some(fraction) = &mut num_lit.fraction {
             (fraction, &["32", "64"][..], 'f')
         } else {
-            (&mut digit_info.integer, &["8", "16", "32", "64"][..], 'i')
+            (&mut num_lit.integer, &["8", "16", "32", "64"][..], 'i')
         };
 
         let mut split = part.rsplit('_');
         let last_group = split.next().expect("At least one group");
         if split.next().is_some() && mistyped_suffixes.contains(&last_group) {
             *part = &part[..part.len() - last_group.len()];
-            let mut hint = digit_info.grouping_hint();
+            let mut hint = num_lit.grouping_hint();
             hint.push('_');
             hint.push(missing_char);
             hint.push_str(last_group);
@@ -539,14 +539,14 @@ impl DecimalLiteralRepresentation {
         if_chain! {
             if let LitKind::Int(val, _) = lit.kind;
             if let Some(src) = snippet_opt(cx, lit.span);
-            if let Some(digit_info) = DigitInfo::from_lit(&src, &lit);
-            if digit_info.radix == Radix::Decimal;
+            if let Some(num_lit) = NumericLiteral::from_lit(&src, &lit);
+            if num_lit.radix == Radix::Decimal;
             if val >= u128::from(self.threshold);
             then {
                 let hex = format!("{:#X}", val);
-                let digit_info = DigitInfo::new(&hex, None, false);
-                let _ = Self::do_lint(digit_info.integer).map_err(|warning_type| {
-                    warning_type.display(&digit_info.grouping_hint(), cx, lit.span)
+                let num_lit = NumericLiteral::new(&hex, None, false);
+                let _ = Self::do_lint(num_lit.integer).map_err(|warning_type| {
+                    warning_type.display(&num_lit.grouping_hint(), cx, lit.span)
                 });
             }
         }
