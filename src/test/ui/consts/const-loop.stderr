@@ -1,60 +1,127 @@
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:4:11
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/const-loop.rs:1:15
    |
-LL |     while x < 4 {
-   |           ^^^^^
+LL | const _: () = loop {};
+   |               ^^^^^^^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:4:5
+error[E0744]: `loop` is not allowed in a `static`
+  --> $DIR/const-loop.rs:3:19
+   |
+LL | static FOO: i32 = loop { break 4; };
+   |                   ^^^^^^^^^^^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const fn`
+  --> $DIR/const-loop.rs:6:5
+   |
+LL |     loop {}
+   |     ^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const fn`
+  --> $DIR/const-loop.rs:19:9
+   |
+LL |         loop {}
+   |         ^^^^^^^
+
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/const-loop.rs:31:9
+   |
+LL |         while false {}
+   |         ^^^^^^^^^^^^^^
+
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/const-loop.rs:40:5
    |
 LL | /     while x < 4 {
-LL | |
-LL | |
 LL | |         x += 1;
 LL | |     }
    | |_____^
 
-error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/const-loop.rs:20:14
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/const-loop.rs:44:5
    |
-LL |     for i in 0..4 {
-   |              ^^^^
+LL | /     while x < 8 {
+LL | |         x += 1;
+LL | |     }
+   | |_____^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:20:14
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/const-loop.rs:54:5
    |
-LL |     for i in 0..4 {
-   |              ^^^^
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
 
-error[E0017]: references in constants may only refer to immutable values
-  --> $DIR/const-loop.rs:20:14
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/const-loop.rs:58:5
    |
-LL |     for i in 0..4 {
-   |              ^^^^ constants require immutable values
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:20:9
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/const-loop.rs:68:5
    |
-LL |     for i in 0..4 {
-   |         ^
+LL | /     loop {
+LL | |         x += 1;
+LL | |         if x == 4 {
+LL | |             break;
+LL | |         }
+LL | |     }
+   | |_____^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:41:12
-   |
-LL |         if x == 4 {
-   |            ^^^^^^
-
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-loop.rs:41:9
+error[E0744]: `if` is not allowed in a `const`
+  --> $DIR/const-loop.rs:70:9
    |
 LL | /         if x == 4 {
-LL | |
-LL | |
 LL | |             break;
 LL | |         }
    | |_________^
 
-error: aborting due to 8 previous errors
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/const-loop.rs:75:5
+   |
+LL | /     loop {
+LL | |         x += 1;
+LL | |         if x == 8 {
+LL | |             break;
+LL | |         }
+LL | |     }
+   | |_____^
 
-Some errors have detailed explanations: E0015, E0017, E0019.
-For more information about an error, try `rustc --explain E0015`.
+error[E0744]: `if` is not allowed in a `const`
+  --> $DIR/const-loop.rs:77:9
+   |
+LL | /         if x == 8 {
+LL | |             break;
+LL | |         }
+   | |_________^
+
+error[E0744]: `while let` is not allowed in a `const`
+  --> $DIR/const-loop.rs:87:5
+   |
+LL |     while let None = Some(x) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0744]: `while let` is not allowed in a `const`
+  --> $DIR/const-loop.rs:88:5
+   |
+LL |     while let None = Some(x) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/const-loop.rs:10:22
+   |
+LL |     const BAR: i32 = loop { break 4; };
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/const-loop.rs:14:22
+   |
+LL |     const BAR: i32 = loop { break 4; };
+   |                      ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+
+For more information about this error, try `rustc --explain E0744`.

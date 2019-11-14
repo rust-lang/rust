@@ -4,7 +4,7 @@
 #![allow(missing_docs, nonstandard_style, missing_debug_implementations)]
 
 cfg_if::cfg_if! {
-    if #[cfg(rustdoc)] {
+    if #[cfg(doc)] {
 
         // When documenting libstd we want to show unix/windows/linux modules as
         // these are the "main modules" that are used across platforms. This

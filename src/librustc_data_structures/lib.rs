@@ -94,6 +94,7 @@ pub use ena::unify;
 pub mod vec_linked_list;
 pub mod work_queue;
 pub mod fingerprint;
+pub mod profiling;
 
 pub struct OnDrop<F: Fn()>(pub F);
 

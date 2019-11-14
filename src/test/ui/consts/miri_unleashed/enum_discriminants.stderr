@@ -1,24 +1,47 @@
 warning: skipping const checks
-  --> $DIR/enum_discriminants.rs:23:13
+  --> $DIR/enum_discriminants.rs:24:5
    |
-LL |     let x = Foo::B;
-   |             ^^^^^^
+LL | /     match x {
+LL | |         Foo::B => 0,
+LL | |         _ => panic!(),
+LL | |     }
+   | |_____^
 
 warning: skipping const checks
-  --> $DIR/enum_discriminants.rs:25:9
+  --> $DIR/enum_discriminants.rs:88:5
    |
-LL |         Foo::B => 0,
-   |         ^^^^^^
+LL | /     if let E1::V2 { .. } = (E1::V1 { f: true }) {
+LL | |
+LL | |         unreachable!()
+LL | |     }
+   | |_____^
 
 warning: skipping const checks
-  --> $DIR/enum_discriminants.rs:88:28
+  --> $DIR/enum_discriminants.rs:92:5
    |
-LL |     if let E1::V2 { .. } = (E1::V1 { f: true }) {
-   |                            ^^^^^^^^^^^^^^^^^^^^
+LL | /     if let E1::V1 { .. } = (E1::V1 { f: true }) {
+LL | |
+LL | |     } else {
+LL | |         unreachable!()
+LL | |     }
+   | |_____^
 
 warning: skipping const checks
-  --> $DIR/enum_discriminants.rs:88:12
+  --> $DIR/enum_discriminants.rs:98:5
    |
-LL |     if let E1::V2 { .. } = (E1::V1 { f: true }) {
-   |            ^^^^^^^^^^^^^
+LL | /     if let E2::V1 { .. } = E2::V3::<Infallible> {
+LL | |
+LL | |         unreachable!()
+LL | |     }
+   | |_____^
+
+warning: skipping const checks
+  --> $DIR/enum_discriminants.rs:102:5
+   |
+LL | /     if let E2::V3 { .. } = E2::V3::<Infallible> {
+LL | |
+LL | |     } else {
+LL | |         unreachable!()
+LL | |     }
+   | |_____^
 

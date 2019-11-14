@@ -2,21 +2,21 @@
 
 use crate::io::ErrorKind;
 
-#[cfg(any(rustdoc, target_os = "linux"))] pub use crate::os::linux as platform;
+#[cfg(any(doc, target_os = "linux"))] pub use crate::os::linux as platform;
 
-#[cfg(all(not(rustdoc), target_os = "android"))]   pub use crate::os::android as platform;
-#[cfg(all(not(rustdoc), target_os = "dragonfly"))] pub use crate::os::dragonfly as platform;
-#[cfg(all(not(rustdoc), target_os = "freebsd"))]   pub use crate::os::freebsd as platform;
-#[cfg(all(not(rustdoc), target_os = "haiku"))]     pub use crate::os::haiku as platform;
-#[cfg(all(not(rustdoc), target_os = "ios"))]       pub use crate::os::ios as platform;
-#[cfg(all(not(rustdoc), target_os = "macos"))]     pub use crate::os::macos as platform;
-#[cfg(all(not(rustdoc), target_os = "netbsd"))]    pub use crate::os::netbsd as platform;
-#[cfg(all(not(rustdoc), target_os = "openbsd"))]   pub use crate::os::openbsd as platform;
-#[cfg(all(not(rustdoc), target_os = "solaris"))]   pub use crate::os::solaris as platform;
-#[cfg(all(not(rustdoc), target_os = "emscripten"))] pub use crate::os::emscripten as platform;
-#[cfg(all(not(rustdoc), target_os = "fuchsia"))]   pub use crate::os::fuchsia as platform;
-#[cfg(all(not(rustdoc), target_os = "l4re"))]      pub use crate::os::linux as platform;
-#[cfg(all(not(rustdoc), target_os = "redox"))]      pub use crate::os::redox as platform;
+#[cfg(all(not(doc), target_os = "android"))]   pub use crate::os::android as platform;
+#[cfg(all(not(doc), target_os = "dragonfly"))] pub use crate::os::dragonfly as platform;
+#[cfg(all(not(doc), target_os = "freebsd"))]   pub use crate::os::freebsd as platform;
+#[cfg(all(not(doc), target_os = "haiku"))]     pub use crate::os::haiku as platform;
+#[cfg(all(not(doc), target_os = "ios"))]       pub use crate::os::ios as platform;
+#[cfg(all(not(doc), target_os = "macos"))]     pub use crate::os::macos as platform;
+#[cfg(all(not(doc), target_os = "netbsd"))]    pub use crate::os::netbsd as platform;
+#[cfg(all(not(doc), target_os = "openbsd"))]   pub use crate::os::openbsd as platform;
+#[cfg(all(not(doc), target_os = "solaris"))]   pub use crate::os::solaris as platform;
+#[cfg(all(not(doc), target_os = "emscripten"))] pub use crate::os::emscripten as platform;
+#[cfg(all(not(doc), target_os = "fuchsia"))]   pub use crate::os::fuchsia as platform;
+#[cfg(all(not(doc), target_os = "l4re"))]      pub use crate::os::linux as platform;
+#[cfg(all(not(doc), target_os = "redox"))]      pub use crate::os::redox as platform;
 
 pub use self::rand::hashmap_random_keys;
 pub use libc::strlen;

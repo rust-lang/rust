@@ -2,7 +2,6 @@ pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
 use crate::dep_graph::cgu_reuse_tracker::CguReuseTracker;
-use crate::hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
@@ -22,18 +21,17 @@ use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::edition::Edition;
-use syntax::expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
 use syntax::json::JsonEmitter;
 use syntax::source_map;
 use syntax::sess::{ParseSess, ProcessCfgMod};
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
-use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
 use rustc_data_structures::jobserver;
+use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use ::jobserver::Client;
 
 use std;
@@ -101,12 +99,6 @@ pub struct Session {
 
     /// The maximum number of stackframes allowed in const eval.
     pub const_eval_stack_frame_limit: usize,
-
-    /// The `metadata::creader` module may inject an allocator/`panic_runtime`
-    /// dependency if it didn't already find one, and this tracks what was
-    /// injected.
-    pub allocator_kind: Once<Option<AllocatorKind>>,
-    pub injected_panic_runtime: Once<Option<CrateNum>>,
 
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
@@ -1099,7 +1091,6 @@ fn build_session_(
             );
             match profiler {
                 Ok(profiler) => {
-                    crate::ty::query::QueryName::register_with_profiler(&profiler);
                     Some(Arc::new(profiler))
                 },
                 Err(e) => {
@@ -1182,8 +1173,6 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
-        allocator_kind: Once::new(),
-        injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,

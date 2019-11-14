@@ -786,6 +786,7 @@ pub fn create_global_ctxt(
     let codegen_backend = compiler.codegen_backend().clone();
     let crate_name = crate_name.to_string();
     let defs = mem::take(&mut resolver_outputs.definitions);
+    let override_queries = compiler.override_queries;
 
     let ((), result) = BoxedGlobalCtxt::new(static move || {
         let sess = &*sess;
@@ -809,6 +810,10 @@ pub fn create_global_ctxt(
         let mut extern_providers = local_providers;
         default_provide_extern(&mut extern_providers);
         codegen_backend.provide_extern(&mut extern_providers);
+
+        if let Some(callback) = override_queries {
+            callback(sess, &mut local_providers, &mut extern_providers);
+        }
 
         let gcx = TyCtxt::create_global_ctxt(
             sess,
@@ -870,6 +875,7 @@ fn analysis(tcx: TyCtxt<'_>, cnum: CrateNum) -> Result<()> {
                 tcx.ensure().check_mod_loops(local_def_id);
                 tcx.ensure().check_mod_attrs(local_def_id);
                 tcx.ensure().check_mod_unstable_api_usage(local_def_id);
+                tcx.ensure().check_mod_const_bodies(local_def_id);
             });
         });
     });

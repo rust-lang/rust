@@ -1,8 +1,8 @@
-error[E0658]: `cfg(rustdoc)` is experimental and subject to change
+error[E0658]: `cfg(doc)` is experimental and subject to change
   --> $DIR/feature-gate-doc_cfg-cfg-rustdoc.rs:1:7
    |
-LL | #[cfg(rustdoc)]
-   |       ^^^^^^^
+LL | #[cfg(doc)]
+   |       ^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/43781
    = help: add `#![feature(doc_cfg)]` to the crate attributes to enable

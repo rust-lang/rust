@@ -461,7 +461,14 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
-                self.check_op(ops::IfOrMatch);
+                // FIXME: make this the `emit_error` impl of `ops::IfOrMatch` once the const
+                // checker is no longer run in compatability mode.
+                if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                    self.tcx.sess.delay_span_bug(
+                        self.span,
+                        "complex control flow is forbidden in a const context",
+                    );
+                }
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |

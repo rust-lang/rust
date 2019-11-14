@@ -247,7 +247,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     } = options;
 
     // Add the rustdoc cfg into the doc build.
-    cfgs.push("rustdoc".to_string());
+    cfgs.push("doc".to_string());
 
     let cpath = Some(input.clone());
     let input = Input::File(input);
@@ -335,6 +335,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         crate_name,
         lint_caps,
         register_lints: None,
+        override_queries: None,
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {

@@ -12,6 +12,7 @@ use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_parse::new_parser_from_source_str;
+use rustc::ty;
 use std::path::PathBuf;
 use std::result;
 use std::sync::{Arc, Mutex};
@@ -38,6 +39,8 @@ pub struct Compiler {
     pub(crate) queries: Queries,
     pub(crate) crate_name: Option<String>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
+    pub(crate) override_queries:
+        Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
 }
 
 impl Compiler {
@@ -131,6 +134,13 @@ pub struct Config {
     /// Note that if you find a Some here you probably want to call that function in the new
     /// function being registered.
     pub register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
+
+    /// This is a callback from the driver that is called just after we have populated
+    /// the list of queries.
+    ///
+    /// The second parameter is local providers and the third parameter is external providers.
+    pub override_queries:
+        Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
 }
 
 pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
@@ -157,6 +167,7 @@ where
         queries: Default::default(),
         crate_name: config.crate_name,
         register_lints: config.register_lints,
+        override_queries: config.override_queries,
     };
 
     let _sess_abort_error = OnDrop(|| {

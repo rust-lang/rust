@@ -672,7 +672,7 @@ macro_rules! define_queries_inner {
             rustc_data_structures::stable_hasher::StableHasher,
             ich::StableHashingContext
         };
-        use crate::util::profiling::ProfileCategory;
+        use rustc_data_structures::profiling::ProfileCategory;
 
         define_queries_struct! {
             tcx: $tcx,
@@ -816,8 +816,20 @@ macro_rules! define_queries_inner {
             $($name),*
         }
 
+        impl rustc_data_structures::profiling::QueryName for QueryName {
+            fn discriminant(self) -> std::mem::Discriminant<QueryName> {
+                std::mem::discriminant(&self)
+            }
+
+            fn as_str(self) -> &'static str {
+                QueryName::as_str(&self)
+            }
+        }
+
         impl QueryName {
-            pub fn register_with_profiler(profiler: &crate::util::profiling::SelfProfiler) {
+            pub fn register_with_profiler(
+                profiler: &rustc_data_structures::profiling::SelfProfiler,
+            ) {
                 $(profiler.register_query_name(QueryName::$name);)*
             }
 
