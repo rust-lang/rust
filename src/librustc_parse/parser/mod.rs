@@ -443,7 +443,9 @@ impl<'a> Parser<'a> {
     crate fn unexpected<T>(&mut self) -> PResult<'a, T> {
         match self.expect_one_of(&[], &[]) {
             Err(e) => Err(e),
-            Ok(_) => unreachable!(),
+            // We can get `Ok(true)` from `recover_closing_delimiter`
+            // which is called in `expected_one_of_not_found`.
+            Ok(_) => FatalError.raise(),
         }
     }
 
