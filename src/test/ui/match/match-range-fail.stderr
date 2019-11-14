@@ -2,22 +2,30 @@ error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/match-range-fail.rs:3:9
    |
 LL |         "bar" ..= "foo" => { }
-   |         ^^^^^^^^^^^^^^^ ranges require char or numeric types
-   |
-   = note: start type: &'static str
-   = note: end type: &'static str
+   |         -----^^^^^-----
+   |         |         |
+   |         |         this is of type `&'static str` but it should be `char` or numeric
+   |         this is of type `&'static str` but it should be `char` or numeric
 
 error[E0029]: only char and numeric types are allowed in range patterns
-  --> $DIR/match-range-fail.rs:10:16
+  --> $DIR/match-range-fail.rs:8:16
    |
 LL |         10 ..= "what" => ()
-   |                ^^^^^^ ranges require char or numeric types
+   |         --     ^^^^^^ this is of type `&'static str` but it should be `char` or numeric
+   |         |
+   |         this is of type `{integer}`
+
+error[E0029]: only char and numeric types are allowed in range patterns
+  --> $DIR/match-range-fail.rs:13:9
    |
-   = note: start type: {integer}
-   = note: end type: &'static str
+LL |         true ..= "what" => {}
+   |         ----^^^^^------
+   |         |        |
+   |         |        this is of type `&'static str` but it should be `char` or numeric
+   |         this is of type `bool` but it should be `char` or numeric
 
 error[E0308]: mismatched types
-  --> $DIR/match-range-fail.rs:17:9
+  --> $DIR/match-range-fail.rs:18:9
    |
 LL |         'c' ..= 100 => { }
    |         ^^^^^^^^^^^ expected integer, found char
@@ -25,7 +33,7 @@ LL |         'c' ..= 100 => { }
    = note: expected type `{integer}`
               found type `char`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0029, E0308.
 For more information about an error, try `rustc --explain E0029`.
