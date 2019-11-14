@@ -1285,7 +1285,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
 
     if body.return_ty().references_error() {
         tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
-        return QUALIF_ERROR_BIT;
+        return 0;
     }
 
     Checker::new(tcx, def_id, body, Mode::Const).check_const()
