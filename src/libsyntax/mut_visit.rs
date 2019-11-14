@@ -887,10 +887,6 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
             vis.visit_ty(ty);
             vis.visit_generics(generics);
         }
-        ItemKind::OpaqueTy(bounds, generics) => {
-            visit_bounds(bounds, vis);
-            vis.visit_generics(generics);
-        }
         ItemKind::Enum(EnumDef { variants }, generics) => {
             variants.flat_map_in_place(|variant| vis.flat_map_variant(variant));
             vis.visit_generics(generics);
@@ -970,7 +966,6 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
             visitor.visit_block(body);
         }
         ImplItemKind::TyAlias(ty) => visitor.visit_ty(ty),
-        ImplItemKind::OpaqueTy(bounds) => visit_bounds(bounds, visitor),
         ImplItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);

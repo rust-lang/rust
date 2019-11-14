@@ -107,7 +107,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             ItemKind::Mod(..) | ItemKind::Trait(..) | ItemKind::TraitAlias(..) |
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) |
-            ItemKind::OpaqueTy(..) | ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) |
+            ItemKind::ExternCrate(..) | ItemKind::ForeignMod(..) |
             ItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
             ItemKind::Fn(sig, generics, body) if sig.header.asyncness.node.is_async() => {
                 return self.visit_async_fn(
@@ -239,8 +239,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             }
             ImplItemKind::Method(..) |
             ImplItemKind::Const(..) => DefPathData::ValueNs(ii.ident.name),
-            ImplItemKind::TyAlias(..) |
-            ImplItemKind::OpaqueTy(..) => DefPathData::TypeNs(ii.ident.name),
+            ImplItemKind::TyAlias(..) => DefPathData::TypeNs(ii.ident.name),
             ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),
         };
 
