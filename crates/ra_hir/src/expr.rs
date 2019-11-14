@@ -40,8 +40,8 @@ pub(crate) fn body_with_source_map_query(
             (src.file_id, src.ast.body())
         }
     };
-    let resolver = hir_def::body::MacroResolver::new(db, def.module(db).id);
-    let (body, source_map) = Body::new(db, resolver, file_id, params, body);
+    let expander = hir_def::body::Expander::new(db, file_id, def.module(db).id);
+    let (body, source_map) = Body::new(db, expander, params, body);
     (Arc::new(body), Arc::new(source_map))
 }
 

@@ -223,7 +223,7 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Source<T> {
     pub file_id: HirFileId,
     pub ast: T,
@@ -232,6 +232,9 @@ pub struct Source<T> {
 impl<T> Source<T> {
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
         Source { file_id: self.file_id, ast: f(self.ast) }
+    }
+    pub fn as_ref(&self) -> Source<&T> {
+        Source { file_id: self.file_id, ast: &self.ast }
     }
     pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")

@@ -145,7 +145,8 @@ impl Local {
             Some(res)
         })?;
         let (_body, source_map) = db.body_with_source_map(parent);
-        let pat_id = source_map.node_pat(&src.ast.into())?;
+        let src = src.map(ast::Pat::from);
+        let pat_id = source_map.node_pat(src.as_ref())?;
         Some(Local { parent, pat_id })
     }
 }
