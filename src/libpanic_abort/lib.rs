@@ -21,7 +21,6 @@
 // Rust's "try" function, but if we're aborting on panics we just call the
 // function as there's nothing else we need to do here.
 #[rustc_std_internal_symbol]
-#[allow(improper_ctypes)]
 pub unsafe extern fn __rust_maybe_catch_panic(f: fn(*mut u8),
                                               data: *mut u8,
                                               _data_ptr: *mut usize,

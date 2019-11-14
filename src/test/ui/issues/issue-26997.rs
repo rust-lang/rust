@@ -6,7 +6,6 @@ pub struct Foo {
 }
 
 impl Foo {
-    #[allow(improper_ctypes)]
     pub extern fn foo_new() -> Foo {
         Foo { x: 21, y: 33 }
     }
