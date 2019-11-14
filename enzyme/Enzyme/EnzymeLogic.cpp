@@ -1949,7 +1949,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   gutils->can_modref_map = &can_modref_map;
 
-  gutils->forceContexts(true);
+  gutils->forceContexts();
   gutils->forceAugmentedReturns();
 
   Argument* additionalValue = nullptr;

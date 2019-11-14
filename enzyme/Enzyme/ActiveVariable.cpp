@@ -60,6 +60,63 @@ bool isKnownIntegerTBAA(Instruction* inst) {
   return false;
 }
 
+void trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& pointerUse) {
+    if (seen.find(et) != seen.end()) return;
+    seen.insert(et);
+    
+    if (et->isFloatingPointTy()) {
+        if (floatingUse == nullptr) {
+            floatingUse = et;
+        } else {
+            assert(floatingUse == et);
+        }
+    } else if (et->isPointerTy()) {
+        pointerUse = true;
+    }
+
+    if (auto st = dyn_cast<SequentialType>(et)) {
+        trackType(st->getElementType(), seen, floatingUse, pointerUse);
+    } 
+    
+    if (auto st = dyn_cast<StructType>(et)) {
+        for (auto innerType : st->elements()) {
+            trackType(innerType, seen, floatingUse, pointerUse);
+        }
+    }
+}
+        
+void trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse) {
+    if (seen.find(v) != seen.end()) return;
+    seen.insert(v);
+
+    assert(v->getType()->isPointerTy());
+    
+    Type* et = cast<PointerType>(v->getType())->getElementType();
+    trackType(et, typeseen, floatingUse, pointerUse);
+            
+    if (auto phi = dyn_cast<PHINode>(v)) {
+        for(auto &a : phi->incoming_values()) {
+            trackPointer(a.get(), seen, typeseen, floatingUse, pointerUse);
+        }
+    }
+    if (auto ci = dyn_cast<CastInst>(v)) {
+        if (ci->getSrcTy()->isPointerTy())
+            trackPointer(ci->getOperand(0), seen, typeseen, floatingUse, pointerUse);
+    } 
+    if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
+        trackPointer(gep->getOperand(0), seen, typeseen, floatingUse, pointerUse);
+    }
+    if (auto inst = dyn_cast<Instruction>(v)) {
+        for(User* use: inst->users()) {
+            if (auto ci = dyn_cast<CastInst>(use)) {
+                if (ci->getDestTy()->isPointerTy()) {
+                    trackPointer(ci, seen, typeseen, floatingUse, pointerUse);
+                }
+            }
+        }
+    }
+}
+
 bool isIntASecretFloat(Value* val) {
     assert(val->getType()->isIntegerTy());
 
@@ -74,58 +131,12 @@ bool isIntASecretFloat(Value* val) {
 	}
 
     if (auto inst = dyn_cast<Instruction>(val)) {
-        bool floatingUse = false;
+        Type* floatingUse = nullptr;
         bool pointerUse = false;
         bool intUse = false;
         SmallPtrSet<Value*, 4> seen;
-
-        std::function<void(Value*)> trackPointer = [&](Value* v) {
-            if (seen.find(v) != seen.end()) return;
-            seen.insert(v);
-                do { 
-                    Type* let = cast<PointerType>(v->getType())->getElementType();
-                    if (let->isFloatingPointTy()) {
-                        floatingUse = true;
-                    }
-                    if (auto ci = dyn_cast<CastInst>(v)) {
-                        if (auto cal = dyn_cast<CallInst>(ci->getOperand(0))) {
-                            if (cal->getCalledFunction()->getName() == "malloc")
-                                break;
-                        }
-                        v = ci->getOperand(0);
-                        continue;
-                    } 
-                    if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
-                        v = gep->getOperand(0);
-                        continue;
-                    } 
-                    if (auto phi = dyn_cast<PHINode>(v)) {
-                        for(auto &a : phi->incoming_values()) {
-                            trackPointer(a.get());
-                        }
-                        return;
-                    }
-                    break;
-                } while(1);
-                    
-                Type* et = cast<PointerType>(v->getType())->getElementType();
-
-                    do {
-                        if (auto st = dyn_cast<CompositeType>(et)) {
-                            et = st->getTypeAtIndex((unsigned int)0);
-                            continue;
-                        } 
-                        break;
-                    } while(1);
-                    //llvm::errs() << " for val " << *v  << *et << "\n";
-
-                    if (et->isFloatingPointTy()) {
-                        floatingUse = true;
-                    }
-                    if (et->isPointerTy()) {
-                        pointerUse = true;
-                    }
-        };
+        
+        SmallPtrSet<Type*, 4> typeseen;
 
         for(User* use: inst->users()) {
             if (auto ci = dyn_cast<BitCastInst>(use)) {
@@ -134,7 +145,7 @@ bool isIntASecretFloat(Value* val) {
                     continue;
                 }
                 if (ci->getDestTy()->isFloatingPointTy()) {
-                    floatingUse = true;
+                    floatingUse = ci->getDestTy();
                     continue;
                 }
             }
@@ -148,13 +159,13 @@ bool isIntASecretFloat(Value* val) {
             if (auto si = dyn_cast<StoreInst>(use)) {
                 assert(inst == si->getValueOperand());
 				if (isKnownIntegerTBAA(si)) intUse = true;
-                trackPointer(si->getPointerOperand());
+                trackPointer(si->getPointerOperand(), seen, typeseen, floatingUse, pointerUse);
             }
         }
 
         if (auto li = dyn_cast<LoadInst>(inst)) {
 			if (isKnownIntegerTBAA(li)) intUse = true;
-            trackPointer(li->getOperand(0));
+            trackPointer(li->getOperand(0), seen, typeseen, floatingUse, pointerUse);
         }
 
         if (auto ci = dyn_cast<BitCastInst>(inst)) {
@@ -162,10 +173,9 @@ bool isIntASecretFloat(Value* val) {
                 pointerUse = true;
             }
             if (ci->getSrcTy()->isFloatingPointTy()) {
-                floatingUse = true;
+                floatingUse = ci->getSrcTy();
             }
         }
-            
         
         if (isa<PtrToIntInst>(inst)) {
             pointerUse = true;
@@ -196,95 +206,23 @@ Type* isIntPointerASecretFloat(Value* val) {
 		 //if (cint->isOne()) return cint;
 	}
 
+    Type* floatingUse = nullptr;
+    bool pointerUse = false;
+
+    SmallPtrSet<Type*, 4> typeseen;
+
+    SmallPtrSet<Value*, 4> seen;
+
+    trackPointer(val, seen, typeseen, floatingUse, pointerUse);
+
+    if (pointerUse && (floatingUse == nullptr)) return nullptr; 
+    if (!pointerUse && (floatingUse != nullptr)) return floatingUse;
 
     if (auto inst = dyn_cast<Instruction>(val)) {
-        Type* floatingUse = nullptr;
-        bool pointerUse = false;
-        SmallPtrSet<Value*, 4> seen;
-
-        std::function<void(Value*)> trackPointer = [&](Value* v) {
-            if (seen.find(v) != seen.end()) return;
-            seen.insert(v);
-                do { 
-                    Type* let = cast<PointerType>(v->getType())->getElementType();
-                    if (let->isFloatingPointTy()) {
-                        if (floatingUse == nullptr) {
-                            floatingUse = let;
-                        } else {
-                            assert(floatingUse == let);
-                        }
-                    }
-                    if (auto ci = dyn_cast<CastInst>(v)) {
-                        if (auto cal = dyn_cast<CallInst>(ci->getOperand(0))) {
-                            if (cal->getCalledFunction()->getName() == "malloc")
-                                break;
-                        }
-                        v = ci->getOperand(0);
-                        continue;
-                    } 
-                    if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
-                        trackPointer(gep->getOperand(0));
-                    } 
-                    if (auto phi = dyn_cast<PHINode>(v)) {
-                        for(auto &a : phi->incoming_values()) {
-                            trackPointer(a.get());
-                        }
-                        return;
-                    }
-                    break;
-                } while(1);
-                    
-                Type* et = cast<PointerType>(v->getType())->getElementType();
-
-                    do {
-                        if (auto st = dyn_cast<CompositeType>(et)) {
-                            et = st->getTypeAtIndex((unsigned int)0);
-                            continue;
-                        } 
-                        if (auto st = dyn_cast<ArrayType>(et)) {
-                            et = st->getElementType();
-                            continue;
-                        } 
-                        break;
-                    } while(1);
-                    //llvm::errs() << " for val " << *v  << *et << "\n";
-
-                    if (et->isFloatingPointTy()) {
-                        if (floatingUse == nullptr) {
-                            floatingUse = et;
-                        } else {
-                            assert(floatingUse == et);
-                        }
-                    }
-                    if (et->isPointerTy()) {
-                        pointerUse = true;
-                    }
-        };
-
-        trackPointer(inst);
-        for(User* use: inst->users()) {
-            if (auto ci = dyn_cast<CastInst>(use)) {
-                if (ci->getDestTy()->isPointerTy()) {
-                    trackPointer(ci);
-                }
-            }
-        }
-
-        if (auto ci = dyn_cast<CastInst>(inst)) {
-            if (ci->getSrcTy()->isPointerTy()) {
-                trackPointer(ci->getOperand(0));
-            }
-        }            
-
-        if (pointerUse && (floatingUse == nullptr)) return nullptr; 
-        if (!pointerUse && (floatingUse != nullptr)) return floatingUse;
         llvm::errs() << *inst->getParent()->getParent() << "\n";
-        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
-        assert(0 && "ambiguous unsure if constant or not");
     }
-
-    llvm::errs() << *val << "\n";
-    assert(0 && "unsure if constant or not");
+    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
+    assert(0 && "ambiguous unsure if constant or not");
 }
 
 cl::opt<bool> ipoconst(

@@ -53,6 +53,7 @@ using namespace llvm;
 
 typedef struct {
   PHINode* var;
+  Instruction* incvar;
   AllocaInst* antivaralloc;
   BasicBlock* latchMerge;
   BasicBlock* header;
@@ -599,7 +600,7 @@ public:
 
   BasicBlock* getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock);
 
-  void forceContexts(bool setupMerge=false);
+  void forceContexts();
 
   bool getContext(BasicBlock* BB, LoopContext& loopContext);
 
@@ -1041,10 +1042,11 @@ endCheck:
             } else {
                 allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
 
-                IRBuilder <> build(containedloops.back().first.header->getFirstNonPHI());
+                assert(containedloops.back().first.incvar == containedloops.back().first.header->getFirstNonPHI());
+                IRBuilder <> build(containedloops.back().first.incvar->getNextNode());
                 Value* allocation = build.CreateLoad(storeInto);
-                Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));
-                Value* realloc_size = build.CreateNUWMul(foo, sublimits[i].first);
+                //Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));
+                Value* realloc_size = build.CreateNUWMul(containedloops.back().first.incvar, sublimits[i].first);
                 Value* idxs[2] = {
                     build.CreatePointerCast(allocation, BPTy),
                     build.CreateNUWMul(

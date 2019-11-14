@@ -55,7 +55,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   %2 = load double, double* %x
 ; CHECK-NEXT:   %"'ipl" = load double*, double** %"y'"
 ; CHECK-NEXT:   %3 = getelementptr double*, double** %"'ipl_malloccache", i64 %iv
-; CHECK-NEXT:   store double* %"'ipl", double** %3
+; CHECK-NEXT:   store double* %"'ipl", double** %3, align 8, !invariant.group !0
 ; CHECK-NEXT:   %4 = load double*, double** %y
 ; CHECK-NEXT:   %5 = load double, double* %4
 ; CHECK-NEXT:   %add = fadd fast double %5, %2
@@ -74,7 +74,7 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK: incinvertfor.cond:
 ; CHECK-NEXT:   %[[sub]] = sub nuw nsw i64 %[[ivp]], 1
 ; CHECK-NEXT:   %8 = getelementptr double*, double** %"'ipl_malloccache", i64 %[[sub]]
-; CHECK-NEXT:   %9 = load double*, double** %8, !invariant.load !0
+; CHECK-NEXT:   %9 = load double*, double** %8, align 8, !invariant.group !0
 ; CHECK-NEXT:   %10 = load double, double* %9
 ; CHECK-NEXT:   store double %10, double* %9
 ; CHECK-NEXT:   %11 = load double, double* %"x'"
@@ -86,4 +86,4 @@ attributes #0 = { noinline nounwind uwtable optnone }
 ; CHECK-NEXT:   br label %invertfor.cond
 ; CHECK-NEXT: }
 
-; CHECK: !0 = !{}
+; CHECK: !0 = distinct !{}

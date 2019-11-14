@@ -105,7 +105,7 @@ static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & pos
     return mp[tup] = reverseBlocks[BB];
   }
 
-  void GradientUtils::forceContexts(bool setupMerge) {
+  void GradientUtils::forceContexts() {
     for(auto BB : originalBlocks) {
         LoopContext lc;
         getContext(BB, lc);
@@ -647,8 +647,9 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         auto pair = insertNewCanonicalIV(L, Type::getInt64Ty(BB->getContext()));
         PHINode* CanonicalIV = pair.first;
         assert(CanonicalIV);
-        removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, fake::SCEVExpander::getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].var = CanonicalIV;
+        loopContexts[L].incvar = pair.second;
+        removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, fake::SCEVExpander::getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].antivaralloc = IRBuilder<>(gutils.inversionAllocs).CreateAlloca(CanonicalIV->getType(), nullptr, CanonicalIV->getName()+"'ac");
         //loopContexts[L].antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
       

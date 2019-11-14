@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -loop-simplify -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -gvn -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -loop-simplify -jump-threading -instsimplify -early-cse -simplifycfg -S | FileCheck %s
 
 ; #include <stdlib.h>
 ; #include <stdio.h>
@@ -201,6 +201,10 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %"'ipc.i" = bitcast i8* %"call'mi.i" to %class.node*
 ; CHECK-NEXT:   br i1 %[[endcomp]], label %[[invertdelete:.+]], label %for.body.i
 
+; CHECK: [[invertdelete]]:                               ; preds = %for.body.i
+; CHECK-NEXT:   %[[dsum:.+]] = call {} @diffe_Z8sum_listPK4node(%class.node* nonnull %[[bcnode]], %class.node* nonnull %"'ipc.i", double 1.000000e+00)
+; CHECK-NEXT:   br label %invertfor.body.i
+
 ; CHECK: invertfor.body.i:                                
 ; CHECK-NEXT:   %"x'de.0.i" = phi double [ 0.000000e+00, %[[invertdelete:.+]] ], [ %[[xadd:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:   %[[antivar:.+]] = phi i64 [ %n, %[[invertdelete]] ], [ %[[isub:.+]], %incinvertfor.body.i ]
@@ -223,10 +227,6 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[isub]] = add nsw i64 %[[antivar]], -1
 ; CHECK-NEXT:   br label %invertfor.body.i
 
-; CHECK: [[invertdelete]]:                               ; preds = %for.body.i
-; CHECK-NEXT:   %[[dsum:.+]] = call {} @diffe_Z8sum_listPK4node(%class.node* nonnull %[[bcnode]], %class.node* nonnull %"'ipc.i", double 1.000000e+00)
-; CHECK-NEXT:   br label %invertfor.body.i
-
 ; CHECK: diffe_Z12list_creatordm.exit:                     ; preds = %invertfor.body.i
 ; CHECK-NEXT:   call void @free(i8* nonnull %[[call_malloc]]) #5
 ; CHECK-NEXT:   call void @free(i8* nonnull %malloccall.i) #5
@@ -244,13 +244,12 @@ attributes #8 = { builtin nounwind }
 ; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[cur:.+]] = phi %class.node* [ %"'ipl", %for.body ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.08 = phi %class.node* [ %[[loadst:.+]], %for.body ], [ %node, %entry ]
-; CHECK-NEXT:   %[[idx8:.+]] = shl i64 %[[preidx]], 3
-; CHECK-NEXT:   %[[nextrealloc:.+]] = add i64 %[[idx8]], 8
+; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
+; CHECK-NEXT:   %[[nextrealloc:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[rawcache]], i64 %[[nextrealloc]])
 ; CHECK-NEXT:   %[[reallocbc:.+]] = bitcast i8* %_realloccache to %class.node**
 ; CHECK-NEXT:   %[[geptostore:.+]] = getelementptr %class.node*, %class.node** %[[reallocbc]], i64 %[[preidx]]
 ; CHECK-NEXT:   store %class.node* %[[cur]], %class.node** %[[geptostore]]
-; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %next = getelementptr inbounds %class.node, %class.node* %val.08, i64 0, i32 1
 ; CHECK-NEXT:   %"next'ipg" = getelementptr %class.node, %class.node* %[[cur]], i64 0, i32 1
 ; CHECK-NEXT:   %"'ipl" = load %class.node*, %class.node** %"next'ipg", align 8

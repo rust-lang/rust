@@ -39,7 +39,10 @@ void write_lorenz( const state_type &x , const double t )
 double foobar(double init=10.0) {
     state_type x = { init , 1.0 }; // initial conditions
     //state_type x = { init , 1.0 , 1.0 }; // initial conditions
-    integrate( lorenz , x , 0.0 , 25.0 , 0.1 , write_lorenz );
+
+    typedef controlled_runge_kutta< runge_kutta_dopri5< state_type , typename state_type::value_type , state_type , double > > stepper_type;
+    integrate_const( stepper_type(), lorenz , x , 0.0 , 25.0 , 0.1 , write_lorenz );
+    //integrate( lorenz , x , 0.0 , 25.0 , 0.1 , write_lorenz );
     printf("final result x[0]=%f x[1]=%f x[2]=%f\n", x[0], x[1], x[2]);
     return x[0];
 }

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S -loop-simplify -jump-threading -instsimplify -early-cse -simplifycfg | FileCheck %s
+; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -gvn -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S -loop-simplify -jump-threading -instsimplify -early-cse -simplifycfg | FileCheck %s
 
 %struct.n = type { double, %struct.n* }
 
@@ -92,10 +92,14 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  %call_malloccache.i = bitcast i8* %[[malloc1:.+]] to i8**
 ; CHECK-NEXT:  br label %for.body.i
 
+; CHECK:[[invertforcondcleanup:.+]]:
+; CHECK-NEXT:  %[[foo:.+]] = call {} @diffesum_list(%struct.n* %[[thisbc:.+]], %struct.n* nonnull %[[dstructncast:.+]], double 1.000000e+00)
+; CHECK-NEXT:  br label %invertfor.body.i
+
 ; CHECK:for.body.i:                                       ; preds = %for.body.i, %entry
 ; CHECK-NEXT:  %[[iv:.+]] = phi i64 [ %[[ivnext:.+]], %for.body.i ], [ 0, %entry ] 
-; CHECK-NEXT:  %[[structtostore:.+]] = phi %struct.n* [ %[[dstructncast:.+]], %for.body.i ], [ null, %entry ]
-; CHECK-NEXT:  %list.011.i = phi %struct.n* [ %[[thisbc:.+]], %for.body.i ], [ null, %entry ] 
+; CHECK-NEXT:  %[[structtostore:.+]] = phi %struct.n* [ %[[dstructncast]], %for.body.i ], [ null, %entry ]
+; CHECK-NEXT:  %list.011.i = phi %struct.n* [ %[[thisbc]], %for.body.i ], [ null, %entry ] 
 ; CHECK-NEXT:  %[[ivnext]] = add nuw i64 %[[iv]], 1
 ; CHECK-NEXT:  %call.i = call noalias i8* @malloc(i64 16) #4
 ; CHECK-NEXT:  %[[callcachegep:.+]] = getelementptr i8*, i8** %call_malloccache.i, i64 %[[iv]]
@@ -115,15 +119,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:  store double %x, double* %value.i, align 8, !tbaa !2
 ; CHECK-NEXT:  %[[exitcond:.+]] = icmp eq i64 %[[iv]], %n
 ; CHECK-NEXT:  %[[dstructncast]] = bitcast i8* %"call'mi.i" to %struct.n*
-; CHECK-NEXT:  br i1 %[[exitcond]], label %invertfor.cond.cleanup.i, label %for.body.i
+; CHECK-NEXT:  br i1 %[[exitcond]], label %[[invertforcondcleanup]], label %for.body.i
 
-; CHECK:invertfor.cond.cleanup.i:                         ; preds = %for.body.i
-; CHECK-NEXT:  %[[foo:.+]] = call {} @diffesum_list(%struct.n* %[[thisbc]], %struct.n* nonnull %[[dstructncast]], double 1.000000e+00) #4
-; CHECK-NEXT:  br label %invertfor.body.i
 
 ; CHECK:invertfor.body.i:
-; CHECK-NEXT:  %"x'de.0.i" = phi double [ 0.000000e+00, %invertfor.cond.cleanup.i ], [ %[[add:.+]], %incinvertfor.body.i ]
-; CHECK-NEXT:  %[[antivar:.+]] = phi i64 [ %n, %invertfor.cond.cleanup.i ], [ %[[sub:.+]], %incinvertfor.body.i ]
+; CHECK-NEXT:  %"x'de.0.i" = phi double [ 0.000000e+00, %[[invertforcondcleanup]] ], [ %[[add:.+]], %incinvertfor.body.i ]
+; CHECK-NEXT:  %[[antivar:.+]] = phi i64 [ %n, %[[invertforcondcleanup]] ], [ %[[sub:.+]], %incinvertfor.body.i ]
 ; CHECK-NEXT:  %[[gep:.+]] = getelementptr i8*, i8** %"call'mi_malloccache.i", i64 %[[antivar]]
 ; CHECK-NEXT:  %[[loadcache:.+]] = load i8*, i8** %[[gep]]
 ; CHECK-NEXT:  %[[ccast:.+]] = bitcast i8* %[[loadcache]] to double*
@@ -158,13 +159,12 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %[[preidx:.+]] = phi i64 [ %[[postidx:.+]], %for.body ], [ 0, %entry ]
 ; CHECK-NEXT:   %[[cur:.+]] = phi %struct.n* [ %"'ipl", %for.body ], [ %"node'", %entry ]
 ; CHECK-NEXT:   %val.08 = phi %struct.n* [ %[[loadst:.+]], %for.body ], [ %node, %entry ]
-; CHECK-NEXT:   %[[idx8:.+]] = shl i64 %[[preidx]], 3
-; CHECK-NEXT:   %[[addalloc:.+]] = add i64 %[[idx8]], 8
+; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
+; CHECK-NEXT:   %[[addalloc:.+]] = shl nuw i64 %[[postidx]], 3
 ; CHECK-NEXT:   %_realloccache = call i8* @realloc(i8* %[[rawcache]], i64 %[[addalloc]])
 ; CHECK-NEXT:   %[[bcalloc:.+]] = bitcast i8* %_realloccache to %struct.n**
 ; CHECK-NEXT:   %[[storest:.+]] = getelementptr %struct.n*, %struct.n** %[[bcalloc]], i64 %[[preidx]]
 ; CHECK-NEXT:   store %struct.n* %[[cur]], %struct.n** %[[storest]]
-; CHECK-NEXT:   %[[postidx]] = add nuw i64 %[[preidx]], 1
 ; CHECK-NEXT:   %next = getelementptr inbounds %struct.n, %struct.n* %val.08, i64 0, i32 1
 ; CHECK-NEXT:   %"next'ipg" = getelementptr %struct.n, %struct.n* %[[cur]], i64 0, i32 1
 ; CHECK-NEXT:   %"'ipl" = load %struct.n*, %struct.n** %"next'ipg", align 8

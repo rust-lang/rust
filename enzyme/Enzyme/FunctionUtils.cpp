@@ -188,16 +188,14 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
  {
     FunctionAnalysisManager AM;
- AM.registerPass([] { return LoopAnalysis(); });
- AM.registerPass([] { return DominatorTreeAnalysis(); });
- AM.registerPass([] { return ScalarEvolutionAnalysis(); });
- AM.registerPass([] { return AssumptionAnalysis(); });
-
+    AM.registerPass([] { return LoopAnalysis(); });
+    AM.registerPass([] { return DominatorTreeAnalysis(); });
+    AM.registerPass([] { return ScalarEvolutionAnalysis(); });
+    AM.registerPass([] { return AssumptionAnalysis(); });
 #if LLVM_VERSION_MAJOR >= 8
- AM.registerPass([] { return PassInstrumentationAnalysis(); });
+    AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
     LoopSimplifyPass().run(*NewF, AM);
-
  }
 
  if (enzyme_preopt) {
@@ -290,7 +288,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
      AM.registerPass([] { return PhiValuesAnalysis(); });
 #endif
 #if LLVM_VERSION_MAJOR >= 8
- AM.registerPass([] { return PassInstrumentationAnalysis(); });
+     AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
      AM.registerPass([] { return LazyValueAnalysis(); });
      InstCombinePass().run(*NewF, AM);
@@ -406,80 +404,21 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  }
  }
 
- /*
- //! Loop rotation now necessary to ensure that the condition of a loop is at the end
  {
-    FunctionAnalysisManager AM;
-     AM.registerPass([] { return AAManager(); });
-     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-     AM.registerPass([] { return AssumptionAnalysis(); });
-     AM.registerPass([] { return TargetLibraryAnalysis(); });
-     AM.registerPass([] { return TargetIRAnalysis(); });
-     AM.registerPass([] { return LoopAnalysis(); });
-     AM.registerPass([] { return MemorySSAAnalysis(); });
-     AM.registerPass([] { return DominatorTreeAnalysis(); });
-     AM.registerPass([] { return MemoryDependenceAnalysis(); });
-     #if LLVM_VERSION_MAJOR > 6
-     AM.registerPass([] { return PhiValuesAnalysis(); });
-     #endif
-     #if LLVM_VERSION_MAJOR >= 8
-     AM.registerPass([] { return PassInstrumentationAnalysis(); });
-     #endif
-
-     {
-
-     LoopAnalysisManager LAM;
-     AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
-     LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
- 
-        {
-        //Loop rotation is necessary to ensure we are of the form body then conditional
-        createFunctionToLoopPassAdaptor(LoopRotatePass()).run(*NewF, AM); 
-        }
-    LAM.clear();
-    }
-    AM.clear();
-  }
- */
- 
-
- {
-    FunctionAnalysisManager AM;
-     AM.registerPass([] { return AAManager(); });
-     AM.registerPass([] { return ScalarEvolutionAnalysis(); });
-     //AM.registerPass([] { return AssumptionAnalysis(); });
-     AM.registerPass([] { return TargetLibraryAnalysis(); });
-     AM.registerPass([] { return TargetIRAnalysis(); });
-     AM.registerPass([] { return LoopAnalysis(); });
-     AM.registerPass([] { return MemorySSAAnalysis(); });
-     AM.registerPass([] { return DominatorTreeAnalysis(); });
-     AM.registerPass([] { return MemoryDependenceAnalysis(); });
-#if LLVM_VERSION_MAJOR > 6
-     AM.registerPass([] { return PhiValuesAnalysis(); });
-#endif
-#if LLVM_VERSION_MAJOR >= 8
- AM.registerPass([] { return PassInstrumentationAnalysis(); });
-#endif
-
-     ModuleAnalysisManager MAM;
-     AM.registerPass([&] { return ModuleAnalysisManagerFunctionProxy(MAM); });
-     MAM.registerPass([&] { return FunctionAnalysisManagerModuleProxy(AM); });
-
  //Alias analysis is necessary to ensure can query whether we can move a forward pass function
  //BasicAA ba;
  //auto baa = new BasicAAResult(ba.run(*NewF, AM));
  AssumptionCache* AC = new AssumptionCache(*NewF);
- TargetLibraryInfo* TLI = new TargetLibraryInfo(AM.getResult<TargetLibraryAnalysis>(*NewF));
  DominatorTree* DTL = new DominatorTree(*NewF);
  LoopInfo* LI = new LoopInfo(*DTL);
  #if LLVM_VERSION_MAJOR > 6
- PhiValues* PV = new PhiValues(*F);
+ PhiValues* PV = new PhiValues(*NewF);
  #endif
  auto baa = new BasicAAResult(NewF->getParent()->getDataLayout(),
 #if LLVM_VERSION_MAJOR > 6
                         *NewF,
 #endif
-                        *TLI,
+                        TLI,
                         *AC,
                         DTL/*&AM.getResult<DominatorTreeAnalysis>(*NewF)*/,
                         LI
