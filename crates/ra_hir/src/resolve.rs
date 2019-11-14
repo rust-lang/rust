@@ -13,10 +13,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     code_model::Crate,
     db::{DefDatabase, HirDatabase},
-    expr::{
-        scope::{ExprScopes, ScopeId},
-        PatId,
-    },
+    expr::{ExprScopes, PatId, ScopeId},
     generics::GenericParams,
     impl_block::ImplBlock,
     Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, PerNs, Static, Struct, Trait,

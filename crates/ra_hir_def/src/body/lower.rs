@@ -2,9 +2,7 @@
 
 use hir_expand::{
     either::Either,
-    hygiene::Hygiene,
     name::{self, AsName, Name},
-    AstId, HirFileId, MacroCallLoc, MacroFileKind, Source,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -16,7 +14,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    body::{Body, BodySourceMap, MacroResolver, PatPtr},
+    body::{Body, BodySourceMap, Expander, PatPtr},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase2,
     expr::{
@@ -30,16 +28,13 @@ use crate::{
 
 pub(super) fn lower(
     db: &impl DefDatabase2,
-    resolver: MacroResolver,
-    file_id: HirFileId,
+    expander: Expander,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
     ExprCollector {
-        resolver,
+        expander,
         db,
-        original_file_id: file_id,
-        current_file_id: file_id,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -53,9 +48,7 @@ pub(super) fn lower(
 
 struct ExprCollector<DB> {
     db: DB,
-    resolver: MacroResolver,
-    original_file_id: HirFileId,
-    current_file_id: HirFileId,
+    expander: Expander,
 
     body: Body,
     source_map: BodySourceMap,
@@ -101,12 +94,9 @@ where
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
         let ptr = Either::A(ptr);
         let id = self.body.exprs.alloc(expr);
-        if self.current_file_id == self.original_file_id {
-            self.source_map.expr_map.insert(ptr, id);
-        }
-        self.source_map
-            .expr_map_back
-            .insert(id, Source { file_id: self.current_file_id, ast: ptr });
+        let src = self.expander.to_source(ptr);
+        self.source_map.expr_map.insert(src, id);
+        self.source_map.expr_map_back.insert(id, src);
         id
     }
     // desugared exprs don't have ptr, that's wrong and should be fixed
@@ -117,20 +107,16 @@ where
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
         let ptr = Either::B(ptr);
         let id = self.body.exprs.alloc(expr);
-        if self.current_file_id == self.original_file_id {
-            self.source_map.expr_map.insert(ptr, id);
-        }
-        self.source_map
-            .expr_map_back
-            .insert(id, Source { file_id: self.current_file_id, ast: ptr });
+        let src = self.expander.to_source(ptr);
+        self.source_map.expr_map.insert(src, id);
+        self.source_map.expr_map_back.insert(id, src);
         id
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.body.pats.alloc(pat);
-        if self.current_file_id == self.original_file_id {
-            self.source_map.pat_map.insert(ptr, id);
-        }
-        self.source_map.pat_map_back.insert(id, Source { file_id: self.current_file_id, ast: ptr });
+        let src = self.expander.to_source(ptr);
+        self.source_map.pat_map.insert(src, id);
+        self.source_map.pat_map_back.insert(id, src);
         id
     }
 
@@ -272,7 +258,7 @@ where
             ast::Expr::PathExpr(e) => {
                 let path = e
                     .path()
-                    .and_then(|path| self.parse_path(path))
+                    .and_then(|path| self.expander.parse_path(path))
                     .map(Expr::Path)
                     .unwrap_or(Expr::Missing);
                 self.alloc_expr(path, syntax_ptr)
@@ -288,7 +274,8 @@ where
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                self.source_map.expr_map.insert(Either::A(syntax_ptr), inner);
+                let src = self.expander.to_source(Either::A(syntax_ptr));
+                self.source_map.expr_map.insert(src, inner);
                 inner
             }
             ast::Expr::ReturnExpr(e) => {
@@ -296,7 +283,7 @@ where
                 self.alloc_expr(Expr::Return { expr }, syntax_ptr)
             }
             ast::Expr::RecordLit(e) => {
-                let path = e.path().and_then(|path| self.parse_path(path));
+                let path = e.path().and_then(|path| self.expander.parse_path(path));
                 let mut field_ptrs = Vec::new();
                 let record_lit = if let Some(nfl) = e.record_field_list() {
                     let fields = nfl
@@ -443,32 +430,14 @@ where
             // FIXME implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::MacroCall(e) => {
-                let ast_id = AstId::new(
-                    self.current_file_id,
-                    self.db.ast_id_map(self.current_file_id).ast_id(&e),
-                );
-
-                if let Some(path) = e.path().and_then(|path| self.parse_path(path)) {
-                    if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {
-                        let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id });
-                        let file_id = call_id.as_file(MacroFileKind::Expr);
-                        if let Some(node) = self.db.parse_or_expand(file_id) {
-                            if let Some(expr) = ast::Expr::cast(node) {
-                                log::debug!("macro expansion {:#?}", expr.syntax());
-                                let old_file_id =
-                                    std::mem::replace(&mut self.current_file_id, file_id);
-                                let id = self.collect_expr(expr);
-                                self.current_file_id = old_file_id;
-                                return id;
-                            }
-                        }
-                    }
+            ast::Expr::MacroCall(e) => match self.expander.enter_expand(self.db, e) {
+                Some((mark, expansion)) => {
+                    let id = self.collect_expr(expansion);
+                    self.expander.exit(self.db, mark);
+                    id
                 }
-                // FIXME: Instead of just dropping the error from expansion
-                // report it
-                self.alloc_expr(Expr::Missing, syntax_ptr)
-            }
+                None => self.alloc_expr(Expr::Missing, syntax_ptr),
+            },
         }
     }
 
@@ -519,7 +488,7 @@ where
                 Pat::Bind { name, mode: annotation, subpat }
             }
             ast::Pat::TupleStructPat(p) => {
-                let path = p.path().and_then(|path| self.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path));
                 let args = p.args().map(|p| self.collect_pat(p)).collect();
                 Pat::TupleStruct { path, args }
             }
@@ -529,7 +498,7 @@ where
                 Pat::Ref { pat, mutability }
             }
             ast::Pat::PathPat(p) => {
-                let path = p.path().and_then(|path| self.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path));
                 path.map(Pat::Path).unwrap_or(Pat::Missing)
             }
             ast::Pat::TuplePat(p) => {
@@ -538,7 +507,7 @@ where
             }
             ast::Pat::PlaceholderPat(_) => Pat::Wild,
             ast::Pat::RecordPat(p) => {
-                let path = p.path().and_then(|path| self.parse_path(path));
+                let path = p.path().and_then(|path| self.expander.parse_path(path));
                 let record_field_pat_list =
                     p.record_field_pat_list().expect("every struct should have a field list");
                 let mut fields: Vec<_> = record_field_pat_list
@@ -578,11 +547,6 @@ where
         } else {
             self.missing_pat()
         }
-    }
-
-    fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        let hygiene = Hygiene::new(self.db, self.current_file_id);
-        Path::from_src(path, &hygiene)
     }
 }
 

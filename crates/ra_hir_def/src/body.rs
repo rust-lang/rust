@@ -1,11 +1,15 @@
 //! FIXME: write short doc here
 mod lower;
+pub mod scope;
 
 use std::{ops::Index, sync::Arc};
 
-use hir_expand::{either::Either, HirFileId, MacroDefId, Source};
+use hir_expand::{
+    either::Either, hygiene::Hygiene, AstId, HirFileId, MacroCallLoc, MacroDefId, MacroFileKind,
+    Source,
+};
 use ra_arena::{map::ArenaMap, Arena};
-use ra_syntax::{ast, AstPtr};
+use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -13,25 +17,84 @@ use crate::{
     expr::{Expr, ExprId, Pat, PatId},
     nameres::CrateDefMap,
     path::Path,
-    ModuleId,
+    AstItemDef, DefWithBodyId, ModuleId,
 };
 
-pub struct MacroResolver {
+pub struct Expander {
     crate_def_map: Arc<CrateDefMap>,
+    current_file_id: HirFileId,
+    hygiene: Hygiene,
     module: ModuleId,
 }
 
-impl MacroResolver {
-    pub fn new(db: &impl DefDatabase2, module: ModuleId) -> MacroResolver {
-        MacroResolver { crate_def_map: db.crate_def_map(module.krate), module }
+impl Expander {
+    pub fn new(db: &impl DefDatabase2, current_file_id: HirFileId, module: ModuleId) -> Expander {
+        let crate_def_map = db.crate_def_map(module.krate);
+        let hygiene = Hygiene::new(db, current_file_id);
+        Expander { crate_def_map, current_file_id, hygiene, module }
     }
 
-    pub(crate) fn resolve_path_as_macro(
-        &self,
+    fn enter_expand(
+        &mut self,
         db: &impl DefDatabase2,
-        path: &Path,
-    ) -> Option<MacroDefId> {
+        macro_call: ast::MacroCall,
+    ) -> Option<(Mark, ast::Expr)> {
+        let ast_id = AstId::new(
+            self.current_file_id,
+            db.ast_id_map(self.current_file_id).ast_id(&macro_call),
+        );
+
+        if let Some(path) = macro_call.path().and_then(|path| self.parse_path(path)) {
+            if let Some(def) = self.resolve_path_as_macro(db, &path) {
+                let call_id = db.intern_macro(MacroCallLoc { def, ast_id });
+                let file_id = call_id.as_file(MacroFileKind::Expr);
+                if let Some(node) = db.parse_or_expand(file_id) {
+                    if let Some(expr) = ast::Expr::cast(node) {
+                        log::debug!("macro expansion {:#?}", expr.syntax());
+
+                        let mark = Mark { file_id: self.current_file_id };
+                        self.hygiene = Hygiene::new(db, file_id);
+                        self.current_file_id = file_id;
+
+                        return Some((mark, expr));
+                    }
+                }
+            }
+        }
+
+        // FIXME: Instead of just dropping the error from expansion
+        // report it
+        None
+    }
+
+    fn exit(&mut self, db: &impl DefDatabase2, mark: Mark) {
+        self.hygiene = Hygiene::new(db, mark.file_id);
+        self.current_file_id = mark.file_id;
+        std::mem::forget(mark);
+    }
+
+    fn to_source<T>(&self, ast: T) -> Source<T> {
+        Source { file_id: self.current_file_id, ast }
+    }
+
+    fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
+        Path::from_src(path, &self.hygiene)
+    }
+
+    fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
         self.crate_def_map.resolve_path(db, self.module.module_id, path).0.get_macros()
+    }
+}
+
+struct Mark {
+    file_id: HirFileId,
+}
+
+impl Drop for Mark {
+    fn drop(&mut self) {
+        if !std::thread::panicking() {
+            panic!("dropped mark")
+        }
     }
 }
 
@@ -70,22 +133,51 @@ pub type PatSource = Source<PatPtr>;
 /// this properly for macros.
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
-    expr_map: FxHashMap<ExprPtr, ExprId>,
+    expr_map: FxHashMap<ExprSource, ExprId>,
     expr_map_back: ArenaMap<ExprId, ExprSource>,
-    pat_map: FxHashMap<PatPtr, PatId>,
+    pat_map: FxHashMap<PatSource, PatId>,
     pat_map_back: ArenaMap<PatId, PatSource>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
 }
 
 impl Body {
-    pub fn new(
+    pub(crate) fn body_with_source_map_query(
         db: &impl DefDatabase2,
-        resolver: MacroResolver,
-        file_id: HirFileId,
+        def: DefWithBodyId,
+    ) -> (Arc<Body>, Arc<BodySourceMap>) {
+        let mut params = None;
+
+        let (file_id, module, body) = match def {
+            DefWithBodyId::FunctionId(f) => {
+                let src = f.source(db);
+                params = src.ast.param_list();
+                (src.file_id, f.module(db), src.ast.body().map(ast::Expr::from))
+            }
+            DefWithBodyId::ConstId(c) => {
+                let src = c.source(db);
+                (src.file_id, c.module(db), src.ast.body())
+            }
+            DefWithBodyId::StaticId(s) => {
+                let src = s.source(db);
+                (src.file_id, s.module(db), src.ast.body())
+            }
+        };
+        let expander = Expander::new(db, file_id, module);
+        let (body, source_map) = Body::new(db, expander, params, body);
+        (Arc::new(body), Arc::new(source_map))
+    }
+
+    pub(crate) fn body_query(db: &impl DefDatabase2, def: DefWithBodyId) -> Arc<Body> {
+        db.body_with_source_map(def).0
+    }
+
+    fn new(
+        db: &impl DefDatabase2,
+        expander: Expander,
         params: Option<ast::ParamList>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, resolver, file_id, params, body)
+        lower::lower(db, expander, params, body)
     }
 
     pub fn params(&self) -> &[PatId] {
@@ -126,16 +218,18 @@ impl BodySourceMap {
         self.expr_map_back.get(expr).copied()
     }
 
-    pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
-        self.expr_map.get(&Either::A(AstPtr::new(node))).cloned()
+    pub fn node_expr(&self, node: Source<&ast::Expr>) -> Option<ExprId> {
+        let src = node.map(|it| Either::A(AstPtr::new(it)));
+        self.expr_map.get(&src).cloned()
     }
 
     pub fn pat_syntax(&self, pat: PatId) -> Option<PatSource> {
         self.pat_map_back.get(pat).copied()
     }
 
-    pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
-        self.pat_map.get(&Either::A(AstPtr::new(node))).cloned()
+    pub fn node_pat(&self, node: Source<&ast::Pat>) -> Option<PatId> {
+        let src = node.map(|it| Either::A(AstPtr::new(it)));
+        self.pat_map.get(&src).cloned()
     }
 
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::RecordField> {

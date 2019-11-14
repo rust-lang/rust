@@ -7,8 +7,11 @@
 //! purely for "IDE needs".
 use std::sync::Arc;
 
-use hir_def::path::known;
-use hir_expand::name::AsName;
+use hir_def::{
+    expr::{ExprId, PatId},
+    path::known,
+};
+use hir_expand::{name::AsName, Source};
 use ra_db::FileId;
 use ra_syntax::{
     ast::{self, AstNode},
@@ -20,11 +23,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    expr::{
-        self,
-        scope::{ExprScopes, ScopeId},
-        BodySourceMap,
-    },
+    expr::{self, BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
@@ -93,6 +92,8 @@ fn def_with_body_from_child_node(
 /// original source files. It should not be used inside the HIR itself.
 #[derive(Debug)]
 pub struct SourceAnalyzer {
+    // FIXME: this doesn't handle macros at all
+    file_id: FileId,
     resolver: Resolver,
     body_owner: Option<DefWithBody>,
     body_source_map: Option<Arc<BodySourceMap>>,
@@ -145,9 +146,9 @@ impl SourceAnalyzer {
         let def_with_body = def_with_body_from_child_node(db, file_id, node);
         if let Some(def) = def_with_body {
             let source_map = def.body_source_map(db);
-            let scopes = db.expr_scopes(def);
+            let scopes = def.expr_scopes(db);
             let scope = match offset {
-                None => scope_for(&scopes, &source_map, &node),
+                None => scope_for(&scopes, &source_map, file_id.into(), &node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, file_id.into(), offset),
             };
             let resolver = expr::resolver_for_scope(db, def, scope);
@@ -157,6 +158,7 @@ impl SourceAnalyzer {
                 body_source_map: Some(source_map),
                 infer: Some(def.infer(db)),
                 scopes: Some(scopes),
+                file_id,
             }
         } else {
             SourceAnalyzer {
@@ -168,17 +170,28 @@ impl SourceAnalyzer {
                 body_source_map: None,
                 infer: None,
                 scopes: None,
+                file_id,
             }
         }
     }
 
+    fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
+        let src = Source { file_id: self.file_id.into(), ast: expr };
+        self.body_source_map.as_ref()?.node_expr(src)
+    }
+
+    fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
+        let src = Source { file_id: self.file_id.into(), ast: pat };
+        self.body_source_map.as_ref()?.node_pat(src)
+    }
+
     pub fn type_of(&self, _db: &impl HirDatabase, expr: &ast::Expr) -> Option<crate::Ty> {
-        let expr_id = self.body_source_map.as_ref()?.node_expr(expr)?;
+        let expr_id = self.expr_id(expr)?;
         Some(self.infer.as_ref()?[expr_id].clone())
     }
 
     pub fn type_of_pat(&self, _db: &impl HirDatabase, pat: &ast::Pat) -> Option<crate::Ty> {
-        let pat_id = self.body_source_map.as_ref()?.node_pat(pat)?;
+        let pat_id = self.pat_id(pat)?;
         Some(self.infer.as_ref()?[pat_id].clone())
     }
 
@@ -191,22 +204,22 @@ impl SourceAnalyzer {
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
-        let expr_id = self.body_source_map.as_ref()?.node_expr(&call.clone().into())?;
+        let expr_id = self.expr_id(&call.clone().into())?;
         self.infer.as_ref()?.method_resolution(expr_id)
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
-        let expr_id = self.body_source_map.as_ref()?.node_expr(&field.clone().into())?;
+        let expr_id = self.expr_id(&field.clone().into())?;
         self.infer.as_ref()?.field_resolution(expr_id)
     }
 
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<crate::VariantDef> {
-        let expr_id = self.body_source_map.as_ref()?.node_expr(&record_lit.clone().into())?;
+        let expr_id = self.expr_id(&record_lit.clone().into())?;
         self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
     }
 
     pub fn resolve_record_pattern(&self, record_pat: &ast::RecordPat) -> Option<crate::VariantDef> {
-        let pat_id = self.body_source_map.as_ref()?.node_pat(&record_pat.clone().into())?;
+        let pat_id = self.pat_id(&record_pat.clone().into())?;
         self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
     }
 
@@ -264,13 +277,13 @@ impl SourceAnalyzer {
 
     pub fn resolve_path(&self, db: &impl HirDatabase, path: &ast::Path) -> Option<PathResolution> {
         if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
-            let expr_id = self.body_source_map.as_ref()?.node_expr(&path_expr.into())?;
+            let expr_id = self.expr_id(&path_expr.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
                 return Some(PathResolution::AssocItem(assoc));
             }
         }
         if let Some(path_pat) = path.syntax().parent().and_then(ast::PathPat::cast) {
-            let pat_id = self.body_source_map.as_ref()?.node_pat(&path_pat.into())?;
+            let pat_id = self.pat_id(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
                 return Some(PathResolution::AssocItem(assoc));
             }
@@ -285,7 +298,7 @@ impl SourceAnalyzer {
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
-        let scope = scope_for(scopes, source_map, name_ref.syntax());
+        let scope = scope_for(scopes, source_map, self.file_id.into(), name_ref.syntax());
         let ret = scopes
             .scope_chain(scope)
             .flat_map(|scope| scopes.entries(scope).iter())
@@ -418,11 +431,12 @@ impl SourceAnalyzer {
 fn scope_for(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
+    file_id: HirFileId,
     node: &SyntaxNode,
 ) -> Option<ScopeId> {
     node.ancestors()
         .filter_map(ast::Expr::cast)
-        .filter_map(|it| source_map.node_expr(&it))
+        .filter_map(|it| source_map.node_expr(Source { file_id, ast: &it }))
         .find_map(|it| scopes.scope_for(it))
 }
 

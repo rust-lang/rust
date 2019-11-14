@@ -31,10 +31,10 @@ use ra_prof::profile;
 use test_utils::tested_by;
 
 use super::{
-    lower, primitive,
+    lower,
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
     ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypableDef,
-    TypeCtor, TypeWalk,
+    TypeCtor, TypeWalk, Uncertain,
 };
 use crate::{
     adt::VariantDef,
@@ -43,7 +43,8 @@ use crate::{
     expr::{BindingAnnotation, Body, ExprId, PatId},
     resolve::{Resolver, TypeNs},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, ConstData, DefWithBody, FnData, Function, Path, StructField,
+    Adt, AssocItem, ConstData, DefWithBody, FloatTy, FnData, Function, HasBody, IntTy, Path,
+    StructField,
 };
 
 macro_rules! ty_app {
@@ -214,7 +215,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             owner,
-            body: db.body(owner),
+            body: owner.body(db),
             resolver,
         }
     }
@@ -358,14 +359,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty {
             Ty::Unknown => self.new_type_var(),
-            Ty::Apply(ApplicationTy {
-                ctor: TypeCtor::Int(primitive::UncertainIntTy::Unknown),
-                ..
-            }) => self.new_integer_var(),
-            Ty::Apply(ApplicationTy {
-                ctor: TypeCtor::Float(primitive::UncertainFloatTy::Unknown),
-                ..
-            }) => self.new_float_var(),
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Int(Uncertain::Unknown), .. }) => {
+                self.new_integer_var()
+            }
+            Ty::Apply(ApplicationTy { ctor: TypeCtor::Float(Uncertain::Unknown), .. }) => {
+                self.new_float_var()
+            }
             _ => ty,
         }
     }
@@ -684,12 +683,8 @@ impl InferTy {
     fn fallback_value(self) -> Ty {
         match self {
             InferTy::TypeVar(..) => Ty::Unknown,
-            InferTy::IntVar(..) => {
-                Ty::simple(TypeCtor::Int(primitive::UncertainIntTy::Known(primitive::IntTy::i32())))
-            }
-            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(
-                primitive::UncertainFloatTy::Known(primitive::FloatTy::f64()),
-            )),
+            InferTy::IntVar(..) => Ty::simple(TypeCtor::Int(Uncertain::Known(IntTy::i32()))),
+            InferTy::FloatVar(..) => Ty::simple(TypeCtor::Float(Uncertain::Known(FloatTy::f64()))),
             InferTy::MaybeNeverTypeVar(..) => Ty::simple(TypeCtor::Never),
         }
     }

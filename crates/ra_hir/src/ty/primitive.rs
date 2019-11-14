@@ -4,44 +4,38 @@ use std::fmt;
 
 pub use hir_def::builtin_type::{FloatBitness, IntBitness, Signedness};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum UncertainIntTy {
+#[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub enum Uncertain<T> {
     Unknown,
-    Known(IntTy),
+    Known(T),
 }
 
-impl From<IntTy> for UncertainIntTy {
+impl From<IntTy> for Uncertain<IntTy> {
     fn from(ty: IntTy) -> Self {
-        UncertainIntTy::Known(ty)
+        Uncertain::Known(ty)
     }
 }
 
-impl fmt::Display for UncertainIntTy {
+impl fmt::Display for Uncertain<IntTy> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            UncertainIntTy::Unknown => write!(f, "{{integer}}"),
-            UncertainIntTy::Known(ty) => write!(f, "{}", ty),
+            Uncertain::Unknown => write!(f, "{{integer}}"),
+            Uncertain::Known(ty) => write!(f, "{}", ty),
         }
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
-pub enum UncertainFloatTy {
-    Unknown,
-    Known(FloatTy),
-}
-
-impl From<FloatTy> for UncertainFloatTy {
+impl From<FloatTy> for Uncertain<FloatTy> {
     fn from(ty: FloatTy) -> Self {
-        UncertainFloatTy::Known(ty)
+        Uncertain::Known(ty)
     }
 }
 
-impl fmt::Display for UncertainFloatTy {
+impl fmt::Display for Uncertain<FloatTy> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            UncertainFloatTy::Unknown => write!(f, "{{float}}"),
-            UncertainFloatTy::Known(ty) => write!(f, "{}", ty),
+            Uncertain::Unknown => write!(f, "{{float}}"),
+            Uncertain::Known(ty) => write!(f, "{}", ty),
         }
     }
 }

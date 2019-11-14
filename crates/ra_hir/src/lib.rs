@@ -77,9 +77,7 @@ pub use crate::{
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
         display::HirDisplay,
-        primitive::{
-            FloatBitness, FloatTy, IntBitness, IntTy, Signedness, UncertainFloatTy, UncertainIntTy,
-        },
+        primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
         ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
     },
 };

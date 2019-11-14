@@ -25,7 +25,7 @@ use crate::{
     generics::{GenericDef, WherePredicate},
     resolve::{Resolver, TypeNs},
     ty::{
-        primitive::{FloatTy, IntTy, UncertainFloatTy, UncertainIntTy},
+        primitive::{FloatTy, IntTy, Uncertain},
         Adt,
     },
     util::make_mut_slice,
@@ -674,20 +674,20 @@ impl From<BuiltinFloat> for FloatTy {
     }
 }
 
-impl From<Option<BuiltinInt>> for UncertainIntTy {
+impl From<Option<BuiltinInt>> for Uncertain<IntTy> {
     fn from(t: Option<BuiltinInt>) -> Self {
         match t {
-            None => UncertainIntTy::Unknown,
-            Some(t) => UncertainIntTy::Known(t.into()),
+            None => Uncertain::Unknown,
+            Some(t) => Uncertain::Known(t.into()),
         }
     }
 }
 
-impl From<Option<BuiltinFloat>> for UncertainFloatTy {
+impl From<Option<BuiltinFloat>> for Uncertain<FloatTy> {
     fn from(t: Option<BuiltinFloat>) -> Self {
         match t {
-            None => UncertainFloatTy::Unknown,
-            Some(t) => UncertainFloatTy::Known(t.into()),
+            None => Uncertain::Unknown,
+            Some(t) => Uncertain::Known(t.into()),
         }
     }
 }

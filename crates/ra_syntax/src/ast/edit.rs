@@ -358,7 +358,7 @@ fn replace_children<N: AstNode>(
 fn test_increase_indent() {
     let arm_list = {
         let arm = make::match_arm(iter::once(make::placeholder_pat().into()), make::expr_unit());
-        make::match_arm_list(vec![arm.clone(), arm].into_iter())
+        make::match_arm_list(vec![arm.clone(), arm])
     };
     assert_eq!(
         arm_list.syntax().to_string(),
