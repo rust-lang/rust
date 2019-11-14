@@ -47,7 +47,7 @@ cargo +nightly fmt
 
 ## Limitations
 
-Rustfmt tries to work on as much Rust code as possible, sometimes, the code
+Rustfmt tries to work on as much Rust code as possible. Sometimes, the code
 doesn't even need to compile! As we approach a 1.0 release we are also looking
 to limit areas of instability; in particular, post-1.0, the formatting of most
 code should not change as Rustfmt improves. However, there are some things that
