@@ -245,7 +245,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // If this were not the case, then we could conceivably have
         // to create intermediate temporaries.)
         //
-        // The type table might not have invormation for this expression
+        // The type table might not have information for this expression
         // if it is in a malformed scope. (#66387)
         if let Some(ty) = self.fcx.tables.borrow().expr_ty_opt(expr) {
             self.record(ty, scope, Some(expr), expr.span);
