@@ -26,11 +26,7 @@ impl MacroResolver {
         MacroResolver { crate_def_map: db.crate_def_map(module.krate), module }
     }
 
-    pub(crate) fn resolve_path_as_macro(
-        &self,
-        db: &impl DefDatabase2,
-        path: &Path,
-    ) -> Option<MacroDefId> {
+    fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
         self.crate_def_map.resolve_path(db, self.module.module_id, path).0.get_macros()
     }
 }
