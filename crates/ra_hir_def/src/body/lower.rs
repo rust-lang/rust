@@ -4,7 +4,7 @@ use hir_expand::{
     either::Either,
     hygiene::Hygiene,
     name::{self, AsName, Name},
-    AstId, HirFileId, MacroCallLoc, MacroFileKind, Source,
+    AstId, MacroCallLoc, MacroFileKind, Source,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -34,12 +34,9 @@ pub(super) fn lower(
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
-    let original_file_id = expander.current_file_id;
-
     ExprCollector {
         expander,
         db,
-        original_file_id,
         source_map: BodySourceMap::default(),
         body: Body {
             exprs: Arena::default(),
@@ -54,7 +51,6 @@ pub(super) fn lower(
 struct ExprCollector<DB> {
     db: DB,
     expander: Expander,
-    original_file_id: HirFileId,
 
     body: Body,
     source_map: BodySourceMap,
@@ -100,7 +96,7 @@ where
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
         let ptr = Either::A(ptr);
         let id = self.body.exprs.alloc(expr);
-        if self.expander.current_file_id == self.original_file_id {
+        if !self.expander.is_in_expansion() {
             self.source_map.expr_map.insert(ptr, id);
         }
         self.source_map
@@ -116,7 +112,7 @@ where
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
         let ptr = Either::B(ptr);
         let id = self.body.exprs.alloc(expr);
-        if self.expander.current_file_id == self.original_file_id {
+        if !self.expander.is_in_expansion() {
             self.source_map.expr_map.insert(ptr, id);
         }
         self.source_map
@@ -126,7 +122,7 @@ where
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.body.pats.alloc(pat);
-        if self.expander.current_file_id == self.original_file_id {
+        if !self.expander.is_in_expansion() {
             self.source_map.pat_map.insert(ptr, id);
         }
         self.source_map

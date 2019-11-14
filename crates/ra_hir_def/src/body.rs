@@ -18,6 +18,7 @@ use crate::{
 
 pub struct Expander {
     crate_def_map: Arc<CrateDefMap>,
+    original_file_id: HirFileId,
     current_file_id: HirFileId,
     module: ModuleId,
 }
@@ -25,7 +26,12 @@ pub struct Expander {
 impl Expander {
     pub fn new(db: &impl DefDatabase2, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
-        Expander { crate_def_map, current_file_id, module }
+        Expander { crate_def_map, original_file_id: current_file_id, current_file_id, module }
+    }
+
+    // FIXME: remove this.
+    fn is_in_expansion(&self) -> bool {
+        self.original_file_id != self.current_file_id
     }
 
     fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
