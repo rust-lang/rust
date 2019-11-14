@@ -3,7 +3,6 @@
 use hir_expand::{
     either::Either,
     name::{self, AsName, Name},
-    AstId, MacroCallLoc, MacroFileKind,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -433,31 +432,14 @@ where
             // FIXME implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::MacroCall(e) => {
-                let ast_id = AstId::new(
-                    self.expander.current_file_id,
-                    self.db.ast_id_map(self.expander.current_file_id).ast_id(&e),
-                );
-
-                if let Some(path) = e.path().and_then(|path| self.expander.parse_path(path)) {
-                    if let Some(def) = self.expander.resolve_path_as_macro(self.db, &path) {
-                        let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id });
-                        let file_id = call_id.as_file(MacroFileKind::Expr);
-                        if let Some(node) = self.db.parse_or_expand(file_id) {
-                            if let Some(expr) = ast::Expr::cast(node) {
-                                log::debug!("macro expansion {:#?}", expr.syntax());
-                                let mark = self.expander.enter(self.db, file_id);
-                                let id = self.collect_expr(expr);
-                                self.expander.exit(self.db, mark);
-                                return id;
-                            }
-                        }
-                    }
+            ast::Expr::MacroCall(e) => match self.expander.expand(self.db, e) {
+                Some((mark, expansion)) => {
+                    let id = self.collect_expr(expansion);
+                    self.expander.exit(self.db, mark);
+                    id
                 }
-                // FIXME: Instead of just dropping the error from expansion
-                // report it
-                self.alloc_expr(Expr::Missing, syntax_ptr)
-            }
+                None => self.alloc_expr(Expr::Missing, syntax_ptr),
+            },
         }
     }
 

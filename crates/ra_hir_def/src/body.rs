@@ -3,9 +3,12 @@ mod lower;
 
 use std::{ops::Index, sync::Arc};
 
-use hir_expand::{either::Either, hygiene::Hygiene, HirFileId, MacroDefId, Source};
+use hir_expand::{
+    either::Either, hygiene::Hygiene, AstId, HirFileId, MacroCallLoc, MacroDefId, MacroFileKind,
+    Source,
+};
 use ra_arena::{map::ArenaMap, Arena};
-use ra_syntax::{ast, AstPtr};
+use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -35,6 +38,35 @@ impl Expander {
             hygiene,
             module,
         }
+    }
+
+    fn expand(
+        &mut self,
+        db: &impl DefDatabase2,
+        macro_call: ast::MacroCall,
+    ) -> Option<(Mark, ast::Expr)> {
+        let ast_id = AstId::new(
+            self.current_file_id,
+            db.ast_id_map(self.current_file_id).ast_id(&macro_call),
+        );
+
+        if let Some(path) = macro_call.path().and_then(|path| self.parse_path(path)) {
+            if let Some(def) = self.resolve_path_as_macro(db, &path) {
+                let call_id = db.intern_macro(MacroCallLoc { def, ast_id });
+                let file_id = call_id.as_file(MacroFileKind::Expr);
+                if let Some(node) = db.parse_or_expand(file_id) {
+                    if let Some(expr) = ast::Expr::cast(node) {
+                        log::debug!("macro expansion {:#?}", expr.syntax());
+                        let mark = self.enter(db, file_id);
+                        return Some((mark, expr));
+                    }
+                }
+            }
+        }
+
+        // FIXME: Instead of just dropping the error from expansion
+        // report it
+        None
     }
 
     fn enter(&mut self, db: &impl DefDatabase2, file_id: HirFileId) -> Mark {
