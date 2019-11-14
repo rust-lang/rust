@@ -337,20 +337,22 @@ impl LoweringContext<'_> {
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::TyAlias(ref t, ref generics) => hir::ItemKind::TyAlias(
-                self.lower_ty(t, ImplTraitContext::disallowed()),
-                self.lower_generics(generics, ImplTraitContext::disallowed()),
-            ),
-            ItemKind::OpaqueTy(ref b, ref generics) => hir::ItemKind::OpaqueTy(
-                hir::OpaqueTy {
-                    generics: self.lower_generics(generics,
-                        ImplTraitContext::OpaqueTy(None)),
-                    bounds: self.lower_param_bounds(b,
-                        ImplTraitContext::OpaqueTy(None)),
-                    impl_trait_fn: None,
-                    origin: hir::OpaqueTyOrigin::TypeAlias,
+            ItemKind::TyAlias(ref ty, ref generics) => match ty.kind.opaque_top_hack() {
+                None => {
+                    let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                    let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
+                    hir::ItemKind::TyAlias(ty, generics)
                 },
-            ),
+                Some(bounds) => {
+                    let ty = hir::OpaqueTy {
+                        generics: self.lower_generics(generics, ImplTraitContext::OpaqueTy(None)),
+                        bounds: self.lower_param_bounds(bounds, ImplTraitContext::OpaqueTy(None)),
+                        impl_trait_fn: None,
+                        origin: hir::OpaqueTyOrigin::TypeAlias,
+                    };
+                    hir::ItemKind::OpaqueTy(ty)
+                }
+            }
             ItemKind::Enum(ref enum_definition, ref generics) => {
                 hir::ItemKind::Enum(
                     hir::EnumDef {
@@ -916,16 +918,20 @@ impl LoweringContext<'_> {
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
-            ImplItemKind::TyAlias(ref ty) => (
-                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::ImplItemKind::TyAlias(self.lower_ty(ty, ImplTraitContext::disallowed())),
-            ),
-            ImplItemKind::OpaqueTy(ref bounds) => (
-                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::ImplItemKind::OpaqueTy(
-                    self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
-                ),
-            ),
+            ImplItemKind::TyAlias(ref ty) => {
+                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+                let kind = match ty.kind.opaque_top_hack() {
+                    None => {
+                        let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                        hir::ImplItemKind::TyAlias(ty)
+                    }
+                    Some(bs) => {
+                        let bounds = self.lower_param_bounds(bs, ImplTraitContext::disallowed());
+                        hir::ImplItemKind::OpaqueTy(bounds)
+                    }
+                };
+                (generics, kind)
+            },
             ImplItemKind::Macro(..) => bug!("`TyMac` should have been expanded by now"),
         };
 
@@ -950,11 +956,13 @@ impl LoweringContext<'_> {
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
-            kind: match i.kind {
+            kind: match &i.kind {
                 ImplItemKind::Const(..) => hir::AssocItemKind::Const,
-                ImplItemKind::TyAlias(..) => hir::AssocItemKind::Type,
-                ImplItemKind::OpaqueTy(..) => hir::AssocItemKind::OpaqueTy,
-                ImplItemKind::Method(ref sig, _) => hir::AssocItemKind::Method {
+                ImplItemKind::TyAlias(ty) => match ty.kind.opaque_top_hack() {
+                    None => hir::AssocItemKind::Type,
+                    Some(_) => hir::AssocItemKind::OpaqueTy,
+                },
+                ImplItemKind::Method(sig, _) => hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
                 ImplItemKind::Macro(..) => unimplemented!(),

@@ -1,21 +1,154 @@
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:1:1
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:3:12
    |
-LL | type Foo = impl std::fmt::Debug;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/feature-gate-type_alias_impl_trait.rs:9:5
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:11:16
    |
-LL |     type Baa = impl std::fmt::Debug;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     type Baa = impl Debug;
+   |                ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
-error: aborting due to 2 previous errors
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:18:18
+   |
+LL |     type Assoc = impl Debug;
+   |                  ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
-For more information about this error, try `rustc --explain E0658`.
+error[E0658]: associated type defaults are unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:18:5
+   |
+LL |     type Assoc = impl Debug;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/29661
+   = help: add `#![feature(associated_type_defaults)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:24:24
+   |
+LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                        ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:24:37
+   |
+LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                     ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:24:49
+   |
+LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:24:70
+   |
+LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                                                      ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:34:21
+   |
+LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                     ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:34:34
+   |
+LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                  ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:34:46
+   |
+LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:34:67
+   |
+LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                                                   ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:18:18
+   |
+LL |     type Assoc = impl Debug;
+   |                  ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:24:24
+   |
+LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                        ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:24:37
+   |
+LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                     ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:24:49
+   |
+LL | type NestedFree = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:34:21
+   |
+LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                     ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:34:34
+   |
+LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                  ^^^^^^^^^^
+
+error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
+  --> $DIR/feature-gate-type_alias_impl_trait.rs:34:46
+   |
+LL |     type Baa = (Vec<impl Debug>, impl Debug, impl Iterator<Item = impl Debug>);
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 19 previous errors
+
+Some errors have detailed explanations: E0562, E0658.
+For more information about an error, try `rustc --explain E0562`.

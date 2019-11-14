@@ -17,19 +17,28 @@ LL | fn in_impl_Fn_parameter_in_return() -> &'static impl Fn(impl Debug) { panic
    |                                                 outer `impl Trait`
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/where-allowed.rs:124:5
+  --> $DIR/where-allowed.rs:124:16
    |
 LL |     type Out = impl Debug;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
 
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/where-allowed.rs:160:1
+  --> $DIR/where-allowed.rs:160:23
    |
 LL | type InTypeAlias<R> = impl Debug;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/63063
+   = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
+
+error[E0658]: `impl Trait` in type aliases is unstable
+  --> $DIR/where-allowed.rs:164:39
+   |
+LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
+   |                                       ^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
@@ -179,61 +188,61 @@ LL | type InReturnInTypeAlias<R> = fn() -> impl Debug;
    |                                       ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:168:16
+  --> $DIR/where-allowed.rs:169:16
    |
 LL | impl PartialEq<impl Debug> for () {
    |                ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:173:24
+  --> $DIR/where-allowed.rs:174:24
    |
 LL | impl PartialEq<()> for impl Debug {
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:178:6
+  --> $DIR/where-allowed.rs:179:6
    |
 LL | impl impl Debug {
    |      ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:184:24
+  --> $DIR/where-allowed.rs:185:24
    |
 LL | impl InInherentImplAdt<impl Debug> {
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:190:11
+  --> $DIR/where-allowed.rs:191:11
    |
 LL |     where impl Debug: Debug
    |           ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:197:15
+  --> $DIR/where-allowed.rs:198:15
    |
 LL |     where Vec<impl Debug>: Debug
    |               ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:204:24
+  --> $DIR/where-allowed.rs:205:24
    |
 LL |     where T: PartialEq<impl Debug>
    |                        ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:211:17
+  --> $DIR/where-allowed.rs:212:17
    |
 LL |     where T: Fn(impl Debug)
    |                 ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:218:22
+  --> $DIR/where-allowed.rs:219:22
    |
 LL |     where T: Fn() -> impl Debug
    |                      ^^^^^^^^^^
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:224:29
+  --> $DIR/where-allowed.rs:225:29
    |
 LL |     let _in_local_variable: impl Fn() = || {};
    |                             ^^^^^^^^^
@@ -241,7 +250,7 @@ LL |     let _in_local_variable: impl Fn() = || {};
    = help: add `#![feature(impl_trait_in_bindings)]` to the crate attributes to enable
 
 error[E0562]: `impl Trait` not allowed outside of function and inherent method return types
-  --> $DIR/where-allowed.rs:226:46
+  --> $DIR/where-allowed.rs:227:46
    |
 LL |     let _in_return_in_local_variable = || -> impl Fn() { || {} };
    |                                              ^^^^^^^^^
@@ -270,7 +279,7 @@ error: could not find defining uses
 LL |     type Out = impl Debug;
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 43 previous errors
+error: aborting due to 44 previous errors
 
 Some errors have detailed explanations: E0282, E0562, E0658, E0666.
 For more information about an error, try `rustc --explain E0282`.

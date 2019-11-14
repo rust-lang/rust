@@ -1133,12 +1133,6 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // trait.
                 self.visit_ty(ty)
             }
-            ast::ImplItemKind::OpaqueTy(ref bounds) => {
-                // FIXME: uses of the assoc type should ideally point to this
-                // 'def' and the name here should be a ref to the def in the
-                // trait.
-                self.process_bounds(&bounds);
-            }
             ast::ImplItemKind::Macro(_) => {}
         }
     }
@@ -1382,38 +1376,6 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 }
 
                 self.visit_ty(&ty);
-                self.process_generic_params(ty_params, &qualname, item.id);
-            }
-            OpaqueTy(ref bounds, ref ty_params) => {
-                let qualname = format!("::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
-
-                let value = String::new();
-                if !self.span.filter_generated(item.ident.span) {
-                    let span = self.span_from_span(item.ident.span);
-                    let id = id_from_node_id(item.id, &self.save_ctxt);
-                    let hir_id = self.tcx.hir().node_to_hir_id(item.id);
-
-                    self.dumper.dump_def(
-                        &access_from!(self.save_ctxt, item, hir_id),
-                        Def {
-                            kind: DefKind::Type,
-                            id,
-                            span,
-                            name: item.ident.to_string(),
-                            qualname: qualname.clone(),
-                            value,
-                            parent: None,
-                            children: vec![],
-                            decl_id: None,
-                            docs: self.save_ctxt.docs_for_attrs(&item.attrs),
-                            sig: sig::item_signature(item, &self.save_ctxt),
-                            attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
-                        },
-                    );
-                }
-
-                self.process_bounds(bounds);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
             Mac(_) => (),

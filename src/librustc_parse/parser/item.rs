@@ -7,7 +7,7 @@ use syntax::ast::{self, Abi, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyl
 use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
-use syntax::ast::{Ty, TyKind, Generics, GenericBounds, TraitRef, EnumDef, VariantData, StructField};
+use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, VariantData, StructField};
 use syntax::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
 use syntax::ptr::P;
 use syntax::ThinVec;
@@ -23,15 +23,6 @@ use rustc_error_codes::*;
 use log::debug;
 use std::mem;
 use errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
-
-/// Whether the type alias or associated type is a concrete type or an opaque type.
-#[derive(Debug)]
-pub(super) enum AliasKind {
-    /// Just a new name for the same type.
-    Weak(P<Ty>),
-    /// Only trait impls of the type will be usable, not the actual type itself.
-    OpaqueTy(GenericBounds),
-}
 
 pub(super) type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute>>);
 
@@ -269,15 +260,11 @@ impl<'a> Parser<'a> {
             return self.mk_item_with_info(attrs, lo, vis, info);
         }
 
-        if let Some(type_) = self.eat_type() {
-            let (ident, alias, generics) = type_?;
+        if self.eat_keyword(kw::Type) {
             // TYPE ITEM
-            let item_ = match alias {
-                AliasKind::Weak(ty) => ItemKind::TyAlias(ty, generics),
-                AliasKind::OpaqueTy(bounds) => ItemKind::OpaqueTy(bounds, generics),
-            };
-            let span = lo.to(self.prev_span);
-            return Ok(Some(self.mk_item(span, ident, item_, vis, attrs)));
+            let (ident, ty, generics) = self.parse_type_alias()?;
+            let kind = ItemKind::TyAlias(ty, generics);
+            return self.mk_item_with_info(attrs, lo, vis, (ident, kind, None));
         }
 
         if self.eat_keyword(kw::Enum) {
@@ -711,13 +698,9 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness();
-        let (name, kind, generics) = if let Some(type_) = self.eat_type() {
-            let (name, alias, generics) = type_?;
-            let kind = match alias {
-                AliasKind::Weak(typ) => ast::ImplItemKind::TyAlias(typ),
-                AliasKind::OpaqueTy(bounds) => ast::ImplItemKind::OpaqueTy(bounds),
-            };
-            (name, kind, generics)
+        let (name, kind, generics) = if self.eat_keyword(kw::Type) {
+            let (name, ty, generics) = self.parse_type_alias()?;
+            (name, ast::ImplItemKind::TyAlias(ty), generics)
         } else if self.is_const_item() {
             self.parse_impl_const()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(&vis), at_end)? {
@@ -1322,34 +1305,16 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses `type Foo = Bar;` or returns `None`
-    /// without modifying the parser state.
-    fn eat_type(&mut self) -> Option<PResult<'a, (Ident, AliasKind, Generics)>> {
-        // This parses the grammar:
-        //     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
-        if self.eat_keyword(kw::Type) {
-            Some(self.parse_type_alias())
-        } else {
-            None
-        }
-    }
-
-    /// Parses a type alias or opaque type.
-    fn parse_type_alias(&mut self) -> PResult<'a, (Ident, AliasKind, Generics)> {
+    /// Parses the grammar:
+    ///     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"
+    fn parse_type_alias(&mut self) -> PResult<'a, (Ident, P<Ty>, Generics)> {
         let ident = self.parse_ident()?;
         let mut tps = self.parse_generics()?;
         tps.where_clause = self.parse_where_clause()?;
         self.expect(&token::Eq)?;
-        let alias = if self.check_keyword(kw::Impl) {
-            self.bump();
-            let bounds = self.parse_generic_bounds(Some(self.prev_span))?;
-            AliasKind::OpaqueTy(bounds)
-        } else {
-            let ty = self.parse_ty()?;
-            AliasKind::Weak(ty)
-        };
+        let ty = self.parse_ty()?;
         self.expect_semi()?;
-        Ok((ident, alias, tps))
+        Ok((ident, ty, tps))
     }
 
     /// Parses an enum declaration.
