@@ -430,7 +430,7 @@ where
             // FIXME implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::MacroCall(e) => match self.expander.expand(self.db, e) {
+            ast::Expr::MacroCall(e) => match self.expander.enter_expand(self.db, e) {
                 Some((mark, expansion)) => {
                     let id = self.collect_expr(expansion);
                     self.expander.exit(self.db, mark);

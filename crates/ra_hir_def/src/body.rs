@@ -33,7 +33,7 @@ impl Expander {
         Expander { crate_def_map, current_file_id, hygiene, module }
     }
 
-    fn expand(
+    fn enter_expand(
         &mut self,
         db: &impl DefDatabase2,
         macro_call: ast::MacroCall,
@@ -50,7 +50,11 @@ impl Expander {
                 if let Some(node) = db.parse_or_expand(file_id) {
                     if let Some(expr) = ast::Expr::cast(node) {
                         log::debug!("macro expansion {:#?}", expr.syntax());
-                        let mark = self.enter(db, file_id);
+
+                        let mark = Mark { file_id: self.current_file_id };
+                        self.hygiene = Hygiene::new(db, file_id);
+                        self.current_file_id = file_id;
+
                         return Some((mark, expr));
                     }
                 }
@@ -60,13 +64,6 @@ impl Expander {
         // FIXME: Instead of just dropping the error from expansion
         // report it
         None
-    }
-
-    fn enter(&mut self, db: &impl DefDatabase2, file_id: HirFileId) -> Mark {
-        let mark = Mark { file_id: self.current_file_id };
-        self.hygiene = Hygiene::new(db, file_id);
-        self.current_file_id = file_id;
-        mark
     }
 
     fn exit(&mut self, db: &impl DefDatabase2, mark: Mark) {
