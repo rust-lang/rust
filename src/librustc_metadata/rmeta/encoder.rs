@@ -122,13 +122,13 @@ impl<'tcx> Encoder for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
+impl<'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(*lazy)
     }
 }
 
-impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
+impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         if lazy.meta == 0 {

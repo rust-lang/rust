@@ -32,7 +32,7 @@ use std::mem;
 use std::num::NonZeroUsize;
 use std::u32;
 
-use rustc_serialize::{Decodable, Decoder, Encodable, SpecializedDecoder, opaque};
+use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::source_map::{self, respan, Spanned};
@@ -217,7 +217,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
+impl<'a, 'tcx, T: Decodable> Lazy<T> {
     fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
@@ -225,7 +225,7 @@ impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
     }
 }
 
-impl<'a: 'x, 'tcx: 'x, 'x, T: Encodable + Decodable> Lazy<[T]> {
+impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable> Lazy<[T]> {
     fn decode<M: Metadata<'a, 'tcx>>(
         self,
         metadata: M,
@@ -324,13 +324,13 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<T>> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<T>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<T>, Self::Error> {
         self.read_lazy_with_meta(())
     }
 }
 
-impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<[T]>, Self::Error> {
         let len = self.read_usize()?;
         if len == 0 {

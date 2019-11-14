@@ -15,7 +15,6 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_serialize::Encodable;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -59,7 +58,7 @@ trait LazyMeta {
     fn min_size(meta: Self::Meta) -> usize;
 }
 
-impl<T: Encodable> LazyMeta for T {
+impl<T> LazyMeta for T {
     type Meta = ();
 
     fn min_size(_: ()) -> usize {
@@ -68,7 +67,7 @@ impl<T: Encodable> LazyMeta for T {
     }
 }
 
-impl<T: Encodable> LazyMeta for [T] {
+impl<T> LazyMeta for [T] {
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
@@ -124,13 +123,13 @@ impl<T: ?Sized + LazyMeta> Lazy<T> {
     }
 }
 
-impl<T: Encodable> Lazy<T> {
+impl<T> Lazy<T> {
     fn from_position(position: NonZeroUsize) -> Lazy<T> {
         Lazy::from_position_and_meta(position, ())
     }
 }
 
-impl<T: Encodable> Lazy<[T]> {
+impl<T> Lazy<[T]> {
     fn empty() -> Lazy<[T]> {
         Lazy::from_position_and_meta(NonZeroUsize::new(1).unwrap(), 0)
     }
