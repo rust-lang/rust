@@ -8,11 +8,11 @@ use std::rc::Rc;
 struct Local;
 
 impl<T> Remote1<Local> for Box<T> {
-    //~^ ERROR type parameter `T` must be used as the type parameter for some local type
+    //~^ ERROR type parameter `T` must be covered by another type
 }
 
 impl<T> Remote1<Local> for &T {
-    //~^ ERROR type parameter `T` must be used as the type parameter for some local type
+    //~^ ERROR type parameter `T` must be covered by another type
 }
 
 fn main() {}

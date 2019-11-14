@@ -574,15 +574,51 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
 
 pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
     debug!("making tests from {:?}", config.src_base.display());
+    let inputs = common_inputs_stamp(config);
     let mut tests = Vec::new();
     collect_tests_from_dir(
         config,
         &config.src_base,
         &config.src_base,
         &PathBuf::new(),
+        &inputs,
         &mut tests,
-    ).unwrap();
+    ).expect(&format!("Could not read tests from {}", config.src_base.display()));
     tests
+}
+
+/// Returns a stamp constructed from input files common to all test cases.
+fn common_inputs_stamp(config: &Config) -> Stamp {
+    let rust_src_dir = config
+        .find_rust_src_root()
+        .expect("Could not find Rust source root");
+
+    let mut stamp = Stamp::from_path(&config.rustc_path);
+
+    // Relevant pretty printer files
+    let pretty_printer_files = [
+        "src/etc/debugger_pretty_printers_common.py",
+        "src/etc/gdb_load_rust_pretty_printers.py",
+        "src/etc/gdb_rust_pretty_printing.py",
+        "src/etc/lldb_batchmode.py",
+        "src/etc/lldb_rust_formatters.py",
+    ];
+    for file in &pretty_printer_files {
+        let path = rust_src_dir.join(file);
+        stamp.add_path(&path);
+    }
+
+    stamp.add_dir(&config.run_lib_path);
+
+    if let Some(ref rustdoc_path) = config.rustdoc_path {
+        stamp.add_path(&rustdoc_path);
+        stamp.add_path(&rust_src_dir.join("src/etc/htmldocck.py"));
+    }
+
+    // Compiletest itself.
+    stamp.add_dir(&rust_src_dir.join("src/tools/compiletest/"));
+
+    stamp
 }
 
 fn collect_tests_from_dir(
@@ -590,6 +626,7 @@ fn collect_tests_from_dir(
     base: &Path,
     dir: &Path,
     relative_dir_path: &Path,
+    inputs: &Stamp,
     tests: &mut Vec<test::TestDescAndFn>,
 ) -> io::Result<()> {
     // Ignore directories that contain a file named `compiletest-ignore-dir`.
@@ -602,7 +639,7 @@ fn collect_tests_from_dir(
             file: dir.to_path_buf(),
             relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
         };
-        tests.extend(make_test(config, &paths));
+        tests.extend(make_test(config, &paths, inputs));
         return Ok(());
     }
 
@@ -627,12 +664,14 @@ fn collect_tests_from_dir(
                 file: file_path,
                 relative_dir: relative_dir_path.to_path_buf(),
             };
-            tests.extend(make_test(config, &paths))
+            tests.extend(make_test(config, &paths, inputs))
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
             if &file_name != "auxiliary" {
                 debug!("found directory: {:?}", file_path.display());
-                collect_tests_from_dir(config, base, &file_path, &relative_file_path, tests)?;
+                collect_tests_from_dir(
+                    config, base, &file_path, &relative_file_path,
+                    inputs, tests)?;
             }
         } else {
             debug!("found other file/directory: {:?}", file_path.display());
@@ -655,7 +694,7 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAndFn> {
+fn make_test(config: &Config, testpaths: &TestPaths, inputs: &Stamp) -> Vec<test::TestDescAndFn> {
     let early_props = if config.mode == Mode::RunMake {
         // Allow `ignore` directives to be in the Makefile.
         EarlyProps::from_file(config, &testpaths.file.join("Makefile"))
@@ -685,19 +724,21 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> Vec<test::TestDescAn
     revisions
         .into_iter()
         .map(|revision| {
-            // Debugging emscripten code doesn't make sense today
             let ignore = early_props.ignore == Ignore::Ignore
-                || !up_to_date(
-                    config,
-                    testpaths,
-                    &early_props,
-                    revision.map(|s| s.as_str()),
-                )
+                // Debugging emscripten code doesn't make sense today
                 || ((config.mode == DebugInfoGdbLldb || config.mode == DebugInfoCdb ||
                      config.mode == DebugInfoGdb || config.mode == DebugInfoLldb)
                     && config.target.contains("emscripten"))
                 || (config.mode == DebugInfoGdb && !early_props.ignore.can_run_gdb())
-                || (config.mode == DebugInfoLldb && !early_props.ignore.can_run_lldb());
+                || (config.mode == DebugInfoLldb && !early_props.ignore.can_run_lldb())
+                // Ignore tests that already run and are up to date with respect to inputs.
+                || is_up_to_date(
+                    config,
+                    testpaths,
+                    &early_props,
+                    revision.map(|s| s.as_str()),
+                    inputs,
+                );
             test::TestDescAndFn {
                 desc: test::TestDesc {
                     name: make_test_name(config, testpaths, revision),
@@ -716,98 +757,75 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
-fn up_to_date(
+fn is_up_to_date(
     config: &Config,
     testpaths: &TestPaths,
     props: &EarlyProps,
     revision: Option<&str>,
+    inputs: &Stamp,
 ) -> bool {
     let stamp_name = stamp(config, testpaths, revision);
     // Check hash.
     let contents = match fs::read_to_string(&stamp_name) {
         Ok(f) => f,
         Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
-        Err(_) => return true,
+        Err(_) => return false,
     };
     let expected_hash = runtest::compute_stamp_hash(config);
     if contents != expected_hash {
-        return true;
+        return false;
     }
 
     // Check timestamps.
-    let rust_src_dir = config
-        .find_rust_src_root()
-        .expect("Could not find Rust source root");
-    let stamp = Stamp::from_path(&stamp_name);
-    let mut inputs = vec![Stamp::from_path(&testpaths.file), Stamp::from_path(&config.rustc_path)];
-    inputs.extend(
-        props
-            .aux
-            .iter()
-            .map(|aux| {
-                Stamp::from_path(&testpaths.file.parent().unwrap().join("auxiliary").join(aux))
-            }),
-    );
-    // Relevant pretty printer files
-    let pretty_printer_files = [
-        "src/etc/debugger_pretty_printers_common.py",
-        "src/etc/gdb_load_rust_pretty_printers.py",
-        "src/etc/gdb_rust_pretty_printing.py",
-        "src/etc/lldb_batchmode.py",
-        "src/etc/lldb_rust_formatters.py",
-    ];
-    inputs.extend(pretty_printer_files.iter().map(|pretty_printer_file| {
-        Stamp::from_path(&rust_src_dir.join(pretty_printer_file))
-    }));
-    inputs.extend(Stamp::from_dir(&config.run_lib_path));
-    if let Some(ref rustdoc_path) = config.rustdoc_path {
-        inputs.push(Stamp::from_path(&rustdoc_path));
-        inputs.push(Stamp::from_path(&rust_src_dir.join("src/etc/htmldocck.py")));
+    let mut inputs = inputs.clone();
+    inputs.add_path(&testpaths.file);
+
+    for aux in &props.aux {
+        let path = testpaths.file.parent()
+            .unwrap()
+            .join("auxiliary")
+            .join(aux);
+        inputs.add_path(&path);
     }
 
     // UI test files.
-    inputs.extend(UI_EXTENSIONS.iter().map(|extension| {
+    for extension in UI_EXTENSIONS {
         let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
-        Stamp::from_path(path)
-    }));
+        inputs.add_path(path);
+    }
 
-    // Compiletest itself.
-    inputs.extend(Stamp::from_dir(&rust_src_dir.join("src/tools/compiletest/")));
-
-    inputs.iter().any(|input| input > &stamp)
+    inputs < Stamp::from_path(&stamp_name)
 }
 
-#[derive(Debug, PartialEq, PartialOrd, Ord, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Stamp {
     time: SystemTime,
-    file: PathBuf,
 }
 
 impl Stamp {
-    fn from_path(p: &Path) -> Self {
-        let time = fs::metadata(p)
-            .and_then(|metadata| metadata.modified())
-            .unwrap_or(SystemTime::UNIX_EPOCH);
-
-        Stamp {
-            time,
-            file: p.into(),
-        }
+    fn from_path(path: &Path) -> Self {
+        let mut stamp = Stamp { time: SystemTime::UNIX_EPOCH };
+        stamp.add_path(path);
+        stamp
     }
 
-    fn from_dir(path: &Path) -> impl Iterator<Item = Stamp> {
-        WalkDir::new(path)
-            .into_iter()
-            .map(|entry| entry.unwrap())
-            .filter(|entry| entry.file_type().is_file())
-            .map(|entry| {
-                let time = (|| -> io::Result<_> { entry.metadata()?.modified() })();
+    fn add_path(&mut self, path: &Path) {
+        let modified = fs::metadata(path)
+            .and_then(|metadata| metadata.modified())
+            .unwrap_or(SystemTime::UNIX_EPOCH);
+        self.time = self.time.max(modified);
+    }
 
-                Stamp {
-                    time: time.unwrap_or(SystemTime::UNIX_EPOCH),
-                    file: entry.path().into(),
-                }
-            })
+    fn add_dir(&mut self, path: &Path) {
+        for entry in WalkDir::new(path) {
+            let entry = entry.unwrap();
+            if entry.file_type().is_file() {
+                let modified = entry.metadata().ok()
+                    .and_then(|metadata| metadata.modified().ok())
+                    .unwrap_or(SystemTime::UNIX_EPOCH);
+                self.time = self.time.max(modified);
+            }
+        }
     }
 }
 

@@ -362,37 +362,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || ty.is_char()
             || ty.references_error()
         };
-        let lhs_compat = numeric_or_char(lhs_ty);
-        let rhs_compat = numeric_or_char(rhs_ty);
+        let lhs_fail = !numeric_or_char(lhs_ty);
+        let rhs_fail = !numeric_or_char(rhs_ty);
 
-        if !lhs_compat || !rhs_compat {
-            let span = if !lhs_compat && !rhs_compat {
-                span
-            } else if !lhs_compat {
-                begin.span
-            } else {
-                end.span
-            };
-
-            let mut err = struct_span_err!(
-                self.tcx.sess,
-                span,
-                E0029,
-                "only char and numeric types are allowed in range patterns"
+        if lhs_fail || rhs_fail {
+            self.emit_err_pat_range(
+                span, begin.span, end.span, lhs_fail, rhs_fail, lhs_ty, rhs_ty
             );
-            err.span_label(span, "ranges require char or numeric types");
-            err.note(&format!("start type: {}", self.ty_to_string(lhs_ty)));
-            err.note(&format!("end type: {}", self.ty_to_string(rhs_ty)));
-            if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note(
-                    "In a match expression, only numbers and characters can be matched \
-                        against a range. This is because the compiler checks that the range \
-                        is non-empty at compile-time, and is unable to evaluate arbitrary \
-                        comparison functions. If you want to capture values of an orderable \
-                        type between two end-points, you can use a guard."
-                    );
-            }
-            err.emit();
             return None;
         }
 
@@ -404,6 +380,62 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.demand_eqtype_pat(span, expected, lhs_ty, discrim_span);
         self.demand_eqtype_pat(span, expected, rhs_ty, discrim_span);
         Some(common_type)
+    }
+
+    fn emit_err_pat_range(
+        &self,
+        span: Span,
+        begin_span: Span,
+        end_span: Span,
+        lhs_fail: bool,
+        rhs_fail: bool,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
+    ) {
+        let span = if lhs_fail && rhs_fail {
+            span
+        } else if lhs_fail {
+            begin_span
+        } else {
+            end_span
+        };
+
+        let mut err = struct_span_err!(
+            self.tcx.sess,
+            span,
+            E0029,
+            "only char and numeric types are allowed in range patterns"
+        );
+        let msg = |ty| {
+            format!("this is of type `{}` but it should be `char` or numeric", ty)
+        };
+        let mut one_side_err = |first_span, first_ty, second_span, second_ty: Ty<'_>| {
+            err.span_label(first_span, &msg(first_ty));
+            if !second_ty.references_error() {
+                err.span_label(
+                    second_span,
+                    &format!("this is of type `{}`", second_ty)
+                );
+            }
+        };
+        if lhs_fail && rhs_fail {
+            err.span_label(begin_span, &msg(lhs_ty));
+            err.span_label(end_span, &msg(rhs_ty));
+        } else if lhs_fail {
+            one_side_err(begin_span, lhs_ty, end_span, rhs_ty);
+        } else {
+            one_side_err(end_span, rhs_ty, begin_span, lhs_ty);
+        }
+        if self.tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note(
+                "In a match expression, only numbers and characters can be matched \
+                    against a range. This is because the compiler checks that the range \
+                    is non-empty at compile-time, and is unable to evaluate arbitrary \
+                    comparison functions. If you want to capture values of an orderable \
+                    type between two end-points, you can use a guard."
+                );
+        }
+        err.emit();
     }
 
     fn check_pat_ident(
