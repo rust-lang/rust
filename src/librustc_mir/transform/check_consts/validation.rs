@@ -19,9 +19,9 @@ use std::ops::Deref;
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
 use self::old_dataflow::IndirectlyMutableLocals;
 use super::ops::{self, NonConstOp};
-use super::qualifs::{HasMutInterior, NeedsDrop};
+use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
-use super::{ConstKind, Item, Qualif, QualifSet, is_lang_panic_fn};
+use super::{ConstKind, Item, Qualif, is_lang_panic_fn};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum CheckOpResult {
@@ -130,18 +130,16 @@ impl Qualifs<'a, 'mir, 'tcx> {
             .map(|(bb, _)| bb);
 
         let return_block = match return_block {
-            None => return QualifSet::in_any_value_of_ty(item, item.body.return_ty()),
+            None => return qualifs::in_any_value_of_ty(item, item.body.return_ty()),
             Some(bb) => bb,
         };
 
         let return_loc = item.body.terminator_loc(return_block);
 
-        let mut qualifs = QualifSet::default();
-
-        qualifs.set::<NeedsDrop>(self.needs_drop_lazy_seek(RETURN_PLACE, return_loc));
-        qualifs.set::<HasMutInterior>(self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc));
-
-        qualifs
+        QualifSet {
+            needs_drop: self.needs_drop_lazy_seek(RETURN_PLACE, return_loc),
+            has_mut_interior: self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc),
+        }
     }
 }
 
