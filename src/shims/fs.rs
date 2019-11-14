@@ -175,10 +175,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .to_machine_usize(&*this.tcx)?
             .min((1 << (ptr_size - 1)) - 1) // max value of target `isize`
             .min(isize::max_value() as u64);
-        // Reading zero bytes should not change `buf`.
-        if count == 0 {
-            return Ok(0);
-        }
+
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf = this.read_scalar(buf_op)?.not_undef()?;
 
@@ -231,10 +228,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             .to_machine_usize(&*this.tcx)?
             .min((1 << (ptr_size - 1)) - 1) // max value of target `isize`
             .min(isize::max_value() as u64);
-        // Writing zero bytes should not change `buf`.
-        if count == 0 {
-            return Ok(0);
-        }
+
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf = this.read_scalar(buf_op)?.not_undef()?;
 
