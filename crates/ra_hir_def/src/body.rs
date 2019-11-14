@@ -3,7 +3,7 @@ mod lower;
 
 use std::{ops::Index, sync::Arc};
 
-use hir_expand::{either::Either, HirFileId, MacroDefId, Source};
+use hir_expand::{either::Either, hygiene::Hygiene, HirFileId, MacroDefId, Source};
 use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::{ast, AstPtr};
 use rustc_hash::FxHashMap;
@@ -20,13 +20,34 @@ pub struct Expander {
     crate_def_map: Arc<CrateDefMap>,
     original_file_id: HirFileId,
     current_file_id: HirFileId,
+    hygiene: Hygiene,
     module: ModuleId,
 }
 
 impl Expander {
     pub fn new(db: &impl DefDatabase2, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
-        Expander { crate_def_map, original_file_id: current_file_id, current_file_id, module }
+        let hygiene = Hygiene::new(db, current_file_id);
+        Expander {
+            crate_def_map,
+            original_file_id: current_file_id,
+            current_file_id,
+            hygiene,
+            module,
+        }
+    }
+
+    fn enter(&mut self, db: &impl DefDatabase2, file_id: HirFileId) -> Mark {
+        let mark = Mark { file_id: self.current_file_id };
+        self.hygiene = Hygiene::new(db, file_id);
+        self.current_file_id = file_id;
+        mark
+    }
+
+    fn exit(&mut self, db: &impl DefDatabase2, mark: Mark) {
+        self.hygiene = Hygiene::new(db, mark.file_id);
+        self.current_file_id = mark.file_id;
+        std::mem::forget(mark);
     }
 
     // FIXME: remove this.
@@ -40,6 +61,18 @@ impl Expander {
 
     fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
         self.crate_def_map.resolve_path(db, self.module.module_id, path).0.get_macros()
+    }
+}
+
+struct Mark {
+    file_id: HirFileId,
+}
+
+impl Drop for Mark {
+    fn drop(&mut self) {
+        if !std::thread::panicking() {
+            panic!("dropped mark")
+        }
     }
 }
 

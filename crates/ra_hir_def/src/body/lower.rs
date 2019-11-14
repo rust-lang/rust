@@ -2,7 +2,6 @@
 
 use hir_expand::{
     either::Either,
-    hygiene::Hygiene,
     name::{self, AsName, Name},
     AstId, MacroCallLoc, MacroFileKind,
 };
@@ -447,10 +446,9 @@ where
                         if let Some(node) = self.db.parse_or_expand(file_id) {
                             if let Some(expr) = ast::Expr::cast(node) {
                                 log::debug!("macro expansion {:#?}", expr.syntax());
-                                let old_file_id =
-                                    std::mem::replace(&mut self.expander.current_file_id, file_id);
+                                let mark = self.expander.enter(self.db, file_id);
                                 let id = self.collect_expr(expr);
-                                self.expander.current_file_id = old_file_id;
+                                self.expander.exit(self.db, mark);
                                 return id;
                             }
                         }
@@ -572,8 +570,7 @@ where
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        let hygiene = Hygiene::new(self.db, self.expander.current_file_id);
-        Path::from_src(path, &hygiene)
+        Path::from_src(path, &self.expander.hygiene)
     }
 }
 
