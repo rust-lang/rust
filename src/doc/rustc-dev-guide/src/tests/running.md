@@ -123,7 +123,7 @@ exists in the test file. For example, you can run all the tests in
 By passing `--pass $mode`, you can reduce the testing time. For each
 mode, please see [here][mode].
 
-[mode]: https://rust-lang.github.io/rustc-guide/tests/adding.html#tests-that-do-not-result-in-compile-errors
+[mode]: ./adding.md#tests-that-do-not-result-in-compile-errors
 
 ## Using incremental compilation
 

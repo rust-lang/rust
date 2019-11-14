@@ -113,6 +113,4 @@
 
 ---
 
-[](./important-links.md)
-
 [pau]: ./borrow_check/region_inference/placeholders_and_universes.md

@@ -178,5 +178,5 @@ a new unstable feature:
 [`feature_gate::check::check_crate`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/feature_gate/check/fn.check_crate.html
 [value the stability of Rust]: https://github.com/rust-lang/rfcs/blob/master/text/1122-language-semver.md
 [stability in code]: #stability-in-code
-[here]: https://rust-lang.github.io/rustc-guide/stabilization_guide.html
+[here]: ./stabilization_guide.md
 [tracking issue]: #tracking-issue
