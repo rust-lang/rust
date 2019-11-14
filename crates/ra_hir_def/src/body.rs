@@ -21,7 +21,6 @@ use crate::{
 
 pub struct Expander {
     crate_def_map: Arc<CrateDefMap>,
-    original_file_id: HirFileId,
     current_file_id: HirFileId,
     hygiene: Hygiene,
     module: ModuleId,
@@ -31,13 +30,7 @@ impl Expander {
     pub fn new(db: &impl DefDatabase2, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
-        Expander {
-            crate_def_map,
-            original_file_id: current_file_id,
-            current_file_id,
-            hygiene,
-            module,
-        }
+        Expander { crate_def_map, current_file_id, hygiene, module }
     }
 
     fn expand(
@@ -80,11 +73,6 @@ impl Expander {
         self.hygiene = Hygiene::new(db, mark.file_id);
         self.current_file_id = mark.file_id;
         std::mem::forget(mark);
-    }
-
-    // FIXME: remove this.
-    fn is_in_expansion(&self) -> bool {
-        self.original_file_id != self.current_file_id
     }
 
     fn to_source<T>(&self, ast: T) -> Source<T> {
@@ -147,9 +135,9 @@ pub type PatSource = Source<PatPtr>;
 /// this properly for macros.
 #[derive(Default, Debug, Eq, PartialEq)]
 pub struct BodySourceMap {
-    expr_map: FxHashMap<ExprPtr, ExprId>,
+    expr_map: FxHashMap<ExprSource, ExprId>,
     expr_map_back: ArenaMap<ExprId, ExprSource>,
-    pat_map: FxHashMap<PatPtr, PatId>,
+    pat_map: FxHashMap<PatSource, PatId>,
     pat_map_back: ArenaMap<PatId, PatSource>,
     field_map: FxHashMap<(ExprId, usize), AstPtr<ast::RecordField>>,
 }
@@ -202,16 +190,18 @@ impl BodySourceMap {
         self.expr_map_back.get(expr).copied()
     }
 
-    pub fn node_expr(&self, node: &ast::Expr) -> Option<ExprId> {
-        self.expr_map.get(&Either::A(AstPtr::new(node))).cloned()
+    pub fn node_expr(&self, node: Source<&ast::Expr>) -> Option<ExprId> {
+        let src = node.map(|it| Either::A(AstPtr::new(it)));
+        self.expr_map.get(&src).cloned()
     }
 
     pub fn pat_syntax(&self, pat: PatId) -> Option<PatSource> {
         self.pat_map_back.get(pat).copied()
     }
 
-    pub fn node_pat(&self, node: &ast::Pat) -> Option<PatId> {
-        self.pat_map.get(&Either::A(AstPtr::new(node))).cloned()
+    pub fn node_pat(&self, node: Source<&ast::Pat>) -> Option<PatId> {
+        let src = node.map(|it| Either::A(AstPtr::new(it)));
+        self.pat_map.get(&src).cloned()
     }
 
     pub fn field_syntax(&self, expr: ExprId, field: usize) -> AstPtr<ast::RecordField> {

@@ -94,10 +94,9 @@ where
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
         let ptr = Either::A(ptr);
         let id = self.body.exprs.alloc(expr);
-        if !self.expander.is_in_expansion() {
-            self.source_map.expr_map.insert(ptr, id);
-        }
-        self.source_map.expr_map_back.insert(id, self.expander.to_source(ptr));
+        let src = self.expander.to_source(ptr);
+        self.source_map.expr_map.insert(src, id);
+        self.source_map.expr_map_back.insert(id, src);
         id
     }
     // desugared exprs don't have ptr, that's wrong and should be fixed
@@ -108,18 +107,16 @@ where
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
         let ptr = Either::B(ptr);
         let id = self.body.exprs.alloc(expr);
-        if !self.expander.is_in_expansion() {
-            self.source_map.expr_map.insert(ptr, id);
-        }
-        self.source_map.expr_map_back.insert(id, self.expander.to_source(ptr));
+        let src = self.expander.to_source(ptr);
+        self.source_map.expr_map.insert(src, id);
+        self.source_map.expr_map_back.insert(id, src);
         id
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.body.pats.alloc(pat);
-        if !self.expander.is_in_expansion() {
-            self.source_map.pat_map.insert(ptr, id);
-        }
-        self.source_map.pat_map_back.insert(id, self.expander.to_source(ptr));
+        let src = self.expander.to_source(ptr);
+        self.source_map.pat_map.insert(src, id);
+        self.source_map.pat_map_back.insert(id, src);
         id
     }
 
@@ -277,7 +274,8 @@ where
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                self.source_map.expr_map.insert(Either::A(syntax_ptr), inner);
+                let src = self.expander.to_source(Either::A(syntax_ptr));
+                self.source_map.expr_map.insert(src, inner);
                 inner
             }
             ast::Expr::ReturnExpr(e) => {
