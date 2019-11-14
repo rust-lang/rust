@@ -17,7 +17,6 @@ impl_arena_id!(ScopeId);
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ExprScopes {
-    pub(crate) body: Arc<Body>,
     scopes: Arena<ScopeId, ScopeData>,
     scope_by_expr: FxHashMap<ExprId, ScopeId>,
 }
@@ -47,19 +46,16 @@ pub(crate) struct ScopeData {
 impl ExprScopes {
     pub(crate) fn expr_scopes_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<ExprScopes> {
         let body = db.body(def);
-        let res = ExprScopes::new(body);
+        let res = ExprScopes::new(&*body);
         Arc::new(res)
     }
 
-    fn new(body: Arc<Body>) -> ExprScopes {
-        let mut scopes = ExprScopes {
-            body: body.clone(),
-            scopes: Arena::default(),
-            scope_by_expr: FxHashMap::default(),
-        };
+    fn new(body: &Body) -> ExprScopes {
+        let mut scopes =
+            ExprScopes { scopes: Arena::default(), scope_by_expr: FxHashMap::default() };
         let root = scopes.root_scope();
-        scopes.add_params_bindings(root, body.params());
-        compute_expr_scopes(body.body_expr(), &body, &mut scopes, root);
+        scopes.add_params_bindings(body, root, body.params());
+        compute_expr_scopes(body.body_expr(), body, &mut scopes, root);
         scopes
     }
 
@@ -99,9 +95,8 @@ impl ExprScopes {
         }
     }
 
-    fn add_params_bindings(&mut self, scope: ScopeId, params: &[PatId]) {
-        let body = Arc::clone(&self.body);
-        params.iter().for_each(|pat| self.add_bindings(&body, scope, *pat));
+    fn add_params_bindings(&mut self, body: &Body, scope: ScopeId, params: &[PatId]) {
+        params.iter().for_each(|pat| self.add_bindings(body, scope, *pat));
     }
 
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
@@ -151,7 +146,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
         }
         Expr::Lambda { args, body: body_expr, .. } => {
             let scope = scopes.new_scope(scope);
-            scopes.add_params_bindings(scope, &args);
+            scopes.add_params_bindings(body, scope, &args);
             compute_expr_scopes(*body_expr, body, scopes, scope);
         }
         Expr::Match { expr, arms } => {
