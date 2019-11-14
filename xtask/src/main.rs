@@ -10,18 +10,17 @@
 mod help;
 
 use anyhow::Context;
-use autocfg;
 use core::fmt::Write;
 use core::str;
 use pico_args::Arguments;
 use std::{env, path::PathBuf};
 use xtask::{
     codegen::{self, Mode},
-    install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt, Cmd, Result,
+    install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt, run_with_output, Cmd, Result,
 };
 
 // Latest stable, feel free to send a PR if this lags behind.
-const REQUIRED_RUST_VERSION: (usize, usize) = (1, 39);
+const REQUIRED_RUST_VERSION: u32 = 39;
 
 struct InstallOpt {
     client: Option<ClientOpt>,
@@ -230,15 +229,20 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
 }
 
 fn install_server(opts: ServerOpt) -> Result<()> {
-    let target_dir = env::var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into());
-    let ac = autocfg::AutoCfg::with_dir(target_dir)?;
-
-    let old_rust = !ac.probe_rustc_version(REQUIRED_RUST_VERSION.0, REQUIRED_RUST_VERSION.1);
+    let mut old_rust = false;
+    if let Ok(output) = run_with_output("cargo --version", ".") {
+        if let Ok(stdout) = String::from_utf8(output.stdout) {
+            println!("{}", stdout);
+            if !check_version(&stdout, REQUIRED_RUST_VERSION) {
+                old_rust = true;
+            }
+        }
+    }
 
     if old_rust {
         eprintln!(
-            "\nWARNING: at least rust {}.{}.0 is required to compile rust-analyzer\n",
-            REQUIRED_RUST_VERSION.0, REQUIRED_RUST_VERSION.1
+            "\nWARNING: at least rust 1.{}.0 is required to compile rust-analyzer\n",
+            REQUIRED_RUST_VERSION,
         )
     }
 
@@ -250,10 +254,20 @@ fn install_server(opts: ServerOpt) -> Result<()> {
 
     if res.is_err() && old_rust {
         eprintln!(
-            "\nWARNING: at least rust {}.{}.0 is required to compile rust-analyzer\n",
-            REQUIRED_RUST_VERSION.0, REQUIRED_RUST_VERSION.1
+            "\nWARNING: at least rust 1.{}.0 is required to compile rust-analyzer\n",
+            REQUIRED_RUST_VERSION,
         )
     }
 
     res
+}
+
+fn check_version(version_output: &str, min_minor_version: u32) -> bool {
+    // Parse second the number out of
+    //      cargo 1.39.0-beta (1c6ec66d5 2019-09-30)
+    let minor: Option<u32> = version_output.split('.').nth(1).and_then(|it| it.parse().ok());
+    match minor {
+        None => true,
+        Some(minor) => minor >= min_minor_version,
+    }
 }
