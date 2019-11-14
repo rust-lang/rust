@@ -1,7 +1,7 @@
 use crate::{build, shim};
 use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{Body, MirPhase, Promoted, QualifSet};
+use rustc::mir::{Body, MirPhase, Promoted, ConstQualifs};
 use rustc::ty::{TyCtxt, InstanceDef, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -184,7 +184,7 @@ pub fn run_passes(
     body.phase = mir_phase;
 }
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> QualifSet {
+fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     let const_kind = check_consts::ConstKind::for_item(tcx, def_id);
 
     // No need to const-check a non-const `fn`.

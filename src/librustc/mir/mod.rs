@@ -2770,8 +2770,12 @@ pub struct BorrowCheckResult<'tcx> {
 }
 
 /// The result of the `mir_const_qualif` query.
+///
+/// Each field corresponds to an implementer of the `Qualif` trait in
+/// `librustc_mir/transform/check_consts/qualifs.rs`. See that file for more information on each
+/// `Qualif`.
 #[derive(Clone, Copy, Debug, Default, RustcEncodable, RustcDecodable, HashStable)]
-pub struct QualifSet {
+pub struct ConstQualifs {
     pub has_mut_interior: bool,
     pub needs_drop: bool,
 }

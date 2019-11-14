@@ -6,8 +6,8 @@ use syntax_pos::DUMMY_SP;
 
 use super::{ConstKind, Item as ConstCx};
 
-pub fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> QualifSet {
-    QualifSet {
+pub fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> ConstQualifs {
+    ConstQualifs {
         has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
         needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
     }
@@ -26,7 +26,7 @@ pub trait Qualif {
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
 
-    fn in_qualif_set(set: &QualifSet) -> bool;
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool;
 
     /// Return the qualification that is (conservatively) correct for any value
     /// of the type.
@@ -121,7 +121,7 @@ pub trait Qualif {
                         Self::in_any_value_of_ty(cx, constant.literal.ty)
                     } else {
                         let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def_id);
-                        let qualif = Self::in_qualif_set(&qualifs);
+                        let qualif = Self::in_qualifs(&qualifs);
 
                         // Just in case the type is more specific than
                         // the definition, e.g., impl associated const
@@ -209,8 +209,8 @@ pub struct HasMutInterior;
 impl Qualif for HasMutInterior {
     const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
 
-    fn in_qualif_set(set: &QualifSet) -> bool {
-        set.has_mut_interior
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
+        qualifs.has_mut_interior
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
@@ -278,8 +278,8 @@ impl Qualif for NeedsDrop {
     const ANALYSIS_NAME: &'static str = "flow_needs_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
 
-    fn in_qualif_set(set: &QualifSet) -> bool {
-        set.needs_drop
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
+        qualifs.needs_drop
     }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {

@@ -113,7 +113,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
             || self.indirectly_mutable.get().contains(local)
     }
 
-    fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> QualifSet {
+    fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> ConstQualifs {
         // Find the `Return` terminator if one exists.
         //
         // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
@@ -136,7 +136,7 @@ impl Qualifs<'a, 'mir, 'tcx> {
 
         let return_loc = item.body.terminator_loc(return_block);
 
-        QualifSet {
+        ConstQualifs {
             needs_drop: self.needs_drop_lazy_seek(RETURN_PLACE, return_loc),
             has_mut_interior: self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc),
         }
@@ -253,7 +253,7 @@ impl Validator<'a, 'mir, 'tcx> {
         }
     }
 
-    pub fn qualifs_in_return_place(&mut self) -> QualifSet {
+    pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
         self.qualifs.in_return_place(self.item)
     }
 
