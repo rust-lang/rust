@@ -633,8 +633,8 @@ impl Ipv4Addr {
     /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
     /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
     ///
-    /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
-    /// [errate 423]: https://www.rfc-editor.org/errata/eid423
+    /// [IETF RFC 2544]: https://tools.ietf.org/html/rfc2544
+    /// [errata 423]: https://www.rfc-editor.org/errata/eid423
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
