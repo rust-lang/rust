@@ -1226,10 +1226,15 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     /// Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
     /// removing the dummy `Self` type (`trait_object_dummy_self`).
-    fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
-                                -> ty::ExistentialTraitRef<'tcx> {
+    fn trait_ref_to_existential(
+        &self,
+        trait_ref: ty::TraitRef<'tcx>,
+    ) -> ty::ExistentialTraitRef<'tcx> {
         if trait_ref.self_ty() != self.tcx().types.trait_object_dummy_self {
-            bug!("trait_ref_to_existential called on {:?} with non-dummy Self", trait_ref);
+            self.tcx().sess.delay_span_bug(DUMMY_SP, &format!(
+                "trait_ref_to_existential called on {:?} with non-dummy Self",
+                trait_ref,
+            ));
         }
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
