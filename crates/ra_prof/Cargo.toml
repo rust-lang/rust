@@ -9,6 +9,8 @@ publish = false
 once_cell = "1.0.1"
 itertools = "0.8.0"
 backtrace = "0.3.28"
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = { version = "0.3.2", optional = true }
 jemalloc-ctl = { version = "0.3.2", optional = true }
 

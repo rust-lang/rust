@@ -24,7 +24,7 @@ pub use crate::memory_usage::{Bytes, MemoryUsage};
 
 // We use jemalloc mainly to get heap usage statistics, actual performance
 // difference is not measures.
-#[cfg(feature = "jemalloc")]
+#[cfg(all(feature = "jemalloc", not(target_env = "msvc")))]
 #[global_allocator]
 static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
