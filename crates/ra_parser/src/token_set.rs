@@ -30,8 +30,8 @@ const fn mask(kind: SyntaxKind) -> u128 {
 
 #[macro_export]
 macro_rules! token_set {
-    ($($t:ident),*) => { TokenSet::empty()$(.union(TokenSet::singleton($t)))* };
-    ($($t:ident),* ,) => { token_set!($($t),*) };
+    ($($t:expr),*) => { TokenSet::empty()$(.union(TokenSet::singleton($t)))* };
+    ($($t:expr),* ,) => { token_set!($($t),*) };
 }
 
 #[test]
