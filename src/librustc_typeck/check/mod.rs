@@ -705,14 +705,9 @@ impl Inherited<'a, 'tcx> {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}",
                       obligation);
         }
-        let _ = self.fulfillment_cx
-            .try_borrow_mut()
-            .map_err(|e| self.tcx.sess.delay_span_bug(obligation.cause.span, &format!(
-                "fullfillment context already borrowed: {:?} - {:?}",
-                e,
-                obligation,
-            )))
-            .map(|mut cx| cx.register_predicate_obligation(self, obligation));
+        self.fulfillment_cx
+            .borrow_mut()
+            .register_predicate_obligation(self, obligation);
     }
 
     fn register_predicates<I>(&self, obligations: I)
@@ -3111,7 +3106,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         mutate_fullfillment_errors: impl Fn(&mut Vec<traits::FulfillmentError<'tcx>>),
     ) {
-        if let Err(mut errors) = self.fulfillment_cx.borrow_mut().select_where_possible(self) {
+        let result = self.fulfillment_cx.borrow_mut().select_where_possible(self);
+        if let Err(mut errors) = result {
             mutate_fullfillment_errors(&mut errors);
             self.report_fulfillment_errors(&errors, self.inh.body_id, fallback_has_occurred);
         }
