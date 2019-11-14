@@ -1065,6 +1065,23 @@ declare_clippy_lint! {
     "`.chcked_add/sub(x).unwrap_or(MAX/MIN)`"
 }
 
+declare_clippy_lint! {
+    /// **What it does:** Checks for `offset(_)`, `wrapping_`{`add`, `sub`}, etc. on raw pointers to
+    /// zero-sized types
+    ///
+    /// **Why is this bad?** This is a no-op, and likely unintended
+    ///
+    /// **Known problems:** None
+    ///
+    /// **Example:**
+    /// ```ignore
+    /// unsafe { (&() as *const ()).offest(1) };
+    /// ```
+    pub ZST_OFFSET,
+    correctness,
+    "Check for offset calculations on raw pointers to zero-sized types"
+}
+
 declare_lint_pass!(Methods => [
     OPTION_UNWRAP_USED,
     RESULT_UNWRAP_USED,
@@ -1109,6 +1126,7 @@ declare_lint_pass!(Methods => [
     SUSPICIOUS_MAP,
     UNINIT_ASSUMED_INIT,
     MANUAL_SATURATING_ARITHMETIC,
+    ZST_OFFSET,
 ]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
@@ -1166,6 +1184,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Methods {
             | ["unwrap_or", arith @ "checked_sub"]
             | ["unwrap_or", arith @ "checked_mul"] => {
                 manual_saturating_arithmetic::lint(cx, expr, &arg_lists, &arith["checked_".len()..])
+            },
+            ["add"] | ["offset"] | ["sub"] | ["wrapping_offset"] | ["wrapping_add"] | ["wrapping_sub"] => {
+                check_pointer_offset(cx, expr, arg_lists[0])
             },
             _ => {},
         }
@@ -3062,4 +3083,16 @@ fn contains_return(expr: &hir::Expr) -> bool {
     let mut visitor = RetCallFinder { found: false };
     visitor.visit_expr(expr);
     visitor.found
+}
+
+fn check_pointer_offset(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::Expr]) {
+    if_chain! {
+        if args.len() == 2;
+        if let ty::RawPtr(ty::TypeAndMut { ref ty, .. }) = cx.tables.expr_ty(&args[0]).kind;
+        if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty));
+        if layout.is_zst();
+        then {
+            span_lint(cx, ZST_OFFSET, expr.span, "offset calculation on zero-sized value");
+        }
+    }
 }
