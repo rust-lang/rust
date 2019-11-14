@@ -1,7 +1,7 @@
 use crate::{build, shim};
 use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{Body, MirPhase, Promoted};
+use rustc::mir::{Body, MirPhase, Promoted, QualifSet};
 use rustc::ty::{TyCtxt, InstanceDef, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -184,12 +184,12 @@ pub fn run_passes(
     body.phase = mir_phase;
 }
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
+fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> QualifSet {
     let const_kind = check_consts::ConstKind::for_item(tcx, def_id);
 
     // No need to const-check a non-const `fn`.
     if const_kind.is_none() {
-        return 0;
+        return Default::default();
     }
 
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
@@ -200,7 +200,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
 
     if body.return_ty().references_error() {
         tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
-        return 0;
+        return Default::default();
     }
 
     let item = check_consts::Item {

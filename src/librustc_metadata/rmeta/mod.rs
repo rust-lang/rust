@@ -295,7 +295,7 @@ enum EntryKind<'tcx> {
 /// Additional data for EntryKind::Const and EntryKind::AssocConst
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
 struct ConstQualif {
-    mir: u8,
+    mir: mir::QualifSet,
 }
 
 /// Contains a constant which has been rendered to a String.

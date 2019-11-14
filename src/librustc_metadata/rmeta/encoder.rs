@@ -875,7 +875,11 @@ impl EncodeContext<'tcx> {
                     hir::print::to_string(self.tcx.hir(), |s| s.print_trait_item(ast_item));
                 let rendered_const = self.lazy(RenderedConst(rendered));
 
-                EntryKind::AssocConst(container, ConstQualif { mir: 0 }, rendered_const)
+                EntryKind::AssocConst(
+                    container,
+                    ConstQualif { mir: Default::default() },
+                    rendered_const,
+                )
             }
             ty::AssocKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(m_sig, m) = &ast_item.kind {

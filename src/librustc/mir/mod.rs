@@ -2769,6 +2769,13 @@ pub struct BorrowCheckResult<'tcx> {
     pub used_mut_upvars: SmallVec<[Field; 8]>,
 }
 
+/// The result of the `mir_const_qualif` query.
+#[derive(Clone, Copy, Debug, Default, RustcEncodable, RustcDecodable, HashStable)]
+pub struct QualifSet {
+    pub has_mut_interior: bool,
+    pub needs_drop: bool,
+}
+
 /// After we borrow check a closure, we are left with various
 /// requirements that we have inferred between the free regions that
 /// appear in the closure's signature or on its field types. These
