@@ -16,7 +16,7 @@ use ra_syntax::{
 };
 
 use crate::{
-    body::{Body, BodySourceMap, MacroResolver, PatPtr},
+    body::{Body, BodySourceMap, Expander, PatPtr},
     builtin_type::{BuiltinFloat, BuiltinInt},
     db::DefDatabase2,
     expr::{
@@ -30,14 +30,14 @@ use crate::{
 
 pub(super) fn lower(
     db: &impl DefDatabase2,
-    resolver: MacroResolver,
+    expander: Expander,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
 ) -> (Body, BodySourceMap) {
-    let original_file_id = resolver.current_file_id;
+    let original_file_id = expander.current_file_id;
 
     ExprCollector {
-        resolver,
+        expander,
         db,
         original_file_id,
         source_map: BodySourceMap::default(),
@@ -53,7 +53,7 @@ pub(super) fn lower(
 
 struct ExprCollector<DB> {
     db: DB,
-    resolver: MacroResolver,
+    expander: Expander,
     original_file_id: HirFileId,
 
     body: Body,
@@ -100,12 +100,12 @@ where
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
         let ptr = Either::A(ptr);
         let id = self.body.exprs.alloc(expr);
-        if self.resolver.current_file_id == self.original_file_id {
+        if self.expander.current_file_id == self.original_file_id {
             self.source_map.expr_map.insert(ptr, id);
         }
         self.source_map
             .expr_map_back
-            .insert(id, Source { file_id: self.resolver.current_file_id, ast: ptr });
+            .insert(id, Source { file_id: self.expander.current_file_id, ast: ptr });
         id
     }
     // desugared exprs don't have ptr, that's wrong and should be fixed
@@ -116,22 +116,22 @@ where
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
         let ptr = Either::B(ptr);
         let id = self.body.exprs.alloc(expr);
-        if self.resolver.current_file_id == self.original_file_id {
+        if self.expander.current_file_id == self.original_file_id {
             self.source_map.expr_map.insert(ptr, id);
         }
         self.source_map
             .expr_map_back
-            .insert(id, Source { file_id: self.resolver.current_file_id, ast: ptr });
+            .insert(id, Source { file_id: self.expander.current_file_id, ast: ptr });
         id
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
         let id = self.body.pats.alloc(pat);
-        if self.resolver.current_file_id == self.original_file_id {
+        if self.expander.current_file_id == self.original_file_id {
             self.source_map.pat_map.insert(ptr, id);
         }
         self.source_map
             .pat_map_back
-            .insert(id, Source { file_id: self.resolver.current_file_id, ast: ptr });
+            .insert(id, Source { file_id: self.expander.current_file_id, ast: ptr });
         id
     }
 
@@ -446,21 +446,21 @@ where
             ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::MacroCall(e) => {
                 let ast_id = AstId::new(
-                    self.resolver.current_file_id,
-                    self.db.ast_id_map(self.resolver.current_file_id).ast_id(&e),
+                    self.expander.current_file_id,
+                    self.db.ast_id_map(self.expander.current_file_id).ast_id(&e),
                 );
 
                 if let Some(path) = e.path().and_then(|path| self.parse_path(path)) {
-                    if let Some(def) = self.resolver.resolve_path_as_macro(self.db, &path) {
+                    if let Some(def) = self.expander.resolve_path_as_macro(self.db, &path) {
                         let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id });
                         let file_id = call_id.as_file(MacroFileKind::Expr);
                         if let Some(node) = self.db.parse_or_expand(file_id) {
                             if let Some(expr) = ast::Expr::cast(node) {
                                 log::debug!("macro expansion {:#?}", expr.syntax());
                                 let old_file_id =
-                                    std::mem::replace(&mut self.resolver.current_file_id, file_id);
+                                    std::mem::replace(&mut self.expander.current_file_id, file_id);
                                 let id = self.collect_expr(expr);
-                                self.resolver.current_file_id = old_file_id;
+                                self.expander.current_file_id = old_file_id;
                                 return id;
                             }
                         }
@@ -582,7 +582,7 @@ where
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
-        let hygiene = Hygiene::new(self.db, self.resolver.current_file_id);
+        let hygiene = Hygiene::new(self.db, self.expander.current_file_id);
         Path::from_src(path, &hygiene)
     }
 }
