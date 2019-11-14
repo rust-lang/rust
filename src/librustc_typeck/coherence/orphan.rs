@@ -77,30 +77,58 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                     err.emit();
                     return;
                 }
-                Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
+                Err(traits::OrphanCheckErr::UncoveredTy(param_ty, local_type)) => {
                     let mut sp = sp;
                     for param in &generics.params {
                         if param.name.ident().to_string() == param_ty.to_string() {
                             sp = param.span;
                         }
                     }
-                    let mut err = struct_span_err!(
-                        self.tcx.sess,
-                        sp,
-                        E0210,
-                        "type parameter `{}` must be used as the type parameter for some local \
-                         type (e.g., `MyStruct<{}>`)",
-                        param_ty,
-                        param_ty
-                    );
-                    err.span_label(sp, format!(
-                        "type parameter `{}` must be used as the type parameter for some local \
-                         type",
-                        param_ty,
-                    ));
-                    err.note("only traits defined in the current crate can be implemented for a \
-                              type parameter");
-                    err.emit();
+
+                    match local_type {
+                        Some(local_type) => {
+                            struct_span_err!(
+                                self.tcx.sess,
+                                sp,
+                                E0210,
+                                "type parameter `{}` must be covered by another type \
+                                when it appears before the first local type (`{}`)",
+                                param_ty,
+                                local_type
+                            ).span_label(sp, format!(
+                                "type parameter `{}` must be covered by another type \
+                                when it appears before the first local type (`{}`)",
+                                param_ty,
+                                local_type
+                            )).note("implementing a foreign trait is only possible if at \
+                                    least one of the types for which is it implemented is local, \
+                                    and no uncovered type parameters appear before that first \
+                                    local type"
+                            ).note("in this case, 'before' refers to the following order: \
+                                    `impl<..> ForeignTrait<T1, ..., Tn> for T0`, \
+                                    where `T0` is the first and `Tn` is the last"
+                            ).emit();
+                        }
+                        None => {
+                            struct_span_err!(
+                                self.tcx.sess,
+                                sp,
+                                E0210,
+                                "type parameter `{}` must be used as the type parameter for some \
+                                local type (e.g., `MyStruct<{}>`)",
+                                param_ty,
+                                param_ty
+                            ).span_label(sp, format!(
+                                "type parameter `{}` must be used as the type parameter for some \
+                                local type",
+                                param_ty,
+                            )).note("implementing a foreign trait is only possible if at \
+                                    least one of the types for which is it implemented is local"
+                            ).note("only traits defined in the current crate can be \
+                                    implemented for a type parameter"
+                            ).emit();
+                        }
+                    };
                     return;
                 }
             }

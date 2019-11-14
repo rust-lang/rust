@@ -2114,8 +2114,13 @@ E0210: r##"
 This error indicates a violation of one of Rust's orphan rules for trait
 implementations. The rule concerns the use of type parameters in an
 implementation of a foreign trait (a trait defined in another crate), and
-states that type parameters must be "covered" by a local type. To understand
-what this means, it is perhaps easiest to consider a few examples.
+states that type parameters must be "covered" by a local type.
+
+When implementing a foreign trait for a foreign type,
+the trait must have one or more type parameters.
+A type local to your crate must appear before any use of any type parameters.
+
+To understand what this means, it is perhaps easier to consider a few examples.
 
 If `ForeignTrait` is a trait defined in some external crate `foo`, then the
 following trait `impl` is an error:
@@ -2173,12 +2178,18 @@ impl<P1, ..., Pm> ForeignTrait<T1, ..., Tn> for T0 { ... }
 
 where `P1, ..., Pm` are the type parameters of the `impl` and `T0, ..., Tn`
 are types. One of the types `T0, ..., Tn` must be a local type (this is another
-orphan rule, see the explanation for E0117). Let `i` be the smallest integer
-such that `Ti` is a local type. Then no type parameter can appear in any of the
-`Tj` for `j < i`.
+orphan rule, see the explanation for E0117).
 
-For information on the design of the orphan rules, see [RFC 1023].
+Both of the following must be true:
+1. At least one of the types `T0..=Tn` must be a local type.
+Let `Ti` be the first such type.
+2. No uncovered type parameters `P1..=Pm` may appear in `T0..Ti`
+(excluding `Ti`).
 
+For information on the design of the orphan rules,
+see [RFC 2451] and [RFC 1023].
+
+[RFC 2451]: https://rust-lang.github.io/rfcs/2451-re-rebalancing-coherence.html
 [RFC 1023]: https://github.com/rust-lang/rfcs/blob/master/text/1023-rebalancing-coherence.md
 "##,
 

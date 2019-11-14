@@ -238,7 +238,7 @@ pub fn trait_ref_is_local_or_fundamental<'tcx>(
 
 pub enum OrphanCheckErr<'tcx> {
     NonLocalInputType(Vec<(Ty<'tcx>, bool /* Is this the first input type? */)>),
-    UncoveredTy(Ty<'tcx>),
+    UncoveredTy(Ty<'tcx>, Option<Ty<'tcx>>),
 }
 
 /// Checks the coherence orphan rules. `impl_def_id` should be the
@@ -402,7 +402,15 @@ fn orphan_check_trait_ref<'tcx>(
             return Ok(());
         } else if let ty::Param(_) = input_ty.kind {
             debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
-            return Err(OrphanCheckErr::UncoveredTy(input_ty))
+            let local_type = trait_ref
+                .input_types()
+                .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
+                .filter(|ty| ty_is_non_local_constructor(tcx, ty, in_crate).is_none())
+                .next();
+
+            debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
+
+            return Err(OrphanCheckErr::UncoveredTy(input_ty, local_type))
         }
         if let Some(non_local_tys) = non_local_tys {
             for input_ty in non_local_tys {
