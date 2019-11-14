@@ -471,6 +471,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &collapsible_if::COLLAPSIBLE_IF,
         &comparison_chain::COMPARISON_CHAIN,
         &copies::IFS_SAME_COND,
+        &copies::SAME_FUNCTIONS_IN_IF_CONDITION,
         &copies::IF_SAME_THEN_ELSE,
         &copies::MATCH_SAME_ARMS,
         &copy_iterator::COPY_ITERATOR,
@@ -989,6 +990,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_group(true, "clippy::pedantic", Some("clippy_pedantic"), vec![
         LintId::of(&attrs::INLINE_ALWAYS),
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
+        LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
         LintId::of(&copies::MATCH_SAME_ARMS),
         LintId::of(&copy_iterator::COPY_ITERATOR),
         LintId::of(&default_trait_access::DEFAULT_TRAIT_ACCESS),
