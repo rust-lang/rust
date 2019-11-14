@@ -259,36 +259,7 @@ impl CodeSuggestion {
     }
 }
 
-/// Used as a return value to signify a fatal error occurred. (It is also
-/// used as the argument to panic at the moment, but that will eventually
-/// not be true.)
-#[derive(Copy, Clone, Debug)]
-#[must_use]
-pub struct FatalError;
-
-pub struct FatalErrorMarker;
-
-// Don't implement Send on FatalError. This makes it impossible to panic!(FatalError).
-// We don't want to invoke the panic handler and print a backtrace for fatal errors.
-impl !Send for FatalError {}
-
-impl FatalError {
-    pub fn raise(self) -> ! {
-        panic::resume_unwind(Box::new(FatalErrorMarker))
-    }
-}
-
-impl fmt::Display for FatalError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "parser fatal error")
-    }
-}
-
-impl error::Error for FatalError {
-    fn description(&self) -> &str {
-        "The parser has encountered a fatal error"
-    }
-}
+pub use syntax_pos::fatal_error::{FatalError, FatalErrorMarker};
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.

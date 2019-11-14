@@ -29,6 +29,7 @@ pub mod symbol;
 pub use symbol::{Symbol, sym};
 
 mod analyze_source_file;
+pub mod fatal_error;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lrc, Lock};
