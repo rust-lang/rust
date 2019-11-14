@@ -45,8 +45,9 @@ pub use crate::intrinsics::transmute;
 /// `mem::forget` from safe code does not fundamentally change Rust's safety
 /// guarantees.
 ///
-/// That said, leaking resources such as memory or I/O objects is usually undesirable,
-/// so `forget` is only recommended for specialized use cases like those shown below.
+/// That said, leaking resources such as memory or I/O objects is usually undesirable.
+/// The need comes up in some specialized use cases for FFI or unsafe code, but even
+/// then, [`ManuallyDrop`] is typically preferred.
 ///
 /// Because forgetting a value is allowed, any `unsafe` code you write must
 /// allow for this possibility. You cannot return a value and expect that the
@@ -68,7 +69,35 @@ pub use crate::intrinsics::transmute;
 /// ```
 ///
 /// The practical use cases for `forget` are rather specialized and mainly come
-/// up in unsafe or FFI code.
+/// up in unsafe or FFI code. However, [`ManuallyDrop`] is usually preferred
+/// for such cases, e.g.:
+///
+/// ```
+/// use std::mem::ManuallyDrop;
+///
+/// let v = vec![65, 122];
+/// // Before we disassemble `v` into its raw parts, make sure it
+/// // does not get dropped!
+/// let mut v = ManuallyDrop::new(v);
+/// // Now disassemble `v`. These operations cannot panic, so there cannot be a leak.
+/// let ptr = v.as_mut_ptr();
+/// let cap = v.capacity();
+/// // Finally, build a `String`.
+/// let s = unsafe { String::from_raw_parts(ptr, 2, cap) };
+/// assert_eq!(s, "Az");
+/// // `s` is implicitly dropped and its memory deallocated.
+/// ```
+///
+/// Using `ManuallyDrop` here has two advantages:
+///
+/// * We do not "touch" `v` after disassembling it. For some types, operations
+///   such as passing ownership (to a funcion like `mem::forget`) requires them to actually
+///   be fully owned right now; that is a promise we do not want to make here as we are
+///   in the process of transferring ownership to the new `String` we are building.
+/// * In case of an unexpected panic, `ManuallyDrop` is not dropped, but if the panic
+///   occurs before `mem::forget` was called we might end up dropping invalid data,
+///   or double-dropping. In other words, `ManuallyDrop` errs on the side of leaking
+///   instead of erring on the side of dropping.
 ///
 /// [drop]: fn.drop.html
 /// [uninit]: fn.uninitialized.html
@@ -78,6 +107,7 @@ pub use crate::intrinsics::transmute;
 /// [leak]: ../../std/boxed/struct.Box.html#method.leak
 /// [into_raw]: ../../std/boxed/struct.Box.html#method.into_raw
 /// [ub]: ../../reference/behavior-considered-undefined.html
+/// [`ManuallyDrop`]: struct.ManuallyDrop.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
