@@ -67,7 +67,8 @@ pub fn inject(
                 PanicStrategy::Unwind
             }
             (PanicStrategy::Abort, false) => {
-                span_diagnostic.err("building tests with panic=abort is not yet supported");
+                span_diagnostic.err("building tests with panic=abort is not supported \
+                                     without `-Zpanic_abort_tests`");
                 PanicStrategy::Unwind
             }
             (PanicStrategy::Unwind, _) => PanicStrategy::Unwind,
