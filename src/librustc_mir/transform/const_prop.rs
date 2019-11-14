@@ -458,6 +458,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<()> {
         let span = source_info.span;
 
+        // #66397: Don't try to eval into large places as that can cause an OOM
+        if place_layout.size >= Size::from_bytes(MAX_ALLOC_LIMIT) {
+            return None;
+        }
+
         let overflow_check = self.tcx.sess.overflow_checks();
 
         // Perform any special handling for specific Rvalue types.
