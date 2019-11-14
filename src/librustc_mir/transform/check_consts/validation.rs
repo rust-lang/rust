@@ -326,17 +326,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let is_thread_local = self.tcx.has_attr(*def_id, sym::thread_local);
                 if is_thread_local {
                     self.check_op(ops::ThreadLocalAccess);
-                } else if self.const_kind() == ConstKind::Static && context.is_mutating_use() {
-                    // this is not strictly necessary as miri will also bail out
-                    // For interior mutability we can't really catch this statically as that
-                    // goes through raw pointers and intermediate temporaries, so miri has
-                    // to catch this anyway
-
-                    self.tcx.sess.span_err(
-                        self.span,
-                        "cannot mutate statics in the initializer of another static",
-                    );
-                } else {
+                } else if self.const_kind() != ConstKind::Static || !context.is_mutating_use() {
                     self.check_op(ops::StaticAccess);
                 }
             }
