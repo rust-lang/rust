@@ -10,7 +10,7 @@ use ra_syntax::{
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
-    AstId, Const, Crate, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasSource,
+    AstId, Const, Crate, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource,
     ImplBlock, Local, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias,
     Union, VariantDef,
 };
@@ -144,7 +144,7 @@ impl Local {
             };
             Some(res)
         })?;
-        let (_body, source_map) = db.body_with_source_map(parent);
+        let source_map = parent.body_source_map(db);
         let src = src.map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         Some(Local { parent, pat_id })

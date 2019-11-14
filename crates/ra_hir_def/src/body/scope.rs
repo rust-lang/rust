@@ -1,4 +1,5 @@
 //! FIXME: write short doc here
+use std::sync::Arc;
 
 use hir_expand::name::Name;
 use ra_arena::{impl_arena_id, Arena, RawId};
@@ -6,7 +7,9 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     body::Body,
+    db::DefDatabase2,
     expr::{Expr, ExprId, Pat, PatId, Statement},
+    DefWithBodyId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -42,7 +45,12 @@ pub struct ScopeData {
 }
 
 impl ExprScopes {
-    pub fn new(body: &Body) -> ExprScopes {
+    pub(crate) fn expr_scopes_query(db: &impl DefDatabase2, def: DefWithBodyId) -> Arc<ExprScopes> {
+        let body = db.body(def);
+        Arc::new(ExprScopes::new(&*body))
+    }
+
+    fn new(body: &Body) -> ExprScopes {
         let mut scopes =
             ExprScopes { scopes: Arena::default(), scope_by_expr: FxHashMap::default() };
         let root = scopes.root_scope();

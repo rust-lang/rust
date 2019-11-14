@@ -4,9 +4,9 @@ pub(crate) mod validation;
 
 use std::sync::Arc;
 
-use ra_syntax::{ast, AstPtr};
+use ra_syntax::AstPtr;
 
-use crate::{db::HirDatabase, DefWithBody, HasSource, Resolver};
+use crate::{db::HirDatabase, DefWithBody, HasBody, Resolver};
 
 pub use hir_def::{
     body::{
@@ -19,48 +19,13 @@ pub use hir_def::{
     },
 };
 
-pub(crate) fn body_with_source_map_query(
-    db: &impl HirDatabase,
-    def: DefWithBody,
-) -> (Arc<Body>, Arc<BodySourceMap>) {
-    let mut params = None;
-
-    let (file_id, body) = match def {
-        DefWithBody::Function(f) => {
-            let src = f.source(db);
-            params = src.ast.param_list();
-            (src.file_id, src.ast.body().map(ast::Expr::from))
-        }
-        DefWithBody::Const(c) => {
-            let src = c.source(db);
-            (src.file_id, src.ast.body())
-        }
-        DefWithBody::Static(s) => {
-            let src = s.source(db);
-            (src.file_id, src.ast.body())
-        }
-    };
-    let expander = hir_def::body::Expander::new(db, file_id, def.module(db).id);
-    let (body, source_map) = Body::new(db, expander, params, body);
-    (Arc::new(body), Arc::new(source_map))
-}
-
-pub(crate) fn body_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<Body> {
-    db.body_with_source_map(def).0
-}
-
-pub(crate) fn expr_scopes_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<ExprScopes> {
-    let body = db.body(def);
-    Arc::new(ExprScopes::new(&*body))
-}
-
 // needs arbitrary_self_types to be a method... or maybe move to the def?
 pub(crate) fn resolver_for_expr(
     db: &impl HirDatabase,
     owner: DefWithBody,
     expr_id: ExprId,
 ) -> Resolver {
-    let scopes = db.expr_scopes(owner);
+    let scopes = owner.expr_scopes(db);
     resolver_for_scope(db, owner, scopes.scope_for(expr_id))
 }
 
@@ -70,7 +35,7 @@ pub(crate) fn resolver_for_scope(
     scope_id: Option<ScopeId>,
 ) -> Resolver {
     let mut r = owner.resolver(db);
-    let scopes = db.expr_scopes(owner);
+    let scopes = owner.expr_scopes(db);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
         r = r.push_expr_scope(Arc::clone(&scopes), scope);

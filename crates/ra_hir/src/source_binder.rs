@@ -146,7 +146,7 @@ impl SourceAnalyzer {
         let def_with_body = def_with_body_from_child_node(db, file_id, node);
         if let Some(def) = def_with_body {
             let source_map = def.body_source_map(db);
-            let scopes = db.expr_scopes(def);
+            let scopes = def.expr_scopes(db);
             let scope = match offset {
                 None => scope_for(&scopes, &source_map, file_id.into(), &node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, file_id.into(), offset),

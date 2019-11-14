@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use hir_def::{
     adt::VariantData,
+    body::scope::ExprScopes,
     builtin_type::BuiltinType,
     type_ref::{Mutability, TypeRef},
     CrateModuleId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
@@ -539,6 +540,7 @@ pub trait HasBody: Copy {
     fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult>;
     fn body(self, db: &impl HirDatabase) -> Arc<Body>;
     fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap>;
+    fn expr_scopes(self, db: &impl HirDatabase) -> Arc<ExprScopes>;
 }
 
 impl<T> HasBody for T
@@ -550,11 +552,15 @@ where
     }
 
     fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body(self.into())
+        self.into().body(db)
     }
 
     fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self.into()).1
+        self.into().body_source_map(db)
+    }
+
+    fn expr_scopes(self, db: &impl HirDatabase) -> Arc<ExprScopes> {
+        self.into().expr_scopes(db)
     }
 }
 
@@ -564,11 +570,15 @@ impl HasBody for DefWithBody {
     }
 
     fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body(self)
+        db.body(self.into())
     }
 
     fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self).1
+        db.body_with_source_map(self.into()).1
+    }
+
+    fn expr_scopes(self, db: &impl HirDatabase) -> Arc<ExprScopes> {
+        db.expr_scopes(self.into())
     }
 }
 
@@ -662,11 +672,11 @@ impl Function {
     }
 
     pub(crate) fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self.into()).1
+        db.body_with_source_map(self.id.into()).1
     }
 
     pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body(self.into())
+        db.body(self.id.into())
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
@@ -1079,7 +1089,7 @@ pub struct Local {
 
 impl Local {
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
-        let body = db.body(self.parent);
+        let body = self.parent.body(db);
         match &body[self.pat_id] {
             Pat::Bind { name, .. } => Some(name.clone()),
             _ => None,
@@ -1091,7 +1101,7 @@ impl Local {
     }
 
     pub fn is_mut(self, db: &impl HirDatabase) -> bool {
-        let body = db.body(self.parent);
+        let body = self.parent.body(db);
         match &body[self.pat_id] {
             Pat::Bind { mode, .. } => match mode {
                 BindingAnnotation::Mutable | BindingAnnotation::RefMut => true,
@@ -1115,7 +1125,7 @@ impl Local {
     }
 
     pub fn source(self, db: &impl HirDatabase) -> Source<Either<ast::BindPat, ast::SelfParam>> {
-        let (_body, source_map) = db.body_with_source_map(self.parent);
+        let source_map = self.parent.body_source_map(db);
         let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
         let root = src.file_syntax(db);
         src.map(|ast| ast.map(|it| it.cast().unwrap().to_node(&root), |it| it.to_node(&root)))

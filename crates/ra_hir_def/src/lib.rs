@@ -374,3 +374,13 @@ impl_froms!(
     TypeAliasId,
     BuiltinType
 );
+
+/// The defs which have a body.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DefWithBodyId {
+    FunctionId(FunctionId),
+    StaticId(StaticId),
+    ConstId(ConstId),
+}
+
+impl_froms!(DefWithBodyId: FunctionId, ConstId, StaticId);

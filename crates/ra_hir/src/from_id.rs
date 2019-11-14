@@ -3,9 +3,9 @@
 //! It's unclear if we need this long-term, but it's definitelly useful while we
 //! are splitting the hir.
 
-use hir_def::{AdtId, EnumVariantId, ModuleDefId};
+use hir_def::{AdtId, DefWithBodyId, EnumVariantId, ModuleDefId};
 
-use crate::{Adt, EnumVariant, ModuleDef};
+use crate::{Adt, DefWithBody, EnumVariant, ModuleDef};
 
 macro_rules! from_id {
     ($(($id:path, $ty:path)),*) => {$(
@@ -58,6 +58,16 @@ impl From<ModuleDefId> for ModuleDef {
             ModuleDefId::TraitId(it) => ModuleDef::Trait(it.into()),
             ModuleDefId::TypeAliasId(it) => ModuleDef::TypeAlias(it.into()),
             ModuleDefId::BuiltinType(it) => ModuleDef::BuiltinType(it),
+        }
+    }
+}
+
+impl From<DefWithBody> for DefWithBodyId {
+    fn from(def: DefWithBody) -> Self {
+        match def {
+            DefWithBody::Function(it) => DefWithBodyId::FunctionId(it.id),
+            DefWithBody::Static(it) => DefWithBodyId::StaticId(it.id),
+            DefWithBody::Const(it) => DefWithBodyId::ConstId(it.id),
         }
     }
 }
