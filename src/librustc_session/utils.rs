@@ -7,3 +7,19 @@ pub fn duration_to_secs_str(dur: std::time::Duration) -> String {
 
     format!("{:.3}", secs)
 }
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub enum NativeLibraryKind {
+    /// native static library (.a archive)
+    NativeStatic,
+    /// native static library, which doesn't get bundled into .rlibs
+    NativeStaticNobundle,
+    /// macOS-specific
+    NativeFramework,
+    /// Windows dynamic library without import library.
+    NativeRawDylib,
+    /// default way to specify a dynamic library
+    NativeUnknown,
+}
+
+rustc_data_structures::impl_stable_hash_via_hash!(NativeLibraryKind);

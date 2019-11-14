@@ -2,7 +2,7 @@
 //! command-line options.
 
 use rustc_session::lint;
-use crate::middle::cstore;
+use rustc_session::utils::NativeLibraryKind;
 use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
 
@@ -415,7 +415,7 @@ top_level_options!(
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
-        libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
+        libs: Vec<(String, Option<String>, Option<NativeLibraryKind>)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [UNTRACKED],
 
         target_triple: TargetTriple [TRACKED],
@@ -2379,7 +2379,7 @@ fn select_debuginfo(
 fn parse_libs(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
-) -> Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> {
+) -> Vec<(String, Option<String>, Option<NativeLibraryKind>)> {
     matches
         .opt_strs("l")
         .into_iter()
@@ -2390,10 +2390,12 @@ fn parse_libs(
             let kind = parts.next().unwrap();
             let (name, kind) = match (parts.next(), kind) {
                 (None, name) => (name, None),
-                (Some(name), "dylib") => (name, Some(cstore::NativeUnknown)),
-                (Some(name), "framework") => (name, Some(cstore::NativeFramework)),
-                (Some(name), "static") => (name, Some(cstore::NativeStatic)),
-                (Some(name), "static-nobundle") => (name, Some(cstore::NativeStaticNobundle)),
+                (Some(name), "dylib") => (name, Some(NativeLibraryKind::NativeUnknown)),
+                (Some(name), "framework") => (name, Some(NativeLibraryKind::NativeFramework)),
+                (Some(name), "static") => (name, Some(NativeLibraryKind::NativeStatic)),
+                (Some(name), "static-nobundle") => {
+                    (name, Some(NativeLibraryKind::NativeStaticNobundle))
+                }
                 (_, s) => {
                     early_error(
                         error_format,
@@ -2405,7 +2407,8 @@ fn parse_libs(
                     );
                 }
             };
-            if kind == Some(cstore::NativeStaticNobundle) && !nightly_options::is_nightly_build() {
+            if kind == Some(NativeLibraryKind::NativeStaticNobundle) &&
+                !nightly_options::is_nightly_build() {
                 early_error(
                     error_format,
                     &format!(
@@ -2855,7 +2858,7 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
     use rustc_session::lint;
-    use crate::middle::cstore;
+    use rustc_session::utils::NativeLibraryKind;
     use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
@@ -2913,7 +2916,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
-    impl_dep_tracking_hash_via_hash!(Option<cstore::NativeLibraryKind>);
+    impl_dep_tracking_hash_via_hash!(Option<NativeLibraryKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
     impl_dep_tracking_hash_via_hash!(MergeFunctions);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
@@ -2924,7 +2927,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(DebugInfo);
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
-    impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
+    impl_dep_tracking_hash_via_hash!(NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
@@ -2940,7 +2943,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((
         String,
         Option<String>,
-        Option<cstore::NativeLibraryKind>
+        Option<NativeLibraryKind>
     ));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
     impl_dep_tracking_hash_for_sortable_vec_of!(Sanitizer);

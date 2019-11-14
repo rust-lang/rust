@@ -20,6 +20,7 @@ use rustc_target::spec::Target;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_macros::HashStable;
 
+pub use rustc_session::utils::NativeLibraryKind;
 pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
@@ -92,21 +93,6 @@ impl LibSource {
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, HashStable)]
-pub enum NativeLibraryKind {
-    /// native static library (.a archive)
-    NativeStatic,
-    /// native static library, which doesn't get bundled into .rlibs
-    NativeStaticNobundle,
-    /// macOS-specific
-    NativeFramework,
-    /// Windows dynamic library without import library.
-    NativeRawDylib,
-    /// default way to specify a dynamic library
-    NativeUnknown,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
