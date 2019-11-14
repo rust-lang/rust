@@ -1,5 +1,5 @@
 use crate::rmeta::*;
-use crate::rmeta::table::{FixedSizeEncoding, Table};
+use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -47,7 +47,7 @@ struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
-    per_def: PerDefTables<'tcx>,
+    per_def: PerDefTableBuilders<'tcx>,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -61,27 +61,27 @@ struct EncodeContext<'tcx> {
 }
 
 #[derive(Default)]
-struct PerDefTables<'tcx> {
-    kind: Table<DefIndex, Lazy<EntryKind<'tcx>>>,
-    visibility: Table<DefIndex, Lazy<ty::Visibility>>,
-    span: Table<DefIndex, Lazy<Span>>,
-    attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
-    children: Table<DefIndex, Lazy<[DefIndex]>>,
-    stability: Table<DefIndex, Lazy<attr::Stability>>,
-    deprecation: Table<DefIndex, Lazy<attr::Deprecation>>,
+struct PerDefTableBuilders<'tcx> {
+    kind: TableBuilder<DefIndex, Lazy<EntryKind<'tcx>>>,
+    visibility: TableBuilder<DefIndex, Lazy<ty::Visibility>>,
+    span: TableBuilder<DefIndex, Lazy<Span>>,
+    attributes: TableBuilder<DefIndex, Lazy<[ast::Attribute]>>,
+    children: TableBuilder<DefIndex, Lazy<[DefIndex]>>,
+    stability: TableBuilder<DefIndex, Lazy<attr::Stability>>,
+    deprecation: TableBuilder<DefIndex, Lazy<attr::Deprecation>>,
 
-    ty: Table<DefIndex, Lazy<Ty<'tcx>>>,
-    fn_sig: Table<DefIndex, Lazy<ty::PolyFnSig<'tcx>>>,
-    impl_trait_ref: Table<DefIndex, Lazy<ty::TraitRef<'tcx>>>,
-    inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
-    variances: Table<DefIndex, Lazy<[ty::Variance]>>,
-    generics: Table<DefIndex, Lazy<ty::Generics>>,
-    explicit_predicates: Table<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
-    inferred_outlives: Table<DefIndex, Lazy<&'tcx [(ty::Predicate<'tcx>, Span)]>>,
-    super_predicates: Table<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
+    ty: TableBuilder<DefIndex, Lazy<Ty<'tcx>>>,
+    fn_sig: TableBuilder<DefIndex, Lazy<ty::PolyFnSig<'tcx>>>,
+    impl_trait_ref: TableBuilder<DefIndex, Lazy<ty::TraitRef<'tcx>>>,
+    inherent_impls: TableBuilder<DefIndex, Lazy<[DefIndex]>>,
+    variances: TableBuilder<DefIndex, Lazy<[ty::Variance]>>,
+    generics: TableBuilder<DefIndex, Lazy<ty::Generics>>,
+    explicit_predicates: TableBuilder<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
+    inferred_outlives: TableBuilder<DefIndex, Lazy<&'tcx [(ty::Predicate<'tcx>, Span)]>>,
+    super_predicates: TableBuilder<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
 
-    mir: Table<DefIndex, Lazy<mir::Body<'tcx>>>,
-    promoted_mir: Table<DefIndex, Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
+    mir: TableBuilder<DefIndex, Lazy<mir::Body<'tcx>>>,
+    promoted_mir: TableBuilder<DefIndex, Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
 }
 
 macro_rules! encoder_methods {

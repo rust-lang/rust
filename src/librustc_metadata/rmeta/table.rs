@@ -117,33 +117,39 @@ impl<T: Encodable> FixedSizeEncoding for Option<Lazy<[T]>> {
     }
 }
 
-/// Random-access table (i.e. offeringconstant-time `get`/`set`), similar to
+/// Random-access table (i.e. offering constant-time `get`/`set`), similar to
 /// `Vec<Option<T>>`, but without requiring encoding or decoding all the values
 /// eagerly and in-order.
 /// A total of `(max_idx + 1) * <Option<T> as FixedSizeEncoding>::BYTE_LEN` bytes
-/// are used for a table, where `max_idx` is the largest index passed to `set`.
-// FIXME(eddyb) replace `Vec` with `[_]` here, such that `Box<Table<T>>` would be used
-// when building it, and `Lazy<Table<T>>` or `&Table<T>` when reading it.
-// (not sure if that is possible given that the `Vec` is being resized now)
+/// are used for a table, where `max_idx` is the largest index passed to
+/// `TableBuilder::set`.
 pub(super) struct Table<I: Idx, T> where Option<T>: FixedSizeEncoding {
+    _marker: PhantomData<(fn(&I), T)>,
+    // NOTE(eddyb) this makes `Table` not implement `Sized`, but no
+    // value of `Table` is ever created (it's always behind `Lazy`).
+    _bytes: [u8],
+}
+
+/// Helper for constructing a table's serialization (also see `Table`).
+pub(super) struct TableBuilder<I: Idx, T> where Option<T>: FixedSizeEncoding {
     // FIXME(eddyb) use `IndexVec<I, [u8; <Option<T>>::BYTE_LEN]>` instead of
     // `Vec<u8>`, once that starts working (i.e. lazy normalization).
-    // Then again, that has the downside of not allowing `Table::encode` to
+    // Then again, that has the downside of not allowing `TableBuilder::encode` to
     // obtain a `&[u8]` entirely in safe code, for writing the bytes out.
     bytes: Vec<u8>,
     _marker: PhantomData<(fn(&I), T)>,
 }
 
-impl<I: Idx, T> Default for Table<I, T> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> Default for TableBuilder<I, T> where Option<T>: FixedSizeEncoding {
     fn default() -> Self {
-        Table {
+        TableBuilder {
             bytes: vec![],
             _marker: PhantomData,
         }
     }
 }
 
-impl<I: Idx, T> Table<I, T> where Option<T>: FixedSizeEncoding {
+impl<I: Idx, T> TableBuilder<I, T> where Option<T>: FixedSizeEncoding {
     pub(super) fn set(&mut self, i: I, value: T) {
         // FIXME(eddyb) investigate more compact encodings for sparse tables.
         // On the PR @michaelwoerister mentioned:
@@ -159,7 +165,7 @@ impl<I: Idx, T> Table<I, T> where Option<T>: FixedSizeEncoding {
         Some(value).write_to_bytes_at(&mut self.bytes, i);
     }
 
-    pub(super) fn encode(&self, buf: &mut Encoder) -> Lazy<Self> {
+    pub(super) fn encode(&self, buf: &mut Encoder) -> Lazy<Table<I, T>> {
         let pos = buf.position();
         buf.emit_raw_bytes(&self.bytes);
         Lazy::from_position_and_meta(
