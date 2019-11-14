@@ -474,7 +474,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
     use rustc::mir::interpret::{ConstValue, Scalar};
     match result.val {
-        ConstValue::Scalar(Scalar::Raw { data: d, .. }) => match result.ty.kind {
+        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data: d, .. })) => match result.ty.kind {
             ty::Bool => Some(Constant::Bool(d == 1)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(d)),
             ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
@@ -492,7 +492,7 @@ pub fn miri_to_const(result: &ty::Const<'_>) -> Option<Constant> {
             // FIXME: implement other conversions.
             _ => None,
         },
-        ConstValue::Slice { data, start, end } => match result.ty.kind {
+        ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => match result.ty.kind {
             ty::Ref(_, tam, _) => match tam.kind {
                 ty::Str => String::from_utf8(
                     data.inspect_with_undef_and_ptr_outside_interpreter(start..end)
