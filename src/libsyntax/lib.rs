@@ -87,8 +87,6 @@ pub mod util {
     pub mod map_in_place;
 }
 
-pub mod json;
-
 pub mod ast;
 pub mod attr;
 pub mod expand;

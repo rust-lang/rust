@@ -18,7 +18,7 @@ use syntax::ast::CRATE_NODE_ID;
 use syntax::source_map;
 use syntax::attr;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::json::JsonEmitter;
+use errors::json::JsonEmitter;
 use syntax::symbol::sym;
 use syntax_pos::DUMMY_SP;
 use errors;

@@ -37,6 +37,7 @@ mod snippet;
 pub mod registry;
 mod styled_buffer;
 mod lock;
+pub mod json;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 

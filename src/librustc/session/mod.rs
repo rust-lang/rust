@@ -22,7 +22,7 @@ use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::edition::Edition;
 use syntax::feature_gate::{self, AttributeType};
-use syntax::json::JsonEmitter;
+use errors::json::JsonEmitter;
 use syntax::source_map;
 use syntax::sess::{ParseSess, ProcessCfgMod};
 use syntax::symbol::Symbol;
