@@ -1,1 +1,2 @@
+* text=auto eol=lf
 crates/ra_syntax/test_data/** -text eof=LF
