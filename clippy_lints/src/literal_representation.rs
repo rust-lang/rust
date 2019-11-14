@@ -402,8 +402,6 @@ impl EarlyLintPass for LiteralDigitGrouping {
 
 impl LiteralDigitGrouping {
     fn check_lit(cx: &EarlyContext<'_>, lit: &Lit) {
-        let in_macro = in_macro(lit.span);
-
         if_chain! {
             if let Some(src) = snippet_opt(cx, lit.span);
             if let Some(mut num_lit) = NumericLiteral::from_lit(&src, &lit);
@@ -414,9 +412,9 @@ impl LiteralDigitGrouping {
 
                 let result = (|| {
 
-                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'), in_macro)?;
+                    let integral_group_size = Self::get_group_size(num_lit.integer.split('_'))?;
                     if let Some(fraction) = num_lit.fraction {
-                        let fractional_group_size = Self::get_group_size(fraction.rsplit('_'), in_macro)?;
+                        let fractional_group_size = Self::get_group_size(fraction.rsplit('_'))?;
 
                         let consistent = Self::parts_consistent(integral_group_size,
                                                                 fractional_group_size,
@@ -431,7 +429,19 @@ impl LiteralDigitGrouping {
 
 
                 if let Err(warning_type) = result {
-                    warning_type.display(num_lit.format(), cx, lit.span)
+                    let should_warn = match warning_type {
+                        | WarningType::UnreadableLiteral
+                        | WarningType::InconsistentDigitGrouping
+                        | WarningType::LargeDigitGroups => {
+                            !in_macro(lit.span)
+                        }
+                        WarningType::DecimalRepresentation | WarningType::MistypedLiteralSuffix => {
+                            true
+                        }
+                    };
+                    if should_warn {
+                        warning_type.display(num_lit.format(), cx, lit.span)
+                    }
                 }
             }
         }
@@ -494,7 +504,7 @@ impl LiteralDigitGrouping {
 
     /// Returns the size of the digit groups (or None if ungrouped) if successful,
     /// otherwise returns a `WarningType` for linting.
-    fn get_group_size<'a>(groups: impl Iterator<Item = &'a str>, in_macro: bool) -> Result<Option<usize>, WarningType> {
+    fn get_group_size<'a>(groups: impl Iterator<Item = &'a str>) -> Result<Option<usize>, WarningType> {
         let mut groups = groups.map(str::len);
 
         let first = groups.next().expect("At least one group");
@@ -507,7 +517,7 @@ impl LiteralDigitGrouping {
             } else {
                 Ok(Some(second))
             }
-        } else if first > 5 && !in_macro {
+        } else if first > 5 {
             Err(WarningType::UnreadableLiteral)
         } else {
             Ok(None)

@@ -2,6 +2,17 @@
 #[warn(clippy::inconsistent_digit_grouping)]
 #[allow(unused_variables, clippy::excessive_precision)]
 fn main() {
+    macro_rules! mac1 {
+        () => {
+            1_23_456
+        };
+    }
+    macro_rules! mac2 {
+        () => {
+            1_234.5678_f32
+        };
+    }
+
     let good = (
         123,
         1_234,
@@ -21,4 +32,8 @@ fn main() {
 
     // Test suggestion when fraction has no digits
     let _: f32 = 1_23_456.;
+
+    // Ignore literals in macros
+    let _ = mac1!();
+    let _ = mac2!();
 }

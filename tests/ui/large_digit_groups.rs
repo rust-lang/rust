@@ -2,6 +2,12 @@
 #[warn(clippy::large_digit_groups)]
 #[allow(unused_variables)]
 fn main() {
+    macro_rules! mac {
+        () => {
+            0b1_10110_i64
+        };
+    }
+
     let good = (
         0b1011_i64,
         0o1_234_u32,
@@ -20,4 +26,7 @@ fn main() {
         1_23456.12345_f64,
         1_23456.12345_6_f64,
     );
+
+    // Ignore literals in macros
+    let _ = mac!();
 }
