@@ -59,6 +59,10 @@ impl Expander {
         Source { file_id: self.current_file_id, ast }
     }
 
+    fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
+        Path::from_src(path, &self.hygiene)
+    }
+
     fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
         self.crate_def_map.resolve_path(db, self.module.module_id, path).0.get_macros()
     }
