@@ -222,7 +222,7 @@ impl<O> Node<O> {
 ///  v
 /// Success
 ///  |  ^
-///  |  |  mark_as_waiting()
+///  |  |  update_waiting_and_success_states()
 ///  |  v
 ///  | Waiting
 ///  |
@@ -480,7 +480,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             };
         }
 
-        self.mark_as_waiting();
+        self.update_waiting_and_success_states();
         self.process_cycles(processor);
         let completed = self.compress(do_completed);
 
@@ -494,8 +494,8 @@ impl<O: ForestObligation> ObligationForest<O> {
     }
 
     /// Mark all `Success` nodes as `Done` and report all cycles between them.
-    /// This should be called after `mark_as_waiting` updates the status of all
-    /// `Waiting` and `Success` nodes.
+    /// This should be called after `update_waiting_and_success_states` updates
+    /// the status of all `Waiting` and `Success` nodes.
     fn process_cycles<P>(&self, processor: &mut P)
         where P: ObligationProcessor<Obligation=O>
     {
@@ -577,7 +577,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     // This always-inlined function is for the hot call site.
     #[inline(always)]
-    fn inlined_mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
+    fn inlined_mark_dependents_as_waiting(&self, node: &Node<O>) {
         for &index in node.dependents.iter() {
             let node = &self.nodes[index];
             match node.state.get() {
@@ -585,11 +585,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                 NodeState::Success => {
                     node.state.set(NodeState::Waiting);
                     // This call site is cold.
-                    self.uninlined_mark_neighbors_as_waiting_from(node);
+                    self.uninlined_mark_dependents_as_waiting(node);
                 }
                 NodeState::Pending | NodeState::Done => {
                     // This call site is cold.
-                    self.uninlined_mark_neighbors_as_waiting_from(node);
+                    self.uninlined_mark_dependents_as_waiting(node);
                 }
             }
         }
@@ -597,14 +597,14 @@ impl<O: ForestObligation> ObligationForest<O> {
 
     // This never-inlined function is for the cold call site.
     #[inline(never)]
-    fn uninlined_mark_neighbors_as_waiting_from(&self, node: &Node<O>) {
-        self.inlined_mark_neighbors_as_waiting_from(node)
+    fn uninlined_mark_dependents_as_waiting(&self, node: &Node<O>) {
+        self.inlined_mark_dependents_as_waiting(node)
     }
 
     /// Updates the states of all `Waiting` and `Success` nodes. Upon
     /// completion, all such nodes that depend on a pending node will be marked
     /// as `Waiting`, and all others will be marked as `Success`.
-    fn mark_as_waiting(&self) {
+    fn update_waiting_and_success_states(&self) {
         // Optimistically mark all `Waiting` nodes as `Success`.
         for node in &self.nodes {
             if node.state.get() == NodeState::Waiting {
@@ -617,7 +617,7 @@ impl<O: ForestObligation> ObligationForest<O> {
         for node in &self.nodes {
             if node.state.get() == NodeState::Pending {
                 // This call site is hot.
-                self.inlined_mark_neighbors_as_waiting_from(node);
+                self.inlined_mark_dependents_as_waiting(node);
             }
         }
     }
