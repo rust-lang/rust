@@ -18,12 +18,18 @@ use crate::{
 
 pub struct MacroResolver {
     crate_def_map: Arc<CrateDefMap>,
+    current_file_id: HirFileId,
     module: ModuleId,
 }
 
 impl MacroResolver {
-    pub fn new(db: &impl DefDatabase2, module: ModuleId) -> MacroResolver {
-        MacroResolver { crate_def_map: db.crate_def_map(module.krate), module }
+    pub fn new(
+        db: &impl DefDatabase2,
+        current_file_id: HirFileId,
+        module: ModuleId,
+    ) -> MacroResolver {
+        let crate_def_map = db.crate_def_map(module.krate);
+        MacroResolver { crate_def_map, current_file_id, module }
     }
 
     fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
@@ -77,11 +83,10 @@ impl Body {
     pub fn new(
         db: &impl DefDatabase2,
         resolver: MacroResolver,
-        file_id: HirFileId,
         params: Option<ast::ParamList>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
-        lower::lower(db, resolver, file_id, params, body)
+        lower::lower(db, resolver, params, body)
     }
 
     pub fn params(&self) -> &[PatId] {
