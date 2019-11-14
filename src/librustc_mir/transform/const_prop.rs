@@ -22,7 +22,7 @@ use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc::ty::layout::{
-    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
+    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout, Size,
 };
 
 use crate::rustc::ty::subst::Subst;
@@ -34,6 +34,9 @@ use crate::interpret::{
 };
 use crate::const_eval::error_to_const_error;
 use crate::transform::{MirPass, MirSource};
+
+/// The maximum number of bytes that we'll allocate space for a return value.
+const MAX_ALLOC_LIMIT: u64 = 1024;
 
 pub struct ConstProp;
 
@@ -313,8 +316,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             ecx
                 .layout_of(body.return_ty().subst(tcx, substs))
                 .ok()
-                // Don't bother allocating memory for ZST types which have no values.
-                .filter(|ret_layout| !ret_layout.is_zst())
+                // Don't bother allocating memory for ZST types which have no values
+                // or for large values.
+                .filter(|ret_layout| !ret_layout.is_zst() &&
+                                     ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT))
                 .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack));
 
         ecx.push_stack_frame(
