@@ -17,7 +17,7 @@ use crate::{
     expr::{Expr, ExprId, Pat, PatId},
     nameres::CrateDefMap,
     path::Path,
-    ModuleId,
+    AstItemDef, DefWithBodyId, ModuleId,
 };
 
 pub struct Expander {
@@ -141,7 +141,37 @@ pub struct BodySourceMap {
 }
 
 impl Body {
-    pub fn new(
+    pub(crate) fn body_with_source_map_query(
+        db: &impl DefDatabase2,
+        def: DefWithBodyId,
+    ) -> (Arc<Body>, Arc<BodySourceMap>) {
+        let mut params = None;
+
+        let (file_id, module, body) = match def {
+            DefWithBodyId::FunctionId(f) => {
+                let src = f.source(db);
+                params = src.ast.param_list();
+                (src.file_id, f.module(db), src.ast.body().map(ast::Expr::from))
+            }
+            DefWithBodyId::ConstId(c) => {
+                let src = c.source(db);
+                (src.file_id, c.module(db), src.ast.body())
+            }
+            DefWithBodyId::StaticId(s) => {
+                let src = s.source(db);
+                (src.file_id, s.module(db), src.ast.body())
+            }
+        };
+        let expander = Expander::new(db, file_id, module);
+        let (body, source_map) = Body::new(db, expander, params, body);
+        (Arc::new(body), Arc::new(source_map))
+    }
+
+    pub(crate) fn body_query(db: &impl DefDatabase2, def: DefWithBodyId) -> Arc<Body> {
+        db.body_with_source_map(def).0
+    }
+
+    fn new(
         db: &impl DefDatabase2,
         expander: Expander,
         params: Option<ast::ParamList>,

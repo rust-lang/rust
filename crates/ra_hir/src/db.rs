@@ -8,7 +8,6 @@ use ra_syntax::SmolStr;
 
 use crate::{
     debug::HirDebugDatabase,
-    expr::{Body, BodySourceMap},
     generics::{GenericDef, GenericParams},
     ids,
     impl_block::{ImplBlock, ImplSourceMap, ModuleImplBlocks},
@@ -19,13 +18,14 @@ use crate::{
         InferenceResult, Namespace, Substs, Ty, TypableDef, TypeCtor,
     },
     type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, ExprScopes, FnData, Function, Module, Static,
-    StructField, Trait, TypeAlias,
+    Const, ConstData, Crate, DefWithBody, FnData, Function, Module, Static, StructField, Trait,
+    TypeAlias,
 };
 
 pub use hir_def::db::{
-    CrateDefMapQuery, DefDatabase2, DefDatabase2Storage, EnumDataQuery, InternDatabase,
-    InternDatabaseStorage, RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
+    BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
+    EnumDataQuery, ExprScopesQuery, InternDatabase, InternDatabaseStorage, RawItemsQuery,
+    RawItemsWithSourceMapQuery, StructDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -85,9 +85,6 @@ pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase + AstDatabase {
-    #[salsa::invoke(crate::expr::expr_scopes_query)]
-    fn expr_scopes(&self, def: DefWithBody) -> Arc<ExprScopes>;
-
     #[salsa::invoke(crate::ty::infer_query)]
     fn infer(&self, def: DefWithBody) -> Arc<InferenceResult>;
 
@@ -112,12 +109,6 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
 
     #[salsa::invoke(crate::ty::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDef) -> Substs;
-
-    #[salsa::invoke(crate::expr::body_with_source_map_query)]
-    fn body_with_source_map(&self, def: DefWithBody) -> (Arc<Body>, Arc<BodySourceMap>);
-
-    #[salsa::invoke(crate::expr::body_query)]
-    fn body(&self, def: DefWithBody) -> Arc<Body>;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
     fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
