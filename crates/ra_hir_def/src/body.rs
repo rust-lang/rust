@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 mod lower;
+pub mod scope;
 
 use std::{ops::Index, sync::Arc};
 

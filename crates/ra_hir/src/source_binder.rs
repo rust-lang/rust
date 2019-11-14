@@ -23,11 +23,7 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
-    expr::{
-        self,
-        scope::{ExprScopes, ScopeId},
-        BodySourceMap,
-    },
+    expr::{self, BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
     resolve::{ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},

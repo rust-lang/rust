@@ -85,7 +85,7 @@ pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase + AstDatabase {
-    #[salsa::invoke(ExprScopes::expr_scopes_query)]
+    #[salsa::invoke(crate::expr::expr_scopes_query)]
     fn expr_scopes(&self, def: DefWithBody) -> Arc<ExprScopes>;
 
     #[salsa::invoke(crate::ty::infer_query)]
