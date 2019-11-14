@@ -46,7 +46,9 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::GenericParamKind;
 use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
-use errors::{Applicability, DiagnosticId, StashKey};
+use errors::{Applicability, StashKey};
+
+use rustc_error_codes::*;
 
 struct OnlySelfBounds(bool);
 
@@ -158,10 +160,11 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
 // Utility types and common code for the above passes.
 
 fn bad_placeholder_type(tcx: TyCtxt<'tcx>, span: Span) -> errors::DiagnosticBuilder<'tcx> {
-    let mut diag = tcx.sess.struct_span_err_with_code(
+    let mut diag = struct_span_err!(
+        tcx.sess,
         span,
+        E0121,
         "the type placeholder `_` is not allowed within types on item signatures",
-        DiagnosticId::Error("E0121".into()),
     );
     diag.span_label(span, "not allowed in type signatures");
     diag

@@ -73,6 +73,8 @@ use syntax::symbol::sym;
 use syntax_pos;
 use rustc_target::spec::abi::Abi;
 
+use rustc_error_codes::*;
+
 struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     cause: ObligationCause<'tcx>,

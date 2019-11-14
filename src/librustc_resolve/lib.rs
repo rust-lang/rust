@@ -64,9 +64,10 @@ use late::{HasGenericParams, PathSource, Rib, RibKind::*};
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
 use macros::{LegacyBinding, LegacyScope};
 
+use rustc_error_codes::*;
+
 type Res = def::Res<NodeId>;
 
-pub mod error_codes;
 mod diagnostics;
 mod late;
 mod macros;

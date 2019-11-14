@@ -24,6 +24,8 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
+use rustc_error_codes::*;
+
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
 pub struct OverlapError {

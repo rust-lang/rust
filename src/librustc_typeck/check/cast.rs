@@ -46,6 +46,8 @@ use syntax::ast;
 use syntax_pos::Span;
 use crate::util::common::ErrorReported;
 
+use rustc_error_codes::*;
+
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 pub struct CastCheck<'tcx> {

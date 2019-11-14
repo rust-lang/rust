@@ -35,8 +35,6 @@ use rustc::middle::cstore::{LibSource, CrateSource, NativeLibrary};
 use rustc::middle::dependency_format::Dependencies;
 use syntax_pos::symbol::Symbol;
 
-mod error_codes;
-
 pub mod common;
 pub mod traits;
 pub mod mir;

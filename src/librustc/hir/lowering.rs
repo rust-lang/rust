@@ -74,6 +74,8 @@ use syntax::visit::{self, Visitor};
 use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 const HIR_ID_COUNTER_LOCKED: u32 = 0xFFFFFFFF;
 
 pub struct LoweringContext<'a> {

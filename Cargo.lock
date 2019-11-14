@@ -3120,6 +3120,7 @@ dependencies = [
  "graphviz",
  "jobserver",
  "log",
+ "measureme",
  "num_cpus",
  "parking_lot 0.9.0",
  "polonius-engine",
@@ -3127,6 +3128,7 @@ dependencies = [
  "rustc-rayon-core 0.3.0",
  "rustc_apfloat",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_fs_util",
  "rustc_index",
@@ -3439,6 +3441,7 @@ dependencies = [
  "rustc_apfloat",
  "rustc_codegen_utils",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_fs_util",
  "rustc_incremental",
@@ -3517,6 +3520,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_error_codes"
+version = "0.0.0"
+
+[[package]]
 name = "rustc_errors"
 version = "0.0.0"
 dependencies = [
@@ -3569,6 +3576,7 @@ dependencies = [
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_incremental",
  "rustc_lint",
@@ -3605,6 +3613,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_index",
  "rustc_target",
  "syntax",
@@ -3650,6 +3659,7 @@ dependencies = [
  "memmap",
  "rustc",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_index",
  "rustc_parse",
@@ -3675,6 +3685,7 @@ dependencies = [
  "rustc",
  "rustc_apfloat",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_index",
  "rustc_lexer",
@@ -3703,6 +3714,7 @@ dependencies = [
  "bitflags",
  "log",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_lexer",
  "rustc_target",
@@ -3718,6 +3730,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_index",
  "rustc_parse",
@@ -3738,6 +3751,7 @@ name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
  "rustc",
+ "rustc_error_codes",
  "rustc_metadata",
  "syntax",
  "syntax_expand",
@@ -3751,6 +3765,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_typeck",
  "syntax",
  "syntax_pos",
@@ -3765,6 +3780,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_metadata",
  "smallvec 1.0.0",
@@ -3844,6 +3860,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_index",
  "rustc_target",
@@ -4380,6 +4397,7 @@ dependencies = [
  "lazy_static 1.3.0",
  "log",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_index",
  "rustc_lexer",
@@ -4411,6 +4429,7 @@ dependencies = [
  "fmt_macros",
  "log",
  "rustc_data_structures",
+ "rustc_error_codes",
  "rustc_errors",
  "rustc_parse",
  "rustc_target",

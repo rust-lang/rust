@@ -13,10 +13,12 @@ use syntax::ast;
 use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
 use syntax::symbol::sym;
-use errors::{DiagnosticBuilder, DiagnosticId};
+use errors::DiagnosticBuilder;
 
 use rustc::hir::itemlikevisit::ParItemLikeVisitor;
 use rustc::hir;
+
+use rustc_error_codes::*;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// This is necessary because we can't write the following bound:
@@ -845,12 +847,13 @@ fn check_method_receiver<'fcx, 'tcx>(
 }
 
 fn e0307(fcx: &FnCtxt<'fcx, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
-    fcx.tcx.sess.diagnostic().struct_span_err(
+    struct_span_err!(
+        fcx.tcx.sess.diagnostic(),
         span,
-        &format!("invalid `self` parameter type: {:?}", receiver_ty)
+        E0307,
+        "invalid `self` parameter type: {:?}", receiver_ty,
     ).note("type of `self` must be `Self` or a type that dereferences to it")
     .help(HELP_FOR_SELF_TYPE)
-    .code(DiagnosticId::Error("E0307".into()))
     .emit();
 }
 

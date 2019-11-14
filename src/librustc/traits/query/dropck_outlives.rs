@@ -6,6 +6,8 @@ use syntax::source_map::Span;
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt};
 
+use rustc_error_codes::*;
+
 impl<'cx, 'tcx> At<'cx, 'tcx> {
     /// Given a type `ty` of some value being dropped, computes a set
     /// of "kinds" (types, regions) that must be outlive the execution

@@ -32,6 +32,8 @@ use syntax_pos::{Span, DUMMY_SP};
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
 
+use rustc_error_codes::*;
+
 crate struct Library {
     pub source: CrateSource,
     pub metadata: MetadataBlob,

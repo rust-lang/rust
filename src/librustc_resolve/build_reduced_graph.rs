@@ -46,6 +46,8 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use log::debug;
 
+use rustc_error_codes::*;
+
 type Res = def::Res<NodeId>;
 
 impl<'a> ToNameBinding<'a> for (Module<'a>, ty::Visibility, Span, ExpnId) {

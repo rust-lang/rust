@@ -11,6 +11,8 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
+use rustc_error_codes::*;
+
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,

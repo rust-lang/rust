@@ -14,6 +14,8 @@ use crate::hir::intravisit;
 use crate::hir;
 use crate::ty::TyCtxt;
 
+use rustc_error_codes::*;
+
 macro_rules! weak_lang_items {
     ($($name:ident, $item:ident, $sym:ident;)*) => (
 

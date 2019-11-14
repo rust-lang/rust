@@ -40,6 +40,8 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 use syntax_pos::{MultiSpan, Span, symbol::Symbol};
 
+use rustc_error_codes::*;
+
 /// Information about the registered lints.
 ///
 /// This is basically the subset of `Context` that we can

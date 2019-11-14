@@ -30,6 +30,8 @@ use syntax_pos::Span;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::{self, GenericParamKind, LifetimeParamKind};
 
+use rustc_error_codes::*;
+
 /// The origin of a named lifetime definition.
 ///
 /// This is used to prevent the usage of in-band lifetimes in `Fn`/`fn` syntax.

@@ -14,12 +14,8 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_mir;
-use rustc_passes;
-use rustc_plugin;
-use rustc_privacy;
 use rustc_resolve::{self, Resolver};
-use rustc_typeck;
+use rustc_error_codes;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::io::{self, Write};
@@ -43,18 +39,9 @@ use std::{thread, panic};
 
 pub fn diagnostics_registry() -> Registry {
     let mut all_errors = Vec::new();
-    all_errors.extend_from_slice(&rustc::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_typeck::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_resolve::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_privacy::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_error_codes::DIAGNOSTICS);
     // FIXME: need to figure out a way to get these back in here
     // all_errors.extend_from_slice(get_codegen_backend(sess).diagnostics());
-    all_errors.extend_from_slice(&rustc_metadata::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_parse::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_passes::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_plugin::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_mir::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&syntax::error_codes::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }

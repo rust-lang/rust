@@ -246,6 +246,8 @@ use rustc_data_structures::owning_ref::OwningRef;
 
 use log::{debug, info, warn};
 
+use rustc_error_codes::*;
+
 #[derive(Clone)]
 crate struct CrateMismatch {
     path: PathBuf,

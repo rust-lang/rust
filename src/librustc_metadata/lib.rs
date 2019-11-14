@@ -24,8 +24,6 @@ extern crate rustc;
 #[macro_use]
 extern crate rustc_data_structures;
 
-pub mod error_codes;
-
 mod dependency_format;
 mod foreign_modules;
 mod link_args;

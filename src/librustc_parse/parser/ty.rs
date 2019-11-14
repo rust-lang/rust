@@ -14,6 +14,8 @@ use syntax_pos::symbol::kw;
 
 use errors::{PResult, Applicability, pluralize};
 
+use rustc_error_codes::*;
+
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.
 ///

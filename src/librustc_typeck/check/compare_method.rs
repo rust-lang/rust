@@ -14,6 +14,8 @@ use syntax::errors::pluralize;
 
 use super::{Inherited, FnCtxt, potentially_plural_count};
 
+use rustc_error_codes::*;
+
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
 ///

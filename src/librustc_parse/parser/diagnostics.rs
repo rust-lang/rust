@@ -12,11 +12,13 @@ use syntax::ThinVec;
 use syntax::util::parser::AssocOp;
 use syntax::struct_span_err;
 
-use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
+use errors::{PResult, Applicability, DiagnosticBuilder, pluralize};
 use rustc_data_structures::fx::FxHashSet;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 use log::{debug, trace};
 use std::mem;
+
+use rustc_error_codes::*;
 
 const TURBOFISH: &'static str = "use `::<...>` instead of `<...>` to specify type arguments";
 
@@ -1411,19 +1413,19 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        self.diagnostic()
-            .struct_span_err_with_code(
-                pat.span,
-                "patterns aren't allowed in methods without bodies",
-                DiagnosticId::Error("E0642".into()),
-            )
-            .span_suggestion_short(
-                pat.span,
-                "give this argument a name or use an underscore to ignore it",
-                "_".to_owned(),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        struct_span_err!(
+            self.diagnostic(),
+            pat.span,
+            E0642,
+            "patterns aren't allowed in methods without bodies",
+        )
+        .span_suggestion_short(
+            pat.span,
+            "give this argument a name or use an underscore to ignore it",
+            "_".to_owned(),
+            Applicability::MachineApplicable,
+        )
+        .emit();
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
         let pat = P(Pat {

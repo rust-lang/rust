@@ -16,6 +16,8 @@ use syntax_pos::Span;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::{span_err, struct_span_err};
 
+use rustc_error_codes::*;
+
 enum State {
     Asm,
     Outputs,

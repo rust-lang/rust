@@ -12,6 +12,8 @@ use syntax_pos::{symbol::Symbol, symbol::sym, Span};
 
 use super::{mark_used, MetaItemKind};
 
+use rustc_error_codes::*;
+
 enum AttrError {
     MultipleItem(String),
     UnknownMetaItem(String, &'static [&'static str]),

@@ -11,6 +11,8 @@ use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
     pub fn check_binop_assign(

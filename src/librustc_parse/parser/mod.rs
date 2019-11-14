@@ -30,12 +30,14 @@ use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
 use rustc_data_structures::thin_vec::ThinVec;
-use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
+use errors::{PResult, Applicability, DiagnosticBuilder, FatalError};
 use log::debug;
 
 use std::borrow::Cow;
 use std::{cmp, mem, slice};
 use std::path::PathBuf;
+
+use rustc_error_codes::*;
 
 bitflags::bitflags! {
     struct Restrictions: u8 {
@@ -1249,13 +1251,13 @@ impl<'a> Parser<'a> {
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
     fn ban_async_in_2015(&self, async_span: Span) {
         if async_span.rust_2015() {
-            self.diagnostic()
-                .struct_span_err_with_code(
-                    async_span,
-                    "`async fn` is not permitted in the 2015 edition",
-                    DiagnosticId::Error("E0670".into())
-                )
-                .emit();
+            struct_span_err!(
+                self.diagnostic(),
+                async_span,
+                E0670,
+                "`async fn` is not permitted in the 2015 edition",
+            )
+            .emit();
         }
     }
 

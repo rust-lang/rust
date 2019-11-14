@@ -12,6 +12,8 @@ use crate::util::common::ErrorReported;
 
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 /// This function confirms that the `Drop` implementation identified by
 /// `drop_impl_did` is not any more specialized than the type it is
 /// attached to (Issue #8142).

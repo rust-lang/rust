@@ -31,6 +31,8 @@ use rustc::hir::HirId;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::check_consts::ops::{self, NonConstOp};
 
+use rustc_error_codes::*;
+
 /// What kind of item we are in.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Mode {

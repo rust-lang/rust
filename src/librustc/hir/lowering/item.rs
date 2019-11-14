@@ -23,6 +23,8 @@ use syntax::source_map::{respan, DesugaringKind};
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 pub(super) struct ItemLowerer<'tcx, 'interner> {
     pub(super) lctx: &'tcx mut LoweringContext<'interner>,
 }

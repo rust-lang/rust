@@ -14,12 +14,15 @@ use syntax::ThinVec;
 use syntax::token;
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::source_map::{self, respan, Span};
+use syntax::struct_span_err;
 use syntax_pos::BytePos;
 use syntax_pos::symbol::{kw, sym};
 
+use rustc_error_codes::*;
+
 use log::debug;
 use std::mem;
-use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, StashKey};
+use errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 
 /// Whether the type alias or associated type is a concrete type or an opaque type.
 #[derive(Debug)]
@@ -842,10 +845,11 @@ impl<'a> Parser<'a> {
                 if let token::DocComment(_) = self.token.kind {
                     if self.look_ahead(1,
                     |tok| tok == &token::CloseDelim(token::Brace)) {
-                        self.diagnostic().struct_span_err_with_code(
+                        struct_span_err!(
+                            self.diagnostic(),
                             self.token.span,
+                            E0584,
                             "found a documentation comment that doesn't document anything",
-                            DiagnosticId::Error("E0584".into()),
                         )
                         .help(
                             "doc comments must come before what they document, maybe a \

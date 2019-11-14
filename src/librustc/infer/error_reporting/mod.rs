@@ -63,6 +63,8 @@ use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
 use std::{cmp, fmt};
 use syntax_pos::{Pos, Span};
 
+use rustc_error_codes::*;
+
 mod note;
 
 mod need_type_info;
