@@ -6,8 +6,8 @@ LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; }
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note: expected type `isize`
-              found type `()`
+   = note:   expected type `isize`
+           found unit type `()`
 
 error: aborting due to previous error
 

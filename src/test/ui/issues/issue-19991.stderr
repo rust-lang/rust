@@ -10,8 +10,8 @@ LL | |         765
 LL | |     };
    | |_____^ expected (), found integer
    |
-   = note: expected type `()`
-              found type `{integer}`
+   = note: expected unit type `()`
+                   found type `{integer}`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 

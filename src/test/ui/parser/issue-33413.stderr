@@ -12,8 +12,8 @@ LL |     fn f(*, a: u8) -> u8 {}
    |        |
    |        implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note: expected type `u8`
-              found type `()`
+   = note:   expected type `u8`
+           found unit type `()`
 
 error: aborting due to 2 previous errors
 

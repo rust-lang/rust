@@ -6,8 +6,8 @@ LL |     match () {
 LL |         Slice { data: data, len: len } => (),
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `Slice`
    |
-   = note: expected type `()`
-            found struct `Slice<_>`
+   = note: expected unit type `()`
+                 found struct `Slice<_>`
 
 error: aborting due to previous error
 

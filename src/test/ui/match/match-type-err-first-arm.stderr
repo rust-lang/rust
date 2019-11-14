@@ -62,8 +62,8 @@ LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `u32`
-              found type `()`
+   = note:   expected type `u32`
+           found unit type `()`
 
 error: aborting due to 4 previous errors
 

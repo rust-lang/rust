@@ -6,8 +6,8 @@ LL | ...-> usize {
 LL | ...                                                                                                                                                                                 ()
    |                                                                                                                                                                                     ^^ expected usize, found ()
    |
-   = note: expected type `usize`
-              found type `()`
+   = note:   expected type `usize`
+           found unit type `()`
 
 error: aborting due to previous error
 

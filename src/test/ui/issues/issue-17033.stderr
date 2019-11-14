@@ -8,7 +8,7 @@ LL |     (*p)(())
    |          help: consider mutably borrowing here: `&mut ()`
    |
    = note: expected mutable reference `&mut ()`
-                           found type `()`
+                      found unit type `()`
 
 error: aborting due to previous error
 

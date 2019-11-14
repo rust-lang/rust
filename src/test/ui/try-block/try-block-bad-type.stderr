@@ -28,8 +28,8 @@ error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::op
 LL |     let res: Result<i32, i32> = try { };
    |                                       ^ expected i32, found ()
    |
-   = note: expected type `i32`
-              found type `()`
+   = note:   expected type `i32`
+           found unit type `()`
 
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
   --> $DIR/try-block-bad-type.rs:17:23

@@ -8,7 +8,7 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected usize, found ()
     //~| expected type `usize`
-    //~| found type `()`
+    //~| found unit type `()`
     let c = [0; true];
     //~^ ERROR mismatched types
     //~| expected usize, found bool

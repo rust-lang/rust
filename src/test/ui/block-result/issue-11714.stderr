@@ -9,8 +9,8 @@ LL | fn blah() -> i32 {
 LL |     ;
    |     - help: consider removing this semicolon
    |
-   = note: expected type `i32`
-              found type `()`
+   = note:   expected type `i32`
+           found unit type `()`
 
 error: aborting due to previous error
 

@@ -31,16 +31,16 @@ fn main() {
     // n > m
     let &&x = &1isize as &dyn T;
     //~^ ERROR mismatched types
-    //~| expected trait `dyn T`
+    //~| expected trait object `dyn T`
     //~| found reference `&_`
     //~| expected trait T, found reference
     let &&&x = &(&1isize as &dyn T);
     //~^ ERROR mismatched types
-    //~| expected trait `dyn T`
+    //~| expected trait object `dyn T`
     //~| found reference `&_`
     //~| expected trait T, found reference
     let box box x = box 1isize as Box<dyn T>;
     //~^ ERROR mismatched types
-    //~| expected trait `dyn T`
+    //~| expected trait object `dyn T`
     //~| found struct `std::boxed::Box<_>`
 }

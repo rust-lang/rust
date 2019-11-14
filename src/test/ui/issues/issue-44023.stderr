@@ -6,8 +6,8 @@ LL | fn საჭმელად_გემრიელი_სადილი ( )
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |
-   = note: expected type `isize`
-              found type `()`
+   = note:   expected type `isize`
+           found unit type `()`
 
 error: aborting due to previous error
 

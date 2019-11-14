@@ -14,38 +14,38 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected struct `Foo`, found ()
     //~| expected struct `Foo<isize>`
-    //~| found type `()`
+    //~| found unit type `()`
 
     // ...even when they're present, but the same types as the defaults.
     let _: Foo<isize, B, C> = ();
     //~^ ERROR mismatched types
     //~| expected struct `Foo`, found ()
     //~| expected struct `Foo<isize>`
-    //~| found type `()`
+    //~| found unit type `()`
 
     // Including cases where the default is using previous type params.
     let _: HashMap<String, isize> = ();
     //~^ ERROR mismatched types
     //~| expected struct `HashMap`, found ()
     //~| expected struct `HashMap<std::string::String, isize>`
-    //~| found type `()`
+    //~| found unit type `()`
     let _: HashMap<String, isize, Hash<String>> = ();
     //~^ ERROR mismatched types
     //~| expected struct `HashMap`, found ()
     //~| expected struct `HashMap<std::string::String, isize>`
-    //~| found type `()`
+    //~| found unit type `()`
 
     // But not when there's a different type in between.
     let _: Foo<A, isize, C> = ();
     //~^ ERROR mismatched types
     //~| expected struct `Foo`, found ()
     //~| expected struct `Foo<A, isize>`
-    //~| found type `()`
+    //~| found unit type `()`
 
     // And don't print <> at all when there's just defaults.
     let _: Foo<A, B, C> = ();
     //~^ ERROR mismatched types
     //~| expected struct `Foo`, found ()
     //~| expected struct `Foo`
-    //~| found type `()`
+    //~| found unit type `()`
 }

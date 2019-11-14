@@ -6,8 +6,8 @@ LL | fn foo(x: i32) {
 LL |     |y| x + y
    |     ^^^^^^^^^ expected (), found closure
    |
-   = note: expected type `()`
-           found closure `[closure@$DIR/issue-20862.rs:2:5: 2:14 x:_]`
+   = note: expected unit type `()`
+                found closure `[closure@$DIR/issue-20862.rs:2:5: 2:14 x:_]`
 
 error[E0618]: expected function, found `()`
   --> $DIR/issue-20862.rs:7:13

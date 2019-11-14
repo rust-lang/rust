@@ -12,8 +12,8 @@ error[E0308]: mismatched types
 LL |         true
    |         ^^^^ expected (), found bool
    |
-   = note: expected type `()`
-              found type `bool`
+   = note: expected unit type `()`
+                   found type `bool`
 
 error: aborting due to previous error
 

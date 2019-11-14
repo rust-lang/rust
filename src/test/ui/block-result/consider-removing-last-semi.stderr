@@ -10,7 +10,7 @@ LL |     "bla".to_string();
    |                      - help: consider removing this semicolon
    |
    = note: expected struct `std::string::String`
-                found type `()`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/consider-removing-last-semi.rs:6:11
@@ -24,7 +24,7 @@ LL |     "removeme".to_string();
    |                           - help: consider removing this semicolon
    |
    = note: expected struct `std::string::String`
-                found type `()`
+           found unit type `()`
 
 error: aborting due to 2 previous errors
 

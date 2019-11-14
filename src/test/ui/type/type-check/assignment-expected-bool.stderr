@@ -7,8 +7,8 @@ LL |     let _: bool = 0 = 0;
    |                   expected bool, found ()
    |                   help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:9:14
@@ -19,8 +19,8 @@ LL |         0 => 0 = 0,
    |              expected bool, found ()
    |              help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:10:14
@@ -31,8 +31,8 @@ LL |         _ => 0 = 0,
    |              expected bool, found ()
    |              help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:14:17
@@ -43,8 +43,8 @@ LL |         true => 0 = 0,
    |                 expected bool, found ()
    |                 help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:18:8
@@ -55,8 +55,8 @@ LL |     if 0 = 0 {}
    |        expected bool, found ()
    |        help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:20:24
@@ -67,8 +67,8 @@ LL |     let _: bool = if { 0 = 0 } {
    |                        expected bool, found ()
    |                        help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:21:9
@@ -79,8 +79,8 @@ LL |         0 = 0
    |         expected bool, found ()
    |         help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:23:9
@@ -91,8 +91,8 @@ LL |         0 = 0
    |         expected bool, found ()
    |         help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:26:13
@@ -103,8 +103,8 @@ LL |     let _ = (0 = 0)
    |             expected bool, found ()
    |             help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:27:14
@@ -115,8 +115,8 @@ LL |         && { 0 = 0 }
    |              expected bool, found ()
    |              help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:28:12
@@ -127,8 +127,8 @@ LL |         || (0 = 0);
    |            expected bool, found ()
    |            help: try comparing for equality: `0 == 0`
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error[E0070]: invalid left-hand side expression
   --> $DIR/assignment-expected-bool.rs:31:20
@@ -142,8 +142,8 @@ error[E0308]: mismatched types
 LL |     let _: usize = 0 = 0;
    |                    ^^^^^ expected usize, found ()
    |
-   = note: expected type `usize`
-              found type `()`
+   = note:   expected type `usize`
+           found unit type `()`
 
 error: aborting due to 13 previous errors
 

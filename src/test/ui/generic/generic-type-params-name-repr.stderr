@@ -5,7 +5,7 @@ LL |     let _: Foo<isize> = ();
    |                         ^^ expected struct `Foo`, found ()
    |
    = note: expected struct `Foo<isize>`
-                found type `()`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:20:31
@@ -14,7 +14,7 @@ LL |     let _: Foo<isize, B, C> = ();
    |                               ^^ expected struct `Foo`, found ()
    |
    = note: expected struct `Foo<isize>`
-                found type `()`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:27:37
@@ -23,7 +23,7 @@ LL |     let _: HashMap<String, isize> = ();
    |                                     ^^ expected struct `HashMap`, found ()
    |
    = note: expected struct `HashMap<std::string::String, isize>`
-                found type `()`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:32:51
@@ -32,7 +32,7 @@ LL |     let _: HashMap<String, isize, Hash<String>> = ();
    |                                                   ^^ expected struct `HashMap`, found ()
    |
    = note: expected struct `HashMap<std::string::String, isize>`
-                found type `()`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:39:31
@@ -41,7 +41,7 @@ LL |     let _: Foo<A, isize, C> = ();
    |                               ^^ expected struct `Foo`, found ()
    |
    = note: expected struct `Foo<A, isize>`
-                found type `()`
+           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/generic-type-params-name-repr.rs:46:27
@@ -50,7 +50,7 @@ LL |     let _: Foo<A, B, C> = ();
    |                           ^^ expected struct `Foo`, found ()
    |
    = note: expected struct `Foo`
-                found type `()`
+           found unit type `()`
 
 error: aborting due to 6 previous errors
 

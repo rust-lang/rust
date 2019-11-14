@@ -6,8 +6,8 @@ LL | fn function(t: &mut dyn Trait) {
 LL |     t as *mut dyn Trait
    |     ^^^^^^^^^^^^^^^^^^^ expected (), found *-ptr
    |
-   = note:     expected type `()`
-           found raw pointer `*mut dyn Trait`
+   = note: expected unit type `()`
+            found raw pointer `*mut dyn Trait`
 
 error: aborting due to previous error
 

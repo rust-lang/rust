@@ -60,8 +60,8 @@ LL | |         6u32;
 LL | |     };
    | |_____- if and else have incompatible types
    |
-   = note: expected type `u32`
-              found type `()`
+   = note:   expected type `u32`
+           found unit type `()`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:25:9
@@ -92,8 +92,8 @@ LL | |         10u32;
 LL | |     };
    | |_____- if and else have incompatible types
    |
-   = note: expected type `i32`
-              found type `()`
+   = note:   expected type `i32`
+           found unit type `()`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:37:9
@@ -122,8 +122,8 @@ LL | |
 LL | |     };
    | |_____^ expected i32, found ()
    |
-   = note: expected type `i32`
-              found type `()`
+   = note:   expected type `i32`
+           found unit type `()`
 
 error: aborting due to 8 previous errors
 

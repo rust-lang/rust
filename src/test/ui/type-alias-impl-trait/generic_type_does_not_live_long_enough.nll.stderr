@@ -10,8 +10,8 @@ error[E0308]: mismatched types
 LL |     let z: i32 = x;
    |                  ^ expected i32, found opaque type
    |
-   = note: expected type `i32`
-              found type `WrongGeneric::<&{integer}>`
+   = note:     expected type `i32`
+           found opaque type `WrongGeneric::<&{integer}>`
 
 error: aborting due to 2 previous errors
 

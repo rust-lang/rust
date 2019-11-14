@@ -59,8 +59,8 @@ LL |     if x == E::V { field } {}
    |     |              expected (), found bool
    |     expected this to be `()`
    |
-   = note: expected type `()`
-              found type `bool`
+   = note: expected unit type `()`
+                   found type `bool`
 
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:21:20
@@ -68,8 +68,8 @@ error[E0308]: mismatched types
 LL |     let y: usize = ();
    |                    ^^ expected usize, found ()
    |
-   = note: expected type `usize`
-              found type `()`
+   = note:   expected type `usize`
+           found unit type `()`
 
 error: aborting due to 7 previous errors
 

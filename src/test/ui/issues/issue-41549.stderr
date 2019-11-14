@@ -4,8 +4,8 @@ error[E0326]: implemented const `CONST` has an incompatible type for trait
 LL |     const CONST: () = ();
    |                  ^^ expected u32, found ()
    |
-   = note: expected type `u32`
-              found type `()`
+   = note:   expected type `u32`
+           found unit type `()`
 
 error: aborting due to previous error
 

@@ -10,8 +10,8 @@ LL |         if false { break; }
    |                    expected i32, found ()
    |                    help: give it a value of the expected type: `break 42`
    |
-   = note: expected type `i32`
-              found type `()`
+   = note:   expected type `i32`
+           found unit type `()`
 
 error: aborting due to previous error
 

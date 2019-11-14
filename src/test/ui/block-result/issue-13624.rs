@@ -7,7 +7,7 @@ mod a {
     Enum::EnumStructVariant { x: 1, y: 2, z: 3 }
     //~^ ERROR mismatched types
     //~| expected (), found enum `a::Enum`
-    //~| expected type `()`
+    //~| expected unit type `()`
     //~| found enum `a::Enum`
   }
 }
@@ -22,7 +22,7 @@ mod b {
         a::Enum::EnumStructVariant { x, y, z } => {
         //~^ ERROR mismatched types
         //~| expected (), found enum `a::Enum`
-        //~| expected type `()`
+        //~| expected unit type `()`
         //~| found enum `a::Enum`
         }
       }

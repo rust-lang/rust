@@ -35,7 +35,7 @@ pub fn main() {
     f5.ptr = Bar1 {f: 36};
     //~^ ERROR mismatched types
     //~| expected trait ToBar, found struct `Bar1`
-    //~| expected trait `dyn ToBar`
+    //~| expected trait object `dyn ToBar`
     //~| found struct `Bar1`
     //~| ERROR the size for values of type
 }

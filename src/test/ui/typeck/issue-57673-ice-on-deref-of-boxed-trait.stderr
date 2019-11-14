@@ -6,8 +6,8 @@ LL | fn ice(x: Box<dyn Iterator<Item=()>>) {
 LL |     *x
    |     ^^ expected (), found trait std::iter::Iterator
    |
-   = note: expected type `()`
-             found trait `(dyn std::iter::Iterator<Item = ()> + 'static)`
+   = note: expected unit type `()`
+           found trait object `(dyn std::iter::Iterator<Item = ()> + 'static)`
 
 error: aborting due to previous error
 

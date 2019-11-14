@@ -16,8 +16,8 @@ LL | |         _       => true
 LL | |     }
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `bool`
-              found type `()`
+   = note:   expected type `bool`
+           found unit type `()`
 
 error: aborting due to previous error
 

@@ -76,7 +76,7 @@ let x: i32 = \"I am not a number!\";
 //    type `i32` assigned to variable `x`
 ```
 "},"level":"error","spans":[{"file_name":"$DIR/json-bom-plus-crlf-multifile-aux.rs","byte_start":801,"byte_end":809,"line_start":25,"line_end":26,"column_start":22,"column_end":6,"is_primary":true,"text":[{"text":"    let s : String = (","highlight_start":22,"highlight_end":23},{"text":"    );  // Error spanning the newline.","highlight_start":1,"highlight_end":6}],"label":"expected struct `std::string::String`, found ()","suggested_replacement":null,"suggestion_applicability":null,"expansion":null}],"children":[{"message":"expected struct `std::string::String`
-     found type `()`","code":null,"level":"note","spans":[],"children":[],"rendered":null}],"rendered":"$DIR/json-bom-plus-crlf-multifile-aux.rs:25:22: error[E0308]: mismatched types
+found unit type `()`","code":null,"level":"note","spans":[],"children":[],"rendered":null}],"rendered":"$DIR/json-bom-plus-crlf-multifile-aux.rs:25:22: error[E0308]: mismatched types
 "}
 {"message":"aborting due to 4 previous errors","code":null,"level":"error","spans":[],"children":[],"rendered":"error: aborting due to 4 previous errors
 "}
