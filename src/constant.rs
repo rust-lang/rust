@@ -6,6 +6,7 @@ use rustc::mir::interpret::{
 use rustc::ty::{layout::Align, Const};
 use rustc_mir::interpret::{
     ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup,
+    StackPopInfo,
 };
 
 use cranelift_module::*;
@@ -407,6 +408,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         _: &[OpTy<'tcx>],
         _: Option<PlaceTy<'tcx>>,
         _: Option<BasicBlock>,
+        _: Option<BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         panic!();
     }
@@ -416,7 +418,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         _: Span,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
-        _: PlaceTy<'tcx>,
+        _: Option<PlaceTy<'tcx>>,
+        _: Option<BasicBlock>,
+        _: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
         panic!();
     }
@@ -469,8 +473,8 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         Ok(())
     }
 
-    fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: ()) -> InterpResult<'tcx> {
-        Ok(())
+    fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: (), _: bool) -> InterpResult<'tcx, StackPopInfo> {
+        Ok(StackPopInfo::Normal)
     }
 }
 

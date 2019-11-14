@@ -20,7 +20,7 @@ pub fn codegen(tcx: TyCtxt<'_>, module: &mut Module<impl Backend + 'static>) -> 
     });
     if any_dynamic_crate {
         false
-    } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
+    } else if let Some(kind) = tcx.allocator_kind() {
         codegen_inner(tcx.sess, module, kind);
         true
     } else {

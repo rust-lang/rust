@@ -581,7 +581,7 @@ pub fn codegen_drop<'tcx>(fx: &mut FunctionCx<'_, 'tcx, impl Backend>, drop_plac
                         &ty::RegionKind::ReErased,
                         TypeAndMut {
                             ty,
-                            mutbl: crate::rustc::hir::Mutability::MutMutable,
+                            mutbl: crate::rustc::hir::Mutability::Mutable,
                         },
                     ),
                 );

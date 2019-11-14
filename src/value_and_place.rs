@@ -351,14 +351,14 @@ impl<'tcx> CPlace<'tcx> {
             to_ty: Ty<'tcx>,
         ) {
             match (&from_ty.kind, &to_ty.kind) {
-                (ty::Ref(_, t, MutImmutable), ty::Ref(_, u, MutImmutable))
-                | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutImmutable))
-                | (ty::Ref(_, t, MutMutable), ty::Ref(_, u, MutMutable)) => {
+                (ty::Ref(_, t, Immutable), ty::Ref(_, u, Immutable))
+                | (ty::Ref(_, t, Mutable), ty::Ref(_, u, Immutable))
+                | (ty::Ref(_, t, Mutable), ty::Ref(_, u, Mutable)) => {
                     assert_assignable(fx, t, u);
                     // &mut T -> &T is allowed
                     // &'a T -> &'b T is allowed
                 }
-                (ty::Ref(_, _, MutImmutable), ty::Ref(_, _, MutMutable)) => panic!(
+                (ty::Ref(_, _, Immutable), ty::Ref(_, _, Mutable)) => panic!(
                     "Cant assign value of type {} to place of type {}",
                     from_ty, to_ty
                 ),
