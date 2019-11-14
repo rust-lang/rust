@@ -1,5 +1,5 @@
 use decoder::Metadata;
-use table::Table;
+use table::{Table, TableBuilder};
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -15,6 +15,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
+use rustc_serialize::opaque::Encoder;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -230,31 +231,53 @@ crate struct TraitImpls {
     impls: Lazy<[DefIndex]>,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct LazyPerDefTables<'tcx> {
-    kind: Lazy!(Table<DefIndex, Lazy!(EntryKind<'tcx>)>),
-    visibility: Lazy!(Table<DefIndex, Lazy<ty::Visibility>>),
-    span: Lazy!(Table<DefIndex, Lazy<Span>>),
-    attributes: Lazy!(Table<DefIndex, Lazy<[ast::Attribute]>>),
-    children: Lazy!(Table<DefIndex, Lazy<[DefIndex]>>),
-    stability: Lazy!(Table<DefIndex, Lazy<attr::Stability>>),
-    deprecation: Lazy!(Table<DefIndex, Lazy<attr::Deprecation>>),
-    ty: Lazy!(Table<DefIndex, Lazy!(Ty<'tcx>)>),
-    fn_sig: Lazy!(Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>),
-    impl_trait_ref: Lazy!(Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>),
-    inherent_impls: Lazy!(Table<DefIndex, Lazy<[DefIndex]>>),
-    variances: Lazy!(Table<DefIndex, Lazy<[ty::Variance]>>),
-    generics: Lazy!(Table<DefIndex, Lazy<ty::Generics>>),
-    explicit_predicates: Lazy!(Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>),
+/// Define `LazyPerDefTables` and `PerDefTableBuilders` at the same time.
+macro_rules! define_per_def_tables {
+    ($($name:ident: Table<DefIndex, $T:ty>),+ $(,)?) => {
+        #[derive(RustcEncodable, RustcDecodable)]
+        crate struct LazyPerDefTables<'tcx> {
+            $($name: Lazy!(Table<DefIndex, $T>)),+
+        }
+
+        #[derive(Default)]
+        struct PerDefTableBuilders<'tcx> {
+            $($name: TableBuilder<DefIndex, $T>),+
+        }
+
+        impl PerDefTableBuilders<'tcx> {
+            fn encode(&self, buf: &mut Encoder) -> LazyPerDefTables<'tcx> {
+                LazyPerDefTables {
+                    $($name: self.$name.encode(buf)),+
+                }
+            }
+        }
+    }
+}
+
+define_per_def_tables! {
+    kind: Table<DefIndex, Lazy!(EntryKind<'tcx>)>,
+    visibility: Table<DefIndex, Lazy<ty::Visibility>>,
+    span: Table<DefIndex, Lazy<Span>>,
+    attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
+    children: Table<DefIndex, Lazy<[DefIndex]>>,
+    stability: Table<DefIndex, Lazy<attr::Stability>>,
+    deprecation: Table<DefIndex, Lazy<attr::Deprecation>>,
+    ty: Table<DefIndex, Lazy!(Ty<'tcx>)>,
+    fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
+    impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,
+    inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
+    variances: Table<DefIndex, Lazy<[ty::Variance]>>,
+    generics: Table<DefIndex, Lazy<ty::Generics>>,
+    explicit_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     // FIXME(eddyb) this would ideally be `Lazy<[...]>` but `ty::Predicate`
     // doesn't handle shorthands in its own (de)serialization impls,
     // as it's an `enum` for which we want to derive (de)serialization,
     // so the `ty::codec` APIs handle the whole `&'tcx [...]` at once.
     // Also, as an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives: Lazy!(Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>),
-    super_predicates: Lazy!(Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>),
-    mir: Lazy!(Table<DefIndex, Lazy!(mir::Body<'tcx>)>),
-    promoted_mir: Lazy!(Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
+    inferred_outlives: Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>,
+    super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+    mir: Table<DefIndex, Lazy!(mir::Body<'tcx>)>,
+    promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]

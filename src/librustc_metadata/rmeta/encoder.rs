@@ -1,5 +1,5 @@
 use crate::rmeta::*;
-use crate::rmeta::table::{FixedSizeEncoding, TableBuilder};
+use crate::rmeta::table::FixedSizeEncoding;
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -8,7 +8,7 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId,
 use rustc::hir::{GenericParamKind, AnonConst};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::Idx;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};
@@ -58,30 +58,6 @@ struct EncodeContext<'tcx> {
 
     // This is used to speed up Span encoding.
     source_file_cache: Lrc<SourceFile>,
-}
-
-#[derive(Default)]
-struct PerDefTableBuilders<'tcx> {
-    kind: TableBuilder<DefIndex, Lazy<EntryKind<'tcx>>>,
-    visibility: TableBuilder<DefIndex, Lazy<ty::Visibility>>,
-    span: TableBuilder<DefIndex, Lazy<Span>>,
-    attributes: TableBuilder<DefIndex, Lazy<[ast::Attribute]>>,
-    children: TableBuilder<DefIndex, Lazy<[DefIndex]>>,
-    stability: TableBuilder<DefIndex, Lazy<attr::Stability>>,
-    deprecation: TableBuilder<DefIndex, Lazy<attr::Deprecation>>,
-
-    ty: TableBuilder<DefIndex, Lazy<Ty<'tcx>>>,
-    fn_sig: TableBuilder<DefIndex, Lazy<ty::PolyFnSig<'tcx>>>,
-    impl_trait_ref: TableBuilder<DefIndex, Lazy<ty::TraitRef<'tcx>>>,
-    inherent_impls: TableBuilder<DefIndex, Lazy<[DefIndex]>>,
-    variances: TableBuilder<DefIndex, Lazy<[ty::Variance]>>,
-    generics: TableBuilder<DefIndex, Lazy<ty::Generics>>,
-    explicit_predicates: TableBuilder<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
-    inferred_outlives: TableBuilder<DefIndex, Lazy<&'tcx [(ty::Predicate<'tcx>, Span)]>>,
-    super_predicates: TableBuilder<DefIndex, Lazy<ty::GenericPredicates<'tcx>>>,
-
-    mir: TableBuilder<DefIndex, Lazy<mir::Body<'tcx>>>,
-    promoted_mir: TableBuilder<DefIndex, Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
 }
 
 macro_rules! encoder_methods {
@@ -509,28 +485,7 @@ impl<'tcx> EncodeContext<'tcx> {
 
 
         i = self.position();
-        let per_def = LazyPerDefTables {
-            kind: self.per_def.kind.encode(&mut self.opaque),
-            visibility: self.per_def.visibility.encode(&mut self.opaque),
-            span: self.per_def.span.encode(&mut self.opaque),
-            attributes: self.per_def.attributes.encode(&mut self.opaque),
-            children: self.per_def.children.encode(&mut self.opaque),
-            stability: self.per_def.stability.encode(&mut self.opaque),
-            deprecation: self.per_def.deprecation.encode(&mut self.opaque),
-
-            ty: self.per_def.ty.encode(&mut self.opaque),
-            fn_sig: self.per_def.fn_sig.encode(&mut self.opaque),
-            impl_trait_ref: self.per_def.impl_trait_ref.encode(&mut self.opaque),
-            inherent_impls: self.per_def.inherent_impls.encode(&mut self.opaque),
-            variances: self.per_def.variances.encode(&mut self.opaque),
-            generics: self.per_def.generics.encode(&mut self.opaque),
-            explicit_predicates: self.per_def.explicit_predicates.encode(&mut self.opaque),
-            inferred_outlives: self.per_def.inferred_outlives.encode(&mut self.opaque),
-            super_predicates: self.per_def.super_predicates.encode(&mut self.opaque),
-
-            mir: self.per_def.mir.encode(&mut self.opaque),
-            promoted_mir: self.per_def.promoted_mir.encode(&mut self.opaque),
-        };
+        let per_def = self.per_def.encode(&mut self.opaque);
         let per_def_bytes = self.position() - i;
 
         // Encode the proc macro data
