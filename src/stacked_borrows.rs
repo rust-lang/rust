@@ -533,9 +533,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let protector = if protect { Some(this.frame().extra) } else { None };
-        let ptr = this.memory.check_ptr_access(place.ptr, size, place.align)
-            .expect("validity checks should have excluded dangling/unaligned pointer")
-            .expect("we shouldn't get here for ZST");
+        let ptr = place.ptr.to_ptr().expect("we should have a proper pointer");
         trace!("reborrow: {} reference {:?} derived from {:?} (pointee {}): {:?}, size {}",
             kind, new_tag, ptr.tag, place.layout.ty, ptr.erase_tag(), size.bytes());
 
@@ -583,11 +581,13 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let size = this.size_and_align_of_mplace(place)?
             .map(|(size, _)| size)
             .unwrap_or_else(|| place.layout.size);
+        // We can see dangling ptrs in here e.g. after a Box's `Unique` was
+        // updated using "self.0 = ..." (can happen in Box::from_raw); see miri#1050.
+        let place = this.mplace_access_checked(place)?;
         if size == Size::ZERO {
             // Nothing to do for ZSTs.
             return Ok(*val);
         }
-        let place = this.force_mplace_ptr(place)?;
 
         // Compute new borrow.
         let new_tag = match kind {
