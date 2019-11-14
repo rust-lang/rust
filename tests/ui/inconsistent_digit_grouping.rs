@@ -18,4 +18,7 @@ fn main() {
     let _ = 0x1000000;
     let _ = 0x10000000;
     let _ = 0x100000000_u64;
+
+    // Test suggestion when fraction has no digits
+    let _: f32 = 1_23_456.;
 }

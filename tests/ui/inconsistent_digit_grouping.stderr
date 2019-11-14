@@ -56,5 +56,11 @@ error: long literal lacking separators
 LL |     let _ = 0x100000000_u64;
    |             ^^^^^^^^^^^^^^^ help: consider: `0x0001_0000_0000_u64`
 
-error: aborting due to 9 previous errors
+error: digits grouped inconsistently by underscores
+  --> $DIR/inconsistent_digit_grouping.rs:23:18
+   |
+LL |     let _: f32 = 1_23_456.;
+   |                  ^^^^^^^^^ help: consider: `123_456.`
+
+error: aborting due to 10 previous errors
 

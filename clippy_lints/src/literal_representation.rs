@@ -268,7 +268,7 @@ impl<'a> NumericLiteral<'a> {
         let first_group_size;
 
         if partial_group_first {
-            first_group_size = (digits.clone().count() + group_size - 1) % group_size + 1;
+            first_group_size = (digits.clone().count() - 1) % group_size + 1;
             if pad {
                 for _ in 0..group_size - first_group_size {
                     output.push('0');
