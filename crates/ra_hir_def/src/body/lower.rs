@@ -4,7 +4,7 @@ use hir_expand::{
     either::Either,
     hygiene::Hygiene,
     name::{self, AsName, Name},
-    AstId, MacroCallLoc, MacroFileKind, Source,
+    AstId, MacroCallLoc, MacroFileKind,
 };
 use ra_arena::Arena;
 use ra_syntax::{
@@ -99,9 +99,7 @@ where
         if !self.expander.is_in_expansion() {
             self.source_map.expr_map.insert(ptr, id);
         }
-        self.source_map
-            .expr_map_back
-            .insert(id, Source { file_id: self.expander.current_file_id, ast: ptr });
+        self.source_map.expr_map_back.insert(id, self.expander.to_source(ptr));
         id
     }
     // desugared exprs don't have ptr, that's wrong and should be fixed
@@ -115,9 +113,7 @@ where
         if !self.expander.is_in_expansion() {
             self.source_map.expr_map.insert(ptr, id);
         }
-        self.source_map
-            .expr_map_back
-            .insert(id, Source { file_id: self.expander.current_file_id, ast: ptr });
+        self.source_map.expr_map_back.insert(id, self.expander.to_source(ptr));
         id
     }
     fn alloc_pat(&mut self, pat: Pat, ptr: PatPtr) -> PatId {
@@ -125,9 +121,7 @@ where
         if !self.expander.is_in_expansion() {
             self.source_map.pat_map.insert(ptr, id);
         }
-        self.source_map
-            .pat_map_back
-            .insert(id, Source { file_id: self.expander.current_file_id, ast: ptr });
+        self.source_map.pat_map_back.insert(id, self.expander.to_source(ptr));
         id
     }
 
