@@ -307,8 +307,8 @@ pub struct ResolvedOpaqueTy<'tcx> {
 ///
 /// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
 /// the scope that contains `x`.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, HashStable, PartialEq,
-    TypeFoldable)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(HashStable, TypeFoldable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
