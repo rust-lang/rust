@@ -1042,7 +1042,14 @@ endCheck:
             } else {
                 allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
 
+                /*
+                if (containedloops.back().first.incvar != containedloops.back().first.header->getFirstNonPHI()) {
+                    llvm::errs() << "blk:" << *containedloops.back().first.header << "\n";
+                    llvm::errs() << "nonphi:" << *containedloops.back().first.header->getFirstNonPHI() << "\n";
+                    llvm::errs() << "incvar:" << *containedloops.back().first.incvar << "\n";
+                }
                 assert(containedloops.back().first.incvar == containedloops.back().first.header->getFirstNonPHI());
+                */
                 IRBuilder <> build(containedloops.back().first.incvar->getNextNode());
                 Value* allocation = build.CreateLoad(storeInto);
                 //Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));

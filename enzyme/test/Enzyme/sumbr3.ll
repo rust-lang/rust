@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -S | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -instsimplify -adce -loop-deletion -correlated-propagation -S | FileCheck %s
 ; note this should be the result but for some reason SE can't find loop iterations
 
 ; Function Attrs: norecurse nounwind readonly uwtable

@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -ipconstprop -deadargelim -sroa -early-cse -adce -deadargelim -instcombine -adce -deadargelim -adce -simplifycfg -S -instcombine -dse | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -ipconstprop -deadargelim -sroa -early-cse -adce -deadargelim -instcombine -adce -deadargelim -adce -simplifycfg -S -instcombine -dse | FileCheck %s
 
 ; #include <math.h>
 ; 

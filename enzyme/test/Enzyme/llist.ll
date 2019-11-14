@@ -1,4 +1,4 @@
-; RUN: opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -gvn -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S -loop-simplify -jump-threading -instsimplify -early-cse -simplifycfg | FileCheck %s
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -inline -mem2reg -gvn -adce -instcombine -instsimplify -early-cse-memssa -simplifycfg -correlated-propagation -adce -S -loop-simplify -jump-threading -instsimplify -early-cse -simplifycfg | FileCheck %s
 
 %struct.n = type { double, %struct.n* }
 

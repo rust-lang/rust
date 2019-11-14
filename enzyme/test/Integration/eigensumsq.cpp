@@ -1,11 +1,11 @@
-// RUN: clang++ -fno-exceptions -O3 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | lli - 
-// RUN: clang++ -fno-exceptions -O2 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | lli - 
-// RUN: clang++ -fno-exceptions -O1 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | lli - 
-// RUN: clang++ -fno-exceptions -O0 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | lli - 
-// RUN: clang++ -fno-exceptions -O3 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | lli - 
-// RUN: clang++ -fno-exceptions -O2 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | lli - 
-// RUN: clang++ -fno-exceptions -O1 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | lli - 
-// RUN: clang++ -fno-exceptions -O0 %s -S -emit-llvm -o - | opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | lli - 
+// RUN: %clang++ -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
 
 #define EIGEN_DONT_ALIGN 1
 #define EIGEN_NO_DEBUG 1
