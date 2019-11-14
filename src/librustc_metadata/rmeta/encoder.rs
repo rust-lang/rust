@@ -877,7 +877,7 @@ impl EncodeContext<'tcx> {
 
                 EntryKind::AssocConst(
                     container,
-                    ConstQualif { mir: Default::default() },
+                    Default::default(),
                     rendered_const,
                 )
             }
@@ -959,10 +959,11 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.kind[def_id] <- match impl_item.kind {
             ty::AssocKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
-                    let mir = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
+                    let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
 
-                    EntryKind::AssocConst(container,
-                        ConstQualif { mir },
+                    EntryKind::AssocConst(
+                        container,
+                        qualifs,
                         self.encode_rendered_const_for_body(body_id))
                 } else {
                     bug!()
@@ -1093,9 +1094,9 @@ impl EncodeContext<'tcx> {
             hir::ItemKind::Static(_, hir::Mutability::Mutable, _) => EntryKind::MutStatic,
             hir::ItemKind::Static(_, hir::Mutability::Immutable, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
-                let mir = self.tcx.at(item.span).mir_const_qualif(def_id);
+                let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
                 EntryKind::Const(
-                    ConstQualif { mir },
+                    qualifs,
                     self.encode_rendered_const_for_body(body_id)
                 )
             }
@@ -1372,9 +1373,9 @@ impl EncodeContext<'tcx> {
         let id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
         let body_id = self.tcx.hir().body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
-        let mir = self.tcx.mir_const_qualif(def_id);
+        let qualifs = self.tcx.mir_const_qualif(def_id);
 
-        record!(self.per_def.kind[def_id] <- EntryKind::Const(ConstQualif { mir }, const_data));
+        record!(self.per_def.kind[def_id] <- EntryKind::Const(qualifs, const_data));
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
         self.encode_item_type(def_id);

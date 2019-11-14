@@ -957,7 +957,7 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::Const(qualif, _) |
             EntryKind::AssocConst(AssocContainer::ImplDefault, qualif, _) |
             EntryKind::AssocConst(AssocContainer::ImplFinal, qualif, _) => {
-                qualif.mir
+                qualif
             }
             _ => bug!(),
         }
