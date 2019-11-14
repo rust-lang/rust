@@ -21,6 +21,7 @@ use rustc_data_structures::sync::Lrc;
 /// line!(): expands to the current line number
 pub fn expand_line(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                    -> Box<dyn base::MacResult+'static> {
+    let sp = cx.with_def_site_ctxt(sp);
     base::check_zero_tts(cx, sp, tts, "line!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
@@ -32,6 +33,7 @@ pub fn expand_line(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
 /* column!(): expands to the current column number */
 pub fn expand_column(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                   -> Box<dyn base::MacResult+'static> {
+    let sp = cx.with_def_site_ctxt(sp);
     base::check_zero_tts(cx, sp, tts, "column!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
@@ -45,6 +47,7 @@ pub fn expand_column(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
 /// out if we wanted.
 pub fn expand_file(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                    -> Box<dyn base::MacResult+'static> {
+    let sp = cx.with_def_site_ctxt(sp);
     base::check_zero_tts(cx, sp, tts, "file!");
 
     let topmost = cx.expansion_cause().unwrap_or(sp);
@@ -54,12 +57,14 @@ pub fn expand_file(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
 
 pub fn expand_stringify(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                         -> Box<dyn base::MacResult+'static> {
+    let sp = cx.with_def_site_ctxt(sp);
     let s = pprust::tts_to_string(tts);
     base::MacEager::expr(cx.expr_str(sp, Symbol::intern(&s)))
 }
 
 pub fn expand_mod(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                   -> Box<dyn base::MacResult+'static> {
+    let sp = cx.with_def_site_ctxt(sp);
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let mod_path = &cx.current_expansion.module.mod_path;
     let string = mod_path.iter().map(|x| x.to_string()).collect::<Vec<String>>().join("::");
@@ -72,6 +77,7 @@ pub fn expand_mod(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
 /// unhygienically.
 pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                            -> Box<dyn base::MacResult+'cx> {
+    let sp = cx.with_def_site_ctxt(sp);
     let file = match get_single_str_from_tts(cx, sp, tts, "include!") {
         Some(f) => f,
         None => return DummyResult::any(sp),
@@ -125,6 +131,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
 // include_str! : read the given file, insert it as a literal string expr
 pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                           -> Box<dyn base::MacResult+'static> {
+    let sp = cx.with_def_site_ctxt(sp);
     let file = match get_single_str_from_tts(cx, sp, tts, "include_str!") {
         Some(f) => f,
         None => return DummyResult::any(sp)
@@ -156,6 +163,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
 
 pub fn expand_include_bytes(cx: &mut ExtCtxt<'_>, sp: Span, tts: TokenStream)
                             -> Box<dyn base::MacResult+'static> {
+    let sp = cx.with_def_site_ctxt(sp);
     let file = match get_single_str_from_tts(cx, sp, tts, "include_bytes!") {
         Some(f) => f,
         None => return DummyResult::any(sp)
