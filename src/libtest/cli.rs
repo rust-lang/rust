@@ -13,6 +13,7 @@ pub struct TestOpts {
     pub list: bool,
     pub filter: Option<String>,
     pub filter_exact: bool,
+    pub force_run_in_process: bool,
     pub exclude_should_panic: bool,
     pub run_ignored: RunIgnored,
     pub run_tests: bool,
@@ -46,6 +47,7 @@ fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
     opts.optflag("", "include-ignored", "Run ignored and not ignored tests")
         .optflag("", "ignored", "Run only ignored tests")
+        .optflag("", "force-run-in-process", "Forces tests to run in-process when panic=abort")
         .optflag("", "exclude-should-panic", "Excludes tests marked as should_panic")
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
@@ -233,6 +235,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
     let allow_unstable = get_allow_unstable(&matches)?;
 
     // Unstable flags
+    let force_run_in_process = unstable_optflag!(matches, allow_unstable, "force-run-in-process");
     let exclude_should_panic = unstable_optflag!(matches, allow_unstable, "exclude-should-panic");
     let include_ignored = unstable_optflag!(matches, allow_unstable, "include-ignored");
     let time_options = get_time_options(&matches, allow_unstable)?;
@@ -259,6 +262,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         list,
         filter,
         filter_exact: exact,
+        force_run_in_process,
         exclude_should_panic,
         run_ignored,
         run_tests,
