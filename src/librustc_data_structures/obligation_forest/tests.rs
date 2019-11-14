@@ -70,6 +70,7 @@ fn push_pop() {
                 "A" => ProcessResult::Changed(vec!["A.1", "A.2", "A.3"]),
                 "B" => ProcessResult::Error("B is for broken"),
                 "C" => ProcessResult::Changed(vec![]),
+                "A.1" | "A.2" | "A.3" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
@@ -94,6 +95,7 @@ fn push_pop() {
                 "A.2" => ProcessResult::Unchanged,
                 "A.3" => ProcessResult::Changed(vec!["A.3.i"]),
                 "D" => ProcessResult::Changed(vec!["D.1", "D.2"]),
+                "A.3.i" | "D.1" | "D.2" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
@@ -113,6 +115,7 @@ fn push_pop() {
                 "A.3.i" => ProcessResult::Changed(vec![]),
                 "D.1" => ProcessResult::Changed(vec!["D.1.i"]),
                 "D.2" => ProcessResult::Changed(vec!["D.2.i"]),
+                "D.1.i" | "D.2.i" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
@@ -161,18 +164,10 @@ fn success_in_grandchildren() {
         forest.process_obligations(&mut C(|obligation| {
             match *obligation {
                 "A" => ProcessResult::Changed(vec!["A.1", "A.2", "A.3"]),
-                _ => unreachable!(),
-            }
-        }, |_| {}), DoCompleted::Yes);
-    assert!(ok.unwrap().is_empty());
-    assert!(err.is_empty());
-
-    let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations(&mut C(|obligation| {
-            match *obligation {
                 "A.1" => ProcessResult::Changed(vec![]),
                 "A.2" => ProcessResult::Changed(vec!["A.2.i", "A.2.ii"]),
                 "A.3" => ProcessResult::Changed(vec![]),
+                "A.2.i" | "A.2.ii" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
@@ -184,12 +179,23 @@ fn success_in_grandchildren() {
     let Outcome { completed: ok, errors: err, .. } =
         forest.process_obligations(&mut C(|obligation| {
             match *obligation {
-                "A.2.i" => ProcessResult::Changed(vec!["A.2.i.a"]),
+                "A.2.i" => ProcessResult::Unchanged,
                 "A.2.ii" => ProcessResult::Changed(vec![]),
                 _ => unreachable!(),
             }
         }, |_| {}), DoCompleted::Yes);
     assert_eq!(ok.unwrap(), vec!["A.2.ii"]);
+    assert!(err.is_empty());
+
+    let Outcome { completed: ok, errors: err, .. } =
+        forest.process_obligations(&mut C(|obligation| {
+            match *obligation {
+                "A.2.i" => ProcessResult::Changed(vec!["A.2.i.a"]),
+                "A.2.i.a" => ProcessResult::Unchanged,
+                _ => unreachable!(),
+            }
+        }, |_| {}), DoCompleted::Yes);
+    assert!(ok.unwrap().is_empty());
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -222,6 +228,7 @@ fn to_errors_no_throw() {
         forest.process_obligations(&mut C(|obligation| {
             match *obligation {
                 "A" => ProcessResult::Changed(vec!["A.1", "A.2", "A.3"]),
+                "A.1" | "A.2" | "A.3" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);
@@ -243,6 +250,7 @@ fn diamond() {
         forest.process_obligations(&mut C(|obligation| {
             match *obligation {
                 "A" => ProcessResult::Changed(vec!["A.1", "A.2"]),
+                "A.1" | "A.2" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);
@@ -254,6 +262,7 @@ fn diamond() {
             match *obligation {
                 "A.1" => ProcessResult::Changed(vec!["D"]),
                 "A.2" => ProcessResult::Changed(vec!["D"]),
+                "D" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);
@@ -282,6 +291,7 @@ fn diamond() {
         forest.process_obligations(&mut C(|obligation| {
             match *obligation {
                 "A'" => ProcessResult::Changed(vec!["A'.1", "A'.2"]),
+                "A'.1" | "A'.2" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);
@@ -293,6 +303,7 @@ fn diamond() {
             match *obligation {
                 "A'.1" => ProcessResult::Changed(vec!["D'", "A'"]),
                 "A'.2" => ProcessResult::Changed(vec!["D'"]),
+                "D'" | "A'" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);
@@ -370,6 +381,7 @@ fn orphan() {
                 "B" => ProcessResult::Unchanged,
                 "C1" => ProcessResult::Changed(vec![]),
                 "C2" => ProcessResult::Changed(vec![]),
+                "D" | "E" => ProcessResult::Unchanged,
                 _ => unreachable!(),
             }
         }, |_|{}), DoCompleted::Yes);

@@ -395,7 +395,16 @@ impl<O: ForestObligation> ObligationForest<O> {
         let mut errors = vec![];
         let mut stalled = true;
 
-        for index in 0..self.nodes.len() {
+        // Note that the loop body can append new nodes, and those new nodes
+        // will then be processed by subsequent iterations of the loop.
+        //
+        // We can't use an iterator for the loop because `self.nodes` is
+        // appended to and the borrow checker would complain. We also can't use
+        // `for index in 0..self.nodes.len() { ... }` because the range would
+        // be computed with the initial length, and we would miss the appended
+        // nodes. Therefore we use a `while` loop.
+        let mut index = 0;
+        while index < self.nodes.len() {
             let node = &mut self.nodes[index];
 
             debug!("process_obligations: node {} == {:?}", index, node);
@@ -406,6 +415,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             // out of sync with `nodes`. It's not very common, but it does
             // happen, and code in `compress` has to allow for it.
             if node.state.get() != NodeState::Pending {
+                index += 1;
                 continue;
             }
             let result = processor.process_obligation(&mut node.obligation);
@@ -441,6 +451,7 @@ impl<O: ForestObligation> ObligationForest<O> {
                     });
                 }
             }
+            index += 1;
         }
 
         if stalled {
