@@ -1,4 +1,4 @@
-#![feature(trait_alias)]
+#![feature(trait_alias)] // Enabled to reduce stderr output, but can be triggered even if disabled.
 trait Trait {}
 trait WithType {
     type Ctx;
