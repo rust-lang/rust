@@ -6,7 +6,6 @@
 //! FIXME(eddyb) implement a custom `PrettyPrinter` for this.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::ConstValue;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Const, Instance, Ty, TyCtxt};
 use rustc::{bug, hir};
@@ -170,21 +169,16 @@ impl DefPathBasedNames<'tcx> {
     // If `debug` is true, usually-unprintable consts (such as `Infer`) will be printed,
     // as well as the unprintable types of constants (see `push_type_name` for more details).
     pub fn push_const_name(&self, c: &Const<'tcx>, output: &mut String, debug: bool) {
-        match c.val {
-            ConstValue::Scalar(..) | ConstValue::Slice { .. } | ConstValue::ByRef { .. } => {
-                // FIXME(const_generics): we could probably do a better job here.
-                write!(output, "{:?}", c).unwrap()
-            }
-            _ => {
-                if debug {
-                    write!(output, "{:?}", c).unwrap()
-                } else {
-                    bug!(
-                        "DefPathBasedNames: trying to create const name for unexpected const: {:?}",
-                        c,
-                    );
-                }
-            }
+        if let ty::ConstKind::Value(_) = c.val {
+            // FIXME(const_generics): we could probably do a better job here.
+            write!(output, "{:?}", c).unwrap()
+        } else if debug {
+            write!(output, "{:?}", c).unwrap()
+        } else {
+            bug!(
+                "DefPathBasedNames: trying to create const name for unexpected const: {:?}",
+                c,
+            );
         }
         output.push_str(": ");
         self.push_type_name(c.ty, output, debug);

@@ -14,7 +14,6 @@ use crate::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use crate::middle::free_region::RegionRelations;
 use crate::middle::lang_items;
 use crate::middle::region;
-use crate::mir::interpret::ConstValue;
 use crate::session::config::BorrowckMode;
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -1662,7 +1661,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } = ct {
+        if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
                 self.infcx.const_unification_table
                     .borrow_mut()
                     .probe_value(*vid)

@@ -561,51 +561,59 @@ pub fn super_relate_consts<R: TypeRelation<'tcx>>(
     // and those that derive both `PartialEq` and `Eq`, corresponding
     // to `structural_match` types.
     let new_const_val = match (eagerly_eval(a), eagerly_eval(b)) {
-        (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
+        (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
             // The caller should handle these cases!
             bug!("var types encountered in super_relate_consts: {:?} {:?}", a, b)
         }
-        (ConstValue::Param(a_p), ConstValue::Param(b_p)) if a_p.index == b_p.index => {
+        (ty::ConstKind::Param(a_p), ty::ConstKind::Param(b_p)) if a_p.index == b_p.index => {
             return Ok(a);
         }
-        (ConstValue::Placeholder(p1), ConstValue::Placeholder(p2)) if p1 == p2 => {
+        (ty::ConstKind::Placeholder(p1), ty::ConstKind::Placeholder(p2)) if p1 == p2 => {
             return Ok(a);
         }
-        (ConstValue::Scalar(a_val), ConstValue::Scalar(b_val)) if a.ty == b.ty => {
-            if a_val == b_val {
-                Ok(ConstValue::Scalar(a_val))
-            } else if let ty::FnPtr(_) = a.ty.kind {
-                let alloc_map = tcx.alloc_map.lock();
-                let a_instance = alloc_map.unwrap_fn(a_val.to_ptr().unwrap().alloc_id);
-                let b_instance = alloc_map.unwrap_fn(b_val.to_ptr().unwrap().alloc_id);
-                if a_instance == b_instance {
-                    Ok(ConstValue::Scalar(a_val))
-                } else {
-                    Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+        (ty::ConstKind::Value(a_val), ty::ConstKind::Value(b_val)) => {
+            let new_val = match (a_val, b_val) {
+                (ConstValue::Scalar(a_val), ConstValue::Scalar(b_val)) if a.ty == b.ty => {
+                    if a_val == b_val {
+                        Ok(ConstValue::Scalar(a_val))
+                    } else if let ty::FnPtr(_) = a.ty.kind {
+                        let alloc_map = tcx.alloc_map.lock();
+                        let a_instance = alloc_map.unwrap_fn(a_val.to_ptr().unwrap().alloc_id);
+                        let b_instance = alloc_map.unwrap_fn(b_val.to_ptr().unwrap().alloc_id);
+                        if a_instance == b_instance {
+                            Ok(ConstValue::Scalar(a_val))
+                        } else {
+                            Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                        }
+                    } else {
+                        Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                    }
                 }
-            } else {
-                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
-            }
-        }
 
-        (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
-            let a_bytes = get_slice_bytes(&tcx, a_val);
-            let b_bytes = get_slice_bytes(&tcx, b_val);
-            if a_bytes == b_bytes {
-                Ok(a_val)
-            } else {
-                Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
-            }
-        }
+                (a_val @ ConstValue::Slice { .. }, b_val @ ConstValue::Slice { .. }) => {
+                    let a_bytes = get_slice_bytes(&tcx, a_val);
+                    let b_bytes = get_slice_bytes(&tcx, b_val);
+                    if a_bytes == b_bytes {
+                        Ok(a_val)
+                    } else {
+                        Err(TypeError::ConstMismatch(expected_found(relation, &a, &b)))
+                    }
+                }
 
-        // FIXME(const_generics): handle `ConstValue::ByRef`.
+                // FIXME(const_generics): handle `ConstValue::ByRef`.
+
+                _ =>  Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
+            };
+
+            new_val.map(ty::ConstKind::Value)
+        },
 
         // FIXME(const_generics): this is wrong, as it is a projection
-        (ConstValue::Unevaluated(a_def_id, a_substs),
-            ConstValue::Unevaluated(b_def_id, b_substs)) if a_def_id == b_def_id => {
+        (ty::ConstKind::Unevaluated(a_def_id, a_substs),
+            ty::ConstKind::Unevaluated(b_def_id, b_substs)) if a_def_id == b_def_id => {
             let substs =
                 relation.relate_with_variance(ty::Variance::Invariant, &a_substs, &b_substs)?;
-            Ok(ConstValue::Unevaluated(a_def_id, &substs))
+            Ok(ty::ConstKind::Unevaluated(a_def_id, &substs))
         }
         _ =>  Err(TypeError::ConstMismatch(expected_found(relation, &a, &b))),
     };

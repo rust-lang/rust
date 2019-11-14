@@ -1284,15 +1284,15 @@ fn collect_const<'tcx>(
     );
 
     match substituted_constant.val {
-        ConstValue::Scalar(Scalar::Ptr(ptr)) =>
+        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Ptr(ptr))) =>
             collect_miri(tcx, ptr.alloc_id, output),
-        ConstValue::Slice { data: alloc, start: _, end: _ } |
-        ConstValue::ByRef { alloc, .. } => {
+        ty::ConstKind::Value(ConstValue::Slice { data: alloc, start: _, end: _ }) |
+        ty::ConstKind::Value(ConstValue::ByRef { alloc, .. }) => {
             for &((), id) in alloc.relocations().values() {
                 collect_miri(tcx, id, output);
             }
         }
-        ConstValue::Unevaluated(def_id, substs) => {
+        ty::ConstKind::Unevaluated(def_id, substs) => {
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
                                                 def_id,

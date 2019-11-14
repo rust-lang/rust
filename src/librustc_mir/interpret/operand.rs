@@ -545,23 +545,27 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
         // Early-return cases.
-        match val.val {
-            ConstValue::Param(_) =>
+        let val_val = match val.val {
+            ty::ConstKind::Param(_) =>
                 throw_inval!(TooGeneric),
-            ConstValue::Unevaluated(def_id, substs) => {
+            ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
                 })?));
             }
-            _ => {}
-        }
+            ty::ConstKind::Infer(..) |
+            ty::ConstKind::Bound(..) |
+            ty::ConstKind::Placeholder(..) =>
+                bug!("eval_const_to_op: Unexpected ConstKind {:?}", val),
+            ty::ConstKind::Value(val_val) => val_val,
+        };
         // Other cases need layout.
         let layout = from_known_layout(layout, || {
             self.layout_of(val.ty)
         })?;
-        let op = match val.val {
+        let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
@@ -583,12 +587,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self,
                 ))
             }
-            ConstValue::Param(..) |
-            ConstValue::Infer(..) |
-            ConstValue::Bound(..) |
-            ConstValue::Placeholder(..) |
-            ConstValue::Unevaluated(..) =>
-                bug!("eval_const_to_op: Unexpected ConstValue {:?}", val),
         };
         Ok(OpTy { op, layout })
     }

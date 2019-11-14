@@ -886,7 +886,7 @@ impl CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Const(ct) => match ct.val {
-                            ConstValue::Bound(debruijn, b) => {
+                            ty::ConstKind::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == b
@@ -987,7 +987,7 @@ impl<'tcx> CommonConsts<'tcx> {
 
         CommonConsts {
             err: mk_const(ty::Const {
-                val: ConstValue::Scalar(Scalar::zst()),
+                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
                 ty: types.err,
             }),
         }
@@ -2543,7 +2543,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {
-            val: ConstValue::Infer(InferConst::Var(v)),
+            val: ty::ConstKind::Infer(InferConst::Var(v)),
             ty,
         })
     }
@@ -2570,7 +2570,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
     ) -> &'tcx ty::Const<'tcx> {
         self.mk_const(ty::Const {
-            val: ConstValue::Infer(ic),
+            val: ty::ConstKind::Infer(ic),
             ty,
         })
     }
@@ -2588,7 +2588,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>
     ) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {
-            val: ConstValue::Param(ParamConst { index, name }),
+            val: ty::ConstKind::Param(ParamConst { index, name }),
             ty,
         })
     }

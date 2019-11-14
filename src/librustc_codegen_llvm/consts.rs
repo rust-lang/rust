@@ -88,9 +88,9 @@ pub fn codegen_static_initializer(
     let static_ = cx.tcx.const_eval(param_env.and(cid))?;
 
     let alloc = match static_.val {
-        ConstValue::ByRef {
+        ty::ConstKind::Value(ConstValue::ByRef {
             alloc, offset,
-        } if offset.bytes() == 0 => {
+        }) if offset.bytes() == 0 => {
             alloc
         },
         _ => bug!("static const eval returned {:#?}", static_),

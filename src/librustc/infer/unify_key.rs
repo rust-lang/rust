@@ -1,5 +1,4 @@
 use crate::ty::{self, FloatVarValue, IntVarValue, Ty, TyCtxt, InferConst};
-use crate::mir::interpret::ConstValue;
 use rustc_data_structures::unify::{NoError, EqUnifyValue, UnifyKey, UnifyValue, UnificationTable};
 use rustc_data_structures::unify::InPlace;
 use syntax_pos::{Span, DUMMY_SP};
@@ -180,7 +179,7 @@ pub fn replace_if_possible(
     mut table: RefMut<'_, UnificationTable<InPlace<ty::ConstVid<'tcx>>>>,
     c: &'tcx ty::Const<'tcx>
 ) -> &'tcx ty::Const<'tcx> {
-    if let ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } = c {
+    if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = c {
         match table.probe_value(*vid).val.known() {
             Some(c) => c,
             None => c,

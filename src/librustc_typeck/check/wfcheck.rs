@@ -6,7 +6,6 @@ use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
-use rustc::mir::interpret::ConstValue;
 use rustc::middle::lang_items;
 use rustc::infer::opaque_types::may_define_opaque_type;
 
@@ -536,7 +535,7 @@ fn check_where_clauses<'tcx, 'fcx>(
             }
 
             fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
-                if let ConstValue::Param(param) = c.val {
+                if let ty::ConstKind::Param(param) = c.val {
                     self.params.insert(param.index);
                 }
                 c.super_visit_with(self)
@@ -705,7 +704,7 @@ fn check_opaque_types<'fcx, 'tcx>(
                                 }
 
                                 ty::subst::GenericArgKind::Const(ct) => match ct.val {
-                                    ConstValue::Param(_) => {}
+                                    ty::ConstKind::Param(_) => {}
                                     _ => {
                                         tcx.sess
                                             .struct_span_err(

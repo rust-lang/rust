@@ -56,7 +56,7 @@ crate fn lit_to_const<'tcx>(
         LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
         LitKind::Err(_) => unreachable!(),
     };
-    Ok(tcx.mk_const(ty::Const { val: lit, ty }))
+    Ok(tcx.mk_const(ty::Const { val: ty::ConstKind::Value(lit), ty }))
 }
 
 fn parse_float<'tcx>(

@@ -128,7 +128,7 @@ fn op_to_const<'tcx>(
             }
         },
     };
-    ecx.tcx.mk_const(ty::Const { val, ty: op.layout.ty })
+    ecx.tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: op.layout.ty })
 }
 
 // Returns a pointer to where the result lives
@@ -516,7 +516,7 @@ pub fn const_caller_location<'tcx>(
     intern_const_alloc_recursive(&mut ecx, None, loc_place).unwrap();
     let loc_const = ty::Const {
         ty: loc_ty,
-        val: ConstValue::Scalar(loc_place.ptr.into()),
+        val: ty::ConstKind::Value(ConstValue::Scalar(loc_place.ptr.into())),
     };
 
     tcx.mk_const(loc_const)
@@ -577,10 +577,10 @@ fn validate_and_turn_into_const<'tcx>(
         if tcx.is_static(def_id) || cid.promoted.is_some() {
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
-                val: ConstValue::ByRef {
+                val: ty::ConstKind::Value(ConstValue::ByRef {
                     alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
                     offset: ptr.offset,
-                },
+                }),
                 ty: mplace.layout.ty,
             }))
         } else {

@@ -699,7 +699,7 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("["), print(ty), write("; "));
                 if self.tcx().sess.verbose() {
                     p!(write("{:?}", sz));
-                } else if let ConstValue::Unevaluated(..) = sz.val {
+                } else if let ty::ConstKind::Unevaluated(..) = sz.val {
                     // do not try to evalute unevaluated constants. If we are const evaluating an
                     // array length anon const, rustc will (with debug assertions) print the
                     // constant's path. Which will end up here again.
@@ -861,11 +861,9 @@ pub trait PrettyPrinter<'tcx>:
             return Ok(self);
         }
 
-        let u8 = self.tcx().types.u8;
-
         match (ct.val, &ct.ty.kind) {
             (_,  ty::FnDef(did, substs)) => p!(print_value_path(*did, substs)),
-            (ConstValue::Unevaluated(did, substs), _) => {
+            (ty::ConstKind::Unevaluated(did, substs), _) => {
                 match self.tcx().def_kind(did) {
                     | Some(DefKind::Static)
                     | Some(DefKind::Const)
@@ -882,8 +880,33 @@ pub trait PrettyPrinter<'tcx>:
                     },
                 }
             },
-            (ConstValue::Infer(..), _) =>  p!(write("_: "), print(ct.ty)),
-            (ConstValue::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
+            (ty::ConstKind::Infer(..), _) =>  p!(write("_: "), print(ct.ty)),
+            (ty::ConstKind::Param(ParamConst { name, .. }), _) => p!(write("{}", name)),
+            (ty::ConstKind::Value(value), _) => return self.pretty_print_const_value(value, ct.ty),
+
+            _ => {
+                // fallback
+                p!(write("{:?} : ", ct.val), print(ct.ty))
+            }
+        };
+        Ok(self)
+    }
+
+    fn pretty_print_const_value(
+        mut self,
+        ct: ConstValue<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> Result<Self::Const, Self::Error> {
+        define_scoped_cx!(self);
+
+        if self.tcx().sess.verbose() {
+            p!(write("ConstValue({:?}: {:?})", ct, ty));
+            return Ok(self);
+        }
+
+        let u8 = self.tcx().types.u8;
+
+        match (ct, &ty.kind) {
             (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Bool) =>
                 p!(write("{}", if data == 0 { "false" } else { "true" })),
             (ConstValue::Scalar(Scalar::Raw { data, .. }), ty::Float(ast::FloatTy::F32)) =>
@@ -907,7 +930,7 @@ pub trait PrettyPrinter<'tcx>:
                 let min = 1u128 << (bit_size - 1);
                 let max = min - 1;
 
-                let ty = self.tcx().lift(&ct.ty).unwrap();
+                let ty = self.tcx().lift(&ty).unwrap();
                 let size = self.tcx().layout_of(ty::ParamEnv::empty().and(ty))
                     .unwrap()
                     .size;
@@ -929,8 +952,8 @@ pub trait PrettyPrinter<'tcx>:
                 p!(print_value_path(instance.def_id(), instance.substs));
             },
             _ => {
-                let printed = if let ty::Ref(_, ref_ty, _) = ct.ty.kind {
-                    let byte_str = match (ct.val, &ref_ty.kind) {
+                let printed = if let ty::Ref(_, ref_ty, _) = ty.kind {
+                    let byte_str = match (ct, &ref_ty.kind) {
                         (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
                             let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
                             Some(self.tcx()
@@ -957,7 +980,7 @@ pub trait PrettyPrinter<'tcx>:
                         p!(write("\""));
                         true
                     } else if let (ConstValue::Slice { data, start, end }, ty::Str) =
-                        (ct.val, &ref_ty.kind)
+                        (ct, &ref_ty.kind)
                     {
                         // The `inspect` here is okay since we checked the bounds, and there are no
                         // relocations (we have an active `str` reference here). We don't use this
@@ -975,7 +998,7 @@ pub trait PrettyPrinter<'tcx>:
                 };
                 if !printed {
                     // fallback
-                    p!(write("{:?} : ", ct.val), print(ct.ty))
+                    p!(write("{:?} : ", ct), print(ty))
                 }
             }
         };

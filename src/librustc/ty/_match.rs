@@ -1,7 +1,6 @@
 use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::ty::error::TypeError;
 use crate::ty::relate::{self, Relate, TypeRelation, RelateResult};
-use crate::mir::interpret::ConstValue;
 
 /// A type "A" *matches* "B" if the fresh types in B could be
 /// substituted with values so as to make it equal to A. Matching is
@@ -92,11 +91,11 @@ impl TypeRelation<'tcx> for Match<'tcx> {
         }
 
         match (a.val, b.val) {
-            (_, ConstValue::Infer(InferConst::Fresh(_))) => {
+            (_, ty::ConstKind::Infer(InferConst::Fresh(_))) => {
                 return Ok(a);
             }
 
-            (ConstValue::Infer(_), _) | (_, ConstValue::Infer(_)) => {
+            (ty::ConstKind::Infer(_), _) | (_, ty::ConstKind::Infer(_)) => {
                 return Err(TypeError::ConstMismatch(relate::expected_found(self, &a, &b)));
             }
 

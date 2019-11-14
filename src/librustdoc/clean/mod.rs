@@ -16,7 +16,7 @@ use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
 use rustc::middle::resolve_lifetime as rl;
 use rustc::middle::lang_items;
 use rustc::middle::stability;
-use rustc::mir::interpret::{GlobalId, ConstValue};
+use rustc::mir::interpret::GlobalId;
 use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -3075,7 +3075,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
             ty::Slice(ty) => Slice(box ty.clean(cx)),
             ty::Array(ty, n) => {
                 let mut n = cx.tcx.lift(&n).expect("array lift failed");
-                if let ConstValue::Unevaluated(def_id, substs) = n.val {
+                if let ty::ConstKind::Unevaluated(def_id, substs) = n.val {
                     let param_env = cx.tcx.param_env(def_id);
                     let cid = GlobalId {
                         instance: ty::Instance::new(def_id, substs),
@@ -4234,7 +4234,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
 
 fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
     match n.val {
-        ConstValue::Unevaluated(def_id, _) => {
+        ty::ConstKind::Unevaluated(def_id, _) => {
             if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
                 print_const_expr(cx, cx.tcx.hir().body_owned_by(hir_id))
             } else {

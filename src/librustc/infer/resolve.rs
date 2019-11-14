@@ -1,6 +1,5 @@
 use super::{InferCtxt, FixupError, FixupResult, Span};
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 
@@ -230,11 +229,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         } else {
             let c = self.infcx.shallow_resolve(c);
             match c.val {
-                ConstValue::Infer(InferConst::Var(vid)) => {
+                ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
                     return self.tcx().consts.err;
                 }
-                ConstValue::Infer(InferConst::Fresh(_)) => {
+                ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);
                 }
                 _ => {}

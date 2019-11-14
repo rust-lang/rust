@@ -2,10 +2,7 @@ use std::fmt;
 use rustc_macros::HashStable;
 use rustc_apfloat::{Float, ieee::{Double, Single}};
 
-use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
-use crate::ty::PlaceholderConst;
-use crate::hir::def_id::DefId;
-use crate::ty::{BoundVar, DebruijnIndex};
+use crate::ty::{Ty, layout::{HasDataLayout, Size}};
 
 use super::{InterpResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
@@ -23,18 +20,6 @@ pub struct RawConst<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub enum ConstValue<'tcx> {
-    /// A const generic parameter.
-    Param(ParamConst),
-
-    /// Infer the value of the const.
-    Infer(InferConst<'tcx>),
-
-    /// Bound const variable, used only when preparing a trait query.
-    Bound(DebruijnIndex, BoundVar),
-
-    /// A placeholder const - universally quantified higher-ranked const.
-    Placeholder(PlaceholderConst),
-
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
     /// Not using the enum `Value` to encode that this must not be `Undef`.
@@ -55,10 +40,6 @@ pub enum ConstValue<'tcx> {
         /// Offset into `alloc`
         offset: Size,
     },
-
-    /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
-    /// variants when the code is monomorphic enough for that.
-    Unevaluated(DefId, SubstsRef<'tcx>),
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -68,25 +49,10 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::Param(_) |
-            ConstValue::Infer(_) |
-            ConstValue::Bound(..) |
-            ConstValue::Placeholder(_) |
             ConstValue::ByRef { .. } |
-            ConstValue::Unevaluated(..) |
             ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
         }
-    }
-
-    #[inline]
-    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar()?.to_bits(size).ok()
-    }
-
-    #[inline]
-    pub fn try_to_ptr(&self) -> Option<Pointer> {
-        self.try_to_scalar()?.to_ptr().ok()
     }
 }
 

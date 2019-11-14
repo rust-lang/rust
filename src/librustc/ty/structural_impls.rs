@@ -5,7 +5,6 @@
 
 use crate::hir::def::Namespace;
 use crate::mir::ProjectionKind;
-use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt, InferConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
@@ -1378,26 +1377,25 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstValue::Infer(ic) => ConstValue::Infer(ic.fold_with(folder)),
-            ConstValue::Param(p) => ConstValue::Param(p.fold_with(folder)),
-            ConstValue::Unevaluated(did, substs)
-                => ConstValue::Unevaluated(did, substs.fold_with(folder)),
-            ConstValue::ByRef { .. } | ConstValue::Bound(..) | ConstValue::Placeholder(..)
-            | ConstValue::Scalar(..) | ConstValue::Slice { .. } => *self,
-
+            ty::ConstKind::Infer(ic) => ty::ConstKind::Infer(ic.fold_with(folder)),
+            ty::ConstKind::Param(p) => ty::ConstKind::Param(p.fold_with(folder)),
+            ty::ConstKind::Unevaluated(did, substs)
+                => ty::ConstKind::Unevaluated(did, substs.fold_with(folder)),
+            ty::ConstKind::Value(_) | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(..) => *self,
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstValue::Infer(ic) => ic.visit_with(visitor),
-            ConstValue::Param(p) => p.visit_with(visitor),
-            ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
-            ConstValue::ByRef { .. } | ConstValue::Bound(..) | ConstValue::Placeholder(_)
-            | ConstValue::Scalar(_) | ConstValue::Slice { .. } => false,
+            ty::ConstKind::Infer(ic) => ic.visit_with(visitor),
+            ty::ConstKind::Param(p) => p.visit_with(visitor),
+            ty::ConstKind::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ty::ConstKind::Value(_) | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(_) => false,
         }
     }
 }

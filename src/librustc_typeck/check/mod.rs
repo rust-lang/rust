@@ -1688,7 +1688,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
     };
     let param_env = ty::ParamEnv::reveal_all();
     if let Ok(static_) = tcx.const_eval(param_env.and(cid)) {
-        let alloc = if let ConstValue::ByRef { alloc, .. } = static_.val {
+        let alloc = if let ty::ConstKind::Value(ConstValue::ByRef { alloc, .. }) = static_.val {
             alloc
         } else {
             bug!("Matching on non-ByRef static")

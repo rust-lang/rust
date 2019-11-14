@@ -27,7 +27,7 @@ use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::mir::interpret::{ConstValue, PanicInfo};
+use rustc::mir::interpret::PanicInfo;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, NonMutatingUseContext};
 use rustc::mir::*;
@@ -309,7 +309,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
-            if let ConstValue::Unevaluated(def_id, substs) = constant.literal.val {
+            if let ty::ConstKind::Unevaluated(def_id, substs) = constant.literal.val {
                 if let Err(terr) = self.cx.fully_perform_op(
                     location.to_locations(),
                     ConstraintCategory::Boring,

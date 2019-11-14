@@ -32,7 +32,6 @@
 //! looking for, and does not need to visit anything else.
 
 use crate::hir::def_id::DefId;
-use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags, flags::FlagComputation};
 
 use std::collections::BTreeMap;
@@ -521,7 +520,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for BoundVarReplacer<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Bound(debruijn, bound_const), ty } = *ct {
+        if let ty::Const { val: ty::ConstKind::Bound(debruijn, bound_const), ty } = *ct {
             if debruijn == self.current_index {
                 let fld_c = &mut self.fld_c;
                 let ct = fld_c(bound_const, ty);
@@ -568,7 +567,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let fld_t = |bound_ty| self.mk_ty(ty::Bound(ty::INNERMOST, bound_ty));
         let fld_c = |bound_ct, ty| {
             self.mk_const(ty::Const {
-                val: ConstValue::Bound(ty::INNERMOST, bound_ct),
+                val: ty::ConstKind::Bound(ty::INNERMOST, bound_ct),
                 ty,
             })
         };
@@ -801,7 +800,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Bound(debruijn, bound_ct), ty } = *ct {
+        if let ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), ty } = *ct {
             if self.amount == 0 || debruijn < self.current_index {
                 ct
             } else {
@@ -813,7 +812,7 @@ impl TypeFolder<'tcx> for Shifter<'tcx> {
                     }
                 };
                 self.tcx.mk_const(ty::Const {
-                    val: ConstValue::Bound(debruijn, bound_ct),
+                    val: ty::ConstKind::Bound(debruijn, bound_ct),
                     ty,
                 })
             }
@@ -919,7 +918,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
         // const, as it has types/regions embedded in a lot of other
         // places.
         match ct.val {
-            ConstValue::Bound(debruijn, _) if debruijn >= self.outer_index => true,
+            ty::ConstKind::Bound(debruijn, _) if debruijn >= self.outer_index => true,
             _ => ct.super_visit_with(self),
         }
     }

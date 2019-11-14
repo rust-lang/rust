@@ -313,7 +313,10 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
             (
                 &ty::Ref(_, rty, _),
                 &PatKind::Constant {
-                    value: Const { val, ty: ty::TyS { kind: ty::Ref(_, crty, _), .. } },
+                    value: Const {
+                        val: ty::ConstKind::Value(val),
+                        ty: ty::TyS { kind: ty::Ref(_, crty, _), .. }
+                    },
                 },
             ) => Pat {
                 ty: pat.ty,
@@ -324,13 +327,23 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
                         span: pat.span,
                         kind: box PatKind::Constant {
                             value: self.tcx.mk_const(Const {
-                                val: self.fold_const_value_deref(*val, rty, crty),
+                                val: ty::ConstKind::Value(
+                                    self.fold_const_value_deref(*val, rty, crty)
+                                ),
                                 ty: rty,
                             }),
                         },
                     },
                 },
             },
+
+            (
+                &ty::Ref(_, rty, _),
+                &PatKind::Constant {
+                    value: Const { val, ty: ty::TyS { kind: ty::Ref(_, crty, _), .. } },
+                },
+            ) => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
+
             (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => s.fold_with(self),
             _ => pat.super_fold_with(self),
         }
@@ -1283,7 +1296,9 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
-            let val = if let ConstValue::Scalar(Scalar::Raw { data, size }) = value.val {
+            let val = if let ty::ConstKind::Value(ConstValue::Scalar(
+                Scalar::Raw { data, size }
+            )) = value.val {
                 // For this specific pattern we can skip a lot of effort and go
                 // straight to the result, after doing a bit of checking. (We
                 // could remove this branch and just use the next branch, which
@@ -1776,7 +1791,19 @@ fn slice_pat_covered_by_const<'tcx>(
     suffix: &[Pat<'tcx>],
     param_env: ty::ParamEnv<'tcx>,
 ) -> Result<bool, ErrorReported> {
-    let data: &[u8] = match (const_val.val, &const_val.ty.kind) {
+    let const_val_val = if let ty::ConstKind::Value(val) = const_val.val {
+        val
+    } else {
+        bug!(
+            "slice_pat_covered_by_const: {:#?}, {:#?}, {:#?}, {:#?}",
+            const_val,
+            prefix,
+            slice,
+            suffix,
+        )
+    };
+
+    let data: &[u8] = match (const_val_val, &const_val.ty.kind) {
         (ConstValue::ByRef { offset, alloc, .. }, ty::Array(t, n)) => {
             assert_eq!(*t, tcx.types.u8);
             let n = n.eval_usize(tcx, param_env);
@@ -2049,7 +2076,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                                     max_fixed_len =
                                         cmp::max(max_fixed_len, n.eval_usize(tcx, param_env))
                                 }
-                                (ConstValue::Slice { start, end, .. }, ty::Slice(_)) => {
+                                (ty::ConstKind::Value(ConstValue::Slice { start, end, .. }),
+                                 ty::Slice(_)) => {
                                     max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64)
                                 }
                                 _ => {}
@@ -2256,17 +2284,17 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             // is when they are subslices of nonzero slices.
             let (alloc, offset, n, ty) = match value.ty.kind {
                 ty::Array(t, n) => match value.val {
-                    ConstValue::ByRef { offset, alloc, .. } => {
+                    ty::ConstKind::Value(ConstValue::ByRef { offset, alloc, .. }) => {
                         (alloc, offset, n.eval_usize(cx.tcx, cx.param_env), t)
                     }
                     _ => span_bug!(pat.span, "array pattern is {:?}", value,),
                 },
                 ty::Slice(t) => {
                     match value.val {
-                        ConstValue::Slice { data, start, end } => {
+                        ty::ConstKind::Value(ConstValue::Slice { data, start, end }) => {
                             (data, Size::from_bytes(start as u64), (end - start) as u64, t)
                         }
-                        ConstValue::ByRef { .. } => {
+                        ty::ConstKind::Value(ConstValue::ByRef { .. }) => {
                             // FIXME(oli-obk): implement `deref` for `ConstValue`
                             return None;
                         }

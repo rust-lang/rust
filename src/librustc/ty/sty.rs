@@ -2257,17 +2257,17 @@ impl<'tcx> TyS<'tcx> {
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
-    pub val: ConstValue<'tcx>,
+    pub val: ConstKind<'tcx>,
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Const<'_>, 40);
+static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self {
-            val: ConstValue::Scalar(val),
+            val: ConstKind::Value(ConstValue::Scalar(val)),
             ty,
         })
     }
@@ -2317,7 +2317,7 @@ impl<'tcx> Const<'tcx> {
         // FIXME(const_generics): this doesn't work right now,
         // because it tries to relate an `Infer` to a `Param`.
         match self.val {
-            ConstValue::Unevaluated(did, substs) => {
+            ConstKind::Unevaluated(did, substs) => {
                 // if `substs` has no unresolved components, use and empty param_env
                 let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
                 // try to resolve e.g. associated constants to their definition on an impl
@@ -2362,6 +2362,49 @@ impl<'tcx> Const<'tcx> {
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
+
+/// Represents a constant in Rust.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
+         RustcEncodable, RustcDecodable, Hash, HashStable)]
+pub enum ConstKind<'tcx> {
+    /// A const generic parameter.
+    Param(ParamConst),
+
+    /// Infer the value of the const.
+    Infer(InferConst<'tcx>),
+
+    /// Bound const variable, used only when preparing a trait query.
+    Bound(DebruijnIndex, BoundVar),
+
+    /// A placeholder const - universally quantified higher-ranked const.
+    Placeholder(ty::PlaceholderConst),
+
+    /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
+    /// variants when the code is monomorphic enough for that.
+    Unevaluated(DefId, SubstsRef<'tcx>),
+
+    /// Used to hold computed value.
+    Value(ConstValue<'tcx>),
+}
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ConstKind<'_>, 40);
+
+impl<'tcx> ConstKind<'tcx> {
+    #[inline]
+    pub fn try_to_scalar(&self) -> Option<Scalar> {
+        if let ConstKind::Value(val) = self {
+            val.try_to_scalar()
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn try_to_bits(&self, size: ty::layout::Size) -> Option<u128> {
+        self.try_to_scalar()?.to_bits(size).ok()
+    }
+}
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd,

@@ -4,7 +4,6 @@ use crate::hir::Node;
 use crate::infer::outlives::free_region_map::FreeRegionRelations;
 use crate::infer::{self, InferCtxt, InferOk, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::middle::region;
-use crate::mir::interpret::ConstValue;
 use crate::traits::{self, PredicateObligation};
 use crate::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::subst::{InternalSubsts, GenericArg, SubstsRef, GenericArgKind};
@@ -945,7 +944,7 @@ impl TypeFolder<'tcx> for ReverseMapper<'tcx> {
         trace!("checking const {:?}", ct);
         // Find a const parameter
         match ct.val {
-            ConstValue::Param(..) => {
+            ty::ConstKind::Param(..) => {
                 // Look it up in the substitution list.
                 match self.map.get(&ct.into()).map(|k| k.unpack()) {
                     // Found it in the substitution list, replace with the parameter from the
