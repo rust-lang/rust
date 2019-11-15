@@ -144,8 +144,8 @@ pub(crate) fn classify_name_ref(
         }
     }
 
-    let ast = ModuleSource::from_child_node(db, file_id, &parent);
     let file_id = file_id.into();
+    let ast = ModuleSource::from_child_node(db, Source::new(file_id, &parent));
     // FIXME: find correct container and visibility for each case
     let container = Module::from_definition(db, Source { file_id, ast })?;
     let visibility = None;

@@ -230,6 +230,10 @@ pub struct Source<T> {
 }
 
 impl<T> Source<T> {
+    pub fn new(file_id: HirFileId, ast: T) -> Source<T> {
+        Source { file_id, ast }
+    }
+
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
         Source { file_id: self.file_id, ast: f(self.ast) }
     }

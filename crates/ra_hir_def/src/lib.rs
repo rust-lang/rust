@@ -78,14 +78,13 @@ impl ModuleSource {
         }
     }
 
-    pub fn from_child_node(
-        db: &impl db::DefDatabase2,
-        file_id: FileId,
-        child: &SyntaxNode,
-    ) -> ModuleSource {
-        if let Some(m) = child.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi()) {
+    pub fn from_child_node(db: &impl db::DefDatabase2, child: Source<&SyntaxNode>) -> ModuleSource {
+        if let Some(m) =
+            child.ast.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
+        {
             ModuleSource::Module(m)
         } else {
+            let file_id = child.file_id.original_file(db);
             let source_file = db.parse(file_id).tree();
             ModuleSource::SourceFile(source_file)
         }

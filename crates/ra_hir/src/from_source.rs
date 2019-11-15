@@ -196,9 +196,8 @@ where
     N: AstNode,
     DEF: AstItemDef<N>,
 {
-    let module_src =
-        crate::ModuleSource::from_child_node(db, src.file_id.original_file(db), &src.ast.syntax());
-    let module = Module::from_definition(db, Source { file_id: src.file_id, ast: module_src })?;
+    let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
+    let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
     let ctx = LocationCtx::new(db, module.id, src.file_id);
     Some(DEF::from_ast(ctx, &src.ast))
 }
