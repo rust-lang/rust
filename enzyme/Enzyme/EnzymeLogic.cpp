@@ -308,54 +308,49 @@ std::map<CallInst*, std::set<unsigned> > compute_uncacheable_args_for_callsites(
 }
 
 // Determine if a load is needed in the reverse pass. We only use this logic in the top level function right now.
-bool is_load_needed_in_reverse(GradientUtils* gutils, AAResults& AA, Instruction* inst) {
+bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLevel, std::map<Value*, bool> seen = {}) {
+  if (seen.find(inst) != seen.end()) return seen[inst];
 
-  std::vector<Value*> uses_list;
-  std::set<Value*> uses_set;
-  uses_list.push_back(inst);
-  uses_set.insert(inst);
+  //Inductively claim we aren't needed (and try to find contradiction)
+  seen[inst] = false;
 
-  while (true) {
-    bool new_user_added = false;
-    for (unsigned i = 0; i < uses_list.size(); i++) {
-      for (auto use = uses_list[i]->user_begin(), end = uses_list[i]->user_end(); use != end; ++use) {
-        Value* v = (*use);
-        //llvm::errs() << "Use list: " << *v << "\n";
-        if (uses_set.find(v) == uses_set.end()) {
-          uses_set.insert(v);
-          uses_list.push_back(v);
-          new_user_added = true;
+  for (auto use : inst->users()) {
+    if (use == inst) continue;
+
+    Instruction* user = dyn_cast<Instruction>(use);
+
+    // One may need to this load in the computation of loop bounds/comparisons/etc (which even though not active -- will be used for the reverse pass)
+    if (!topLevel) {
+        //Proving that none of the uses (or uses' uses) are used in control flow allows us to safely not do this load
+        
+        if (isa<BranchInst>(use) || isa<SwitchInst>(use)) {
+            llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *user << "\n";
+            return seen[inst] = true;
         }
-      }
-    }
-    if (!new_user_added) break;
-  }
-  //llvm::errs() << "Analysis for load " << *inst << " which has nuses: " << inst->getNumUses() << "\n"; 
-  for (unsigned i = 0; i < uses_list.size(); i++) {
-    //llvm::errs() << "Considering use " << *uses_list[i] << "\n";
-    if (uses_list[i] == dyn_cast<Value>(inst)) continue;
 
-    if (isa<CmpInst>(uses_list[i]) || isa<BranchInst>(uses_list[i]) || isa<BitCastInst>(uses_list[i]) || isa<PHINode>(uses_list[i]) || isa<ReturnInst>(uses_list[i]) || isa<FPExtInst>(uses_list[i]) ||
-        isa<LoadInst>(uses_list[i]) /*|| isa<StoreInst>(uses_list[i])*/){
-      continue;
+        if (is_value_needed_in_reverse(gutils, user, topLevel, seen)) {
+            llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *user << "\n";
+            return seen[inst] = true;
+        }
     }
 
-    if (auto op = dyn_cast<BinaryOperator>(uses_list[i])) {
+    //The following are types we know we don't need to compute adjoints
+  
+    if (inst->getType()->isPointerTy()) return false;
+
+    if (gutils->isConstantInstruction(user)) continue;
+
+    if (auto op = dyn_cast<BinaryOperator>(user)) {
       if (op->getOpcode() == Instruction::FAdd || op->getOpcode() == Instruction::FSub) {
         continue;
-      } else {
-        //llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *op << "\n";
-        return true;
       }
     }
-
-    //if (auto op = dyn_cast<CallInst>(uses_list[i])) {
-    //  llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *op << "\n";
-    //  return true;
-    //}
-
-    //llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *uses_list[i] << "\n";
-    //return true;
+    if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<BitCastInst>(use) || isa<PHINode>(use) || isa<ReturnInst>(use) || isa<FPExtInst>(use) ||
+        isa<LoadInst>(use) /*|| isa<StoreInst>(use)*/){
+      continue;
+    }
+    llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *user << "\n";
+    return seen[inst] = true;
   }
   return false;
 }
@@ -445,12 +440,12 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   } 
 
 
-    //for (auto iter = can_modref_map.begin(); iter != can_modref_map.end(); iter++) {
-    //  if (iter->second) {
-    //    bool is_needed = is_load_needed_in_reverse(gutils, AA, iter->first);
-    //    can_modref_map[iter->first] = is_needed;
-    //  }
-    //}
+    for (auto &iter : can_modref_map) {
+      if (iter.second) {
+        bool is_needed = is_value_needed_in_reverse(gutils, iter.first, /*topLevel*/false);
+        iter.second = is_needed;
+      }
+    }
 
 
   gutils->forceContexts();
@@ -1481,7 +1476,31 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         }
         if (usesInst) {
           usetree.insert(uinst);
+          continue;
         }
+
+        ModRefInfo mri = ModRefInfo::NoModRef;
+        if (uinst->mayReadOrWriteMemory()) {
+          mri = AA.getModRefInfo(uinst, origop);
+        }
+
+        if (mri == ModRefInfo::NoModRef) { continue; }
+
+        usetree.insert(uinst);
+        
+        if (auto li = dyn_cast<LoadInst>(uinst)) {
+          for(Instruction* it = uinst; it != nullptr; it = it->getNextNode()) {
+              if (auto call = dyn_cast<CallInst>(it)) {
+                 if (isCertainMallocOrFree(call->getCalledFunction())) {
+                   continue;
+                 }
+               }
+               if (AA.canInstructionRangeModRef(*it, *it, MemoryLocation::get(li), ModRefInfo::Mod)) {
+                  usetree.insert(it);
+               }
+            }
+        }
+
 
       }
 
@@ -1848,6 +1867,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       for(unsigned i=0; i<a->getNumOperands(); i++) {
         a->setOperand(i, gutils->unwrapM(a->getOperand(i), Builder2, mapp, true));
       }
+      llvm::errs() << "moving instruction for postcreate: " << *a << "\n";
       a->moveBefore(*Builder2.GetInsertBlock(), Builder2.GetInsertPoint());
     }
     
@@ -2008,17 +2028,15 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_args);
 
   std::map<Instruction*, bool> can_modref_map;
-  // NOTE(TFK): Sanity check this decision.
-  //   Is it always possibly to recompute the result of loads at top level?
-    can_modref_map = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_args);
-  if (topLevel) {
-    for (auto iter = can_modref_map.begin(); iter != can_modref_map.end(); iter++) {
-      if (iter->second) {
-        bool is_needed = is_load_needed_in_reverse(gutils, AA, iter->first);
-        can_modref_map[iter->first] = is_needed;
+    
+  can_modref_map = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_args);
+    
+    for (auto &iter : can_modref_map) {
+      if (iter.second) {
+        bool is_needed = is_value_needed_in_reverse(gutils, iter.first, topLevel);
+        iter.second = is_needed;
       }
     }
-  }
 
   // Allow forcing cache reads to be on or off using flags.
   assert(!(cache_reads_always && cache_reads_never) && "Both cache_reads_always and cache_reads_never are true. This doesn't make sense.");
@@ -2584,6 +2602,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         //auto test = Builder2.CreateLoad(cast<PointerType>(inverted_operand->getType())->getElementType(), inverted_operand);
         gutils->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2);
       }
+      llvm::errs() << *gutils->newFunc << "\n afer seeing " << *inst << "\n";
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;
 

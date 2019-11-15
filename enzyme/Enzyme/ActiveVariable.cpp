@@ -85,22 +85,22 @@ void trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
     if (seen.find(et) != seen.end()) return;
     seen.insert(et);
     
-    llvm::errs() << "  tract type of saw " << *et << "\n";
-    llvm::errs() << "       indices = [";
-    for(auto a: indices) {
-        llvm::errs() << a << ",";
-    }
-    llvm::errs() << "] of:" << onlyFirst << "\n";
+    //llvm::errs() << "  tract type of saw " << *et << "\n";
+    //llvm::errs() << "       indices = [";
+    //for(auto a: indices) {
+    //    llvm::errs() << a << ",";
+    //}
+    //llvm::errs() << "] of:" << onlyFirst << "\n";
     
     if (et->isFloatingPointTy()) {
         if (floatingUse == nullptr) {
-            llvm::errs() << "  tract type saw(f) " << *et << " " << *et << "\n";
+            //llvm::errs() << "  tract type saw(f) " << *et << " " << *et << "\n";
             floatingUse = et;
         } else {
             assert(floatingUse == et);
         }
     } else if (et->isPointerTy()) {
-        llvm::errs() << "  tract type saw(p) " << *et << "\n";
+        //llvm::errs() << "  tract type saw(p) " << *et << "\n";
         pointerUse = true;
     }
 
@@ -132,12 +132,12 @@ void trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
     assert(v->getType()->isPointerTy());
     
     Type* et = cast<PointerType>(v->getType())->getElementType();
-    llvm::errs() << "  tract pointer of saw " << *v << " et:" << *et << "\n";
-    llvm::errs() << "       indices = [";
-    for(auto a: indices) {
-        llvm::errs() << a << ",";
-    }
-    llvm::errs() << "]\n";
+    //llvm::errs() << "  tract pointer of saw " << *v << " et:" << *et << "\n";
+    //llvm::errs() << "       indices = [";
+    //for(auto a: indices) {
+    //    llvm::errs() << a << ",";
+    //}
+    //llvm::errs() << "]\n";
     trackType(et, typeseen, floatingUse, pointerUse, onlyFirst, indices);
             
     if (auto phi = dyn_cast<PHINode>(v)) {
@@ -171,7 +171,7 @@ void trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
 }
 
 bool isIntASecretFloat(Value* val) {
-    llvm::errs() << "starting isint a secretfloat for " << *val << "\n";
+    //llvm::errs() << "starting isint a secretfloat for " << *val << "\n";
 
     assert(val->getType()->isIntegerTy());
 
@@ -196,12 +196,12 @@ bool isIntASecretFloat(Value* val) {
         for(User* use: inst->users()) {
             if (auto ci = dyn_cast<BitCastInst>(use)) {
                 if (ci->getDestTy()->isPointerTy()) {
-                    llvm::errs() << "saw(p) " << *ci << "\n";
+                    //llvm::errs() << "saw(p) " << *ci << "\n";
                     pointerUse = true;
                     continue;
                 }
                 if (ci->getDestTy()->isFloatingPointTy()) {
-                    llvm::errs() << "saw(f) " << *ci << "\n";
+                    //llvm::errs() << "saw(f) " << *ci << "\n";
                     floatingUse = ci->getDestTy();
                     continue;
                 }
@@ -209,7 +209,7 @@ bool isIntASecretFloat(Value* val) {
                 
             
             if (isa<IntToPtrInst>(use)) {
-                llvm::errs() << "saw(p) " << *use << "\n";
+                //llvm::errs() << "saw(p) " << *use << "\n";
                 pointerUse = true;
                 continue;
             }
@@ -230,17 +230,17 @@ bool isIntASecretFloat(Value* val) {
 
         if (auto ci = dyn_cast<BitCastInst>(inst)) {
             if (ci->getSrcTy()->isPointerTy()) {
-                llvm::errs() << "saw(p) " << *ci << "\n";
+                //llvm::errs() << "saw(p) " << *ci << "\n";
                 pointerUse = true;
             }
             if (ci->getSrcTy()->isFloatingPointTy()) {
-                llvm::errs() << "saw(p) " << *ci << "\n";
+                //llvm::errs() << "saw(p) " << *ci << "\n";
                 floatingUse = ci->getSrcTy();
             }
         }
         
         if (isa<PtrToIntInst>(inst)) {
-            llvm::errs() << "saw(p) " << *inst << "\n";
+            //llvm::errs() << "saw(p) " << *inst << "\n";
             pointerUse = true;
         }
 
