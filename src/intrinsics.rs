@@ -625,6 +625,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                         }
                         _ => panic!("clif_type returned {}", clif_ty),
                     };
+                    fx.bcx.set_val_label(val, cranelift::codegen::ir::ValueLabel::from_u32(var.as_u32()));
                     fx.bcx.def_var(mir_var(var), val);
                 }
                 _ => {
@@ -656,6 +657,7 @@ pub fn codegen_intrinsic_call<'tcx>(
                         }
                         _ => panic!("clif_type returned {}", clif_ty),
                     };
+                    fx.bcx.set_val_label(val, cranelift::codegen::ir::ValueLabel::from_u32(var.as_u32()));
                     fx.bcx.def_var(mir_var(var), val);
                 }
                 CPlaceInner::Addr(_, _) | CPlaceInner::Stack(_) => {
