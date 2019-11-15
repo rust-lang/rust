@@ -1,0 +1,16 @@
+error[E0317]: if may be missing an else clause
+  --> $DIR/issue-66387-if-without-else.rs:3:5
+   |
+LL | /     if true {
+LL | |         return 0;
+LL | |     }
+   | |_____^ expected (), found i32
+   |
+   = note: expected type `()`
+              found type `i32`
+   = note: `if` expressions without `else` evaluate to `()`
+   = help: consider adding an `else` block that evaluates to the expected type
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0317`.
