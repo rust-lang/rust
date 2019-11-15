@@ -321,6 +321,18 @@ impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImplId(salsa::InternId);
+impl_intern_key!(ImplId);
+impl AstItemDef<ast::ImplBlock> for ImplId {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::ImplBlock>) -> Self {
+        db.intern_impl(loc)
+    }
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::ImplBlock> {
+        db.lookup_intern_impl(self)
+    }
+}
+
 macro_rules! impl_froms {
     ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
         $(
