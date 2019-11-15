@@ -87,7 +87,7 @@ pub struct CrateDefMap {
     prelude: Option<ModuleId>,
     extern_prelude: FxHashMap<Name, ModuleDefId>,
     root: CrateModuleId,
-    pub modules: Arena<CrateModuleId, ModuleData>,
+    modules: Arena<CrateModuleId, ModuleData>,
 
     /// Some macros are not well-behavior, which leads to infinite loop
     /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
@@ -257,6 +257,10 @@ impl CrateDefMap {
     ) -> (PerNs, Option<usize>) {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
+    }
+
+    pub fn modules(&self) -> impl Iterator<Item = CrateModuleId> + '_ {
+        self.modules.iter().map(|(id, _data)| id)
     }
 
     pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = CrateModuleId> + '_ {
