@@ -125,12 +125,12 @@ pub struct ModuleData {
     pub impls: Vec<ImplId>,
 }
 
-#[derive(Default, Debug, PartialEq, Eq, Clone)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct Declarations {
     fns: FxHashMap<FileAstId<ast::FnDef>, FunctionId>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
+#[derive(Debug, Default, PartialEq, Eq)]
 pub struct ModuleScope {
     items: FxHashMap<Name, Resolution>,
     /// Macros visable in current module in legacy textual scope
