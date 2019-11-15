@@ -24,6 +24,7 @@ impl TestOpts {
             list: false,
             filter: None,
             filter_exact: false,
+            force_run_in_process: false,
             exclude_should_panic: false,
             run_ignored: RunIgnored::No,
             run_tests: false,
