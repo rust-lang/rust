@@ -19,7 +19,6 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
-use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
@@ -286,22 +285,14 @@ impl SourceAnalyzer {
     }
 
     fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
-        let mut shadowed = FxHashSet::default();
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
-        let scope = scope_for(scopes, source_map, self.file_id.into(), name_ref.syntax());
-        let ret = scopes
-            .scope_chain(scope)
-            .flat_map(|scope| scopes.entries(scope).iter())
-            .filter(|entry| shadowed.insert(entry.name()))
-            .filter(|entry| entry.name() == &name)
-            .nth(0);
-        ret.and_then(|entry| {
-            Some(ScopeEntryWithSyntax {
-                name: entry.name().clone(),
-                ptr: source_map.pat_syntax(entry.pat())?.ast,
-            })
+        let scope = scope_for(scopes, source_map, self.file_id.into(), name_ref.syntax())?;
+        let entry = scopes.resolve_name_in_scope(scope, &name)?;
+        Some(ScopeEntryWithSyntax {
+            name: entry.name().clone(),
+            ptr: source_map.pat_syntax(entry.pat())?.ast,
         })
     }
 
@@ -412,11 +403,6 @@ impl SourceAnalyzer {
     #[cfg(test)]
     pub(crate) fn inference_result(&self) -> Arc<crate::ty::InferenceResult> {
         self.infer.clone().unwrap()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn scopes(&self) -> Arc<ExprScopes> {
-        self.scopes.clone().unwrap()
     }
 }
 

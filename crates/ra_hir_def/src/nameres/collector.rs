@@ -664,7 +664,8 @@ where
         let name = def.name.clone();
         let def: PerNs = match def.kind {
             raw::DefKind::Function(ast_id) => {
-                PerNs::values(FunctionId::from_ast_id(ctx, ast_id).into())
+                let f = FunctionId::from_ast_id(ctx, ast_id);
+                PerNs::values(f.into())
             }
             raw::DefKind::Struct(ast_id) => {
                 let id = StructOrUnionId::from_ast_id(ctx, ast_id).into();

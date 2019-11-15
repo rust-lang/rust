@@ -58,7 +58,7 @@ mod tests;
 
 use std::sync::Arc;
 
-use hir_expand::{diagnostics::DiagnosticSink, name::Name, MacroDefId};
+use hir_expand::{ast_id_map::FileAstId, diagnostics::DiagnosticSink, name::Name, MacroDefId};
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
 use ra_db::{CrateId, Edition, FileId};
@@ -73,7 +73,7 @@ use crate::{
         diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs, raw::ImportId,
     },
     path::Path,
-    AstId, CrateModuleId, ModuleDefId, ModuleId, TraitId,
+    AstId, CrateModuleId, FunctionId, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -122,6 +122,11 @@ pub struct ModuleData {
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
     pub definition: Option<FileId>,
+}
+
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
+pub(crate) struct Declarations {
+    fns: FxHashMap<FileAstId<ast::FnDef>, FunctionId>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
