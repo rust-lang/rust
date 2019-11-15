@@ -285,7 +285,7 @@ impl SourceAnalyzer {
         self.resolve_hir_path(db, &hir_path)
     }
 
-    pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
+    fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
         let mut shadowed = FxHashSet::default();
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
@@ -309,9 +309,9 @@ impl SourceAnalyzer {
         self.resolver.process_all_names(db, f)
     }
 
+    // FIXME: we only use this in `inline_local_variable` assist, ideally, we
+    // should switch to general reference search infra there.
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
-        // FIXME: at least, this should work with any DefWithBody, but ideally
-        // this should be hir-based altogether
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
         let ptr = Either::A(AstPtr::new(&ast::Pat::from(pat.clone())));
         fn_def
