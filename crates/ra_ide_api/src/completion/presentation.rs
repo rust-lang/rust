@@ -68,7 +68,7 @@ impl Completions {
             ScopeDef::ModuleDef(TypeAlias(..)) => CompletionItemKind::TypeAlias,
             ScopeDef::ModuleDef(BuiltinType(..)) => CompletionItemKind::BuiltinType,
             ScopeDef::GenericParam(..) => CompletionItemKind::TypeParam,
-            ScopeDef::LocalBinding(..) => CompletionItemKind::Binding,
+            ScopeDef::Local(..) => CompletionItemKind::Binding,
             // (does this need its own kind?)
             ScopeDef::AdtSelfType(..) | ScopeDef::ImplSelfType(..) => CompletionItemKind::TypeParam,
             ScopeDef::MacroDef(mac) => {
@@ -96,13 +96,11 @@ impl Completions {
 
         let mut completion_item =
             CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
-        if let ScopeDef::LocalBinding(pat_id) = resolution {
-            let ty = ctx
-                .analyzer
-                .type_of_pat_by_id(ctx.db, pat_id.clone())
-                .filter(|t| t != &Ty::Unknown)
-                .map(|t| t.display(ctx.db).to_string());
-            completion_item = completion_item.set_detail(ty);
+        if let ScopeDef::Local(local) = resolution {
+            let ty = local.ty(ctx.db);
+            if ty != Ty::Unknown {
+                completion_item = completion_item.detail(ty.display(ctx.db).to_string());
+            }
         };
 
         // If not an import, add parenthesis automatically.

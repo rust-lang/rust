@@ -38,7 +38,7 @@ pub(crate) fn resolver_for_scope(
     let scopes = owner.expr_scopes(db);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
-        r = r.push_expr_scope(Arc::clone(&scopes), scope);
+        r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
     }
     r
 }

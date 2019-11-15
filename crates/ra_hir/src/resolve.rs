@@ -16,8 +16,8 @@ use crate::{
     expr::{ExprScopes, PatId, ScopeId},
     generics::GenericParams,
     impl_block::ImplBlock,
-    Adt, Const, Enum, EnumVariant, Function, MacroDef, ModuleDef, PerNs, Static, Struct, Trait,
-    TypeAlias,
+    Adt, Const, DefWithBody, Enum, EnumVariant, Function, Local, MacroDef, ModuleDef, PerNs,
+    Static, Struct, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -34,6 +34,7 @@ pub(crate) struct ModuleItemMap {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ExprScope {
+    owner: DefWithBody,
     expr_scopes: Arc<ExprScopes>,
     scope_id: ScopeId,
 }
@@ -399,10 +400,11 @@ impl Resolver {
 
     pub(crate) fn push_expr_scope(
         self,
+        owner: DefWithBody,
         expr_scopes: Arc<ExprScopes>,
         scope_id: ScopeId,
     ) -> Resolver {
-        self.push_scope(Scope::ExprScope(ExprScope { expr_scopes, scope_id }))
+        self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
     }
 }
 
@@ -413,7 +415,7 @@ pub enum ScopeDef {
     GenericParam(u32),
     ImplSelfType(ImplBlock),
     AdtSelfType(Adt),
-    LocalBinding(PatId),
+    Local(Local),
     Unknown,
 }
 
@@ -467,9 +469,10 @@ impl Scope {
             Scope::AdtScope(i) => {
                 f(name::SELF_TYPE, ScopeDef::AdtSelfType(*i));
             }
-            Scope::ExprScope(e) => {
-                e.expr_scopes.entries(e.scope_id).iter().for_each(|e| {
-                    f(e.name().clone(), ScopeDef::LocalBinding(e.pat()));
+            Scope::ExprScope(scope) => {
+                scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
+                    let local = Local { parent: scope.owner, pat_id: e.pat() };
+                    f(e.name().clone(), ScopeDef::Local(local));
                 });
             }
         }
