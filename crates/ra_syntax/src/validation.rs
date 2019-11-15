@@ -103,6 +103,7 @@ pub(crate) fn validate(root: &SyntaxNode) -> Vec<SyntaxError> {
                 ast::FieldExpr(it) => { validate_numeric_name(it.name_ref(), &mut errors) },
                 ast::RecordField(it) => { validate_numeric_name(it.name_ref(), &mut errors) },
                 ast::Visibility(it) => { validate_visibility(it, &mut errors) },
+                ast::RangeExpr(it) => { validate_range_expr(it, &mut errors) },
                 _ => (),
             }
         }
@@ -225,5 +226,18 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
     if impl_block.target_trait().is_some() {
         errors
             .push(SyntaxError::new(SyntaxErrorKind::VisibilityNotAllowed, vis.syntax.text_range()))
+    }
+}
+
+fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
+    let last_child = match expr.syntax().last_child_or_token() {
+        Some(it) => it,
+        None => return,
+    };
+    if last_child.kind() == T![..=] {
+        errors.push(SyntaxError::new(
+            SyntaxErrorKind::InclusiveRangeMissingEnd,
+            last_child.text_range(),
+        ));
     }
 }

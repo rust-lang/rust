@@ -300,9 +300,6 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>,
             let has_trailing_expression =
                 p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{']));
             if !has_trailing_expression {
-                if op == T![..=] {
-                    p.error("expected expression to end inclusive range");
-                }
                 // no RHS
                 lhs = m.complete(p, RANGE_EXPR);
                 break;
