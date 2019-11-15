@@ -44,16 +44,16 @@ mod tests {
             ",
         );
         assert_debug_snapshot!(completions, @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "foo",
-       ⋮        source_range: [117; 118),
-       ⋮        delete: [117; 118),
-       ⋮        insert: "foo",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "foo",
+                source_range: [117; 118),
+                delete: [117; 118),
+                insert: "foo",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###);
     }
 
@@ -73,24 +73,24 @@ mod tests {
             ",
         );
         assert_debug_snapshot!(completions, @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "bar",
-       ⋮        source_range: [161; 161),
-       ⋮        delete: [161; 161),
-       ⋮        insert: "bar",
-       ⋮        kind: Field,
-       ⋮        detail: "()",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "foo",
-       ⋮        source_range: [161; 161),
-       ⋮        delete: [161; 161),
-       ⋮        insert: "foo",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "bar",
+                source_range: [161; 161),
+                delete: [161; 161),
+                insert: "bar",
+                kind: Field,
+                detail: "()",
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [161; 161),
+                delete: [161; 161),
+                insert: "foo",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###);
     }
 }

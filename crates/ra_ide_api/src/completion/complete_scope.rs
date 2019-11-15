@@ -409,15 +409,17 @@ mod tests {
                 // nothing here
                 "
             ),
-            @r#"[
-    CompletionItem {
-        label: "other_crate",
-        source_range: [4; 4),
-        delete: [4; 4),
-        insert: "other_crate",
-        kind: Module,
-    },
-]"#
+            @r###"
+        [
+            CompletionItem {
+                label: "other_crate",
+                source_range: [4; 4),
+                delete: [4; 4),
+                insert: "other_crate",
+                kind: Module,
+            },
+        ]
+        "###
         );
     }
 
@@ -530,23 +532,25 @@ mod tests {
     fn completes_self_in_methods() {
         assert_debug_snapshot!(
             do_reference_completion(r"impl S { fn foo(&self) { <|> } }"),
-            @r#"[
-    CompletionItem {
-        label: "Self",
-        source_range: [25; 25),
-        delete: [25; 25),
-        insert: "Self",
-        kind: TypeParam,
-    },
-    CompletionItem {
-        label: "self",
-        source_range: [25; 25),
-        delete: [25; 25),
-        insert: "self",
-        kind: Binding,
-        detail: "&{unknown}",
-    },
-]"#
+            @r###"
+        [
+            CompletionItem {
+                label: "Self",
+                source_range: [25; 25),
+                delete: [25; 25),
+                insert: "Self",
+                kind: TypeParam,
+            },
+            CompletionItem {
+                label: "self",
+                source_range: [25; 25),
+                delete: [25; 25),
+                insert: "self",
+                kind: Binding,
+                detail: "&{unknown}",
+            },
+        ]
+        "###
         );
     }
 

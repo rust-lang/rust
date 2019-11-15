@@ -323,38 +323,38 @@ mod tests {
                 "#,
             ),
             @r###"
-            [
-                CompletionItem {
-                    label: "main()",
-                    source_range: [203; 206),
-                    delete: [203; 206),
-                    insert: "main()$0",
-                    kind: Function,
-                    lookup: "main",
-                    detail: "fn main()",
-                },
-                CompletionItem {
-                    label: "something_deprecated()",
-                    source_range: [203; 206),
-                    delete: [203; 206),
-                    insert: "something_deprecated()$0",
-                    kind: Function,
-                    lookup: "something_deprecated",
-                    detail: "fn something_deprecated()",
-                    deprecated: true,
-                },
-                CompletionItem {
-                    label: "something_else_deprecated()",
-                    source_range: [203; 206),
-                    delete: [203; 206),
-                    insert: "something_else_deprecated()$0",
-                    kind: Function,
-                    lookup: "something_else_deprecated",
-                    detail: "fn something_else_deprecated()",
-                    deprecated: true,
-                },
-            ]
-            "###
+        [
+            CompletionItem {
+                label: "main()",
+                source_range: [203; 206),
+                delete: [203; 206),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+            CompletionItem {
+                label: "something_deprecated()",
+                source_range: [203; 206),
+                delete: [203; 206),
+                insert: "something_deprecated()$0",
+                kind: Function,
+                lookup: "something_deprecated",
+                detail: "fn something_deprecated()",
+                deprecated: true,
+            },
+            CompletionItem {
+                label: "something_else_deprecated()",
+                source_range: [203; 206),
+                delete: [203; 206),
+                insert: "something_else_deprecated()$0",
+                kind: Function,
+                lookup: "something_else_deprecated",
+                detail: "fn something_else_deprecated()",
+                deprecated: true,
+            },
+        ]
+        "###
         );
     }
 
@@ -459,16 +459,18 @@ mod tests {
                 use crate::m::f<|>;
                 "
             ),
-            @r#"[
-    CompletionItem {
-        label: "foo",
-        source_range: [40; 41),
-        delete: [40; 41),
-        insert: "foo",
-        kind: Function,
-        detail: "pub fn foo()",
-    },
-]"#
+            @r###"
+        [
+            CompletionItem {
+                label: "foo",
+                source_range: [40; 41),
+                delete: [40; 41),
+                insert: "foo",
+                kind: Function,
+                detail: "pub fn foo()",
+            },
+        ]
+        "###
         );
     }
 
@@ -484,24 +486,26 @@ mod tests {
                 }
                 "
             ),
-            @r#"[
-    CompletionItem {
-        label: "frobnicate",
-        source_range: [35; 39),
-        delete: [35; 39),
-        insert: "frobnicate",
-        kind: Function,
-        detail: "fn frobnicate()",
-    },
-    CompletionItem {
-        label: "main",
-        source_range: [35; 39),
-        delete: [35; 39),
-        insert: "main",
-        kind: Function,
-        detail: "fn main()",
-    },
-]"#
+            @r###"
+        [
+            CompletionItem {
+                label: "frobnicate",
+                source_range: [35; 39),
+                delete: [35; 39),
+                insert: "frobnicate",
+                kind: Function,
+                detail: "fn frobnicate()",
+            },
+            CompletionItem {
+                label: "main",
+                source_range: [35; 39),
+                delete: [35; 39),
+                insert: "main",
+                kind: Function,
+                detail: "fn main()",
+            },
+        ]
+        "###
         );
         assert_debug_snapshot!(
             do_reference_completion(
@@ -514,16 +518,18 @@ mod tests {
                 }
                 "
             ),
-            @r#"[
-    CompletionItem {
-        label: "new",
-        source_range: [67; 69),
-        delete: [67; 69),
-        insert: "new",
-        kind: Function,
-        detail: "fn new() -> Foo",
-    },
-]"#
+            @r###"
+        [
+            CompletionItem {
+                label: "new",
+                source_range: [67; 69),
+                delete: [67; 69),
+                insert: "new",
+                kind: Function,
+                detail: "fn new() -> Foo",
+            },
+        ]
+        "###
         );
     }
 

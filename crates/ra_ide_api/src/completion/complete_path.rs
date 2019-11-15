@@ -152,18 +152,20 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "my",
-        source_range: [27; 29),
-        delete: [27; 29),
-        insert: "my",
-        kind: Module,
-        documentation: Documentation(
-            "Some simple\ndocs describing `mod my`.",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "my",
+                source_range: [27; 29),
+                delete: [27; 29),
+                insert: "my",
+                kind: Module,
+                documentation: Documentation(
+                    "Some simple\ndocs describing `mod my`.",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -179,15 +181,17 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Bar",
-        source_range: [30; 30),
-        delete: [30; 30),
-        insert: "Bar",
-        kind: Struct,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Bar",
+                source_range: [30; 30),
+                delete: [30; 30),
+                insert: "Bar",
+                kind: Struct,
+            },
+        ]
+        "###
         );
     }
 
@@ -203,22 +207,24 @@ mod tests {
                 use crate::Sp<|>
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Spam",
-        source_range: [11; 13),
-        delete: [11; 13),
-        insert: "Spam",
-        kind: Struct,
-    },
-    CompletionItem {
-        label: "foo",
-        source_range: [11; 13),
-        delete: [11; 13),
-        insert: "foo",
-        kind: Module,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Spam",
+                source_range: [11; 13),
+                delete: [11; 13),
+                insert: "Spam",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [11; 13),
+                delete: [11; 13),
+                insert: "foo",
+                kind: Module,
+            },
+        ]
+        "###
         );
     }
 
@@ -234,22 +240,24 @@ mod tests {
                 use crate::{Sp<|>};
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Spam",
-        source_range: [12; 14),
-        delete: [12; 14),
-        insert: "Spam",
-        kind: Struct,
-    },
-    CompletionItem {
-        label: "foo",
-        source_range: [12; 14),
-        delete: [12; 14),
-        insert: "foo",
-        kind: Module,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Spam",
+                source_range: [12; 14),
+                delete: [12; 14),
+                insert: "Spam",
+                kind: Struct,
+            },
+            CompletionItem {
+                label: "foo",
+                source_range: [12; 14),
+                delete: [12; 14),
+                insert: "foo",
+                kind: Module,
+            },
+        ]
+        "###
         );
     }
 
@@ -269,15 +277,17 @@ mod tests {
                 use crate::{bar::{baz::Sp<|>}};
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Spam",
-        source_range: [23; 25),
-        delete: [23; 25),
-        insert: "Spam",
-        kind: Struct,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Spam",
+                source_range: [23; 25),
+                delete: [23; 25),
+                insert: "Spam",
+                kind: Struct,
+            },
+        ]
+        "###
         );
     }
 
@@ -297,30 +307,32 @@ mod tests {
                 fn foo() { let _ = E::<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Bar",
-        source_range: [116; 116),
-        delete: [116; 116),
-        insert: "Bar",
-        kind: EnumVariant,
-        detail: "(i32)",
-        documentation: Documentation(
-            "Bar Variant with i32",
-        ),
-    },
-    CompletionItem {
-        label: "Foo",
-        source_range: [116; 116),
-        delete: [116; 116),
-        insert: "Foo",
-        kind: EnumVariant,
-        detail: "()",
-        documentation: Documentation(
-            "Foo Variant",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Bar",
+                source_range: [116; 116),
+                delete: [116; 116),
+                insert: "Bar",
+                kind: EnumVariant,
+                detail: "(i32)",
+                documentation: Documentation(
+                    "Bar Variant with i32",
+                ),
+            },
+            CompletionItem {
+                label: "Foo",
+                source_range: [116; 116),
+                delete: [116; 116),
+                insert: "Foo",
+                kind: EnumVariant,
+                detail: "()",
+                documentation: Documentation(
+                    "Foo Variant",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -343,41 +355,43 @@ mod tests {
                 fn foo() { let _ = E::<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Bar",
-        source_range: [180; 180),
-        delete: [180; 180),
-        insert: "Bar",
-        kind: EnumVariant,
-        detail: "(i32, u32)",
-        documentation: Documentation(
-            "Bar Variant with i32 and u32",
-        ),
-    },
-    CompletionItem {
-        label: "Foo",
-        source_range: [180; 180),
-        delete: [180; 180),
-        insert: "Foo",
-        kind: EnumVariant,
-        detail: "()",
-        documentation: Documentation(
-            "Foo Variant (empty)",
-        ),
-    },
-    CompletionItem {
-        label: "S",
-        source_range: [180; 180),
-        delete: [180; 180),
-        insert: "S",
-        kind: EnumVariant,
-        detail: "(S)",
-        documentation: Documentation(
-            "",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Bar",
+                source_range: [180; 180),
+                delete: [180; 180),
+                insert: "Bar",
+                kind: EnumVariant,
+                detail: "(i32, u32)",
+                documentation: Documentation(
+                    "Bar Variant with i32 and u32",
+                ),
+            },
+            CompletionItem {
+                label: "Foo",
+                source_range: [180; 180),
+                delete: [180; 180),
+                insert: "Foo",
+                kind: EnumVariant,
+                detail: "()",
+                documentation: Documentation(
+                    "Foo Variant (empty)",
+                ),
+            },
+            CompletionItem {
+                label: "S",
+                source_range: [180; 180),
+                delete: [180; 180),
+                insert: "S",
+                kind: EnumVariant,
+                detail: "(S)",
+                documentation: Documentation(
+                    "",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -434,19 +448,21 @@ mod tests {
                 fn foo() { let _ = S::<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "C",
-        source_range: [107; 107),
-        delete: [107; 107),
-        insert: "C",
-        kind: Const,
-        detail: "const C: i32 = 42;",
-        documentation: Documentation(
-            "An associated const",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "C",
+                source_range: [107; 107),
+                delete: [107; 107),
+                insert: "C",
+                kind: Const,
+                detail: "const C: i32 = 42;",
+                documentation: Documentation(
+                    "An associated const",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -467,19 +483,21 @@ mod tests {
                 fn foo() { let _ = S::<|> }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "T",
-        source_range: [101; 101),
-        delete: [101; 101),
-        insert: "T",
-        kind: TypeAlias,
-        detail: "type T = i32;",
-        documentation: Documentation(
-            "An associated type",
-        ),
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "T",
+                source_range: [101; 101),
+                delete: [101; 101),
+                insert: "T",
+                kind: TypeAlias,
+                detail: "type T = i32;",
+                documentation: Documentation(
+                    "An associated type",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -569,15 +587,17 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "bar",
-        source_range: [9; 9),
-        delete: [9; 9),
-        insert: "bar",
-        kind: Module,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "bar",
+                source_range: [9; 9),
+                delete: [9; 9),
+                insert: "bar",
+                kind: Module,
+            },
+        ]
+        "###
         );
     }
 

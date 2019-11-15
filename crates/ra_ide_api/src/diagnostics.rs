@@ -526,28 +526,28 @@ mod tests {
         let (analysis, file_id) = single_file("mod foo;");
         let diagnostics = analysis.diagnostics(file_id).unwrap();
         assert_debug_snapshot!(diagnostics, @r###"
-       ⋮[
-       ⋮    Diagnostic {
-       ⋮        message: "unresolved module",
-       ⋮        range: [0; 8),
-       ⋮        fix: Some(
-       ⋮            SourceChange {
-       ⋮                label: "create module",
-       ⋮                source_file_edits: [],
-       ⋮                file_system_edits: [
-       ⋮                    CreateFile {
-       ⋮                        source_root: SourceRootId(
-       ⋮                            0,
-       ⋮                        ),
-       ⋮                        path: "foo.rs",
-       ⋮                    },
-       ⋮                ],
-       ⋮                cursor_position: None,
-       ⋮            },
-       ⋮        ),
-       ⋮        severity: Error,
-       ⋮    },
-       ⋮]
+        [
+            Diagnostic {
+                message: "unresolved module",
+                range: [0; 8),
+                fix: Some(
+                    SourceChange {
+                        label: "create module",
+                        source_file_edits: [],
+                        file_system_edits: [
+                            CreateFile {
+                                source_root: SourceRootId(
+                                    0,
+                                ),
+                                path: "foo.rs",
+                            },
+                        ],
+                        cursor_position: None,
+                    },
+                ),
+                severity: Error,
+            },
+        ]
         "###);
     }
 

@@ -131,29 +131,31 @@ mod tests {
                 use <|>
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "crate",
-        source_range: [21; 21),
-        delete: [21; 21),
-        insert: "crate::",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "self",
-        source_range: [21; 21),
-        delete: [21; 21),
-        insert: "self",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "super",
-        source_range: [21; 21),
-        delete: [21; 21),
-        insert: "super::",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "crate",
+                source_range: [21; 21),
+                delete: [21; 21),
+                insert: "crate::",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "self",
+                source_range: [21; 21),
+                delete: [21; 21),
+                insert: "self",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "super",
+                source_range: [21; 21),
+                delete: [21; 21),
+                insert: "super::",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
 
         assert_debug_snapshot!(
@@ -162,22 +164,24 @@ mod tests {
                 use a::<|>
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "self",
-        source_range: [24; 24),
-        delete: [24; 24),
-        insert: "self",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "super",
-        source_range: [24; 24),
-        delete: [24; 24),
-        insert: "super::",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "self",
+                source_range: [24; 24),
+                delete: [24; 24),
+                insert: "self",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "super",
+                source_range: [24; 24),
+                delete: [24; 24),
+                insert: "super::",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
 
         assert_debug_snapshot!(
@@ -186,22 +190,24 @@ mod tests {
                 use a::{b, <|>}
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "self",
-        source_range: [28; 28),
-        delete: [28; 28),
-        insert: "self",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "super",
-        source_range: [28; 28),
-        delete: [28; 28),
-        insert: "super::",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "self",
+                source_range: [28; 28),
+                delete: [28; 28),
+                insert: "self",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "super",
+                source_range: [28; 28),
+                delete: [28; 28),
+                insert: "super::",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
     }
 
@@ -215,43 +221,45 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "if",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "return;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "if",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "return;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
     }
 
@@ -267,57 +275,59 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "else",
-        source_range: [108; 108),
-        delete: [108; 108),
-        insert: "else {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "else if",
-        source_range: [108; 108),
-        delete: [108; 108),
-        insert: "else if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "if",
-        source_range: [108; 108),
-        delete: [108; 108),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [108; 108),
-        delete: [108; 108),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [108; 108),
-        delete: [108; 108),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [108; 108),
-        delete: [108; 108),
-        insert: "return;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [108; 108),
-        delete: [108; 108),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "else",
+                source_range: [108; 108),
+                delete: [108; 108),
+                insert: "else {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "else if",
+                source_range: [108; 108),
+                delete: [108; 108),
+                insert: "else if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "if",
+                source_range: [108; 108),
+                delete: [108; 108),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [108; 108),
+                delete: [108; 108),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [108; 108),
+                delete: [108; 108),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [108; 108),
+                delete: [108; 108),
+                insert: "return;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [108; 108),
+                delete: [108; 108),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
     }
 
@@ -332,43 +342,45 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "if",
-        source_range: [56; 56),
-        delete: [56; 56),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [56; 56),
-        delete: [56; 56),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [56; 56),
-        delete: [56; 56),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [56; 56),
-        delete: [56; 56),
-        insert: "return $0;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [56; 56),
-        delete: [56; 56),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "if",
+                source_range: [56; 56),
+                delete: [56; 56),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [56; 56),
+                delete: [56; 56),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [56; 56),
+                delete: [56; 56),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [56; 56),
+                delete: [56; 56),
+                insert: "return $0;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [56; 56),
+                delete: [56; 56),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
         assert_debug_snapshot!(
             do_keyword_completion(
@@ -379,43 +391,45 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "if",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "return;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [49; 49),
-        delete: [49; 49),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "if",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "return;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [49; 49),
+                delete: [49; 49),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
     }
 
@@ -431,43 +445,45 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "if",
-        source_range: [97; 97),
-        delete: [97; 97),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [97; 97),
-        delete: [97; 97),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [97; 97),
-        delete: [97; 97),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [97; 97),
-        delete: [97; 97),
-        insert: "return $0",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [97; 97),
-        delete: [97; 97),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "if",
+                source_range: [97; 97),
+                delete: [97; 97),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [97; 97),
+                delete: [97; 97),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [97; 97),
+                delete: [97; 97),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [97; 97),
+                delete: [97; 97),
+                insert: "return $0",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [97; 97),
+                delete: [97; 97),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
     }
 
@@ -483,43 +499,45 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "if",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "return $0;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "if",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "return $0;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
         assert_debug_snapshot!(
             do_keyword_completion(
@@ -533,43 +551,45 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "if",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "return $0;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [95; 95),
-        delete: [95; 95),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "if",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "return $0;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [95; 95),
+                delete: [95; 95),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
     }
 
@@ -583,57 +603,59 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "break",
-        source_range: [63; 63),
-        delete: [63; 63),
-        insert: "break;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "continue",
-        source_range: [63; 63),
-        delete: [63; 63),
-        insert: "continue;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "if",
-        source_range: [63; 63),
-        delete: [63; 63),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [63; 63),
-        delete: [63; 63),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [63; 63),
-        delete: [63; 63),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [63; 63),
-        delete: [63; 63),
-        insert: "return $0;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [63; 63),
-        delete: [63; 63),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "break",
+                source_range: [63; 63),
+                delete: [63; 63),
+                insert: "break;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "continue",
+                source_range: [63; 63),
+                delete: [63; 63),
+                insert: "continue;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "if",
+                source_range: [63; 63),
+                delete: [63; 63),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [63; 63),
+                delete: [63; 63),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [63; 63),
+                delete: [63; 63),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [63; 63),
+                delete: [63; 63),
+                insert: "return $0;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [63; 63),
+                delete: [63; 63),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
 
         // No completion: lambda isolates control flow
@@ -645,43 +667,45 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "if",
-        source_range: [68; 68),
-        delete: [68; 68),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [68; 68),
-        delete: [68; 68),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [68; 68),
-        delete: [68; 68),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [68; 68),
-        delete: [68; 68),
-        insert: "return $0;",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [68; 68),
-        delete: [68; 68),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "if",
+                source_range: [68; 68),
+                delete: [68; 68),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [68; 68),
+                delete: [68; 68),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [68; 68),
+                delete: [68; 68),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [68; 68),
+                delete: [68; 68),
+                insert: "return $0;",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [68; 68),
+                delete: [68; 68),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         );
     }
 
@@ -699,57 +723,59 @@ mod tests {
                 }
                 ",
             ),
-            @r###"[
-    CompletionItem {
-        label: "break",
-        source_range: [122; 124),
-        delete: [122; 124),
-        insert: "break",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "continue",
-        source_range: [122; 124),
-        delete: [122; 124),
-        insert: "continue",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "if",
-        source_range: [122; 124),
-        delete: [122; 124),
-        insert: "if $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "loop",
-        source_range: [122; 124),
-        delete: [122; 124),
-        insert: "loop {$0}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [122; 124),
-        delete: [122; 124),
-        insert: "match $0 {}",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "return",
-        source_range: [122; 124),
-        delete: [122; 124),
-        insert: "return",
-        kind: Keyword,
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [122; 124),
-        delete: [122; 124),
-        insert: "while $0 {}",
-        kind: Keyword,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "break",
+                source_range: [122; 124),
+                delete: [122; 124),
+                insert: "break",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "continue",
+                source_range: [122; 124),
+                delete: [122; 124),
+                insert: "continue",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "if",
+                source_range: [122; 124),
+                delete: [122; 124),
+                insert: "if $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "loop",
+                source_range: [122; 124),
+                delete: [122; 124),
+                insert: "loop {$0}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [122; 124),
+                delete: [122; 124),
+                insert: "match $0 {}",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "return",
+                source_range: [122; 124),
+                delete: [122; 124),
+                insert: "return",
+                kind: Keyword,
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [122; 124),
+                delete: [122; 124),
+                insert: "while $0 {}",
+                kind: Keyword,
+            },
+        ]
+        "###
         )
     }
 }

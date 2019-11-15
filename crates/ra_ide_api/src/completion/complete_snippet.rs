@@ -52,22 +52,24 @@ mod tests {
     fn completes_snippets_in_expressions() {
         assert_debug_snapshot!(
                     do_snippet_completion(r"fn foo(x: i32) { <|> }"),
-        @r#"[
-    CompletionItem {
-        label: "pd",
-        source_range: [17; 17),
-        delete: [17; 17),
-        insert: "eprintln!(\"$0 = {:?}\", $0);",
-        kind: Snippet,
-    },
-    CompletionItem {
-        label: "ppd",
-        source_range: [17; 17),
-        delete: [17; 17),
-        insert: "eprintln!(\"$0 = {:#?}\", $0);",
-        kind: Snippet,
-    },
-]"#
+        @r###"
+        [
+            CompletionItem {
+                label: "pd",
+                source_range: [17; 17),
+                delete: [17; 17),
+                insert: "eprintln!(\"$0 = {:?}\", $0);",
+                kind: Snippet,
+            },
+            CompletionItem {
+                label: "ppd",
+                source_range: [17; 17),
+                delete: [17; 17),
+                insert: "eprintln!(\"$0 = {:#?}\", $0);",
+                kind: Snippet,
+            },
+        ]
+        "###
                 );
     }
 
@@ -75,11 +77,11 @@ mod tests {
     fn should_not_complete_snippets_in_path() {
         assert_debug_snapshot!(
                     do_snippet_completion(r"fn foo(x: i32) { ::foo<|> }"),
-        @r#"[]"#
+        @"[]"
                 );
         assert_debug_snapshot!(
                     do_snippet_completion(r"fn foo(x: i32) { ::<|> }"),
-        @r#"[]"#
+        @"[]"
                 );
     }
 
@@ -94,23 +96,25 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "Test function",
-        source_range: [78; 78),
-        delete: [78; 78),
-        insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
-        kind: Snippet,
-        lookup: "tfn",
-    },
-    CompletionItem {
-        label: "pub(crate)",
-        source_range: [78; 78),
-        delete: [78; 78),
-        insert: "pub(crate) $0",
-        kind: Snippet,
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "Test function",
+                source_range: [78; 78),
+                delete: [78; 78),
+                insert: "#[test]\nfn ${1:feature}() {\n    $0\n}",
+                kind: Snippet,
+                lookup: "tfn",
+            },
+            CompletionItem {
+                label: "pub(crate)",
+                source_range: [78; 78),
+                delete: [78; 78),
+                insert: "pub(crate) $0",
+                kind: Snippet,
+            },
+        ]
+        "###
         );
     }
 }

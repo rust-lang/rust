@@ -45,17 +45,17 @@ mod tests {
             ",
         );
         assert_debug_snapshot!(completions, @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "the_field",
-       ⋮        source_range: [142; 145),
-       ⋮        delete: [142; 145),
-       ⋮        insert: "the_field",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮        deprecated: true,
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [142; 145),
+                delete: [142; 145),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+                deprecated: true,
+            },
+        ]
         "###);
     }
 
@@ -70,16 +70,16 @@ mod tests {
             ",
         );
         assert_debug_snapshot!(completions, @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "the_field",
-       ⋮        source_range: [83; 86),
-       ⋮        delete: [83; 86),
-       ⋮        insert: "the_field",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [83; 86),
+                delete: [83; 86),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###);
     }
 
@@ -96,16 +96,16 @@ mod tests {
             ",
         );
         assert_debug_snapshot!(completions, @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "a",
-       ⋮        source_range: [119; 119),
-       ⋮        delete: [119; 119),
-       ⋮        insert: "a",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "a",
+                source_range: [119; 119),
+                delete: [119; 119),
+                insert: "a",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###);
     }
 
@@ -122,16 +122,16 @@ mod tests {
             ",
         );
         assert_debug_snapshot!(completions, @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "b",
-       ⋮        source_range: [119; 119),
-       ⋮        delete: [119; 119),
-       ⋮        insert: "b",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "b",
+                source_range: [119; 119),
+                delete: [119; 119),
+                insert: "b",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###);
     }
 
@@ -147,16 +147,16 @@ mod tests {
             ",
         );
         assert_debug_snapshot!(completions, @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "a",
-       ⋮        source_range: [93; 93),
-       ⋮        delete: [93; 93),
-       ⋮        insert: "a",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "a",
+                source_range: [93; 93),
+                delete: [93; 93),
+                insert: "a",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###);
     }
 }
