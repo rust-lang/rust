@@ -21,7 +21,6 @@ pub(crate) fn classify_name(
     let parent = name.syntax().parent()?;
     let file_id = file_id.into();
 
-    // FIXME: add ast::MacroCall(it)
     match_ast! {
         match parent {
             ast::BindPat(it) => {
@@ -103,6 +102,19 @@ pub(crate) fn classify_name(
                 } else {
                     Some(from_module_def(db, def.into(), None))
                 }
+            },
+            ast::MacroCall(it) => {
+                let src = hir::Source { file_id, ast: it};
+                let def = hir::MacroDef::from_source(db, src.clone())?;
+
+                let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
+                let module = Module::from_definition(db, Source::new(file_id, module_src))?;
+
+                Some(NameDefinition {
+                    visibility: None,
+                    container: module,
+                    kind: NameKind::Macro(def),
+                })
             },
             _ => None,
         }
