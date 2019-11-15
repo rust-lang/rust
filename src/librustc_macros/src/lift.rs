@@ -7,19 +7,19 @@ pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStre
     s.add_bounds(synstructure::AddBounds::Generics);
 
     let tcx: syn::Lifetime = parse_quote!('tcx);
-    let newtcx: syn::GenericParam = parse_quote!('__newtcx);
+    let newtcx: syn::GenericParam = parse_quote!('__lifted);
 
     let lifted = {
         let ast = s.ast();
         let ident = &ast.ident;
 
-        // Replace `'tcx` lifetime by the `'__newtcx` lifetime
+        // Replace `'tcx` lifetime by the `'__lifted` lifetime
         let (_, generics, _) = ast.generics.split_for_impl();
         let mut generics : syn::AngleBracketedGenericArguments = syn::parse_quote!{ #generics };
         for arg in generics.args.iter_mut() {
             match arg {
                 syn::GenericArgument::Lifetime(l) if *l == tcx => {
-                    *arg = parse_quote!('__newtcx);
+                    *arg = parse_quote!('__lifted);
                 },
                 syn::GenericArgument::Type(t) => {
                     *arg = syn::parse_quote!{ #t::Lifted };
@@ -40,10 +40,10 @@ pub fn lift_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStre
     });
 
     s.add_impl_generic(newtcx);
-    s.bound_impl(quote!(::rustc::ty::Lift<'__newtcx>), quote!{
+    s.bound_impl(quote!(::rustc::ty::Lift<'__lifted>), quote!{
         type Lifted = #lifted;
 
-        fn lift_to_tcx(&self, __tcx: ::rustc::ty::TyCtxt<'__newtcx>) -> Option<#lifted> {
+        fn lift_to_tcx(&self, __tcx: ::rustc::ty::TyCtxt<'__lifted>) -> Option<#lifted> {
             Some(match *self { #body })
         }
     })
