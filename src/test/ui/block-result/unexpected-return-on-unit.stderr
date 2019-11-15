@@ -4,8 +4,6 @@ error[E0308]: mismatched types
 LL |     foo()
    |     ^^^^^ expected (), found usize
    |
-   = note: expected unit type `()`
-                   found type `usize`
 help: try adding a semicolon
    |
 LL |     foo();

@@ -11,9 +11,6 @@ error[E0308]: mismatched types
    |
 LL |     let () = 0;
    |         ^^ expected integer, found ()
-   |
-   = note:   expected type `{integer}`
-           found unit type `()`
 
 error: aborting due to previous error
 

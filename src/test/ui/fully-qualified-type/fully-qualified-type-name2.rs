@@ -12,8 +12,6 @@ fn bar(x: x::Foo) -> y::Foo {
     return x;
     //~^ ERROR mismatched types
     //~| expected enum `y::Foo`, found enum `x::Foo`
-    //~| expected enum `y::Foo`
-    //~| found enum `x::Foo`
 }
 
 fn main() {

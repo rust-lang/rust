@@ -5,9 +5,6 @@ LL |     let x = if true { 10i32 } else { 10u32 };
    |                       -----          ^^^^^ expected i32, found u32
    |                       |
    |                       expected because of this
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error: aborting due to previous error
 

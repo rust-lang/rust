@@ -12,9 +12,6 @@ error[E0308]: mismatched types
    |
 LL |     let _: u8 = <E2>::V;
    |                 ^^^^^^^ expected u8, found enum `E2`
-   |
-   = note: expected type `u8`
-              found enum `E2`
 
 error: aborting due to 2 previous errors
 

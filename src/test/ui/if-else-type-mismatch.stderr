@@ -10,9 +10,6 @@ LL | |         2u32
    | |         ^^^^ expected i32, found u32
 LL | |     };
    | |_____- if and else have incompatible types
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:8:38
@@ -21,9 +18,6 @@ LL |     let _ = if true { 42i32 } else { 42u32 };
    |                       -----          ^^^^^ expected i32, found u32
    |                       |
    |                       expected because of this
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:13:9
@@ -40,9 +34,6 @@ LL | |         4u32
    | |         ^^^^ expected (), found u32
 LL | |     };
    | |_____- if and else have incompatible types
-   |
-   = note: expected type `()`
-              found type `u32`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:19:9
@@ -59,9 +50,6 @@ LL | |         6u32;
    | |         expected u32, found ()
 LL | |     };
    | |_____- if and else have incompatible types
-   |
-   = note:   expected type `u32`
-           found unit type `()`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:25:9
@@ -75,9 +63,6 @@ LL | |         8u32
    | |         ^^^^ expected (), found u32
 LL | |     };
    | |_____- if and else have incompatible types
-   |
-   = note: expected type `()`
-              found type `u32`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:31:9
@@ -91,9 +76,6 @@ LL | |         10u32;
    | |         ^^^^^^ expected i32, found ()
 LL | |     };
    | |_____- if and else have incompatible types
-   |
-   = note:   expected type `i32`
-           found unit type `()`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:37:9
@@ -105,9 +87,6 @@ LL | |     } else {
    | |_____- expected because of this
 LL |           11u32
    |           ^^^^^ expected (), found u32
-   |
-   = note: expected type `()`
-              found type `u32`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/if-else-type-mismatch.rs:42:12
@@ -121,9 +100,6 @@ LL |       } else {
 LL | |
 LL | |     };
    | |_____^ expected i32, found ()
-   |
-   = note:   expected type `i32`
-           found unit type `()`
 
 error: aborting due to 8 previous errors
 

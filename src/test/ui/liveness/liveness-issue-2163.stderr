@@ -6,9 +6,6 @@ LL |       a.iter().all(|_| -> bool {
 LL | |
 LL | |     });
    | |_____^ expected bool, found ()
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error: aborting due to previous error
 

@@ -9,36 +9,27 @@ error[E0308]: mismatched types
    |
 LL |     let b = [0; ()];
    |                 ^^ expected usize, found ()
-   |
-   = note:   expected type `usize`
-           found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:12:17
+  --> $DIR/repeat_count.rs:10:17
    |
 LL |     let c = [0; true];
    |                 ^^^^ expected usize, found bool
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:15:17
+  --> $DIR/repeat_count.rs:13:17
    |
 LL |     let d = [0; 0.5];
    |                 ^^^ expected usize, found floating-point number
-   |
-   = note: expected type `usize`
-              found type `{float}`
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:20:17
+  --> $DIR/repeat_count.rs:16:17
    |
 LL |     let e = [0; "foo"];
-   |                 ^^^^^ expected usize, found reference
-   |
-   = note:   expected type `usize`
-           found reference `&'static str`
+   |                 ^^^^^ expected usize, found &str
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:25:17
+  --> $DIR/repeat_count.rs:19:17
    |
 LL |     let f = [0; -4_isize];
    |                 ^^^^^^^^ expected usize, found isize
@@ -49,7 +40,7 @@ LL |     let f = [0; (-4_isize).try_into().unwrap()];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:28:23
+  --> $DIR/repeat_count.rs:22:23
    |
 LL |     let f = [0_usize; -1_isize];
    |                       ^^^^^^^^ expected usize, found isize
@@ -60,13 +51,10 @@ LL |     let f = [0_usize; (-1_isize).try_into().unwrap()];
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/repeat_count.rs:34:17
+  --> $DIR/repeat_count.rs:28:17
    |
 LL |     let g = [0; G { g: () }];
    |                 ^^^^^^^^^^^ expected usize, found struct `main::G`
-   |
-   = note: expected type `usize`
-            found struct `main::G`
 
 error: aborting due to 8 previous errors
 

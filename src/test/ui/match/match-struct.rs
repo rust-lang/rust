@@ -6,8 +6,6 @@ fn main() {
         E::C(_) => (),
         //~^ ERROR mismatched types
         //~| expected struct `S`, found enum `E`
-        //~| expected struct `S`
-        //~| found enum `E`
         _ => ()
     }
 }

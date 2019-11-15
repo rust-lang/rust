@@ -8,9 +8,6 @@ LL | |         foo();
    | |              - help: consider removing this semicolon
 LL | |     };
    | |_____^ expected i32, found ()
-   |
-   = note:   expected type `i32`
-           found unit type `()`
 
 error: aborting due to previous error
 

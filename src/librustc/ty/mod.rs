@@ -555,16 +555,29 @@ impl<'tcx> Hash for TyS<'tcx> {
 impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         match self.kind {
-            Bool |
-            Char |
-            Int(_) |
-            Uint(_) |
-            Float(_) |
-            Infer(InferTy::IntVar(_)) |
-            Infer(InferTy::FloatVar(_)) |
-            Infer(InferTy::FreshIntTy(_)) |
-            Infer(InferTy::FreshFloatTy(_)) => true,
-            Ref(_, x, _) => x.is_primitive_ty(),
+            Bool | Char | Str | Int(_) | Uint(_) | Float(_) |
+            Infer(InferTy::IntVar(_)) | Infer(InferTy::FloatVar(_)) |
+            Infer(InferTy::FreshIntTy(_)) | Infer(InferTy::FreshFloatTy(_)) => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_simple_ty(&self) -> bool {
+        match self.kind {
+            Bool | Char | Str | Int(_) | Uint(_) | Float(_) |
+            Infer(InferTy::IntVar(_)) | Infer(InferTy::FloatVar(_)) |
+            Infer(InferTy::FreshIntTy(_)) | Infer(InferTy::FreshFloatTy(_)) => true,
+            Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
+            Tuple(tys) if tys.is_empty() => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_simple_text(&self) -> bool {
+        match self.kind {
+            Adt(_, substs) => substs.types().next().is_none(),
+            Ref(_, ty, _) => ty.is_simple_text(),
+            _ if self.is_simple_ty() => true,
             _ => false,
         }
     }

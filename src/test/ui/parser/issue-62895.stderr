@@ -40,9 +40,6 @@ LL | fn v() -> isize {
    |    -      ^^^^^ expected isize, found ()
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
-   |
-   = note:   expected type `isize`
-           found unit type `()`
 
 error: aborting due to 6 previous errors
 

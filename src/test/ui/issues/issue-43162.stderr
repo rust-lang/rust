@@ -20,9 +20,6 @@ LL | fn foo() -> bool {
 LL |
 LL |     break true;
    |               - help: consider removing this semicolon
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error: aborting due to 3 previous errors
 

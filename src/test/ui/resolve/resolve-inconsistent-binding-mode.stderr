@@ -25,18 +25,12 @@ error[E0308]: mismatched types
    |
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
-   |
-   = note: expected type `&isize`
-              found type `isize`
 
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:16:32
    |
 LL |       Opts::A(ref i) | Opts::B(i) => {}
    |                                ^ expected &isize, found isize
-   |
-   = note: expected type `&isize`
-              found type `isize`
 
 error[E0308]: mismatched types
   --> $DIR/resolve-inconsistent-binding-mode.rs:25:36

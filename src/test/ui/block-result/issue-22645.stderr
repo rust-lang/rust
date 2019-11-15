@@ -16,9 +16,6 @@ LL | fn main() {
 LL |   let b = Bob + 3.5;
 LL |   b + 3
    |   ^^^^^ expected (), found struct `Bob`
-   |
-   = note: expected unit type `()`
-                 found struct `Bob`
 
 error: aborting due to 2 previous errors
 

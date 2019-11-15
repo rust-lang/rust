@@ -8,8 +8,6 @@ LL | |         return 3;
 LL | |     }
    | |_____^ expected usize, found ()
    |
-   = note:   expected type `usize`
-           found unit type `()`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
@@ -24,8 +22,6 @@ LL | |         return 3;
 LL | |     };
    | |_____^ expected usize, found ()
    |
-   = note:   expected type `usize`
-           found unit type `()`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
@@ -39,8 +35,6 @@ LL | |         3
 LL | |     }
    | |_____^ expected usize, found ()
    |
-   = note:   expected type `usize`
-           found unit type `()`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
@@ -54,8 +48,6 @@ LL | |         return 3;
 LL | |     }
    | |_____^ expected usize, found ()
    |
-   = note:   expected type `usize`
-           found unit type `()`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
@@ -70,8 +62,6 @@ LL | |         return 3;
 LL | |     };
    | |_____^ expected usize, found ()
    |
-   = note:   expected type `usize`
-           found unit type `()`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 
@@ -85,8 +75,6 @@ LL | |         3
 LL | |     }
    | |_____^ expected usize, found ()
    |
-   = note:   expected type `usize`
-           found unit type `()`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 

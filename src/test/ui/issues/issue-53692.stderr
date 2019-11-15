@@ -18,9 +18,6 @@ LL |         let string: String = s.clone();
    |                              |
    |                              expected struct `std::string::String`, found &str
    |                              help: try using a conversion method: `s.to_string()`
-   |
-   = note: expected struct `std::string::String`
-           found reference `&str`
 
 error: aborting due to 2 previous errors
 

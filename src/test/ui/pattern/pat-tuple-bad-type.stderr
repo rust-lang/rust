@@ -14,9 +14,6 @@ error[E0308]: mismatched types
    |
 LL |         (..) => {}
    |         ^^^^ expected u8, found ()
-   |
-   = note:   expected type `u8`
-           found unit type `()`
 
 error: aborting due to 2 previous errors
 

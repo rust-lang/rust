@@ -4,8 +4,6 @@ macro_rules! foo {
         bar(&mut $d);
         //~^ ERROR mismatched types
         //~| expected u8, found &mut u8
-        //~| expected type `u8`
-        //~| found mutable reference `&mut u8`
     }}
 }
 

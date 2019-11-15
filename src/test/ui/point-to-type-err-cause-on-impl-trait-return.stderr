@@ -9,9 +9,6 @@ LL |         return 0i32;
 LL |     }
 LL |     1u32
    |     ^^^^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:13:16
@@ -24,9 +21,6 @@ LL |         return 0i32;
 LL |     } else {
 LL |         return 1u32;
    |                ^^^^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:22:9
@@ -39,9 +33,6 @@ LL |         return 0i32;
 LL |     } else {
 LL |         1u32
    |         ^^^^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: if and else have incompatible types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:31:9
@@ -55,9 +46,6 @@ LL | |         1u32
 LL | |
 LL | |     }
    | |_____- if and else have incompatible types
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:39:14
@@ -69,9 +57,6 @@ LL |         0 => return 0i32,
    |                     ---- ...is found to be `i32` here
 LL |         _ => 1u32,
    |              ^^^^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:45:5
@@ -86,9 +71,6 @@ LL | |         1 => 1u32,
 LL | |         _ => 2u32,
 LL | |     }
    | |_____^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/point-to-type-err-cause-on-impl-trait-return.rs:59:13
@@ -101,9 +83,6 @@ LL |             return 0i32;
 ...
 LL |             1u32
    |             ^^^^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error: aborting due to 7 previous errors
 

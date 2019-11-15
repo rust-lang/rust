@@ -3,18 +3,12 @@ error[E0308]: mismatched types
    |
 LL |     let _seetype: () = z;
    |                        ^ expected (), found u32
-   |
-   = note: expected unit type `()`
-                   found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:102:24
    |
 LL |     let _seetype: () = z;
    |                        ^ expected (), found u64
-   |
-   = note: expected unit type `()`
-                   found type `u64`
 
 error[E0034]: multiple applicable items in scope
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:120:15
@@ -46,27 +40,18 @@ error[E0308]: mismatched types
    |
 LL |     let _seetype: () = z;
    |                        ^ expected (), found u8
-   |
-   = note: expected unit type `()`
-                   found type `u8`
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:155:24
    |
 LL |     let _seetype: () = z;
    |                        ^ expected (), found u32
-   |
-   = note: expected unit type `()`
-                   found type `u32`
 
 error[E0308]: mismatched types
   --> $DIR/method-deref-to-same-trait-object-with-separate-params.rs:172:24
    |
 LL |     let _seetype: () = z;
    |                        ^ expected (), found u32
-   |
-   = note: expected unit type `()`
-                   found type `u32`
 
 error: aborting due to 6 previous errors
 

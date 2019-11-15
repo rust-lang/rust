@@ -22,8 +22,6 @@ fn main() {
         S { .. } => (),
         //~^ ERROR mismatched types
         //~| expected char, found struct `S`
-        //~| expected type `char`
-        //~| found struct `S`
 
         _ => ()
     }

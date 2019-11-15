@@ -14,9 +14,6 @@ error[E0308]: mismatched types
    |
 LL |     let x: usize = ();
    |                    ^^ expected usize, found ()
-   |
-   = note:   expected type `usize`
-           found unit type `()`
 
 error: aborting due to 2 previous errors
 

@@ -8,9 +8,6 @@ LL | impl Bar for Foo {
    | ---------------- in this `impl` item
 LL |     type Ok = ();
    |     ^^^^^^^^^^^^^ expected u32, found ()
-   |
-   = note:   expected type `u32`
-           found unit type `()`
 
 error: aborting due to previous error
 

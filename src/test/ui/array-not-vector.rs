@@ -1,9 +1,7 @@
 fn main() {
     let _x: i32 = [1, 2, 3];
     //~^ ERROR mismatched types
-    //~| expected type `i32`
-    //~| found array `[{integer}; 3]`
-    //~| expected i32, found array of 3 elements
+    //~| expected i32, found array
 
     let x: &[i32] = &[1, 2, 3];
     let _y: &i32 = x;

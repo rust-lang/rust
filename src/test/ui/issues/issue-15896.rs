@@ -11,8 +11,6 @@ fn main() {
           Tau{t: x},
           //~^ ERROR mismatched types
           //~| expected enum `main::R`, found struct `main::Tau`
-          //~| expected enum `main::R`
-          //~| found struct `main::Tau`
           _) => x,
     };
 }

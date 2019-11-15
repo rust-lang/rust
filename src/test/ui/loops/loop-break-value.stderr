@@ -108,36 +108,24 @@ error[E0308]: mismatched types
    |
 LL |             break 123;
    |                   ^^^ expected &str, found integer
-   |
-   = note: expected type `&str`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:16:15
    |
 LL |         break "asdf";
-   |               ^^^^^^ expected i32, found reference
-   |
-   = note:   expected type `i32`
-           found reference `&'static str`
+   |               ^^^^^^ expected i32, found &str
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:21:31
    |
 LL |             break 'outer_loop "nope";
-   |                               ^^^^^^ expected i32, found reference
-   |
-   = note:   expected type `i32`
-           found reference `&'static str`
+   |                               ^^^^^^ expected i32, found &str
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:73:26
    |
 LL |                 break 'c 123;
    |                          ^^^ expected (), found integer
-   |
-   = note: expected unit type `()`
-                   found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:80:15
@@ -153,9 +141,6 @@ error[E0308]: mismatched types
    |
 LL |         break 2;
    |               ^ expected (), found integer
-   |
-   = note: expected unit type `()`
-                   found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/loop-break-value.rs:90:9
@@ -165,9 +150,6 @@ LL |         break;
    |         |
    |         expected integer, found ()
    |         help: give it a value of the expected type: `break value`
-   |
-   = note:   expected type `{integer}`
-           found unit type `()`
 
 error: aborting due to 16 previous errors
 

@@ -5,7 +5,7 @@ LL |     const FROM: Self::Out;
    |                 --------- type in trait
 ...
 LL |     const FROM: &'static str = "foo";
-   |                 ^^^^^^^^^^^^ expected associated type, found reference
+   |                 ^^^^^^^^^^^^ expected associated type, found &str
    |
    = note: expected associated type `<T as Foo>::Out`
                     found reference `&'static str`

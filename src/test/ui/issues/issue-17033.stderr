@@ -6,9 +6,6 @@ LL |     (*p)(())
    |          |
    |          expected &mut (), found ()
    |          help: consider mutably borrowing here: `&mut ()`
-   |
-   = note: expected mutable reference `&mut ()`
-                      found unit type `()`
 
 error: aborting due to previous error
 

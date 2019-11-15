@@ -3,18 +3,12 @@ error[E0308]: mismatched types
    |
 LL |     want::<foo>(f);
    |                 ^ expected struct `foo`, found usize
-   |
-   = note: expected struct `foo`
-                found type `usize`
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:18:17
    |
 LL |     want::<bar>(f);
    |                 ^ expected struct `bar`, found usize
-   |
-   = note: expected struct `bar`
-                found type `usize`
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:19:24
@@ -75,18 +69,12 @@ error[E0308]: mismatched types
    |
 LL |     want::<usize>(f);
    |                   ^ expected usize, found struct `foo`
-   |
-   = note: expected type `usize`
-            found struct `foo`
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:29:17
    |
 LL |     want::<bar>(f);
    |                 ^ expected struct `bar`, found struct `foo`
-   |
-   = note: expected struct `bar`
-              found struct `foo`
 
 error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:30:24
@@ -230,7 +218,7 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:48:26
    |
 LL |     want::<&Foo<foo, B>>(f);
-   |                          ^ expected reference, found struct `Foo`
+   |                          ^ expected &Foo<foo, B>, found struct `Foo`
    |
    = note: expected reference `&Foo<foo, B>`
                  found struct `Foo<foo>`
@@ -322,7 +310,7 @@ error[E0308]: mismatched types
 LL |     want::<&Foo<foo, B>>(f);
    |                          ^
    |                          |
-   |                          expected reference, found struct `Foo`
+   |                          expected &Foo<foo, B>, found struct `Foo`
    |                          help: consider borrowing here: `&f`
    |
    = note: expected reference `&Foo<foo, B>`
@@ -422,7 +410,7 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch.rs:75:26
    |
 LL |     want::<&Foo<foo, B>>(f);
-   |                          ^ expected reference, found struct `Foo`
+   |                          ^ expected &Foo<foo, B>, found struct `Foo`
    |
    = note: expected reference `&Foo<foo, B>`
                  found struct `Foo<foo, B, A>`

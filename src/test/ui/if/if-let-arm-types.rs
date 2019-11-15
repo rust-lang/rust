@@ -8,5 +8,4 @@ fn main() {
     };
     //~^^ ERROR: if and else have incompatible types
     //~| NOTE expected (), found integer
-    //~| NOTE expected type `()`
 }

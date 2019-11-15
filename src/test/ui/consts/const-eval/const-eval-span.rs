@@ -9,7 +9,6 @@ enum E {
     V = CONSTANT,
     //~^ ERROR mismatched types
     //~| expected isize, found struct `S`
-    //~|         found struct `S`
 }
 
 fn main() {}

@@ -6,9 +6,6 @@ LL |     if x = x {
    |        |
    |        expected bool, found ()
    |        help: try comparing for equality: `x == x`
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:20:8
@@ -18,9 +15,6 @@ LL |     if (x = x) {
    |        |
    |        expected bool, found ()
    |        help: try comparing for equality: `x == x`
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:25:8
@@ -30,9 +24,6 @@ LL |     if y = (Foo { foo: x }) {
    |        |
    |        expected bool, found ()
    |        help: try comparing for equality: `y == (Foo { foo: x })`
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:30:8
@@ -42,9 +33,6 @@ LL |     if 3 = x {
    |        |
    |        expected bool, found ()
    |        help: try comparing for equality: `3 == x`
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:36:13
@@ -54,9 +42,6 @@ LL |             x = 4
    |             |
    |             expected bool, found ()
    |             help: try comparing for equality: `x == 4`
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:38:13
@@ -66,9 +51,6 @@ LL |             x = 5
    |             |
    |             expected bool, found ()
    |             help: try comparing for equality: `x == 5`
-   |
-   = note:   expected type `bool`
-           found unit type `()`
 
 error: aborting due to 6 previous errors
 

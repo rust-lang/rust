@@ -3,9 +3,6 @@ error[E0271]: type mismatch resolving `<std::vec::IntoIter<i32> as std::iter::It
    |
 LL | impl Foo for IntoIter<i32> {
    |      ^^^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
 
 error: aborting due to previous error
 

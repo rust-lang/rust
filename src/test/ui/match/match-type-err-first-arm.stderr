@@ -18,15 +18,11 @@ LL | |         _ => 42,
    | |              ^^ expected char, found integer
 LL | |
 LL | |
-LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
-   |
-   = note: expected type `char`
-              found type `{integer}`
 
 error[E0308]: match arms have incompatible types
-  --> $DIR/match-type-err-first-arm.rs:35:14
+  --> $DIR/match-type-err-first-arm.rs:34:14
    |
 LL |       let x = match n {
    |  _____________-
@@ -39,16 +35,13 @@ LL | |         6 => 'b',
 LL | |
 LL | |         _ => 42,
    | |              ^^ expected char, found integer
-...  |
+LL | |
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
-   |
-   = note: expected type `char`
-              found type `{integer}`
 
 error[E0308]: match arms have incompatible types
-  --> $DIR/match-type-err-first-arm.rs:48:17
+  --> $DIR/match-type-err-first-arm.rs:46:17
    |
 LL | /     match Some(0u32) {
 LL | |         Some(x) => {
@@ -57,13 +50,10 @@ LL | |             x
 LL | |         },
 LL | |         None => {}
    | |                 ^^ expected u32, found ()
-...  |
+LL | |
 LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
-   |
-   = note:   expected type `u32`
-           found unit type `()`
 
 error: aborting due to 4 previous errors
 

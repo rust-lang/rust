@@ -1163,8 +1163,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             Some(values) => {
                 let (is_simple_error, exp_found) = match values {
                     ValuePairs::Types(exp_found) => {
-                        let is_simple_err =
-                            exp_found.expected.is_primitive() && exp_found.found.is_primitive();
+                        let is_simple_err = exp_found.expected.is_simple_text()
+                            && exp_found.found.is_simple_text();
 
                         (is_simple_err, Some(exp_found))
                     }
@@ -1201,8 +1201,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 .unwrap_or("type".into());
             let found_label = exp_found.map(|ef| ef.found.prefix_string())
                 .unwrap_or("type".into());
-            match (terr, is_simple_error, expected == found) {
-                (&TypeError::Sorts(ref values), false, extra) => {
+            match (&terr, expected == found) {
+                (TypeError::Sorts(values), extra) => {
                     let sort_string = |ty: Ty<'tcx>| match (extra, &ty.kind) {
                         (true, ty::Opaque(def_id, _)) => format!(
                             " (opaque type at {})",
@@ -1212,26 +1212,43 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         (true, _) => format!(" ({})", ty.sort_string(self.tcx)),
                         (false, _) => "".to_string(),
                     };
-                    diag.note_expected_found_extra(
-                        &expected_label,
-                        expected,
-                        &found_label,
-                        found,
-                        &sort_string(values.expected),
-                        &sort_string(values.found),
-                    );
+                    if !(values.expected.is_simple_text() && values.found.is_simple_text()) || (
+                        exp_found.map_or(false, |ef| {
+                            // This happens when the type error is a subset of the expectation,
+                            // like when you have two references but one is `usize` and the other
+                            // is `f32`. In those cases we still want to show the `note`. If the
+                            // value from `ef` is `Infer(_)`, then we ignore it.
+                            if !ef.expected.is_ty_infer() {
+                                ef.expected != values.expected
+                            } else if !ef.found.is_ty_infer() {
+                                ef.found != values.found
+                            } else {
+                                false
+                            }
+                        })
+                    ) {
+                        diag.note_expected_found_extra(
+                            &expected_label,
+                            expected,
+                            &found_label,
+                            found,
+                            &sort_string(values.expected),
+                            &sort_string(values.found),
+                        );
+                    }
                 }
-                (TypeError::ObjectUnsafeCoercion(_), ..) => {
+                (TypeError::ObjectUnsafeCoercion(_), _) => {
                     diag.note_unsuccessfull_coercion(found, expected);
                 }
-                (_, false, _) => {
+                (_, _) => {
                     debug!(
                         "note_type_err: exp_found={:?}, expected={:?} found={:?}",
                         exp_found, expected, found
                     );
-                    diag.note_expected_found(&expected_label, expected, &found_label, found);
+                    if !is_simple_error || terr.must_include_note() {
+                        diag.note_expected_found(&expected_label, expected, &found_label, found);
+                    }
                 }
-                _ => (),
             }
         }
         if let Some(exp_found) = exp_found {

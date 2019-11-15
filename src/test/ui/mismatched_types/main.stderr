@@ -5,9 +5,6 @@ LL |       let x: u32 = (
    |  __________________^
 LL | |     );
    | |_____^ expected u32, found ()
-   |
-   = note:   expected type `u32`
-           found unit type `()`
 
 error: aborting due to previous error
 

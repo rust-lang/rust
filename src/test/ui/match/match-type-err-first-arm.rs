@@ -18,7 +18,6 @@ fn test_func2(n: i32) -> i32 {
         _ => 42,
         //~^ ERROR match arms have incompatible types
         //~| NOTE expected char, found integer
-        //~| NOTE expected type `char`
     };
     x
 }
@@ -35,7 +34,6 @@ fn test_func3(n: i32) -> i32 {
         _ => 42,
         //~^ ERROR match arms have incompatible types
         //~| NOTE expected char, found integer
-        //~| NOTE expected type `char`
     };
     x
 }
@@ -48,6 +46,5 @@ fn test_func4() {
         None => {}
         //~^ ERROR match arms have incompatible types
         //~| NOTE expected u32, found ()
-        //~| NOTE expected type `u32`
     };
 }

@@ -9,6 +9,6 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected enum `std::option::Option<&[&str]>`
     //~| found enum `std::option::Option<&[&str; 1]>`
-    //~| expected slice, found array of 1 element
+    //~| expected slice `[&str]`, found array `[&str; 1]`
     assert_eq!(msg, 3);
 }

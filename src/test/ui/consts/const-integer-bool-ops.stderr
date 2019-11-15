@@ -3,18 +3,12 @@ error[E0308]: mismatched types
    |
 LL | const X: usize = 42 && 39;
    |                  ^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:1:24
    |
 LL | const X: usize = 42 && 39;
    |                        ^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:1:18
@@ -33,18 +27,12 @@ error[E0308]: mismatched types
    |
 LL | const X1: usize = 42 || 39;
    |                   ^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:11:25
    |
 LL | const X1: usize = 42 || 39;
    |                         ^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:11:19
@@ -63,18 +51,12 @@ error[E0308]: mismatched types
    |
 LL | const X2: usize = -42 || -39;
    |                   ^^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:21:26
    |
 LL | const X2: usize = -42 || -39;
    |                          ^^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:21:19
@@ -93,18 +75,12 @@ error[E0308]: mismatched types
    |
 LL | const X3: usize = -42 && -39;
    |                   ^^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:31:26
    |
 LL | const X3: usize = -42 && -39;
    |                          ^^^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/const-integer-bool-ops.rs:31:19

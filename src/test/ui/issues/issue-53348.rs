@@ -10,7 +10,6 @@ fn main() {
         a = *i.to_string();
         //~^ ERROR mismatched types
         //~| NOTE expected struct `std::string::String`, found str
-        //~| NOTE expected struct
         v2.push(a);
     }
 }

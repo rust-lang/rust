@@ -6,9 +6,6 @@ LL |         bar(&mut $d);
 ...
 LL |     foo!(0u8);
    |     ---------- in this macro invocation
-   |
-   = note:           expected type `u8`
-           found mutable reference `&mut u8`
 
 error: aborting due to previous error
 

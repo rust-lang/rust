@@ -5,9 +5,6 @@ LL | ...-> usize {
    |       ----- expected `usize` because of return type
 LL | ...                                                                                                                                                                                 ()
    |                                                                                                                                                                                     ^^ expected usize, found ()
-   |
-   = note:   expected type `usize`
-           found unit type `()`
 
 error: aborting due to previous error
 

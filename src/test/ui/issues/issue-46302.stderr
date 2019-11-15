@@ -6,9 +6,6 @@ LL |   let u: &str = if true { s[..2] } else { s };
    |                           |
    |                           expected &str, found str
    |                           help: consider borrowing here: `&s[..2]`
-   |
-   = note: expected reference `&str`
-                   found type `str`
 
 error: aborting due to previous error
 

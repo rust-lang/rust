@@ -8,7 +8,6 @@ fn main() {
         None    => (),
         //~^ ERROR match arms have incompatible types
         //~| NOTE expected bool, found ()
-        //~| NOTE expected type `bool`
         _       => true
     }
 }
