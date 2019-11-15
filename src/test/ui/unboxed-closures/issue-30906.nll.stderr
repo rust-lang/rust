@@ -1,0 +1,8 @@
+error: higher-ranked subtype error
+  --> $DIR/issue-30906.rs:15:5
+   |
+LL |     test(Compose(f, |_| {}));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
