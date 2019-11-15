@@ -364,9 +364,9 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }
 
             if let Some(sanitizer) = &config.sanitizer {
+                let recover = config.sanitizer_recover.contains(sanitizer);
                 match sanitizer {
                     Sanitizer::Address => {
-                        let recover = false;
                         extra_passes.push(llvm::LLVMRustCreateAddressSanitizerFunctionPass(
                                 recover));
                         extra_passes.push(llvm::LLVMRustCreateModuleAddressSanitizerPass(
@@ -374,7 +374,6 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
                     }
                     Sanitizer::Memory => {
                         let track_origins = 0;
-                        let recover = false;
                         extra_passes.push(llvm::LLVMRustCreateMemorySanitizerPass(
                                 track_origins, recover));
                     }

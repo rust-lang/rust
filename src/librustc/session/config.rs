@@ -43,12 +43,25 @@ pub struct Config {
     pub usize_ty: UintTy,
 }
 
-#[derive(Clone, Hash, Debug)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Sanitizer {
     Address,
     Leak,
     Memory,
     Thread,
+}
+
+impl FromStr for Sanitizer {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Sanitizer, ()> {
+        match s {
+            "address" => Ok(Sanitizer::Address),
+            "leak" => Ok(Sanitizer::Leak),
+            "memory" => Ok(Sanitizer::Memory),
+            "thread" => Ok(Sanitizer::Thread),
+            _ => Err(()),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash)]
@@ -819,6 +832,8 @@ macro_rules! options {
             Some("one of: `full`, `partial`, or `off`");
         pub const parse_sanitizer: Option<&str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
+        pub const parse_sanitizer_list: Option<&str> =
+            Some("comma separated list of sanitizers");
         pub const parse_linker_flavor: Option<&str> =
             Some(::rustc_target::spec::LinkerFlavor::one_of());
         pub const parse_optimization_fuel: Option<&str> =
@@ -1013,15 +1028,30 @@ macro_rules! options {
             true
         }
 
-        fn parse_sanitizer(slote: &mut Option<Sanitizer>, v: Option<&str>) -> bool {
-            match v {
-                Some("address") => *slote = Some(Sanitizer::Address),
-                Some("leak") => *slote = Some(Sanitizer::Leak),
-                Some("memory") => *slote = Some(Sanitizer::Memory),
-                Some("thread") => *slote = Some(Sanitizer::Thread),
-                _ => return false,
+        fn parse_sanitizer(slot: &mut Option<Sanitizer>, v: Option<&str>) -> bool {
+            if let Some(Ok(s)) =  v.map(str::parse) {
+                *slot = Some(s);
+                true
+            } else {
+                false
             }
-            true
+        }
+
+        fn parse_sanitizer_list(slot: &mut Vec<Sanitizer>, v: Option<&str>) -> bool {
+            if let Some(v) = v {
+                for s in v.split(',').map(str::parse) {
+                    if let Ok(s) = s {
+                        if !slot.contains(&s) {
+                            slot.push(s);
+                        }
+                    } else {
+                        return false;
+                    }
+                }
+                true
+            } else {
+                false
+            }
         }
 
         fn parse_linker_flavor(slote: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
@@ -1379,6 +1409,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
                                     "use a sanitizer"),
+    sanitizer_recover: Vec<Sanitizer> = (vec![], parse_sanitizer_list, [TRACKED],
+        "Enable recovery for selected sanitizers"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
@@ -2984,6 +3016,7 @@ mod dep_tracking {
         Option<cstore::NativeLibraryKind>
     ));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
+    impl_dep_tracking_hash_for_sortable_vec_of!(Sanitizer);
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
     where
