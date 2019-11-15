@@ -387,17 +387,17 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
  AM.registerPass([] { return PassInstrumentationAnalysis(); });
 #endif
      AM.registerPass([] { return LazyValueAnalysis(); });
-    LoopAnalysisManager LAM;
-     AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
-     LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
+    //LoopAnalysisManager LAM;
+     //AM.registerPass([&] { return LoopAnalysisManagerFunctionProxy(LAM); });
+     //LAM.registerPass([&] { return FunctionAnalysisManagerLoopProxy(AM); });
 
  SimplifyCFGOptions scfgo(/*unsigned BonusThreshold=*/1, /*bool ForwardSwitchCond=*/false, /*bool SwitchToLookup=*/false, /*bool CanonicalLoops=*/true, /*bool SinkCommon=*/true, /*AssumptionCache *AssumpCache=*/nullptr);
  SimplifyCFGPass(scfgo).run(*NewF, AM);
  LoopSimplifyPass().run(*NewF, AM);
 
- if (autodiff_inline) {
-     createFunctionToLoopPassAdaptor(LoopIdiomRecognizePass()).run(*NewF, AM);
- }
+ //if (autodiff_inline) {
+ //    createFunctionToLoopPassAdaptor(LoopIdiomRecognizePass()).run(*NewF, AM);
+ //}
  DSEPass().run(*NewF, AM);
  LoopSimplifyPass().run(*NewF, AM);
 
