@@ -91,7 +91,7 @@ fn def_with_body_from_child_node(
 #[derive(Debug)]
 pub struct SourceAnalyzer {
     // FIXME: this doesn't handle macros at all
-    file_id: FileId,
+    file_id: HirFileId,
     resolver: Resolver,
     body_owner: Option<DefWithBody>,
     body_source_map: Option<Arc<BodySourceMap>>,
@@ -159,7 +159,7 @@ impl SourceAnalyzer {
                 body_source_map: Some(source_map),
                 infer: Some(def.infer(db)),
                 scopes: Some(scopes),
-                file_id,
+                file_id: file_id.into(),
             }
         } else {
             SourceAnalyzer {
@@ -171,18 +171,18 @@ impl SourceAnalyzer {
                 body_source_map: None,
                 infer: None,
                 scopes: None,
-                file_id,
+                file_id: file_id.into(),
             }
         }
     }
 
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
-        let src = Source { file_id: self.file_id.into(), ast: expr };
+        let src = Source { file_id: self.file_id, ast: expr };
         self.body_source_map.as_ref()?.node_expr(src)
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
-        let src = Source { file_id: self.file_id.into(), ast: pat };
+        let src = Source { file_id: self.file_id, ast: pat };
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
@@ -290,8 +290,7 @@ impl SourceAnalyzer {
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
-        let scope =
-            scope_for(scopes, source_map, Source::new(self.file_id.into(), name_ref.syntax()))?;
+        let scope = scope_for(scopes, source_map, Source::new(self.file_id, name_ref.syntax()))?;
         let entry = scopes.resolve_name_in_scope(scope, &name)?;
         Some(ScopeEntryWithSyntax {
             name: entry.name().clone(),
