@@ -2128,8 +2128,14 @@ where
 
 struct InPlaceIterFront<T> {
     inner: *mut T,
-    count: usize,
+    dst: *mut T,
     did_panic: bool,
+}
+
+impl<T> InPlaceIterFront<T> {
+    unsafe fn len(&self) -> usize {
+        self.dst.offset_from(self.inner) as usize
+    }
 }
 
 impl<T> Drop for InPlaceIterFront<T> {
@@ -2137,7 +2143,7 @@ impl<T> Drop for InPlaceIterFront<T> {
     fn drop(&mut self) {
         unsafe {
             if mem::needs_drop::<T>() && self.did_panic {
-                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.count) as *mut _);
+                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()) as *mut _);
             }
         }
     }
@@ -2148,28 +2154,26 @@ where
     I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
 {
     let original_ptr = iterator.as_inner().buf.as_ptr();
-    let mut front_buffer = InPlaceIterFront { inner: original_ptr, count: 0, did_panic: true };
+    let mut front_buffer =
+        InPlaceIterFront { inner: original_ptr, dst: original_ptr, did_panic: true };
 
     while let Some(item) = iterator.next() {
         let source_iter = iterator.as_inner();
-        let src_buf = source_iter.buf.as_ptr();
-        debug_assert_eq!(original_ptr, src_buf);
-        let src_idx = source_iter.ptr;
+        debug_assert_eq!(original_ptr, source_iter.buf.as_ptr());
         unsafe {
-            let dst = src_buf.add(front_buffer.count);
             debug_assert!(
-                dst as *const _ < src_idx,
+                front_buffer.dst as *const _ < source_iter.ptr,
                 "InPlaceIterable implementation produced more\
                           items than it consumed from the source"
             );
-            ptr::write(dst, item)
+            ptr::write(front_buffer.dst, item);
+            front_buffer.dst = front_buffer.dst.add(1);
         }
-        front_buffer.count += 1;
     }
 
     let src = iterator.as_inner();
     front_buffer.did_panic = false;
-    let vec = unsafe { Vec::from_raw_parts(src.buf.as_ptr(), front_buffer.count, src.cap) };
+    let vec = unsafe { Vec::from_raw_parts(src.buf.as_ptr(), front_buffer.len(), src.cap) };
     src.cap = 0;
     src.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
     src.ptr = src.buf.as_ptr();
