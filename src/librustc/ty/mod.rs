@@ -1589,8 +1589,8 @@ rustc_index::newtype_index! {
     /// declared, but a type name in a non-zero universe is a placeholder
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
-    #[derive(HashStable)]
     pub struct UniverseIndex {
+        derive [HashStable]
         DEBUG_FORMAT = "U{}",
     }
 }
