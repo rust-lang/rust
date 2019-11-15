@@ -105,8 +105,30 @@ static bool promoteMemoryToRegister(Function &F, DominatorTree &DT,
    return Changed;
 }
 
+void identifyRecursiveFunctions(Function* F, std::map<const Function*, int> &seen) {
+    // haven't seen this function before
+    if (seen[F] == 0) {
+        seen[F] = 1; // staging
+        for (inst_iterator I = inst_begin(F), E = inst_end(F); I != E; ++I) {
+            if (auto call = dyn_cast<CallInst>(&*I)) {
+                if (call->getCalledFunction() == nullptr) continue;
+                if (call->getCalledFunction()->empty()) continue;
+                identifyRecursiveFunctions(call->getCalledFunction(), seen);
+            }
+        }
+        if (seen[F] == 1) {
+            seen[F] = 2; // not recursive
+        }
+    } else if (seen[F] == 1) {
+        seen[F] = 3; // definitely recursive
+    }
+}
+
 void forceRecursiveInlining(Function *NewF, const Function* F) {
-   static int count = 0;
+   std::map<const Function*, int> seen;
+   identifyRecursiveFunctions(NewF, seen);
+
+   int count = 0;
    remover:
      SmallPtrSet<Instruction*, 10> originalInstructions;
      for (inst_iterator I = inst_begin(NewF), E = inst_end(NewF); I != E; ++I) {
@@ -126,7 +148,7 @@ void forceRecursiveInlining(Function *NewF, const Function* F) {
         }
         */
         if (call->getCalledFunction()->hasFnAttribute(Attribute::ReturnsTwice)) continue;
-        if (call->getCalledFunction() == F || call->getCalledFunction() == NewF) {
+        if (seen[call->getCalledFunction()] == 3) {
             llvm::errs() << "can't inline recursive " << call->getCalledFunction()->getName() << "\n";
             continue;
         }

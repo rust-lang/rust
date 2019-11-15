@@ -830,7 +830,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             if (!gutils->oldFunc->getReturnType()->isFPOrFPVectorTy()) { //PointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) {
                 invertedRetPs[ri] = gutils->invertPointerM(toinvert, builder);
             } else {
-                llvm::errs() << "warning not allowing inverted return on type " << *toinvert->getType() << "\n";
+                //llvm::errs() << "warning not allowing inverted return on type " << *toinvert->getType() << "\n";
                 invertedRetPs[ri] = UndefValue::get(toinvert->getType());
             }
         } else {
