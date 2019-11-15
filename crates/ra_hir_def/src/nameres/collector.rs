@@ -798,7 +798,7 @@ mod tests {
 
     fn do_limited_resolve(code: &str, limit: u32, poison_limit: u32) -> CrateDefMap {
         let (db, _file_id) = TestDB::with_single_file(&code);
-        let krate = db.crate_graph().iter().next().unwrap();
+        let krate = db.test_crate();
 
         let def_map = {
             let edition = db.crate_graph().edition(krate);

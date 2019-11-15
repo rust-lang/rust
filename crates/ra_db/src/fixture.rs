@@ -8,8 +8,8 @@ use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
 use crate::{
-    CrateGraph, Edition, FileId, FilePosition, RelativePathBuf, SourceDatabaseExt, SourceRoot,
-    SourceRootId,
+    CrateGraph, CrateId, Edition, FileId, FilePosition, RelativePathBuf, SourceDatabaseExt,
+    SourceRoot, SourceRootId,
 };
 
 pub const WORKSPACE: SourceRootId = SourceRootId(0);
@@ -32,6 +32,14 @@ pub trait WithFixture: Default + SourceDatabaseExt + 'static {
         let mut db = Self::default();
         let pos = with_files(&mut db, fixture);
         (db, pos.unwrap())
+    }
+
+    fn test_crate(&self) -> CrateId {
+        let crate_graph = self.crate_graph();
+        let mut it = crate_graph.iter();
+        let res = it.next().unwrap();
+        assert!(it.next().is_none());
+        res
     }
 }
 
