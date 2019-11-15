@@ -90,7 +90,6 @@ fn def_with_body_from_child_node(
 /// original source files. It should not be used inside the HIR itself.
 #[derive(Debug)]
 pub struct SourceAnalyzer {
-    // FIXME: this doesn't handle macros at all
     file_id: HirFileId,
     resolver: Resolver,
     body_owner: Option<DefWithBody>,
