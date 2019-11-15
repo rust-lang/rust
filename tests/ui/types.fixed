@@ -1,7 +1,7 @@
 // run-rustfix
 
 #![allow(dead_code, unused_variables)]
-#![warn(clippy::all, clippy::pedantic)]
+#![warn(clippy::cast_lossless)]
 
 // should not warn on lossy casting in constant types
 // because not supported yet

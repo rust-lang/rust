@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 337] = [
+pub const ALL_LINTS: [Lint; 338] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -27,6 +27,13 @@ pub const ALL_LINTS: [Lint; 337] = [
         desc: "the approximate of a known float constant (in `std::fXX::consts`)",
         deprecation: None,
         module: "approx_const",
+    },
+    Lint {
+        name: "as_conversions",
+        group: "restriction",
+        desc: "using a potentially dangerous silent `as` conversion",
+        deprecation: None,
+        module: "as_conversions",
     },
     Lint {
         name: "assertions_on_constants",

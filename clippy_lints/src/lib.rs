@@ -155,6 +155,7 @@ mod utils;
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
 pub mod approx_const;
 pub mod arithmetic;
+pub mod as_conversions;
 pub mod assertions_on_constants;
 pub mod assign_ops;
 pub mod attrs;
@@ -448,6 +449,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &approx_const::APPROX_CONSTANT,
         &arithmetic::FLOAT_ARITHMETIC,
         &arithmetic::INTEGER_ARITHMETIC,
+        &as_conversions::AS_CONVERSIONS,
         &assertions_on_constants::ASSERTIONS_ON_CONSTANTS,
         &assign_ops::ASSIGN_OP_PATTERN,
         &assign_ops::MISREFACTORED_ASSIGN_OP,
@@ -959,10 +961,12 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
     let array_size_threshold = conf.array_size_threshold;
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
+    store.register_early_pass(|| box as_conversions::AsConversions);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
         LintId::of(&arithmetic::INTEGER_ARITHMETIC),
+        LintId::of(&as_conversions::AS_CONVERSIONS),
         LintId::of(&dbg_macro::DBG_MACRO),
         LintId::of(&else_if_without_else::ELSE_IF_WITHOUT_ELSE),
         LintId::of(&exit::EXIT),
