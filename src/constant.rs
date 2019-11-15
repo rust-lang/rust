@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use rustc::mir::interpret::{
     read_target_uint, AllocId, Allocation, ConstValue, GlobalAlloc, GlobalId, InterpResult, Scalar,
 };
-use rustc::ty::{layout::Align, Const};
+use rustc::ty::{layout::Align, Const, ConstKind};
 use rustc_mir::interpret::{
     ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup,
     StackPopInfo,
@@ -84,7 +84,7 @@ pub fn force_eval_const<'tcx>(
     const_: &'tcx Const,
 ) -> &'tcx Const<'tcx> {
     match const_.val {
-        ConstValue::Unevaluated(def_id, ref substs) => {
+        ConstKind::Unevaluated(def_id, ref substs) => {
             let param_env = ParamEnv::reveal_all();
             let substs = fx.monomorphize(substs);
             let instance = Instance::resolve(fx.tcx, param_env, def_id, substs).unwrap();
@@ -176,7 +176,7 @@ fn trans_const_place<'tcx>(
             .get_raw(ptr.to_ref().to_scalar()?.to_ptr()?.alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
     };
-    let alloc = result().expect("unable to convert ConstValue to Allocation");
+    let alloc = result().expect("unable to convert ConstKind to Allocation");
 
     //println!("const value: {:?} allocation: {:?}", value, alloc);
     let alloc_id = fx.tcx.alloc_map.lock().create_memory_alloc(alloc);
@@ -294,7 +294,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut Module<impl Backend>, cx: &mu
                 let const_ = tcx.const_eval(ParamEnv::reveal_all().and(cid)).unwrap();
 
                 let alloc = match const_.val {
-                    ConstValue::ByRef { alloc, offset } if offset.bytes() == 0 => alloc,
+                    ConstKind::Value(ConstValue::ByRef { alloc, offset }) if offset.bytes() == 0 => alloc,
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
