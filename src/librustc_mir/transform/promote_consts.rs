@@ -1185,7 +1185,7 @@ pub fn promote_candidates<'tcx>(
     promotions
 }
 
-/// This function returns `true` if the `const_in_array_repeat_expression` feature attribute should
+/// This function returns `true` if the `const_in_array_repeat_expressions` feature attribute should
 /// be suggested. This function is probably quite expensive, it shouldn't be run in the happy path.
 /// Feature attribute should be suggested if `operand` can be promoted and the feature is not
 /// enabled.

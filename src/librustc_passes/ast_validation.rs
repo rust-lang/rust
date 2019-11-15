@@ -20,7 +20,7 @@ use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
-use syntax_pos::{Span, MultiSpan};
+use syntax_pos::Span;
 use errors::{Applicability, FatalError};
 
 use rustc_error_codes::*;
@@ -584,14 +584,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span,
                                                 "unions cannot have zero fields");
-                }
-            }
-            ItemKind::OpaqueTy(ref bounds, _) => {
-                if !bounds.iter()
-                          .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
-                    let msp = MultiSpan::from_spans(bounds.iter()
-                        .map(|bound| bound.span()).collect());
-                    self.err_handler().span_err(msp, "at least one trait must be specified");
                 }
             }
             _ => {}

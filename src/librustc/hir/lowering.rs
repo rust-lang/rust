@@ -454,7 +454,6 @@ impl<'a> LoweringContext<'a> {
                     | ItemKind::Union(_, ref generics)
                     | ItemKind::Enum(_, ref generics)
                     | ItemKind::TyAlias(_, ref generics)
-                    | ItemKind::OpaqueTy(_, ref generics)
                     | ItemKind::Trait(_, _, ref generics, ..) => {
                         let def_id = self.lctx.resolver.definitions().local_def_id(item.id);
                         let count = generics

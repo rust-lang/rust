@@ -1,8 +1,8 @@
 error: at least one trait must be specified
-  --> $DIR/generic_type_does_not_live_long_enough.rs:9:29
+  --> $DIR/generic_type_does_not_live_long_enough.rs:9:24
    |
 LL | type WrongGeneric<T> = impl 'static;
-   |                             ^^^^^^^
+   |                        ^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/generic_type_does_not_live_long_enough.rs:6:18

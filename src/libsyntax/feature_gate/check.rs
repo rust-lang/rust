@@ -321,6 +321,27 @@ impl<'a> PostExpansionVisitor<'a> {
             );
         }
     }
+
+    /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
+    fn check_impl_trait(&self, ty: &ast::Ty) {
+        struct ImplTraitVisitor<'a> {
+            vis: &'a PostExpansionVisitor<'a>,
+        }
+        impl Visitor<'_> for ImplTraitVisitor<'_> {
+            fn visit_ty(&mut self, ty: &ast::Ty) {
+                if let ast::TyKind::ImplTrait(..) = ty.kind {
+                    gate_feature_post!(
+                        &self.vis,
+                        type_alias_impl_trait,
+                        ty.span,
+                        "`impl Trait` in type aliases is unstable"
+                    );
+                }
+                visit::walk_ty(self, ty);
+            }
+        }
+        ImplTraitVisitor { vis: self }.visit_ty(ty);
+    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -455,14 +476,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::OpaqueTy(..) => {
-                gate_feature_post!(
-                    &self,
-                    type_alias_impl_trait,
-                    i.span,
-                    "`impl Trait` in type aliases is unstable"
-                );
-            }
+            ast::ItemKind::TyAlias(ref ty, ..) => self.check_impl_trait(&ty),
 
             _ => {}
         }
@@ -636,9 +650,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
             ast::TraitItemKind::Type(_, ref default) => {
-                // We use three if statements instead of something like match guards so that all
-                // of these errors can be emitted if all cases apply.
-                if default.is_some() {
+                if let Some(ty) = default {
+                    self.check_impl_trait(ty);
                     gate_feature_post!(&self, associated_type_defaults, ti.span,
                                        "associated type defaults are unstable");
                 }
@@ -663,15 +676,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "C-variadic functions are unstable");
                 }
             }
-            ast::ImplItemKind::OpaqueTy(..) => {
-                gate_feature_post!(
-                    &self,
-                    type_alias_impl_trait,
-                    ii.span,
-                    "`impl Trait` in type aliases is unstable"
-                );
-            }
-            ast::ImplItemKind::TyAlias(_) => {
+            ast::ImplItemKind::TyAlias(ref ty) => {
+                self.check_impl_trait(ty);
                 self.check_gat(&ii.generics, ii.span);
             }
             _ => {}
