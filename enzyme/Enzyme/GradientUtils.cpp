@@ -48,9 +48,8 @@
     
     if (!inLoop) return reverseBlocks[BB];
 
-    static std::map<std::tuple<GradientUtils*, BasicBlock*, BasicBlock*>, BasicBlock*> mp;
-    auto tup = std::make_tuple(this, BB, branchingBlock);
-    if (mp.find(tup) != mp.end()) return mp[tup];
+    auto tup = std::make_tuple(BB, branchingBlock);
+    if (newBlocksForLoop_cache.find(tup) != newBlocksForLoop_cache.end()) return newBlocksForLoop_cache[tup];
 
     if (inLoop && inLoopContext && branchingBlock == lc.header && lc.header == branchingContext.header) {
         BasicBlock* incB = BasicBlock::Create(BB->getContext(), "inc" + reverseBlocks[lc.header]->getName(), BB->getParent());
@@ -59,13 +58,10 @@
         IRBuilder<> tbuild(incB);
 		
         Value* av = tbuild.CreateLoad(lc.antivaralloc);
-        //Value* sub = tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1));
-        //Value* sub = tbuild.CreateNUWAdd(av, ConstantInt::get(av->getType(), -1));
-        //Value* sub = tbuild.CreateAdd(av, ConstantInt::get(av->getType(), -1), "", true, true);
         Value* sub = tbuild.CreateSub(av, ConstantInt::get(av->getType(), 1), "", true, true);
         tbuild.CreateStore(sub, lc.antivaralloc);
         tbuild.CreateBr(reverseBlocks[BB]);
-        return mp[tup] = incB;
+        return newBlocksForLoop_cache[tup] = incB;
     }
     
     if (inLoop) {
@@ -88,11 +84,11 @@
             tbuild.CreateStore(lim, lc.antivaralloc);
             tbuild.CreateBr(reverseBlocks[BB]);
 
-            return mp[tup] = incB;
+            return newBlocksForLoop_cache[tup] = incB;
         }
     }
         
-    return mp[tup] = reverseBlocks[BB];
+    return newBlocksForLoop_cache[tup] = reverseBlocks[BB];
   }
 
   void GradientUtils::forceContexts() {
@@ -300,10 +296,12 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* val0 = nullptr;
       Value* val1 = nullptr;
 
-      if (isa<ConstantInt>(arg->getOperand(0))) {
+      //if (isa<ConstantInt>(arg->getOperand(0))) {
+      if (isConstantValue(arg->getOperand(0))) {
         val0 = arg->getOperand(0);
         val1 = invertPointerM(arg->getOperand(1), bb);
-      } else if (isa<ConstantInt>(arg->getOperand(1))) {
+      } else if (isConstantValue(arg->getOperand(1))) {
+      //} else if (isa<ConstantInt>(arg->getOperand(1))) {
         val0 = invertPointerM(arg->getOperand(0), bb);
         val1 = arg->getOperand(1);
       } else {
@@ -643,7 +641,6 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
         loopContexts[L].incvar = pair.second;
         removeRedundantIVs(L, loopContexts[L].header, loopContexts[L].preheader, CanonicalIV, SE, gutils, pair.second, fake::SCEVExpander::getLatches(L, loopContexts[L].exitBlocks));
         loopContexts[L].antivaralloc = IRBuilder<>(gutils.inversionAllocs).CreateAlloca(CanonicalIV->getType(), nullptr, CanonicalIV->getName()+"'ac");
-        //loopContexts[L].antivar = PHINode::Create(CanonicalIV->getType(), CanonicalIV->getNumIncomingValues(), CanonicalIV->getName()+"'phi");
       
         PredicatedScalarEvolution PSE(SE, *L);
         //predicate.addPredicate(SE.getWrapPredicate(SE.getSCEV(CanonicalIV), SCEVWrapPredicate::IncrementNoWrapMask));
@@ -742,10 +739,9 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
 
     assert(!this->isOriginalBlock(*BuilderM.GetInsertBlock()));
 
-    static std::map<std::pair<Value*, BasicBlock*>, Value*> cache;
     auto idx = std::make_pair(val, BuilderM.GetInsertBlock());
-    if (cache.find(idx) != cache.end()) {
-        return cache[idx];
+    if (lookup_cache.find(idx) != lookup_cache.end()) {
+        return lookup_cache[idx];
     }
 
     LoopContext lc;
@@ -770,18 +766,12 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
           return op;
       }
     }
-    /*
-    if (!inLoop) {
-        if (!isOriginalBlock(*BuilderM.GetInsertBlock()) && inst->getParent() == BuilderM.GetInsertBlock());
-        todo here/re
-    }
-    */
 
     ensureLookupCached(inst);
     assert(scopeMap[inst]);
     Value* result = lookupValueFromCache(BuilderM, inst->getParent(), scopeMap[inst]);
     assert(result->getType() == inst->getType());
-    cache[idx] = result;
+    lookup_cache[idx] = result;
     return result;
 }
 

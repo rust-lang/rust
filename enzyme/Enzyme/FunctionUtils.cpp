@@ -495,8 +495,9 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
      RetTypes.push_back(Type::getInt8PtrTy(F->getContext()));
      if (!F->getReturnType()->isVoidTy() && returnValue == ReturnType::TapeAndReturns) {
         RetTypes.push_back(F->getReturnType());
-        if (differentialReturn)
         //if ( (F->getReturnType()->isPointerTy() || F->getReturnType()->isIntegerTy()) && differentialReturn)
+        if (differentialReturn)
+        if (differentialReturn && !F->getReturnType()->isFPOrFPVectorTy())
           RetTypes.push_back(F->getReturnType());
     }
     RetType = StructType::get(F->getContext(), RetTypes);

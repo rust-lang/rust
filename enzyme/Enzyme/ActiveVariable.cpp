@@ -51,7 +51,7 @@ bool isKnownIntegerTBAA(Instruction* inst) {
 	  Metadata* metadata2 = mda->getOperand(0).get();
 	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
 	    auto typeNameStringRef = typeName->getString();
-	    if (typeNameStringRef == "long") {
+	    if (typeNameStringRef == "long" || typeNameStringRef == "int") {
 		  return true; 
 	    }
 	  }
@@ -60,57 +60,110 @@ bool isKnownIntegerTBAA(Instruction* inst) {
   return false;
 }
 
-void trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& pointerUse) {
+Type* isKnownFloatTBAA(Instruction* inst) {
+  if (MDNode* md = inst->getMetadata(LLVMContext::MD_tbaa)) {
+	if (md->getNumOperands() != 3) return nullptr;
+	Metadata* metadata = md->getOperand(1).get();
+	if (auto mda = dyn_cast<MDNode>(metadata)) {
+	  if (mda->getNumOperands() == 0) return nullptr;
+	  Metadata* metadata2 = mda->getOperand(0).get();
+	  if (auto typeName = dyn_cast<MDString>(metadata2)) {
+	    auto typeNameStringRef = typeName->getString();
+	    if (typeNameStringRef == "float") {
+            return Type::getFloatTy(inst->getContext());
+        }    
+        if (typeNameStringRef == "double") {
+          return Type::getDoubleTy(inst->getContext());
+	    }
+	  }
+	}
+  }
+  return nullptr;
+}
+
+void trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<unsigned> indices = {}) {
     if (seen.find(et) != seen.end()) return;
     seen.insert(et);
     
+    llvm::errs() << "  tract type of saw " << *et << "\n";
+    llvm::errs() << "       indices = [";
+    for(auto a: indices) {
+        llvm::errs() << a << ",";
+    }
+    llvm::errs() << "] of:" << onlyFirst << "\n";
+    
     if (et->isFloatingPointTy()) {
         if (floatingUse == nullptr) {
+            llvm::errs() << "  tract type saw(f) " << *et << " " << *et << "\n";
             floatingUse = et;
         } else {
             assert(floatingUse == et);
         }
     } else if (et->isPointerTy()) {
+        llvm::errs() << "  tract type saw(p) " << *et << "\n";
         pointerUse = true;
     }
 
     if (auto st = dyn_cast<SequentialType>(et)) {
-        trackType(st->getElementType(), seen, floatingUse, pointerUse);
+        trackType(st->getElementType(), seen, floatingUse, pointerUse, onlyFirst, indices);
     } 
     
     if (auto st = dyn_cast<StructType>(et)) {
-        for (auto innerType : st->elements()) {
-            trackType(innerType, seen, floatingUse, pointerUse);
+        unsigned index = 0;
+        auto nindices = indices;
+        if (indices.size() > 0) {
+            index = indices[0];
+            nindices.erase(nindices.begin());
+        }
+        if (onlyFirst && st->getNumElements() > index) {
+            trackType(st->getElementType(index), seen, floatingUse, pointerUse, onlyFirst, indices);
+        } else {
+            for (auto innerType : st->elements()) {
+                trackType(innerType, seen, floatingUse, pointerUse, false, {});
+            }
         }
     }
 }
         
-void trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse) {
+void trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<unsigned> indices = {}) {
     if (seen.find(v) != seen.end()) return;
     seen.insert(v);
 
     assert(v->getType()->isPointerTy());
     
     Type* et = cast<PointerType>(v->getType())->getElementType();
-    trackType(et, typeseen, floatingUse, pointerUse);
+    llvm::errs() << "  tract pointer of saw " << *v << " et:" << *et << "\n";
+    llvm::errs() << "       indices = [";
+    for(auto a: indices) {
+        llvm::errs() << a << ",";
+    }
+    llvm::errs() << "]\n";
+    trackType(et, typeseen, floatingUse, pointerUse, onlyFirst, indices);
             
     if (auto phi = dyn_cast<PHINode>(v)) {
         for(auto &a : phi->incoming_values()) {
-            trackPointer(a.get(), seen, typeseen, floatingUse, pointerUse);
+            trackPointer(a.get(), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices);
         }
     }
     if (auto ci = dyn_cast<CastInst>(v)) {
         if (ci->getSrcTy()->isPointerTy())
-            trackPointer(ci->getOperand(0), seen, typeseen, floatingUse, pointerUse);
+            trackPointer(ci->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices);
     } 
     if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
-        trackPointer(gep->getOperand(0), seen, typeseen, floatingUse, pointerUse);
+        std::vector<unsigned> idz(indices);
+        for(auto& a : gep->indices()) {
+            if (auto ci = dyn_cast<ConstantInt>(a)) {
+                idz.push_back((unsigned)ci->getLimitedValue());
+            } else break;
+        }
+        if (idz.size() > 0) idz.erase(idz.begin());
+        trackPointer(gep->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, idz);
     }
     if (auto inst = dyn_cast<Instruction>(v)) {
         for(User* use: inst->users()) {
             if (auto ci = dyn_cast<CastInst>(use)) {
                 if (ci->getDestTy()->isPointerTy()) {
-                    trackPointer(ci, seen, typeseen, floatingUse, pointerUse);
+                    trackPointer(ci, seen, typeseen, floatingUse, pointerUse, onlyFirst, indices);
                 }
             }
         }
@@ -118,6 +171,8 @@ void trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
 }
 
 bool isIntASecretFloat(Value* val) {
+    llvm::errs() << "starting isint a secretfloat for " << *val << "\n";
+
     assert(val->getType()->isIntegerTy());
 
     if (isa<UndefValue>(val)) return true;
@@ -141,10 +196,12 @@ bool isIntASecretFloat(Value* val) {
         for(User* use: inst->users()) {
             if (auto ci = dyn_cast<BitCastInst>(use)) {
                 if (ci->getDestTy()->isPointerTy()) {
+                    llvm::errs() << "saw(p) " << *ci << "\n";
                     pointerUse = true;
                     continue;
                 }
                 if (ci->getDestTy()->isFloatingPointTy()) {
+                    llvm::errs() << "saw(f) " << *ci << "\n";
                     floatingUse = ci->getDestTy();
                     continue;
                 }
@@ -152,6 +209,7 @@ bool isIntASecretFloat(Value* val) {
                 
             
             if (isa<IntToPtrInst>(use)) {
+                llvm::errs() << "saw(p) " << *use << "\n";
                 pointerUse = true;
                 continue;
             }
@@ -159,25 +217,30 @@ bool isIntASecretFloat(Value* val) {
             if (auto si = dyn_cast<StoreInst>(use)) {
                 assert(inst == si->getValueOperand());
 				if (isKnownIntegerTBAA(si)) intUse = true;
-                trackPointer(si->getPointerOperand(), seen, typeseen, floatingUse, pointerUse);
+				if (Type* t = isKnownFloatTBAA(si)) floatingUse = t;
+                trackPointer(si->getPointerOperand(), seen, typeseen, floatingUse, pointerUse, true, {});
             }
         }
 
         if (auto li = dyn_cast<LoadInst>(inst)) {
 			if (isKnownIntegerTBAA(li)) intUse = true;
-            trackPointer(li->getOperand(0), seen, typeseen, floatingUse, pointerUse);
+			if (Type* t = isKnownFloatTBAA(li)) floatingUse = t;
+            trackPointer(li->getOperand(0), seen, typeseen, floatingUse, pointerUse, true, {});
         }
 
         if (auto ci = dyn_cast<BitCastInst>(inst)) {
             if (ci->getSrcTy()->isPointerTy()) {
+                llvm::errs() << "saw(p) " << *ci << "\n";
                 pointerUse = true;
             }
             if (ci->getSrcTy()->isFloatingPointTy()) {
+                llvm::errs() << "saw(p) " << *ci << "\n";
                 floatingUse = ci->getSrcTy();
             }
         }
         
         if (isa<PtrToIntInst>(inst)) {
+            llvm::errs() << "saw(p) " << *inst << "\n";
             pointerUse = true;
         }
 
@@ -185,6 +248,9 @@ bool isIntASecretFloat(Value* val) {
         if (!intUse && pointerUse && !floatingUse) return false; 
         if (!intUse && !pointerUse && floatingUse) return true;
         llvm::errs() << *inst->getParent()->getParent() << "\n";
+        if (floatingUse)
+        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
+        else
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
         assert(0 && "ambiguous unsure if constant or not");
     }
@@ -213,7 +279,7 @@ Type* isIntPointerASecretFloat(Value* val) {
 
     SmallPtrSet<Value*, 4> seen;
 
-    trackPointer(val, seen, typeseen, floatingUse, pointerUse);
+    trackPointer(val, seen, typeseen, floatingUse, pointerUse, false);
 
     if (pointerUse && (floatingUse == nullptr)) return nullptr; 
     if (!pointerUse && (floatingUse != nullptr)) return floatingUse;
@@ -221,6 +287,9 @@ Type* isIntPointerASecretFloat(Value* val) {
     if (auto inst = dyn_cast<Instruction>(val)) {
         llvm::errs() << *inst->getParent()->getParent() << "\n";
     }
+    if (floatingUse)
+    llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << "\n";
+    else
     llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << "\n";
     assert(0 && "ambiguous unsure if constant or not");
 }
@@ -290,11 +359,12 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
 
     if (F->empty()) return false;
 
-    return false;
+    //return false;
     if (fn.startswith("augmented")) return false;
     if (fn.startswith("fakeaugmented")) return false;
     if (fn.startswith("diffe")) return false;
-    if (val->getType()->isPointerTy()) return false;
+    //if (val->getType()->isPointerTy()) return false;
+    if (!val->getType()->isIntegerTy()) return false;
 
     assert(retvals.find(val) == retvals.end());
 
@@ -310,10 +380,10 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     if (printconst)
        llvm::errs() << " < METAINDUCTIVE SUBFN const " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
     
-    //metacache[metatuple] = true;
+    metacache[metatuple] = true;
     //Note that the base case of true broke the up/down variant so have to be very conservative
     //  as a consequence we cannot detect const of recursive functions :'( [in that will be too conservative]
-    metacache[metatuple] = false;
+    //metacache[metatuple] = false;
 
     SmallPtrSet<Value*, 20> constants2;
     constants2.insert(constants.begin(), constants.end());
@@ -337,7 +407,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     
     std::set<int> arg_constants;
     std::set<int> idx_findifactive;
-    SmallPtrSet<Argument*, 20> arg_findifactive;
+    SmallPtrSet<Value*, 20> arg_findifactive;
     
     SmallPtrSet<Value*, 20> newconstants;
     SmallPtrSet<Value*, 20> newnonconstant;
@@ -360,9 +430,18 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
         a++;
     }
 
-    bool constret = isconstantValueM(CI, constants2, nonconstant2, retvals2, originalInstructions, directions);
+    bool constret;
     
-    if (constret) arg_constants.insert(-1);
+    //allow return index as valid entry as well
+    if (CI != val) {
+        constret = isconstantValueM(CI, constants2, nonconstant2, retvals2, originalInstructions, directions);
+        if (constret) arg_constants.insert(-1);
+    } else {
+        constret = false;
+        arg_findifactive.insert(a);
+        idx_findifactive.insert(-1);
+        
+    }
 
     static std::map<std::tuple<std::set<int>, Function*, std::set<int> >, bool> cache;
 
@@ -376,10 +455,11 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     //! inductively assume that it is constant, it should be deduced nonconstant elsewhere if this is not the case
     if (printconst)
        llvm::errs() << " < INDUCTIVE SUBFN const " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
+    
     cache[tuple] = true;
     //Note that the base case of true broke the up/down variant so have to be very conservative
     //  as a consequence we cannot detect const of recursive functions :'( [in that will be too conservative]
-    cache[tuple] = false;
+    //cache[tuple] = false;
     
     SmallPtrSet<Instruction*,4> newinsts;
     SmallPtrSet<Value*,4> newretvals;
@@ -389,6 +469,7 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
         if (!constret) {
             if (auto ri = dyn_cast<ReturnInst>(&*I)) {
                 newretvals.insert(ri->getReturnValue());
+                if (CI == val) arg_findifactive.insert(ri->getReturnValue());
             }
         }
     }
@@ -841,19 +922,27 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
 
 			if (auto gep = dyn_cast<GetElementPtrInst>(a)) {
 				assert(val != gep->getPointerOperand());
-				continue;
+                assert(val->getType()->isIntegerTy());
+                if (printconst) {
+			        llvm::errs() << "Value found constant gep use:" << *val << " user " << *gep << "\n";
+                }
+				return true;
 			}
 			if (auto call = dyn_cast<CallInst>(a)) {
                 if (isFunctionArgumentConstant(call, val, constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {
-                    if (printconst)
+                    if (printconst) {
 			          llvm::errs() << "Value found constant callinst use:" << *val << " user " << *call << "\n";
+                    }
                     continue;
                 }
 			}
             if (isa<AllocaInst>(a)) {
-               if (printconst)
+               if (printconst) {
 			     llvm::errs() << "Value found constant allocainst use:" << *val << " user " << *a << "\n";
-               continue;
+               }
+               assert(val->getType()->isIntegerTy());
+			   return true;
+               //continue;
             }
             
 		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {

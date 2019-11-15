@@ -175,6 +175,8 @@ public:
     }
     for(auto v: lastScopeAlloc) {
         if (v.second == I) {
+            llvm::errs() << *oldFunc << "\n";
+            llvm::errs() << *newFunc << "\n";
             llvm::errs() << *v.first << "\n";
             llvm::errs() << *I << "\n";
             assert(0 && "erasing something in lastScopeAlloc map");
@@ -182,6 +184,7 @@ public:
     }
     for(auto v: scopeMap) {
         if (v.second == I) {
+            llvm::errs() << *oldFunc << "\n";
             llvm::errs() << *newFunc << "\n";
             dumpScope();
             llvm::errs() << *v.first << "\n";
@@ -191,6 +194,8 @@ public:
     }
     for(auto v: scopeFrees) {
         if (v.second == I) {
+            llvm::errs() << *oldFunc << "\n";
+            llvm::errs() << *newFunc << "\n";
             llvm::errs() << *v.first << "\n";
             llvm::errs() << *I << "\n";
             assert(0 && "erasing something in scopeFrees map");
@@ -198,6 +203,7 @@ public:
     }
     for(auto v: invertedPointers) {
         if (v.second == I) {
+            llvm::errs() << *oldFunc << "\n";
             llvm::errs() << *newFunc << "\n";
             dumpPointers();
             llvm::errs() << *v.first << "\n";
@@ -206,6 +212,7 @@ public:
         }
     }
     if (!I->use_empty()) {
+        llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
         llvm::errs() << *I << "\n";
     }
@@ -339,6 +346,8 @@ public:
             ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {tapeidx-1}));
 
             if (malloc) assert(cast<PointerType>(ret->getType())->getElementType() == malloc->getType());
+        
+            //scopeMap[inst] = cache;
 
             AllocaInst* cache = entryBuilder.CreateAlloca(ret->getType(), nullptr, "mdyncache_fromtape");
             entryBuilder.CreateStore(ret, cache);
@@ -598,6 +607,9 @@ public:
     report_fatal_error("could not find original block for given reverse block");
   }
 
+  //! This cache stores blocks we may insert as part of getReverseOrLatchMerge to handle inverse iv iteration
+  //  As we don't want to create redundant blocks, we use this convenient cache
+  std::map<std::tuple<BasicBlock*, BasicBlock*>, BasicBlock*> newBlocksForLoop_cache;
   BasicBlock* getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock);
 
   void forceContexts();
@@ -712,6 +724,7 @@ public:
 
           if (op->getType()->isEmptyTy()) continue;
 
+          if (op->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
           //if (!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
           //    continue;
           //}
@@ -1144,8 +1157,16 @@ endCheck:
         ValueToValueMapTy available;
         
         Value* next = cache;
+        assert(next->getType()->isPointerTy());
         for(int i=sublimits.size()-1; i>=0; i--) {
             next = BuilderM.CreateLoad(next);
+            if (!next->getType()->isPointerTy()) {
+                llvm::errs() << *oldFunc << "\n";
+                llvm::errs() << *newFunc << "\n";
+                llvm::errs() << "cache: " << *cache << "\n";
+                llvm::errs() << "next: " << *next << "\n";
+            }
+            assert(next->getType()->isPointerTy());
             //cast<LoadInst>(next)->setMetadata(LLVMContext::MD_invariant_load, MDNode::get(next->getContext(), {}));
             if (invariantGroups.find(std::make_pair(cache, i)) == invariantGroups.end()) {
                 MDNode* invgroup = MDNode::getDistinct(cache->getContext(), {});
@@ -1194,17 +1215,7 @@ endCheck:
                 }
                 next = BuilderM.CreateGEP(next, {idx});
             }
-            
-            /*
-            if (i != 0) {
-                //TODO
-                if (!sublimits[i].second.back().first.dynamic) {
-                    next = BuilderM.CreateGEP(next, sublimits[i].second.back().first.var);
-                } else {
-                    next = BuilderM.CreateGEP(next, sublimits[i].second.back().first.var);
-                }
-            }
-            */
+            assert(next->getType()->isPointerTy());    
         }
         return next;
     }
@@ -1337,6 +1348,7 @@ endCheck:
         return inst;
     }
 
+    std::map<std::pair<Value*, BasicBlock*>, Value*> lookup_cache;
     Value* lookupM(Value* val, IRBuilder<>& BuilderM);
 
     Value* invertPointerM(Value* val, IRBuilder<>& BuilderM);

@@ -761,6 +761,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                     }
                     gutils->erase(placeholder);
                   } else {
+                      /*
                     if (cast<StructType>(augmentcall->getType())->getNumElements() != 2) {
                         llvm::errs() << "old called: " << *called << "\n";
                         llvm::errs() << "augmented called: " << *augmentcall << "\n";
@@ -768,7 +769,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                         llvm::errs() << "op subdifferentialreturn: " << subdifferentialreturn << "\n";
                     }
                     assert(cast<StructType>(augmentcall->getType())->getNumElements() == 2);
-                    
+                    */
                   }
 
                   gutils->replaceAWithB(op,rv);
@@ -838,7 +839,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             toinvert = builder.CreateExtractValue(ri->getReturnValue(), {1});
         }
         if (!gutils->isConstantValue(toinvert)) {
-            if (gutils->oldFunc->getReturnType()->isPointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) {
+            if (!gutils->oldFunc->getReturnType()->isFPOrFPVectorTy()) { //PointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) {
                 invertedRetPs[ri] = gutils->invertPointerM(toinvert, builder);
             } else {
                 llvm::errs() << "warning not allowing inverted return on type " << *toinvert->getType() << "\n";
@@ -914,8 +915,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
   if (returnUsed) {
     RetTypes.push_back(gutils->oldFunc->getReturnType());
-    if ( differentialReturn )
+    //if ( differentialReturn )
     //if ( (gutils->oldFunc->getReturnType()->isPointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) && differentialReturn )
+    if ( differentialReturn && ! gutils->oldFunc->getReturnType()->isFPOrFPVectorTy())
       RetTypes.push_back(gutils->oldFunc->getReturnType());
   }
 
@@ -1026,7 +1028,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
             ib.CreateStore(actualrv, ib.CreateConstGEP2_32(RetType, ret, 0, 1, ""));
 
-            if (differentialReturn) {
+            if (differentialReturn && !oldretTy->isFPOrFPVectorTy()) {
             //if ((oldretTy->isPointerTy() || oldretTy->isIntegerTy()) && differentialReturn) {
               assert(invertedRetPs[ri]);
               if (!isa<UndefValue>(invertedRetPs[ri])) {
@@ -1322,6 +1324,17 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     return;
   }
 
+  bool subretused = op->getNumUses() != 0;
+  // double check for uses that may have been removed by loads from a cache (specifically if this returns a pointer)
+  // we can safely ignore (and should ignore) return instances, since those are already taken into account by a store if we do need to return them
+  if (!subretused) {
+    for( auto user : gutils->getOriginal(op)->users()) {
+        if (isa<ReturnInst>(user)) continue;
+        subretused = true;
+        break;
+    }
+  }
+
   if (called && isAllocationFunction(*called, TLI)) {
     if (!gutils->isConstantValue(op)) {
       PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[op]);
@@ -1334,7 +1347,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
     if (topLevel) {
       Value* inst = op;
-      if (!topLevel && op->getNumUses() != 0) {
+      if (!topLevel && subretused) {
         IRBuilder<> BuilderZ(op);
         inst = gutils->addMalloc(BuilderZ, op);
       }
@@ -1383,7 +1396,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   }
 
   if (gutils->isConstantInstruction(op)) {
-    if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
+    if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       IRBuilder<> BuilderZ(op);
       gutils->addMalloc(BuilderZ, op);
     }
@@ -1618,7 +1631,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       }
     }
 
-    if (op->getNumUses() != 0 && isa<PointerType>(op->getType())) {
+    if (subretused && isa<PointerType>(op->getType())) {
       if (called)
         llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << called->getName() << "\n";
       else
@@ -1654,7 +1667,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
   //TODO consider what to do if called == nullptr for augmentation
   if (modifyPrimal && called) {
-    bool subretused = op->getNumUses() != 0;
     bool subdifferentialreturn = (!gutils->isConstantValue(op)) && subretused;
     auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/subretused, uncacheable_args);
     if (topLevel) {
@@ -1694,7 +1706,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     } else {
       tape = gutils->addMalloc(BuilderZ, tape);
 
-      if (!topLevel && op->getNumUses() != 0) {
+      if (!topLevel && subretused) {
         cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
         cachereplace = gutils->addMalloc(BuilderZ, cachereplace);
       }
@@ -1703,7 +1715,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
         gutils->invertedPointers.erase(op);
         if (I != E && placeholder == &*I) I++;
-        if( op->getNumUses() != 0 && (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && subdifferentialreturn ) {
+        llvm::errs() << "subdifferentalreturn: " << subdifferentialreturn << " " << " isconstval:" << gutils->isConstantValue(op) << " subretused: " << subretused << "\n";
+        if( subretused && (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && subdifferentialreturn ) {
             auto newip = gutils->addMalloc(BuilderZ, placeholder);
             gutils->invertedPointers[op] = newip;
         } else {
@@ -1736,14 +1749,14 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         gutils->invertedPointers.erase(op);
         gutils->erase(placeholder);
       }
-    if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
+    if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       assert(!replaceFunction);
       cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
       cachereplace = gutils->addMalloc(BuilderZ, cachereplace);
     }
   }
 
-  bool retUsed = replaceFunction && (op->getNumUses() > 0);
+  bool retUsed = replaceFunction && subretused;
   Value* newcalled = nullptr;
 
   bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
@@ -1784,7 +1797,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   }
 
   //TODO this shouldn't matter because this can't use itself, but setting null should be done before other sets but after load of diffe
-  if (op->getNumUses() != 0 && !gutils->isConstantValue(op))
+  if (subretused && !gutils->isConstantValue(op))
     gutils->setDiffe(op, Constant::getNullValue(op->getType()), Builder2);
 
   gutils->originalInstructions.insert(diffes);
@@ -1803,14 +1816,14 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
             dumpMap(gutils->invertedPointers);
             auto dretval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {1}));
             /* todo handle this case later */
-            assert(placeholder->getNumUses() == 0);
+            assert(!subretused);
             gutils->invertedPointers[op] = dretval;
         }
         gutils->erase(placeholder);
     }
 
     ValueToValueMapTy mapp;
-    if (op->getNumUses() != 0) {
+    if (subretused) {
       auto retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
       gutils->originalInstructions.insert(retval);
       gutils->nonconstant.insert(retval);
@@ -1845,7 +1858,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
   if (augmentcall || cachereplace) {
 
-    if (op->getNumUses() > 0) {
+    if (subretused) {
       Value* dcall = nullptr;
       if (augmentcall) {
         dcall = BuilderZ.CreateExtractValue(augmentcall, {1});
