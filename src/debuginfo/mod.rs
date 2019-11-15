@@ -375,9 +375,6 @@ fn translate_loc(loc: ValueLoc, stack_slots: &StackSlots) -> Option<Vec<u8>> {
                     .write_u8(gimli::constants::DW_OP_breg0.0 + X86_64::RBP.0 as u8)
                     .expect("bp wr");
                 writer.write_sleb128(ss_offset as i64 + 16).expect("ss wr");
-                writer
-                    .write_u8(gimli::constants::DW_OP_deref.0 as u8)
-                    .expect("bp wr");
                 let buf = writer.into_vec();
                 return Some(buf);
             }
