@@ -14,12 +14,13 @@ use errors::Level;
 use errors::Diagnostic;
 use errors::FatalError;
 use errors::Handler;
-use rustc_data_structures::fx::{FxHashMap};
+use rustc_data_structures::fx::{FxHasher, FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock};
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::thin_vec::ThinVec;
 #[cfg(not(parallel_compiler))]
 use rustc_data_structures::cold_path;
+use std::hash::{Hash, Hasher};
 use std::mem;
 use std::ptr;
 use std::collections::hash_map::Entry;
@@ -82,8 +83,17 @@ impl<'a, 'tcx, Q: QueryDescription<'tcx>> JobOwner<'a, 'tcx, Q> {
     pub(super) fn try_get(tcx: TyCtxt<'tcx>, span: Span, key: &Q::Key) -> TryGetJob<'a, 'tcx, Q> {
         let cache = Q::query_cache(tcx);
         loop {
-            let mut lock = cache.get_shard_by_value(key).lock();
-            if let Some(value) = lock.results.get(key) {
+            // We compute the key's hash once and then use it for both the
+            // shard lookup and the hashmap lookup. This relies on the fact
+            // that both of them use `FxHasher`.
+            let mut state = FxHasher::default();
+            key.hash(&mut state);
+            let key_hash = state.finish();
+
+            let mut lock = cache.get_shard_by_hash(key_hash).lock();
+            if let Some((_, value)) =
+                lock.results.raw_entry().from_key_hashed_nocheck(key_hash, key)
+            {
                 tcx.prof.query_cache_hit(Q::NAME);
                 let result = (value.value.clone(), value.index);
                 #[cfg(debug_assertions)]
