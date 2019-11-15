@@ -287,6 +287,14 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
 
     if (F->empty()) return false;
 
+    return false;
+    if (fn.startswith("augmented")) return false;
+    if (fn.startswith("fakeaugmented")) return false;
+    if (fn.startswith("diffe")) return false;
+    if (val->getType()->isPointerTy()) return false;
+
+    assert(retvals.find(val) == retvals.end());
+
     //static std::unordered_map<std::tuple<Function*, Value*, SmallPtrSet<Value*,20>, std::set<Value*> >, bool> metacache;
     static std::map<std::tuple<CallInst*, Value*, std::set<Value*>, std::set<Value*>, std::set<Value*> >, bool> metacache;
     //auto metatuple = std::make_tuple(F, val, SmallPtrSet<Value*,20>(constants.begin(), constants.end()), std::set<Value*>(nonconstant.begin(), nonconstant.end()));
@@ -298,7 +306,11 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     }
     if (printconst)
        llvm::errs() << " < METAINDUCTIVE SUBFN const " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
-    metacache[metatuple] = true;
+    
+    //metacache[metatuple] = true;
+    //Note that the base case of true broke the up/down variant so have to be very conservative
+    //  as a consequence we cannot detect const of recursive functions :'( [in that will be too conservative]
+    metacache[metatuple] = false;
 
     SmallPtrSet<Value*, 20> constants2;
     constants2.insert(constants.begin(), constants.end());
@@ -309,7 +321,8 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
 
     //Ask the question, even if is this is active, are all its uses inactive (meaning this use does not impact its activity)
     nonconstant2.insert(val);
-    retvals2.insert(val);
+    //retvals2.insert(val);
+    
     //constants2.insert(val);
 
     if (printconst) {
@@ -361,6 +374,9 @@ bool isFunctionArgumentConstant(CallInst* CI, Value* val, SmallPtrSetImpl<Value*
     if (printconst)
        llvm::errs() << " < INDUCTIVE SUBFN const " << F->getName() << "> arg: " << *val << " ci:" << *CI << "\n";
     cache[tuple] = true;
+    //Note that the base case of true broke the up/down variant so have to be very conservative
+    //  as a consequence we cannot detect const of recursive functions :'( [in that will be too conservative]
+    cache[tuple] = false;
     
     SmallPtrSet<Instruction*,4> newinsts;
     SmallPtrSet<Value*,4> newretvals;
@@ -518,6 +534,29 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		if (printconst)
 			llvm::errs() << " < MEMSEARCH" << (int)directions << ">" << *inst << "\n";
 
+        {
+		SmallPtrSet<Value*, 20> constants2;
+		constants2.insert(constants.begin(), constants.end());
+		SmallPtrSet<Value*, 20> nonconstant2;
+		nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+		SmallPtrSet<Value*, 20> retvals2;
+		retvals2.insert(retvals.begin(), retvals.end());
+		nonconstant2.insert(inst);
+		for (const auto &a:inst->users()) {
+		  if (isa<LoadInst>(a)) {
+		      if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+				if (directions == 3)
+				  nonconstant.insert(inst);
+    			if (printconst)
+				  llvm::errs() << "memory(" << (int)directions << ")  erase 3: " << *inst << "\n";
+				return false;
+              }
+              continue;
+          }
+		}
+
+        }
+
 		for (const auto &a:inst->users()) {
 		  if(auto store = dyn_cast<StoreInst>(a)) {
 
@@ -535,8 +574,18 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				  llvm::errs() << "memory(" << (int)directions << ")  erase 2: " << *inst << "\n";
 				return false;
 			}
-		  } else if (isa<LoadInst>(a)) continue;
-		  else {
+		  } else if (isa<LoadInst>(a)) {
+              /*
+		      if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+				if (directions == 3)
+				  nonconstant.insert(inst);
+    			if (printconst)
+				  llvm::errs() << "memory(" << (int)directions << ")  erase 3: " << *inst << "\n";
+				return false;
+              }
+              */
+              continue;
+          } else {
 			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
@@ -677,14 +726,16 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                 }
             }
 
-            constants.insert(inst);
-            constants.insert(constants2.begin(), constants2.end());
-            constants.insert(constants_tmp.begin(), constants_tmp.end());
-            //if (directions == 3)
-            //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
-            if (printconst)
-              llvm::errs() << "constant(" << (int)directions << ")  inst:" << *inst << "\n";
-            return true;
+            //if (!isa<StoreInst>(inst) && !inst->getType()->isPointerTy()) {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+                //if (directions == 3)
+                //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ")  inst:" << *inst << "\n";
+                return true;
+            //}
         }
         if (printconst)
 		    llvm::errs() << " </UPSEARCH" << (int)directions << ">" << *inst << "\n";

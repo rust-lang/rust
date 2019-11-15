@@ -84,6 +84,9 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
           if (uncacheable_args.find(arg->getArgNo()) != uncacheable_args.end()) {
             can_modref = true;
           }
+        //TODO this case (alloca goes out of scope/allocation is freed and we dont force it to continue needs to be forcibly cached)
+        } else if (isa<AllocaInst>(obj)) {
+           can_modref = true;
         } else {
           // NOTE(TFK): In the case where the underlying object for the pointer operand is from a Load or Call we need
           //  to check if we need to cache. Likely, we need to play it safe in this case and cache.
@@ -779,14 +782,18 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
                 gutils->erase(op);
         } else if(LoadInst* li = dyn_cast<LoadInst>(inst)) {
-          if (gutils->isConstantInstruction(inst) || gutils->isConstantValue(inst)) continue;
-          if (can_modref_map[inst]) {
+
+         if (can_modref_map[inst]) {
             llvm::errs() << "Forcibly caching reads " << *li << "\n"; 
             IRBuilder<> BuilderZ(li);
             gutils->addMalloc(BuilderZ, li);
+            //if (!gutils->isConstantValue(inst) && !inst->getType()->isPointerTy()) {
+            //  Value* pt = gutils->invertPointerM(li->getPointerOperand(), BuilderZ);
+            //  gutils->addMalloc(BuilderZ, pt);
+            //}
           }
 
-           //TODO IF OP IS POINTER
+          //TODO IF OP IS POINTER
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
 
@@ -969,6 +976,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   unsigned i=0;
   for (auto v: gutils->getMallocs()) {
       if (!isa<UndefValue>(v)) {
+          //llvm::errs() << "v: " << *v << "VMap[v]: " << *VMap[v] << "\n";
           IRBuilder <>ib(cast<Instruction>(VMap[v])->getNextNode());
           Value *Idxs[] = {
             ib.getInt32(0),
@@ -2453,24 +2461,58 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif1) addToDiffe(op->getOperand(1), dif1);
       if (dif2) addToDiffe(op->getOperand(2), dif2);
     } else if(auto op = dyn_cast<LoadInst>(inst)) {
-      if (gutils->isConstantValue(inst) || gutils->isConstantInstruction(inst)) continue;
+      Value* op_operand = op->getPointerOperand(); 
+      Type* op_type = op->getType();
 
-      auto op_operand = op->getPointerOperand();
-      auto op_type = op->getType();
+      Value* inverted_operand = nullptr;
       
-
+      if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
+        inverted_operand = gutils->invertPointerM(op_operand, Builder2);
+      }
+ 
       if (can_modref_map[inst]) {
         IRBuilder<> BuilderZ(op->getNextNode());
+        llvm::errs() << "Forcibly loading" << *inst << "\n";
+        bool orig_inst_constant = gutils->isConstantValue(inst);
         inst = cast<Instruction>(gutils->addMalloc(BuilderZ, inst));
         if (inst != op) {
           // Set to nullptr since op should never be used after invalidated through addMalloc.
           op = nullptr;
-          gutils->nonconstant_values.insert(inst);
-          gutils->nonconstant.insert(inst);
+          if (!orig_inst_constant) { 
+            gutils->nonconstant_values.insert(inst);
+            gutils->nonconstant.insert(inst);
+          } else {
+            gutils->constants.insert(inst);
+          }
           gutils->originalInstructions.insert(inst);
+
           assert(inst->getType() == op_type);
+
+          /*
+          if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
+            inverted_operand = lookup(gutils->addMalloc(BuilderZ, nullptr));
+            assert(inverted_operand->getType()->isPointerTy());
+            if (cast<PointerType>(inverted_operand->getType())->getElementType() != inst->getType()) {
+              llvm::errs() << "F: " << *gutils->newFunc << "\n";
+              llvm::errs() << "Inverted operand: " << *inverted_operand << "\n";
+              llvm::errs() << "inst: " << *inst << "\n";
+            }
+            assert(cast<PointerType>(inverted_operand->getType())->getElementType() == inst->getType());
+          }
+          */
+        } else {
+          //if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
+          //  inverted_operand = gutils->invertPointerM(op_operand, Builder2);
+          //}
         }
+      } else {
+        //IRBuilder<> BuilderZ(op->getNextNode());
+        //if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
+        //  inverted_operand = gutils->invertPointerM(op_operand, Builder2);
+        //}
       }
+
+      if (gutils->isConstantValue(inst)) continue;
 
       if (nonmarkedglobals_inactiveloads) {
           //Assume that non enzyme_shadow globals are inactive
@@ -2487,7 +2529,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (!op_type->isPointerTy()) {
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(op_type));
-        gutils->addToPtrDiffe(op_operand, prediff, Builder2);
+        assert(inverted_operand);
+        //auto test = Builder2.CreateLoad(cast<PointerType>(inverted_operand->getType())->getElementType(), inverted_operand);
+        gutils->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2);
       }
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;

@@ -1555,17 +1555,16 @@ public:
       return addedSelect;
   }
 
-  void addToPtrDiffe(Value* val, Value* dif, IRBuilder<> &BuilderM) {
-      if (!(val->getType()->isPointerTy()) || !(cast<PointerType>(val->getType())->getElementType() == dif->getType())) {
+  void addToInvertedPtrDiffe(Value* ptr, Value* dif, IRBuilder<> &BuilderM) {
+      if (!(ptr->getType()->isPointerTy()) || !(cast<PointerType>(ptr->getType())->getElementType() == dif->getType())) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
-        llvm::errs() << "Val: " << *val << "\n";
+        llvm::errs() << "Ptr: " << *ptr << "\n";
         llvm::errs() << "Diff: " << *dif << "\n";
       }
-      assert(val->getType()->isPointerTy());
-      assert(cast<PointerType>(val->getType())->getElementType() == dif->getType());
+      assert(ptr->getType()->isPointerTy());
+      assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
 
-      auto ptr = invertPointerM(val, BuilderM);
       assert(ptr->getType()->isPointerTy());
       assert(cast<PointerType>(ptr->getType())->getElementType() == dif->getType());
 
