@@ -14,8 +14,8 @@ use rustc_errors::Applicability;
 use syntax::ast;
 use syntax::ast::{Crate as AstCrate, ItemKind, Name};
 use syntax::source_map::Span;
-use syntax_pos::symbol::SymbolStr;
 use syntax::visit::FnKind;
+use syntax_pos::symbol::SymbolStr;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for various things we like to keep tidy in clippy.
