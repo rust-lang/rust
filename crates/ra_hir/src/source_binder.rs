@@ -56,7 +56,7 @@ fn try_get_resolver_for_node(
             },
             _ => {
                 if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
-                    Some(def_with_body_from_child_node(db, file_id, node)?.resolver(db))
+                    Some(def_with_body_from_child_node(db, Source::new(file_id.into(), node))?.resolver(db))
                 } else {
                     // FIXME add missing cases
                     None
@@ -68,14 +68,13 @@ fn try_get_resolver_for_node(
 
 fn def_with_body_from_child_node(
     db: &impl HirDatabase,
-    file_id: FileId,
-    node: &SyntaxNode,
+    child: Source<&SyntaxNode>,
 ) -> Option<DefWithBody> {
-    let src = crate::ModuleSource::from_child_node(db, file_id, node);
-    let module = Module::from_definition(db, crate::Source { file_id: file_id.into(), ast: src })?;
-    let ctx = LocationCtx::new(db, module.id, file_id.into());
+    let module_source = crate::ModuleSource::from_child_node(db, child);
+    let module = Module::from_definition(db, Source::new(child.file_id, module_source))?;
+    let ctx = LocationCtx::new(db, module.id, child.file_id);
 
-    node.ancestors().find_map(|node| {
+    child.ast.ancestors().find_map(|node| {
         match_ast! {
             match node {
                 ast::FnDef(def)  => { Some(Function {id: ctx.to_def(&def) }.into()) },
@@ -142,7 +141,7 @@ impl SourceAnalyzer {
         node: &SyntaxNode,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        let def_with_body = def_with_body_from_child_node(db, file_id, node);
+        let def_with_body = def_with_body_from_child_node(db, Source::new(file_id.into(), node));
         if let Some(def) = def_with_body {
             let source_map = def.body_source_map(db);
             let scopes = def.expr_scopes(db);
