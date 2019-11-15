@@ -1,2 +1,2 @@
 all:
-	python test.py
+	python2.7 test.py
