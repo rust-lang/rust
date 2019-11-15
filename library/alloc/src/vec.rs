@@ -2131,12 +2131,14 @@ where
     I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
 {
     let mut insert_pos = 0;
+    let original_ptr = iterator.as_inner().buf.as_ptr();
 
     // FIXME: how to drop values written into source when iteration panics?
     //   tail already gets cleaned by IntoIter::drop
     while let Some(item) = iterator.next() {
         let source_iter = iterator.as_inner();
         let src_buf = source_iter.buf.as_ptr();
+        debug_assert_eq!(original_ptr, src_buf);
         let src_idx = source_iter.ptr;
         unsafe {
             let dst = src_buf.offset(insert_pos as isize);
