@@ -258,6 +258,13 @@ impl CrateDefMap {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
     }
+
+    pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = CrateModuleId> + '_ {
+        self.modules
+            .iter()
+            .filter(move |(_id, data)| data.definition == Some(file_id))
+            .map(|(id, _data)| id)
+    }
 }
 
 mod diagnostics {

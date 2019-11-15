@@ -157,7 +157,7 @@ impl Module {
     }
 
     /// Finds a child module with the specified name.
-    pub fn child(self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
+    pub fn child(self, db: &impl DefDatabase, name: &Name) -> Option<Module> {
         let def_map = db.crate_def_map(self.id.krate);
         let child_id = def_map[self.id.module_id].children.get(name)?;
         Some(self.with_module_id(*child_id))

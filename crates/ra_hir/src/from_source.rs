@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::{StructId, StructOrUnionId, UnionId};
+use hir_def::{ModuleId, StructId, StructOrUnionId, UnionId};
 use hir_expand::name::AsName;
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
@@ -10,9 +10,9 @@ use ra_syntax::{
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
-    AstId, Const, Crate, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource,
-    ImplBlock, Local, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias,
-    Union, VariantDef,
+    Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource, ImplBlock,
+    Local, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union,
+    VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -152,44 +152,48 @@ impl Local {
 }
 
 impl Module {
-    pub fn from_declaration(db: &impl HirDatabase, src: Source<ast::Module>) -> Option<Self> {
-        let src_parent = Source {
-            file_id: src.file_id,
-            ast: ModuleSource::new(db, Some(src.file_id.original_file(db)), None),
-        };
-        let parent_module = Module::from_definition(db, src_parent)?;
+    pub fn from_declaration(db: &impl DefDatabase, src: Source<ast::Module>) -> Option<Self> {
+        let parent_declaration = src.ast.syntax().ancestors().skip(1).find_map(ast::Module::cast);
+
+        let parent_module = match parent_declaration {
+            Some(parent_declaration) => {
+                let src_parent = Source { file_id: src.file_id, ast: parent_declaration };
+                Module::from_declaration(db, src_parent)
+            }
+            _ => {
+                let src_parent = Source {
+                    file_id: src.file_id,
+                    ast: ModuleSource::new(db, Some(src.file_id.original_file(db)), None),
+                };
+                Module::from_definition(db, src_parent)
+            }
+        }?;
+
         let child_name = src.ast.name()?;
         parent_module.child(db, &child_name.as_name())
     }
 
-    pub fn from_definition(
-        db: &(impl DefDatabase + AstDatabase),
-        src: Source<ModuleSource>,
-    ) -> Option<Self> {
-        let decl_id = match src.ast {
+    pub fn from_definition(db: &impl DefDatabase, src: Source<ModuleSource>) -> Option<Self> {
+        match src.ast {
             ModuleSource::Module(ref module) => {
                 assert!(!module.has_semi());
-                let ast_id_map = db.ast_id_map(src.file_id);
-                let item_id = AstId::new(src.file_id, ast_id_map.ast_id(module));
-                Some(item_id)
+                return Module::from_declaration(
+                    db,
+                    Source { file_id: src.file_id, ast: module.clone() },
+                );
             }
-            ModuleSource::SourceFile(_) => None,
+            ModuleSource::SourceFile(_) => (),
         };
 
-        db.relevant_crates(src.file_id.original_file(db)).iter().find_map(|&crate_id| {
-            let def_map = db.crate_def_map(crate_id);
+        let original_file = src.file_id.original_file(db);
 
-            let (module_id, _module_data) =
-                def_map.modules.iter().find(|(_module_id, module_data)| {
-                    if decl_id.is_some() {
-                        module_data.declaration == decl_id
-                    } else {
-                        module_data.definition.map(|it| it.into()) == Some(src.file_id)
-                    }
-                })?;
-
-            Some(Module::new(Crate { crate_id }, module_id))
-        })
+        let (krate, module_id) =
+            db.relevant_crates(original_file).iter().find_map(|&crate_id| {
+                let crate_def_map = db.crate_def_map(crate_id);
+                let local_module_id = crate_def_map.modules_for_file(original_file).next()?;
+                Some((crate_id, local_module_id))
+            })?;
+        Some(Module { id: ModuleId { krate, module_id } })
     }
 }
 
