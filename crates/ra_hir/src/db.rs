@@ -13,8 +13,10 @@ use crate::{
     lang_item::{LangItemTarget, LangItems},
     traits::TraitData,
     ty::{
-        method_resolution::CrateImplBlocks, traits::Impl, CallableDef, FnSig, GenericPredicate,
-        InferenceResult, Namespace, Substs, Ty, TypableDef, TypeCtor,
+        method_resolution::CrateImplBlocks,
+        traits::{AssocTyValue, Impl},
+        CallableDef, FnSig, GenericPredicate, InferenceResult, Namespace, Substs, Ty, TypableDef,
+        TypeCtor,
     },
     type_alias::TypeAliasData,
     Const, ConstData, Crate, DefWithBody, FnData, Function, ImplBlock, Module, Static, StructField,
@@ -119,6 +121,8 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
     #[salsa::interned]
     fn intern_chalk_impl(&self, impl_: Impl) -> ids::GlobalImplId;
+    #[salsa::interned]
+    fn intern_assoc_ty_value(&self, assoc_ty_value: AssocTyValue) -> ids::AssocTyValueId;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
     fn associated_ty_data(&self, id: chalk_ir::TypeId) -> Arc<chalk_rust_ir::AssociatedTyDatum>;
@@ -139,6 +143,13 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
 
     #[salsa::invoke(crate::ty::traits::chalk::impl_datum_query)]
     fn impl_datum(&self, krate: Crate, impl_id: chalk_ir::ImplId) -> Arc<chalk_rust_ir::ImplDatum>;
+
+    #[salsa::invoke(crate::ty::traits::chalk::associated_ty_value_query)]
+    fn associated_ty_value(
+        &self,
+        krate: Crate,
+        id: chalk_rust_ir::AssociatedTyValueId,
+    ) -> Arc<chalk_rust_ir::AssociatedTyValue>;
 
     #[salsa::invoke(crate::ty::traits::trait_solve_query)]
     fn trait_solve(

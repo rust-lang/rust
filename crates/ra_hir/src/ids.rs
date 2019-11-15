@@ -37,3 +37,9 @@ impl_intern_key!(TypeCtorId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GlobalImplId(salsa::InternId);
 impl_intern_key!(GlobalImplId);
+
+/// This exists just for Chalk, because it needs a unique ID for each associated
+/// type value in an impl (even synthetic ones).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AssocTyValueId(salsa::InternId);
+impl_intern_key!(AssocTyValueId);

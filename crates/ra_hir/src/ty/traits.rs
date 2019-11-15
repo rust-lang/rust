@@ -8,7 +8,7 @@ use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
-use crate::{db::HirDatabase, expr::ExprId, Crate, DefWithBody, ImplBlock, Trait};
+use crate::{db::HirDatabase, expr::ExprId, Crate, DefWithBody, ImplBlock, Trait, TypeAlias};
 
 use self::chalk::{from_chalk, ToChalk};
 
@@ -299,4 +299,15 @@ pub enum Impl {
     ImplBlock(ImplBlock),
     /// Closure types implement the Fn traits synthetically.
     ClosureFnTraitImpl(ClosureFnTraitImplData),
+}
+
+/// An associated type value. Usually this comes from a `type` declaration
+/// inside an impl block, but for built-in impls we have to synthesize it.
+/// (We only need this because Chalk wants a unique ID for each of these.)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AssocTyValue {
+    /// A normal assoc type value from an impl block.
+    TypeAlias(TypeAlias),
+    /// The output type of the Fn trait implementation.
+    ClosureFnTraitImplOutput(ClosureFnTraitImplData),
 }
