@@ -731,7 +731,6 @@ impl dyn Error {
     /// # Examples
     ///
     /// ```
-    /// #![feature(error_iter)]
     /// use std::error::Error;
     /// use std::fmt;
     ///
@@ -775,7 +774,7 @@ impl dyn Error {
     /// ```
     ///
     /// [`source`]: trait.Error.html#method.source
-    #[unstable(feature = "error_iter", issue = "58520")]
+    #[stable(feature = "error_iter", since = "1.41.0")]
     #[inline]
     pub fn chain(&self) -> Chain<'_> {
         Chain {
@@ -790,13 +789,13 @@ impl dyn Error {
 /// its sources, use `skip(1)`.
 ///
 /// [`Error`]: trait.Error.html
-#[unstable(feature = "error_iter", issue = "58520")]
-#[derive(Copy, Clone, Debug)]
+#[stable(feature = "error_iter", since = "1.41.0")]
+#[derive(Clone, Debug)]
 pub struct Chain<'a> {
     current: Option<&'a (dyn Error + 'static)>,
 }
 
-#[unstable(feature = "error_iter", issue = "58520")]
+#[stable(feature = "error_iter", since = "1.41.0")]
 impl<'a> Iterator for Chain<'a> {
     type Item = &'a (dyn Error + 'static);
 
