@@ -16,7 +16,7 @@ jobs:
     
     steps:
     - name: add llvm 
-      run: sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools
+      run: sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools libeigen3-dev
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1
