@@ -2126,22 +2126,37 @@ where
     }
 }
 
+struct InPlaceIterFront<T> {
+    inner: *mut T,
+    count: usize,
+    did_panic: bool,
+}
+
+impl<T> Drop for InPlaceIterFront<T> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            if mem::needs_drop::<T>() && self.did_panic {
+                ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.count) as *mut _);
+            }
+        }
+    }
+}
+
 fn from_into_iter_source<T, I>(mut iterator: I) -> Vec<T>
 where
     I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
 {
-    let mut insert_pos = 0;
     let original_ptr = iterator.as_inner().buf.as_ptr();
+    let mut front_buffer = InPlaceIterFront { inner: original_ptr, count: 0, did_panic: true };
 
-    // FIXME: how to drop values written into source when iteration panics?
-    //   tail already gets cleaned by IntoIter::drop
     while let Some(item) = iterator.next() {
         let source_iter = iterator.as_inner();
         let src_buf = source_iter.buf.as_ptr();
         debug_assert_eq!(original_ptr, src_buf);
         let src_idx = source_iter.ptr;
         unsafe {
-            let dst = src_buf.offset(insert_pos as isize);
+            let dst = src_buf.offset(front_buffer.count as isize);
             debug_assert!(
                 dst as *const _ < src_idx,
                 "InPlaceIterable implementation produced more\
@@ -2149,12 +2164,16 @@ where
             );
             ptr::write(dst, item)
         }
-        insert_pos += 1;
+        front_buffer.count += 1;
     }
 
     let src = iterator.as_inner();
-    let vec = unsafe { Vec::from_raw_parts(src.buf.as_ptr(), insert_pos, src.cap) };
-    mem::forget(iterator);
+    front_buffer.did_panic = false;
+    let vec = unsafe { Vec::from_raw_parts(src.buf.as_ptr(), front_buffer.count, src.cap) };
+    src.cap = 0;
+    src.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
+    src.ptr = src.buf.as_ptr();
+    src.end = src.buf.as_ptr();
     vec
 }
 
