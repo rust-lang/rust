@@ -11,7 +11,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use rustc::hir::map::Map;
 use rustc::hir;
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use syntax::ast::Mutability;
@@ -75,31 +74,29 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
 
 #[derive(Copy, Clone)]
 struct CheckConstVisitor<'tcx> {
-    sess: &'tcx Session,
-    hir_map: &'tcx Map<'tcx>,
+    tcx: TyCtxt<'tcx>,
     const_kind: Option<ConstKind>,
 }
 
 impl<'tcx> CheckConstVisitor<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Self {
         CheckConstVisitor {
-            sess: &tcx.sess,
-            hir_map: tcx.hir(),
+            tcx,
             const_kind: None,
         }
     }
 
     /// Emits an error when an unsupported expression is found in a const context.
     fn const_check_violated(&self, bad_op: &str, span: Span) {
-        if self.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            self.sess.span_warn(span, "skipping const checks");
+        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            self.tcx.sess.span_warn(span, "skipping const checks");
             return;
         }
 
         let const_kind = self.const_kind
             .expect("`const_check_violated` may only be called inside a const context");
 
-        span_err!(self.sess, span, E0744, "`{}` is not allowed in a `{}`", bad_op, const_kind);
+        span_err!(self.tcx.sess, span, E0744, "`{}` is not allowed in a `{}`", bad_op, const_kind);
     }
 
     /// Saves the parent `const_kind` before calling `f` and restores it afterwards.
@@ -113,7 +110,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
 impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.hir_map)
+        NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
     fn visit_anon_const(&mut self, anon: &'tcx hir::AnonConst) {
@@ -122,7 +119,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
     }
 
     fn visit_body(&mut self, body: &'tcx hir::Body) {
-        let kind = ConstKind::for_body(body, self.hir_map);
+        let kind = ConstKind::for_body(body, self.tcx.hir());
         self.recurse_into(kind, |this| hir::intravisit::walk_body(this, body));
     }
 
