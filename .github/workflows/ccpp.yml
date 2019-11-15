@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   build:
-    name: Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }} mode ${{ matrix.build }}
+    name: Test on os ${{ matrix.os }} and llvm ${{ matrix.llvm }} mode ${{ matrix.build }} 
     runs-on: ${{ matrix.os }}
     
     strategy:
@@ -16,7 +16,7 @@ jobs:
     
     steps:
     - name: add llvm 
-      run: sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }}
+      run: sudo apt-get install -y llvm-${{ matrix.llvm }}-dev llvm-${{ matrix.llvm }}-tools clang-${{ matrix.llvm }} libeigen3-dev
     - uses: actions/checkout@v1
       with:
           fetch-depth: 1
