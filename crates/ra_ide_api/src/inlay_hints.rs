@@ -214,58 +214,60 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
-    InlayHint {
-        range: [193; 197),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [236; 244),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [275; 279),
-        kind: TypeHint,
-        label: "&str",
-    },
-    InlayHint {
-        range: [539; 543),
-        kind: TypeHint,
-        label: "(i32, char)",
-    },
-    InlayHint {
-        range: [566; 567),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [570; 571),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [573; 574),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [584; 585),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [577; 578),
-        kind: TypeHint,
-        label: "f64",
-    },
-    InlayHint {
-        range: [580; 581),
-        kind: TypeHint,
-        label: "f64",
-    },
-]"#
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [193; 197),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [236; 244),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [275; 279),
+                kind: TypeHint,
+                label: "&str",
+            },
+            InlayHint {
+                range: [539; 543),
+                kind: TypeHint,
+                label: "(i32, char)",
+            },
+            InlayHint {
+                range: [566; 567),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [570; 571),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [573; 574),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [584; 585),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [577; 578),
+                kind: TypeHint,
+                label: "f64",
+            },
+            InlayHint {
+                range: [580; 581),
+                kind: TypeHint,
+                label: "f64",
+            },
+        ]
+        "###
         );
     }
 
@@ -281,18 +283,20 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
-    InlayHint {
-        range: [21; 30),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [57; 66),
-        kind: TypeHint,
-        label: "i32",
-    },
-]"#
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [21; 30),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [57; 66),
+                kind: TypeHint,
+                label: "i32",
+            },
+        ]
+        "###
         );
     }
 
@@ -308,18 +312,20 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
-    InlayHint {
-        range: [21; 30),
-        kind: TypeHint,
-        label: "i32",
-    },
-    InlayHint {
-        range: [44; 53),
-        kind: TypeHint,
-        label: "i32",
-    },
-]"#
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [21; 30),
+                kind: TypeHint,
+                label: "i32",
+            },
+            InlayHint {
+                range: [44; 53),
+                kind: TypeHint,
+                label: "i32",
+            },
+        ]
+        "###
         );
     }
 
@@ -354,33 +360,35 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
-    InlayHint {
-        range: [166; 170),
-        kind: TypeHint,
-        label: "CustomOption<Test>",
-    },
-    InlayHint {
-        range: [334; 338),
-        kind: TypeHint,
-        label: "&Test",
-    },
-    InlayHint {
-        range: [389; 390),
-        kind: TypeHint,
-        label: "&CustomOption<u32>",
-    },
-    InlayHint {
-        range: [392; 393),
-        kind: TypeHint,
-        label: "&u8",
-    },
-    InlayHint {
-        range: [531; 532),
-        kind: TypeHint,
-        label: "&u32",
-    },
-]"#
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [166; 170),
+                kind: TypeHint,
+                label: "CustomOption<Test>",
+            },
+            InlayHint {
+                range: [334; 338),
+                kind: TypeHint,
+                label: "&Test",
+            },
+            InlayHint {
+                range: [389; 390),
+                kind: TypeHint,
+                label: "&CustomOption<u32>",
+            },
+            InlayHint {
+                range: [392; 393),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [531; 532),
+                kind: TypeHint,
+                label: "&u32",
+            },
+        ]
+        "###
         );
     }
 
@@ -416,33 +424,33 @@ fn main() {
         );
 
         assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
-       ⋮[
-       ⋮    InlayHint {
-       ⋮        range: [166; 170),
-       ⋮        kind: TypeHint,
-       ⋮        label: "CustomOption<Test>",
-       ⋮    },
-       ⋮    InlayHint {
-       ⋮        range: [343; 347),
-       ⋮        kind: TypeHint,
-       ⋮        label: "&Test",
-       ⋮    },
-       ⋮    InlayHint {
-       ⋮        range: [401; 402),
-       ⋮        kind: TypeHint,
-       ⋮        label: "&CustomOption<u32>",
-       ⋮    },
-       ⋮    InlayHint {
-       ⋮        range: [404; 405),
-       ⋮        kind: TypeHint,
-       ⋮        label: "&u8",
-       ⋮    },
-       ⋮    InlayHint {
-       ⋮        range: [549; 550),
-       ⋮        kind: TypeHint,
-       ⋮        label: "&u32",
-       ⋮    },
-       ⋮]
+        [
+            InlayHint {
+                range: [166; 170),
+                kind: TypeHint,
+                label: "CustomOption<Test>",
+            },
+            InlayHint {
+                range: [343; 347),
+                kind: TypeHint,
+                label: "&Test",
+            },
+            InlayHint {
+                range: [401; 402),
+                kind: TypeHint,
+                label: "&CustomOption<u32>",
+            },
+            InlayHint {
+                range: [404; 405),
+                kind: TypeHint,
+                label: "&u8",
+            },
+            InlayHint {
+                range: [549; 550),
+                kind: TypeHint,
+                label: "&u32",
+            },
+        ]
         "###
         );
     }
@@ -478,28 +486,30 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r#"[
-    InlayHint {
-        range: [311; 315),
-        kind: TypeHint,
-        label: "Test",
-    },
-    InlayHint {
-        range: [358; 359),
-        kind: TypeHint,
-        label: "CustomOption<u32>",
-    },
-    InlayHint {
-        range: [361; 362),
-        kind: TypeHint,
-        label: "u8",
-    },
-    InlayHint {
-        range: [484; 485),
-        kind: TypeHint,
-        label: "u32",
-    },
-]"#
+        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [311; 315),
+                kind: TypeHint,
+                label: "Test",
+            },
+            InlayHint {
+                range: [358; 359),
+                kind: TypeHint,
+                label: "CustomOption<u32>",
+            },
+            InlayHint {
+                range: [361; 362),
+                kind: TypeHint,
+                label: "u8",
+            },
+            InlayHint {
+                range: [484; 485),
+                kind: TypeHint,
+                label: "u32",
+            },
+        ]
+        "###
         );
     }
 }

@@ -104,64 +104,66 @@ mod tests {
                 }
                 "#,
             ),
-            @r###"[
-    CompletionItem {
-        label: "box",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "Box::new(bar)",
-        detail: "Box::new(expr)",
-    },
-    CompletionItem {
-        label: "dbg",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "dbg!(bar)",
-        detail: "dbg!(expr)",
-    },
-    CompletionItem {
-        label: "if",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "if bar {$0}",
-        detail: "if expr {}",
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "match bar {\n    ${1:_} => {$0\\},\n}",
-        detail: "match expr {}",
-    },
-    CompletionItem {
-        label: "not",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "!bar",
-        detail: "!expr",
-    },
-    CompletionItem {
-        label: "ref",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "&bar",
-        detail: "&expr",
-    },
-    CompletionItem {
-        label: "refm",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "&mut bar",
-        detail: "&mut expr",
-    },
-    CompletionItem {
-        label: "while",
-        source_range: [89; 89),
-        delete: [85; 89),
-        insert: "while bar {\n$0\n}",
-        detail: "while expr {}",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "box",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "Box::new(bar)",
+                detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "dbg",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "dbg!(bar)",
+                detail: "dbg!(expr)",
+            },
+            CompletionItem {
+                label: "if",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "if bar {$0}",
+                detail: "if expr {}",
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+                detail: "match expr {}",
+            },
+            CompletionItem {
+                label: "not",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "!bar",
+                detail: "!expr",
+            },
+            CompletionItem {
+                label: "ref",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "&bar",
+                detail: "&expr",
+            },
+            CompletionItem {
+                label: "refm",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "&mut bar",
+                detail: "&mut expr",
+            },
+            CompletionItem {
+                label: "while",
+                source_range: [89; 89),
+                delete: [85; 89),
+                insert: "while bar {\n$0\n}",
+                detail: "while expr {}",
+            },
+        ]
+        "###
         );
     }
 
@@ -176,50 +178,52 @@ mod tests {
                 }
                 "#,
             ),
-            @r###"[
-    CompletionItem {
-        label: "box",
-        source_range: [91; 91),
-        delete: [87; 91),
-        insert: "Box::new(bar)",
-        detail: "Box::new(expr)",
-    },
-    CompletionItem {
-        label: "dbg",
-        source_range: [91; 91),
-        delete: [87; 91),
-        insert: "dbg!(bar)",
-        detail: "dbg!(expr)",
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [91; 91),
-        delete: [87; 91),
-        insert: "match bar {\n    ${1:_} => {$0\\},\n}",
-        detail: "match expr {}",
-    },
-    CompletionItem {
-        label: "not",
-        source_range: [91; 91),
-        delete: [87; 91),
-        insert: "!bar",
-        detail: "!expr",
-    },
-    CompletionItem {
-        label: "ref",
-        source_range: [91; 91),
-        delete: [87; 91),
-        insert: "&bar",
-        detail: "&expr",
-    },
-    CompletionItem {
-        label: "refm",
-        source_range: [91; 91),
-        delete: [87; 91),
-        insert: "&mut bar",
-        detail: "&mut expr",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "box",
+                source_range: [91; 91),
+                delete: [87; 91),
+                insert: "Box::new(bar)",
+                detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "dbg",
+                source_range: [91; 91),
+                delete: [87; 91),
+                insert: "dbg!(bar)",
+                detail: "dbg!(expr)",
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [91; 91),
+                delete: [87; 91),
+                insert: "match bar {\n    ${1:_} => {$0\\},\n}",
+                detail: "match expr {}",
+            },
+            CompletionItem {
+                label: "not",
+                source_range: [91; 91),
+                delete: [87; 91),
+                insert: "!bar",
+                detail: "!expr",
+            },
+            CompletionItem {
+                label: "ref",
+                source_range: [91; 91),
+                delete: [87; 91),
+                insert: "&bar",
+                detail: "&expr",
+            },
+            CompletionItem {
+                label: "refm",
+                source_range: [91; 91),
+                delete: [87; 91),
+                insert: "&mut bar",
+                detail: "&mut expr",
+            },
+        ]
+        "###
         );
     }
 
@@ -233,50 +237,52 @@ mod tests {
                 }
                 "#,
             ),
-            @r###"[
-    CompletionItem {
-        label: "box",
-        source_range: [52; 52),
-        delete: [49; 52),
-        insert: "Box::new(42)",
-        detail: "Box::new(expr)",
-    },
-    CompletionItem {
-        label: "dbg",
-        source_range: [52; 52),
-        delete: [49; 52),
-        insert: "dbg!(42)",
-        detail: "dbg!(expr)",
-    },
-    CompletionItem {
-        label: "match",
-        source_range: [52; 52),
-        delete: [49; 52),
-        insert: "match 42 {\n    ${1:_} => {$0\\},\n}",
-        detail: "match expr {}",
-    },
-    CompletionItem {
-        label: "not",
-        source_range: [52; 52),
-        delete: [49; 52),
-        insert: "!42",
-        detail: "!expr",
-    },
-    CompletionItem {
-        label: "ref",
-        source_range: [52; 52),
-        delete: [49; 52),
-        insert: "&42",
-        detail: "&expr",
-    },
-    CompletionItem {
-        label: "refm",
-        source_range: [52; 52),
-        delete: [49; 52),
-        insert: "&mut 42",
-        detail: "&mut expr",
-    },
-]"###
+            @r###"
+        [
+            CompletionItem {
+                label: "box",
+                source_range: [52; 52),
+                delete: [49; 52),
+                insert: "Box::new(42)",
+                detail: "Box::new(expr)",
+            },
+            CompletionItem {
+                label: "dbg",
+                source_range: [52; 52),
+                delete: [49; 52),
+                insert: "dbg!(42)",
+                detail: "dbg!(expr)",
+            },
+            CompletionItem {
+                label: "match",
+                source_range: [52; 52),
+                delete: [49; 52),
+                insert: "match 42 {\n    ${1:_} => {$0\\},\n}",
+                detail: "match expr {}",
+            },
+            CompletionItem {
+                label: "not",
+                source_range: [52; 52),
+                delete: [49; 52),
+                insert: "!42",
+                detail: "!expr",
+            },
+            CompletionItem {
+                label: "ref",
+                source_range: [52; 52),
+                delete: [49; 52),
+                insert: "&42",
+                detail: "&expr",
+            },
+            CompletionItem {
+                label: "refm",
+                source_range: [52; 52),
+                delete: [49; 52),
+                insert: "&mut 42",
+                detail: "&mut expr",
+            },
+        ]
+        "###
         );
     }
 }
