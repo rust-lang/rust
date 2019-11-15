@@ -3983,11 +3983,11 @@ fn test(x: impl Trait<u64>, y: &impl Trait<u64>) {
     [180; 183) 'bar': fn bar() -> impl Trait<u64>
     [180; 185) 'bar()': impl Trait<u64>
     [191; 192) 'x': impl Trait<u64>
-    [191; 198) 'x.foo()': {unknown}
+    [191; 198) 'x.foo()': u64
     [204; 205) 'y': &impl Trait<u64>
-    [204; 211) 'y.foo()': {unknown}
+    [204; 211) 'y.foo()': u64
     [217; 218) 'z': impl Trait<u64>
-    [217; 224) 'z.foo()': {unknown}
+    [217; 224) 'z.foo()': u64
     [230; 231) 'x': impl Trait<u64>
     [230; 238) 'x.foo2()': i64
     [244; 245) 'y': &impl Trait<u64>
@@ -4033,11 +4033,11 @@ fn test(x: dyn Trait<u64>, y: &dyn Trait<u64>) {
     [177; 180) 'bar': fn bar() -> dyn Trait<u64>
     [177; 182) 'bar()': dyn Trait<u64>
     [188; 189) 'x': dyn Trait<u64>
-    [188; 195) 'x.foo()': {unknown}
+    [188; 195) 'x.foo()': u64
     [201; 202) 'y': &dyn Trait<u64>
-    [201; 208) 'y.foo()': {unknown}
+    [201; 208) 'y.foo()': u64
     [214; 215) 'z': dyn Trait<u64>
-    [214; 221) 'z.foo()': {unknown}
+    [214; 221) 'z.foo()': u64
     [227; 228) 'x': dyn Trait<u64>
     [227; 235) 'x.foo2()': i64
     [241; 242) 'y': &dyn Trait<u64>

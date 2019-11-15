@@ -68,8 +68,15 @@ impl ToChalk for Ty {
             }
             Ty::Bound(idx) => chalk_ir::TyData::BoundVar(idx as usize).intern(),
             Ty::Infer(_infer_ty) => panic!("uncanonicalized infer ty"),
-            // FIXME use Chalk's Dyn/Opaque once the bugs with that are fixed
-            Ty::Unknown | Ty::Dyn(_) | Ty::Opaque(_) => {
+            Ty::Dyn(predicates) => {
+                let where_clauses = predicates.iter().cloned().map(|p| p.to_chalk(db)).collect();
+                chalk_ir::TyData::Dyn(make_binders(where_clauses, 1)).intern()
+            }
+            Ty::Opaque(predicates) => {
+                let where_clauses = predicates.iter().cloned().map(|p| p.to_chalk(db)).collect();
+                chalk_ir::TyData::Opaque(make_binders(where_clauses, 1)).intern()
+            }
+            Ty::Unknown => {
                 let parameters = Vec::new();
                 let name = TypeName::Error;
                 chalk_ir::ApplicationTy { name, parameters }.cast().intern()

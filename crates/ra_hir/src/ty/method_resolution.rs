@@ -228,14 +228,10 @@ fn iterate_trait_method_candidates<T>(
     'traits: for t in traits {
         let data = t.trait_data(db);
 
-        // FIXME this is a bit of a hack, since Chalk should say the same thing
-        // anyway, but currently Chalk doesn't implement `dyn/impl Trait` yet
-        let inherently_implemented = ty.value.inherent_trait() == Some(t);
-
         // we'll be lazy about checking whether the type implements the
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
-        let mut known_implemented = inherently_implemented;
+        let mut known_implemented = false;
         for &item in data.items() {
             if !is_valid_candidate(db, name, mode, item) {
                 continue;
