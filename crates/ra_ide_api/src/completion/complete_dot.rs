@@ -88,16 +88,16 @@ mod tests {
                 ",
         ),
             @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "the_field",
-       ⋮        source_range: [94; 94),
-       ⋮        delete: [94; 94),
-       ⋮        insert: "the_field",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [94; 94),
+                delete: [94; 94),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###
         );
     }
@@ -349,24 +349,24 @@ mod tests {
             ",
         ),
         @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "0",
-       ⋮        source_range: [75; 75),
-       ⋮        delete: [75; 75),
-       ⋮        insert: "0",
-       ⋮        kind: Field,
-       ⋮        detail: "i32",
-       ⋮    },
-       ⋮    CompletionItem {
-       ⋮        label: "1",
-       ⋮        source_range: [75; 75),
-       ⋮        delete: [75; 75),
-       ⋮        insert: "1",
-       ⋮        kind: Field,
-       ⋮        detail: "f64",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "0",
+                source_range: [75; 75),
+                delete: [75; 75),
+                insert: "0",
+                kind: Field,
+                detail: "i32",
+            },
+            CompletionItem {
+                label: "1",
+                source_range: [75; 75),
+                delete: [75; 75),
+                insert: "1",
+                kind: Field,
+                detail: "f64",
+            },
+        ]
         "###
         );
     }
@@ -419,16 +419,16 @@ mod tests {
             ",
         ),
         @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "the_field",
-       ⋮        source_range: [106; 106),
-       ⋮        delete: [106; 106),
-       ⋮        insert: "the_field",
-       ⋮        kind: Field,
-       ⋮        detail: "u32",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "the_field",
+                source_range: [106; 106),
+                delete: [106; 106),
+                insert: "the_field",
+                kind: Field,
+                detail: "u32",
+            },
+        ]
         "###
         );
     }
@@ -452,15 +452,15 @@ mod tests {
             }
             "###, CompletionKind::Keyword),
         @r###"
-       ⋮[
-       ⋮    CompletionItem {
-       ⋮        label: "await",
-       ⋮        source_range: [74; 74),
-       ⋮        delete: [74; 74),
-       ⋮        insert: "await",
-       ⋮        detail: "expr.await",
-       ⋮    },
-       ⋮]
+        [
+            CompletionItem {
+                label: "await",
+                source_range: [74; 74),
+                delete: [74; 74),
+                insert: "await",
+                detail: "expr.await",
+            },
+        ]
         "###
         )
     }

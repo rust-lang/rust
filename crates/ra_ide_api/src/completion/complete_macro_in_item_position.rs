@@ -37,16 +37,18 @@ mod tests {
                 <|>
                 "
             ),
-            @r##"[
-    CompletionItem {
-        label: "foo!",
-        source_range: [46; 46),
-        delete: [46; 46),
-        insert: "foo!($0)",
-        kind: Macro,
-        detail: "macro_rules! foo",
-    },
-]"##
+            @r###"
+        [
+            CompletionItem {
+                label: "foo!",
+                source_range: [46; 46),
+                delete: [46; 46),
+                insert: "foo!($0)",
+                kind: Macro,
+                detail: "macro_rules! foo",
+            },
+        ]
+        "###
         );
     }
 
@@ -75,19 +77,21 @@ mod tests {
                 <|>
                 "
             ),
-            @r##"[
-    CompletionItem {
-        label: "vec!",
-        source_range: [280; 280),
-        delete: [280; 280),
-        insert: "vec![$0]",
-        kind: Macro,
-        detail: "macro_rules! vec",
-        documentation: Documentation(
-            "Creates a [`Vec`] containing the arguments.\n\n- Create a [`Vec`] containing a given list of elements:\n\n```\nlet v = vec![1, 2, 3];\nassert_eq!(v[0], 1);\nassert_eq!(v[1], 2);\nassert_eq!(v[2], 3);\n```",
-        ),
-    },
-]"##
+            @r###"
+        [
+            CompletionItem {
+                label: "vec!",
+                source_range: [280; 280),
+                delete: [280; 280),
+                insert: "vec![$0]",
+                kind: Macro,
+                detail: "macro_rules! vec",
+                documentation: Documentation(
+                    "Creates a [`Vec`] containing the arguments.\n\n- Create a [`Vec`] containing a given list of elements:\n\n```\nlet v = vec![1, 2, 3];\nassert_eq!(v[0], 1);\nassert_eq!(v[1], 2);\nassert_eq!(v[2], 3);\n```",
+                ),
+            },
+        ]
+        "###
         );
     }
 
@@ -110,28 +114,29 @@ mod tests {
                 }
                 "
             ),
-            @r###"[
-    CompletionItem {
-        label: "foo!",
-        source_range: [163; 163),
-        delete: [163; 163),
-        insert: "foo! {$0}",
-        kind: Macro,
-        detail: "macro_rules! foo",
-        documentation: Documentation(
-            "Foo\n\nNot call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`.\nCall as `let _=foo!  { hello world };`",
-        ),
-    },
-    CompletionItem {
-        label: "main()",
-        source_range: [163; 163),
-        delete: [163; 163),
-        insert: "main()$0",
-        kind: Function,
-        lookup: "main",
-        detail: "fn main()",
-    },
-]
+            @r###"
+        [
+            CompletionItem {
+                label: "foo!",
+                source_range: [163; 163),
+                delete: [163; 163),
+                insert: "foo! {$0}",
+                kind: Macro,
+                detail: "macro_rules! foo",
+                documentation: Documentation(
+                    "Foo\n\nNot call `fooo!()` `fooo!()`, or `_foo![]` `_foo![]`.\nCall as `let _=foo!  { hello world };`",
+                ),
+            },
+            CompletionItem {
+                label: "main()",
+                source_range: [163; 163),
+                delete: [163; 163),
+                insert: "main()$0",
+                kind: Function,
+                lookup: "main",
+                detail: "fn main()",
+            },
+        ]
         "###
         );
     }

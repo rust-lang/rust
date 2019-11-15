@@ -664,7 +664,8 @@ where
         let name = def.name.clone();
         let def: PerNs = match def.kind {
             raw::DefKind::Function(ast_id) => {
-                PerNs::values(FunctionId::from_ast_id(ctx, ast_id).into())
+                let f = FunctionId::from_ast_id(ctx, ast_id);
+                PerNs::values(f.into())
             }
             raw::DefKind::Struct(ast_id) => {
                 let id = StructOrUnionId::from_ast_id(ctx, ast_id).into();
@@ -798,7 +799,7 @@ mod tests {
 
     fn do_limited_resolve(code: &str, limit: u32, poison_limit: u32) -> CrateDefMap {
         let (db, _file_id) = TestDB::with_single_file(&code);
-        let krate = db.crate_graph().iter().next().unwrap();
+        let krate = db.test_crate();
 
         let def_map = {
             let edition = db.crate_graph().edition(krate);

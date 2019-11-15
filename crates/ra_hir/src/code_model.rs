@@ -23,7 +23,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 use crate::{
     adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
-    expr::{validation::ExprValidator, BindingAnnotation, Body, BodySourceMap, Pat, PatId},
+    expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     generics::{GenericDef, HasGenericParams},
     ids::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
@@ -157,7 +157,7 @@ impl Module {
     }
 
     /// Finds a child module with the specified name.
-    pub fn child(self, db: &impl HirDatabase, name: &Name) -> Option<Module> {
+    pub fn child(self, db: &impl DefDatabase, name: &Name) -> Option<Module> {
         let def_map = db.crate_def_map(self.id.krate);
         let child_id = def_map[self.id.module_id].children.get(name)?;
         Some(self.with_module_id(*child_id))

@@ -150,6 +150,27 @@ use std::collections::HashMap;
 fn process(map: HashMap<String, String>) {}
 ```
 
+## `add_new`
+
+Adds a new inherent impl for a type.
+
+```rust
+// BEFORE
+struct Ctx<T: Clone> {
+     data: T,┃
+}
+
+// AFTER
+struct Ctx<T: Clone> {
+     data: T,
+}
+
+impl<T: Clone> Ctx<T> {
+    fn new(data: T) -> Self { Self { data } }
+}
+
+```
+
 ## `apply_demorgan`
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).

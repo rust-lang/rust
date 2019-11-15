@@ -19,7 +19,6 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
 };
-use rustc_hash::FxHashSet;
 
 use crate::{
     db::HirDatabase,
@@ -195,14 +194,6 @@ impl SourceAnalyzer {
         Some(self.infer.as_ref()?[pat_id].clone())
     }
 
-    pub fn type_of_pat_by_id(
-        &self,
-        _db: &impl HirDatabase,
-        pat_id: expr::PatId,
-    ) -> Option<crate::Ty> {
-        Some(self.infer.as_ref()?[pat_id].clone())
-    }
-
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         let expr_id = self.expr_id(&call.clone().into())?;
         self.infer.as_ref()?.method_resolution(expr_id)
@@ -293,23 +284,15 @@ impl SourceAnalyzer {
         self.resolve_hir_path(db, &hir_path)
     }
 
-    pub fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
-        let mut shadowed = FxHashSet::default();
+    fn resolve_local_name(&self, name_ref: &ast::NameRef) -> Option<ScopeEntryWithSyntax> {
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
-        let scope = scope_for(scopes, source_map, self.file_id.into(), name_ref.syntax());
-        let ret = scopes
-            .scope_chain(scope)
-            .flat_map(|scope| scopes.entries(scope).iter())
-            .filter(|entry| shadowed.insert(entry.name()))
-            .filter(|entry| entry.name() == &name)
-            .nth(0);
-        ret.and_then(|entry| {
-            Some(ScopeEntryWithSyntax {
-                name: entry.name().clone(),
-                ptr: source_map.pat_syntax(entry.pat())?.ast,
-            })
+        let scope = scope_for(scopes, source_map, self.file_id.into(), name_ref.syntax())?;
+        let entry = scopes.resolve_name_in_scope(scope, &name)?;
+        Some(ScopeEntryWithSyntax {
+            name: entry.name().clone(),
+            ptr: source_map.pat_syntax(entry.pat())?.ast,
         })
     }
 
@@ -317,9 +300,9 @@ impl SourceAnalyzer {
         self.resolver.process_all_names(db, f)
     }
 
+    // FIXME: we only use this in `inline_local_variable` assist, ideally, we
+    // should switch to general reference search infra there.
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
-        // FIXME: at least, this should work with any DefWithBody, but ideally
-        // this should be hir-based altogether
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
         let ptr = Either::A(AstPtr::new(&ast::Pat::from(pat.clone())));
         fn_def
@@ -420,11 +403,6 @@ impl SourceAnalyzer {
     #[cfg(test)]
     pub(crate) fn inference_result(&self) -> Arc<crate::ty::InferenceResult> {
         self.infer.clone().unwrap()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn scopes(&self) -> Arc<ExprScopes> {
-        self.scopes.clone().unwrap()
     }
 }
 

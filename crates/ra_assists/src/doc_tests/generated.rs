@@ -157,6 +157,28 @@ fn process(map: HashMap<String, String>) {}
 }
 
 #[test]
+fn doctest_add_new() {
+    check(
+        "add_new",
+        r#####"
+struct Ctx<T: Clone> {
+     data: T,<|>
+}
+"#####,
+        r#####"
+struct Ctx<T: Clone> {
+     data: T,
+}
+
+impl<T: Clone> Ctx<T> {
+    fn new(data: T) -> Self { Self { data } }
+}
+
+"#####,
+    )
+}
+
+#[test]
 fn doctest_apply_demorgan() {
     check(
         "apply_demorgan",

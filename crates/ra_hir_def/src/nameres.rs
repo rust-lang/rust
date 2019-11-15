@@ -58,7 +58,7 @@ mod tests;
 
 use std::sync::Arc;
 
-use hir_expand::{diagnostics::DiagnosticSink, name::Name, MacroDefId};
+use hir_expand::{ast_id_map::FileAstId, diagnostics::DiagnosticSink, name::Name, MacroDefId};
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
 use ra_db::{CrateId, Edition, FileId};
@@ -73,7 +73,7 @@ use crate::{
         diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs, raw::ImportId,
     },
     path::Path,
-    AstId, CrateModuleId, ModuleDefId, ModuleId, TraitId,
+    AstId, CrateModuleId, FunctionId, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -87,7 +87,7 @@ pub struct CrateDefMap {
     prelude: Option<ModuleId>,
     extern_prelude: FxHashMap<Name, ModuleDefId>,
     root: CrateModuleId,
-    pub modules: Arena<CrateModuleId, ModuleData>,
+    modules: Arena<CrateModuleId, ModuleData>,
 
     /// Some macros are not well-behavior, which leads to infinite loop
     /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
@@ -122,6 +122,11 @@ pub struct ModuleData {
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
     pub definition: Option<FileId>,
+}
+
+#[derive(Default, Debug, PartialEq, Eq, Clone)]
+pub(crate) struct Declarations {
+    fns: FxHashMap<FileAstId<ast::FnDef>, FunctionId>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
@@ -257,6 +262,17 @@ impl CrateDefMap {
     ) -> (PerNs, Option<usize>) {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
+    }
+
+    pub fn modules(&self) -> impl Iterator<Item = CrateModuleId> + '_ {
+        self.modules.iter().map(|(id, _data)| id)
+    }
+
+    pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = CrateModuleId> + '_ {
+        self.modules
+            .iter()
+            .filter(move |(_id, data)| data.definition == Some(file_id))
+            .map(|(id, _data)| id)
     }
 }
 
