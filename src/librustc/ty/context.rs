@@ -885,21 +885,14 @@ impl CanonicalUserType<'tcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
     TypeOf(DefId, UserSubsts<'tcx>),
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for UserType<'a> {
-        type Lifted = UserType<'tcx>;
-        (UserType::Ty)(ty),
-        (UserType::TypeOf)(def, substs),
-    }
 }
 
 impl<'tcx> CommonTypes<'tcx> {
