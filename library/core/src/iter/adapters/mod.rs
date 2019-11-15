@@ -21,37 +21,71 @@ use self::zip::try_get_unchecked;
 pub(crate) use self::zip::TrustedRandomAccess;
 pub use self::zip::Zip;
 
-/// This trait provides access to to the backing source of an interator-adapter pipeline
+/// This trait provides transitive access to source-stages in an interator-adapter pipeline
 /// under the conditions that
 /// * the iterator source `S` itself implements `SourceIter<Source = S>`
-/// * there is a delegating implementation of this trait for each adapter in the pipeline
+/// * there is a delegating implementation of this trait for each adapter in the pipeline between
+///   the source and the pipeline consumer.
 ///
-/// This is useful for specializing [`FromIterator`] implementations or to retrieve
-/// the remaining values from a source of a partially consumed iterator.
+/// When the source is an owning iterator struct (commonly called `IntoIter`) then
+/// this can be useful for specializing [`FromIterator`] implementations or recovering the
+/// remaining elements after an iterator has been partially exhausted.
+///
+/// Note that implementations do not necessarily have to provide access to the inner-most
+/// source of a pipeline. A stateful intermediate adapter might eagerly evaluate a part
+/// of the pipeline and expose its internal storage as source.
+///
+/// The trait is unsafe because implementers must uphold additional safety properties.
+/// See [`as_inner`] for details.
 ///
 /// # Examples
 ///
-/// Retrieving a partially consumed source and wrapping it into a different pipeline:
+/// Retrieving a partially consumed source:
 ///
 /// ```
 /// # #![feature(inplace_iteration)]
 /// # use std::iter::SourceIter;
 ///
 /// let mut iter = vec![9, 9, 9].into_iter().map(|i| i * i);
-/// let first = iter.next().unwrap();
+/// let _ = iter.next();
 /// let mut remainder = std::mem::replace(iter.as_inner(), Vec::new().into_iter());
-/// let second = remainder.map(|i| i + 1).next().unwrap();
-/// assert_eq!(first, 81);
-/// assert_eq!(second, 10);
+/// println!("n = {} elements remaining", remainder.len());
 /// ```
 ///
 /// [`FromIterator`]: trait.FromIterator.html
+/// [`as_inner`]: #method.as_inner
 #[unstable(issue = "0", feature = "inplace_iteration")]
-pub trait SourceIter {
-    /// The source iterator of the adapter.
+pub unsafe trait SourceIter {
+    /// A source stage in an iterator pipeline.
     type Source: Iterator;
 
-    /// Recursively extract the source of an iterator pipeline.
+    /// Extract the source of an iterator pipeline.
+    ///
+    /// Callers may assume that calls to [`next()`] or any method taking `&self`
+    /// does no replace the referenced value.
+    /// But callers may replace the referenced values as long they in turn do not
+    /// expose it through a delegating implementation of this trait.
+    /// Which means that while adapters may not modify the reference they cannot
+    /// rely on it not being modified.
+    ///
+    /// Adapters must not rely on exclusive ownership or immutability of the source.
+    /// For example a peeking adapter could either exploit [`TrustedRandomAccess`] to look ahead
+    /// or implement this trait, but it cannot do both because a caller could call `next()` or any
+    /// other mutating method on the source between iteration steps and thus invalidate the peeked
+    /// values.
+    /// The lack of exclusive ownership also requires that adapters must uphold the source's
+    /// public API even when they have crate- or module-internal access.
+    ///
+    /// Callers in turn must expect the source to be in any state that is consistent with
+    /// its public API since adapters sitting between it and the source have the same
+    /// access. In particular an adapter may have consumed more elements than strictly necessary.
+    ///
+    /// The overall goal of these requirements is to grant the consumer of a pipeline
+    /// access to the underlying storage of an iterator while restricting any statefulness
+    /// and side-effects of the pipeline stages from affecting or relying on that storage.
+    ///
+    /// [`TrustedRandomAccess`]: trait.TrustedRandomAccess.html
+    /// [`next`]: trait.Iterator.html#method.next
     fn as_inner(&mut self) -> &mut Self::Source;
 }
 
@@ -976,7 +1010,7 @@ where
 }
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
-impl<S: Iterator, B, I: Iterator, F> SourceIter for Map<I, F>
+unsafe impl<S: Iterator, B, I: Iterator, F> SourceIter for Map<I, F>
 where
     F: FnMut(I::Item) -> B,
     I: SourceIter<Source = S>,
@@ -1468,7 +1502,7 @@ impl<I> FusedIterator for Enumerate<I> where I: FusedIterator {}
 unsafe impl<I> TrustedLen for Enumerate<I> where I: TrustedLen {}
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
-impl<S: Iterator, I: Iterator> SourceIter for Enumerate<I>
+unsafe impl<S: Iterator, I: Iterator> SourceIter for Enumerate<I>
 where
     I: SourceIter<Source = S>,
 {
@@ -1765,7 +1799,7 @@ impl<I: Iterator> Peekable<I> {
 unsafe impl<I> TrustedLen for Peekable<I> where I: TrustedLen {}
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
-impl<S: Iterator, I: Iterator> SourceIter for Peekable<I>
+unsafe impl<S: Iterator, I: Iterator> SourceIter for Peekable<I>
 where
     I: SourceIter<Source = S>,
 {
@@ -2256,7 +2290,7 @@ where
 impl<I> FusedIterator for Skip<I> where I: FusedIterator {}
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
-impl<S: Iterator, I: Iterator> SourceIter for Skip<I>
+unsafe impl<S: Iterator, I: Iterator> SourceIter for Skip<I>
 where
     I: SourceIter<Source = S>,
 {

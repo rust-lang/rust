@@ -2826,7 +2826,7 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
 unsafe impl<T> InPlaceIterable for IntoIter<T> {}
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
-impl<T> SourceIter for IntoIter<T> {
+unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = IntoIter<T>;
 
     #[inline]

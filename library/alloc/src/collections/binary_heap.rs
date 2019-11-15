@@ -1174,7 +1174,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
-impl<T> SourceIter for IntoIter<T> {
+unsafe impl<T> SourceIter for IntoIter<T> {
     type Source = crate::vec::IntoIter<T>;
 
     #[inline]
