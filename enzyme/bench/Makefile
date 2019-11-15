@@ -11,7 +11,8 @@ OPT=../../build/bin/opt
 	#$(CLANG) -fno-unroll-loops $^ -O2 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
 
 %-unopt.ll: %.cpp
-	$(CLANG)++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include -ggdb 
+	$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include #-ggdb 
+	#$(CLANG)++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include -ggdb 
 
 %-preopt.ll: %-unopt.ll
 	$(OPT) $^ -indvars $(LOADSO) -enzyme -mem2reg -sroa -early-cse-memssa -adce -bdce -simplifycfg -inline -adce -aggressive-instcombine -O2 -S -o $@
@@ -37,7 +38,7 @@ OPT=../../build/bin/opt
 	../build/bin/opt moobar.ll -S -o $@ -O1 -print-before-all -print-after-all
 
 %-lower.ll: %-unopt.ll
-	$(OPT) $^ -indvars $(LOADSO) -enzyme -enzyme_inline=1 -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - -enzyme_print=0 | $(OPT) - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine #-inline -O3
+	$(OPT) $^ -indvars $(LOADSO) -enzyme -enzyme_inline=1 -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - -enzyme_print=0 -enzyme_nonmarkedglobals_inactive=1 -enzyme_emptyfnconst=1 | $(OPT) - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine #-inline -O3
 	#../build/bin/opt $^ -indvars -autodiff_inline=true -lower-autodiff -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -O3 -S -o $@
 

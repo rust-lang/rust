@@ -877,9 +877,10 @@ public:
 
 endCheck:
             assert(val);
-            llvm::errs() << "cannot unwrap following " << *val << "\n";
             if (lookupIfAble)
                 return lookupM(val, BuilderM);
+            
+            llvm::errs() << "cannot unwrap following " << *val << "\n";
 
           if (auto inst = dyn_cast<Instruction>(val)) {
             //LoopContext lc;

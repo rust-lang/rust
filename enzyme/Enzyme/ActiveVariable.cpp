@@ -229,6 +229,9 @@ cl::opt<bool> ipoconst(
             "enzyme_ipoconst", cl::init(false), cl::Hidden,
             cl::desc("Interprocedural constant detection"));
 
+cl::opt<bool> emptyfnconst(
+            "enzyme_emptyfnconst", cl::init(false), cl::Hidden,
+            cl::desc("Empty functions are considered constant"));
 
 #include <set>
 #include <map>
@@ -449,6 +452,10 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				constants.insert(inst);
 				return true;
 			}
+            if (called->empty() && !hasMetadata(called, "enzyme_gradient") && emptyfnconst) {
+				constants.insert(inst);
+				return true;
+            }
 		}
 	}
 	

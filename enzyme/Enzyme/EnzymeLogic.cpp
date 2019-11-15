@@ -800,7 +800,15 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
           if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && !isIntASecretFloat(op->getValueOperand()) ) ) {
             IRBuilder <> storeBuilder(op);
             //llvm::errs() << "a op value: " << *op->getValueOperand() << "\n";
-            Value* valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
+            
+            Value* valueop = nullptr;
+            
+            //Fallback mechanism
+            if (gutils->isConstantValue(op->getValueOperand())) {
+                valueop = Constant::getNullValue(op->getValueOperand()->getType());
+            } else {
+                valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
+            }
             //llvm::errs() << "a op pointer: " << *op->getPointerOperand() << "\n";
             Value* pointerop = gutils->invertPointerM(op->getPointerOperand(), storeBuilder);
             storeBuilder.CreateStore(valueop, pointerop);
@@ -2553,10 +2561,15 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           ts->setSyncScopeID(op->getSyncScopeID());
       } else if (topLevel) {
         IRBuilder <> storeBuilder(op);
-        llvm::errs() << "store op pointer: " << *op << "\n";
-        llvm::errs() << "op value: " << *op->getValueOperand() << "\n";
-        Value* valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
-        llvm::errs() << "op pointer: " << *op->getPointerOperand() << "\n";
+        
+        Value* valueop = nullptr;
+        
+        //Fallback mechanism
+        if (gutils->isConstantValue(op->getValueOperand())) {
+            valueop = Constant::getNullValue(op->getValueOperand()->getType());
+        } else {
+            valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
+        }
         Value* pointerop = gutils->invertPointerM(op->getPointerOperand(), storeBuilder);
         storeBuilder.CreateStore(valueop, pointerop);
         //llvm::errs() << "ignoring store bc pointer of " << *op << "\n";
