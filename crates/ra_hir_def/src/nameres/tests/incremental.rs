@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
-use ra_db::{SourceDatabase, SourceDatabaseExt};
+use ra_db::SourceDatabaseExt;
 
 use super::*;
 
 fn check_def_map_is_not_recomputed(initial: &str, file_change: &str) {
     let (mut db, pos) = TestDB::with_position(initial);
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.test_crate();
     {
         let events = db.log_executed(|| {
             db.crate_def_map(krate);
@@ -111,7 +111,7 @@ fn typing_inside_a_macro_should_not_invalidate_def_map() {
         m!(X);
         ",
     );
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.test_crate();
     {
         let events = db.log_executed(|| {
             let crate_def_map = db.crate_def_map(krate);

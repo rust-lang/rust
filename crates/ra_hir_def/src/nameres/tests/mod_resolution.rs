@@ -656,7 +656,7 @@ fn unresolved_module_diagnostics() {
         //- /foo.rs
         ",
     );
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = db.test_crate();
 
     let crate_def_map = db.crate_def_map(krate);
 
