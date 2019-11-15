@@ -590,7 +590,10 @@ enum Constructor<'tcx> {
     Variant(DefId),
     /// Literal values.
     ConstantValue(&'tcx ty::Const<'tcx>, Span),
-    /// Ranges of literal values (`2..=5` and `2..5`).
+    /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
+    IntRange(IntRange<'tcx>),
+    // TODO: non-integer
+    /// Ranges of literal values (`2.0..=5.2`).
     ConstantRange(u128, u128, Ty<'tcx>, RangeEnd, Span),
     /// Array patterns of length `n`.
     FixedLenSlice(u64),
@@ -612,6 +615,7 @@ impl<'tcx> std::cmp::PartialEq for Constructor<'tcx> {
                 Constructor::ConstantRange(a_start, a_end, a_ty, a_range_end, _),
                 Constructor::ConstantRange(b_start, b_end, b_ty, b_range_end, _),
             ) => a_start == b_start && a_end == b_end && a_ty == b_ty && a_range_end == b_range_end,
+            (Constructor::IntRange(a), Constructor::IntRange(b)) => a == b,
             (Constructor::FixedLenSlice(a), Constructor::FixedLenSlice(b)) => a == b,
             (
                 Constructor::VarLenSlice(a_prefix, a_suffix),
@@ -634,6 +638,7 @@ impl<'tcx> Constructor<'tcx> {
         let ty = match self {
             ConstantValue(value, _) => value.ty,
             ConstantRange(_, _, ty, _, _) => ty,
+            IntRange(_) => return true,
             _ => return false,
         };
         IntRange::is_integral(ty)
@@ -743,7 +748,7 @@ impl<'tcx> Constructor<'tcx> {
 
                 remaining_ctors
             }
-            ConstantRange(..) | ConstantValue(..) => {
+            IntRange(..) | ConstantRange(..) | ConstantValue(..) => {
                 if let Some(self_range) = IntRange::from_ctor(tcx, param_env, self) {
                     let mut remaining_ranges = vec![self_range.clone()];
                     let other_ranges = other_ctors
@@ -767,7 +772,7 @@ impl<'tcx> Constructor<'tcx> {
                     }
 
                     // Convert the ranges back into constructors
-                    remaining_ranges.into_iter().map(|range| range.into_ctor(tcx)).collect()
+                    remaining_ranges.into_iter().map(IntRange).collect()
                 } else {
                     if other_ctors.iter().any(|c| {
                         c == self
@@ -855,7 +860,7 @@ impl<'tcx> Constructor<'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
-            ConstantValue(..) | ConstantRange(..) | NonExhaustive => vec![],
+            ConstantValue(..) | ConstantRange(..) | IntRange(..) | NonExhaustive => vec![],
         }
     }
 
@@ -880,7 +885,7 @@ impl<'tcx> Constructor<'tcx> {
             },
             FixedLenSlice(length) => *length,
             VarLenSlice(prefix, suffix) => prefix + suffix,
-            ConstantValue(..) | ConstantRange(..) | NonExhaustive => 0,
+            ConstantValue(..) | ConstantRange(..) | IntRange(..) | NonExhaustive => 0,
         }
     }
 
@@ -949,6 +954,10 @@ impl<'tcx> Constructor<'tcx> {
                 hi: ty::Const::from_bits(cx.tcx, hi, ty::ParamEnv::empty().and(ty)),
                 end,
             }),
+            IntRange(range) => {
+                // TODO: do it more directly
+                return range.clone().into_ctor(cx.tcx).apply(cx, ty, None.into_iter());
+            }
             NonExhaustive => PatKind::Wild,
         };
 
@@ -1145,7 +1154,14 @@ fn all_constructors<'a, 'tcx>(
     pcx: PatCtxt<'tcx>,
 ) -> Vec<Constructor<'tcx>> {
     debug!("all_constructors({:?})", pcx.ty);
-    let make_range = |start, end| ConstantRange(start, end, pcx.ty, RangeEnd::Included, pcx.span);
+    let make_range = |start, end| {
+        IntRange(
+            // `unwrap()` is ok because we know the type is an integer and the range is
+            // well-formed.
+            IntRange::from_range(cx.tcx, start, end, pcx.ty, &RangeEnd::Included, pcx.span)
+                .unwrap(),
+        )
+    };
     match pcx.ty.kind {
         ty::Bool => [true, false]
             .iter()
@@ -1356,6 +1372,7 @@ impl<'tcx> IntRange<'tcx> {
         match ctor {
             ConstantRange(lo, hi, ty, end, span) => Self::from_range(tcx, *lo, *hi, ty, end, *span),
             ConstantValue(val, span) => Self::from_const(tcx, param_env, val, *span),
+            IntRange(range) => Some(range.clone()),
             _ => None,
         }
     }
@@ -1381,6 +1398,7 @@ impl<'tcx> IntRange<'tcx> {
     }
 
     /// Converts an `IntRange` to a `ConstantValue` or inclusive `ConstantRange`.
+    /// TODO: Deprecated
     fn into_ctor(self, tcx: TyCtxt<'tcx>) -> Constructor<'tcx> {
         let bias = IntRange::signed_bias(tcx, self.ty);
         let (lo, hi) = self.range.into_inner();
@@ -1889,7 +1907,9 @@ fn split_grouped_constructors<'p, 'tcx>(
 
     for ctor in ctors.into_iter() {
         match ctor {
-            ConstantRange(..) if IntRange::should_treat_range_exhaustively(tcx, ty) => {
+            IntRange(..) | ConstantRange(..)
+                if IntRange::should_treat_range_exhaustively(tcx, ty) =>
+            {
                 // We only care about finding all the subranges within the range of the constructor
                 // range. Anything else is irrelevant, because it is guaranteed to result in
                 // `NotUseful`, which is the default case anyway, and can be ignored.
@@ -1968,7 +1988,7 @@ fn split_grouped_constructors<'p, 'tcx>(
                             }
                             (Border::AfterMax, _) => None,
                         })
-                        .map(|range| range.into_ctor(tcx)),
+                        .map(IntRange),
                 );
             }
             VarLenSlice(self_prefix, self_suffix) => {
