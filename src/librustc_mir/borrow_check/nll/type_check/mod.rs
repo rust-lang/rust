@@ -1987,7 +1987,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let span = body.source_info(location).span;
                     let ty = operand.ty(body, tcx);
                     if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
-                        // To determine if `const_in_array_repeat_expression` feature gate should
+                        // To determine if `const_in_array_repeat_expressions` feature gate should
                         // be mentioned, need to check if the rvalue is promotable.
                         let should_suggest =
                             should_suggest_const_in_array_repeat_expressions_attribute(
