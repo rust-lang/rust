@@ -532,9 +532,12 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                     })
                 })
             }
-            super::MatchExpressionArmPattern { span, ty } => {
-                tcx.lift(&ty).map(|ty| super::MatchExpressionArmPattern { span, ty })
-            }
+            super::PatternGuard(box super::PatternGuardCause {
+                match_expr_discrim, other_range_expr,
+            }) => Some(super::PatternGuard(box super::PatternGuardCause {
+                match_expr_discrim: tcx.lift(&match_expr_discrim)?,
+                other_range_expr: tcx.lift(&other_range_expr)?,
+            })),
             super::IfExpression(box super::IfExpressionCause { then, outer, semicolon }) => {
                 Some(super::IfExpression(box super::IfExpressionCause {
                     then,

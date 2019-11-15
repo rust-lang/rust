@@ -355,8 +355,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         discrim_span: Option<Span>,
     ) -> Option<Ty<'tcx>> {
+        debug!("check_pat_range(begin={:?}, end={:?}, discrim_span={:?})",
+            begin, end, discrim_span
+        );
+
         let lhs_ty = self.check_expr(begin);
         let rhs_ty = self.check_expr(end);
+        debug!("check_pat_range: expected={:?}, expected.kind={:?}, lhs_ty={:?}, rhs_ty={:?}",
+            expected, expected.kind, lhs_ty, rhs_ty
+        );
 
         // Check that both end-points are of numeric or char type.
         let numeric_or_char = |ty: Ty<'_>| {
@@ -371,17 +378,71 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.emit_err_pat_range(
                 span, begin.span, end.span, lhs_fail, rhs_fail, lhs_ty, rhs_ty
             );
-            return None;
+
+            None
+        } else {
+            use rustc::traits::PredicateObligations;
+            use infer::InferOk;
+
+            let at_cause_eq = |
+                expect_ty: Ty<'tcx>, actual_type: Ty<'tcx>, cause_span: Span,
+                other_expr: Option<(Span, Ty<'tcx>)>
+            | {
+                if !actual_type.references_error() {
+                    let other_expr = other_expr.filter(|(_, ty)| !ty.references_error());
+                    let cause = self.pat_guard_cause(
+                        other_expr, cause_span, expected, discrim_span
+                    );
+
+                    let result = self.at(&cause, self.param_env).eq(expect_ty, actual_type);
+                    result.map_err(|terr| (cause, terr))
+                } else {
+                    Ok(InferOk {obligations: PredicateObligations::new(), value: ()})
+                }
+            };
+
+            // test if sides both sides of range have the compatible types
+            let lhs_result = at_cause_eq(expected, lhs_ty, begin.span, Some((end.span, rhs_ty)));
+            let rhs_result = at_cause_eq(expected, rhs_ty, end.span, Some((begin.span, lhs_ty)));
+
+            let joined_result = match (lhs_result, rhs_result) {
+                // full success, move forwards
+                (
+                    Ok(InferOk { obligations: lhs_obligation, value: () }),
+                    Ok(InferOk { obligations: rhs_obligation, value: () })
+                ) => {
+                    self.register_predicates(lhs_obligation);
+                    self.register_predicates(rhs_obligation);
+
+                    // Now that we know the types can be unified we find the unified type and use
+                    // it to type the entire expression.
+                    Ok(self.resolve_vars_if_possible(&lhs_ty))
+                },
+                // only lhs is wrong
+                (Err((cause, terr)), Ok(_)) =>
+                    Err(self.report_mismatched_types(&cause, expected, lhs_ty, terr)),
+                // only rhs is wrong
+                (Ok(_), Err((cause, terr))) =>
+                    Err(self.report_mismatched_types(&cause, expected, rhs_ty, terr)),
+                // both sides are wrong
+                (Err(_), Err((rhs_cause, terr))) => {
+                    if let Ok(_) = at_cause_eq(lhs_ty, rhs_ty, Span::default(), None) {
+                        let cause = self.pat_guard_cause(None, span, expected, discrim_span);
+                        Err(self.report_mismatched_types(&cause, expected, rhs_ty, terr))
+                    } else {
+                        Err(self.report_mismatched_types(&rhs_cause, expected, rhs_ty, terr))
+                    }
+                }
+            };
+
+            match joined_result {
+                Ok(common_type) => Some(common_type),
+                Err(mut err) => {
+                    err.emit();
+                    None
+                }
+            }
         }
-
-        // Now that we know the types can be unified we find the unified type and use
-        // it to type the entire expression.
-        let common_type = self.resolve_vars_if_possible(&lhs_ty);
-
-        // Subtyping doesn't matter here, as the value is some kind of scalar.
-        self.demand_eqtype_pat(span, expected, lhs_ty, discrim_span);
-        self.demand_eqtype_pat(span, expected, rhs_ty, discrim_span);
-        Some(common_type)
     }
 
     fn emit_err_pat_range(

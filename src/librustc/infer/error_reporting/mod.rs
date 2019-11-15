@@ -55,9 +55,8 @@ use crate::hir::Node;
 use crate::infer::{self, SuppressRegionErrors};
 use crate::infer::opaque_types;
 use crate::middle::region;
-use crate::traits::{
-    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-};
+use crate::traits::{ObligationCause, ObligationCauseCode};
+use crate::traits::{IfExpressionCause, PatternGuardCause, MatchExpressionArmCause};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
 
@@ -607,21 +606,31 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: Option<ty::error::ExpectedFound<Ty<'tcx>>>,
     ) {
         match cause.code {
-            ObligationCauseCode::MatchExpressionArmPattern { span, ty } => {
-                if ty.is_suggestable() {  // don't show type `_`
-                    err.span_label(span, format!("this match expression has type `{}`", ty));
-                }
-                if let Some(ty::error::ExpectedFound { found, .. }) = exp_found {
-                    if ty.is_box() && ty.boxed_ty() == found {
-                        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                            err.span_suggestion(
-                                span,
-                                "consider dereferencing the boxed value",
-                                format!("*{}", snippet),
-                                Applicability::MachineApplicable,
-                            );
+            ObligationCauseCode::PatternGuard(box PatternGuardCause {
+                match_expr_discrim, other_range_expr
+            }) => {
+                if let Some((span, ty)) = match_expr_discrim {
+                    if ty.is_suggestable() {  // don't show type `_`
+                        err.span_label(
+                            span,
+                            format!("this match expression requires type `{}`", ty)
+                        );
+                    }
+                    if let Some(ty::error::ExpectedFound { found, .. }) = exp_found {
+                        if ty.is_box() && ty.boxed_ty() == found {
+                            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                                err.span_suggestion(
+                                    span,
+                                    "consider dereferencing the boxed value",
+                                    format!("*{}", snippet),
+                                    Applicability::MachineApplicable,
+                                );
+                            }
                         }
                     }
+                }
+                if let Some((span, ty)) = other_range_expr {
+                    err.span_label(span, format!("other endpoint has type `{}`", ty));
                 }
             }
             ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
@@ -1338,6 +1347,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                     _ => (false, None),
                 };
+                debug!("note_type_err: values={:?}", values);
                 let vals = match self.values_str(&values) {
                     Some((expected, found)) => Some((expected, found)),
                     None => {
@@ -1365,6 +1375,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         if let Some((expected, found)) = expected_found {
+            debug!(
+                "note_type_err: exp_found={:?}, expected={:?} found={:?}",
+                exp_found, expected, found
+            );
             let expected_label = exp_found.map_or("type".into(), |ef| ef.expected.prefix_string());
             let found_label = exp_found.map_or("type".into(), |ef| ef.found.prefix_string());
             match (&terr, expected == found) {

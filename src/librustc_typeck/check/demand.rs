@@ -1,6 +1,6 @@
 use crate::check::FnCtxt;
 use rustc::infer::InferOk;
-use rustc::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc::traits::{self, ObligationCause};
 
 use syntax::symbol::sym;
 use syntax::util::parser::PREC_POSTFIX;
@@ -88,14 +88,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         actual: Ty<'tcx>,
         match_expr_span: Option<Span>,
     ) -> Option<DiagnosticBuilder<'tcx>> {
-        let cause = if let Some(span) = match_expr_span {
-            self.cause(
-                cause_span,
-                ObligationCauseCode::MatchExpressionArmPattern { span, ty: expected },
-            )
-        } else {
-            self.misc(cause_span)
-        };
+        let cause = self.pat_guard_cause(None, cause_span, expected, match_expr_span);
         self.demand_eqtype_with_origin(&cause, expected, actual)
     }
 

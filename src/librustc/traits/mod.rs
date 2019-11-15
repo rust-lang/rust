@@ -237,8 +237,8 @@ pub enum ObligationCauseCode<'tcx> {
     /// Computing common supertype in the arms of a match expression
     MatchExpressionArm(Box<MatchExpressionArmCause<'tcx>>),
 
-    /// Computing common supertype in the pattern guard for the arms of a match expression
-    MatchExpressionArmPattern { span: Span, ty: Ty<'tcx> },
+    /// Computing common supertype in a pattern guard
+    PatternGuard(Box<PatternGuardCause<'tcx>>),
 
     /// Constants in patterns must have `Structural` type.
     ConstPatternStructural,
@@ -297,6 +297,12 @@ pub struct MatchExpressionArmCause<'tcx> {
     pub prior_arms: Vec<Span>,
     pub last_ty: Ty<'tcx>,
     pub discrim_hir_id: hir::HirId,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct PatternGuardCause<'tcx> {
+    pub match_expr_discrim: Option<(Span, Ty<'tcx>)>,
+    pub other_range_expr: Option<(Span, Ty<'tcx>)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

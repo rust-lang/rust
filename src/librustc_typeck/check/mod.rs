@@ -106,7 +106,7 @@ use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::middle::region;
 use rustc::mir::interpret::{ConstValue, GlobalId};
-use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode, PatternGuardCause, TraitEngine};
 use rustc::ty::{
     self, AdtKind, CanonicalUserType, Ty, TyCtxt, Const, GenericParamDefKind,
     ToPolyTraitRef, ToPredicate, RegionKind, UserType
@@ -2736,6 +2736,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn misc(&self, span: Span) -> ObligationCause<'tcx> {
         self.cause(span, ObligationCauseCode::MiscObligation)
+    }
+
+    pub fn pat_guard_cause(
+        &self,
+        other_range_expr: Option<(Span, Ty<'tcx>)>,
+        cause_span: Span,
+        expected: Ty<'tcx>,
+        match_expr_discrim: Option<Span>
+    ) -> ObligationCause<'tcx> {
+        match (other_range_expr, match_expr_discrim) {
+            (Some(_), _) | (_, Some(_)) => self.cause(
+                cause_span, // error primary span
+                ObligationCauseCode::PatternGuard(box PatternGuardCause {
+                    match_expr_discrim: match_expr_discrim.map(|span| (span, expected)),
+                    other_range_expr
+                })
+            ),
+            _ => self.misc(cause_span)
+        }
     }
 
     /// Resolves type and const variables in `ty` if possible. Unlike the infcx
