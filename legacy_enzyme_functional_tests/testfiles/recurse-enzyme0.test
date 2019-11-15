@@ -1,0 +1,6 @@
+; RUN: cd %desired_wd
+; RUN: make clean-recurse-enzyme0 ENZYME_PLUGIN=%loadEnzyme
+; RUN: make build/recurse-enzyme0 ENZYME_PLUGIN=%loadEnzyme CLANG_BIN_PATH=%clangBinPath
+; RUN: build/recurse-enzyme0
+; RUN: make clean-recurse-enzyme0 ENZYME_PLUGIN=%loadEnzyme
+

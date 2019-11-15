@@ -324,12 +324,10 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
         //Proving that none of the uses (or uses' uses) are used in control flow allows us to safely not do this load
         
         if (isa<BranchInst>(use) || isa<SwitchInst>(use)) {
-            llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *user << "\n";
             return seen[inst] = true;
         }
 
         if (is_value_needed_in_reverse(gutils, user, topLevel, seen)) {
-            llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *user << "\n";
             return seen[inst] = true;
         }
     }
@@ -345,11 +343,13 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
         continue;
       }
     }
-    if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<BitCastInst>(use) || isa<PHINode>(use) || isa<ReturnInst>(use) || isa<FPExtInst>(use) ||
-        isa<LoadInst>(use) /*|| isa<StoreInst>(use)*/){
+    if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<CastInst>(use) || isa<PHINode>(use) || isa<ReturnInst>(use) || isa<FPExtInst>(use) ||
+        isa<LoadInst>(use) || (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst)
+        //|| isa<SwitchInst>(use) || isa<ExtractElement>(use) || isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
+        //isa<ExtractValueInst>(use) || isa<AllocaInst>(use)
+        /*|| isa<StoreInst>(use)*/){
       continue;
     }
-    llvm::errs() << "Need value of " << *inst << "\n" << "\t Due to " << *user << "\n";
     return seen[inst] = true;
   }
   return false;
@@ -699,7 +699,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 bool shouldCache = false;//outermostAugmentation;
                 for(auto use : op->users()) {
                     if (!isa<Instruction>(use) || returnuses.find(cast<Instruction>(use)) == returnuses.end()) {
-                        llvm::errs() << "shouldCache for " << *op << " use " << *use << "\n";
+                        //llvm::errs() << "shouldCache for " << *op << " use " << *use << "\n";
                         shouldCache = true;
                     }
                 }
@@ -783,32 +783,25 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
         } else if(LoadInst* li = dyn_cast<LoadInst>(inst)) {
 
          if (can_modref_map[inst]) {
-            llvm::errs() << "Forcibly caching reads " << *li << "\n"; 
             IRBuilder<> BuilderZ(li);
             gutils->addMalloc(BuilderZ, li);
-            //if (!gutils->isConstantValue(inst) && !inst->getType()->isPointerTy()) {
-            //  Value* pt = gutils->invertPointerM(li->getPointerOperand(), BuilderZ);
-            //  gutils->addMalloc(BuilderZ, pt);
-            //}
           }
 
-          //TODO IF OP IS POINTER
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
 
           if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && !isIntASecretFloat(op->getValueOperand()) ) ) {
             IRBuilder <> storeBuilder(op);
-            //llvm::errs() << "a op value: " << *op->getValueOperand() << "\n";
             
             Value* valueop = nullptr;
             
-            //Fallback mechanism
+            //Fallback mechanism, TODO check
             if (gutils->isConstantValue(op->getValueOperand())) {
                 valueop = Constant::getNullValue(op->getValueOperand()->getType());
             } else {
                 valueop = gutils->invertPointerM(op->getValueOperand(), storeBuilder);
             }
-            //llvm::errs() << "a op pointer: " << *op->getPointerOperand() << "\n";
+            
             Value* pointerop = gutils->invertPointerM(op->getPointerOperand(), storeBuilder);
             storeBuilder.CreateStore(valueop, pointerop);
           }
@@ -2532,22 +2525,21 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     } else if(auto op = dyn_cast<LoadInst>(inst)) {
       Value* op_operand = op->getPointerOperand(); 
       Type* op_type = op->getType();
+      bool op_valconstant = gutils->isConstantValue(op);
 
       Value* inverted_operand = nullptr;
       
-      if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
+      if (!op_valconstant && !op_type->isPointerTy()) {
         inverted_operand = gutils->invertPointerM(op_operand, Builder2);
       }
  
       if (can_modref_map[inst]) {
         IRBuilder<> BuilderZ(op->getNextNode());
-        llvm::errs() << "Forcibly loading" << *inst << "\n";
-        bool orig_inst_constant = gutils->isConstantValue(inst);
         inst = cast<Instruction>(gutils->addMalloc(BuilderZ, inst));
         if (inst != op) {
           // Set to nullptr since op should never be used after invalidated through addMalloc.
           op = nullptr;
-          if (!orig_inst_constant) { 
+          if (!op_valconstant) { 
             gutils->nonconstant_values.insert(inst);
             gutils->nonconstant.insert(inst);
           } else {
@@ -2556,32 +2548,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           gutils->originalInstructions.insert(inst);
 
           assert(inst->getType() == op_type);
-
-          /*
-          if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
-            inverted_operand = lookup(gutils->addMalloc(BuilderZ, nullptr));
-            assert(inverted_operand->getType()->isPointerTy());
-            if (cast<PointerType>(inverted_operand->getType())->getElementType() != inst->getType()) {
-              llvm::errs() << "F: " << *gutils->newFunc << "\n";
-              llvm::errs() << "Inverted operand: " << *inverted_operand << "\n";
-              llvm::errs() << "inst: " << *inst << "\n";
-            }
-            assert(cast<PointerType>(inverted_operand->getType())->getElementType() == inst->getType());
-          }
-          */
-        } else {
-          //if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
-          //  inverted_operand = gutils->invertPointerM(op_operand, Builder2);
-          //}
         }
-      } else {
-        //IRBuilder<> BuilderZ(op->getNextNode());
-        //if (!gutils->isConstantValue(inst) && !op_type->isPointerTy()) {
-        //  inverted_operand = gutils->invertPointerM(op_operand, Builder2);
-        //}
       }
 
-      if (gutils->isConstantValue(inst)) continue;
+      if (op_valconstant) continue;
 
       if (nonmarkedglobals_inactiveloads) {
           //Assume that non enzyme_shadow globals are inactive
@@ -2599,10 +2569,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(op_type));
         assert(inverted_operand);
-        //auto test = Builder2.CreateLoad(cast<PointerType>(inverted_operand->getType())->getElementType(), inverted_operand);
         gutils->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2);
       }
-      llvm::errs() << *gutils->newFunc << "\n afer seeing " << *inst << "\n";
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;
 
@@ -2626,7 +2594,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         
         Value* valueop = nullptr;
         
-        //Fallback mechanism
+        //Fallback mechanism, TODO check
         if (gutils->isConstantValue(op->getValueOperand())) {
             valueop = Constant::getNullValue(op->getValueOperand()->getType());
         } else {
@@ -2634,7 +2602,6 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         }
         Value* pointerop = gutils->invertPointerM(op->getPointerOperand(), storeBuilder);
         storeBuilder.CreateStore(valueop, pointerop);
-        //llvm::errs() << "ignoring store bc pointer of " << *op << "\n";
       }
     } else if(auto op = dyn_cast<ExtractValueInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;

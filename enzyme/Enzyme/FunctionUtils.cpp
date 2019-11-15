@@ -496,7 +496,7 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
      if (!F->getReturnType()->isVoidTy() && returnValue == ReturnType::TapeAndReturns) {
         RetTypes.push_back(F->getReturnType());
         //if ( (F->getReturnType()->isPointerTy() || F->getReturnType()->isIntegerTy()) && differentialReturn)
-        if (differentialReturn)
+        //if (differentialReturn)
         if (differentialReturn && !F->getReturnType()->isFPOrFPVectorTy())
           RetTypes.push_back(F->getReturnType());
     }

@@ -1,0 +1,39 @@
+#include <stdio.h>
+#include <math.h>
+#include <assert.h>
+
+#include "test_utils.h"
+
+#define __builtin_autodiff __enzyme_autodiff
+double __enzyme_autodiff(void*, ...);
+
+void compute_loops(float* a, float* b, float* ret) {
+  double sum0 = 0.0;
+  for (int i = 0; i < 100; i++) {
+    double sum1 = 0.0;
+    for (int j = 0; j < 100; j++) {
+      sum1 += *a+*b;
+    }
+    sum0 += sum1;
+  }
+  *ret = sum0;
+}
+
+int main(int argc, char** argv) {
+  float a = 2.0;
+  float b = 3.0;
+
+  float da = 0;
+  float db = 0;
+
+  float ret = 0;
+  float dret = 1.0;
+
+  __builtin_autodiff(compute_loops, &a, &da, &b, &db, &ret, &dret);
+
+  assert(approx_fp_equality_float(da, 100*100*1.0f, 1e-10));
+  assert(approx_fp_equality_float(db, 100*100*1.0f, 1e-10));
+
+  printf("hello! %f, res2 %f, da: %f, db: %f\n", ret, ret, da,db);
+  return 0;
+}

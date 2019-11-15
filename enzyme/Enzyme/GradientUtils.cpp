@@ -458,7 +458,6 @@ void removeRedundantIVs(const Loop* L, BasicBlock* Header, BasicBlock* Preheader
         if (SE.getCouldNotCompute() == S) continue;
         Value *NewIV = Exp.expandCodeFor(S, S->getType(), CanonicalIV);
         if (NewIV == PN) {
-          llvm::errs() << "TODO: odd case need to ensure replacement\n";
           continue;
         }
 
