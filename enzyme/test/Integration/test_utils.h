@@ -11,10 +11,6 @@ static bool approx_fp_equality_double(double f1, double f2, double threshold) {
   return true;
 }
 
-// If PREDICATE is true, do nothing.  Otherwise, print an error with
-// the specified message to STDERR.  This macro only operates when
-// DEBUG = 1.  This macro takes a PREDICATE to evaluate followed by
-// the standard arguments to PRINTF().
 #define APPROX_EQ(LHS, RHS, THRES)                                    \
     {                                                                \
       if (fabs(LHS - RHS) > THRES) {                                               \

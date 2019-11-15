@@ -27,12 +27,12 @@ float* unsorted_array_init(int N) {
 }
 
 // sums the first half of a sorted array.
-void insertsort_sum (float* array, int N, float* ret) {
+void insertsort_sum (float* array, long long N, float* ret) {
   float sum = 0;
   //qsort(array, N, sizeof(float), cmp);
 
-  for (int i = 1; i < N; i++) {
-    int j = i;
+  for (long long i = 1; i < N; i++) {
+    long long j = i;
     while (j > 0 && array[j-1] < array[j]) {
       float tmp = array[j];
       array[j] = array[j-1];
@@ -68,8 +68,7 @@ int main(int argc, char** argv) {
   float ret = 0;
   float dret = 1.0;
 
-  int N = 10;
-  int dN = 0;
+  long long N = 10;
   float* array = unsorted_array_init(N);
   float* d_array = (float*) malloc(sizeof(float)*N);
   for (int i = 0; i < N; i++) {
@@ -95,6 +94,9 @@ int main(int argc, char** argv) {
 
   for (int i = 0; i < N; i++) {
     printf("Diffe for index %d is %f\n", i, d_array[i]);
+  }
+
+  for (int i = 0; i < N; i++) {
     if (i%2 == 0) {
       APPROX_EQ(d_array[i], 0.0, 1e-10);
     } else {

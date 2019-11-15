@@ -29,16 +29,6 @@
 
 #include <algorithm>
 
-//! Is possibleChild a child loop or the same loop as possibleParent
-static bool isParentOrSameContext(LoopContext & possibleChild, LoopContext & possibleParent) {
-    if (possibleChild.header == possibleParent.header) return true;
-    
-    for(Loop* lp = possibleChild.parent; lp != nullptr; lp = lp->getParentLoop()) {
-        if (lp->getHeader() == possibleParent.header) return true;
-    }
-    return false;
-}
-
   //! Given an edge from BB to branchingBlock get the corresponding block to branch to in the reverse pass
   BasicBlock* GradientUtils::getReverseOrLatchMerge(BasicBlock* BB, BasicBlock* branchingBlock) {
     assert(BB);
@@ -365,7 +355,9 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
 #endif
         Type *tys[] = {dst_arg->getType(), len_arg->getType()};
         auto memset = cast<CallInst>(bb.CreateCall(Intrinsic::getDeclaration(M, Intrinsic::memset, tys), args));
-        memset->addParamAttr(0, Attribute::getWithAlignment(inst->getContext(), inst->getAlignment()));
+        if (inst->getAlignment() != 0) {
+            memset->addParamAttr(0, Attribute::getWithAlignment(inst->getContext(), inst->getAlignment()));
+        }
         memset->addParamAttr(0, Attribute::NonNull);
         return lookupM(invertedPointers[inst], BuilderM);
     } else if (auto phi = dyn_cast<PHINode>(val)) {

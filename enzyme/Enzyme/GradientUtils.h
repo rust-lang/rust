@@ -1381,6 +1381,50 @@ public:
   std::vector<SelectInst*> addToDiffe(Value* val, Value* dif, IRBuilder<> &BuilderM) {
       std::vector<SelectInst*> addedSelects;
 
+      auto faddForSelect = [&](Value* old, Value* dif) -> Value* {
+
+        //! optimize fadd of select to select of fadd
+        if (SelectInst* select = dyn_cast<SelectInst>(dif)) {
+            if (Constant* ci = dyn_cast<Constant>(select->getTrueValue())) {
+                if (ci->isZeroValue()) {
+                    SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), old, BuilderM.CreateFAdd(old, select->getFalseValue())));
+                    addedSelects.emplace_back(res);
+                    return res;
+                }
+            }
+            if (Constant* ci = dyn_cast<Constant>(select->getFalseValue())) {
+                if (ci->isZeroValue()) {
+                    SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateFAdd(old, select->getTrueValue()), old));
+                    addedSelects.emplace_back(res);
+                    return res;
+                }
+            }
+        }
+
+        //! optimize fadd of bitcast select to select of bitcast fadd
+        if (BitCastInst* bc = dyn_cast<BitCastInst>(dif)) {
+            if (SelectInst* select = dyn_cast<SelectInst>(bc->getOperand(0))) {
+                if (Constant* ci = dyn_cast<Constant>(select->getTrueValue())) {
+                    if (ci->isZeroValue()) {
+                        SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), old, BuilderM.CreateFAdd(old, BuilderM.CreateCast(bc->getOpcode(), select->getFalseValue(), bc->getDestTy()))));
+                        addedSelects.emplace_back(res);
+                        return res;
+                    }
+                }
+                if (Constant* ci = dyn_cast<Constant>(select->getFalseValue())) {
+                    if (ci->isZeroValue()) {
+                        SelectInst* res = cast<SelectInst>(BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateFAdd(old, BuilderM.CreateCast(bc->getOpcode(), select->getTrueValue(), bc->getDestTy())), old));
+                        addedSelects.emplace_back(res);
+                        return res;
+                    }
+                }
+            }
+        }
+
+        // fallback
+        return BuilderM.CreateFAdd(old, dif);
+      };
+
       if (val->getType()->isPointerTy()) {
           llvm::errs() << *newFunc << "\n";
           llvm::errs() << *val << "\n";
@@ -1394,37 +1438,38 @@ public:
       assert(val->getType() == dif->getType());
       auto old = diffe(val, BuilderM);
       assert(val->getType() == old->getType());
-      Value* res;
+      Value* res = nullptr;
       if (val->getType()->isIntOrIntVectorTy()) {
-        res = BuilderM.CreateFAdd(BuilderM.CreateBitCast(old, IntToFloatTy(old->getType())), BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType())));
-        res = BuilderM.CreateBitCast(res, val->getType());
+        
+        Value* bcold = BuilderM.CreateBitCast(old, IntToFloatTy(old->getType()));
+        Value* bcdif = BuilderM.CreateBitCast(dif, IntToFloatTy(dif->getType()));
+        res = faddForSelect(bcold, bcdif);
+        if (Instruction* oldinst = dyn_cast<Instruction>(bcold)) {
+            if (oldinst->getNumUses() == 0) {
+                //if (oldinst == &*BuilderM.GetInsertPoint()) BuilderM.SetInsertPoint(oldinst->getNextNode());
+                //oldinst->eraseFromParent();
+            }
+        }
+        if (Instruction* difinst = dyn_cast<Instruction>(bcdif)) {
+            if (difinst->getNumUses() == 0) {
+                //if (difinst == &*BuilderM.GetInsertPoint()) BuilderM.SetInsertPoint(difinst->getNextNode());
+                //difinst->eraseFromParent();
+            }
+        }
+        if (SelectInst* select = dyn_cast<SelectInst>(res)) {
+            assert(addedSelects.back() == select);
+            addedSelects.erase(addedSelects.end()-1);
+            res = BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateBitCast(select->getTrueValue(), val->getType()), BuilderM.CreateBitCast(select->getFalseValue(), val->getType()));
+            assert(select->getNumUses() == 0);
+            //if (select == &*BuilderM.GetInsertPoint()) BuilderM.SetInsertPoint(select->getNextNode());
+            //select->eraseFromParent();
+        } else {
+            res = BuilderM.CreateBitCast(res, val->getType());
+        }
         BuilderM.CreateStore(res, getDifferential(val));
         return addedSelects;
       } else if (val->getType()->isFPOrFPVectorTy()) {
-        
-        res = BuilderM.CreateFAdd(old, dif);
-
-        //! optimize fadd of select to select of fadd
-        if (SelectInst* select = dyn_cast<SelectInst>(dif)) {
-            if (Constant* ci = dyn_cast<Constant>(select->getTrueValue())) {
-                if (ci->isZeroValue()) {
-                    cast<Instruction>(res)->eraseFromParent();
-                    res = BuilderM.CreateSelect(select->getCondition(), old, BuilderM.CreateFAdd(old, select->getFalseValue()));
-                    addedSelects.emplace_back(cast<SelectInst>(res));
-                    goto endselect;
-                }
-            }
-            if (Constant* ci = dyn_cast<Constant>(select->getFalseValue())) {
-                if (ci->isZeroValue()) {
-                    cast<Instruction>(res)->eraseFromParent();
-                    res = BuilderM.CreateSelect(select->getCondition(), BuilderM.CreateFAdd(old, select->getTrueValue()), old);
-                    addedSelects.emplace_back(cast<SelectInst>(res));
-                    goto endselect;
-                }
-            }
-        }
-        endselect:;
-
+        res = faddForSelect(old, dif);
         BuilderM.CreateStore(res, getDifferential(val));
         return addedSelects;
       } else if (val->getType()->isStructTy()) {

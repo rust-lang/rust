@@ -129,13 +129,10 @@ attributes #8 = { noreturn nounwind }
 ; CHECK-NEXT:   %2 = extractvalue { { double }, double } %0, 1
 ; CHECK-NEXT:   %3 = call { { double } } @augmented_g_write(double* %x, double* %"x'", double %2)
 ; CHECK-NEXT:   %4 = extractvalue { { double } } %3, 0
-; CHECK-NEXT:   %5 = call { {}, double } @augmented_h_read(double* %x, double* %"x'")
-; CHECK-NEXT:   %6 = extractvalue { {}, double } %5, 1
-; CHECK-NEXT:   %7 = call {} @diffeh_read(double* %x, double* %"x'", double %differeturn, {} undef)
-; CHECK-NEXT:   %8 = call { double } @diffeg_write(double* %x, double* %"x'", double %2, { double } %4)
-; CHECK-NEXT:   %9 = extractvalue { double } %8, 0
-; CHECK-NEXT:   %10 = call {} @diffef_read(double* %x, double* %"x'", double %9, { double } %1)
-; CHECK-NEXT:   %11 = insertvalue { double } undef, double %6, 0
-; CHECK-NEXT:   ret { double } %11
+; CHECK-NEXT:   %[[dhret:.+]] = call { double } @diffeh_read(double* %x, double* %"x'", double %differeturn)
+; CHECK-NEXT:   %[[dg:.+]] = call { double } @diffeg_write(double* %x, double* %"x'", double %2, { double } %4)
+; CHECK-NEXT:   %[[dgret:.+]] = extractvalue { double } %[[dg]], 0
+; CHECK-NEXT:   %[[nil2:.+]] = call {} @diffef_read(double* %x, double* %"x'", double %[[dgret]], { double } %1)
+; CHECK-NEXT:   ret { double } %[[dhret]]
 ; CHECK-NEXT: }
 

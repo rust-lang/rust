@@ -714,6 +714,9 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 
                 gutils->originalInstructions.insert(augmentcall);
                 gutils->nonconstant.insert(augmentcall);
+                if (!gutils->isConstantValue(op)) {
+                  gutils->nonconstant_values.insert(augmentcall);
+                }
 
                 Value* tp = BuilderZ.CreateExtractValue(augmentcall, {0}, "subcache");
                 if (tp->getType()->isEmptyTy()) {
@@ -1124,13 +1127,17 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
     for (auto I = BB->begin(), E = BB->end(); I != E; I++) {
         if(PHINode* PN = dyn_cast<PHINode>(&*I)) {
             if (gutils->isConstantValue(PN)) continue;
-            if (PN->getType()->isPointerTy() || PN->getType()->isIntegerTy()) continue;
+            if (PN->getType()->isPointerTy()) continue;
+            //TODO consider skipping if not a secret float
+            //if (!isIntASecretFloat(PN))) continue;
 
             auto prediff = gutils->diffe(PN, Builder);
             gutils->setDiffe(PN, Constant::getNullValue(PN->getType()), Builder);
             
             for (BasicBlock* pred : predecessors(BB)) {
-                if (gutils->isConstantValue(PN->getIncomingValueForBlock(pred))) continue;
+                if (gutils->isConstantValue(PN->getIncomingValueForBlock(pred))) {
+                    continue;
+                }
 
                 if (PN->getNumIncomingValues() == 1) {
                     gutils->addToDiffe(PN->getIncomingValueForBlock(pred), prediff, Builder);
@@ -1143,8 +1150,9 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
                         }
                     } 
                     SelectInst* dif = cast<SelectInst>(Builder.CreateSelect(replacePHIs[pred], prediff, Constant::getNullValue(prediff->getType())));
+                    //llvm::errs() << "creating prediff " << *dif << " for value incoming " << PN->getIncomingValueForBlock(pred) << " for " << *PN << "\n";
                     auto addedSelects = gutils->addToDiffe(PN->getIncomingValueForBlock(pred), dif, Builder);
-                    if (dif->getNumUses() != 0) {
+                    /*if (dif->getNumUses() != 0) {
                       llvm::errs() << "oldFunc: " << *gutils->oldFunc << "\n";
                       llvm::errs() << "newFunc: " << *gutils->newFunc << "\n";
                       for (auto use : dif->users()) {
@@ -1154,6 +1162,7 @@ void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, Alloca
                     }
                     assert(dif->getNumUses() == 0);
                     dif->eraseFromParent();
+                    */
                     for (auto select : addedSelects)
                         selects.emplace_back(select);
                 }
@@ -1565,10 +1574,21 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   break;
   }
   if (&*iter == gutils->getOriginal(op)) {
-    bool outsideuse = false;
+    User* outsideuse = nullptr;
+    //If we don't post dominate a user, consider what outside use entails?
     for(auto user : op->users()) {
       if (gutils->originalInstructions.find(cast<Instruction>(user)) == gutils->originalInstructions.end()) {
-        outsideuse = true;
+        if (StoreInst* si = dyn_cast<StoreInst>(user)) {
+            bool returned = false;
+            for(auto rep : replacedReturns) {
+                if (rep.second == si) {
+                    returned = true;
+                    break;
+                }
+            }
+            if (returned) continue;
+        }
+        outsideuse = user;
       }
     }
 
@@ -1577,7 +1597,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << called->getName() << "\n";
       else
         llvm::errs() << " [not implemented] pointer return for combined forward/reverse " << *op->getCalledValue() << "\n";
-      outsideuse = true;
+      outsideuse = op;
     }
 
     if (!outsideuse) {
@@ -1589,9 +1609,9 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       modifyPrimal = false;
     } else {
       if (called)
-        llvm::errs() << " failed to replace function (cacheuse)" << (called->getName()) << " due to " << *iter << "\n";
+        llvm::errs() << " failed to replace function (cacheuse)" << (called->getName()) << " due to " << *outsideuse << "\n";
       else
-        llvm::errs() << " failed to replace function (cacheuse)" << (*op->getCalledValue()) << " due to " << *iter << "\n";
+        llvm::errs() << " failed to replace function (cacheuse)" << (*op->getCalledValue()) << " due to " << *outsideuse << "\n";
 
     }
   } else {
@@ -1619,6 +1639,9 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
       gutils->originalInstructions.insert(augmentcall);
       gutils->nonconstant.insert(augmentcall);
+      if (!gutils->isConstantValue(op)) {
+        gutils->nonconstant_values.insert(augmentcall);
+      }
 
       tape = BuilderZ.CreateExtractValue(augmentcall, {0});
       if (tape->getType()->isEmptyTy()) {
@@ -2070,7 +2093,12 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     };
 
     auto invertPointer = [&](Value* val) -> Value* {
-        return gutils->invertPointerM(val, Builder2);
+        assert(val);
+        assert(val->getType());
+        auto ip = gutils->invertPointerM(val, Builder2);
+        assert(ip);
+        assert(ip->getType());
+        return ip;
     };
 
   auto term = BB->getTerminator();
