@@ -53,7 +53,7 @@
 //! [`Index`]: ../../std/ops/trait.Index.html
 //! [`IndexMut`]: ../../std/ops/trait.IndexMut.html
 //! [`vec!`]: ../../std/macro.vec.html
-
+// ignore-tidy-filelength
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use core::array::LengthAtMost32;
