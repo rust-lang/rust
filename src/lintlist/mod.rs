@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 333] = [
+pub const ALL_LINTS: [Lint; 334] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1861,6 +1861,13 @@ pub const ALL_LINTS: [Lint; 333] = [
         desc: "suspicious formatting of unary `-` or `!` on the RHS of a BinOp",
         deprecation: None,
         module: "formatting",
+    },
+    Lint {
+        name: "tabs_in_doc_comments",
+        group: "style",
+        desc: "using tabs in doc comments is not recommended",
+        deprecation: None,
+        module: "tabs_in_doc_comments",
     },
     Lint {
         name: "temporary_assignment",
