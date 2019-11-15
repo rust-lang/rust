@@ -226,6 +226,8 @@ impl<N: AstNode> AstId<N> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Source<T> {
     pub file_id: HirFileId,
+    // FIXME: this stores all kind of things, not only `ast`.
+    // There should be a better name...
     pub ast: T,
 }
 
