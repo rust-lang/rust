@@ -1,12 +1,19 @@
 //! FIXME: write short doc here
 
-pub(crate) mod validation;
-
 use std::sync::Arc;
 
+use hir_def::path::known;
+use hir_expand::diagnostics::DiagnosticSink;
+use ra_syntax::ast;
 use ra_syntax::AstPtr;
+use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, DefWithBody, HasBody, Resolver};
+use crate::{
+    db::HirDatabase,
+    diagnostics::{MissingFields, MissingOkInTailExpr},
+    ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
+    Adt, DefWithBody, Function, HasBody, Name, Path, Resolver,
+};
 
 pub use hir_def::{
     body::{
@@ -43,191 +50,121 @@ pub(crate) fn resolver_for_scope(
     r
 }
 
-#[cfg(test)]
-mod tests {
-    use hir_expand::Source;
-    use ra_db::{fixture::WithFixture, SourceDatabase};
-    use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
-    use test_utils::{assert_eq_text, extract_offset};
+pub(crate) struct ExprValidator<'a, 'b: 'a> {
+    func: Function,
+    infer: Arc<InferenceResult>,
+    sink: &'a mut DiagnosticSink<'b>,
+}
 
-    use crate::{source_binder::SourceAnalyzer, test_db::TestDB};
+impl<'a, 'b> ExprValidator<'a, 'b> {
+    pub(crate) fn new(
+        func: Function,
+        infer: Arc<InferenceResult>,
+        sink: &'a mut DiagnosticSink<'b>,
+    ) -> ExprValidator<'a, 'b> {
+        ExprValidator { func, infer, sink }
+    }
 
-    fn do_check(code: &str, expected: &[&str]) {
-        let (off, code) = extract_offset(code);
-        let code = {
-            let mut buf = String::new();
-            let off = u32::from(off) as usize;
-            buf.push_str(&code[..off]);
-            buf.push_str("marker");
-            buf.push_str(&code[off..]);
-            buf
+    pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
+        let body = self.func.body(db);
+
+        for e in body.exprs() {
+            if let (id, Expr::RecordLit { path, fields, spread }) = e {
+                self.validate_record_literal(id, path, fields, *spread, db);
+            }
+        }
+
+        let body_expr = &body[body.body_expr()];
+        if let Expr::Block { statements: _, tail: Some(t) } = body_expr {
+            self.validate_results_in_tail_expr(body.body_expr(), *t, db);
+        }
+    }
+
+    fn validate_record_literal(
+        &mut self,
+        id: ExprId,
+        _path: &Option<Path>,
+        fields: &[RecordLitField],
+        spread: Option<ExprId>,
+        db: &impl HirDatabase,
+    ) {
+        if spread.is_some() {
+            return;
+        }
+
+        let struct_def = match self.infer[id].as_adt() {
+            Some((Adt::Struct(s), _)) => s,
+            _ => return,
         };
 
-        let (db, file_id) = TestDB::with_single_file(&code);
+        let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
+        let missed_fields: Vec<Name> = struct_def
+            .fields(db)
+            .iter()
+            .filter_map(|f| {
+                let name = f.name(db);
+                if lit_fields.contains(&name) {
+                    None
+                } else {
+                    Some(name)
+                }
+            })
+            .collect();
+        if missed_fields.is_empty() {
+            return;
+        }
+        let source_map = self.func.body_source_map(db);
 
-        let file = db.parse(file_id).ok().unwrap();
-        let marker: ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
-        let analyzer = SourceAnalyzer::new(&db, file_id, marker.syntax(), None);
-
-        let scopes = analyzer.scopes();
-        let expr_id = analyzer
-            .body_source_map()
-            .node_expr(Source { file_id: file_id.into(), ast: &marker.into() })
-            .unwrap();
-        let scope = scopes.scope_for(expr_id);
-
-        let actual = scopes
-            .scope_chain(scope)
-            .flat_map(|scope| scopes.entries(scope))
-            .map(|it| it.name().to_string())
-            .collect::<Vec<_>>()
-            .join("\n");
-        let expected = expected.join("\n");
-        assert_eq_text!(&expected, &actual);
-    }
-
-    #[test]
-    fn test_lambda_scope() {
-        do_check(
-            r"
-            fn quux(foo: i32) {
-                let f = |bar, baz: i32| {
-                    <|>
-                };
-            }",
-            &["bar", "baz", "foo"],
-        );
-    }
-
-    #[test]
-    fn test_call_scope() {
-        do_check(
-            r"
-            fn quux() {
-                f(|x| <|> );
-            }",
-            &["x"],
-        );
-    }
-
-    #[test]
-    fn test_method_call_scope() {
-        do_check(
-            r"
-            fn quux() {
-                z.f(|x| <|> );
-            }",
-            &["x"],
-        );
-    }
-
-    #[test]
-    fn test_loop_scope() {
-        do_check(
-            r"
-            fn quux() {
-                loop {
-                    let x = ();
-                    <|>
-                };
-            }",
-            &["x"],
-        );
-    }
-
-    #[test]
-    fn test_match() {
-        do_check(
-            r"
-            fn quux() {
-                match () {
-                    Some(x) => {
-                        <|>
+        if let Some(source_ptr) = source_map.expr_syntax(id) {
+            if let Some(expr) = source_ptr.ast.a() {
+                let root = source_ptr.file_syntax(db);
+                if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
+                    if let Some(field_list) = record_lit.record_field_list() {
+                        self.sink.push(MissingFields {
+                            file: source_ptr.file_id,
+                            field_list: AstPtr::new(&field_list),
+                            missed_fields,
+                        })
                     }
-                };
-            }",
-            &["x"],
-        );
-    }
-
-    #[test]
-    fn test_shadow_variable() {
-        do_check(
-            r"
-            fn foo(x: String) {
-                let x : &str = &x<|>;
-            }",
-            &["x"],
-        );
-    }
-
-    fn do_check_local_name(code: &str, expected_offset: u32) {
-        let (off, code) = extract_offset(code);
-
-        let (db, file_id) = TestDB::with_single_file(&code);
-        let file = db.parse(file_id).ok().unwrap();
-        let expected_name = find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into())
-            .expect("failed to find a name at the target offset");
-        let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
-        let analyzer = SourceAnalyzer::new(&db, file_id, name_ref.syntax(), None);
-
-        let local_name_entry = analyzer.resolve_local_name(&name_ref).unwrap();
-        let local_name =
-            local_name_entry.ptr().either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
-        assert_eq!(local_name.range(), expected_name.syntax().text_range());
-    }
-
-    #[test]
-    fn test_resolve_local_name() {
-        do_check_local_name(
-            r#"
-            fn foo(x: i32, y: u32) {
-                {
-                    let z = x * 2;
-                }
-                {
-                    let t = x<|> * 3;
-                }
-            }"#,
-            21,
-        );
-    }
-
-    #[test]
-    fn test_resolve_local_name_declaration() {
-        do_check_local_name(
-            r#"
-            fn foo(x: String) {
-                let x : &str = &x<|>;
-            }"#,
-            21,
-        );
-    }
-
-    #[test]
-    fn test_resolve_local_name_shadow() {
-        do_check_local_name(
-            r"
-            fn foo(x: String) {
-                let x : &str = &x;
-                x<|>
-            }
-            ",
-            53,
-        );
-    }
-
-    #[test]
-    fn ref_patterns_contribute_bindings() {
-        do_check_local_name(
-            r"
-            fn foo() {
-                if let Some(&from) = bar() {
-                    from<|>;
                 }
             }
-            ",
-            53,
-        );
+        }
+    }
+
+    fn validate_results_in_tail_expr(
+        &mut self,
+        body_id: ExprId,
+        id: ExprId,
+        db: &impl HirDatabase,
+    ) {
+        // the mismatch will be on the whole block currently
+        let mismatch = match self.infer.type_mismatch_for_expr(body_id) {
+            Some(m) => m,
+            None => return,
+        };
+
+        let std_result_path = known::std_result_result();
+
+        let resolver = self.func.resolver(db);
+        let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {
+            Some(it) => it,
+            _ => return,
+        };
+
+        let std_result_ctor = TypeCtor::Adt(Adt::Enum(std_result_enum));
+        let params = match &mismatch.expected {
+            Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &std_result_ctor => parameters,
+            _ => return,
+        };
+
+        if params.len() == 2 && &params[0] == &mismatch.actual {
+            let source_map = self.func.body_source_map(db);
+
+            if let Some(source_ptr) = source_map.expr_syntax(id) {
+                if let Some(expr) = source_ptr.ast.a() {
+                    self.sink.push(MissingOkInTailExpr { file: source_ptr.file_id, expr });
+                }
+            }
+        }
     }
 }
