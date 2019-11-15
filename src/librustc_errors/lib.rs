@@ -18,6 +18,8 @@ use registry::Registry;
 use rustc_data_structures::sync::{self, Lrc, Lock};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
+use syntax_pos::source_map::SourceMap;
+use syntax_pos::{Loc, Span, MultiSpan};
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -35,17 +37,6 @@ mod snippet;
 pub mod registry;
 mod styled_buffer;
 mod lock;
-
-use syntax_pos::{
-    BytePos,
-    FileLinesResult,
-    FileName,
-    Loc,
-    MultiSpan,
-    SourceFile,
-    Span,
-    SpanSnippetError,
-};
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
@@ -150,26 +141,12 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
-pub type SourceMapperDyn = dyn SourceMapper + sync::Send + sync::Sync;
-
-pub trait SourceMapper {
-    fn lookup_char_pos(&self, pos: BytePos) -> Loc;
-    fn span_to_lines(&self, sp: Span) -> FileLinesResult;
-    fn span_to_string(&self, sp: Span) -> String;
-    fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError>;
-    fn span_to_filename(&self, sp: Span) -> FileName;
-    fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
-    fn call_span_if_macro(&self, sp: Span) -> Span;
-    fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool;
-    fn doctest_offset_line(&self, file: &FileName, line: usize) -> usize;
-}
-
 impl CodeSuggestion {
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub fn splice_lines(
         &self,
-        cm: &SourceMapperDyn,
+        cm: &SourceMap,
     ) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
         use syntax_pos::{CharPos, Pos};
 
@@ -376,7 +353,7 @@ impl Handler {
         color_config: ColorConfig,
         can_emit_warnings: bool,
         treat_err_as_bug: Option<usize>,
-        cm: Option<Lrc<SourceMapperDyn>>,
+        cm: Option<Lrc<SourceMap>>,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
             color_config,
@@ -391,7 +368,7 @@ impl Handler {
 
     pub fn with_tty_emitter_and_flags(
         color_config: ColorConfig,
-        cm: Option<Lrc<SourceMapperDyn>>,
+        cm: Option<Lrc<SourceMap>>,
         flags: HandlerFlags,
     ) -> Self {
         let emitter = Box::new(EmitterWriter::stderr(

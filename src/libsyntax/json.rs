@@ -12,7 +12,7 @@
 use crate::source_map::{SourceMap, FilePathMapping};
 
 use errors::registry::Registry;
-use errors::{SubDiagnostic, CodeSuggestion, SourceMapper, SourceMapperDyn};
+use errors::{SubDiagnostic, CodeSuggestion};
 use errors::{DiagnosticId, Applicability};
 use errors::emitter::{Emitter, HumanReadableErrorType};
 
@@ -31,7 +31,7 @@ mod tests;
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
-    sm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
+    sm: Lrc<SourceMap>,
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
@@ -116,7 +116,7 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         Some(&self.sm)
     }
 
