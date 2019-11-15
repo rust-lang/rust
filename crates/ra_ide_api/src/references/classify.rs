@@ -129,7 +129,8 @@ pub(crate) fn classify_name_ref(
     let _p = profile("classify_name_ref");
 
     let parent = name_ref.syntax().parent()?;
-    let analyzer = SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
+    let analyzer =
+        SourceAnalyzer::new(db, hir::Source::new(file_id.into(), name_ref.syntax()), None);
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
         tested_by!(goto_definition_works_for_methods);

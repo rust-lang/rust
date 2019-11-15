@@ -117,7 +117,7 @@ impl<'a, DB: HirDatabase> AssistCtx<'a, DB> {
         node: &SyntaxNode,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        SourceAnalyzer::new(self.db, self.frange.file_id, node, offset)
+        SourceAnalyzer::new(self.db, hir::Source::new(self.frange.file_id.into(), node), offset)
     }
 
     pub(crate) fn covering_node_for_range(&self, range: TextRange) -> SyntaxElement {
