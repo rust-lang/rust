@@ -369,6 +369,21 @@ mod tests {
         assert_eq!(refs.len(), 2);
     }
 
+    #[test]
+    fn test_find_all_refs_macro_def() {
+        let code = r#"
+        #[macro_export]
+        macro_rules! m1<|> { () => (()) }
+
+        fn foo() {
+            m1();
+            m1();
+        }"#;
+
+        let refs = get_all_refs(code);
+        assert_eq!(refs.len(), 3);
+    }
+
     fn get_all_refs(text: &str) -> ReferenceSearchResult {
         let (analysis, position) = single_file_with_position(text);
         analysis.find_all_refs(position, None).unwrap().unwrap()
