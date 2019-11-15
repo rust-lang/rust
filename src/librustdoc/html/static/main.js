@@ -401,16 +401,21 @@ function getSearchElement() {
         var prev_line_id = 0;
 
         var set_fragment = function(name) {
+            var x = window.scrollX,
+                y = window.scrollY;
             if (browserSupportsHistoryApi()) {
                 history.replaceState(null, null, "#" + name);
                 highlightSourceLines();
             } else {
                 location.replace("#" + name);
             }
+            // Prevent jumps when selecting one or many lines
+            window.scrollTo(x, y);
         };
 
         return function(ev) {
             var cur_line_id = parseInt(ev.target.id, 10);
+            ev.preventDefault();
 
             if (ev.shiftKey && prev_line_id) {
                 // Swap selection if needed
