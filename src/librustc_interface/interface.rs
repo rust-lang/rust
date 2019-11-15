@@ -11,6 +11,7 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_errors::registry::Registry;
 use rustc_parse::new_parser_from_source_str;
 use rustc::ty;
 use std::path::PathBuf;
@@ -141,12 +142,16 @@ pub struct Config {
     /// The second parameter is local providers and the third parameter is external providers.
     pub override_queries:
         Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
+
+    /// Registry of diagnostics codes.
+    pub registry: Registry,
 }
 
-pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
-where
-    F: FnOnce(&Compiler) -> R,
-{
+pub fn run_compiler_in_existing_thread_pool<R>(
+    config: Config,
+    f: impl FnOnce(&Compiler) -> R,
+) -> R {
+    let registry = &config.registry;
     let (sess, codegen_backend, source_map) = util::create_session(
         config.opts,
         config.crate_cfg,
@@ -154,6 +159,7 @@ where
         config.file_loader,
         config.input_path.clone(),
         config.lint_caps,
+        registry.clone(),
     );
 
     let compiler = Compiler {
@@ -171,17 +177,13 @@ where
     };
 
     let _sess_abort_error = OnDrop(|| {
-        compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());
+        compiler.sess.diagnostic().print_error_count(registry);
     });
 
     f(&compiler)
 }
 
-pub fn run_compiler<F, R>(mut config: Config, f: F) -> R
-where
-    F: FnOnce(&Compiler) -> R + Send,
-    R: Send,
-{
+pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     let stderr = config.stderr.take();
     util::spawn_thread_pool(
         config.opts.edition,
@@ -191,11 +193,7 @@ where
     )
 }
 
-pub fn default_thread_pool<F, R>(edition: edition::Edition, f: F) -> R
-where
-    F: FnOnce() -> R + Send,
-    R: Send,
-{
+pub fn default_thread_pool<R: Send>(edition: edition::Edition, f: impl FnOnce() -> R + Send) -> R {
     // the 1 here is duplicating code in config.opts.debugging_opts.threads
     // which also defaults to 1; it ultimately doesn't matter as the default
     // isn't threaded, and just ignores this parameter

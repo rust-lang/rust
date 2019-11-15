@@ -15,7 +15,6 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc_resolve::{self, Resolver};
-use rustc_error_codes;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::io::{self, Write};
@@ -36,15 +35,6 @@ use syntax_expand::config::process_configure_mod;
 use syntax_pos::edition::Edition;
 #[cfg(not(parallel_compiler))]
 use std::{thread, panic};
-
-pub fn diagnostics_registry() -> Registry {
-    let mut all_errors = Vec::new();
-    all_errors.extend_from_slice(&rustc_error_codes::DIAGNOSTICS);
-    // FIXME: need to figure out a way to get these back in here
-    // all_errors.extend_from_slice(get_codegen_backend(sess).diagnostics());
-
-    Registry::new(&all_errors)
-}
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -77,9 +67,8 @@ pub fn create_session(
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
-    let descriptions = diagnostics_registry();
-
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let source_map = Lrc::new(SourceMap::with_file_loader(
         loader,

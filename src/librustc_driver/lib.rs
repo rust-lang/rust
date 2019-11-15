@@ -40,7 +40,7 @@ use rustc::ty::TyCtxt;
 use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use errors::PResult;
+use errors::{PResult, registry::Registry};
 use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
@@ -140,6 +140,10 @@ impl Callbacks for TimePassesCallbacks {
     }
 }
 
+pub fn diagnostics_registry() -> Registry {
+    Registry::new(&rustc_error_codes::DIAGNOSTICS)
+}
+
 // Parse args and run the compiler. This is the primary entry point for rustc.
 // See comments on CompilerCalls below for details about the callbacks argument.
 // The FileLoader provides a way to load files from sources other than the file system.
@@ -182,13 +186,14 @@ pub fn run_compiler(
             lint_caps: Default::default(),
             register_lints: None,
             override_queries: None,
+            registry: diagnostics_registry(),
         };
         callbacks.config(&mut config);
         config
     };
 
     if let Some(ref code) = matches.opt_str("explain") {
-        handle_explain(code, sopts.error_format);
+        handle_explain(diagnostics_registry(), code, sopts.error_format);
         return Ok(());
     }
 
@@ -261,6 +266,7 @@ pub fn run_compiler(
         lint_caps: Default::default(),
         register_lints: None,
         override_queries: None,
+        registry: diagnostics_registry(),
     };
 
     callbacks.config(&mut config);
@@ -510,15 +516,13 @@ fn stdout_isatty() -> bool {
     }
 }
 
-fn handle_explain(code: &str,
-                  output: ErrorOutputType) {
-    let descriptions = rustc_interface::util::diagnostics_registry();
+fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let normalised = if code.starts_with("E") {
         code.to_string()
     } else {
         format!("E{0:0>4}", code)
     };
-    match descriptions.find_description(&normalised) {
+    match registry.find_description(&normalised) {
         Some(ref description) => {
             let mut is_in_code_block = false;
             let mut text = String::new();

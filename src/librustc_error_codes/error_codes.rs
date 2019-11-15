@@ -7,8 +7,7 @@
 // Error messages' format must follow the RFC 1567 available here:
 // https://github.com/rust-lang/rfcs/pull/1567
 
-crate::register_diagnostics! {
-
+register_diagnostics! {
 E0001: include_str!("./error_codes/E0001.md"),
 E0002: include_str!("./error_codes/E0002.md"),
 E0004: include_str!("./error_codes/E0004.md"),
