@@ -45,7 +45,7 @@ pub(crate) fn inline_local_varialbe(ctx: AssistCtx<impl HirDatabase>) -> Option<
     } else {
         let_stmt.syntax().text_range()
     };
-    let analyzer = hir::SourceAnalyzer::new(ctx.db, ctx.frange.file_id, bind_pat.syntax(), None);
+    let analyzer = ctx.source_analyzer(bind_pat.syntax(), None);
     let refs = analyzer.find_all_refs(&bind_pat);
 
     let mut wrap_in_parens = vec![true; refs.len()];
