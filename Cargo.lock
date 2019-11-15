@@ -386,9 +386,13 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.0.37"
+version = "1.0.47"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39f75544d7bbaf57560d2168f28fd649ff9c76153874db88bdbdfd839b1a7e7d"
+checksum = "aa87058dce70a3ff5621797f1506cb837edd02ac4c0ae642b4542dce802908b8"
+dependencies = [
+ "jobserver",
+ "num_cpus",
+]
 
 [[package]]
 name = "cfg-if"
@@ -1255,9 +1259,9 @@ dependencies = [
 
 [[package]]
 name = "git2"
-version = "0.10.0"
+version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "327d698f86a7ebdfeb86a4238ccdb004828939d3a3555b6ead679541d14e36c0"
+checksum = "39f27186fbb5ec67ece9a56990292bc5aed3c3fc51b9b07b0b52446b1dfb4a82"
 dependencies = [
  "bitflags",
  "libc",
@@ -1785,9 +1789,9 @@ dependencies = [
 
 [[package]]
 name = "libgit2-sys"
-version = "0.9.0"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c2078aec6f4b16d1b89f6a72e4f6eb1e75ffa85312023291e89c6d3087bc8fb"
+checksum = "a30f8637eb59616ee3b8a00f6adff781ee4ddd8343a615b8238de756060cc1b3"
 dependencies = [
  "cc",
  "libc",
@@ -2228,9 +2232,9 @@ checksum = "0b3a5d7cc97d6d30d8b9bc8fa19bf45349ffe46241e8816f50f62f6d6aaabee1"
 
 [[package]]
 name = "num_cpus"
-version = "1.8.0"
+version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c51a3322e4bca9d212ad9a158a02abc6934d005490c054a2778df73a70aa0a30"
+checksum = "bcef43580c035376c0705c42792c294b66974abbfd2789b511784023f71f3273"
 dependencies = [
  "libc",
 ]
@@ -3130,7 +3134,6 @@ dependencies = [
  "backtrace",
  "bitflags",
  "byteorder",
- "cc",
  "chalk-engine",
  "fmt_macros",
  "graphviz",
