@@ -694,6 +694,10 @@ public:
               continue;
           }
 
+          if (isa<IntrinsicInst>(inst)) {
+              continue;
+          }
+
           CallInst* op = dyn_cast<CallInst>(inst);
 
           if (this->isConstantValue(op)) {
@@ -706,9 +710,11 @@ public:
               continue;
           }
 
-          if (!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
-              continue;
-          }
+          if (op->getType()->isEmptyTy()) continue;
+
+          //if (!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
+          //    continue;
+          //}
 
           if (this->invertedPointers.find(op) != this->invertedPointers.end()) {
               continue;
@@ -880,7 +886,7 @@ endCheck:
             if (lookupIfAble)
                 return lookupM(val, BuilderM);
             
-            llvm::errs() << "cannot unwrap following " << *val << "\n";
+            //llvm::errs() << "cannot unwrap following " << *val << "\n";
 
           if (auto inst = dyn_cast<Instruction>(val)) {
             //LoopContext lc;

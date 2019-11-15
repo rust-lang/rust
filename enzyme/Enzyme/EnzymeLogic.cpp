@@ -743,11 +743,13 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                     gutils->addMalloc(BuilderZ, rv);
                   }
 
-                  if ((op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && gutils->invertedPointers.count(op) != 0) {
+                  if (gutils->invertedPointers.count(op) != 0) {
+                  //if ((op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && gutils->invertedPointers.count(op) != 0) {
                     auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
                     if (I != E && placeholder == &*I) I++;
                     gutils->invertedPointers.erase(op);
                     if (subdifferentialreturn) {
+                    //if ( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && subdifferentialreturn) {
                       assert(cast<StructType>(augmentcall->getType())->getNumElements() == 3);
                       auto antiptr = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}, "antiptr_" + op->getName() ));
                       gutils->invertedPointers[rv] = antiptr;
@@ -771,7 +773,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
                   gutils->replaceAWithB(op,rv);
                 } else {
-                  if ((op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && gutils->invertedPointers.count(op) != 0) {
+                  if (gutils->invertedPointers.count(op) != 0) {
+                  //if ((op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && gutils->invertedPointers.count(op) != 0) {
                     auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
                     if (I != E && placeholder == &*I) I++;
                     gutils->invertedPointers.erase(op);
@@ -820,7 +823,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   auto nf = gutils->newFunc;
 
   ValueToValueMapTy invertedRetPs;
-  if ((gutils->oldFunc->getReturnType()->isPointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) && differentialReturn) {
+  if (differentialReturn) {
     for (inst_iterator I = inst_begin(nf), E = inst_end(nf); I != E; ++I) {
       if (ReturnInst* ri = dyn_cast<ReturnInst>(&*I)) {
         assert(ri->getReturnValue());
@@ -835,7 +838,12 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
             toinvert = builder.CreateExtractValue(ri->getReturnValue(), {1});
         }
         if (!gutils->isConstantValue(toinvert)) {
-            invertedRetPs[ri] = gutils->invertPointerM(toinvert, builder);
+            if (gutils->oldFunc->getReturnType()->isPointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) {
+                invertedRetPs[ri] = gutils->invertPointerM(toinvert, builder);
+            } else {
+                llvm::errs() << "warning not allowing inverted return on type " << *toinvert->getType() << "\n";
+                invertedRetPs[ri] = UndefValue::get(toinvert->getType());
+            }
         } else {
             invertedRetPs[ri] = UndefValue::get(toinvert->getType());
         } 
@@ -906,7 +914,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
   if (returnUsed) {
     RetTypes.push_back(gutils->oldFunc->getReturnType());
-    if ( (gutils->oldFunc->getReturnType()->isPointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) && differentialReturn )
+    if ( differentialReturn )
+    //if ( (gutils->oldFunc->getReturnType()->isPointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) && differentialReturn )
       RetTypes.push_back(gutils->oldFunc->getReturnType());
   }
 
@@ -1017,7 +1026,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
             ib.CreateStore(actualrv, ib.CreateConstGEP2_32(RetType, ret, 0, 1, ""));
 
-            if ((oldretTy->isPointerTy() || oldretTy->isIntegerTy()) && differentialReturn) {
+            if (differentialReturn) {
+            //if ((oldretTy->isPointerTy() || oldretTy->isIntegerTy()) && differentialReturn) {
               assert(invertedRetPs[ri]);
               if (!isa<UndefValue>(invertedRetPs[ri])) {
                 assert(VMap[invertedRetPs[ri]]);
@@ -1666,13 +1676,20 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         tape = UndefValue::get(tt);
       }
 
-      if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
-        auto newip = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}));
+      if( gutils->invertedPointers.count(op) ) {
+      //if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
         if (I != E && placeholder == &*I) I++;
-        placeholder->replaceAllUsesWith(newip);
+        
+        //if( !gutils->isConstantValue(op) ) {
+        if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
+            auto newip = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}));
+            placeholder->replaceAllUsesWith(newip);
+            gutils->invertedPointers[op] = newip;
+        } else {
+            gutils->invertedPointers.erase(op);
+        }
         gutils->erase(placeholder);
-        gutils->invertedPointers[op] = newip;
       }
     } else {
       tape = gutils->addMalloc(BuilderZ, tape);
@@ -1682,11 +1699,16 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         cachereplace = gutils->addMalloc(BuilderZ, cachereplace);
       }
 
-      if( op->getNumUses() != 0 && (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && subdifferentialreturn ) {
+      if( gutils->invertedPointers.count(op) ) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+        gutils->invertedPointers.erase(op);
         if (I != E && placeholder == &*I) I++;
-        auto newip = gutils->addMalloc(BuilderZ, placeholder);
-        gutils->invertedPointers[op] = newip;
+        if( op->getNumUses() != 0 && (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && subdifferentialreturn ) {
+            auto newip = gutils->addMalloc(BuilderZ, placeholder);
+            gutils->invertedPointers[op] = newip;
+        } else {
+            gutils->erase(placeholder);
+        }
       }
     }
 
@@ -1708,6 +1730,12 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     assert(tape->getType()->isStructTy());
 
   } else {
+      if( gutils->invertedPointers.count(op) ) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+        if (I != E && placeholder == &*I) I++;
+        gutils->invertedPointers.erase(op);
+        gutils->erase(placeholder);
+      }
     if (!topLevel && op->getNumUses() != 0 && !op->doesNotAccessMemory()) {
       assert(!replaceFunction);
       cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
@@ -1767,15 +1795,17 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   if (replaceFunction) {
 
     //if a function is replaced for joint forward/reverse, handle inverted pointers
-    if (subdretptr) {
-        op->getParent()->getParent()->dump();
-        dumpMap(gutils->invertedPointers);
-        auto dretval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {1}));
+    if (gutils->invertedPointers.count(op)) {
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
         if (I != E && placeholder == &*I) I++;
-        /* todo handle this case later */
-        assert(placeholder->getNumUses() == 0);
-        gutils->invertedPointers[op] = dretval;
+        gutils->invertedPointers.erase(op);
+        if (subdretptr) {
+            dumpMap(gutils->invertedPointers);
+            auto dretval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {1}));
+            /* todo handle this case later */
+            assert(placeholder->getNumUses() == 0);
+            gutils->invertedPointers[op] = dretval;
+        }
         gutils->erase(placeholder);
     }
 
