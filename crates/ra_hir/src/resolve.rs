@@ -54,7 +54,7 @@ pub(crate) enum Scope {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TypeNs {
+pub(crate) enum TypeNs {
     SelfType(ImplBlock),
     GenericParam(u32),
     Adt(Adt),
@@ -69,13 +69,13 @@ pub enum TypeNs {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ResolveValueResult {
+pub(crate) enum ResolveValueResult {
     ValueNs(ValueNs),
     Partial(TypeNs, usize),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum ValueNs {
+pub(crate) enum ValueNs {
     LocalBinding(PatId),
     Function(Function),
     Const(Const),
