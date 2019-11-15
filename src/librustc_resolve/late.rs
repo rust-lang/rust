@@ -732,7 +732,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
         match item.kind {
             ItemKind::TyAlias(_, ref generics) |
-            ItemKind::OpaqueTy(_, ref generics) |
             ItemKind::Fn(_, ref generics, _) => {
                 self.with_generic_param_rib(generics, ItemRibKind(HasGenericParams::Yes),
                                             |this| visit::walk_item(this, item));
@@ -1086,18 +1085,6 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                     |n, s| TypeNotMemberOfTrait(n, s));
 
                                                 this.visit_ty(ty);
-                                            }
-                                            ImplItemKind::OpaqueTy(ref bounds) => {
-                                                // If this is a trait impl, ensure the type
-                                                // exists in trait
-                                                this.check_trait_item(impl_item.ident,
-                                                                      TypeNS,
-                                                                      impl_item.span,
-                                                    |n, s| TypeNotMemberOfTrait(n, s));
-
-                                                for bound in bounds {
-                                                    this.visit_param_bound(bound);
-                                                }
                                             }
                                             ImplItemKind::Macro(_) =>
                                                 panic!("unexpanded macro in resolve!"),

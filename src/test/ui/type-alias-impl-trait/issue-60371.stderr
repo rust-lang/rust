@@ -1,8 +1,8 @@
 error[E0658]: `impl Trait` in type aliases is unstable
-  --> $DIR/issue-60371.rs:8:5
+  --> $DIR/issue-60371.rs:8:17
    |
 LL |     type Item = impl Bug;
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/63063
    = help: add `#![feature(type_alias_impl_trait)]` to the crate attributes to enable
