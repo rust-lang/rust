@@ -2184,7 +2184,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               information, see issue \
                               https://github.com/rust-lang/rust/issues/49147");
                     if tcx.sess.opts.unstable_features.is_nightly_build() {
-                        err.help("add `#![feature(const_in_array_repeat_expression)]` to the \
+                        err.help("add `#![feature(const_in_array_repeat_expressions)]` to the \
                                   crate attributes to enable");
                     }
                 }
