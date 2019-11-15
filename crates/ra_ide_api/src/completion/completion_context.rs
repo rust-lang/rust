@@ -58,8 +58,11 @@ impl<'a> CompletionContext<'a> {
         );
         let token =
             original_parse.tree().syntax().token_at_offset(position.offset).left_biased()?;
-        let analyzer =
-            hir::SourceAnalyzer::new(db, position.file_id, &token.parent(), Some(position.offset));
+        let analyzer = hir::SourceAnalyzer::new(
+            db,
+            hir::Source::new(position.file_id.into(), &token.parent()),
+            Some(position.offset),
+        );
         let mut ctx = CompletionContext {
             db,
             analyzer,

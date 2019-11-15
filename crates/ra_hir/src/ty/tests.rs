@@ -1,3 +1,6 @@
+mod never_type;
+mod coercion;
+
 use std::fmt::Write;
 use std::sync::Arc;
 
@@ -11,16 +14,13 @@ use ra_syntax::{
 use test_utils::covers;
 
 use crate::{
-    expr::BodySourceMap, test_db::TestDB, ty::display::HirDisplay, ty::InferenceResult,
+    expr::BodySourceMap, test_db::TestDB, ty::display::HirDisplay, ty::InferenceResult, Source,
     SourceAnalyzer,
 };
 
 // These tests compare the inference results for all expressions in a file
 // against snapshots of the expected results using insta. Use cargo-insta to
 // update the snapshots.
-
-mod never_type;
-mod coercion;
 
 #[test]
 fn cfg_impl_block() {
@@ -4609,7 +4609,8 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
-    let analyzer = SourceAnalyzer::new(db, pos.file_id, expr.syntax(), Some(pos.offset));
+    let analyzer =
+        SourceAnalyzer::new(db, Source::new(pos.file_id.into(), expr.syntax()), Some(pos.offset));
     let ty = analyzer.type_of(db, &expr).unwrap();
     ty.display(db).to_string()
 }
@@ -4674,7 +4675,7 @@ fn infer(content: &str) -> String {
 
     for node in source_file.syntax().descendants() {
         if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
-            let analyzer = SourceAnalyzer::new(&db, file_id, &node, None);
+            let analyzer = SourceAnalyzer::new(&db, Source::new(file_id.into(), &node), None);
             infer_def(analyzer.inference_result(), analyzer.body_source_map());
         }
     }
@@ -4715,7 +4716,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         let file = db.parse(pos.file_id).ok().unwrap();
         let node = file.syntax().token_at_offset(pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            SourceAnalyzer::new(&db, pos.file_id, &node, None);
+            SourceAnalyzer::new(&db, Source::new(pos.file_id.into(), &node), None);
         });
         assert!(format!("{:?}", events).contains("infer"))
     }
@@ -4735,7 +4736,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         let file = db.parse(pos.file_id).ok().unwrap();
         let node = file.syntax().token_at_offset(pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            SourceAnalyzer::new(&db, pos.file_id, &node, None);
+            SourceAnalyzer::new(&db, Source::new(pos.file_id.into(), &node), None);
         });
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }

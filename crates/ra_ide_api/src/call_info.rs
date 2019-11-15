@@ -19,7 +19,11 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     let calling_node = FnCallNode::with_node(&syntax, position.offset)?;
     let name_ref = calling_node.name_ref()?;
 
-    let analyzer = hir::SourceAnalyzer::new(db, position.file_id, name_ref.syntax(), None);
+    let analyzer = hir::SourceAnalyzer::new(
+        db,
+        hir::Source::new(position.file_id.into(), name_ref.syntax()),
+        None,
+    );
     let (mut call_info, has_self) = match &calling_node {
         FnCallNode::CallExpr(expr) => {
             //FIXME: apply subst

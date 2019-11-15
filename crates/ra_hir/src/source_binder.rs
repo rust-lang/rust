@@ -12,7 +12,6 @@ use hir_def::{
     path::known,
 };
 use hir_expand::{name::AsName, Source};
-use ra_db::FileId;
 use ra_syntax::{
     ast::{self, AstNode},
     match_ast, AstPtr,
@@ -30,38 +29,32 @@ use crate::{
     HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
 };
 
-fn try_get_resolver_for_node(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<Resolver> {
+fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
     match_ast! {
-        match node {
+        match (node.ast) {
             ast::Module(it) => {
-                let src = crate::Source { file_id: file_id.into(), ast: it };
+                let src = node.with_ast(it);
                 Some(crate::Module::from_declaration(db, src)?.resolver(db))
             },
              ast::SourceFile(it) => {
-                let src =
-                    crate::Source { file_id: file_id.into(), ast: crate::ModuleSource::SourceFile(it) };
+                let src = node.with_ast(crate::ModuleSource::SourceFile(it));
                 Some(crate::Module::from_definition(db, src)?.resolver(db))
             },
             ast::StructDef(it) => {
-                let src = crate::Source { file_id: file_id.into(), ast: it };
+                let src = node.with_ast(it);
                 Some(Struct::from_source(db, src)?.resolver(db))
             },
             ast::EnumDef(it) => {
-                let src = crate::Source { file_id: file_id.into(), ast: it };
+                let src = node.with_ast(it);
                 Some(Enum::from_source(db, src)?.resolver(db))
             },
-            _ => {
-                if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
-                    Some(def_with_body_from_child_node(db, Source::new(file_id.into(), node))?.resolver(db))
-                } else {
-                    // FIXME add missing cases
-                    None
+            _ => match node.ast.kind() {
+                FN_DEF | CONST_DEF | STATIC_DEF => {
+                    Some(def_with_body_from_child_node(db, node)?.resolver(db))
                 }
-            },
+                // FIXME add missing cases
+                _ => None
+            }
         }
     }
 }
@@ -136,20 +129,16 @@ pub struct ReferenceDescriptor {
 impl SourceAnalyzer {
     pub fn new(
         db: &impl HirDatabase,
-        file_id: FileId,
-        node: &SyntaxNode,
+        node: Source<&SyntaxNode>,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        let node_source = Source::new(file_id.into(), node);
-        let def_with_body = def_with_body_from_child_node(db, node_source);
+        let def_with_body = def_with_body_from_child_node(db, node);
         if let Some(def) = def_with_body {
             let source_map = def.body_source_map(db);
             let scopes = def.expr_scopes(db);
             let scope = match offset {
-                None => scope_for(&scopes, &source_map, node_source),
-                Some(offset) => {
-                    scope_for_offset(&scopes, &source_map, Source::new(file_id.into(), offset))
-                }
+                None => scope_for(&scopes, &source_map, node),
+                Some(offset) => scope_for_offset(&scopes, &source_map, node.with_ast(offset)),
             };
             let resolver = expr::resolver_for_scope(db, def, scope);
             SourceAnalyzer {
@@ -158,19 +147,20 @@ impl SourceAnalyzer {
                 body_source_map: Some(source_map),
                 infer: Some(def.infer(db)),
                 scopes: Some(scopes),
-                file_id: file_id.into(),
+                file_id: node.file_id,
             }
         } else {
             SourceAnalyzer {
                 resolver: node
+                    .ast
                     .ancestors()
-                    .find_map(|node| try_get_resolver_for_node(db, file_id, &node))
+                    .find_map(|it| try_get_resolver_for_node(db, node.with_ast(&it)))
                     .unwrap_or_default(),
                 body_owner: None,
                 body_source_map: None,
                 infer: None,
                 scopes: None,
-                file_id: file_id.into(),
+                file_id: node.file_id,
             }
         }
     }
