@@ -11,11 +11,17 @@ enum Wrapper<T> {
     Second
 }
 
-fn _make_iter() -> Foo {
+// This method constrains `Foo` to be `bool`
+fn constrained_foo() -> Foo {
     true
 }
 
-fn _produce() -> Wrapper<Foo> {
+
+// This method does not constrain `Foo`.
+// Per RFC 2071, function bodies may either
+// fully constrain an opaque type, or place no
+// constraints on it.
+fn unconstrained_foo() -> Wrapper<Foo> {
     Wrapper::Second
 }
 
