@@ -158,9 +158,12 @@ fn find_struct_impl(
         let same_ty = blk.target_ty(db) == struct_ty;
         let not_trait_impl = blk.target_trait(db).is_none();
 
-        found_new_fn = has_new_fn(impl_blk);
+        if !(same_ty && not_trait_impl) {
+            return false;
+        }
 
-        same_ty && not_trait_impl
+        found_new_fn = has_new_fn(impl_blk);
+        true
     });
 
     if found_new_fn {
@@ -186,8 +189,9 @@ fn has_new_fn(imp: &ast::ImplBlock) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+
+    use super::*;
 
     #[test]
     #[rustfmt::skip]
@@ -345,7 +349,7 @@ struct Foo {<|>}
 impl Foo {
     fn new() -> Self {
         Self
-    }    
+    }
 }",
         );
 
@@ -357,7 +361,7 @@ struct Foo {<|>}
 impl Foo {
     fn New() -> Self {
         Self
-    }    
+    }
 }",
         );
     }
@@ -374,6 +378,61 @@ struct EvenMoreIrrelevant;
 ",
             "/// Has a lifetime parameter
 struct Foo<'a, T: Foo<'a>> {}",
+        );
+    }
+
+    #[test]
+    fn test_unrelated_new() {
+        check_assist(
+            add_new,
+            r##"
+pub struct AstId<N: AstNode> {
+    file_id: HirFileId,
+    file_ast_id: FileAstId<N>,
+}
+
+impl<N: AstNode> AstId<N> {
+    pub fn new(file_id: HirFileId, file_ast_id: FileAstId<N>) -> AstId<N> {
+        AstId { file_id, file_ast_id }
+    }
+}
+
+pub struct Source<T> {
+    pub file_id: HirFileId,<|>
+    pub ast: T,
+}
+
+impl<T> Source<T> {
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
+        Source { file_id: self.file_id, ast: f(self.ast) }
+    }
+}
+"##,
+            r##"
+pub struct AstId<N: AstNode> {
+    file_id: HirFileId,
+    file_ast_id: FileAstId<N>,
+}
+
+impl<N: AstNode> AstId<N> {
+    pub fn new(file_id: HirFileId, file_ast_id: FileAstId<N>) -> AstId<N> {
+        AstId { file_id, file_ast_id }
+    }
+}
+
+pub struct Source<T> {
+    pub file_id: HirFileId,
+    pub ast: T,
+}
+
+impl<T> Source<T> {
+    pub fn new(file_id: HirFileId, ast: T) -> Self { Self { file_id, ast } }<|>
+
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
+        Source { file_id: self.file_id, ast: f(self.ast) }
+    }
+}
+"##,
         );
     }
 }
