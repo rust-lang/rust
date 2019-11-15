@@ -2432,7 +2432,7 @@ fn lint_find_map<'a, 'tcx>(
     }
 }
 
-/// lint use of `filter().map()` for `Iterators`
+/// lint use of `filter_map().map()` for `Iterators`
 fn lint_filter_map_map<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     expr: &'tcx hir::Expr,
