@@ -39,6 +39,10 @@ cfg_if::cfg_if! {
     if #[cfg(miri)] {
         #[path = "miri.rs"]
         mod imp;
+        // On MSVC we need the SEH lang items as well...
+        #[cfg(all(target_env = "msvc", not(target_arch = "aarch64")))]
+        #[allow(unused)]
+        mod seh;
     } else if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod imp;
