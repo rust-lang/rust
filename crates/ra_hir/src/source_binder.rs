@@ -91,7 +91,7 @@ fn def_with_body_from_child_node(
 #[derive(Debug)]
 pub struct SourceAnalyzer {
     // FIXME: this doesn't handle macros at all
-    file_id: FileId,
+    file_id: HirFileId,
     resolver: Resolver,
     body_owner: Option<DefWithBody>,
     body_source_map: Option<Arc<BodySourceMap>>,
@@ -141,13 +141,16 @@ impl SourceAnalyzer {
         node: &SyntaxNode,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        let def_with_body = def_with_body_from_child_node(db, Source::new(file_id.into(), node));
+        let node_source = Source::new(file_id.into(), node);
+        let def_with_body = def_with_body_from_child_node(db, node_source);
         if let Some(def) = def_with_body {
             let source_map = def.body_source_map(db);
             let scopes = def.expr_scopes(db);
             let scope = match offset {
-                None => scope_for(&scopes, &source_map, file_id.into(), &node),
-                Some(offset) => scope_for_offset(&scopes, &source_map, file_id.into(), offset),
+                None => scope_for(&scopes, &source_map, node_source),
+                Some(offset) => {
+                    scope_for_offset(&scopes, &source_map, Source::new(file_id.into(), offset))
+                }
             };
             let resolver = expr::resolver_for_scope(db, def, scope);
             SourceAnalyzer {
@@ -156,7 +159,7 @@ impl SourceAnalyzer {
                 body_source_map: Some(source_map),
                 infer: Some(def.infer(db)),
                 scopes: Some(scopes),
-                file_id,
+                file_id: file_id.into(),
             }
         } else {
             SourceAnalyzer {
@@ -168,18 +171,18 @@ impl SourceAnalyzer {
                 body_source_map: None,
                 infer: None,
                 scopes: None,
-                file_id,
+                file_id: file_id.into(),
             }
         }
     }
 
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
-        let src = Source { file_id: self.file_id.into(), ast: expr };
+        let src = Source { file_id: self.file_id, ast: expr };
         self.body_source_map.as_ref()?.node_expr(src)
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
-        let src = Source { file_id: self.file_id.into(), ast: pat };
+        let src = Source { file_id: self.file_id, ast: pat };
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
@@ -287,7 +290,7 @@ impl SourceAnalyzer {
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
-        let scope = scope_for(scopes, source_map, self.file_id.into(), name_ref.syntax())?;
+        let scope = scope_for(scopes, source_map, Source::new(self.file_id, name_ref.syntax()))?;
         let entry = scopes.resolve_name_in_scope(scope, &name)?;
         Some(ScopeEntryWithSyntax {
             name: entry.name().clone(),
@@ -408,20 +411,19 @@ impl SourceAnalyzer {
 fn scope_for(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    file_id: HirFileId,
-    node: &SyntaxNode,
+    node: Source<&SyntaxNode>,
 ) -> Option<ScopeId> {
-    node.ancestors()
+    node.ast
+        .ancestors()
         .filter_map(ast::Expr::cast)
-        .filter_map(|it| source_map.node_expr(Source { file_id, ast: &it }))
+        .filter_map(|it| source_map.node_expr(Source::new(node.file_id, &it)))
         .find_map(|it| scopes.scope_for(it))
 }
 
 fn scope_for_offset(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    file_id: HirFileId,
-    offset: TextUnit,
+    offset: Source<TextUnit>,
 ) -> Option<ScopeId> {
     scopes
         .scope_by_expr()
@@ -429,7 +431,7 @@ fn scope_for_offset(
         .filter_map(|(id, scope)| {
             let source = source_map.expr_syntax(*id)?;
             // FIXME: correctly handle macro expansion
-            if source.file_id != file_id {
+            if source.file_id != offset.file_id {
                 return None;
             }
             let syntax_node_ptr =
@@ -438,9 +440,14 @@ fn scope_for_offset(
         })
         // find containing scope
         .min_by_key(|(ptr, _scope)| {
-            (!(ptr.range().start() <= offset && offset <= ptr.range().end()), ptr.range().len())
+            (
+                !(ptr.range().start() <= offset.ast && offset.ast <= ptr.range().end()),
+                ptr.range().len(),
+            )
         })
-        .map(|(ptr, scope)| adjust(scopes, source_map, ptr, file_id, offset).unwrap_or(*scope))
+        .map(|(ptr, scope)| {
+            adjust(scopes, source_map, ptr, offset.file_id, offset.ast).unwrap_or(*scope)
+        })
 }
 
 // XXX: during completion, cursor might be outside of any particular

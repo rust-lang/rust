@@ -223,9 +223,12 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
+/// FIXME: https://github.com/matklad/with ?
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Source<T> {
     pub file_id: HirFileId,
+    // FIXME: this stores all kind of things, not only `ast`.
+    // There should be a better name...
     pub ast: T,
 }
 
@@ -234,11 +237,16 @@ impl<T> Source<T> {
         Source { file_id, ast }
     }
 
+    // Similarly, naming here is stupid...
+    pub fn with_ast<U>(&self, ast: U) -> Source<U> {
+        Source::new(self.file_id, ast)
+    }
+
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
-        Source { file_id: self.file_id, ast: f(self.ast) }
+        Source::new(self.file_id, f(self.ast))
     }
     pub fn as_ref(&self) -> Source<&T> {
-        Source { file_id: self.file_id, ast: &self.ast }
+        self.with_ast(&self.ast)
     }
     pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")
