@@ -313,10 +313,11 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
             (
                 &ty::Ref(_, rty, _),
                 &PatKind::Constant {
-                    value: Const {
-                        val: ty::ConstKind::Value(val),
-                        ty: ty::TyS { kind: ty::Ref(_, crty, _), .. }
-                    },
+                    value:
+                        Const {
+                            val: ty::ConstKind::Value(val),
+                            ty: ty::TyS { kind: ty::Ref(_, crty, _), .. },
+                        },
                 },
             ) => Pat {
                 ty: pat.ty,
@@ -328,7 +329,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
                         kind: box PatKind::Constant {
                             value: self.tcx.mk_const(Const {
                                 val: ty::ConstKind::Value(
-                                    self.fold_const_value_deref(*val, rty, crty)
+                                    self.fold_const_value_deref(*val, rty, crty),
                                 ),
                                 ty: rty,
                             }),
@@ -1314,9 +1315,9 @@ impl<'tcx> IntRange<'tcx> {
     ) -> Option<IntRange<'tcx>> {
         if let Some((target_size, bias)) = Self::integral_size_and_signed_bias(tcx, value.ty) {
             let ty = value.ty;
-            let val = if let ty::ConstKind::Value(ConstValue::Scalar(
-                Scalar::Raw { data, size }
-            )) = value.val {
+            let val = if let ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, size })) =
+                value.val
+            {
                 // For this specific pattern we can skip a lot of effort and go
                 // straight to the result, after doing a bit of checking. (We
                 // could remove this branch and just use the next branch, which
@@ -2069,10 +2070,10 @@ fn split_grouped_constructors<'p, 'tcx>(
                                     max_fixed_len =
                                         cmp::max(max_fixed_len, n.eval_usize(tcx, param_env))
                                 }
-                                (ty::ConstKind::Value(ConstValue::Slice { start, end, .. }),
-                                 ty::Slice(_)) => {
-                                    max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64)
-                                }
+                                (
+                                    ty::ConstKind::Value(ConstValue::Slice { start, end, .. }),
+                                    ty::Slice(_),
+                                ) => max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64),
                                 _ => {}
                             }
                         }
