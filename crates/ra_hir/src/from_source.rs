@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir_def::{ModuleId, StructId, StructOrUnionId, UnionId};
-use hir_expand::name::AsName;
+use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     match_ast,
@@ -11,8 +11,8 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
     Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource, ImplBlock,
-    Local, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union,
-    VariantDef,
+    Local, MacroDef, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias,
+    Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -77,7 +77,22 @@ impl FromSource for TypeAlias {
         Some(TypeAlias { id })
     }
 }
-// FIXME: add impl FromSource for MacroDef
+
+impl FromSource for MacroDef {
+    type Ast = ast::MacroCall;
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+        let kind = MacroDefKind::Declarative;
+
+        let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
+        let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
+        let krate = module.krate().crate_id();
+
+        let ast_id = AstId::new(src.file_id, db.ast_id_map(src.file_id).ast_id(&src.ast));
+
+        let id: MacroDefId = MacroDefId { krate, ast_id, kind };
+        Some(MacroDef { id })
+    }
+}
 
 impl FromSource for ImplBlock {
     type Ast = ast::ImplBlock;
