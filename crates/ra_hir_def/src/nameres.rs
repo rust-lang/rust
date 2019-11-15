@@ -131,7 +131,7 @@ pub(crate) struct Declarations {
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
-    pub items: FxHashMap<Name, Resolution>,
+    items: FxHashMap<Name, Resolution>,
     /// Macros visable in current module in legacy textual scope
     ///
     /// For macros invoked by an unquatified identifier like `bar!()`, `legacy_macros` will be searched in first.
