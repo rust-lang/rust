@@ -593,8 +593,8 @@ enum Constructor<'tcx> {
     ConstantValue(&'tcx ty::Const<'tcx>),
     /// Ranges of integer literal values (`2`, `2..=5` or `2..5`).
     IntRange(IntRange<'tcx>),
-    /// Ranges of non-integer literal values (`2.0..=5.2`).
-    ConstantRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
+    /// Ranges of floating-point literal values (`2.0..=5.2`).
+    FloatRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// Array patterns of length `n`.
     FixedLenSlice(u64),
     /// Slice patterns. Captures any array constructor of `length >= i + j`.
@@ -632,7 +632,7 @@ impl<'tcx> Constructor<'tcx> {
     fn subtract_ctors(&self, other_ctors: &Vec<Constructor<'tcx>>) -> Vec<Constructor<'tcx>> {
         match self {
             // Those constructors can only match themselves.
-            Single | Variant(_) | ConstantValue(..) | ConstantRange(..) => {
+            Single | Variant(_) | ConstantValue(..) | FloatRange(..) => {
                 if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
             }
             &FixedLenSlice(self_len) => {
@@ -727,7 +727,7 @@ impl<'tcx> Constructor<'tcx> {
                     }
                 }
 
-                // Convert the ranges back into constructors
+                // Convert the ranges back into constructors.
                 remaining_ranges.into_iter().map(IntRange).collect()
             }
             // This constructor is never covered by anything else
@@ -805,7 +805,7 @@ impl<'tcx> Constructor<'tcx> {
                 }
                 _ => bug!("bad slice pattern {:?} {:?}", self, ty),
             },
-            ConstantValue(..) | ConstantRange(..) | IntRange(..) | NonExhaustive => vec![],
+            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => vec![],
         }
     }
 
@@ -830,7 +830,7 @@ impl<'tcx> Constructor<'tcx> {
             },
             FixedLenSlice(length) => *length,
             VarLenSlice(prefix, suffix) => prefix + suffix,
-            ConstantValue(..) | ConstantRange(..) | IntRange(..) | NonExhaustive => 0,
+            ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => 0,
         }
     }
 
@@ -894,10 +894,8 @@ impl<'tcx> Constructor<'tcx> {
                 PatKind::Slice { prefix, slice: Some(wild), suffix }
             }
             &ConstantValue(value) => PatKind::Constant { value },
-            &ConstantRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
-            IntRange(range) => {
-                return range.to_pat(cx.tcx);
-            }
+            &FloatRange(lo, hi, end) => PatKind::Range(PatRange { lo, hi, end }),
+            IntRange(range) => return range.to_pat(cx.tcx),
             NonExhaustive => PatKind::Wild,
         };
 
@@ -1297,7 +1295,7 @@ impl<'tcx> IntRange<'tcx> {
             let (lo, hi) = (lo ^ bias, hi ^ bias);
             let offset = (*end == RangeEnd::Excluded) as u128;
             if lo > hi || (lo == hi && *end == RangeEnd::Excluded) {
-                // This hould have been caught earlier by E0030
+                // This should have been caught earlier by E0030.
                 bug!("malformed range pattern: {}..={}", lo, (hi - offset));
             }
             Some(IntRange { range: lo..=(hi - offset), ty, span })
@@ -1692,7 +1690,7 @@ fn pat_constructor<'tcx>(
             ) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantRange(lo, hi, end))
+                Some(FloatRange(lo, hi, end))
             }
         }
         PatKind::Array { .. } => match pat.ty.kind {
@@ -2091,7 +2089,7 @@ fn constructor_covered_by_range<'tcx>(
     };
     let (ctor_from, ctor_to, ctor_end) = match *ctor {
         ConstantValue(value) => (value, value, RangeEnd::Included),
-        ConstantRange(from, to, ctor_end) => (from, to, ctor_end),
+        FloatRange(from, to, ctor_end) => (from, to, ctor_end),
         _ => bug!("`constructor_covered_by_range` called with {:?}", ctor),
     };
     trace!("constructor_covered_by_range {:#?}, {:#?}, {:#?}, {}", ctor, pat_from, pat_to, ty);
