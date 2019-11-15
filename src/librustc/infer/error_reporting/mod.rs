@@ -58,7 +58,7 @@ use crate::middle::region;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
 };
-use crate::ty::error::TypeError;
+use crate::ty::error::{TypeError, ExpectedFound};
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
 
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
@@ -1810,10 +1810,15 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             sub_region,
                             "...",
                         );
-                        err.span_note(sup_trace.cause.span, &format!(
-                            "...so that the {}",
-                            sup_trace.cause.as_requirement_str()
-                        ));
+
+                        if self.try_note_static_dyn_trait_impl(
+                            &mut err, &sub_region, sub_trace,
+                        ).is_none() {
+                            err.span_note(sup_trace.cause.span, &format!(
+                                "...so that the {}",
+                                sup_trace.cause.as_requirement_str()
+                            ));
+                        }
 
                         err.note_expected_found(
                             &"",
@@ -1839,8 +1844,161 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             "...",
         );
 
+        if let infer::Subtype(ref sub_trace) = sub_origin {
+            if self.try_note_static_dyn_trait_impl(&mut err, &sub_region, sub_trace).is_some() {
+                err.emit();
+                return;
+            }
+        }
+
         self.note_region_origin(&mut err, &sub_origin);
+
         err.emit();
+    }
+
+    fn try_note_static_dyn_trait_impl(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        region: Region<'tcx>,
+        trace: &TypeTrace<'tcx>,
+    ) -> Option<()> {
+        debug!(
+            "try_note_static_dyn_trait_impl: err={:?} trace={:?} region={:?}", err, trace, region,
+        );
+
+        if let TypeTrace {
+            cause,
+            values: ValuePairs::Types(ExpectedFound { expected, found }),
+        } = trace {
+            let expected = self.resolve_vars_if_possible(expected);
+
+            debug!(
+                "try_note_static_dyn_trait_impl: expected={:?} expected.kind={:?} found={:?}",
+                expected, expected.kind, found,
+            );
+
+            let dyn_static_ty = expected.walk().find(|ty|
+                if let ty::Dynamic(_, _) = ty.kind { true } else { false });
+
+            debug!(
+                "try_note_static_dyn_trait_impl: dyn_static_ty={:?} dyn_static_ty.kind={:?}",
+                dyn_static_ty, dyn_static_ty.map(|dyn_static_ty| &dyn_static_ty.kind),
+            );
+
+            let dyn_trait_name = if let Some(dyn_static_ty) = dyn_static_ty {
+                if let ty::Dynamic(binder, _) = dyn_static_ty.kind {
+                    binder.skip_binder().to_string()
+                } else {
+                    return None;
+                }
+            } else {
+                return None;
+            };
+
+            if let ObligationCauseCode::ExprAssignable { expr_hir_id } = cause.code {
+                debug!(
+                    "try_note_static_dyn_trait_impl: expr_hir_id={:?}", expr_hir_id
+                );
+
+                let expr_node = self.tcx.hir().get(expr_hir_id);
+                let parent_node = self.tcx.hir().get(
+                    self.tcx.hir().get_parent_node(expr_hir_id));
+
+                debug!(
+                    "try_note_static_dyn_trait_impl: expr_node={:?} parent_node={:?}",
+                    expr_node, parent_node,
+                );
+
+                let call_expr = match (expr_node, parent_node) {
+                    // The original expression is a param to a method call. Return the call expr.
+                    (_, hir::Node::Expr(parent_expr)) => parent_expr,
+                    // A return expr, which should be assignable to the return type.
+                    // In that case, return the original expr.
+                    (hir::Node::Expr(expr), hir::Node::Block(_)) => expr,
+                    _ => {
+                        return None;
+                    }
+                };
+
+                debug!(
+                    "try_note_static_dyn_trait_impl: call_expr={:?} call_expr.kind={:?}",
+                    call_expr, call_expr.kind,
+                );
+
+                let tables = self.in_progress_tables.unwrap().borrow();
+
+                if let hir::ExprKind::MethodCall(_, _, args) = &call_expr.kind {
+                    let method_def_id = tables.type_dependent_def_id(call_expr.hir_id).unwrap();
+                    let trait_def_id = self.tcx.trait_of_item(method_def_id);
+
+                    debug!("try_note_static_dyn_trait_impl: trait_def_id={:?}", trait_def_id);
+
+                    // As this is a method call expression, we have at least one argument.
+                    let receiver_arg = &args[0];
+
+                    debug!(
+                        "try_note_static_dyn_trait_impl: receiver_arg.kind={:?}",
+                        tables.expr_ty(receiver_arg).kind
+                    );
+
+                    if let ty::Ref(_, arg_ty, _) = tables.expr_ty(receiver_arg).kind {
+                        let mut trait_impl = None;
+
+                        self.tcx.for_each_relevant_impl(
+                            trait_def_id.unwrap(),
+                            arg_ty,
+                            |impl_def_id| {
+                                trait_impl = Some(impl_def_id);
+                            });
+
+                        if let Some(impl_def_id) = trait_impl {
+                            self.note_dyn_impl_and_suggest_anon_lifetime(
+                                err,
+                                impl_def_id,
+                                &dyn_trait_name
+                            );
+                            return Some(());
+                        }
+                    }
+                }
+            }
+        }
+
+        None
+    }
+
+    pub fn note_dyn_impl_and_suggest_anon_lifetime(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        impl_def_id: DefId,
+        dyn_trait_name: &str,
+    ) {
+        let impl_span = self.tcx.sess.source_map()
+            .def_span(self.tcx.def_span(impl_def_id));
+        debug!(
+            "try_report_static_dyn_trait: impl_span={:?}", impl_span,
+        );
+
+        err.span_note(
+            impl_span,
+            &format!("...because this implementation requires it"),
+        );
+
+        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(impl_span) {
+            err.span_suggestion(
+                impl_span,
+                &format!(
+                    "you can add an explicit constraint to the implementation so that it applies \
+                    to types with less than `'static` lifetime",
+                ),
+                snippet.replace(dyn_trait_name, &format!("{} + '_", &dyn_trait_name)),
+                Applicability::Unspecified,
+            );
+        } else {
+            debug!(
+                "try_report_static_dyn_trait: oh noes impl_span={:?}", impl_span,
+            );
+        }
     }
 }
 
@@ -1948,7 +2106,7 @@ impl<'tcx> ObligationCause<'tcx> {
         use crate::traits::ObligationCauseCode::*;
         match self.code {
             CompareImplMethodObligation { .. } => "method type is compatible with trait",
-            ExprAssignable => "expression is assignable",
+            ExprAssignable { .. } => "expression is assignable",
             MatchExpressionArm(box MatchExpressionArmCause { source, .. }) => match source {
                 hir::MatchSource::IfLetDesugar { .. } => "`if let` arms have compatible types",
                 _ => "match arms have compatible types",

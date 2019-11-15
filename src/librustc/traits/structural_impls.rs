@@ -514,7 +514,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
                 impl_item_def_id,
                 trait_item_def_id,
             }),
-            super::ExprAssignable => Some(super::ExprAssignable),
+            super::ExprAssignable { expr_hir_id } => Some(super::ExprAssignable { expr_hir_id }),
             super::MatchExpressionArm(box super::MatchExpressionArmCause {
                 arm_span,
                 source,

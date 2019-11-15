@@ -2462,7 +2462,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         let tcx = self.tcx;
         match *cause_code {
-            ObligationCauseCode::ExprAssignable |
+            ObligationCauseCode::ExprAssignable { .. } |
             ObligationCauseCode::MatchExpressionArm { .. } |
             ObligationCauseCode::MatchExpressionArmPattern { .. } |
             ObligationCauseCode::IfExpression { .. } |

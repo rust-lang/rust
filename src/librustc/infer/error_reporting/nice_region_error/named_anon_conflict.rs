@@ -82,6 +82,18 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return None;
         }
 
+        let dyn_static_ty = new_ty.walk().find(|ty|
+            if let ty::Dynamic(_, ty::RegionKind::ReStatic) = ty.kind { true } else { false });
+
+        debug!(
+            "try_report_named_anon_conflict: dyn_static_ty={:?} dyn_static_ty.kind={:?}",
+            dyn_static_ty, dyn_static_ty.map(|dyn_static_ty| &dyn_static_ty.kind),
+        );
+
+        if dyn_static_ty.is_some() {
+            return None;
+        }
+
         if let Some((_, fndecl)) = self.find_anon_type(anon, &br) {
             if self.is_return_type_anon(scope_def_id, br, fndecl).is_some()
                 || self.is_self_anon(is_first, scope_def_id)

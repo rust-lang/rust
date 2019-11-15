@@ -1,30 +1,28 @@
-error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/dyn-trait.rs:20:16
+error: cannot infer an appropriate lifetime
+  --> $DIR/dyn-trait.rs:20:5
    |
 LL |     static_val(x);
-   |                ^
+   |     ^^^^^^^^^^
    |
 note: first, the lifetime cannot outlive the lifetime `'a` as defined on the function body at 19:26...
   --> $DIR/dyn-trait.rs:19:26
    |
 LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
    |                          ^^
-note: ...so that the expression is assignable
-  --> $DIR/dyn-trait.rs:20:16
-   |
-LL |     static_val(x);
-   |                ^
-   = note: expected  `std::boxed::Box<dyn std::fmt::Debug>`
-              found  `std::boxed::Box<(dyn std::fmt::Debug + 'a)>`
-   = note: but, the lifetime must be valid for the static lifetime...
-note: ...so that the types are compatible
+note: but, the lifetime must be valid for the 'static lifetime...
   --> $DIR/dyn-trait.rs:20:5
    |
 LL |     static_val(x);
    |     ^^^^^^^^^^
-   = note: expected  `StaticTrait`
-              found  `StaticTrait`
+note: ...because this implementation requires it
+  --> $DIR/dyn-trait.rs:10:1
+   |
+LL | impl StaticTrait for Box<dyn Debug> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: you can add an explicit constraint to the implementation so that it applies to types with less than `'static` lifetime
+   |
+LL | impl StaticTrait for Box<dyn Debug> { }
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.

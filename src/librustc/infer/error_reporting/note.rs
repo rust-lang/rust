@@ -150,10 +150,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match origin {
             infer::Subtype(box trace) => {
                 let terr = TypeError::RegionsDoesNotOutlive(sup, sub);
-                let mut err = self.report_and_explain_type_error(trace, &terr);
+                let mut err = self.report_and_explain_type_error(trace.clone(), &terr);
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err, "", sup, "...");
                 self.tcx.note_and_explain_region(region_scope_tree, &mut err,
                     "...does not necessarily outlive ", sub, "");
+                self.try_note_static_dyn_trait_impl(&mut err, sub, &trace);
                 err
             }
             infer::Reborrow(span) => {

@@ -1,0 +1,60 @@
+error: cannot infer an appropriate lifetime
+  --> $DIR/trait-object-suggest-lifetime.rs:16:29
+   |
+LL |     let v: Vec<_> = my_iter.map(|i| i*i).collect();
+   |                             ^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the function body at 15:1...
+  --> $DIR/trait-object-suggest-lifetime.rs:15:1
+   |
+LL | / fn use_my_iter(my_iter: &mut dyn MyIterator) {
+LL | |     let v: Vec<_> = my_iter.map(|i| i*i).collect();
+LL | |
+LL | | }
+   | |_^
+note: but, the lifetime must be valid for the 'static lifetime...
+  --> $DIR/trait-object-suggest-lifetime.rs:16:29
+   |
+LL |     let v: Vec<_> = my_iter.map(|i| i*i).collect();
+   |                             ^^^
+note: ...because this implementation requires it
+  --> $DIR/trait-object-suggest-lifetime.rs:7:1
+   |
+LL | impl Iterator for dyn MyIterator {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: you can add an explicit constraint to the implementation so that it applies to types with less than `'static` lifetime
+   |
+LL | impl Iterator for dyn MyIterator + '_ {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot infer an appropriate lifetime
+  --> $DIR/trait-object-suggest-lifetime.rs:31:29
+   |
+LL |     let v: Vec<_> = wrapper.map(|i| i*i).collect();
+   |                             ^^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #1 defined on the function body at 30:1...
+  --> $DIR/trait-object-suggest-lifetime.rs:30:1
+   |
+LL | / fn use_my_wrapper(wrapper: Wrapper<&mut (dyn MyIterator + '_)>) {
+LL | |     let v: Vec<_> = wrapper.map(|i| i*i).collect();
+LL | |
+LL | | }
+   | |_^
+note: but, the lifetime must be valid for the '_ lifetime...
+  --> $DIR/trait-object-suggest-lifetime.rs:31:29
+   |
+LL |     let v: Vec<_> = wrapper.map(|i| i*i).collect();
+   |                             ^^^
+note: ...because this implementation requires it
+  --> $DIR/trait-object-suggest-lifetime.rs:22:1
+   |
+LL | impl Iterator for Wrapper<&mut dyn MyIterator> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: you can add an explicit constraint to the implementation so that it applies to types with less than `'static` lifetime
+   |
+LL | impl Iterator for Wrapper<&mut dyn MyIterator + '_> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

@@ -12,6 +12,7 @@ mod named_anon_conflict;
 mod placeholder_error;
 mod outlives_closure;
 mod static_impl_trait;
+mod static_dyn_trait;
 mod trait_impl_difference;
 mod util;
 
@@ -73,6 +74,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             .map(|mut diag| { diag.emit(); ErrorReported })
             .or_else(|| self.try_report_anon_anon_conflict())
             .or_else(|| self.try_report_outlives_closure())
+            .or_else(|| self.try_report_static_dyn_trait())
             .or_else(|| self.try_report_static_impl_trait())
             .or_else(|| self.try_report_impl_not_conforming_to_trait())
     }

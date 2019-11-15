@@ -231,8 +231,9 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     /// Checking that this expression can be assigned where it needs to be
-    // FIXME(eddyb) #11161 is the original Expr required?
-    ExprAssignable,
+    ExprAssignable {
+        expr_hir_id: hir::HirId,
+    },
 
     /// Computing common supertype in the arms of a match expression
     MatchExpressionArm(Box<MatchExpressionArmCause<'tcx>>),

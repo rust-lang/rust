@@ -1,0 +1,99 @@
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:19:22
+   |
+LL |         bar.fmt_with(cx);
+   |                      ^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 17:5...
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:17:5
+   |
+LL | /     fn fmt_with(&self, cx: &dyn DebugContext) {
+LL | |         let Foo { bar } = self;
+LL | |         bar.fmt_with(cx);
+LL | |
+LL | |         bar.debug_with(cx);
+LL | |
+LL | |     }
+   | |_____^
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:19:22
+   |
+LL |         bar.fmt_with(cx);
+   |                      ^^
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...because this implementation requires it
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:35:1
+   |
+LL | impl DebugWith<dyn DebugContext> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: you can add an explicit constraint to the implementation so that it applies to types with less than `'static` lifetime
+   |
+LL | impl DebugWith<dyn DebugContext + '_> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:21:24
+   |
+LL |         bar.debug_with(cx);
+   |                        ^^
+   |
+note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on the method body at 17:5...
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:17:5
+   |
+LL | /     fn fmt_with(&self, cx: &dyn DebugContext) {
+LL | |         let Foo { bar } = self;
+LL | |         bar.fmt_with(cx);
+LL | |
+LL | |         bar.debug_with(cx);
+LL | |
+LL | |     }
+   | |_____^
+note: ...so that the declared lifetime parameter bounds are satisfied
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:21:24
+   |
+LL |         bar.debug_with(cx);
+   |                        ^^
+   = note: but, the lifetime must be valid for the static lifetime...
+note: ...because this implementation requires it
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:35:1
+   |
+LL | impl DebugWith<dyn DebugContext> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: you can add an explicit constraint to the implementation so that it applies to types with less than `'static` lifetime
+   |
+LL | impl DebugWith<dyn DebugContext + '_> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:28:28
+   |
+LL |         bar.debug_with_box(cx);
+   |                            ^^ lifetime mismatch
+   |
+   = note: expected struct `std::boxed::Box<&(dyn DebugContext + 'static)>`
+              found struct `std::boxed::Box<&dyn DebugContext>`
+note: the anonymous lifetime #2 defined on the method body at 25:5...
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:25:5
+   |
+LL | /     fn debug_with_box(&self, cx: Box<&dyn DebugContext>) {
+LL | |         let Foo { bar } = self;
+LL | |
+LL | |         bar.debug_with_box(cx);
+LL | |
+LL | |     }
+   | |_____^
+   = note: ...does not necessarily outlive the static lifetime
+note: ...because this implementation requires it
+  --> $DIR/trait-object-suggest-lifetime-in-type-param.rs:35:1
+   |
+LL | impl DebugWith<dyn DebugContext> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: you can add an explicit constraint to the implementation so that it applies to types with less than `'static` lifetime
+   |
+LL | impl DebugWith<dyn DebugContext + '_> for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0495.
+For more information about an error, try `rustc --explain E0308`.
