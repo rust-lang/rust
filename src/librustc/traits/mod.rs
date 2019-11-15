@@ -206,7 +206,7 @@ pub enum ObligationCauseCode<'tcx> {
     SizedReturnType,
     /// Yield type must be Sized
     SizedYieldType,
-    /// [T,..n] --> T must be Copy. If `true`, suggest `const_in_array_repeat_expression` feature
+    /// [T,..n] --> T must be Copy. If `true`, suggest `const_in_array_repeat_expressions` feature
     /// flag.
     RepeatVec(bool),
 
