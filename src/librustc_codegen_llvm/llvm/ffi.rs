@@ -1871,4 +1871,5 @@ extern "C" {
                              bytecode: *const c_char,
                              bytecode_len: usize) -> bool;
     pub fn LLVMRustLinkerFree(linker: &'a mut Linker<'a>);
+    pub fn LLVMRustEnableEmscriptenCXXExceptions();
 }

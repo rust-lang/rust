@@ -45,6 +45,13 @@ fn require_inited() {
     }
 }
 
+pub(crate) fn late_init(sess: &Session) {
+    if sess.target.target.target_os == "emscripten" &&
+        sess.panic_strategy() == PanicStrategy::Unwind {
+        unsafe { llvm::LLVMRustEnableEmscriptenCXXExceptions(); }
+    }
+}
+
 unsafe fn configure_llvm(sess: &Session) {
     let n_args = sess.opts.cg.llvm_args.len();
     let mut llvm_c_strs = Vec::with_capacity(n_args + 1);
@@ -93,11 +100,6 @@ unsafe fn configure_llvm(sess: &Session) {
                     add("-mergefunc-use-aliases", false);
                 }
             }
-        }
-
-        if sess.target.target.target_os == "emscripten" &&
-            sess.panic_strategy() == PanicStrategy::Unwind {
-            add("-enable-emscripten-cxx-exceptions", false);
         }
 
         // HACK(eddyb) LLVM inserts `llvm.assume` calls to preserve align attributes

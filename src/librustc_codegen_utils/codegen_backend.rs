@@ -21,6 +21,7 @@ pub use rustc_data_structures::sync::MetadataRef;
 
 pub trait CodegenBackend {
     fn init(&self, _sess: &Session) {}
+    fn after_expansion(&self, _sess: &Session) {}
     fn print(&self, _req: PrintRequest, _sess: &Session) {}
     fn target_features(&self, _sess: &Session) -> Vec<Symbol> { vec![] }
     fn print_passes(&self) {}

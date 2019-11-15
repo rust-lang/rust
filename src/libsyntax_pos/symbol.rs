@@ -630,6 +630,7 @@ symbols! {
         rustc_object_lifetime_default,
         rustc_on_unimplemented,
         rustc_outlives,
+        rustc_panic_abort_runtime,
         rustc_paren_sugar,
         rustc_partition_codegened,
         rustc_partition_reused,

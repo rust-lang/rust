@@ -8,6 +8,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        issue_tracker_base_url = "https://github.com/rust-lang/rust/issues/")]
 #![panic_runtime]
+#![cfg_attr(not(bootstrap), rustc_panic_abort_runtime)]
 
 #![allow(unused_features)]
 

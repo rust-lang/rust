@@ -2,8 +2,8 @@ use crate::interface::{Compiler, Result};
 use crate::util;
 use crate::proc_macro_decls;
 
-use log::{info, warn, log_enabled};
 use rustc::arena::Arena;
+use log::{debug, info, warn, log_enabled};
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
@@ -39,7 +39,7 @@ use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax_expand::base::ExtCtxt;
 use syntax::mut_visit::MutVisitor;
 use syntax::util::node_count::NodeCounter;
-use syntax::symbol::Symbol;
+use syntax::symbol::{sym, Symbol};
 use syntax_pos::FileName;
 use syntax_ext;
 
@@ -112,6 +112,7 @@ declare_box_region_type!(
 ///
 /// Returns `None` if we're aborting after handling -W help.
 pub fn configure_and_expand(
+    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
     sess: Lrc<Session>,
     lint_store: Lrc<lint::LintStore>,
     metadata_loader: Box<MetadataLoaderDyn>,
@@ -123,15 +124,16 @@ pub fn configure_and_expand(
     // item, much like we do for macro expansion. In other words, the hash reflects not just
     // its contents but the results of name resolution on those contents. Hopefully we'll push
     // this back at some point.
-    let crate_name = crate_name.to_string();
+    let crate_name_inner = crate_name.to_string();
+    let sess_inner = sess.clone();
     let (result, resolver) = BoxedResolver::new(static move || {
-        let sess = &*sess;
         let resolver_arenas = Resolver::arenas();
         let res = configure_and_expand_inner(
-            sess,
+            &**codegen_backend,
+            &sess_inner,
             &lint_store,
             krate,
-            &crate_name,
+            &crate_name_inner,
             &resolver_arenas,
             &*metadata_loader,
         );
@@ -227,6 +229,7 @@ pub fn register_plugins<'a>(
 }
 
 fn configure_and_expand_inner<'a>(
+    codegen_backend: &dyn CodegenBackend,
     sess: &'a Session,
     lint_store: &'a lint::LintStore,
     mut krate: ast::Crate,
@@ -345,6 +348,14 @@ fn configure_and_expand_inner<'a>(
         }
         krate
     });
+
+    let force_panic_abort = krate.attrs.iter().any(|attr| {
+        attr.check_name(sym::rustc_panic_abort_runtime)
+    });
+    debug!("Setting force_panic_abort for crate `{}`: {}", crate_name, force_panic_abort);
+    sess.force_panic_abort.set(force_panic_abort);
+
+    codegen_backend.after_expansion(sess);
 
     time(sess, "maybe building test harness", || {
         syntax_ext::test_harness::inject(

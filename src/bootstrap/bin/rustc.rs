@@ -94,6 +94,14 @@ fn main() {
         // other crate intentionally as this is the only crate for now that we
         // ship with panic=abort.
         //
+        // This hack is being replaced with a new "rustc_panic_abort_runtime"
+        // attribute, which moves the special-casing out of `bootstrap` and
+        // into the compiler itself. Until this change makes its way into
+        // the bootstrap compiler, we still need this hack when building
+        // stage0. Once the boostrap compiler is updated, we can remove
+        // this check entirely.
+        // cfg(bootstrap): (Added to make this show up when searching for "cfg(bootstrap)")
+        //
         // This... is a bit of a hack how we detect this. Ideally this
         // information should be encoded in the crate I guess? Would likely
         // require an RFC amendment to RFC 1513, however.
@@ -101,7 +109,7 @@ fn main() {
         // `compiler_builtins` are unconditionally compiled with panic=abort to
         // workaround undefined references to `rust_eh_unwind_resume` generated
         // otherwise, see issue https://github.com/rust-lang/rust/issues/43095.
-        if crate_name == Some("panic_abort") ||
+        if (crate_name == Some("panic_abort") && stage == "0") ||
            crate_name == Some("compiler_builtins") && stage != "0" {
             cmd.arg("-C").arg("panic=abort");
         }

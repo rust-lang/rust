@@ -202,6 +202,10 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::init(sess); // Make sure llvm is inited
     }
 
+    fn after_expansion(&self, sess: &Session) {
+        llvm_util::late_init(sess);
+    }
+
     fn print(&self, req: PrintRequest, sess: &Session) {
         match req {
             PrintRequest::RelocationModels => {

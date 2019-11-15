@@ -1537,3 +1537,34 @@ extern "C" LLVMValueRef
 LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS, LLVMValueRef RHS) {
     return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS),unwrap(RHS)));
 }
+
+extern "C" void
+LLVMRustEnableEmscriptenCXXExceptions() {
+    // This is a little sketchy. Ideally, we would just pass
+    // '-enable-emscripten-cxx-exceptions' along with all
+    // of our other LLVM arguments when we initialize LLVM.
+    // Unfortunately, whether or not we pass this flag depends
+    // on the crate panic strategy. Determining the crate
+    // panic strategy requires us to have paresed crate arributes
+    // (so that we can have special handling for `libpanic_abort`).
+    // Parsing crate attributes actually requires us to have initialized
+    // LLVM, so that we can handle cfg-gating involving LLVM target
+    // features.
+    //
+    // We break this circular dependency by manually enabling
+    // "enable-emscripten-cxx-exceptions" after we've initialized
+    // LLVM. The methods involved are not well-documented - however,
+    // the flag we are modifiying ("enable-emscripten-cxx-exceptions")
+    // is only used in one place, and only when a PassManger is created.
+    // Thus, enabling it later than normal should have no visible effects.
+    //
+    // If this logic ever becomes incorrect (e.g. due to an LLVM upgrade),
+    // it should cause panic-related tests to start failing under emscripten,
+    // since they require this flag for proper unwinding support.
+    StringMap<cl::Option*> &Map = cl::getRegisteredOptions();
+    Map["enable-emscripten-cxx-exceptions"]->addOccurrence(
+        0,
+        StringRef("enable-emscripten-cxx-exceptions"),
+        StringRef("")
+    );
+}

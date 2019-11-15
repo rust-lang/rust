@@ -186,6 +186,7 @@ impl<'tcx> Queries<'tcx> {
             let crate_name = self.crate_name()?.peek().clone();
             let (krate, lint_store) = self.register_plugins()?.take();
             passes::configure_and_expand(
+                self.codegen_backend().clone(),
                 self.session().clone(),
                 lint_store.clone(),
                 self.codegen_backend().metadata_loader(),
