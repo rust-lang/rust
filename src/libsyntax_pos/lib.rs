@@ -16,6 +16,8 @@
 
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
+pub mod source_map;
+
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;
@@ -29,6 +31,7 @@ pub mod symbol;
 pub use symbol::{Symbol, sym};
 
 mod analyze_source_file;
+pub mod fatal_error;
 
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{Lrc, Lock};

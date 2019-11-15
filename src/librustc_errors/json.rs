@@ -9,15 +9,15 @@
 
 // FIXME: spec the JSON output properly.
 
-use crate::source_map::{SourceMap, FilePathMapping};
+use syntax_pos::source_map::{SourceMap, FilePathMapping};
 
-use errors::registry::Registry;
-use errors::{SubDiagnostic, CodeSuggestion, SourceMapper, SourceMapperDyn};
-use errors::{DiagnosticId, Applicability};
-use errors::emitter::{Emitter, HumanReadableErrorType};
+use crate::registry::Registry;
+use crate::{SubDiagnostic, CodeSuggestion};
+use crate::{DiagnosticId, Applicability};
+use crate::emitter::{Emitter, HumanReadableErrorType};
 
 use syntax_pos::{MacroBacktrace, Span, SpanLabel, MultiSpan};
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync::Lrc;
 use std::io::{self, Write};
 use std::path::Path;
 use std::vec;
@@ -31,7 +31,7 @@ mod tests;
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
-    sm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
+    sm: Lrc<SourceMap>,
     pretty: bool,
     ui_testing: bool,
     json_rendered: HumanReadableErrorType,
@@ -92,7 +92,7 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_diagnostic(&mut self, diag: &errors::Diagnostic) {
+    fn emit_diagnostic(&mut self, diag: &crate::Diagnostic) {
         let data = Diagnostic::from_errors_diagnostic(diag, self);
         let result = if self.pretty {
             writeln!(&mut self.dst, "{}", as_pretty_json(&data))
@@ -116,7 +116,7 @@ impl Emitter for JsonEmitter {
         }
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         Some(&self.sm)
     }
 
@@ -212,7 +212,7 @@ struct ArtifactNotification<'a> {
 }
 
 impl Diagnostic {
-    fn from_errors_diagnostic(diag: &errors::Diagnostic,
+    fn from_errors_diagnostic(diag: &crate::Diagnostic,
                                je: &JsonEmitter)
                                -> Diagnostic {
         let sugg = diag.suggestions.iter().map(|sugg| {
