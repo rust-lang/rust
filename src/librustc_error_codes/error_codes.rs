@@ -1,6 +1,11 @@
 // Error messages for EXXXX errors.  Each message should start and end with a
 // new line, and be wrapped to 80 characters.  In vim you can `:set tw=80` and
 // use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
+//
+// /!\ IMPORTANT /!\
+//
+// Error messages' format must follow the RFC 1567 available here:
+// https://github.com/rust-lang/rfcs/pull/1567
 
 crate::register_diagnostics! {
 
