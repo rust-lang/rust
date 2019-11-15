@@ -7,8 +7,8 @@
 //! within the `SourceMap`, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
-pub use syntax_pos::*;
-pub use syntax_pos::hygiene::{ExpnKind, ExpnData};
+pub use crate::*;
+pub use crate::hygiene::{ExpnKind, ExpnData};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -21,8 +21,6 @@ use std::env;
 use std::fs;
 use std::io;
 use log::debug;
-
-use errors::SourceMapper;
 
 #[cfg(test)]
 mod tests;
@@ -216,7 +214,7 @@ impl SourceMap {
         self.try_new_source_file(filename, src)
             .unwrap_or_else(|OffsetOverflowError| {
                 eprintln!("fatal error: rustc does not support files larger than 4GB");
-                errors::FatalError.raise()
+                crate::fatal_error::FatalError.raise()
             })
     }
 
@@ -956,37 +954,7 @@ impl SourceMap {
 
         None
     }
-}
-
-impl SourceMapper for SourceMap {
-    fn lookup_char_pos(&self, pos: BytePos) -> Loc {
-        self.lookup_char_pos(pos)
-    }
-    fn span_to_lines(&self, sp: Span) -> FileLinesResult {
-        self.span_to_lines(sp)
-    }
-    fn span_to_string(&self, sp: Span) -> String {
-        self.span_to_string(sp)
-    }
-    fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
-        self.span_to_snippet(sp)
-    }
-    fn span_to_filename(&self, sp: Span) -> FileName {
-        self.span_to_filename(sp)
-    }
-    fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
-        self.merge_spans(sp_lhs, sp_rhs)
-    }
-    fn call_span_if_macro(&self, sp: Span) -> Span {
-        if self.span_to_filename(sp.clone()).is_macros() {
-            let v = sp.macro_backtrace();
-            if let Some(use_site) = v.last() {
-                return use_site.call_site;
-            }
-        }
-        sp
-    }
-    fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
+    pub fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool {
         source_file.add_external_src(
             || match source_file.name {
                 FileName::Real(ref name) => self.file_loader.read_file(name).ok(),
@@ -994,8 +962,14 @@ impl SourceMapper for SourceMap {
             }
         )
     }
-    fn doctest_offset_line(&self, file: &FileName, line: usize) -> usize {
-        self.doctest_offset_line(file, line)
+    pub fn call_span_if_macro(&self, sp: Span) -> Span {
+        if self.span_to_filename(sp.clone()).is_macros() {
+            let v = sp.macro_backtrace();
+            if let Some(use_site) = v.last() {
+                return use_site.call_site;
+            }
+        }
+        sp
     }
 }
 

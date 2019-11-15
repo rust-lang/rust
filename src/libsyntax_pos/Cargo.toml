@@ -18,3 +18,4 @@ arena = { path = "../libarena" }
 scoped-tls = "1.0"
 unicode-width = "0.1.4"
 cfg-if = "0.1.2"
+log = "0.4"
