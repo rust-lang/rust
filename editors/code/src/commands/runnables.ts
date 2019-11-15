@@ -201,6 +201,11 @@ export async function startCargoWatch(
             );
             return;
         }
+    } else if (stderr !== '') {
+        vscode.window.showErrorMessage(
+            `Couldn't run \`cargo watch\`: ${stderr}`
+        );
+        return;
     }
 
     const provider = await registerCargoWatchProvider(context.subscriptions);
