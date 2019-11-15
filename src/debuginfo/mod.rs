@@ -107,19 +107,22 @@ impl<'tcx> DebugContext<'tcx> {
 
         let new_entry = |dwarf: &mut DwarfUnit, tag| dwarf.unit.add(dwarf.unit.root(), tag);
 
-        let primtive = |dwarf: &mut DwarfUnit, ate| {
+        let primitive = |dwarf: &mut DwarfUnit, ate| {
             let type_id = new_entry(dwarf, gimli::DW_TAG_base_type);
             let type_entry = dwarf.unit.get_mut(type_id);
             type_entry.set(gimli::DW_AT_encoding, AttributeValue::Encoding(ate));
             type_id
         };
 
+        let name = format!("{}", ty);
+        let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+
         let type_id = match ty.kind {
-            ty::Bool => primtive(&mut self.dwarf, gimli::DW_ATE_boolean),
-            ty::Char => primtive(&mut self.dwarf, gimli::DW_ATE_UTF),
-            ty::Uint(_) => primtive(&mut self.dwarf, gimli::DW_ATE_unsigned),
-            ty::Int(_) => primtive(&mut self.dwarf, gimli::DW_ATE_signed),
-            ty::Float(_) => primtive(&mut self.dwarf, gimli::DW_ATE_float),
+            ty::Bool => primitive(&mut self.dwarf, gimli::DW_ATE_boolean),
+            ty::Char => primitive(&mut self.dwarf, gimli::DW_ATE_UTF),
+            ty::Uint(_) => primitive(&mut self.dwarf, gimli::DW_ATE_unsigned),
+            ty::Int(_) => primitive(&mut self.dwarf, gimli::DW_ATE_signed),
+            ty::Float(_) => primitive(&mut self.dwarf, gimli::DW_ATE_float),
             ty::Ref(_, pointee_ty, mutbl)
             | ty::RawPtr(ty::TypeAndMut {
                 ty: pointee_ty,
@@ -139,10 +142,35 @@ impl<'tcx> DebugContext<'tcx> {
 
                 type_id
             }
+            ty::Adt(adt_def, _substs) if adt_def.is_struct() && !layout.is_unsized() => {
+                let type_id = new_entry(&mut self.dwarf, gimli::DW_TAG_structure_type);
+
+                // Ensure that type is inserted before recursing to avoid duplicates
+                self.types.insert(ty, type_id);
+
+                let variant = adt_def.non_enum_variant();
+
+                for (field_idx, field_def) in variant.fields.iter().enumerate() {
+                    let field_offset = layout.fields.offset(field_idx);
+                    let field_layout = layout.field(&layout::LayoutCx {
+                        tcx: self.tcx,
+                        param_env: ParamEnv::reveal_all(),
+                    }, field_idx).unwrap();
+
+                    let field_type = self.dwarf_ty(field_layout.ty);
+
+                    let field_id = self.dwarf.unit.add(type_id, gimli::DW_TAG_member);
+                    let field_entry = self.dwarf.unit.get_mut(field_id);
+
+                    field_entry.set(gimli::DW_AT_name, AttributeValue::String(field_def.ident.as_str().to_string().into_bytes()));
+                    field_entry.set(gimli::DW_AT_data_member_location, AttributeValue::Udata(field_offset.bytes()));
+                    field_entry.set(gimli::DW_AT_type, AttributeValue::ThisUnitEntryRef(field_type));
+                }
+
+                type_id
+            }
             _ => new_entry(&mut self.dwarf, gimli::DW_TAG_structure_type),
         };
-        let name = format!("{}", ty);
-        let layout = self.tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
 
         let type_entry = self.dwarf.unit.get_mut(type_id);
 
