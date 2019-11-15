@@ -16,6 +16,8 @@
 
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 
+pub mod source_map;
+
 pub mod edition;
 use edition::Edition;
 pub mod hygiene;

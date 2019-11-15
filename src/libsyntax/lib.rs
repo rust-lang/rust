@@ -92,7 +92,7 @@ pub mod json;
 pub mod ast;
 pub mod attr;
 pub mod expand;
-pub mod source_map;
+pub use syntax_pos::source_map;
 pub mod entry;
 pub mod feature_gate;
 pub mod mut_visit;

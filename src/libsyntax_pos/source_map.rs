@@ -7,8 +7,8 @@
 //! within the `SourceMap`, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
-pub use syntax_pos::*;
-pub use syntax_pos::hygiene::{ExpnKind, ExpnData};
+pub use crate::*;
+pub use crate::hygiene::{ExpnKind, ExpnData};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
@@ -216,7 +216,7 @@ impl SourceMap {
         self.try_new_source_file(filename, src)
             .unwrap_or_else(|OffsetOverflowError| {
                 eprintln!("fatal error: rustc does not support files larger than 4GB");
-                errors::FatalError.raise()
+                crate::fatal_error::FatalError.raise()
             })
     }
 
