@@ -230,14 +230,10 @@ fn validate_visibility(vis: ast::Visibility, errors: &mut Vec<SyntaxError>) {
 }
 
 fn validate_range_expr(expr: ast::RangeExpr, errors: &mut Vec<SyntaxError>) {
-    let last_child = match expr.syntax().last_child_or_token() {
-        Some(it) => it,
-        None => return,
-    };
-    if last_child.kind() == T![..=] {
+    if expr.op_kind() == Some(ast::RangeOp::Inclusive) && expr.end().is_none() {
         errors.push(SyntaxError::new(
             SyntaxErrorKind::InclusiveRangeMissingEnd,
-            last_child.text_range(),
+            expr.syntax().text_range(),
         ));
     }
 }

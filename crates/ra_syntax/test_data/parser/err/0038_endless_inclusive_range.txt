@@ -26,5 +26,5 @@ SOURCE_FILE@[0; 33)
         WHITESPACE@[30; 31) "\n"
         R_CURLY@[31; 32) "}"
   WHITESPACE@[32; 33) "\n"
-error [17; 20): An inclusive range must have an end expression
+error [16; 20): An inclusive range must have an end expression
 error [26; 29): An inclusive range must have an end expression

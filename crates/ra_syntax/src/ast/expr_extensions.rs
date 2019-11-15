@@ -189,6 +189,52 @@ impl ast::BinExpr {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum RangeOp {
+    /// `..`
+    Exclusive,
+    /// `..=`
+    Inclusive,
+}
+
+impl ast::RangeExpr {
+    fn op_details(&self) -> Option<(usize, SyntaxToken, RangeOp)> {
+        self.syntax().children_with_tokens().enumerate().find_map(|(ix, child)| {
+            let token = child.into_token()?;
+            let bin_op = match token.kind() {
+                T![..] => RangeOp::Exclusive,
+                T![..=] => RangeOp::Inclusive,
+                _ => return None,
+            };
+            Some((ix, token, bin_op))
+        })
+    }
+
+    pub fn op_kind(&self) -> Option<RangeOp> {
+        self.op_details().map(|t| t.2)
+    }
+
+    pub fn op_token(&self) -> Option<SyntaxToken> {
+        self.op_details().map(|t| t.1)
+    }
+
+    pub fn start(&self) -> Option<ast::Expr> {
+        let op_ix = self.op_details()?.0;
+        self.syntax()
+            .children_with_tokens()
+            .take(op_ix)
+            .find_map(|it| ast::Expr::cast(it.into_node()?))
+    }
+
+    pub fn end(&self) -> Option<ast::Expr> {
+        let op_ix = self.op_details()?.0;
+        self.syntax()
+            .children_with_tokens()
+            .skip(op_ix + 1)
+            .find_map(|it| ast::Expr::cast(it.into_node()?))
+    }
+}
+
 impl ast::IndexExpr {
     pub fn base(&self) -> Option<ast::Expr> {
         children(self).nth(0)
