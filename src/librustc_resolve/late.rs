@@ -1767,7 +1767,9 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
 
     fn with_resolved_label(&mut self, label: Option<Label>, id: NodeId, f: impl FnOnce(&mut Self)) {
         if let Some(label) = label {
-            self.diagnostic_metadata.unused_labels.insert(id, label.ident.span);
+            if label.ident.as_str().as_bytes()[1] != b'_' {
+                self.diagnostic_metadata.unused_labels.insert(id, label.ident.span);
+            }
             self.with_label_rib(NormalRibKind, |this| {
                 let ident = label.ident.modern_and_legacy();
                 this.label_ribs.last_mut().unwrap().bindings.insert(ident, id);
