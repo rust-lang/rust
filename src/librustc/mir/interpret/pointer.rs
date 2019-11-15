@@ -1,4 +1,5 @@
 use std::fmt::{self, Display};
+use std::convert::TryFrom;
 
 use crate::mir;
 use crate::ty::layout::{self, HasDataLayout, Size};
@@ -38,6 +39,18 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     #[inline(always)]
     fn pointer_size(&self) -> Size {
         self.data_layout().pointer_size
+    }
+
+    #[inline]
+    fn usize_max(&self) -> u64 {
+        let max_usize_plus_1 = 1u128 << self.pointer_size().bits();
+        u64::try_from(max_usize_plus_1-1).unwrap()
+    }
+
+    #[inline]
+    fn isize_max(&self) -> i64 {
+        let max_isize_plus_1 = 1u128 << (self.pointer_size().bits()-1);
+        i64::try_from(max_isize_plus_1-1).unwrap()
     }
 
     /// Helper function: truncate given value-"overflowed flag" pair to pointer size and
