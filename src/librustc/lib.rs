@@ -59,6 +59,7 @@
 #![feature(log_syntax)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
+#![feature(hash_raw_entry)]
 
 #![recursion_limit="512"]
 
