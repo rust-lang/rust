@@ -20,19 +20,19 @@ error[E0308]: mismatched types
   --> $DIR/fn-arg-doc-comment.rs:18:7
    |
 LL |     f("", "");
-   |       ^^ expected u8, found &str
+   |       ^^ expected `u8`, found `&str`
 
 error[E0308]: mismatched types
   --> $DIR/fn-arg-doc-comment.rs:18:11
    |
 LL |     f("", "");
-   |           ^^ expected u8, found &str
+   |           ^^ expected `u8`, found `&str`
 
 error[E0308]: mismatched types
   --> $DIR/fn-arg-doc-comment.rs:23:9
    |
 LL |     bar("");
-   |         ^^ expected i32, found &str
+   |         ^^ expected `i32`, found `&str`
 
 error: aborting due to 6 previous errors
 

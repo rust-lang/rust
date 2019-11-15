@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/enum-discr-type-err.rs:18:21
    |
 LL |               $( $v = $s::V, )*
-   |                       ^^^^^ expected isize, found i32
+   |                       ^^^^^ expected `isize`, found `i32`
 ...
 LL | / mac! {
 LL | |     A = F,

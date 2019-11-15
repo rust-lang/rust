@@ -1,7 +1,7 @@
 enum Enum<T: Trait> {
     X = Trait::Number,
     //~^ ERROR mismatched types
-    //~| expected isize, found i32
+    //~| expected `isize`, found `i32`
 }
 
 trait Trait {

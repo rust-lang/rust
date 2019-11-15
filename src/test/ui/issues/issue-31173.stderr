@@ -2,7 +2,7 @@ error[E0271]: type mismatch resolving `<std::iter::TakeWhile<&mut std::vec::Into
   --> $DIR/issue-31173.rs:10:10
    |
 LL |         .cloned()
-   |          ^^^^^^ expected u8, found reference
+   |          ^^^^^^ expected `u8`, found reference
    |
    = note:   expected type `u8`
            found reference `&_`

@@ -7,7 +7,7 @@ LL | |
 LL | |         foo();
    | |              - help: consider removing this semicolon
 LL | |     };
-   | |_____^ expected i32, found ()
+   | |_____^ expected `i32`, found `()`
 
 error: aborting due to previous error
 

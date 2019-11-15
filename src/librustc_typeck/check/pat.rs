@@ -47,7 +47,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// 4 |    let temp: usize = match a + b {
     ///   |                            ----- this expression has type `usize`
     /// 5 |         Ok(num) => num,
-    ///   |         ^^^^^^^ expected usize, found enum `std::result::Result`
+    ///   |         ^^^^^^^ expected `usize`, found enum `std::result::Result`
     ///   |
     ///   = note: expected type `usize`
     ///              found type `std::result::Result<_, _>`

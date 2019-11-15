@@ -9,7 +9,7 @@ impl Foo {
 fn main() {
     let x = Foo;
     Foo::bar(x); //~  ERROR mismatched types
-                 //~| expected &Foo, found struct `Foo`
+                 //~| expected `&Foo`, found struct `Foo`
     Foo::bar(&42); //~  ERROR mismatched types
                       //~| expected struct `Foo`, found integer
                       //~| expected reference `&Foo`

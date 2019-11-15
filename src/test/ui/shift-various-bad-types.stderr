@@ -26,7 +26,7 @@ error[E0308]: mismatched types
   --> $DIR/shift-various-bad-types.rs:25:18
    |
 LL |     let _: i32 = 22_i64 >> 1_i32;
-   |                  ^^^^^^^^^^^^^^^ expected i32, found i64
+   |                  ^^^^^^^^^^^^^^^ expected `i32`, found `i64`
    |
 help: you can convert an `i64` to `i32` and panic if the converted value wouldn't fit
    |

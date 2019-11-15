@@ -4,14 +4,14 @@ error[E0271]: type mismatch resolving `<std::option::Option<f32> as std::ops::Tr
 LL |         42
    |         ^^
    |         |
-   |         expected f32, found integer
+   |         expected `f32`, found integer
    |         help: use a float literal: `42.0`
 
 error[E0271]: type mismatch resolving `<std::option::Option<i32> as std::ops::Try>::Ok == ()`
   --> $DIR/try-block-type-error.rs:16:5
    |
 LL |     };
-   |     ^ expected i32, found ()
+   |     ^ expected `i32`, found `()`
 
 error: aborting due to 2 previous errors
 

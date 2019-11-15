@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/missing-return.rs:3:11
    |
 LL | fn f() -> isize { }
-   |    -      ^^^^^ expected isize, found ()
+   |    -      ^^^^^ expected `isize`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 

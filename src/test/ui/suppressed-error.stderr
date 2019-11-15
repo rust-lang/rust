@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/suppressed-error.rs:2:9
    |
 LL |     let (x, y) = ();
-   |         ^^^^^^ expected (), found tuple
+   |         ^^^^^^ expected `()`, found tuple
    |
    = note: expected unit type `()`
                   found tuple `(_, _)`

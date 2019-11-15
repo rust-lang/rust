@@ -285,7 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //    ||         ----- expected because of this
             // LL ||     } else {
             // LL ||         10u32
-            //    ||         ^^^^^ expected i32, found u32
+            //    ||         ^^^^^ expected `i32`, found `u32`
             // LL ||     };
             //    ||_____- if and else have incompatible types
             // ```
@@ -294,7 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The entire expression is in one line, only point at the arms
             // ```
             // LL |     let x = if true { 10i32 } else { 10u32 };
-            //    |                       -----          ^^^^^ expected i32, found u32
+            //    |                       -----          ^^^^^ expected `i32`, found `u32`
             //    |                       |
             //    |                       expected because of this
             // ```
@@ -323,7 +323,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //   | ||     ^
                 //   | ||_____|
                 //   | |______if and else have incompatible types
-                //   |        expected integer, found ()
+                //   |        expected integer, found `()`
                 // ```
                 // by not pointing at the entire expression:
                 // ```
@@ -335,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //   |  ____________^
                 // 5 | |
                 // 6 | |     };
-                //   | |_____^ expected integer, found ()
+                //   | |_____^ expected integer, found `()`
                 // ```
                 if outer_sp.is_some() {
                     outer_sp = Some(self.tcx.sess.source_map().def_span(span));

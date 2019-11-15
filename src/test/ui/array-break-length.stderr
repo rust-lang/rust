@@ -14,7 +14,7 @@ error[E0308]: mismatched types
   --> $DIR/array-break-length.rs:3:9
    |
 LL |         |_: [_; break]| {}
-   |         ^^^^^^^^^^^^^^^^^^ expected (), found closure
+   |         ^^^^^^^^^^^^^^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
                 found closure `[closure@$DIR/array-break-length.rs:3:9: 3:27]`
@@ -23,7 +23,7 @@ error[E0308]: mismatched types
   --> $DIR/array-break-length.rs:8:9
    |
 LL |         |_: [_; continue]| {}
-   |         ^^^^^^^^^^^^^^^^^^^^^ expected (), found closure
+   |         ^^^^^^^^^^^^^^^^^^^^^ expected `()`, found closure
    |
    = note: expected unit type `()`
                 found closure `[closure@$DIR/array-break-length.rs:8:9: 8:30]`

@@ -9,7 +9,7 @@ LL | |         E::D => 4,
 LL | |         E::E => unimplemented!(""),
    | |                 ------------------ this and all prior arms are found to be of type `{integer}`
 LL | |         E::F => "",
-   | |                 ^^ expected integer, found &str
+   | |                 ^^ expected integer, found `&str`
 LL | |     };
    | |_____- `match` arms have incompatible types
    |

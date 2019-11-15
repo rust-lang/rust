@@ -17,10 +17,10 @@ fn main() {
     // verify that the parser recovered and properly typechecked the args
     f("", "");
     //~^ ERROR mismatched types
-    //~| NOTE expected u8, found &str
+    //~| NOTE expected `u8`, found `&str`
     //~| ERROR mismatched types
-    //~| NOTE expected u8, found &str
+    //~| NOTE expected `u8`, found `&str`
     bar("");
     //~^ ERROR mismatched types
-    //~| NOTE expected i32, found &str
+    //~| NOTE expected `i32`, found `&str`
 }

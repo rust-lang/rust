@@ -2,7 +2,7 @@ error[E0308]: intrinsic has wrong type
   --> $DIR/E0308.rs:4:5
    |
 LL |     fn size_of<T>();
-   |     ^^^^^^^^^^^^^^^^ expected (), found usize
+   |     ^^^^^^^^^^^^^^^^ expected `()`, found `usize`
    |
    = note: expected fn pointer `extern "rust-intrinsic" fn()`
               found fn pointer `extern "rust-intrinsic" fn() -> usize`

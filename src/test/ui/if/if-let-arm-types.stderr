@@ -8,7 +8,7 @@ LL | |         ()
 LL | |
 LL | |     } else {
 LL | |         1
-   | |         ^ expected (), found integer
+   | |         ^ expected `()`, found integer
 LL | |     };
    | |_____- if and else have incompatible types
 

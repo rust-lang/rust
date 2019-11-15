@@ -10,7 +10,7 @@ error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as imp
   --> $DIR/bound-normalization-fail.rs:28:32
    |
 LL |     fn foo_fail<T: Trait>() -> impl FooLike<Output=T::Assoc> {
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found associated type
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
    |
    = note:         expected type `()`
            found associated type `<T as impl_trait::Trait>::Assoc`
@@ -28,7 +28,7 @@ error[E0271]: type mismatch resolving `<Foo<()> as FooLike>::Output == <T as lif
   --> $DIR/bound-normalization-fail.rs:44:41
    |
 LL |     fn foo2_fail<'a, T: Trait<'a>>() -> impl FooLike<Output=T::Assoc> {
-   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found associated type
+   |                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found associated type
    |
    = note:         expected type `()`
            found associated type `<T as lifetimes::Trait<'static>>::Assoc`

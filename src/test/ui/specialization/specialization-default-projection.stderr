@@ -5,7 +5,7 @@ LL | fn generic<T>() -> <T as Foo>::Assoc {
    |                    ----------------- expected `<T as Foo>::Assoc` because of return type
 ...
 LL |     ()
-   |     ^^ expected associated type, found ()
+   |     ^^ expected associated type, found `()`
    |
    = note: expected associated type `<T as Foo>::Assoc`
                     found unit type `()`
@@ -21,7 +21,7 @@ LL | fn monomorphic() -> () {
 LL |     generic::<()>()
    |     ^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |     |
-   |     expected (), found associated type
+   |     expected `()`, found associated type
    |
    = note:    expected unit type `()`
            found associated type `<() as Foo>::Assoc`

@@ -12,5 +12,5 @@ fn main() {
     //~^ ERROR mismatched types
     //~| expected type `char`
     //~| found enum `std::option::Option<_>`
-    //~| expected char, found enum `std::option::Option`
+    //~| expected `char`, found enum `std::option::Option`
 }

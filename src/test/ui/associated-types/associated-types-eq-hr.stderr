@@ -7,7 +7,7 @@ LL |     where T : for<'x> TheTrait<&'x isize, A = &'x isize>
    |                                           ------------- required by this bound in `foo`
 ...
 LL |     foo::<UintStruct>();
-   |     ^^^^^^^^^^^^^^^^^ expected isize, found usize
+   |     ^^^^^^^^^^^^^^^^^ expected `isize`, found `usize`
    |
    = note: expected reference `&isize`
               found reference `&usize`
@@ -21,7 +21,7 @@ LL |     where T : for<'x> TheTrait<&'x isize, A = &'x usize>
    |                                           ------------- required by this bound in `bar`
 ...
 LL |     bar::<IntStruct>();
-   |     ^^^^^^^^^^^^^^^^ expected usize, found isize
+   |     ^^^^^^^^^^^^^^^^ expected `usize`, found `isize`
    |
    = note: expected reference `&usize`
               found reference `&isize`

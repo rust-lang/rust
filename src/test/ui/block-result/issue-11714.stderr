@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-11714.rs:1:14
    |
 LL | fn blah() -> i32 {
-   |    ----      ^^^ expected i32, found ()
+   |    ----      ^^^ expected `i32`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 ...

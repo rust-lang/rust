@@ -5,7 +5,7 @@ LL | fn global_bound_is_hidden() -> u8
    |                                -- expected `u8` because of return type
 ...
 LL |     B::get_x()
-   |     ^^^^^^^^^^ expected u8, found i32
+   |     ^^^^^^^^^^ expected `u8`, found `i32`
    |
 help: you can convert an `i32` to `u8` and panic if the converted value wouldn't fit
    |

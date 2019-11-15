@@ -21,13 +21,13 @@ fn main() {
     match 'c' {
         S { .. } => (),
         //~^ ERROR mismatched types
-        //~| expected char, found struct `S`
+        //~| expected `char`, found struct `S`
 
         _ => ()
     }
     f(true);
     //~^ ERROR mismatched types
-    //~| expected char, found bool
+    //~| expected `char`, found `bool`
 
     match () {
         E::V => {} //~ ERROR failed to resolve: use of undeclared type or module `E`

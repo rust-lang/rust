@@ -222,8 +222,8 @@ impl<'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match self.kind {
             ty::Bool | ty::Char | ty::Int(_) |
-            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => format!("{}", self).into(),
-            ty::Tuple(ref tys) if tys.is_empty() => format!("{}", self).into(),
+            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => format!("`{}`", self).into(),
+            ty::Tuple(ref tys) if tys.is_empty() => format!("`{}`", self).into(),
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
@@ -244,7 +244,7 @@ impl<'tcx> ty::TyS<'tcx> {
                 if tymut_string != "_" && (
                     ty.is_simple_text() || tymut_string.len() < "mutable reference".len()
                 ) {
-                    format!("&{}", tymut_string).into()
+                    format!("`&{}`", tymut_string).into()
                 } else { // Unknown type name, it's long or has type arguments
                     match mutbl {
                         hir::Mutability::Mutable => "mutable reference",
@@ -256,7 +256,7 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) => {
                 if let Some(principal) = inner.principal() {
-                    format!("trait {}", tcx.def_path_str(principal.def_id())).into()
+                    format!("trait `{}`", tcx.def_path_str(principal.def_id())).into()
                 } else {
                     "trait".into()
                 }

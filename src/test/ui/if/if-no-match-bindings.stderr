@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     if b_ref() {}
    |        ^^^^^^^
    |        |
-   |        expected bool, found &bool
+   |        expected `bool`, found `&bool`
    |        help: consider dereferencing the borrow: `*b_ref()`
 
 error[E0308]: mismatched types
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
 LL |     if b_mut_ref() {}
    |        ^^^^^^^^^^^
    |        |
-   |        expected bool, found &mut bool
+   |        expected `bool`, found `&mut bool`
    |        help: consider dereferencing the borrow: `*b_mut_ref()`
 
 error[E0308]: mismatched types
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL |     if &true {}
    |        ^^^^^
    |        |
-   |        expected bool, found &bool
+   |        expected `bool`, found `&bool`
    |        help: consider removing the borrow: `true`
 
 error[E0308]: mismatched types
@@ -31,7 +31,7 @@ error[E0308]: mismatched types
 LL |     if &mut true {}
    |        ^^^^^^^^^
    |        |
-   |        expected bool, found &mut bool
+   |        expected `bool`, found `&mut bool`
    |        help: consider removing the borrow: `true`
 
 error[E0308]: mismatched types
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL |     while b_ref() {}
    |           ^^^^^^^
    |           |
-   |           expected bool, found &bool
+   |           expected `bool`, found `&bool`
    |           help: consider dereferencing the borrow: `*b_ref()`
 
 error[E0308]: mismatched types
@@ -49,7 +49,7 @@ error[E0308]: mismatched types
 LL |     while b_mut_ref() {}
    |           ^^^^^^^^^^^
    |           |
-   |           expected bool, found &mut bool
+   |           expected `bool`, found `&mut bool`
    |           help: consider dereferencing the borrow: `*b_mut_ref()`
 
 error[E0308]: mismatched types
@@ -58,7 +58,7 @@ error[E0308]: mismatched types
 LL |     while &true {}
    |           ^^^^^
    |           |
-   |           expected bool, found &bool
+   |           expected `bool`, found `&bool`
    |           help: consider removing the borrow: `true`
 
 error[E0308]: mismatched types
@@ -67,7 +67,7 @@ error[E0308]: mismatched types
 LL |     while &mut true {}
    |           ^^^^^^^^^
    |           |
-   |           expected bool, found &mut bool
+   |           expected `bool`, found `&mut bool`
    |           help: consider removing the borrow: `true`
 
 error: aborting due to 8 previous errors

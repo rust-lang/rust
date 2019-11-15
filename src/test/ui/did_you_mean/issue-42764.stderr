@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-42764.rs:11:43
    |
 LL |     this_function_expects_a_double_option(n);
-   |                                           ^ expected enum `DoubleOption`, found usize
+   |                                           ^ expected enum `DoubleOption`, found `usize`
    |
    = note: expected enum `DoubleOption<_>`
               found type `usize`

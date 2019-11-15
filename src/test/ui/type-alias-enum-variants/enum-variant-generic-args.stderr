@@ -5,7 +5,7 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 LL |     fn ts_variant() {
 LL |         Self::TSVariant(());
-   |                         ^^ expected type parameter `T`, found ()
+   |                         ^^ expected type parameter `T`, found `()`
    |
    = note: expected type parameter `T`
                    found unit type `()`
@@ -31,7 +31,7 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::<()>::TSVariant(());
-   |                               ^^ expected type parameter `T`, found ()
+   |                               ^^ expected type parameter `T`, found `()`
    |
    = note: expected type parameter `T`
                    found unit type `()`
@@ -57,7 +57,7 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::SVariant { v: () };
-   |                             ^^ expected type parameter `T`, found ()
+   |                             ^^ expected type parameter `T`, found `()`
    |
    = note: expected type parameter `T`
                    found unit type `()`
@@ -77,7 +77,7 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::SVariant::<()> { v: () };
-   |                                   ^^ expected type parameter `T`, found ()
+   |                                   ^^ expected type parameter `T`, found `()`
    |
    = note: expected type parameter `T`
                    found unit type `()`
@@ -97,7 +97,7 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::<()>::SVariant { v: () };
-   |                                   ^^ expected type parameter `T`, found ()
+   |                                   ^^ expected type parameter `T`, found `()`
    |
    = note: expected type parameter `T`
                    found unit type `()`
@@ -123,7 +123,7 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::<()>::SVariant::<()> { v: () };
-   |                                         ^^ expected type parameter `T`, found ()
+   |                                         ^^ expected type parameter `T`, found `()`
    |
    = note: expected type parameter `T`
                    found unit type `()`

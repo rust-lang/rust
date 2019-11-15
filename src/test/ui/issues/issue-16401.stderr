@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match () {
    |           -- this match expression has type `()`
 LL |         Slice { data: data, len: len } => (),
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found struct `Slice`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found struct `Slice`
    |
    = note: expected unit type `()`
                  found struct `Slice<_>`

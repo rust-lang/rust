@@ -70,7 +70,7 @@ error[E0308]: mismatched types
 LL |     let _ = a + b;
    |                 ^
    |                 |
-   |                 expected &str, found struct `std::string::String`
+   |                 expected `&str`, found struct `std::string::String`
    |                 help: consider borrowing here: `&b`
 
 error[E0369]: binary operation `+` cannot be applied to type `&std::string::String`

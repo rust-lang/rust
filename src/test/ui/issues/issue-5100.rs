@@ -53,5 +53,5 @@ fn main() {
 
     // Make sure none of the errors above were fatal
     let x: char = true; //~  ERROR mismatched types
-                        //~| expected char, found bool
+                        //~| expected `char`, found `bool`
 }

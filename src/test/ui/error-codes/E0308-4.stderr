@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this match expression has type `u8`
 LL |         0u8..=3i8 => (),
-   |         ^^^^^^^^^ expected u8, found i8
+   |         ^^^^^^^^^ expected `u8`, found `i8`
 
 error: aborting due to previous error
 

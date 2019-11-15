@@ -5,7 +5,7 @@ LL |     fn foo(_: fn(u8) -> ());
    |               ------------ type in trait
 ...
 LL |     fn foo(_: fn(u16) -> ()) {}
-   |               ^^^^^^^^^^^^^ expected u8, found u16
+   |               ^^^^^^^^^^^^^ expected `u8`, found `u16`
    |
    = note: expected fn pointer `fn(fn(u8))`
               found fn pointer `fn(fn(u16))`
@@ -17,7 +17,7 @@ LL |     fn bar(_: Option<u8>);
    |               ---------- type in trait
 ...
 LL |     fn bar(_: Option<u16>) {}
-   |               ^^^^^^^^^^^ expected u8, found u16
+   |               ^^^^^^^^^^^ expected `u8`, found `u16`
    |
    = note: expected fn pointer `fn(std::option::Option<u8>)`
               found fn pointer `fn(std::option::Option<u16>)`
@@ -29,7 +29,7 @@ LL |     fn baz(_: (u8, u16));
    |               --------- type in trait
 ...
 LL |     fn baz(_: (u16, u16)) {}
-   |               ^^^^^^^^^^ expected u8, found u16
+   |               ^^^^^^^^^^ expected `u8`, found `u16`
    |
    = note: expected fn pointer `fn((u8, u16))`
               found fn pointer `fn((u16, u16))`
@@ -41,7 +41,7 @@ LL |     fn qux() -> u8;
    |                 -- type in trait
 ...
 LL |     fn qux() -> u16 { 5u16 }
-   |                 ^^^ expected u8, found u16
+   |                 ^^^ expected `u8`, found `u16`
    |
    = note: expected fn pointer `fn() -> u8`
               found fn pointer `fn() -> u16`

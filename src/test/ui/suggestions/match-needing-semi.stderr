@@ -5,7 +5,7 @@ LL | /     match 3 {
 LL | |         4 => 1,
 LL | |         3 => {
 LL | |             2
-   | |             ^ expected (), found integer
+   | |             ^ expected `()`, found integer
 LL | |         }
 LL | |         _ => 2
 LL | |     }
@@ -23,7 +23,7 @@ LL | |         _ => 2
 LL | |     }
    | |     ^- help: consider using a semicolon here
    | |_____|
-   |       expected (), found integer
+   |       expected `()`, found integer
 
 error: aborting due to 2 previous errors
 

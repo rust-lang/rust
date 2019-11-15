@@ -7,7 +7,7 @@ fn main() {
         //~^ NOTE this is found to be of type `bool`
         None    => (),
         //~^ ERROR match arms have incompatible types
-        //~| NOTE expected bool, found ()
+        //~| NOTE expected `bool`, found `()`
         _       => true
     }
 }

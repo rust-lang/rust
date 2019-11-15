@@ -7,7 +7,7 @@ LL |     fn bar<'a, T>() where T: 'a {}
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                 |
-   |                 expected (), found fn item
+   |                 expected `()`, found fn item
    |                 help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>()`
    |
    = note: expected unit type `()`
@@ -22,7 +22,7 @@ LL |     fn bar<'a, T>() where T: 'a {}
 LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                 |
-   |                 expected (), found fn item
+   |                 expected `()`, found fn item
    |                 help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>()`
    |
    = note: expected unit type `()`
@@ -37,7 +37,7 @@ LL |     fn baz() {}
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                 |
-   |                 expected (), found fn item
+   |                 expected `()`, found fn item
    |                 help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::baz()`
    |
    = note: expected unit type `()`
@@ -52,7 +52,7 @@ LL | fn foo<'z>() where &'z (): Sized {
 LL |     let x: () = foo::<'static>;
    |                 ^^^^^^^^^^^^^^
    |                 |
-   |                 expected (), found fn item
+   |                 expected `()`, found fn item
    |                 help: use parentheses to call this function: `foo::<'static>()`
    |
    = note: expected unit type `()`

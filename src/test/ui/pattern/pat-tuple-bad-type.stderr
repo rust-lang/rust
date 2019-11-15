@@ -13,7 +13,7 @@ error[E0308]: mismatched types
   --> $DIR/pat-tuple-bad-type.rs:10:9
    |
 LL |         (..) => {}
-   |         ^^^^ expected u8, found ()
+   |         ^^^^ expected `u8`, found `()`
 
 error: aborting due to 2 previous errors
 

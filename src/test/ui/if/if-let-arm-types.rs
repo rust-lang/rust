@@ -7,5 +7,5 @@ fn main() {
         1
     };
     //~^^ ERROR: if and else have incompatible types
-    //~| NOTE expected (), found integer
+    //~| NOTE expected `()`, found integer
 }

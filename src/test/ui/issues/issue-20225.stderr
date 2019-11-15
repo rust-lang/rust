@@ -4,7 +4,7 @@ error[E0053]: method `call` has an incompatible type for trait
 LL | impl<'a, T> Fn<(&'a T,)> for Foo {
    |          - this type parameter
 LL |   extern "rust-call" fn call(&self, (_,): (T,)) {}
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &T, found type parameter `T`
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
    = note: expected fn pointer `extern "rust-call" fn(&Foo, (&'a T,))`
               found fn pointer `extern "rust-call" fn(&Foo, (T,))`
@@ -17,7 +17,7 @@ error[E0053]: method `call_mut` has an incompatible type for trait
 LL | impl<'a, T> FnMut<(&'a T,)> for Foo {
    |          - this type parameter
 LL |   extern "rust-call" fn call_mut(&mut self, (_,): (T,)) {}
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &T, found type parameter `T`
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
    = note: expected fn pointer `extern "rust-call" fn(&mut Foo, (&'a T,))`
               found fn pointer `extern "rust-call" fn(&mut Foo, (T,))`
@@ -31,7 +31,7 @@ LL | impl<'a, T> FnOnce<(&'a T,)> for Foo {
    |          - this type parameter
 ...
 LL |   extern "rust-call" fn call_once(self, (_,): (T,)) {}
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected &T, found type parameter `T`
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&T`, found type parameter `T`
    |
    = note: expected fn pointer `extern "rust-call" fn(Foo, (&'a T,))`
               found fn pointer `extern "rust-call" fn(Foo, (T,))`

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL | macro_rules! test { () => { fn foo() -> i32 { 1; } } }
    |                                ---      ^^^    - help: consider removing this semicolon
    |                                |        |
-   |                                |        expected i32, found ()
+   |                                |        expected `i32`, found `()`
    |                                implicitly returns `()` as its body has no tail or `return` expression
 ...
 LL |     test!();
@@ -14,7 +14,7 @@ error[E0308]: mismatched types
   --> $DIR/liveness-return-last-stmt-semi.rs:7:19
    |
 LL | fn no_return() -> i32 {}
-   |    ---------      ^^^ expected i32, found ()
+   |    ---------      ^^^ expected `i32`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
   --> $DIR/liveness-return-last-stmt-semi.rs:9:19
    |
 LL | fn bar(x: u32) -> u32 {
-   |    ---            ^^^ expected u32, found ()
+   |    ---            ^^^ expected `u32`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     x * 2;
@@ -32,7 +32,7 @@ error[E0308]: mismatched types
   --> $DIR/liveness-return-last-stmt-semi.rs:13:19
    |
 LL | fn baz(x: u64) -> u32 {
-   |    ---            ^^^ expected u32, found ()
+   |    ---            ^^^ expected `u32`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 

@@ -10,7 +10,7 @@ LL | |         Some(2) => true,
    | |                    ---- this is found to be of type `bool`
 LL | |
 LL | |         None    => (),
-   | |                    ^^ expected bool, found ()
+   | |                    ^^ expected `bool`, found `()`
 ...  |
 LL | |         _       => true
 LL | |     }

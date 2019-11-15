@@ -3,7 +3,7 @@
 
 fn main() {
     if let Some(homura) = Some("madoka") { //~  ERROR missing an else clause
-                                           //~| expected (), found integer
+                                           //~| expected `()`, found integer
         765
     };
 }

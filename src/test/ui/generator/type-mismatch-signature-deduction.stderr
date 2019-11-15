@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch-signature-deduction.rs:8:20
    |
 LL |             return Ok(6);
-   |                    ^^^^^ expected i32, found enum `std::result::Result`
+   |                    ^^^^^ expected `i32`, found enum `std::result::Result`
    |
    = note: expected type `i32`
               found enum `std::result::Result<{integer}, _>`

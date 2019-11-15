@@ -14,7 +14,7 @@ fn two(x: bool) -> impl Foo {
     }
     0_u32
     //~^ ERROR mismatched types
-    //~| expected i32, found u32
+    //~| expected `i32`, found `u32`
 }
 
 fn sum_to(n: u32) -> impl Foo {

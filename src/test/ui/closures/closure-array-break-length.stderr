@@ -20,7 +20,7 @@ error[E0308]: mismatched types
   --> $DIR/closure-array-break-length.rs:4:11
    |
 LL |     while |_: [_; continue]| {} {}
-   |           ^^^^^^^^^^^^^^^^^^^^^ expected bool, found closure
+   |           ^^^^^^^^^^^^^^^^^^^^^ expected `bool`, found closure
    |
    = note: expected type `bool`
            found closure `[closure@$DIR/closure-array-break-length.rs:4:11: 4:32]`
@@ -29,7 +29,7 @@ error[E0308]: mismatched types
   --> $DIR/closure-array-break-length.rs:7:11
    |
 LL |     while |_: [_; break]| {} {}
-   |           ^^^^^^^^^^^^^^^^^^ expected bool, found closure
+   |           ^^^^^^^^^^^^^^^^^^ expected `bool`, found closure
    |
    = note: expected type `bool`
            found closure `[closure@$DIR/closure-array-break-length.rs:7:11: 7:29]`

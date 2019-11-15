@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/while-type-error.rs:3:19
    |
 LL | fn main() { while main { } }
-   |                   ^^^^ expected bool, found fn item
+   |                   ^^^^ expected `bool`, found fn item
    |
    = note: expected type `bool`
            found fn item `fn() {main}`

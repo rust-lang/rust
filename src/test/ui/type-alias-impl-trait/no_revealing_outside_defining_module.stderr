@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/no_revealing_outside_defining_module.rs:15:19
    |
 LL |     let _: &str = bomp();
-   |                   ^^^^^^ expected &str, found opaque type
+   |                   ^^^^^^ expected `&str`, found opaque type
    |
    = note: expected reference `&str`
             found opaque type `Boo`
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
 LL | fn bomp() -> boo::Boo {
    |              -------- expected `Boo` because of return type
 LL |     ""
-   |     ^^ expected opaque type, found &str
+   |     ^^ expected opaque type, found `&str`
    |
    = note: expected opaque type `Boo`
                 found reference `&'static str`

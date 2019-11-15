@@ -6,7 +6,7 @@ LL | fn main() {
 LL |     &panic!()
    |     ^^^^^^^^^
    |     |
-   |     expected (), found reference
+   |     expected `()`, found reference
    |     help: consider removing the borrow: `panic!()`
    |
    = note: expected unit type `()`

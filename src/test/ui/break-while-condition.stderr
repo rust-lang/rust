@@ -5,7 +5,7 @@ LL |           let _: ! = {
    |  ____________________^
 LL | |             'a: while break 'a {};
 LL | |         };
-   | |_________^ expected !, found ()
+   | |_________^ expected `!`, found `()`
    |
    = note:   expected type `!`
            found unit type `()`
@@ -16,7 +16,7 @@ error[E0308]: mismatched types
 LL | /             while false {
 LL | |                 break
 LL | |             }
-   | |_____________^ expected !, found ()
+   | |_____________^ expected `!`, found `()`
    |
    = note:   expected type `!`
            found unit type `()`
@@ -27,7 +27,7 @@ error[E0308]: mismatched types
 LL | /             while false {
 LL | |                 return
 LL | |             }
-   | |_____________^ expected !, found ()
+   | |_____________^ expected `!`, found `()`
    |
    = note:   expected type `!`
            found unit type `()`

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/call-fn-never-arg-wrong-type.rs:10:9
    |
 LL |     foo("wow");
-   |         ^^^^^ expected !, found &str
+   |         ^^^^^ expected `!`, found `&str`
    |
    = note:   expected type `!`
            found reference `&'static str`

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     light_flows_our_war_of_mocking_words(behold as usize);
    |                                          ^^^^^^^^^^^^^^^
    |                                          |
-   |                                          expected &usize, found usize
+   |                                          expected `&usize`, found `usize`
    |                                          help: consider borrowing here: `&(behold as usize)`
 
 error[E0308]: mismatched types
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
 LL |     light_flows_our_war_of_mocking_words(with_tears + 4);
    |                                          ^^^^^^^^^^^^^^
    |                                          |
-   |                                          expected &usize, found usize
+   |                                          expected `&usize`, found `usize`
    |                                          help: consider borrowing here: `&(with_tears + 4)`
 
 error: aborting due to 2 previous errors

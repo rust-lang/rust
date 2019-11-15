@@ -18,7 +18,7 @@ fn main() {
 
     eq(foo::<u8>, foo::<i8>);
     //~^ ERROR mismatched types
-    //~| expected u8, found i8
+    //~| expected `u8`, found `i8`
 
     eq(bar::<String>, bar::<Vec<u8>>);
     //~^ ERROR mismatched types
@@ -29,5 +29,5 @@ fn main() {
     // Make sure we distinguish between trait methods correctly.
     eq(<u8 as Foo>::foo, <u16 as Foo>::foo);
     //~^ ERROR mismatched types
-    //~| expected u8, found u16
+    //~| expected `u8`, found `u16`
 }

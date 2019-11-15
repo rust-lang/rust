@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:31:7
    |
 LL |     &(S: &S);
-   |       ^ expected &S, found struct `S`
+   |       ^ expected `&S`, found struct `S`
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-precedence.rs:35:7

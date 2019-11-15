@@ -5,7 +5,7 @@ LL |     fn foo(x: u16);
    |               --- type in trait
 ...
 LL |     fn foo(x: i16) { }
-   |               ^^^ expected u16, found i16
+   |               ^^^ expected `u16`, found `i16`
    |
    = note: expected fn pointer `fn(u16)`
               found fn pointer `fn(i16)`

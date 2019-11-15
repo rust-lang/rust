@@ -6,7 +6,7 @@ LL |   fn foo(bar: usize) -> usize {
 LL | /     if bar % 5 == 0 {
 LL | |         return 3;
 LL | |     }
-   | |_____^ expected usize, found ()
+   | |_____^ expected `usize`, found `()`
    |
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
@@ -20,7 +20,7 @@ LL |       let x: usize = if bar % 5 == 0 {
    | |         expected because of this assignment
 LL | |         return 3;
 LL | |     };
-   | |_____^ expected usize, found ()
+   | |_____^ expected `usize`, found `()`
    |
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
@@ -33,7 +33,7 @@ LL |   fn foo3(bar: usize) -> usize {
 LL | /     if bar % 5 == 0 {
 LL | |         3
 LL | |     }
-   | |_____^ expected usize, found ()
+   | |_____^ expected `usize`, found `()`
    |
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
@@ -46,7 +46,7 @@ LL |   fn foo_let(bar: usize) -> usize {
 LL | /     if let 0 = 1 {
 LL | |         return 3;
 LL | |     }
-   | |_____^ expected usize, found ()
+   | |_____^ expected `usize`, found `()`
    |
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
@@ -60,7 +60,7 @@ LL |       let x: usize = if let 0 = 1 {
    | |         expected because of this assignment
 LL | |         return 3;
 LL | |     };
-   | |_____^ expected usize, found ()
+   | |_____^ expected `usize`, found `()`
    |
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
@@ -73,7 +73,7 @@ LL |   fn foo3_let(bar: usize) -> usize {
 LL | /     if let 0 = 1 {
 LL | |         3
 LL | |     }
-   | |_____^ expected usize, found ()
+   | |_____^ expected `usize`, found `()`
    |
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/consider-removing-last-semi.rs:1:11
    |
 LL | fn f() -> String {
-   |    -      ^^^^^^ expected struct `std::string::String`, found ()
+   |    -      ^^^^^^ expected struct `std::string::String`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     0u8;
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
   --> $DIR/consider-removing-last-semi.rs:6:11
    |
 LL | fn g() -> String {
-   |    -      ^^^^^^ expected struct `std::string::String`, found ()
+   |    -      ^^^^^^ expected struct `std::string::String`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     "this won't work".to_string();
