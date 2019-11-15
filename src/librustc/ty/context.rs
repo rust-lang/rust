@@ -826,18 +826,11 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for CanonicalUserTypeAnnotation<'a> {
-        type Lifted = CanonicalUserTypeAnnotation<'tcx>;
-        user_ty, span, inferred_ty
-    }
 }
 
 /// Canonicalized user type annotation.

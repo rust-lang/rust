@@ -1,7 +1,6 @@
 //! This module contains implements of the `Lift` and `TypeFoldable`
 //! traits for various types in the Rust compiler. Most are written by
-//! hand, though we've recently added some macros (e.g.,
-//! `BraceStructLiftImpl!`) to help with the tedium.
+//! hand, though we've recently added some macros and proc-macros to help with the tedium.
 
 use crate::hir::def::Namespace;
 use crate::mir::ProjectionKind;
@@ -776,27 +775,6 @@ impl<'a, 'tcx> Lift<'tcx> for ty::InstanceDef<'a> {
             ty::InstanceDef::CloneShim(def_id, ref ty) =>
                 Some(ty::InstanceDef::CloneShim(def_id, tcx.lift(ty)?)),
         }
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for ty::TypeAndMut<'a> {
-        type Lifted = ty::TypeAndMut<'tcx>;
-        ty, mutbl
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for ty::Instance<'a> {
-        type Lifted = ty::Instance<'tcx>;
-        def, substs
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for interpret::GlobalId<'a> {
-        type Lifted = interpret::GlobalId<'tcx>;
-        instance, promoted
     }
 }
 

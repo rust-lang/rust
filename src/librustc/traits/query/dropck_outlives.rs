@@ -79,7 +79,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
     }
 }
 
-#[derive(Clone, Debug, Default, TypeFoldable)]
+#[derive(Clone, Debug, Default, TypeFoldable, Lift)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
@@ -152,13 +152,6 @@ impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
         result
     }
 }
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for DropckOutlivesResult<'a> {
-        type Lifted = DropckOutlivesResult<'tcx>;
-        kinds, overflows
-    }
-}
-
 impl_stable_hash_for!(struct DropckOutlivesResult<'tcx> {
     kinds, overflows
 });

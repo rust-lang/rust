@@ -124,7 +124,8 @@ use rustc_macros::HashStable;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 
 /// Uniquely identifies a specific constant or static.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, Lift)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.

@@ -254,25 +254,6 @@ macro_rules! CloneTypeFoldableAndLiftImpls {
 }
 
 #[macro_export]
-macro_rules! BraceStructLiftImpl {
-    (impl<$($p:tt),*> Lift<$tcx:tt> for $s:path {
-        type Lifted = $lifted:ty;
-        $($field:ident),* $(,)?
-    } $(where $($wc:tt)*)*) => {
-        impl<$($p),*> $crate::ty::Lift<$tcx> for $s
-            $(where $($wc)*)*
-        {
-            type Lifted = $lifted;
-
-            fn lift_to_tcx(&self, tcx: TyCtxt<$tcx>) -> Option<$lifted> {
-                $(let $field = tcx.lift(&self.$field)?;)*
-                Some(Self::Lifted { $($field),* })
-            }
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! EnumLiftImpl {
     (impl<$($p:tt),*> Lift<$tcx:tt> for $s:path {
         type Lifted = $lifted:ty;

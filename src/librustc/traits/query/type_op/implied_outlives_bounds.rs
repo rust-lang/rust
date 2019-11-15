@@ -3,7 +3,7 @@ use crate::traits::query::outlives_bounds::OutlivesBound;
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, Lift)]
 pub struct ImpliedOutlivesBounds<'tcx> {
     pub ty: Ty<'tcx>,
 }
@@ -37,13 +37,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
         });
 
         tcx.implied_outlives_bounds(canonicalized)
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for ImpliedOutlivesBounds<'a> {
-        type Lifted = ImpliedOutlivesBounds<'tcx>;
-        ty,
     }
 }
 
