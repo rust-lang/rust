@@ -85,7 +85,7 @@ pub unsafe trait SourceIter {
     /// and side-effects of the pipeline stages from affecting or relying on that storage.
     ///
     /// [`TrustedRandomAccess`]: trait.TrustedRandomAccess.html
-    /// [`next`]: trait.Iterator.html#method.next
+    /// [`next()`]: trait.Iterator.html#method.next
     fn as_inner(&mut self) -> &mut Self::Source;
 }
 
