@@ -23,7 +23,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 use crate::{
     adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
-    expr::{validation::ExprValidator, BindingAnnotation, Body, BodySourceMap, Pat, PatId},
+    expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     generics::{GenericDef, HasGenericParams},
     ids::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
