@@ -114,8 +114,6 @@ pub(crate) fn classify_name_ref(
     file_id: FileId,
     name_ref: &ast::NameRef,
 ) -> Option<NameDefinition> {
-    use PathResolution::*;
-
     let _p = profile("classify_name_ref");
 
     let parent = name_ref.syntax().parent()?;
@@ -163,26 +161,26 @@ pub(crate) fn classify_name_ref(
     let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = analyzer.resolve_path(db, &path)?;
     match resolved {
-        Def(def) => Some(from_module_def(db, def, Some(container))),
-        AssocItem(item) => Some(from_assoc_item(db, item)),
-        Local(local) => {
+        PathResolution::Def(def) => Some(from_module_def(db, def, Some(container))),
+        PathResolution::AssocItem(item) => Some(from_assoc_item(db, item)),
+        PathResolution::Local(local) => {
             let container = local.module(db);
             let kind = NameKind::Local(local);
             Some(NameDefinition { kind, container, visibility: None })
         }
-        GenericParam(par) => {
+        PathResolution::GenericParam(par) => {
             // FIXME: get generic param def
             let kind = NameKind::GenericParam(par);
             Some(NameDefinition { kind, container, visibility })
         }
-        Macro(def) => {
+        PathResolution::Macro(def) => {
             let kind = NameKind::Macro(def);
             Some(NameDefinition { kind, container, visibility })
         }
-        SelfType(impl_block) => {
+        PathResolution::SelfType(impl_block) => {
             let ty = impl_block.target_ty(db);
             let kind = NameKind::SelfType(ty);
-            let container = impl_block.module();
+            let container = impl_block.module(db);
             Some(NameDefinition { kind, container, visibility })
         }
     }

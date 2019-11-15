@@ -15,9 +15,8 @@ use crate::{
     db::{DefDatabase, HirDatabase},
     expr::{ExprScopes, PatId, ScopeId},
     generics::GenericParams,
-    impl_block::ImplBlock,
-    Adt, Const, DefWithBody, Enum, EnumVariant, Function, Local, MacroDef, ModuleDef, PerNs,
-    Static, Struct, Trait, TypeAlias,
+    Adt, Const, DefWithBody, Enum, EnumVariant, Function, ImplBlock, Local, MacroDef, ModuleDef,
+    PerNs, Static, Struct, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]

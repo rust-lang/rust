@@ -191,11 +191,11 @@ impl ToChalk for Impl {
     type Chalk = chalk_ir::ImplId;
 
     fn to_chalk(self, db: &impl HirDatabase) -> chalk_ir::ImplId {
-        db.intern_impl(self).into()
+        db.intern_chalk_impl(self).into()
     }
 
     fn from_chalk(db: &impl HirDatabase, impl_id: chalk_ir::ImplId) -> Impl {
-        db.lookup_intern_impl(impl_id.into())
+        db.lookup_intern_chalk_impl(impl_id.into())
     }
 }
 
@@ -630,7 +630,7 @@ fn impl_block_datum(
         .target_trait_ref(db)
         .expect("FIXME handle unresolved impl block trait ref")
         .subst(&bound_vars);
-    let impl_type = if impl_block.module().krate() == krate {
+    let impl_type = if impl_block.krate(db) == krate {
         chalk_rust_ir::ImplType::Local
     } else {
         chalk_rust_ir::ImplType::External

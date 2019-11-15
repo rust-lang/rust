@@ -8,30 +8,32 @@ use ra_syntax::ast;
 use crate::{
     adt::{EnumData, StructData},
     body::{scope::ExprScopes, Body, BodySourceMap},
+    imp::ImplData,
     nameres::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    DefWithBodyId, EnumId, StructOrUnionId,
+    DefWithBodyId, EnumId, ImplId, ItemLoc, StructOrUnionId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
-    fn intern_function(&self, loc: crate::ItemLoc<ast::FnDef>) -> crate::FunctionId;
+    fn intern_function(&self, loc: ItemLoc<ast::FnDef>) -> crate::FunctionId;
     #[salsa::interned]
-    fn intern_struct_or_union(&self, loc: crate::ItemLoc<ast::StructDef>)
-        -> crate::StructOrUnionId;
+    fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> crate::StructOrUnionId;
     #[salsa::interned]
-    fn intern_enum(&self, loc: crate::ItemLoc<ast::EnumDef>) -> crate::EnumId;
+    fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> crate::EnumId;
     #[salsa::interned]
-    fn intern_const(&self, loc: crate::ItemLoc<ast::ConstDef>) -> crate::ConstId;
+    fn intern_const(&self, loc: ItemLoc<ast::ConstDef>) -> crate::ConstId;
     #[salsa::interned]
-    fn intern_static(&self, loc: crate::ItemLoc<ast::StaticDef>) -> crate::StaticId;
+    fn intern_static(&self, loc: ItemLoc<ast::StaticDef>) -> crate::StaticId;
     #[salsa::interned]
-    fn intern_trait(&self, loc: crate::ItemLoc<ast::TraitDef>) -> crate::TraitId;
+    fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> crate::TraitId;
     #[salsa::interned]
-    fn intern_type_alias(&self, loc: crate::ItemLoc<ast::TypeAliasDef>) -> crate::TypeAliasId;
+    fn intern_type_alias(&self, loc: ItemLoc<ast::TypeAliasDef>) -> crate::TypeAliasId;
+    #[salsa::interned]
+    fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> crate::ImplId;
 }
 
 #[salsa::query_group(DefDatabase2Storage)]
@@ -53,6 +55,9 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
+
+    #[salsa::invoke(ImplData::impl_data_query)]
+    fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);

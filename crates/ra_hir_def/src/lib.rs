@@ -13,6 +13,7 @@ pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
 pub mod adt;
+pub mod imp;
 pub mod diagnostics;
 pub mod expr;
 pub mod body;
@@ -321,6 +322,18 @@ impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImplId(salsa::InternId);
+impl_intern_key!(ImplId);
+impl AstItemDef<ast::ImplBlock> for ImplId {
+    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::ImplBlock>) -> Self {
+        db.intern_impl(loc)
+    }
+    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::ImplBlock> {
+        db.lookup_intern_impl(self)
+    }
+}
+
 macro_rules! impl_froms {
     ($e:ident: $($v:ident $(($($sv:ident),*))?),*) => {
         $(
@@ -384,3 +397,15 @@ pub enum DefWithBodyId {
 }
 
 impl_froms!(DefWithBodyId: FunctionId, ConstId, StaticId);
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum AssocItemId {
+    FunctionId(FunctionId),
+    ConstId(ConstId),
+    TypeAliasId(TypeAliasId),
+}
+// FIXME: not every function, ... is actually an assoc item. maybe we should make
+// sure that you can only turn actual assoc items into AssocItemIds. This would
+// require not implementing From, and instead having some checked way of
+// casting them, and somehow making the constructors private, which would be annoying.
+impl_froms!(AssocItemId: FunctionId, ConstId, TypeAliasId);

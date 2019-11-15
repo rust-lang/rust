@@ -54,12 +54,11 @@ mod test_db;
 #[cfg(test)]
 mod marks;
 
-use hir_expand::AstId;
-
-use crate::{ids::MacroFileKind, resolve::Resolver};
+use crate::resolve::Resolver;
 
 pub use crate::{
     adt::VariantDef,
+    code_model::ImplBlock,
     code_model::{
         attrs::{AttrDef, Attrs},
         docs::{DocDef, Docs, Documentation},
@@ -72,7 +71,6 @@ pub use crate::{
     from_source::FromSource,
     generics::GenericDef,
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
-    impl_block::ImplBlock,
     resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{

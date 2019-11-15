@@ -25,7 +25,7 @@ impl LangItemTarget {
         Some(match self {
             LangItemTarget::Enum(e) => e.module(db).krate(),
             LangItemTarget::Function(f) => f.module(db).krate(),
-            LangItemTarget::ImplBlock(i) => i.module().krate(),
+            LangItemTarget::ImplBlock(i) => i.krate(db),
             LangItemTarget::Static(s) => s.module(db).krate(),
             LangItemTarget::Struct(s) => s.module(db).krate(),
             LangItemTarget::Trait(t) => t.module(db).krate(),
