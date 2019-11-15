@@ -1255,19 +1255,6 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer ibox
             }
-            ast::ItemKind::OpaqueTy(ref bounds, ref generics) => {
-                self.head(visibility_qualified(&item.vis, "type"));
-                self.print_ident(item.ident);
-                self.word_space("= impl");
-                self.print_generic_params(&generics.params);
-                self.end(); // end the inner ibox
-
-                self.print_where_clause(&generics.where_clause);
-                self.s.space();
-                self.print_type_bounds(":", bounds);
-                self.s.word(";");
-                self.end(); // end the outer ibox
-            }
             ast::ItemKind::Enum(ref enum_definition, ref params) => {
                 self.print_enum_def(
                     enum_definition,
@@ -1619,13 +1606,6 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
-            }
-            ast::ImplItemKind::OpaqueTy(ref bounds) => {
-                self.word_space("type");
-                self.print_ident(ii.ident);
-                self.word_space("= impl");
-                self.print_type_bounds(":", bounds);
-                self.s.word(";");
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);

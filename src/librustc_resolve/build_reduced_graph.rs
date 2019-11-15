@@ -701,13 +701,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(..) => {
-                let res = Res::Def(DefKind::TyAlias, self.r.definitions.local_def_id(item.id));
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
-            }
-
-            ItemKind::OpaqueTy(_, _) => {
-                let res = Res::Def(DefKind::OpaqueTy, self.r.definitions.local_def_id(item.id));
+            ItemKind::TyAlias(ref ty, _) => {
+                let def_kind = match ty.kind.opaque_top_hack() {
+                    None => DefKind::TyAlias,
+                    Some(_) => DefKind::OpaqueTy,
+                };
+                let res = Res::Def(def_kind, self.r.definitions.local_def_id(item.id));
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 

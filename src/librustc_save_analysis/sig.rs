@@ -447,16 +447,6 @@ impl Sig for ast::Item {
 
                 Ok(merge_sigs(sig.text.clone(), vec![sig, ty]))
             }
-            ast::ItemKind::OpaqueTy(ref bounds, ref generics) => {
-                let text = "type ".to_owned();
-                let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
-
-                sig.text.push_str(" = impl ");
-                sig.text.push_str(&pprust::bounds_to_string(bounds));
-                sig.text.push(';');
-
-                Ok(sig)
-            }
             ast::ItemKind::Enum(_, ref generics) => {
                 let text = "enum ".to_owned();
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
