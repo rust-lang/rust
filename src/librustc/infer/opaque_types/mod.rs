@@ -25,7 +25,7 @@ pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 #[derive(Copy, Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
 
-    /// The opaque type (`ty::Opaque`) for this declaration
+    /// The opaque type (`ty::Opaque`) for this declaration.
     pub opaque_type: Ty<'tcx>,
 
     /// The substitutions that we apply to the opaque type that this

@@ -232,7 +232,7 @@ pub struct Inherited<'a, 'tcx> {
     opaque_types: RefCell<DefIdMap<OpaqueTypeDecl<'tcx>>>,
 
     /// A map from inference variables created from opaque
-    /// type instantiations (ty::Infer) to the actual opaque
+    /// type instantiations (`ty::Infer`) to the actual opaque
     /// type (`ty::Opaque`). Used during fallback to map unconstrained
     /// opaque type inference variables to their corresponding
     /// opaque type.
@@ -950,7 +950,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         // better error messages.
         // The first time, we do *not* replace opaque types.
         for ty in &fcx.unsolved_variables() {
-            fallback_has_occurred |= fcx.fallback_if_possible(ty, false /* opaque_fallback */);
+            fallback_has_occurred |= fcx.fallback_if_possible(ty, FallbackMode::NoOpaque);
         }
         // We now see if we can make progress. This might
         // cause us to unify inference variables for opaque types,
@@ -968,7 +968,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         // ```
         //
         // we want to unify the opaque inference variable in `bad_produce`
-        // with the diverging fallback for `panic!` (e.g. `()` or `!`),
+        // with the diverging fallback for `panic!` (e.g. `()` or `!`).
         // This will produce a nice error message about conflicting concrete
         // types for `MyType`.
         //
@@ -981,10 +981,10 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
         // unconstrained opaque type variables, in addition to performing
         // other kinds of fallback.
         for ty in &fcx.unsolved_variables() {
-            fallback_has_occurred |= fcx.fallback_if_possible(ty, true /* opaque_fallback */);
+            fallback_has_occurred |= fcx.fallback_if_possible(ty, FallbackMode::All);
         }
 
-        // See if we can make any more progress
+        // See if we can make any more progress.
         fcx.select_obligations_where_possible(fallback_has_occurred, |_| {});
 
         // Even though coercion casts provide type hints, we check casts after fallback for
@@ -2544,6 +2544,16 @@ enum TupleArgumentsFlag {
     TupleArguments,
 }
 
+/// Controls how we perform fallback for unconstrained
+/// type variables.
+enum FallbackMode {
+    /// Do not fallback type variables to opaque types.
+    NoOpaque,
+    /// Perform all possible kinds of fallback, including
+    /// turning type variables to opaque types.
+    All,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn new(
         inh: &'a Inherited<'a, 'tcx>,
@@ -3125,7 +3135,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // Fallback becomes very dubious if we have encountered type-checking errors.
     // In that case, fallback to Error.
     // The return value indicates whether fallback has occurred.
-    fn fallback_if_possible(&self, ty: Ty<'tcx>, opaque_fallback: bool) -> bool {
+    fn fallback_if_possible(&self, ty: Ty<'tcx>, mode: FallbackMode) -> bool {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
@@ -3170,7 +3180,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // instantiating `Option<Foo>` will be completely unconstrained.
                 // We treat this as a non-defining use by making the inference
                 // variable fall back to the opaque type itself.
-                if opaque_fallback {
+                if let FallbackMode::All = mode {
                     if let Some(opaque_ty) = self.opaque_types_vars.borrow().get(ty) {
                         debug!("fallback_if_possible: falling back opaque type var {:?} to {:?}",
                                ty, opaque_ty);
