@@ -1,2 +1,2 @@
+* text=auto eol=lf
 crates/ra_syntax/test_data/** -text eof=LF
-crates/ra_ide_api/src/snapshots/** -text eof=LF
