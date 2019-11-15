@@ -82,14 +82,8 @@ impl FromSource for TypeAlias {
 impl FromSource for ImplBlock {
     type Ast = ast::ImplBlock;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let module_src = crate::ModuleSource::from_child_node(
-            db,
-            src.file_id.original_file(db),
-            &src.ast.syntax(),
-        );
-        let module = Module::from_definition(db, Source { file_id: src.file_id, ast: module_src })?;
-        let impls = module.impl_blocks(db);
-        impls.into_iter().find(|b| b.source(db) == src)
+        let id = from_source(db, src)?;
+        Some(ImplBlock { id })
     }
 }
 
