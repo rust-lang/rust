@@ -28,6 +28,7 @@ pub struct RawItems {
     imports: Arena<ImportId, ImportData>,
     defs: Arena<Def, DefData>,
     macros: Arena<Macro, MacroData>,
+    impls: Arena<Impl, ImplData>,
     /// items for top-level module
     items: Vec<RawItem>,
 }
@@ -121,6 +122,13 @@ impl Index<Macro> for RawItems {
     }
 }
 
+impl Index<Impl> for RawItems {
+    type Output = ImplData;
+    fn index(&self, idx: Impl) -> &ImplData {
+        &self.impls[idx]
+    }
+}
+
 // Avoid heap allocation on items without attributes.
 type Attrs = Option<Arc<[Attr]>>;
 
@@ -142,6 +150,7 @@ pub(super) enum RawItemKind {
     Import(ImportId),
     Def(Def),
     Macro(Macro),
+    Impl(Impl),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -203,6 +212,15 @@ pub(super) struct MacroData {
     pub(super) builtin: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(super) struct Impl(RawId);
+impl_arena_id!(Impl);
+
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct ImplData {
+    pub(super) ast_id: FileAstId<ast::ImplBlock>,
+}
+
 struct RawItemsCollector {
     raw_items: RawItems,
     source_ast_id_map: Arc<AstIdMap>,
@@ -236,8 +254,8 @@ impl RawItemsCollector {
                 self.add_extern_crate_item(current_module, extern_crate);
                 return;
             }
-            ast::ModuleItem::ImplBlock(_) => {
-                // impls don't participate in name resolution
+            ast::ModuleItem::ImplBlock(it) => {
+                self.add_impl(current_module, it);
                 return;
             }
             ast::ModuleItem::StructDef(it) => {
@@ -374,6 +392,13 @@ impl RawItemsCollector {
 
         let m = self.raw_items.macros.alloc(MacroData { ast_id, path, name, export, builtin });
         self.push_item(current_module, attrs, RawItemKind::Macro(m));
+    }
+
+    fn add_impl(&mut self, current_module: Option<Module>, imp: ast::ImplBlock) {
+        let attrs = self.parse_attrs(&imp);
+        let ast_id = self.source_ast_id_map.ast_id(&imp);
+        let imp = self.raw_items.impls.alloc(ImplData { ast_id });
+        self.push_item(current_module, attrs, RawItemKind::Impl(imp))
     }
 
     fn push_import(

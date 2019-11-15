@@ -73,7 +73,7 @@ use crate::{
         diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs, raw::ImportId,
     },
     path::Path,
-    AstId, CrateModuleId, FunctionId, ModuleDefId, ModuleId, TraitId,
+    AstId, CrateModuleId, FunctionId, ImplId, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -122,6 +122,7 @@ pub struct ModuleData {
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
     pub definition: Option<FileId>,
+    pub impls: Vec<ImplId>,
 }
 
 #[derive(Default, Debug, PartialEq, Eq, Clone)]

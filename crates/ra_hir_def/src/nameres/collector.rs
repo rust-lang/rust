@@ -19,7 +19,7 @@ use crate::{
         per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
-    AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionId,
+    AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionId, ImplId,
     LocationCtx, ModuleDefId, ModuleId, StaticId, StructId, StructOrUnionId, TraitId, TypeAliasId,
     UnionId,
 };
@@ -571,6 +571,15 @@ where
                         .push((self.module_id, import_id, self.raw_items[import_id].clone())),
                     raw::RawItemKind::Def(def) => self.define_def(&self.raw_items[def]),
                     raw::RawItemKind::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
+                    raw::RawItemKind::Impl(imp) => {
+                        let module = ModuleId {
+                            krate: self.def_collector.def_map.krate,
+                            module_id: self.module_id,
+                        };
+                        let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
+                        let imp_id = ImplId::from_ast_id(ctx, self.raw_items[imp].ast_id);
+                        self.def_collector.def_map.modules[self.module_id].impls.push(imp_id)
+                    }
                 }
             }
         }
