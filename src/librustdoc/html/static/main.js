@@ -1081,14 +1081,13 @@ function getSearchElement() {
                 val = paths[paths.length - 1];
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
+                var lev;
+                var lev_distance;
                 for (j = 0; j < nSearchWords; ++j) {
-                    var lev;
-                    var lev_distance;
                     ty = searchIndex[j];
                     if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
                         continue;
                     }
-                    var lev_distance;
                     var lev_add = 0;
                     if (paths.length > 1) {
                         lev = checkPath(contains, paths[paths.length - 1], ty);
@@ -1633,7 +1632,7 @@ function getSearchElement() {
             }
 
             var filterCrates = getFilterCrates();
-            showResults(execSearch(query, index, filterCrates), filterCrates);
+            showResults(execSearch(query, index, filterCrates));
         }
 
         function buildIndex(rawSearchIndex) {
