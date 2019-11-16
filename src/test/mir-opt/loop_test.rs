@@ -18,27 +18,26 @@ fn main() {
 // END RUST SOURCE
 // START rustc.main.SimplifyCfg-qualify-consts.after.mir
 //    ...
-//    bb1 (cleanup): {
-//        resume;
-//    }
-//    ...
-//    bb3: { // Entry into the loop
+//    bb2: { // Entry into the loop
 //        _1 = ();
 //        StorageDead(_2);
 //        StorageDead(_1);
 //        StorageLive(_4);
-//        goto -> bb5;
+//        goto -> bb4;
 //    }
 //    ...
-//    bb5: { // The loop_block
-//        falseUnwind -> [real: bb6, cleanup: bb1];
+//    bb4: { // The loop_block
+//        falseUnwind -> [real: bb5, cleanup: bb6];
 //    }
-//    bb6: { // The loop body (body_block)
+//    bb5: { // The loop body (body_block)
 //        StorageLive(_6);
 //        _6 = const 1i32;
 //        FakeRead(ForLet, _6);
 //        StorageDead(_6);
-//        goto -> bb5;
+//        goto -> bb4;
+//    }
+//    bb6 (cleanup): {
+//        resume;
 //    }
 //    ...
 // END rustc.main.SimplifyCfg-qualify-consts.after.mir

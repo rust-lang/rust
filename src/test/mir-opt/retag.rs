@@ -65,12 +65,12 @@ fn main() {
 //     ...
 //     bb0: {
 //         ...
-//         _3 = const Test::foo(move _4, move _6) -> [return: bb2, unwind: bb3];
+//         _3 = const Test::foo(move _4, move _6) -> [return: bb1, unwind: bb7];
 //     }
 //
 //     ...
 //
-//     bb2: {
+//     bb1: {
 //         Retag(_3);
 //         ...
 //         _9 = move _3;
@@ -82,23 +82,25 @@ fn main() {
 //         _10 = move _8;
 //         Retag(_10);
 //         ...
-//         _12 = &raw mut (*_10);
+//         _13 = &mut (*_10);
+//         Retag(_13);
+//         _12 = move _13 as *mut i32 (Misc);
 //         Retag([raw] _12);
 //         ...
-//         _15 = move _16(move _17) -> bb5;
+//         _16 = move _17(move _18) -> bb3;
 //     }
 //
-//     bb5: {
-//         Retag(_15);
+//     bb3: {
+//         Retag(_16);
 //         ...
-//         _19 = const Test::foo_shr(move _20, move _22) -> [return: bb6, unwind: bb7];
+//         _20 = const Test::foo_shr(move _21, move _23) -> [return: bb4, unwind: bb6];
 //     }
 //
 //     ...
 // }
 // END rustc.main.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}#0(_1: &[closure@main::{{closure}}#0], _2: &i32) -> &i32 {
+// fn main::{{closure}}#0(_1: &[closure@HirId { owner: DefIndex(13), local_id: 72 }], _2: &i32) -> &i32 {
 //     ...
 //     bb0: {
 //         Retag([fn entry] _1);
@@ -113,8 +115,8 @@ fn main() {
 //     }
 // }
 // END rustc.main-{{closure}}.EraseRegions.after.mir
-// START rustc.ptr-drop_in_place.Test.SimplifyCfg-make_shim.after.mir
-// fn  std::intrinsics::drop_in_place(_1: *mut Test) -> () {
+// START rustc.ptr-real_drop_in_place.Test.SimplifyCfg-make_shim.after.mir
+// fn  std::ptr::real_drop_in_place(_1: &mut Test) -> () {
 //     ...
 //     bb0: {
 //         Retag([raw] _1);
@@ -126,4 +128,4 @@ fn main() {
 //         return;
 //     }
 // }
-// END rustc.ptr-drop_in_place.Test.SimplifyCfg-make_shim.after.mir
+// END rustc.ptr-real_drop_in_place.Test.SimplifyCfg-make_shim.after.mir

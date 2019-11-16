@@ -39,14 +39,14 @@ fn main() {
 //        StorageLive(_5);
 //        StorageLive(_6);
 //        _6 = move _4;
-//        replace(_5 <- move _6) -> [return: bb2, unwind: bb5];
+//        replace(_5 <- move _6) -> [return: bb1, unwind: bb5];
 //    }
 //    ...
-//    bb2: {
-//        drop(_6) -> [return: bb6, unwind: bb4];
+//    bb1: {
+//        drop(_6) -> [return: bb2, unwind: bb6];
 //    }
 //    ...
 //    bb5 (cleanup): {
-//        drop(_6) -> bb4;
+//        drop(_6) -> bb6;
 //    }
 // END rustc.main.SimplifyCfg-initial.after.mir

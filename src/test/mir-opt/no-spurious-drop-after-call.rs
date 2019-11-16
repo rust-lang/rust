@@ -10,11 +10,11 @@ fn main() {
 
 // END RUST SOURCE
 // START rustc.main.ElaborateDrops.before.mir
-//    bb2: {
+//    bb1: {
 //        StorageDead(_3);
-//        _1 = const std::mem::drop::<std::string::String>(move _2) -> [return: bb3, unwind: bb4];
+//        _1 = const std::mem::drop::<std::string::String>(move _2) -> [return: bb2, unwind: bb3];
 //    }
-//    bb3: {
+//    bb2: {
 //        StorageDead(_2);
 //        StorageDead(_4);
 //        StorageDead(_1);

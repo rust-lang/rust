@@ -37,23 +37,23 @@ impl Drop for Droppy {
 //         _6 = move (_1.0: Aligned);
 //         drop(_6) -> [return: bb4, unwind: bb3];
 //     }
-//     bb1 (cleanup): {
-//         resume;
-//     }
-//     bb2: {
+//     bb1: {
 //         StorageDead(_1);
 //         return;
 //     }
+//     bb2 (cleanup): {
+//         resume;
+//     }
 //     bb3 (cleanup): {
 //         (_1.0: Aligned) = move _4;
-//         drop(_1) -> bb1;
+//         drop(_1) -> bb2;
 //     }
 //     bb4: {
 //         StorageDead(_6);
 //         (_1.0: Aligned) = move _4;
 //         StorageDead(_4);
 //         _0 = ();
-//         drop(_1) -> [return: bb2, unwind: bb1];
+//         drop(_1) -> [return: bb1, unwind: bb2];
 //     }
 // }
 // END rustc.main.EraseRegions.before.mir

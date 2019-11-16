@@ -22,15 +22,15 @@ fn main() {
 //      _2 = (*_3);
 //      _1 = Add(move _2, const 0i32);
 //      ...
-//      drop(_3) -> [return: bb2, unwind: bb1];
+//      drop(_3) -> [return: bb1, unwind: bb2];
 //  }
-//  bb1 (cleanup): {
-//      resume;
-//  }
-//  bb2: {
+//  bb1: {
 //      ...
 //      _0 = ();
 //      ...
+//  }
+//  bb2 (cleanup): {
+//      resume;
 //  }
 // END rustc.main.ConstProp.before.mir
 // START rustc.main.ConstProp.after.mir
@@ -43,14 +43,14 @@ fn main() {
 //      _2 = (*_3);
 //      _1 = Add(move _2, const 0i32);
 //      ...
-//      drop(_3) -> [return: bb2, unwind: bb1];
+//      drop(_3) -> [return: bb1, unwind: bb2];
 //  }
-//  bb1 (cleanup): {
-//      resume;
-//  }
-//  bb2: {
+//  bb1: {
 //      ...
 //      _0 = ();
 //      ...
+//  }
+//  bb2 (cleanup): {
+//      resume;
 //  }
 // END rustc.main.ConstProp.after.mir

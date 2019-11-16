@@ -16,35 +16,35 @@ fn main() {
 //         StorageLive(_1);
 //         _1 = const false;
 //         FakeRead(ForLet, _1);
-//         goto -> bb2;
+//         goto -> bb1;
 //     }
-//     bb1 (cleanup): {
-//         resume;
+//     bb1: {
+//         falseUnwind -> [real: bb2, cleanup: bb6];
 //     }
 //     bb2: {
-//         falseUnwind -> [real: bb3, cleanup: bb1];
-//     }
-//     bb3: {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = _1;
 //         FakeRead(ForMatchedPlace, _4);
-//         switchInt(_4) -> [false: bb5, otherwise: bb4];
+//         switchInt(_4) -> [false: bb4, otherwise: bb3];
 //     }
 //     ...
-//     bb5: {
+//     bb4: {
 //         _3 = ();
 //         StorageDead(_4);
 //         StorageDead(_3);
 //         _1 = const true;
 //         _2 = ();
-//         goto -> bb2;
+//         goto -> bb1;
 //     }
-//     bb6: {
+//     bb5: {
 //         _0 = ();
 //         StorageDead(_4);
 //         StorageDead(_3);
 //         StorageDead(_1);
 //         return;
+//     }
+//     bb6 (cleanup): {
+//         resume;
 //     }
 // END rustc.main.SimplifyCfg-initial.after.mir
