@@ -72,9 +72,8 @@ fn parse_asm_str<'a>(p: &mut Parser<'a>) -> PResult<'a, Symbol> {
         Ok(str_lit) => Ok(str_lit.symbol_unescaped),
         Err(opt_lit) => {
             let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-            let msg = "expected string literal";
-            let mut err = p.sess.span_diagnostic.struct_span_fatal(span, msg);
-            err.span_label(span, msg);
+            let mut err = p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
+            err.span_label(span, "not a string literal");
             Err(err)
         }
     }

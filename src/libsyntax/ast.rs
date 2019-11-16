@@ -2448,10 +2448,7 @@ pub enum Extern {
 
 impl Extern {
     pub fn from_abi(abi: Option<StrLit>) -> Extern {
-        match abi {
-            Some(abi) => Extern::Explicit(abi),
-            None => Extern::Implicit,
-        }
+        abi.map_or(Extern::Implicit, Extern::Explicit)
     }
 }
 

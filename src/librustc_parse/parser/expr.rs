@@ -1073,6 +1073,9 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
+    /// Returns a string literal if the next token is a string literal.
+    /// In case of error returns `Some(lit)` if the next token is a literal with a wrong kind,
+    /// and returns `None` if the next token is not literal at all.
     pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<Lit>> {
         match self.parse_opt_lit() {
             Some(lit) => match lit.kind {
