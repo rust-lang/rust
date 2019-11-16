@@ -77,6 +77,12 @@ pub fn token_tree_to_syntax_node(
 }
 
 impl TokenMap {
+    pub fn token_by_offset(&self, relative_offset: TextUnit) -> Option<tt::TokenId> {
+        let (idx, _) =
+            self.tokens.iter().enumerate().find(|(_, range)| range.contains(relative_offset))?;
+        Some(tt::TokenId(idx as u32))
+    }
+
     pub fn relative_range_of(&self, tt: tt::TokenId) -> Option<TextRange> {
         let idx = tt.0 as usize;
         self.tokens.get(idx).copied()

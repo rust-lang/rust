@@ -11,7 +11,7 @@ use hir_def::{
     expr::{ExprId, PatId},
     path::known,
 };
-use hir_expand::{name::AsName, Source};
+use hir_expand::{name::AsName, AstId, MacroCallId, MacroCallLoc, MacroFileKind, Source};
 use ra_syntax::{
     ast::{self, AstNode},
     match_ast, AstPtr,
@@ -124,6 +124,20 @@ impl ScopeEntryWithSyntax {
 pub struct ReferenceDescriptor {
     pub range: TextRange,
     pub name: String,
+}
+
+pub struct Expansion {
+    macro_call_id: MacroCallId,
+}
+
+impl Expansion {
+    pub fn translate_offset(&self, db: &impl HirDatabase, offset: TextUnit) -> Option<TextUnit> {
+        let exp_info = self.file_id().expansion_info(db)?;
+        exp_info.translate_offset(offset)
+    }
+    pub fn file_id(&self) -> HirFileId {
+        self.macro_call_id.as_file(MacroFileKind::Items)
+    }
 }
 
 impl SourceAnalyzer {
@@ -384,6 +398,13 @@ impl SourceAnalyzer {
 
         let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
         implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
+    }
+
+    pub fn expand(&self, db: &impl HirDatabase, macro_call: &ast::MacroCall) -> Option<Expansion> {
+        let def = self.resolve_macro_call(db, macro_call)?.id;
+        let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(macro_call));
+        let macro_call_loc = MacroCallLoc { def, ast_id };
+        Some(Expansion { macro_call_id: db.intern_macro(macro_call_loc) })
     }
 
     #[cfg(test)]
