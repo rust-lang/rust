@@ -32,16 +32,11 @@ pub struct _TypeDescriptor {
     pub name: [u8; 11],
 }
 
-extern "C" {
-    #[link_name = "\x01??_7type_info@@6B@"]
-    static TYPE_INFO_VTABLE: *const u8;
-}
-
 const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 #[cfg_attr(not(test), lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
-    pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
+    pVFTable: core::ptr::null(),
     spare: core::ptr::null_mut(),
     name: TYPE_NAME,
 };
