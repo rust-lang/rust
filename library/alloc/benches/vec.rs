@@ -440,10 +440,11 @@ macro_rules! bench_in_place {
             #[bench]
             fn $fname(b: &mut Bencher) {
                 b.iter(|| {
-                    let src: Vec<$type> = vec![$init; $count];
-                    black_box(src.into_iter()
+                    let src: Vec<$type> = black_box(vec![$init; $count]);
+                    let mut sink = src.into_iter()
                         .enumerate()
-                        .map(|(idx, e)| { (idx as $type) ^ e }).collect::<Vec<$type>>())
+                        .map(|(idx, e)| { (idx as $type) ^ e }).collect::<Vec<$type>>();
+                    black_box(sink.as_mut_ptr())
                 });
             }
         )+
