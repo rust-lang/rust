@@ -2112,8 +2112,8 @@ impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
         // has not been advanced at all.
         if iterator.buf.as_ptr() as *const _ == iterator.ptr {
             unsafe {
+                let iterator = mem::ManuallyDrop::new(iterator);
                 let vec = Vec::from_raw_parts(iterator.buf.as_ptr(), iterator.len(), iterator.cap);
-                mem::forget(iterator);
                 return vec;
             }
         }
