@@ -520,7 +520,7 @@ public:
         return ret;
     } else {
       assert(malloc);
-      assert(!isa<PHINode>(malloc));
+      //assert(!isa<PHINode>(malloc));
 
       if (isa<UndefValue>(malloc)) {
         addedMallocs.push_back(malloc);
@@ -698,9 +698,12 @@ public:
           if (this->invertedPointers.find(inst) != this->invertedPointers.end()) {
               continue;
           }
+          
+          if (inst->getType()->isEmptyTy()) continue;
 
-          if (LoadInst* li = dyn_cast<LoadInst>(inst)) {
-              if (!li->getType()->isPointerTy()) continue;
+          if (inst->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
+
+          if (isa<LoadInst>(inst)) {
               IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
               BuilderZ.setFastMathFlags(getFast());
               this->invertedPointers[inst] = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
@@ -727,9 +730,6 @@ public:
               continue;
           }
 
-          if (op->getType()->isEmptyTy()) continue;
-
-          if (op->getType()->isFPOrFPVectorTy()) continue; //!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
           //if (!op->getType()->isPointerTy() && !op->getType()->isIntegerTy()) {
           //    continue;
           //}

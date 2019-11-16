@@ -53,12 +53,12 @@ attributes #2 = { nounwind }
 ; CHECK: define internal {{(dso_local )?}}{} @diffestore(double** nocapture readonly %x, double** %"x'", double** nocapture %y, double** %"y'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:   %0 = bitcast double** %x to i64*
-; CHECK-NEXT:   %"'ipc" = bitcast double** %"x'" to i64*
-; CHECK-NEXT:   %"'ipl" = load i64, i64* %"'ipc"
+; CHECK-NEXT:   %[[ipc:.+]] = bitcast double** %"x'" to i64*
+; CHECK-NEXT:   %"'ipl" = load i64, i64* %[[ipc]]
 ; CHECK-NEXT:   %1 = load i64, i64* %0
 ; CHECK-NEXT:   %2 = bitcast double** %y to i64*
-; CHECK-NEXT:   %"'ipc1" = bitcast double** %"y'" to i64*
-; CHECK-NEXT:   store i64 %"'ipl", i64* %"'ipc1"
+; CHECK-NEXT:   %[[ipc2:.+]] = bitcast double** %"y'" to i64*
+; CHECK-NEXT:   store i64 %"'ipl", i64* %[[ipc2]]
 ; CHECK-NEXT:   store i64 %1, i64* %2
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }

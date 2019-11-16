@@ -778,38 +778,29 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 gutils->erase(op);
         } else if(LoadInst* li = dyn_cast<LoadInst>(inst)) {
 
+         //! Store loads that need to be cached for use in reverse pass
          if (can_modref_map[inst]) {
             IRBuilder<> BuilderZ(li);
             gutils->addMalloc(BuilderZ, li);
-
-			if (inst->getType()->isPointerTy()) {
-          	  PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
-              assert(placeholder->getType() == inst->getType());
-          	  gutils->invertedPointers.erase(inst);
-            
-			  if (!gutils->isConstantValue(inst)) {
-              	auto pt = gutils->invertPointerM(inst, BuilderZ);
-                assert(pt->getType() == inst->getType());
-                llvm::errs() << "[" << gutils->newFunc->getName() << "] adding inverse malloc for: " << *inst << "\n";
-                gutils->addMalloc(BuilderZ, pt);
-                placeholder->replaceAllUsesWith(pt);
-              }
-			  gutils->erase(placeholder);
-            }
-         } else {
-	  	   if (inst->getType()->isPointerTy()) {
-             PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
-             assert(placeholder->getType() == inst->getType());
-             gutils->invertedPointers.erase(inst);
-             IRBuilder<> BuilderZ(placeholder);
-	   	     if (!gutils->isConstantValue(inst)) {
-               auto pt = gutils->invertPointerM(inst, BuilderZ);
-               assert(pt->getType() == inst->getType());
-               placeholder->replaceAllUsesWith(pt);
-		     }
-		     gutils->erase(placeholder);
-		   }
          }
+
+         //! Store inverted pointer loads that need to be cached for use in reverse pass
+         if (!inst->getType()->isEmptyTy() && !inst->getType()->isFPOrFPVectorTy()) {
+            PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
+            assert(placeholder->getType() == inst->getType());
+            gutils->invertedPointers.erase(inst);
+        
+            if (!gutils->isConstantValue(inst)) {
+              IRBuilder<> BuilderZ(placeholder);
+              auto pt = gutils->invertPointerM(inst, BuilderZ);
+              assert(pt->getType() == inst->getType());
+              if (can_modref_map[inst]) {
+                gutils->addMalloc(BuilderZ, pt);
+              }
+              placeholder->replaceAllUsesWith(pt);
+            }
+            gutils->erase(placeholder);
+          }
 
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
@@ -2560,14 +2551,18 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (can_modref_map[inst]) {
         IRBuilder<> BuilderZ(op->getNextNode());
         inst = cast<Instruction>(gutils->addMalloc(BuilderZ, inst));
-	  	if (op_type->isPointerTy()) {
+	  	if (!op_type->isEmptyTy() && !op_type->isFPOrFPVectorTy()) {
           PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
           gutils->invertedPointers.erase(inst);
 		  if (!op_valconstant) {
             IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
             auto newip = gutils->addMalloc(BuilderZ, placeholder);
-            llvm::errs() << "[" << gutils->newFunc->getName() << "] retreiving inverse malloc for: " << *inst << "\n";
-            gutils->invertedPointers[inst] = newip;
+            if (topLevel) {
+                placeholder->replaceAllUsesWith(gutils->invertPointerM(inst, BuilderZ));
+			    gutils->erase(placeholder);
+            } else {
+                gutils->invertedPointers[inst] = newip;
+            }
 		  } else {
 			gutils->erase(placeholder);
 		  }
@@ -2587,8 +2582,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
           assert(inst->getType() == op_type);
         }
       } else {
-	  	if (op_type->isPointerTy()) {
+	  	if (!op_type->isEmptyTy() && !op_type->isFPOrFPVectorTy()) {
           PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
+
           gutils->invertedPointers.erase(inst);
           IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
 		  if (!op_valconstant) {
