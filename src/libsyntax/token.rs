@@ -15,6 +15,7 @@ use syntax_pos::{self, Span, DUMMY_SP};
 use std::fmt;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::HashStable_Generic;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BinOpToken {

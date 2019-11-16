@@ -9,6 +9,7 @@ use errors::{Applicability, Handler};
 use std::num::NonZeroU32;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
+use rustc_macros::HashStable_Generic;
 
 use super::{mark_used, MetaItemKind};
 

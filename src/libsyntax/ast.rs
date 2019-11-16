@@ -37,6 +37,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
+use rustc_macros::HashStable_Generic;
 
 use std::fmt;
 
