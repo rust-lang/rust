@@ -2126,23 +2126,23 @@ where
     }
 }
 
-struct InPlaceIterFront<T> {
+struct InPlaceDrop<T> {
     inner: *mut T,
     dst: *mut T,
     did_panic: bool,
 }
 
-impl<T> InPlaceIterFront<T> {
+impl<T> InPlaceDrop<T> {
     unsafe fn len(&self) -> usize {
         self.dst.offset_from(self.inner) as usize
     }
 }
 
-impl<T> Drop for InPlaceIterFront<T> {
+impl<T> Drop for InPlaceDrop<T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            if mem::needs_drop::<T>() && self.did_panic {
+            if self.did_panic {
                 ptr::drop_in_place(slice::from_raw_parts_mut(self.inner, self.len()) as *mut _);
             }
         }
@@ -2153,31 +2153,61 @@ fn from_into_iter_source<T, I>(mut iterator: I) -> Vec<T>
 where
     I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
 {
-    let original_ptr = iterator.as_inner().buf.as_ptr();
-    let mut front_buffer =
-        InPlaceIterFront { inner: original_ptr, dst: original_ptr, did_panic: true };
+    let src_buf = iterator.as_inner().buf.as_ptr();
+    let src_end = iterator.as_inner().end;
+    let dst = src_buf;
 
-    while let Some(item) = iterator.next() {
-        let source_iter = iterator.as_inner();
-        debug_assert_eq!(original_ptr, source_iter.buf.as_ptr());
-        unsafe {
-            debug_assert!(
-                front_buffer.dst as *const _ < source_iter.ptr,
-                "InPlaceIterable implementation produced more\
-                          items than it consumed from the source"
-            );
-            ptr::write(front_buffer.dst, item);
-            front_buffer.dst = front_buffer.dst.add(1);
-        }
-    }
+    let dst = if mem::needs_drop::<T>() {
+        // special-case drop handling since it prevents vectorization
+        let mut sink = InPlaceDrop { inner: src_buf, dst, did_panic: true };
+        let _ = iterator.try_for_each::<_, Result<_, !>>(|item| {
+            unsafe {
+                debug_assert!(
+                    sink.dst as *const _ <= src_end,
+                    "InPlaceIterable contract violation"
+                );
+                ptr::write(sink.dst, item);
+                sink.dst = sink.dst.add(1);
+            }
+            Ok(())
+        });
+        sink.did_panic = false;
+        sink.dst
+    } else {
+        // use try-fold since it vectorizes better, does not take ownership and lets us thread the
+        // write pointer through its innards
+        iterator
+            .try_fold::<_, _, Result<_, !>>(dst, move |mut dst, item| {
+                unsafe {
+                    // the InPlaceIterable contract cannot be verified precisely here since
+                    // try_fold has an exclusive reference to the source pointer
+                    // all we can do is check if it's still in range
+                    debug_assert!(dst as *const _ <= src_end, "InPlaceIterable contract violation");
+                    ptr::write(dst, item);
+                    dst = dst.add(1);
+                }
+                Ok(dst)
+            })
+            .unwrap()
+    };
 
     let src = iterator.as_inner();
-    front_buffer.did_panic = false;
-    let vec = unsafe { Vec::from_raw_parts(src.buf.as_ptr(), front_buffer.len(), src.cap) };
+    // check if SourceIter and InPlaceIterable contracts were upheld.
+    // but if they weren't we may not even make it to this point
+    debug_assert_eq!(src_buf, src.buf.as_ptr());
+    debug_assert!(dst as *const _ <= src.ptr, "InPlaceIterable contract violation");
+
+    let vec = unsafe {
+        let len = dst.offset_from(src_buf) as usize;
+        Vec::from_raw_parts(src.buf.as_ptr(), len, src.cap)
+    };
+    // prevent drop of the underlying storage by turning the IntoIter into
+    // the equivalent of Vec::new().into_iter()
     src.cap = 0;
     src.buf = unsafe { NonNull::new_unchecked(RawVec::NEW.ptr()) };
     src.ptr = src.buf.as_ptr();
     src.end = src.buf.as_ptr();
+
     vec
 }
 
