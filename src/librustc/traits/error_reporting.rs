@@ -22,7 +22,7 @@ use crate::hir;
 use crate::hir::Node;
 use crate::hir::def_id::DefId;
 use crate::infer::{self, InferCtxt};
-use crate::infer::error_reporting::TypeAnnotationNeeded::*;
+use crate::infer::error_reporting::TypeAnnotationNeeded as ErrorCode;
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::session::DiagnosticMessageId;
 use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
@@ -1989,10 +1989,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if self.tcx.lang_items().sized_trait()
                     .map_or(false, |sized_id| sized_id == trait_ref.def_id())
                 {
-                    self.need_type_info_err(body_id, span, self_ty, E0282).emit();
+                    self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0282).emit();
                     return;
                 }
-                let mut err = self.need_type_info_err(body_id, span, self_ty, E0283);
+                let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0283);
                 err.note(&format!("cannot resolve `{}`", predicate));
                 err
             }
@@ -2003,7 +2003,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if ty.references_error() || self.tcx.sess.has_errors() {
                     return;
                 }
-                self.need_type_info_err(body_id, span, ty, E0282)
+                self.need_type_info_err(body_id, span, ty, ErrorCode::E0282)
             }
 
             ty::Predicate::Subtype(ref data) => {
@@ -2014,7 +2014,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
                 // both must be type variables, or the other would've been instantiated
                 assert!(a.is_ty_var() && b.is_ty_var());
-                self.need_type_info_err(body_id, span, a, E0282)
+                self.need_type_info_err(body_id, span, a, ErrorCode::E0282)
             }
             ty::Predicate::Projection(ref data) => {
                 let trait_ref = data.to_poly_trait_ref(self.tcx);
@@ -2022,7 +2022,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if predicate.references_error() {
                     return;
                 }
-                let mut err = self.need_type_info_err(body_id, span, self_ty, E0284);
+                let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0284);
                 err.note(&format!("cannot resolve `{}`", predicate));
                 err
             }
