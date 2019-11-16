@@ -165,9 +165,9 @@ impl TypeWalk for ProjectionPredicate {
         self.ty.walk(f);
     }
 
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        self.projection_ty.walk_mut(f);
-        self.ty.walk_mut(f);
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+        self.projection_ty.walk_mut_binders(f, binders);
+        self.ty.walk_mut_binders(f, binders);
     }
 }
 
@@ -188,6 +188,7 @@ pub(crate) fn trait_solve_query(
     }
 
     let canonical = goal.to_chalk(db).cast();
+
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };

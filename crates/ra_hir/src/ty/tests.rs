@@ -4185,6 +4185,49 @@ fn test<T: Trait<Type = u32>>(x: T, y: impl Trait<Type = i64>) {
 }
 
 #[test]
+fn impl_trait_assoc_binding_projection_bug() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+pub trait Language {
+    type Kind;
+}
+pub enum RustLanguage {}
+impl Language for RustLanguage {
+    type Kind = SyntaxKind;
+}
+struct SyntaxNode<L> {}
+fn foo() -> impl Iterator<Item = SyntaxNode<RustLanguage>> {}
+
+trait Clone {
+    fn clone(&self) -> Self;
+}
+
+fn api_walkthrough() {
+    for node in foo() {
+        node.clone()<|>;
+    }
+}
+
+//- /std.rs crate:std
+#[prelude_import] use iter::*;
+mod iter {
+    trait IntoIterator {
+        type Item;
+    }
+    trait Iterator {
+        type Item;
+    }
+    impl<T: Iterator> IntoIterator for T {
+        type Item = <T as Iterator>::Item;
+    }
+}
+"#,
+    );
+    assert_eq!("{unknown}", type_at_pos(&db, pos));
+}
+
+#[test]
 fn projection_eq_within_chalk() {
     // std::env::set_var("CHALK_DEBUG", "1");
     assert_snapshot!(

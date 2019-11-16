@@ -224,8 +224,8 @@ impl TypeWalk for ProjectionTy {
         self.parameters.walk(f);
     }
 
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        self.parameters.walk_mut(f);
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+        self.parameters.walk_mut_binders(f, binders);
     }
 }
 
@@ -291,6 +291,20 @@ pub enum Ty {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct Substs(Arc<[Ty]>);
 
+impl TypeWalk for Substs {
+    fn walk(&self, f: &mut impl FnMut(&Ty)) {
+        for t in self.0.iter() {
+            t.walk(f);
+        }
+    }
+
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+        for t in make_mut_slice(&mut self.0) {
+            t.walk_mut_binders(f, binders);
+        }
+    }
+}
+
 impl Substs {
     pub fn empty() -> Substs {
         Substs(Arc::new([]))
@@ -302,18 +316,6 @@ impl Substs {
 
     pub fn prefix(&self, n: usize) -> Substs {
         Substs(self.0[..std::cmp::min(self.0.len(), n)].into())
-    }
-
-    pub fn walk(&self, f: &mut impl FnMut(&Ty)) {
-        for t in self.0.iter() {
-            t.walk(f);
-        }
-    }
-
-    pub fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        for t in make_mut_slice(&mut self.0) {
-            t.walk_mut(f);
-        }
     }
 
     pub fn as_single(&self) -> &Ty {
@@ -440,8 +442,8 @@ impl TypeWalk for TraitRef {
         self.substs.walk(f);
     }
 
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        self.substs.walk_mut(f);
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+        self.substs.walk_mut_binders(f, binders);
     }
 }
 
@@ -491,10 +493,12 @@ impl TypeWalk for GenericPredicate {
         }
     }
 
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
         match self {
-            GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut(f),
-            GenericPredicate::Projection(projection_pred) => projection_pred.walk_mut(f),
+            GenericPredicate::Implemented(trait_ref) => trait_ref.walk_mut_binders(f, binders),
+            GenericPredicate::Projection(projection_pred) => {
+                projection_pred.walk_mut_binders(f, binders)
+            }
             GenericPredicate::Error => {}
         }
     }
@@ -544,9 +548,9 @@ impl TypeWalk for FnSig {
         }
     }
 
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
         for t in make_mut_slice(&mut self.params_and_return) {
-            t.walk_mut(f);
+            t.walk_mut_binders(f, binders);
         }
     }
 }
@@ -671,7 +675,20 @@ impl Ty {
 /// types, similar to Chalk's `Fold` trait.
 pub trait TypeWalk {
     fn walk(&self, f: &mut impl FnMut(&Ty));
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty));
+    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+        self.walk_mut_binders(&mut |ty, _binders| f(ty), 0);
+    }
+    /// Walk the type, counting entered binders.
+    ///
+    /// `Ty::Bound` variables use DeBruijn indexing, which means that 0 refers
+    /// to the innermost binder, 1 to the next, etc.. So when we want to
+    /// substitute a certain bound variable, we can't just walk the whole type
+    /// and blindly replace each instance of a certain index; when we 'enter'
+    /// things that introduce new bound variables, we have to keep track of
+    /// that. Currently, the only thing that introduces bound variables on our
+    /// side are `Ty::Dyn` and `Ty::Opaque`, which each introduce a bound
+    /// variable for the self type.
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize);
 
     fn fold(mut self, f: &mut impl FnMut(Ty) -> Ty) -> Self
     where
@@ -700,14 +717,22 @@ pub trait TypeWalk {
     }
 
     /// Substitutes `Ty::Bound` vars (as opposed to type parameters).
-    fn subst_bound_vars(self, substs: &Substs) -> Self
+    fn subst_bound_vars(mut self, substs: &Substs) -> Self
     where
         Self: Sized,
     {
-        self.fold(&mut |ty| match ty {
-            Ty::Bound(idx) => substs.get(idx as usize).cloned().unwrap_or_else(|| Ty::Bound(idx)),
-            ty => ty,
-        })
+        self.walk_mut_binders(
+            &mut |ty, binders| match ty {
+                &mut Ty::Bound(idx) => {
+                    if idx as usize >= binders && (idx as usize - binders) < substs.len() {
+                        *ty = substs.0[idx as usize - binders].clone();
+                    }
+                }
+                _ => {}
+            },
+            0,
+        );
+        self
     }
 
     /// Shifts up `Ty::Bound` vars by `n`.
@@ -748,22 +773,22 @@ impl TypeWalk for Ty {
         f(self);
     }
 
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
         match self {
             Ty::Apply(a_ty) => {
-                a_ty.parameters.walk_mut(f);
+                a_ty.parameters.walk_mut_binders(f, binders);
             }
             Ty::Projection(p_ty) => {
-                p_ty.parameters.walk_mut(f);
+                p_ty.parameters.walk_mut_binders(f, binders);
             }
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
                 for p in make_mut_slice(predicates) {
-                    p.walk_mut(f);
+                    p.walk_mut_binders(f, binders + 1);
                 }
             }
             Ty::Param { .. } | Ty::Bound(_) | Ty::Infer(_) | Ty::Unknown => {}
         }
-        f(self);
+        f(self, binders);
     }
 }
 

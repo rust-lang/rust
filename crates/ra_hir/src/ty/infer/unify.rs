@@ -134,17 +134,19 @@ where
 }
 
 impl<T> Canonicalized<T> {
-    pub fn decanonicalize_ty(&self, ty: Ty) -> Ty {
-        ty.fold(&mut |ty| match ty {
-            Ty::Bound(idx) => {
-                if (idx as usize) < self.free_vars.len() {
-                    Ty::Infer(self.free_vars[idx as usize])
-                } else {
-                    Ty::Bound(idx)
+    pub fn decanonicalize_ty(&self, mut ty: Ty) -> Ty {
+        ty.walk_mut_binders(
+            &mut |ty, binders| match ty {
+                &mut Ty::Bound(idx) => {
+                    if idx as usize >= binders && (idx as usize - binders) < self.free_vars.len() {
+                        *ty = Ty::Infer(self.free_vars[idx as usize - binders]);
+                    }
                 }
-            }
-            ty => ty,
-        })
+                _ => {}
+            },
+            0,
+        );
+        ty
     }
 
     pub fn apply_solution(
