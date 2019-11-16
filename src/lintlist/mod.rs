@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 339] = [
+pub const ALL_LINTS: [Lint; 340] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -937,6 +937,13 @@ pub const ALL_LINTS: [Lint; 339] = [
         desc: "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block",
         deprecation: None,
         module: "returns",
+    },
+    Lint {
+        name: "let_underscore_must_use",
+        group: "restriction",
+        desc: "non-binding let on a #[must_use] expression",
+        deprecation: None,
+        module: "let_underscore",
     },
     Lint {
         name: "let_unit_value",

@@ -1,7 +1,7 @@
 use crate::utils::{
-    attrs::is_proc_macro, iter_input_pats, match_def_path, qpath_res, return_ty, snippet, snippet_opt,
-    span_help_and_lint, span_lint, span_lint_and_then, trait_ref_of_method, type_is_unsafe_function,
-    must_use_attr, is_must_use_ty,
+    attrs::is_proc_macro, is_must_use_ty, iter_input_pats, match_def_path, must_use_attr, qpath_res, return_ty,
+    snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then, trait_ref_of_method,
+    type_is_unsafe_function,
 };
 use matches::matches;
 use rustc::hir::{self, def::Res, def_id::DefId, intravisit};

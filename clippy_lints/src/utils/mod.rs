@@ -41,7 +41,7 @@ use rustc::ty::{
 };
 use rustc_errors::Applicability;
 use smallvec::SmallVec;
-use syntax::ast::{self, LitKind, Attribute};
+use syntax::ast::{self, Attribute, LitKind};
 use syntax::attr;
 use syntax::source_map::{Span, DUMMY_SP};
 use syntax::symbol::{kw, Symbol};
@@ -1283,3 +1283,25 @@ pub fn is_must_use_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: Ty<'tcx>) -> boo
     }
 }
 
+// check if expr is calling method or function with #[must_use] attribyte
+pub fn is_must_use_func_call(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
+    let did = match expr.kind {
+        ExprKind::Call(ref path, _) => if_chain! {
+            if let ExprKind::Path(ref qpath) = path.kind;
+            if let def::Res::Def(_, did) = cx.tables.qpath_res(qpath, path.hir_id);
+            then {
+                Some(did)
+            } else {
+                None
+            }
+        },
+        ExprKind::MethodCall(_, _, _) => cx.tables.type_dependent_def_id(expr.hir_id),
+        _ => None,
+    };
+
+    if let Some(did) = did {
+        must_use_attr(&cx.tcx.get_attrs(did)).is_some()
+    } else {
+        false
+    }
+}
