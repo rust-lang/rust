@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use hir::Source;
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     algo::find_node_at_offset,
@@ -21,7 +22,8 @@ pub(crate) fn goto_definition(
     let parse = db.parse(position.file_id);
     let syntax = parse.tree().syntax().clone();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, position.offset) {
-        let navs = reference_definition(db, position.file_id, &name_ref).to_vec();
+        let navs =
+            reference_definition(db, Source::new(position.file_id.into(), &name_ref)).to_vec();
         return Some(RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec()));
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
@@ -49,12 +51,11 @@ impl ReferenceResult {
 
 pub(crate) fn reference_definition(
     db: &RootDatabase,
-    file_id: FileId,
-    name_ref: &ast::NameRef,
+    name_ref: Source<&ast::NameRef>,
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
+    let name_kind = classify_name_ref(db, name_ref).map(|d| d.kind);
     match name_kind {
         Some(Macro(mac)) => return Exact(mac.to_nav(db)),
         Some(Field(field)) => return Exact(field.to_nav(db)),
@@ -76,7 +77,7 @@ pub(crate) fn reference_definition(
     };
 
     // Fallback index based approach:
-    let navs = crate::symbol_index::index_resolve(db, name_ref)
+    let navs = crate::symbol_index::index_resolve(db, name_ref.ast)
         .into_iter()
         .map(|s| s.to_nav(db))
         .collect();
