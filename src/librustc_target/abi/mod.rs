@@ -6,7 +6,6 @@ use crate::spec::Target;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable_Generic;
 use syntax_pos::Span;
 
@@ -244,14 +243,9 @@ pub enum Endian {
 
 /// Size of a type in bytes.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub struct Size {
     raw: u64
-}
-
-impl<CTX> HashStable<CTX> for Size {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.bytes().hash_stable(hcx, hasher);
-    }
 }
 
 impl Size {
@@ -373,14 +367,9 @@ impl AddAssign for Size {
 
 /// Alignment of a type in bytes (always a power of two).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub struct Align {
     pow2: u8,
-}
-
-impl<CTX> HashStable<CTX> for Align {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.bytes().hash_stable(hcx, hasher);
-    }
 }
 
 impl Align {
@@ -436,8 +425,8 @@ impl Align {
 }
 
 /// A pair of aligments, ABI-mandated and preferred.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug,
-         RustcEncodable, RustcDecodable, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {
     pub abi: Align,
     pub pref: Align,
@@ -603,6 +592,7 @@ impl Primitive {
 
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub struct Scalar {
     pub value: Primitive,
 
@@ -621,15 +611,6 @@ pub struct Scalar {
     // the largest space between two consecutive valid values and
     // taking everything else as the (shortest) valid range.
     pub valid_range: RangeInclusive<u128>,
-}
-
-impl<CTX> HashStable<CTX> for Scalar {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        let Scalar { value, ref valid_range } = *self;
-        value.hash_stable(hcx, hasher);
-        valid_range.start().hash_stable(hcx, hasher);
-        valid_range.end().hash_stable(hcx, hasher);
-    }
 }
 
 impl Scalar {
@@ -824,12 +805,8 @@ impl Abi {
 }
 
 rustc_index::newtype_index! {
-    pub struct VariantIdx { .. }
-}
-
-impl<CTX> HashStable<CTX> for VariantIdx {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        self.as_u32().hash_stable(hcx, hasher)
+    pub struct VariantIdx {
+        derive [HashStable_Generic]
     }
 }
 
@@ -851,7 +828,7 @@ pub enum Variants {
     },
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum DiscriminantKind {
     /// Integer tag holding the discriminant value itself.
     Tag,
@@ -870,27 +847,6 @@ pub enum DiscriminantKind {
         niche_variants: RangeInclusive<VariantIdx>,
         niche_start: u128,
     },
-}
-
-impl<CTX> HashStable<CTX> for DiscriminantKind {
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        use DiscriminantKind::*;
-        std::mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            Tag => {}
-            Niche {
-                dataful_variant,
-                ref niche_variants,
-                niche_start,
-            } => {
-                dataful_variant.hash_stable(hcx, hasher);
-                niche_variants.start().hash_stable(hcx, hasher);
-                niche_variants.end().hash_stable(hcx, hasher);
-                niche_start.hash_stable(hcx, hasher);
-            }
-        }
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
