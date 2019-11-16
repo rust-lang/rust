@@ -134,6 +134,63 @@ macro_rules! from_str_radix_nzint_impl {
 from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
                              NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
 
+// Conversion traits for NonZero integer types to wider NonZero types
+macro_rules! impl_nz_from_nz {
+    ($Small: ty, $Large: ty, $LargePrimitive: ty, #[$attr:meta], $doc: expr) => {
+        #[$attr]
+        #[doc = $doc]
+        impl From<$Small> for $Large {
+            #[inline]
+            fn from(small: $Small) -> $Large {
+                // we already know a NonZero will not contain a zero
+                unsafe {
+                    <$Large>::new_unchecked(small.get() as $LargePrimitive)
+                }
+            }
+        }
+    };
+    ($Small: ty, $Large: ty, $LargePrimitive: ty, #[$attr:meta]) => {
+        impl_nz_from_nz!($Small,
+                   $Large,
+                   $LargePrimitive,
+                   #[$attr],
+                   concat!("Converts `",
+                           stringify!($Small),
+                           "` to `",
+                           stringify!($Large),
+                           "` losslessly.
+
+```rust
+let small = core::num::", stringify!($Small), "::new(5).unwrap();
+let big: core::num::", stringify!($Large), " = small.into();
+"));
+    }
+}
+
+// NonZeroUnsigned -> NonZeroUnsigned wider
+impl_nz_from_nz! { NonZeroU8, NonZeroU16, u16, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU8, NonZeroU32, u32, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU8, NonZeroU64, u64, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU8, NonZeroU128, u128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU16, NonZeroU32, u32, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU16, NonZeroU64, u64, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU16, NonZeroU128, u128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU32, NonZeroU64, u64, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU32, NonZeroU128, u128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroU64, NonZeroU128, u128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+
+// NonZeroSigned -> NonZeroSigned wider
+impl_nz_from_nz! { NonZeroI8, NonZeroI16, i16, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI8, NonZeroI32, i32, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI8, NonZeroI64, i64, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI8, NonZeroI128, i128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI16, NonZeroI32, i32, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI16, NonZeroI64, i64, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI16, NonZeroI128, i128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI32, NonZeroI64, i64, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI32, NonZeroI128, i128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+impl_nz_from_nz! { NonZeroI64, NonZeroI128, i128, #[unstable(feature = "nonzero_int_to_wider_nonzero_int_lossless_conv", issue = "66196")] }
+
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
 /// Operations like `+` on `u32` values is intended to never overflow,
