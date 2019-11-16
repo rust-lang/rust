@@ -160,6 +160,15 @@ pub struct ExpansionInfo {
 }
 
 impl ExpansionInfo {
+    pub fn translate_offset(&self, offset: TextUnit) -> Option<TextUnit> {
+        let offset = offset.checked_sub(self.arg_start.1)?;
+        let token_id = self.macro_arg.1.token_by_offset(offset)?;
+        let token_id = tt::TokenId(token_id.0 + self.shift);
+
+        let (r, _) = self.exp_map.ranges.iter().find(|(_, tid)| *tid == token_id)?;
+        Some(r.start())
+    }
+
     pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
         let token_id = look_in_rev_map(&self.exp_map, from)?;
 

@@ -1,11 +1,10 @@
 //! FIXME: write short doc here
 
-use hir::Source;
-use ra_db::SourceDatabase;
+use hir::{db::AstDatabase, Source};
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode, SyntaxNode,
+    match_ast, AstNode, SyntaxNode, TextUnit,
 };
 
 use crate::{
@@ -19,16 +18,28 @@ pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let parse = db.parse(position.file_id);
-    let syntax = parse.tree().syntax().clone();
-    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, position.offset) {
-        let navs =
-            reference_definition(db, Source::new(position.file_id.into(), &name_ref)).to_vec();
+    go(db, Source::new(position.file_id.into(), position.offset))
+}
+
+fn go(db: &RootDatabase, offset: Source<TextUnit>) -> Option<RangeInfo<Vec<NavigationTarget>>> {
+    let syntax = db.parse_or_expand(offset.file_id)?;
+
+    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, offset.ast) {
+        let navs = reference_definition(db, offset.with_ast(&name_ref)).to_vec();
         return Some(RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec()));
     }
-    if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
-        let navs = name_definition(db, Source::new(position.file_id.into(), &name))?;
+    if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, offset.ast) {
+        let navs = name_definition(db, offset.with_ast(&name))?;
         return Some(RangeInfo::new(name.syntax().text_range(), navs));
+    }
+    if let Some(macro_call) = find_node_at_offset::<ast::MacroCall>(&syntax, offset.ast) {
+        let source_analyzer =
+            hir::SourceAnalyzer::new(db, offset.with_ast(macro_call.syntax()), None);
+        if let Some(exp) = source_analyzer.expand(db, &macro_call) {
+            if let Some(offset) = exp.translate_offset(db, offset.ast) {
+                return go(db, Source::new(exp.file_id(), offset));
+            }
+        }
     }
     None
 }
@@ -675,6 +686,25 @@ mod tests {
             }
             "#,
             "bar MODULE FileId(1) [0; 11) [4; 7)",
+        );
+    }
+
+    #[test]
+    fn goto_from_macro() {
+        check_goto(
+            "
+            //- /lib.rs
+            macro_rules! id {
+                ($($tt:tt)*) => { $($tt)* }
+            }
+            fn foo() {}
+            id! {
+                fn bar() {
+                    fo<|>o();
+                }
+            }
+            ",
+            "foo FN_DEF FileId(1) [52; 63) [55; 58)",
         );
     }
 }
