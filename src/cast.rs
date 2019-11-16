@@ -63,7 +63,9 @@ pub fn clif_int_or_float_cast(
             fx,
             from,
             to_ty,
-            from_signed, // FIXME is this correct?
+            // This is correct as either from_signed == to_signed (=> this is trivially correct)
+            // Or from_clif_ty == to_clif_ty, which means this is a no-op.
+            from_signed,
         )
     } else if from_ty.is_int() && to_ty.is_float() {
         if from_ty == types::I128 {
