@@ -26,16 +26,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
-                    // This is a `break`-able block
-                    let exit_block = this.cfg.start_new_block();
-                    let block_exit = this.in_breakable_scope(
-                        None, exit_block, destination.clone(), |this| {
-                            this.ast_block_stmts(destination, block, span, stmts, expr,
-                                                 safety_mode)
-                        });
-                    this.cfg.terminate(unpack!(block_exit), source_info,
-                                       TerminatorKind::Goto { target: exit_block });
-                    exit_block.unit()
+                    this.in_breakable_scope(
+                        None,
+                        destination.clone(),
+                        span,
+                        |this| Some(this.ast_block_stmts(
+                            destination,
+                            block,
+                            span,
+                            stmts,
+                            expr,
+                            safety_mode,
+                        )),
+                    )
                 } else {
                     this.ast_block_stmts(destination, block, span, stmts, expr,
                                          safety_mode)

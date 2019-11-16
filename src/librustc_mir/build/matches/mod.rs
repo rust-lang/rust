@@ -12,7 +12,6 @@ use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
 use rustc::hir::HirId;
 use rustc::mir::*;
-use rustc::middle::region;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_index::bit_set::BitSet;
@@ -228,8 +227,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         // Step 5. Create everything else: the guards and the arms.
-        let match_scope = self.scopes.topmost();
-
         let arm_end_blocks: Vec<_> = arm_candidates.into_iter().map(|(arm, mut candidates)| {
             let arm_source_info = self.source_info(arm.span);
             let arm_scope = (arm.scope, arm_source_info);
@@ -250,7 +247,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         arm.guard.clone(),
                         &fake_borrow_temps,
                         scrutinee_span,
-                        match_scope,
+                        //match_scope,
                     );
                 } else {
                     arm_block = this.cfg.start_new_block();
@@ -261,7 +258,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             arm.guard.clone(),
                             &fake_borrow_temps,
                             scrutinee_span,
-                            match_scope,
+                            //match_scope,
                         );
                         this.cfg.terminate(
                             binding_end,
@@ -1353,7 +1350,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<Guard<'tcx>>,
         fake_borrows: &Vec<(PlaceRef<'_, 'tcx>, Local)>,
         scrutinee_span: Span,
-        region_scope: region::Scope,
+        //region_scope: region::Scope,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -1524,11 +1521,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 });
             }
 
-            self.exit_scope(
-                source_info.span,
-                region_scope,
+            self.exit_top_scope(
                 otherwise_post_guard_block,
                 candidate.otherwise_block.unwrap(),
+                source_info,
             );
 
             // We want to ensure that the matched candidates are bound

@@ -157,7 +157,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // body, even when the exact code in the body cannot unwind
 
                 let loop_block = this.cfg.start_new_block();
-                let exit_block = this.cfg.start_new_block();
 
                 // start the loop
                 this.cfg.terminate(
@@ -168,18 +167,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 this.in_breakable_scope(
                     Some(loop_block),
-                    exit_block,
                     destination.clone(),
+                    expr_span,
                     move |this| {
                         // conduct the test, if necessary
                         let body_block = this.cfg.start_new_block();
-                        let diverge_cleanup = this.diverge_cleanup();
+                        this.diverge_from(loop_block);
                         this.cfg.terminate(
                             loop_block,
                             source_info,
                             TerminatorKind::FalseUnwind {
                                 real_target: body_block,
-                                unwind: Some(diverge_cleanup),
+                                unwind: None,
                             },
                         );
 
@@ -193,9 +192,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             source_info,
                             TerminatorKind::Goto { target: loop_block },
                         );
+                        None
                     },
-                );
-                exit_block.unit()
+                )
             }
             ExprKind::Call { ty, fun, args, from_hir_call } => {
                 let intrinsic = match ty.kind {
@@ -244,17 +243,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .collect();
 
                     let success = this.cfg.start_new_block();
-                    let cleanup = this.diverge_cleanup();
 
                     this.record_operands_moved(&args);
 
+                    this.diverge_from(block);
                     this.cfg.terminate(
                         block,
                         source_info,
                         TerminatorKind::Call {
                             func: fun,
                             args,
-                            cleanup: Some(cleanup),
+                            cleanup: None,
                             // FIXME(varkor): replace this with an uninhabitedness-based check.
                             // This requires getting access to the current module to call
                             // `tcx.is_ty_uninhabited_from`, which is currently tricky to do.

@@ -257,14 +257,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Yield { value } => {
                 let value = unpack!(block = this.as_operand(block, scope, value));
                 let resume = this.cfg.start_new_block();
-                let cleanup = this.generator_drop_cleanup();
+                this.generator_drop_cleanup(block);
                 this.cfg.terminate(
                     block,
                     source_info,
                     TerminatorKind::Yield {
                         value: value,
                         resume: resume,
-                        drop: cleanup,
+                        drop: None,
                     },
                 );
                 resume.and(this.unit_rvalue())

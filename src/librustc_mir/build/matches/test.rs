@@ -449,7 +449,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bool_ty = self.hir.bool_ty();
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup();
+        self.diverge_from(block);
         self.cfg.terminate(block, source_info, TerminatorKind::Call {
             func: Operand::Constant(box Constant {
                 span: source_info.span,
@@ -464,7 +464,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }),
             args: vec![val, expect],
             destination: Some((eq_result.clone(), eq_block)),
-            cleanup: Some(cleanup),
+            cleanup: None,
             from_hir_call: false,
         });
 
