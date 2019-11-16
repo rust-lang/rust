@@ -28,7 +28,6 @@ use syntax_pos::Span;
 
 use std::cmp::Ordering;
 use std::{iter, i128, u128};
-use std::convert::TryFrom;
 
 fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
     let llvm_name = match name {
@@ -1161,13 +1160,13 @@ fn generic_simd_intrinsic(
     }
 
     if name.starts_with("simd_shuffle") {
-        let n: usize = name["simd_shuffle".len()..].parse().unwrap_or_else(|_|
+        let n: u64 = name["simd_shuffle".len()..].parse().unwrap_or_else(|_|
             span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?"));
 
         require_simd!(ret_ty, "return");
 
         let out_len = ret_ty.simd_size(tcx);
-        require!(out_len == n as u64,
+        require!(out_len == n,
                  "expected return type of length {}, found `{}` with length {}",
                  n, ret_ty, out_len);
         require!(in_elem == ret_ty.simd_type(tcx),
@@ -1176,7 +1175,7 @@ fn generic_simd_intrinsic(
                  in_elem, in_ty,
                  ret_ty, ret_ty.simd_type(tcx));
 
-        let total_len = in_len as u128 * 2;
+        let total_len = u128::from(in_len) * 2;
 
         let vector = args[2].immediate();
 
@@ -1402,7 +1401,7 @@ fn generic_simd_intrinsic(
     // FIXME: use:
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: usize, no_pointers: usize) -> String {
+    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: u64, no_pointers: usize) -> String {
         let p0s: String = "p0".repeat(no_pointers);
         match elem_ty.kind {
             ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
@@ -1412,7 +1411,7 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: usize,
+    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64,
                       mut no_pointers: usize) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match elem_ty.kind {
@@ -1425,7 +1424,7 @@ fn generic_simd_intrinsic(
             elem_ty = cx.type_ptr_to(elem_ty);
             no_pointers -= 1;
         }
-        cx.type_vector(elem_ty, vec_len as u64)
+        cx.type_vector(elem_ty, vec_len)
     }
 
 
@@ -1513,7 +1512,6 @@ fn generic_simd_intrinsic(
         };
 
         // Type of the vector of pointers:
-        let in_len = usize::try_from(in_len).unwrap();
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count);
         let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
 
@@ -1616,7 +1614,6 @@ fn generic_simd_intrinsic(
         let ret_t = bx.type_void();
 
         // Type of the vector of pointers:
-        let in_len = usize::try_from(in_len).unwrap();
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count);
         let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
 
