@@ -947,7 +947,6 @@ dependencies = [
  "ra_hir 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
- "rustc_lexer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
 ]
 
