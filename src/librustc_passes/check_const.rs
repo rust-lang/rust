@@ -14,11 +14,42 @@ use rustc::hir;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use syntax::ast::Mutability;
+use syntax::feature_gate::{emit_feature_err, Features, GateIssue};
 use syntax::span_err;
-use syntax_pos::Span;
+use syntax_pos::{sym, Span};
 use rustc_error_codes::*;
 
 use std::fmt;
+
+/// An expression that is not *always* legal in a const context.
+#[derive(Clone, Copy)]
+enum NonConstExpr {
+    Loop(hir::LoopSource),
+    Match(hir::MatchSource),
+}
+
+impl NonConstExpr {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Loop(src) => src.name(),
+            Self::Match(src) => src.name(),
+        }
+    }
+
+    /// Returns `true` if all feature gates required to enable this expression are turned on, or
+    /// `None` if there is no feature gate corresponding to this expression.
+    fn is_feature_gate_enabled(self, features: &Features) -> Option<bool> {
+        use hir::MatchSource::*;
+        match self {
+            | Self::Match(Normal)
+            | Self::Match(IfDesugar { .. })
+            | Self::Match(IfLetDesugar { .. })
+            => Some(features.const_if_match),
+
+            _ => None,
+        }
+    }
+}
 
 #[derive(Copy, Clone)]
 enum ConstKind {
@@ -87,16 +118,38 @@ impl<'tcx> CheckConstVisitor<'tcx> {
     }
 
     /// Emits an error when an unsupported expression is found in a const context.
-    fn const_check_violated(&self, bad_op: &str, span: Span) {
-        if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-            self.tcx.sess.span_warn(span, "skipping const checks");
-            return;
+    fn const_check_violated(&self, expr: NonConstExpr, span: Span) {
+        match expr.is_feature_gate_enabled(self.tcx.features()) {
+            // Don't emit an error if the user has enabled the requisite feature gates.
+            Some(true) => return,
+
+            // Users of `-Zunleash-the-miri-inside-of-you` must use feature gates when possible.
+            None if self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you => {
+                self.tcx.sess.span_warn(span, "skipping const checks");
+                return;
+            }
+
+            _ => {}
         }
 
         let const_kind = self.const_kind
             .expect("`const_check_violated` may only be called inside a const context");
 
-        span_err!(self.tcx.sess, span, E0744, "`{}` is not allowed in a `{}`", bad_op, const_kind);
+        let msg = format!("`{}` is not allowed in a `{}`", expr.name(), const_kind);
+        match expr {
+            | NonConstExpr::Match(hir::MatchSource::Normal)
+            | NonConstExpr::Match(hir::MatchSource::IfDesugar { .. })
+            | NonConstExpr::Match(hir::MatchSource::IfLetDesugar { .. })
+            => emit_feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::const_if_match,
+                span,
+                GateIssue::Language,
+                &msg
+            ),
+
+            _ => span_err!(self.tcx.sess, span, E0744, "{}", msg),
+        }
     }
 
     /// Saves the parent `const_kind` before calling `f` and restores it afterwards.
@@ -129,24 +182,22 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
             _ if self.const_kind.is_none() => {}
 
             hir::ExprKind::Loop(_, _, source) => {
-                self.const_check_violated(source.name(), e.span);
+                self.const_check_violated(NonConstExpr::Loop(*source), e.span);
             }
 
-            hir::ExprKind::Match(_, _, source) if !self.tcx.features().const_if_match => {
-                use hir::MatchSource::*;
-
-                let op = match source {
-                    Normal => Some("match"),
-                    IfDesugar { .. } | IfLetDesugar { .. } => Some("if"),
-                    TryDesugar => Some("?"),
-                    AwaitDesugar => Some(".await"),
-
+            hir::ExprKind::Match(_, _, source) => {
+                let non_const_expr = match source {
                     // These are handled by `ExprKind::Loop` above.
-                    WhileDesugar | WhileLetDesugar | ForLoopDesugar => None,
+                    | hir::MatchSource::WhileDesugar
+                    | hir::MatchSource::WhileLetDesugar
+                    | hir::MatchSource::ForLoopDesugar
+                    => None,
+
+                    _ => Some(NonConstExpr::Match(*source)),
                 };
 
-                if let Some(op) = op {
-                    self.const_check_violated(op, e.span);
+                if let Some(expr) = non_const_expr {
+                    self.const_check_violated(expr, e.span);
                 }
             }
 
