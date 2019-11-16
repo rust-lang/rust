@@ -68,9 +68,11 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::Node;
 
-use errors::{struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString};
+use errors::{
+    pluralize, struct_span_err, Applicability, DiagnosticBuilder, DiagnosticStyledString,
+};
 use rustc_error_codes::*;
-use rustc_span::{Pos, Span};
+use rustc_span::{DesugaringKind, Pos, Span};
 use rustc_target::spec::abi;
 use std::{cmp, fmt};
 
@@ -1289,6 +1291,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         mut values: Option<ValuePairs<'tcx>>,
         terr: &TypeError<'tcx>,
     ) {
+        let span = cause.span(self.tcx);
+
         // For some types of errors, expected-found does not make
         // sense, so just ignore the values we were given.
         match terr {
@@ -1296,6 +1300,85 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 values = None;
             }
             _ => {}
+        }
+
+        struct OpaqueTypesVisitor<'tcx> {
+            types: FxHashMap<&'static str, FxHashSet<Span>>,
+            expected: FxHashMap<&'static str, FxHashSet<Span>>,
+            found: FxHashMap<&'static str, FxHashSet<Span>>,
+            ignore_span: Span,
+            tcx: TyCtxt<'tcx>,
+        }
+
+        impl<'tcx> OpaqueTypesVisitor<'tcx> {
+            fn visit_expected_found(
+                tcx: TyCtxt<'tcx>,
+                expected: Ty<'tcx>,
+                found: Ty<'tcx>,
+                ignore_span: Span,
+            ) -> Self {
+                let mut types_visitor = OpaqueTypesVisitor {
+                    types: Default::default(),
+                    expected: Default::default(),
+                    found: Default::default(),
+                    ignore_span,
+                    tcx,
+                };
+                expected.visit_with(&mut types_visitor);
+                std::mem::swap(&mut types_visitor.expected, &mut types_visitor.types);
+                found.visit_with(&mut types_visitor);
+                std::mem::swap(&mut types_visitor.found, &mut types_visitor.types);
+                types_visitor
+            }
+
+            fn report(&self, err: &mut DiagnosticBuilder<'_>) {
+                for (target, types) in &[("expected", &self.expected), ("found", &self.found)] {
+                    for (key, values) in types.iter() {
+                        let count = values.len();
+                        for sp in values {
+                            err.span_label(
+                                *sp,
+                                format!(
+                                    "{}this is {}the {} {}{}",
+                                    if sp.is_desugaring(DesugaringKind::Async) {
+                                        "in the desugared `async fn`, "
+                                    } else {
+                                        ""
+                                    },
+                                    if count > 1 { "one of" } else { "" },
+                                    target,
+                                    key,
+                                    pluralize!(count),
+                                ),
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        impl<'tcx> ty::fold::TypeVisitor<'tcx> for OpaqueTypesVisitor<'tcx> {
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> bool {
+                let kind = match t.kind {
+                    ty::Closure(..) => "closure",
+                    ty::Opaque(..) => "opaque type",
+                    _ => "",
+                };
+                match t.kind {
+                    ty::Closure(def_id, _) | ty::Opaque(def_id, _) => {
+                        let span = self.tcx.def_span(def_id);
+                        debug!("note_type_err visit_ty {:?}", span.macro_backtrace());
+                        if !self.ignore_span.overlaps(span)
+                            && !self.expected.values().any(|exp| exp.iter().any(|sp| *sp == span))
+                        {
+                            let entry = self.types.entry(kind).or_default();
+                            entry.insert(span);
+                        }
+                    }
+                    _ => {}
+                }
+                t.super_visit_with(self)
+            }
         }
 
         debug!("note_type_err(diag={:?})", diag);
@@ -1306,6 +1389,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     ValuePairs::Types(exp_found) => {
                         let is_simple_err =
                             exp_found.expected.is_simple_text() && exp_found.found.is_simple_text();
+                        OpaqueTypesVisitor::visit_expected_found(
+                            self.tcx,
+                            exp_found.expected,
+                            exp_found.found,
+                            span,
+                        )
+                        .report(diag);
 
                         (is_simple_err, Some(exp_found))
                     }
@@ -1323,8 +1413,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
         };
 
-        let span = cause.span(self.tcx);
-
         // Ignore msg for object safe coercion
         // since E0038 message will be printed
         match terr {
@@ -1336,7 +1424,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
             }
         };
-
         if let Some((expected, found)) = expected_found {
             let expected_label = exp_found.map_or("type".into(), |ef| ef.expected.prefix_string());
             let found_label = exp_found.map_or("type".into(), |ef| ef.found.prefix_string());
