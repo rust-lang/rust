@@ -44,4 +44,14 @@ extern "C" fn baz() {
     0 //~ ERROR mismatched types
 }
 
+#[recollect_attr]
+extern "Rust" fn rust_abi() {
+    0 //~ ERROR mismatched types
+}
+
+#[recollect_attr]
+extern "\x43" fn c_abi_escaped() {
+    0 //~ ERROR mismatched types
+}
+
 fn main() {}
