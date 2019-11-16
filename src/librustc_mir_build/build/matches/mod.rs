@@ -12,7 +12,6 @@ use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
 use rustc::middle::region;
 use rustc::mir::*;
-use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
@@ -250,7 +249,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         arm.guard.as_ref().map(|g| (g, match_scope)),
                         &fake_borrow_temps,
                         scrutinee_span,
-                        Some(arm.scope),
+                        // Some(arm.scope),
                     );
 
                     if let Some(source_scope) = scope {
@@ -1564,7 +1563,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         guard: Option<(&Guard<'tcx>, region::Scope)>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
-        schedule_drops: bool,
+        //region_scope: region::Scope,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -1717,11 +1716,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unreachable
             });
             let outside_scope = self.cfg.start_new_block();
-            self.exit_scope(
-                source_info.span,
-                region_scope,
+            self.exit_top_scope(
                 otherwise_post_guard_block,
-                outside_scope,
+                candidate.otherwise_block.unwrap(),
+                source_info,
             );
             self.false_edges(
                 outside_scope,
