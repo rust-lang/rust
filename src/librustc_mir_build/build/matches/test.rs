@@ -423,7 +423,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bool_ty = self.hir.bool_ty();
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup();
         self.cfg.terminate(
             block,
             source_info,
@@ -440,11 +439,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     literal: method,
                 }),
                 args: vec![val, expect],
-                destination: Some((eq_result, eq_block)),
-                cleanup: Some(cleanup),
+                destination: Some((eq_result.clone(), eq_block)),
+                cleanup: None,
                 from_hir_call: false,
             },
         );
+        self.diverge_from(block);
 
         if let [success_block, fail_block] = *make_target_blocks(self) {
             // check the result
