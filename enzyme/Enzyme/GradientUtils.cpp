@@ -283,6 +283,16 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       return lookupM(invertedPointers[arg], BuilderM);
     } else if (auto arg = dyn_cast<LoadInst>(val)) {
       IRBuilder <> bb(arg);
+        if(isConstantValue(arg->getOperand(0))) {
+            llvm::errs() << *oldFunc << "\n";
+            llvm::errs() << *newFunc << "\n";
+            dumpSet(this->originalInstructions);
+            if (auto arg = dyn_cast<Instruction>(val)) {
+                llvm::errs() << *arg->getParent()->getParent() << "\n";
+            }
+            llvm::errs() << *val << "\n";
+        }
+      assert(!isConstantValue(arg->getOperand(0)));
       auto li = bb.CreateLoad(invertPointerM(arg->getOperand(0), bb), arg->getName()+"'ipl");
       li->setAlignment(arg->getAlignment());
       li->setVolatile(arg->isVolatile());
@@ -667,8 +677,8 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             //llvm::errs() << "Se has any info: " << SE.getBackedgeTakenInfo(L).hasAnyInfo() << "\n";
             llvm::errs() << "SE could not compute loop limit.\n";
         
-
-              LimitVar = gutils.createCacheForScope(loopContexts[L].preheader, CanonicalIV->getType(), "loopLimit", nullptr, nullptr);
+            //TODO should eventually ensure this is freed
+            LimitVar = gutils.createCacheForScope(loopContexts[L].preheader, CanonicalIV->getType(), "loopLimit", /*shouldfree*/false, nullptr);
 
               for(auto ExitBlock: loopContexts[L].exitBlocks) {
                   IRBuilder <> B(&ExitBlock->front());
@@ -723,14 +733,22 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
 
     if (isOriginalBlock(*BuilderM.GetInsertBlock())) {
         if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
-            if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
+            Instruction* use = &*BuilderM.GetInsertPoint();
+            while (isa<PHINode>(use)) use = use->getNextNode();
+            if (DT.dominates(inst, use)) {
                 //llvm::errs() << "allowed " << *inst << "from domination\n";
                 return inst;
+            } else {
+                llvm::errs() << *BuilderM.GetInsertBlock()->getParent() << "\n";
+                llvm::errs() << "didnt dominate inst: " << *inst << "  point: " << *BuilderM.GetInsertPoint() << "\nbb: " << *BuilderM.GetInsertBlock() << "\n";
             }
         } else {
-            if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
+            if (inst->getParent() == BuilderM.GetInsertBlock() || DT.dominates(inst, BuilderM.GetInsertBlock())) {
                 //llvm::errs() << "allowed " << *inst << "from block domination\n";
                 return inst;
+            } else {
+                llvm::errs() << *BuilderM.GetInsertBlock()->getParent() << "\n";
+                llvm::errs() << "didnt dominate inst: " << *inst << "\nbb: " << *BuilderM.GetInsertBlock() << "\n";
             }
         }
     }
@@ -843,7 +861,6 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
   }
 
   IntegerType* T = (targetToPreds.size() == 2) ? Type::getInt1Ty(BuilderM.getContext()) : Type::getInt8Ty(BuilderM.getContext());
-  CallInst* freeLocation;
 
   Instruction* equivalentTerminator = nullptr;
   
@@ -894,7 +911,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
       assert(branch->getCondition()->getType() == T);
 
-      AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
+      AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/true, /*lastAlloca*/nullptr);
       IRBuilder<> pbuilder(equivalentTerminator);
       pbuilder.setFastMathFlags(getFast());
       storeInstructionInCache(ctx, pbuilder, branch->getCondition(), cache);
@@ -933,7 +950,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       IRBuilder<> pbuilder(equivalentTerminator);
       pbuilder.setFastMathFlags(getFast());
 
-      AllocaInst* cache = createCacheForScope(ctx, si->getCondition()->getType(), "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
+      AllocaInst* cache = createCacheForScope(ctx, si->getCondition()->getType(), "", /*shouldFree*/true, /*lastAlloca*/nullptr);
       Value* condition = si->getCondition();
       storeInstructionInCache(ctx, pbuilder, condition, cache);
 
@@ -979,7 +996,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
   nofast:;
 
-  AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/&freeLocation, /*lastAlloca*/nullptr);
+  AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/true, /*lastAlloca*/nullptr);
   std::vector<BasicBlock*> targets;
   {
   size_t idx = 0;

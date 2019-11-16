@@ -17,3 +17,4 @@ add_lit_testsuite(bench-enzyme "Running enzyme bencmarks tests"
 set_target_properties(bench-enzyme PROPERTIES FOLDER "bench Tests")
 
 add_subdirectory(nn)
+add_subdirectory(taylorlog)

@@ -42,7 +42,7 @@ attributes #0 = { noinline nounwind uwtable }
 ; CHECK-NEXT:   %1 = add nuw i64 %0, 1
 ; CHECK-NEXT:   %mallocsize = mul i64 %1, 8
 ; CHECK-NEXT:   %malloccall = tail call noalias nonnull i8* @malloc(i64 %mallocsize)
-; CHECK-NEXT:   %"'ipl_malloccache" = bitcast i8* %malloccall to double**
+; CHECK-NEXT:   %[[antimallocs:.+]] = bitcast i8* %malloccall to double**
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: for.cond:
@@ -53,13 +53,13 @@ attributes #0 = { noinline nounwind uwtable }
 
 ; CHECK: for.body: 
 ; CHECK-NEXT:   %2 = load double, double* %x
-; CHECK-NEXT:   %"'ipl" = load double*, double** %"y'"
-; CHECK-NEXT:   %3 = getelementptr double*, double** %"'ipl_malloccache", i64 %iv
-; CHECK-NEXT:   store double* %"'ipl", double** %3, align 8, !invariant.group !0
-; CHECK-NEXT:   %4 = load double*, double** %y
-; CHECK-NEXT:   %5 = load double, double* %4
+; CHECK-NEXT:   %[[ipload:.+]] = load double*, double** %"y'"
+; CHECK-NEXT:   %[[yload:.+]] = load double*, double** %y
+; CHECK-NEXT:   %[[cachegep:.+]] = getelementptr double*, double** %[[antimallocs]], i64 %iv
+; CHECK-NEXT:   store double* %[[ipload]], double** %[[cachegep]], align 8, !invariant.group !0
+; CHECK-NEXT:   %5 = load double, double* %[[yload]]
 ; CHECK-NEXT:   %add = fadd fast double %5, %2
-; CHECK-NEXT:   store double %add, double* %4
+; CHECK-NEXT:   store double %add, double* %[[yload]]
 ; CHECK-NEXT:   br label %for.cond
 
 ; CHECK: invertentry:
@@ -73,7 +73,7 @@ attributes #0 = { noinline nounwind uwtable }
 
 ; CHECK: incinvertfor.cond:
 ; CHECK-NEXT:   %[[sub]] = sub nuw nsw i64 %[[ivp]], 1
-; CHECK-NEXT:   %8 = getelementptr double*, double** %"'ipl_malloccache", i64 %[[sub]]
+; CHECK-NEXT:   %8 = getelementptr double*, double** %[[antimallocs]], i64 %[[sub]]
 ; CHECK-NEXT:   %9 = load double*, double** %8, align 8, !invariant.group !0
 ; CHECK-NEXT:   %10 = load double, double* %9
 ; CHECK-NEXT:   store double %10, double* %9

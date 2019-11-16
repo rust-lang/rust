@@ -1,24 +1,28 @@
-; RUN: LOAD="%loadEnzyme" make time-nn -f %s
+# RUN: cd %desired_wd/nn && pwd && ls && LOAD="%loadEnzyme" make nn-results.txt VERBOSE=1 -f %s
 
-.PHONY: time
+.PHONY: time-* clean
 
+clean:
+	rm -f *.ll *.o
+	
 %-c-unopt.ll: %.c
-	clang $^ -O2 -fno-unroll-loops -fno-exceptions -fno-vectorize -o $@
+	clang $^ -O2 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
 
 %-cpp-unopt.ll: %.cpp
-	clang++ $^ -O2 -fno-unroll-loops -fno-exceptions -fno-vectorize -o $@
+	#clang++ -I../adept ../tapenade $^ -O2 -fno-unroll-loops -fno-exceptions -fno-vectorize -o $@
+	clang++ -I../adept -I../tapenade $^ -O2 -fno-unroll-loops -fno-vectorize -o $@ -S -emit-llvm
 
 %-raw.ll: %-unopt.ll
-	opt $^ $(LOAD) -enzyme -o $@ 
+	opt $^ $(LOAD) -enzyme -o $@ -S
 	
 %-opt.ll: %-raw.ll
-	opt $^ -O2 -o $@ 
+	opt $^ -O2 -o $@ -S
 	
 %.o: %-c-opt.ll
-	clang $^ -O2 -o $@ 
+	clang $^ -o $@
 
-%.o: %-c-opt.ll
-	clang++ $^ -O2 -o $@ 
+%.o: %-cpp-opt.ll
+	clang++ $^ -o $@ -lblas ../tapenade/*.o
 
-time-%: %.o
-	time ./$^
+%-results.txt: %.o
+	time ./$^ | tee $@

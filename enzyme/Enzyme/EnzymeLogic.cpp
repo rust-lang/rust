@@ -70,10 +70,6 @@ std::map<Instruction*, bool> compute_uncacheable_load_map(GradientUtils* gutils,
       Instruction* inst = &*I;
       // For each load instruction, determine if it is uncacheable.
       if (auto op = dyn_cast<LoadInst>(inst)) {
-        // NOTE(TFK): The reasoning behind skipping ConstantValues and ConstantInstructions needs to be fleshed out.
-        //if (gutils->isConstantValue(inst) || gutils->isConstantInstruction(inst)) {
-        //  continue;
-        //}
 
         bool can_modref = false;
         // Find the underlying object for the pointer operand of the load instruction.
@@ -785,7 +781,35 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
          if (can_modref_map[inst]) {
             IRBuilder<> BuilderZ(li);
             gutils->addMalloc(BuilderZ, li);
-          }
+
+			if (inst->getType()->isPointerTy()) {
+          	  PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
+              assert(placeholder->getType() == inst->getType());
+          	  gutils->invertedPointers.erase(inst);
+            
+			  if (!gutils->isConstantValue(inst)) {
+              	auto pt = gutils->invertPointerM(inst, BuilderZ);
+                assert(pt->getType() == inst->getType());
+                llvm::errs() << "[" << gutils->newFunc->getName() << "] adding inverse malloc for: " << *inst << "\n";
+                gutils->addMalloc(BuilderZ, pt);
+                placeholder->replaceAllUsesWith(pt);
+              }
+			  gutils->erase(placeholder);
+            }
+         } else {
+	  	   if (inst->getType()->isPointerTy()) {
+             PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
+             assert(placeholder->getType() == inst->getType());
+             gutils->invertedPointers.erase(inst);
+             IRBuilder<> BuilderZ(placeholder);
+	   	     if (!gutils->isConstantValue(inst)) {
+               auto pt = gutils->invertPointerM(inst, BuilderZ);
+               assert(pt->getType() == inst->getType());
+               placeholder->replaceAllUsesWith(pt);
+		     }
+		     gutils->erase(placeholder);
+		   }
+         }
 
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
@@ -2536,6 +2560,19 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (can_modref_map[inst]) {
         IRBuilder<> BuilderZ(op->getNextNode());
         inst = cast<Instruction>(gutils->addMalloc(BuilderZ, inst));
+	  	if (op_type->isPointerTy()) {
+          PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
+          gutils->invertedPointers.erase(inst);
+		  if (!op_valconstant) {
+            IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
+            auto newip = gutils->addMalloc(BuilderZ, placeholder);
+            llvm::errs() << "[" << gutils->newFunc->getName() << "] retreiving inverse malloc for: " << *inst << "\n";
+            gutils->invertedPointers[inst] = newip;
+		  } else {
+			gutils->erase(placeholder);
+		  }
+		}
+        
         if (inst != op) {
           // Set to nullptr since op should never be used after invalidated through addMalloc.
           op = nullptr;
@@ -2549,6 +2586,16 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
           assert(inst->getType() == op_type);
         }
+      } else {
+	  	if (op_type->isPointerTy()) {
+          PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
+          gutils->invertedPointers.erase(inst);
+          IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
+		  if (!op_valconstant) {
+            placeholder->replaceAllUsesWith(gutils->invertPointerM(inst, BuilderZ));
+		  }
+		  gutils->erase(placeholder);
+		}
       }
 
       if (op_valconstant) continue;
@@ -2571,6 +2618,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         assert(inverted_operand);
         gutils->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2);
       }
+
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
       if (gutils->isConstantInstruction(inst)) continue;
 

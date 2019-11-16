@@ -88,7 +88,7 @@ public:
   BasicBlock* inversionAllocs;
   ValueToValueMapTy scopeMap;
   ValueToValueMapTy lastScopeAlloc;
-  ValueToValueMapTy scopeFrees;
+  std::map<AllocaInst*, std::set<CallInst*>> scopeFrees;
   ValueToValueMapTy originalToNewFn;
 
   std::map<Instruction*, bool>* can_modref_map;  
@@ -142,10 +142,10 @@ public:
         scopeMap[B] = scopeMap[A];
         scopeMap.erase(A);
     }
-    if (scopeFrees.find(A) != scopeFrees.end()) {
-        scopeFrees[B] = scopeFrees[A];
-        scopeFrees.erase(A);
-    }
+    //if (scopeFrees.find(A) != scopeFrees.end()) {
+    //    scopeFrees[B] = scopeFrees[A];
+    //    scopeFrees.erase(A);
+    //}
     if (lastScopeAlloc.find(A) != lastScopeAlloc.end()) {
         lastScopeAlloc[B] = lastScopeAlloc[A];
         lastScopeAlloc.erase(A);
@@ -161,9 +161,12 @@ public:
     nonconstant.erase(I);
     nonconstant_values.erase(I);
     originalInstructions.erase(I);
+    if (scopeMap.find(I) != scopeMap.end())
+        scopeFrees.erase(cast<AllocaInst>(scopeMap[I]));
+    if (auto ai = dyn_cast<AllocaInst>(I))
+        scopeFrees.erase(ai);
     scopeMap.erase(I);
     lastScopeAlloc.erase(I);
-    scopeFrees.erase(I);
     SE.eraseValueFromMap(I);
     originalToNewFn.erase(I);
     eraser:
@@ -192,8 +195,9 @@ public:
             assert(0 && "erasing something in scope map");
         }
     }
+    if (auto ci = dyn_cast<CallInst>(I))
     for(auto v: scopeFrees) {
-        if (v.second == I) {
+        if (v.second.count(ci)) {
             llvm::errs() << *oldFunc << "\n";
             llvm::errs() << *newFunc << "\n";
             llvm::errs() << *v.first << "\n";
@@ -345,11 +349,18 @@ public:
             entryBuilder.setFastMathFlags(getFast());
             ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {tapeidx-1}));
 
-            if (malloc) assert(cast<PointerType>(ret->getType())->getElementType() == malloc->getType());
         
             //scopeMap[inst] = cache;
+            Type* innerType = ret->getType();
 
-            AllocaInst* cache = entryBuilder.CreateAlloca(ret->getType(), nullptr, "mdyncache_fromtape");
+            for(const auto unused : getSubLimits(BuilderQ.GetInsertBlock()) ) {
+                innerType = cast<PointerType>(innerType)->getElementType();
+            }
+            if (malloc) assert(innerType == malloc->getType());
+
+            AllocaInst* cache = createCacheForScope(BuilderQ.GetInsertBlock(), innerType, "mdyncache_fromtape", true, nullptr, false);
+            llvm::errs() << "ret: " << *ret << "\n";
+            llvm::errs() << "cache: " << *cache << "\n";
             entryBuilder.CreateStore(ret, cache);
 
             auto v = lookupValueFromCache(BuilderQ, BuilderQ.GetInsertBlock(), cache);
@@ -358,32 +369,6 @@ public:
             }
             scopeMap[v] = cache;
             originalInstructions.erase(ret);
-
-            assert(reverseBlocks.size() > 0);
-
-            BasicBlock* outermostPreheader = nullptr;
-
-            for(LoopContext idx = lc; ; getContext(idx.parent->getHeader(), idx) ) {
-                if (idx.parent == nullptr) {
-                    outermostPreheader = idx.preheader;
-                }
-                if (idx.parent == nullptr) break;
-            }
-            assert(outermostPreheader);
-                IRBuilder<> tbuild(reverseBlocks[outermostPreheader]);
-                tbuild.setFastMathFlags(getFast());
-
-                // ensure we are before the terminator if it exists
-                if (tbuild.GetInsertBlock()->size()) {
-                      tbuild.SetInsertPoint(tbuild.GetInsertBlock()->getFirstNonPHI());
-                }
-
-                CallInst* ci = cast<CallInst>(CallInst::CreateFree(tbuild.CreatePointerCast(tbuild.CreateLoad(scopeMap[v]), Type::getInt8PtrTy(outermostPreheader->getContext())), tbuild.GetInsertBlock()));
-                ci->addAttribute(AttributeList::FirstArgIndex, Attribute::NonNull);
-                if (ci->getParent()==nullptr) {
-                    tbuild.Insert(ci);
-                }
-
             ret = cast<Instruction>(v);
         }
 
@@ -439,6 +424,11 @@ public:
                                 users.push_back(u);
                         }
                     }
+                    auto tofree = scopeFrees[cast<AllocaInst>(scopeMap[malloc])];
+                    scopeFrees.erase(cast<AllocaInst>(scopeMap[malloc]));
+                    for(auto freeinst : tofree) {
+                        erase(freeinst);
+                    }
 
                     for( auto u : users) {
                         if (auto li = dyn_cast<LoadInst>(u)) {
@@ -454,8 +444,6 @@ public:
                                     auto called = cali->getCalledFunction();
                                     if (called == nullptr) continue;
                                     if (!(called->getName() == "free" || called->getName() == "realloc")) continue;
-                                    if (scopeFrees.find(malloc) != scopeFrees.end() && scopeFrees[malloc] == cali)
-                                        scopeFrees.erase(malloc);
                                     if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == cali)
                                         lastScopeAlloc.erase(malloc);
                                     erase(cali);
@@ -506,6 +494,7 @@ public:
                     }
                 }
             }
+            /*
             if (scopeFrees.find(malloc) != scopeFrees.end()) {
                 llvm::errs() << *newFunc << "\n";
                 if (scopeFrees[malloc])
@@ -514,6 +503,7 @@ public:
                     llvm::errs() << "scopeFrees[malloc] = (nullptr)" << "\n";
             }
             assert(scopeFrees.find(malloc) == scopeFrees.end());
+            */
             if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end()) {
                 llvm::errs() << *newFunc << "\n";
                 if (lastScopeAlloc[malloc])
@@ -701,6 +691,21 @@ public:
           Instruction* inst = &*I;
           assert(inst);
           I++;
+          
+          if (originalInstructions.find(inst) == originalInstructions.end()) {
+              continue;
+          }
+          if (this->invertedPointers.find(inst) != this->invertedPointers.end()) {
+              continue;
+          }
+
+          if (LoadInst* li = dyn_cast<LoadInst>(inst)) {
+              if (!li->getType()->isPointerTy()) continue;
+              IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
+              BuilderZ.setFastMathFlags(getFast());
+              this->invertedPointers[inst] = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
+              continue;
+          }
 
           if (!isa<CallInst>(inst)) {
               continue;
@@ -729,9 +734,6 @@ public:
           //    continue;
           //}
 
-          if (this->invertedPointers.find(op) != this->invertedPointers.end()) {
-              continue;
-          }
 
             IRBuilder<> BuilderZ(getNextNonDebugInstruction(op));
             BuilderZ.setFastMathFlags(getFast());
@@ -1004,7 +1006,7 @@ endCheck:
     std::map<std::pair<Value*, int>, MDNode*> invariantGroups;
    
     //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
-    AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, CallInst** freeLocation, Instruction** lastScopeAllocLocation) {
+    AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, bool shouldFree, Instruction** lastScopeAllocLocation, bool allocateInternal=true) {
         assert(ctx);
         assert(T);
 
@@ -1031,75 +1033,78 @@ endCheck:
 
             Value* size = sublimits[i].first;
             Type* myType = types[i];
+            
+            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8);
 
-            
-            IRBuilder <> allocationBuilder(&containedloops.back().first.preheader->back());
-            
-            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 
-                            allocationBuilder.GetInsertBlock()->getParent()->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8);
-            StoreInst* storealloc = nullptr;
-            if (!sublimits[i].second.back().first.dynamic) {
-                auto firstallocation = CallInst::CreateMalloc(
-                        &allocationBuilder.GetInsertBlock()->back(),
-                        size->getType(),
-                        myType, byteSizeOfType, size, nullptr, name+"_malloccache");
-                CallInst* malloccall = dyn_cast<CallInst>(firstallocation);
-                if (malloccall == nullptr) {
-                    malloccall = cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
-                }
-                malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
-                malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+            if (allocateInternal) {
+
+                IRBuilder <> allocationBuilder(&containedloops.back().first.preheader->back());
                 
-                storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
+                StoreInst* storealloc = nullptr;
+                if (!sublimits[i].second.back().first.dynamic) {
+                    auto firstallocation = CallInst::CreateMalloc(
+                            &allocationBuilder.GetInsertBlock()->back(),
+                            size->getType(),
+                            myType, byteSizeOfType, size, nullptr, name+"_malloccache");
+                    CallInst* malloccall = dyn_cast<CallInst>(firstallocation);
+                    if (malloccall == nullptr) {
+                        malloccall = cast<CallInst>(cast<Instruction>(firstallocation)->getOperand(0));
+                    }
+                    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
+                    malloccall->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+                    
+                    storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
+                    
+                    if (lastScopeAllocLocation && (unsigned)i == sublimits.size() - 1) {
+                        *lastScopeAllocLocation = cast<Instruction>(firstallocation);
+                    }
+
+                    //allocationBuilder.GetInsertBlock()->getInstList().push_back(cast<Instruction>(allocation));
+                    //cast<Instruction>(firstallocation)->moveBefore(allocationBuilder.GetInsertBlock()->getTerminator());
+                    //mallocs.push_back(firstallocation);
+                } else {
+                    allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
+
+                    /*
+                    if (containedloops.back().first.incvar != containedloops.back().first.header->getFirstNonPHI()) {
+                        llvm::errs() << "blk:" << *containedloops.back().first.header << "\n";
+                        llvm::errs() << "nonphi:" << *containedloops.back().first.header->getFirstNonPHI() << "\n";
+                        llvm::errs() << "incvar:" << *containedloops.back().first.incvar << "\n";
+                    }
+                    assert(containedloops.back().first.incvar == containedloops.back().first.header->getFirstNonPHI());
+                    */
+                    IRBuilder <> build(containedloops.back().first.incvar->getNextNode());
+                    Value* allocation = build.CreateLoad(storeInto);
+                    //Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));
+                    Value* realloc_size = build.CreateNUWMul(containedloops.back().first.incvar, sublimits[i].first);
+                    Value* idxs[2] = {
+                        build.CreatePointerCast(allocation, BPTy),
+                        build.CreateNUWMul(
+                            ConstantInt::get(size->getType(), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8), realloc_size
+                        )
+                    };
+
+                    Value* realloccall = nullptr;
+                    allocation = build.CreatePointerCast(realloccall = build.CreateCall(realloc, idxs, name+"_realloccache"), allocation->getType());
+                    if (lastScopeAllocLocation && (unsigned)i == sublimits.size() - 1) {
+                        *lastScopeAllocLocation = cast<Instruction>(allocation);
+                    }
+                    storealloc = build.CreateStore(allocation, storeInto);
+                }
                 
-                if (lastScopeAllocLocation) {
-                    *lastScopeAllocLocation = cast<Instruction>(firstallocation);
+                if (invariantGroups.find(std::make_pair((Value*)alloc, i)) == invariantGroups.end()) {
+                    MDNode* invgroup = MDNode::getDistinct(alloc->getContext(), {});
+                    invariantGroups[std::make_pair((Value*)alloc, i)] = invgroup;
+                }
+                storealloc->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair((Value*)alloc, i)]);
+                unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+                if ((bsize & (bsize - 1)) == 0) {
+                    storealloc->setAlignment(bsize);
                 }
 
-                //allocationBuilder.GetInsertBlock()->getInstList().push_back(cast<Instruction>(allocation));
-                //cast<Instruction>(firstallocation)->moveBefore(allocationBuilder.GetInsertBlock()->getTerminator());
-                //mallocs.push_back(firstallocation);
-            } else {
-                allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
-
-                /*
-                if (containedloops.back().first.incvar != containedloops.back().first.header->getFirstNonPHI()) {
-                    llvm::errs() << "blk:" << *containedloops.back().first.header << "\n";
-                    llvm::errs() << "nonphi:" << *containedloops.back().first.header->getFirstNonPHI() << "\n";
-                    llvm::errs() << "incvar:" << *containedloops.back().first.incvar << "\n";
-                }
-                assert(containedloops.back().first.incvar == containedloops.back().first.header->getFirstNonPHI());
-                */
-                IRBuilder <> build(containedloops.back().first.incvar->getNextNode());
-                Value* allocation = build.CreateLoad(storeInto);
-                //Value* foo = build.CreateNUWAdd(containedloops.back().first.var, ConstantInt::get(Type::getInt64Ty(ctx->getContext()), 1));
-                Value* realloc_size = build.CreateNUWMul(containedloops.back().first.incvar, sublimits[i].first);
-                Value* idxs[2] = {
-                    build.CreatePointerCast(allocation, BPTy),
-                    build.CreateNUWMul(
-                        ConstantInt::get(size->getType(), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(myType)/8), realloc_size
-                    )
-                };
-
-                Value* realloccall = nullptr;
-                allocation = build.CreatePointerCast(realloccall = build.CreateCall(realloc, idxs, name+"_realloccache"), allocation->getType());
-                if (lastScopeAllocLocation) {
-                    *lastScopeAllocLocation = cast<Instruction>(allocation);
-                }
-                storealloc = build.CreateStore(allocation, storeInto);
-            }
-            
-            if (invariantGroups.find(std::make_pair((Value*)alloc, i)) == invariantGroups.end()) {
-                MDNode* invgroup = MDNode::getDistinct(alloc->getContext(), {});
-                invariantGroups[std::make_pair((Value*)alloc, i)] = invgroup;
-            }
-            storealloc->setMetadata(LLVMContext::MD_invariant_group, invariantGroups[std::make_pair((Value*)alloc, i)]);
-            unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
-            if ((bsize & (bsize - 1)) == 0) {
-                storealloc->setAlignment(bsize);
             }
 
-            if (freeLocation) {
+            if (shouldFree) {
                 assert(reverseBlocks.size());
 
                 IRBuilder<> tbuild(reverseBlocks[containedloops.back().first.preheader]);
@@ -1132,7 +1137,7 @@ endCheck:
                 if (ci->getParent()==nullptr) {
                     tbuild.Insert(ci);
                 }
-                *freeLocation = ci;
+                scopeFrees[alloc].insert(ci);
             }
         
             if (i != 0) {
@@ -1292,14 +1297,10 @@ endCheck:
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
         assert(inst);
         if (scopeMap.find(inst) != scopeMap.end()) return;
-        CallInst* free = nullptr;
         Instruction* lastalloc = nullptr;
-        AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), shouldFree ? &free : nullptr, &lastalloc);
+        AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), shouldFree, &lastalloc);
         assert(cache);
         scopeMap[inst] = cache;
-        if (free) {
-            scopeFrees[inst] = free;
-        }
         if (lastalloc) {
             lastScopeAlloc[inst] = lastalloc;
         }

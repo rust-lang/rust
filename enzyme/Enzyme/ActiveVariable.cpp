@@ -580,6 +580,12 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 			return true;
 		}
 	}
+    if (auto li = dyn_cast<LoadInst>(inst)) {
+        if (constants.find(li->getPointerOperand()) != constants.end()) {
+            constants.insert(li);
+            return true;
+        }
+    }
 
     /* TODO consider constant stores
     if (auto si = dyn_cast<StoreInst>(inst)) {

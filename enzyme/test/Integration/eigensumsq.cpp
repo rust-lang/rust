@@ -1,12 +1,13 @@
-// RUN: %clang++ -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
-// RUN: %clang++ -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
-// RUN: %clang++ -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
-// RUN: %clang++ -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
-// RUN: %clang++ -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
-// RUN: %clang++ -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
-// RUN: %clang++ -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
-// RUN: %clang++ -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -mllvm -force-vector-width=1 -ffast-math -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -S | %lli - 
+// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O3 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O2 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O1 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
+// RUN: %clang++ -fno-unroll-loops -fno-vectorize -fno-slp-vectorize -fno-exceptions -O0 %s -S -emit-llvm -o - | %opt - %loadEnzyme -enzyme -enzyme_nonmarkedglobals_inactive=1 -enzyme_inline=1 -S | %lli - 
 
+#define EIGEN_NO_AUTOMATIC_RESIZING 1
 #define EIGEN_DONT_ALIGN 1
 #define EIGEN_NO_DEBUG 1
 #define EIGEN_UNROLLING_LIMIT 0
@@ -25,15 +26,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern "C" {
-    extern double __enzyme_autodiff(void*, ...);
-}
-
 using Eigen::MatrixXd;
 using Eigen::Matrix;
 using Eigen::VectorXd;
 
 constexpr size_t IN = 4, OUT = 4, NUM = 5;
+
+extern "C" {
+    extern double __enzyme_autodiff(void*, const Matrix<double, IN, OUT>* __restrict W, const Matrix<double, IN, OUT>* __restrict Wp, const Matrix<double, IN, OUT>* __restrict M, const Matrix<double, IN, OUT>* __restrict Mp);
+}
+
 __attribute__((noinline))
 static double matvec(const Matrix<double, IN, OUT>* __restrict W, const Matrix<double, IN, OUT>* __restrict M) {
   MatrixXd diff = *W-*M;
