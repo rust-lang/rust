@@ -161,7 +161,9 @@ export async function startCargoWatch(
 ): Promise<CargoWatchProvider | undefined> {
     const execPromise = util.promisify(child_process.exec);
 
-    const { stderr } = await execPromise('cargo watch --version').catch(e => e);
+    const { stderr, code = 0 } = await execPromise(
+        'cargo watch --version'
+    ).catch(e => e);
 
     if (stderr.includes('no such subcommand: `watch`')) {
         const msg =
@@ -201,6 +203,11 @@ export async function startCargoWatch(
             );
             return;
         }
+    } else if (code !== 0) {
+        vscode.window.showErrorMessage(
+            `\`cargo watch\` failed with ${code}: ${stderr}`
+        );
+        return;
     }
 
     const provider = await registerCargoWatchProvider(context.subscriptions);
