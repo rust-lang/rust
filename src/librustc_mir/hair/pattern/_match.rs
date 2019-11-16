@@ -597,6 +597,14 @@ enum Constructor<'tcx> {
     FloatRange(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>, RangeEnd),
     /// Array patterns of length `n`.
     FixedLenSlice(u64),
+    /// Array patterns of length `len`, but for which we only care about the `prefix` first values
+    /// and the `suffix` last values. This avoids unnecessarily going through values we know to be
+    /// uninteresting, which can be a major problem for large arrays.
+    LazyFixedLenSlice {
+        len: u64, // The actual length of the array
+        prefix: u64,
+        suffix: u64,
+    },
     /// Slice patterns. Captures any array constructor of `length >= i + j`.
     VarLenSlice(u64, u64),
     /// Fake extra constructor for enums that aren't allowed to be matched exhaustively.
@@ -606,7 +614,7 @@ enum Constructor<'tcx> {
 impl<'tcx> Constructor<'tcx> {
     fn is_slice(&self) -> bool {
         match self {
-            FixedLenSlice { .. } | VarLenSlice { .. } => true,
+            FixedLenSlice { .. } | LazyFixedLenSlice { .. } | VarLenSlice { .. } => true,
             _ => false,
         }
     }
@@ -635,9 +643,9 @@ impl<'tcx> Constructor<'tcx> {
             Single | Variant(_) | ConstantValue(..) | FloatRange(..) => {
                 if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
             }
-            &FixedLenSlice(self_len) => {
+            &FixedLenSlice(self_len) | &LazyFixedLenSlice { len: self_len, .. } => {
                 let overlaps = |c: &Constructor<'_>| match *c {
-                    FixedLenSlice(other_len) => other_len == self_len,
+                    FixedLenSlice(len) | LazyFixedLenSlice { len, .. } => len == self_len,
                     VarLenSlice(prefix, suffix) => prefix + suffix <= self_len,
                     _ => false,
                 };
@@ -657,7 +665,12 @@ impl<'tcx> Constructor<'tcx> {
                             // Compute `pos_ctor \ neg_ctor`.
                             match pos_ctor {
                                 FixedLenSlice(pos_len) => match *neg_ctor {
-                                    FixedLenSlice(neg_len) if neg_len == pos_len => smallvec![],
+                                    FixedLenSlice(neg_len)
+                                    | LazyFixedLenSlice { len: neg_len, .. }
+                                        if neg_len == pos_len =>
+                                    {
+                                        smallvec![]
+                                    }
                                     VarLenSlice(neg_prefix, neg_suffix)
                                         if neg_prefix + neg_suffix <= pos_len =>
                                     {
@@ -668,7 +681,10 @@ impl<'tcx> Constructor<'tcx> {
                                 VarLenSlice(pos_prefix, pos_suffix) => {
                                     let pos_len = pos_prefix + pos_suffix;
                                     match *neg_ctor {
-                                        FixedLenSlice(neg_len) if neg_len >= pos_len => {
+                                        FixedLenSlice(neg_len)
+                                        | LazyFixedLenSlice { len: neg_len, .. }
+                                            if neg_len >= pos_len =>
+                                        {
                                             (pos_len..neg_len)
                                                 .map(FixedLenSlice)
                                                 // We know that `neg_len + 1 >= pos_len >=
@@ -799,7 +815,7 @@ impl<'tcx> Constructor<'tcx> {
                 }
                 _ => vec![],
             },
-            FixedLenSlice(_) | VarLenSlice(..) => match ty.kind {
+            FixedLenSlice(_) | LazyFixedLenSlice { .. } | VarLenSlice(..) => match ty.kind {
                 ty::Slice(ty) | ty::Array(ty, _) => {
                     let arity = self.arity(cx, ty);
                     (0..arity).map(|_| Pat::wildcard_from_ty(ty)).collect()
@@ -830,7 +846,9 @@ impl<'tcx> Constructor<'tcx> {
                 _ => 0,
             },
             FixedLenSlice(length) => *length,
-            VarLenSlice(prefix, suffix) => prefix + suffix,
+            VarLenSlice(prefix, suffix) | LazyFixedLenSlice { prefix, suffix, .. } => {
+                prefix + suffix
+            }
             ConstantValue(..) | FloatRange(..) | IntRange(..) | NonExhaustive => 0,
         }
     }
@@ -888,8 +906,11 @@ impl<'tcx> Constructor<'tcx> {
             FixedLenSlice(_) => {
                 PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
             }
-            &VarLenSlice(prefix_len, _) => {
-                let prefix = subpatterns.by_ref().take(prefix_len as usize).collect();
+            LazyFixedLenSlice { len, prefix, suffix } if prefix + suffix == *len => {
+                PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
+            }
+            VarLenSlice(prefix, _) | LazyFixedLenSlice { prefix, .. } => {
+                let prefix = subpatterns.by_ref().take(*prefix as usize).collect();
                 let suffix = subpatterns.collect();
                 let wild = Pat::wildcard_from_ty(ty);
                 PatKind::Slice { prefix, slice: Some(wild), suffix }
@@ -1106,7 +1127,11 @@ fn all_constructors<'a, 'tcx>(
         }
         ty::Array(ref sub_ty, len) if len.try_eval_usize(cx.tcx, cx.param_env).is_some() => {
             let len = len.eval_usize(cx.tcx, cx.param_env);
-            if len != 0 && cx.is_uninhabited(sub_ty) { vec![] } else { vec![FixedLenSlice(len)] }
+            if len != 0 && cx.is_uninhabited(sub_ty) {
+                vec![]
+            } else {
+                vec![LazyFixedLenSlice { len, prefix: 0, suffix: 0 }]
+            }
         }
         // Treat arrays of a constant but unknown length like slices.
         ty::Array(ref sub_ty, _) | ty::Slice(ref sub_ty) => {
@@ -1694,10 +1719,19 @@ fn pat_constructor<'tcx>(
                 Some(FloatRange(lo, hi, end))
             }
         }
-        PatKind::Array { .. } => match pat.ty.kind {
-            ty::Array(_, length) => Some(FixedLenSlice(length.eval_usize(tcx, param_env))),
-            _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pat.ty),
-        },
+        PatKind::Array { ref prefix, ref slice, ref suffix } => {
+            let len = match pat.ty.kind {
+                ty::Array(_, length) => length.eval_usize(tcx, param_env),
+                _ => span_bug!(pat.span, "bad ty {:?} for array pattern", pat.ty),
+            };
+            let prefix = prefix.len() as u64;
+            let suffix = suffix.len() as u64;
+            if slice.is_some() {
+                Some(LazyFixedLenSlice { len, prefix, suffix })
+            } else {
+                Some(FixedLenSlice(len))
+            }
+        }
         PatKind::Slice { ref prefix, ref slice, ref suffix } => {
             let prefix = prefix.len() as u64;
             let suffix = suffix.len() as u64;
@@ -1833,6 +1867,7 @@ fn split_grouped_constructors<'p, 'tcx>(
 ) -> Vec<Constructor<'tcx>> {
     let ty = pcx.ty;
     let mut split_ctors = Vec::with_capacity(ctors.len());
+    debug!("split_grouped_constructors({:#?}, {:#?})", matrix, ctors);
 
     for ctor in ctors.into_iter() {
         match ctor {
@@ -1920,7 +1955,8 @@ fn split_grouped_constructors<'p, 'tcx>(
                         .map(IntRange),
                 );
             }
-            VarLenSlice(self_prefix, self_suffix) => {
+            VarLenSlice(self_prefix, self_suffix)
+            | LazyFixedLenSlice { prefix: self_prefix, suffix: self_suffix, .. } => {
                 // The exhaustiveness-checking paper does not include any details on
                 // checking variable-length slice patterns. However, they are matched
                 // by an infinite collection of fixed-length array patterns.
@@ -2005,11 +2041,13 @@ fn split_grouped_constructors<'p, 'tcx>(
                                 _ => {}
                             }
                         }
-                        PatKind::Slice { ref prefix, slice: None, ref suffix } => {
+                        PatKind::Slice { ref prefix, slice: None, ref suffix }
+                        | PatKind::Array { ref prefix, slice: None, ref suffix } => {
                             let fixed_len = prefix.len() as u64 + suffix.len() as u64;
                             max_fixed_len = cmp::max(max_fixed_len, fixed_len);
                         }
-                        PatKind::Slice { ref prefix, slice: Some(_), ref suffix } => {
+                        PatKind::Slice { ref prefix, slice: Some(_), ref suffix }
+                        | PatKind::Array { ref prefix, slice: Some(_), ref suffix } => {
                             max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
                             max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
                         }
@@ -2027,20 +2065,37 @@ fn split_grouped_constructors<'p, 'tcx>(
                     max_prefix_len = max_fixed_len + 1 - max_suffix_len;
                 }
 
-                // `ctor` originally covered the range `(self_prefix + self_suffix..infinity)`. We
-                // now split it into two: lengths smaller than `max_prefix_len + max_suffix_len`
-                // are treated independently as fixed-lengths slices, and lengths above are
-                // captured by a final VarLenSlice constructor.
-                split_ctors.extend(
-                    (self_prefix + self_suffix..max_prefix_len + max_suffix_len).map(FixedLenSlice),
-                );
-                split_ctors.push(VarLenSlice(max_prefix_len, max_suffix_len));
+                match ctor {
+                    LazyFixedLenSlice { len, .. } => {
+                        if max_prefix_len + max_suffix_len < len {
+                            split_ctors.push(LazyFixedLenSlice {
+                                len,
+                                prefix: max_prefix_len,
+                                suffix: max_suffix_len,
+                            });
+                        } else {
+                            split_ctors.push(FixedLenSlice(len));
+                        }
+                    }
+                    _ => {
+                        // `ctor` originally covered the range `(self_prefix + self_suffix..infinity)`. We
+                        // now split it into two: lengths smaller than `max_prefix_len + max_suffix_len`
+                        // are treated independently as fixed-lengths slices, and lengths above are
+                        // captured by a final VarLenSlice constructor.
+                        split_ctors.extend(
+                            (self_prefix + self_suffix..max_prefix_len + max_suffix_len)
+                                .map(FixedLenSlice),
+                        );
+                        split_ctors.push(VarLenSlice(max_prefix_len, max_suffix_len));
+                    }
+                }
             }
             // Any other constructor can be used unchanged.
             _ => split_ctors.push(ctor),
         }
     }
 
+    debug!("split_grouped_constructors(..)={:#?}", split_ctors);
     split_ctors
 }
 
@@ -2252,7 +2307,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
 
         PatKind::Array { ref prefix, ref slice, ref suffix }
         | PatKind::Slice { ref prefix, ref slice, ref suffix } => match *constructor {
-            FixedLenSlice(..) | VarLenSlice(..) => {
+            FixedLenSlice(..) | LazyFixedLenSlice { .. } | VarLenSlice(..) => {
                 let pat_len = prefix.len() + suffix.len();
                 if let Some(slice_count) = ctor_wild_subpatterns.len().checked_sub(pat_len) {
                     if slice_count == 0 || slice.is_some() {
