@@ -134,7 +134,7 @@ struct Scope {
 struct DropData {
     /// The `Span` where drop obligation was incurred (typically where place was
     /// declared)
-    span: Span,
+    source_info: SourceInfo,
 
     /// local to drop
     local: Local,
@@ -179,8 +179,7 @@ const CONTINUE_NODE: DropIdx = DropIdx::from_u32_const(1);
 // TODO say some more.
 #[derive(Debug)]
 struct DropTree {
-    /// The next item to drop, if there is one.
-    // TODO actual comment
+    /// Drops in the tree.
     drops: IndexVec<DropIdx, (DropData, DropIdx)>,
     /// Map for finding the inverse of the `next_drop` relation:
     ///
@@ -193,11 +192,6 @@ struct DropTree {
 }
 
 impl Scope {
-    /// Given a span and this scope's source scope, make a SourceInfo.
-    fn source_info(&self, span: Span) -> SourceInfo {
-        SourceInfo { span, scope: self.source_scope }
-    }
-
     /// Whether there's anything to do for the cleanup path, that is,
     /// when unwinding through this scope. This includes destructors,
     /// but not StorageDead statements, which don't get emitted at all
@@ -219,7 +213,9 @@ impl Scope {
 
 impl DropTree {
     fn new(num_roots: usize) -> Self {
-        let fake_data = DropData { span: DUMMY_SP, local: Local::MAX, kind: DropKind::Storage };
+        let fake_source_info = SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE };
+        let fake_data =
+            DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
         let drop_idx = DropIdx::MAX;
         let drops = IndexVec::from_elem_n((fake_data, drop_idx), num_roots);
         Self {
@@ -286,10 +282,6 @@ impl<'tcx> Scopes<'tcx> {
     fn topmost(&self) -> region::Scope {
         self.scopes.last().expect("topmost_scope: no scopes present").region_scope
     }
-
-    //    fn source_info(&self, index: usize, span: Span) -> SourceInfo {
-    //        self.scopes[self.len() - index].source_info(span)
-    //    }
 }
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
@@ -497,7 +489,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.start_new_block().unit()
     }
 
-    // TODO: use in pop_top_scope.
     crate fn exit_top_scope(
         &mut self,
         mut block: BasicBlock,
@@ -685,7 +676,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Attribute scope exit drops to scope's closing brace.
         let scope_end = self.hir.tcx().sess.source_map().end_point(region_scope_span);
 
-        scope.drops.push(DropData { span: scope_end, local, kind: drop_kind });
+        scope.drops.push(DropData {
+            source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
+            local,
+            kind: drop_kind,
+        });
     }
 
     /// Indicates that the "local operand" stored in `local` is
@@ -790,7 +785,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             bug!("Drop scheduled on top of condition variable")
                         }
                         DropKind::Storage => {
-                            let source_info = top_scope.source_info(top_drop_data.span);
+                            let source_info = top_drop_data.source_info;
                             let local = top_drop_data.local;
                             assert_eq!(local, cond_temp, "Drop scheduled on top of condition");
                             self.cfg.push(
@@ -928,7 +923,7 @@ fn build_scope_drops<'tcx>(
     // `diverge_cleanup_gen`.
 
     for drop_data in scope.drops.iter().rev() {
-        let source_info = scope.source_info(drop_data.span);
+        let source_info = drop_data.source_info;
         let local = drop_data.local;
 
         match drop_data.kind {
@@ -1097,10 +1092,6 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     }
 }
 
-fn source_info(span: Span) -> SourceInfo {
-    SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE }
-}
-
 fn build_drop_tree<'tcx, T: DropTreeBuilder<'tcx>>(
     cfg: &mut CFG<'tcx>,
     drops: &mut DropTree,
@@ -1172,21 +1163,21 @@ fn build_drop_tree<'tcx, T: DropTreeBuilder<'tcx>>(
                     unwind: None,
                     location: drop_data.0.local.into(),
                 };
-                cfg.terminate(blocks[drop_idx].unwrap(), source_info(drop_data.0.span), terminator);
+                cfg.terminate(blocks[drop_idx].unwrap(), drop_data.0.source_info, terminator);
             }
             // Root nodes don't correspond to a drop.
             DropKind::Storage if drop_idx < drops.num_roots => {}
             DropKind::Storage => {
                 let block = blocks[drop_idx].unwrap();
                 let stmt = Statement {
-                    source_info: source_info(drop_data.0.span),
+                    source_info: drop_data.0.source_info,
                     kind: StatementKind::StorageDead(drop_data.0.local),
                 };
                 cfg.push(block, stmt);
                 let target = blocks[drop_data.1].unwrap();
                 if target != block {
                     let terminator = TerminatorKind::Goto { target };
-                    cfg.terminate(block, source_info(drop_data.0.span), terminator);
+                    cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
             }
         }
