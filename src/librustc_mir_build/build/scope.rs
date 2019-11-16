@@ -6,30 +6,31 @@ contents, and then pop it off. Every scope is named by a
 
 ### SEME Regions
 
-When pushing a new scope, we record the current point in the graph (a
+When pushing a new [Scope], we record the current point in the graph (a
 basic block); this marks the entry to the scope. We then generate more
 stuff in the control-flow graph. Whenever the scope is exited, either
 via a `break` or `return` or just by fallthrough, that marks an exit
 from the scope. Each lexical scope thus corresponds to a single-entry,
 multiple-exit (SEME) region in the control-flow graph.
 
-For now, we keep a mapping from each `region::Scope` to its
-corresponding SEME region for later reference (see caveat in next
-paragraph). This is because region scopes are tied to
-them. Eventually, when we shift to non-lexical lifetimes, there should
-be no need to remember this mapping.
+For now, we record the `region::Scope` to each SEME region for later reference
+(see caveat in next paragraph). This is because destruction scopes are tied to
+them. This may change in the future so that MIR lowering determines its own
+destruction scopes.
 
 ### Not so SEME Regions
 
 In the course of building matches, it sometimes happens that certain code
 (namely guards) gets executed multiple times. This means that the scope lexical
 scope may in fact correspond to multiple, disjoint SEME regions. So in fact our
-mapping is from one scope to a vector of SEME regions.
+mapping is from one scope to a vector of SEME regions. Since the SEME regions
+are disjoint, the mapping is still one-to-one for the set of SEME regions that
+we're currently in.
 
-Also in matches, the scopes assigned to arms are not even SEME regions! Each
-arm has a single region with one entry for each pattern. We manually
+Also in matches, the scopes assigned to arms are not always even SEME regions!
+Each arm has a single region with one entry for each pattern. We manually
 manipulate the scheduled drops in this scope to avoid dropping things multiple
-times, although drop elaboration would clean this up for value drops.
+times.
 
 ### Drops
 
@@ -60,25 +61,23 @@ that for now); any later drops would also drop `y`.
 
 There are numerous "normal" ways to early exit a scope: `break`,
 `continue`, `return` (panics are handled separately). Whenever an
-early exit occurs, the method `exit_scope` is called. It is given the
+early exit occurs, the method `break_scope` is called. It is given the
 current point in execution where the early exit occurs, as well as the
 scope you want to branch to (note that all early exits from to some
-other enclosing scope). `exit_scope` will record this exit point and
-also add all drops.
+other enclosing scope). `break_scope` will record the set of drops currently
+scheduled in a [DropTree]. Later, before `in_breakable_scope` exits, the drops
+will be added to the CFG.
 
-Panics are handled in a similar fashion, except that a panic always
-returns out to the `DIVERGE_BLOCK`. To trigger a panic, simply call
-`panic(p)` with the current point `p`. Or else you can call
-`diverge_cleanup`, which will produce a block that you can branch to
-which does the appropriate cleanup and then diverges. `panic(p)`
-simply calls `diverge_cleanup()` and adds an edge from `p` to the
-result.
+Panics are handled in a similar fashion, except that the drops are added to the
+mir once the rest of the function has finished being lowered. If a terminator
+can panic, call `diverge_from(block)` with the block containing the terminator
+`block`.
 
-### Loop scopes
+### Breakable scopes
 
 In addition to the normal scope stack, we track a loop scope stack
-that contains only loops. It tracks where a `break` and `continue`
-should go to.
+that contains only loops and breakable blocks. It tracks where a `break`,
+`continue` or `return` should go to.
 
 */
 
@@ -106,7 +105,7 @@ pub struct Scopes<'tcx> {
 
     /// Drops that need to be done on paths to the `GeneratorDrop` terminator.
     generator_drops: DropTree,
-    // TODO: what's this?
+    // TODO: implement caching
     // cached_unwind_drop: DropIdx,
 }
 
@@ -175,8 +174,15 @@ rustc_index::newtype_index! {
 const ROOT_NODE: DropIdx = DropIdx::from_u32_const(0);
 const CONTINUE_NODE: DropIdx = DropIdx::from_u32_const(1);
 
-/// A tree of drops that we have deferred lowering.
-// TODO say some more.
+/// A tree (usually, sometimes this is a forest of two trees) of drops that we
+/// have deferred lowering. It's used for:
+///
+/// * Drops on unwind paths
+/// * Drops on generator drop paths (when a suspended generator is dropped)
+/// * Drops on return and loop exit paths
+///
+/// Once no more nodes could be added to the tree, we lower it to MIR in one go
+/// in `build_drop_tree`.
 #[derive(Debug)]
 struct DropTree {
     /// Drops in the tree.
@@ -187,8 +193,8 @@ struct DropTree {
     previous_drops: FxHashMap<(DropIdx, Local, DropKind), DropIdx>,
     /// Edges into the `DropTree` that need to be added once it's lowered.
     entry_points: Vec<(DropIdx, BasicBlock)>,
-    /// The number of root nodes in the tree.
-    num_roots: DropIdx,
+    /// The first non-root nodes in the forest.
+    first_non_root: DropIdx,
 }
 
 impl Scope {
@@ -211,6 +217,13 @@ impl Scope {
     }
 }
 
+/// A trait that determined how [DropTree::lower_to_mir] creates its blocks and
+/// links to any entry nodes.
+trait DropTreeBuilder<'tcx> {
+    fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock;
+    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock);
+}
+
 impl DropTree {
     fn new(num_roots: usize) -> Self {
         let fake_source_info = SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE };
@@ -220,7 +233,7 @@ impl DropTree {
         let drops = IndexVec::from_elem_n((fake_data, drop_idx), num_roots);
         Self {
             drops,
-            num_roots: DropIdx::from_usize(num_roots),
+            first_non_root: DropIdx::from_usize(num_roots),
             entry_points: Vec::new(),
             previous_drops: FxHashMap::default(),
         }
@@ -236,6 +249,119 @@ impl DropTree {
 
     fn add_entry(&mut self, from: BasicBlock, to: DropIdx) {
         self.entry_points.push((to, from));
+    }
+
+    fn build_mir<'tcx, T: DropTreeBuilder<'tcx>>(
+        &mut self,
+        cfg: &mut CFG<'tcx>,
+        blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
+    ) {
+        debug!("DropTree::lower_to_mir(drops = {:#?})", self);
+
+        self.assign_blocks::<T>(cfg, blocks);
+        self.link_blocks(cfg, blocks)
+    }
+
+    /// Assign blocks for all of the drops in the drop tree that need them.
+    fn assign_blocks<'tcx, T: DropTreeBuilder<'tcx>>(
+        &mut self,
+        cfg: &mut CFG<'tcx>,
+        blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
+    ) {
+        // StorageDead statements can share blocks with each other and also with
+        // a Drop terminator. We iterate through the blocks to find which blocks
+        // need
+        #[derive(Clone, Copy)]
+        enum Block {
+            // This drop is unreachable
+            None,
+            // This drop is only reachable through the `StorageDead` with the
+            // specified index.
+            Shares(DropIdx),
+            // This drop has more than one way of being reached, or it is
+            // branched to from outside the tree, or it's predecessor is a
+            // `Value` drop.
+            Own,
+        }
+
+        let mut needs_block = IndexVec::from_elem(Block::None, &self.drops);
+        if self.first_non_root > CONTINUE_NODE {
+            // `continue` already has its own node.
+            needs_block[CONTINUE_NODE] = Block::Own;
+        }
+
+        // Sort so that we only need to check the last
+        let entry_points = &mut self.entry_points;
+        entry_points.sort();
+
+        for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
+            if entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
+                let block = *blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
+                needs_block[drop_idx] = Block::Own;
+                while entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
+                    let entry_block = entry_points.pop().unwrap().1;
+                    T::add_entry(cfg, entry_block, block);
+                }
+            }
+            match needs_block[drop_idx] {
+                Block::None => continue,
+                Block::Own => {
+                    blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
+                }
+                Block::Shares(pred) => {
+                    blocks[drop_idx] = blocks[pred];
+                }
+            }
+            if let DropKind::Value = drop_data.0.kind {
+                needs_block[drop_data.1] = Block::Own;
+            } else {
+                if drop_idx >= self.first_non_root {
+                    match &mut needs_block[drop_data.1] {
+                        pred @ Block::None => *pred = Block::Shares(drop_idx),
+                        pred @ Block::Shares(_) => *pred = Block::Own,
+                        Block::Own => (),
+                    }
+                }
+            }
+        }
+
+        debug!("assign_blocks: blocks = {:#?}", blocks);
+        assert!(entry_points.is_empty());
+    }
+
+    fn link_blocks(&self, cfg: &mut CFG<'tcx>, blocks: &IndexVec<DropIdx, Option<BasicBlock>>) {
+        for (drop_idx, drop_data) in self.drops.iter_enumerated().rev() {
+            let block = if let Some(block) = blocks[drop_idx] {
+                block
+            } else {
+                continue;
+            };
+            match drop_data.0.kind {
+                DropKind::Value => {
+                    let terminator = TerminatorKind::Drop {
+                        target: blocks[drop_data.1].unwrap(),
+                        // The caller will handle this if needed.
+                        unwind: None,
+                        location: drop_data.0.local.into(),
+                    };
+                    cfg.terminate(block, drop_data.0.source_info, terminator);
+                }
+                // Root nodes don't correspond to a drop.
+                DropKind::Storage if drop_idx < self.first_non_root => {}
+                DropKind::Storage => {
+                    let stmt = Statement {
+                        source_info: drop_data.0.source_info,
+                        kind: StatementKind::StorageDead(drop_data.0.local),
+                    };
+                    cfg.push(block, stmt);
+                    let target = blocks[drop_data.1].unwrap();
+                    if target != block {
+                        let terminator = TerminatorKind::Goto { target };
+                        cfg.terminate(block, drop_data.0.source_info, terminator);
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -483,7 +609,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             drop_idx = drops.add_drop(*drop, drop_idx);
         }
         drops.add_entry(block, drop_idx);
-        // TODO: explain this hack!
+        // `build_drop_tree` doesn't have access to our source_info, so we
+        // create a dummy terminator now. `TerminatorKind::Resume` is used
+        // because MIR type checking will panic if it hasn't been overwritten.
         self.cfg.terminate(block, source_info, TerminatorKind::Resume);
 
         self.cfg.start_new_block().unit()
@@ -891,7 +1019,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 }
 
-/// Builds drops for pop_scope and exit_scope.
+/// Builds drops for pop_scope and leave_top_scope.
 fn build_scope_drops<'tcx>(
     cfg: &mut CFG<'tcx>,
     unwind_drops: &mut DropTree,
@@ -960,10 +1088,6 @@ fn build_scope_drops<'tcx>(
     block.unit()
 }
 
-trait DropTreeBuilder<'tcx> {
-    fn make_block(cfg: &mut CFG<'tcx>) -> BasicBlock;
-    fn add_entry(cfg: &mut CFG<'tcx>, from: BasicBlock, to: BasicBlock);
-}
 impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     fn build_exit_tree(
         &mut self,
@@ -973,14 +1097,11 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         if continue_block.is_some() {
             blocks[CONTINUE_NODE] = continue_block;
-            debug_assert_eq!(drops.num_roots, DropIdx::new(2));
-        } else {
-            debug_assert_eq!(drops.num_roots, CONTINUE_NODE);
         }
-        build_drop_tree::<ExitScopes>(&mut self.cfg, &mut drops, &mut blocks);
+        drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
             let unwind_target = self.diverge_cleanup();
-            let num_roots = drops.num_roots.index();
+            let num_roots = drops.first_non_root.index();
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, num_roots);
             for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(num_roots) {
                 match drop_data.0.kind {
@@ -1030,7 +1151,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let cfg = &mut self.cfg;
         let fn_span = self.fn_span;
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        build_drop_tree::<GeneratorDrop>(cfg, drops, &mut blocks);
+        drops.build_mir::<GeneratorDrop>(cfg, &mut blocks);
         if let Some(root_block) = blocks[ROOT_NODE] {
             cfg.terminate(
                 root_block,
@@ -1057,7 +1178,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         }
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         blocks[ROOT_NODE] = resume_block;
-        build_drop_tree::<Unwind>(cfg, drops, &mut blocks);
+        drops.build_mir::<Unwind>(cfg, &mut blocks);
         if let (None, Some(new_resume_block)) = (resume_block, blocks[ROOT_NODE]) {
             let terminator =
                 if should_abort { TerminatorKind::Abort } else { TerminatorKind::Resume };
@@ -1076,7 +1197,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         should_abort: bool,
     ) -> Option<BasicBlock> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        build_drop_tree::<Unwind>(cfg, drops, &mut blocks);
+        drops.build_mir::<Unwind>(cfg, &mut blocks);
         if let Some(resume_block) = blocks[ROOT_NODE] {
             let terminator =
                 if should_abort { TerminatorKind::Abort } else { TerminatorKind::Resume };
@@ -1088,98 +1209,6 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
             Some(resume_block)
         } else {
             None
-        }
-    }
-}
-
-fn build_drop_tree<'tcx, T: DropTreeBuilder<'tcx>>(
-    cfg: &mut CFG<'tcx>,
-    drops: &mut DropTree,
-    blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
-) {
-    debug!("build_drop_tree(drops = {:#?})", drops);
-    // TODO: Some comment about this.
-    #[derive(Clone, Copy)]
-    enum NeedsBlock {
-        NoPredecessor,
-        CanShare(DropIdx),
-        NeedsOwn,
-    }
-
-    // TODO: Split this into two functions.
-
-    // If a drop has multiple predecessors, they need to be in separate blocks
-    // so that they can both banch to the current drop.
-    let mut needs_block = IndexVec::from_elem(NeedsBlock::NoPredecessor, &drops.drops);
-    for root_idx in (ROOT_NODE..drops.num_roots).skip(1) {
-        needs_block[root_idx] = NeedsBlock::NeedsOwn;
-    }
-
-    let entry_points = &mut drops.entry_points;
-    entry_points.sort();
-
-    for (drop_idx, drop_data) in drops.drops.iter_enumerated().rev() {
-        if entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
-            let block = *blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
-            needs_block[drop_idx] = NeedsBlock::NeedsOwn;
-            while entry_points.last().map_or(false, |entry_point| entry_point.0 == drop_idx) {
-                let entry_block = entry_points.pop().unwrap().1;
-                T::add_entry(cfg, entry_block, block);
-            }
-        }
-        match needs_block[drop_idx] {
-            NeedsBlock::NoPredecessor => continue,
-            NeedsBlock::NeedsOwn => {
-                blocks[drop_idx].get_or_insert_with(|| T::make_block(cfg));
-            }
-            NeedsBlock::CanShare(pred) => {
-                blocks[drop_idx] = blocks[pred];
-            }
-        }
-        if let DropKind::Value = drop_data.0.kind {
-            needs_block[drop_data.1] = NeedsBlock::NeedsOwn;
-        } else {
-            if drop_idx >= drops.num_roots {
-                match &mut needs_block[drop_data.1] {
-                    pred @ NeedsBlock::NoPredecessor => *pred = NeedsBlock::CanShare(drop_idx),
-                    pred @ NeedsBlock::CanShare(_) => *pred = NeedsBlock::NeedsOwn,
-                    NeedsBlock::NeedsOwn => (),
-                }
-            }
-        }
-    }
-    assert!(entry_points.is_empty());
-    debug!("build_drop_tree: blocks = {:#?}", blocks);
-
-    for (drop_idx, drop_data) in drops.drops.iter_enumerated().rev() {
-        if let NeedsBlock::NoPredecessor = needs_block[drop_idx] {
-            continue;
-        }
-        match drop_data.0.kind {
-            DropKind::Value => {
-                let terminator = TerminatorKind::Drop {
-                    target: blocks[drop_data.1].unwrap(),
-                    // TODO: The caller will register this if needed.
-                    unwind: None,
-                    location: drop_data.0.local.into(),
-                };
-                cfg.terminate(blocks[drop_idx].unwrap(), drop_data.0.source_info, terminator);
-            }
-            // Root nodes don't correspond to a drop.
-            DropKind::Storage if drop_idx < drops.num_roots => {}
-            DropKind::Storage => {
-                let block = blocks[drop_idx].unwrap();
-                let stmt = Statement {
-                    source_info: drop_data.0.source_info,
-                    kind: StatementKind::StorageDead(drop_data.0.local),
-                };
-                cfg.push(block, stmt);
-                let target = blocks[drop_data.1].unwrap();
-                if target != block {
-                    let terminator = TerminatorKind::Goto { target };
-                    cfg.terminate(block, drop_data.0.source_info, terminator);
-                }
-            }
         }
     }
 }
