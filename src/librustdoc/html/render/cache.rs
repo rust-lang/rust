@@ -139,6 +139,7 @@ impl Cache {
             deref_trait_did,
             deref_mut_trait_did,
             owned_box_did,
+            ..
         } = renderinfo;
 
         let external_paths =

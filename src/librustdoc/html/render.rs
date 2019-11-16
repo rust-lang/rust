@@ -60,7 +60,7 @@ use serde::ser::SerializeSeq;
 use serde::{Serialize, Serializer};
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy};
-use crate::config::RenderOptions;
+use crate::config::{OutputFormat, RenderOptions};
 use crate::docfs::{DocFS, ErrorStorage, PathError};
 use crate::doctree;
 use crate::html::escape::Escape;
@@ -270,6 +270,7 @@ pub struct RenderInfo {
     pub deref_trait_did: Option<DefId>,
     pub deref_mut_trait_did: Option<DefId>,
     pub owned_box_did: Option<DefId>,
+    pub output_format: Option<OutputFormat>,
 }
 
 // Helper structs for rendering items/sidebars and carrying along contextual
