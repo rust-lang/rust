@@ -796,6 +796,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn read_wide_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, &[u8]> {
         let widestr_u8_initbyte = self.read_bytes(ptr, Size::from_bytes(1))?;
         let mut widestr_len = 0; // length in bytes
+        // The below unsafe block uses a raw-pointer(*const u8) to find the exact length
+        // of the wide_string, which terminates with a double null byte. It doesn't write anything to Memory.
+        // Each character in a wide_string takes up two bytes.
         unsafe {
             let mut tracker = &widestr_u8_initbyte[0] as *const u8;
             while !(*tracker == 0 && *tracker.add(1) == 0) {
