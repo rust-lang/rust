@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
-use ra_db::{FileId, SourceDatabase};
+use hir::Source;
+use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::find_node_at_offset,
     ast::{self, DocCommentsOwner},
@@ -21,11 +22,12 @@ pub(crate) fn goto_definition(
     let parse = db.parse(position.file_id);
     let syntax = parse.tree().syntax().clone();
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, position.offset) {
-        let navs = reference_definition(db, position.file_id, &name_ref).to_vec();
+        let navs =
+            reference_definition(db, Source::new(position.file_id.into(), &name_ref)).to_vec();
         return Some(RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec()));
     }
     if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
-        let navs = name_definition(db, position.file_id, &name)?;
+        let navs = name_definition(db, Source::new(position.file_id.into(), &name))?;
         return Some(RangeInfo::new(name.syntax().text_range(), navs));
     }
     None
@@ -49,12 +51,11 @@ impl ReferenceResult {
 
 pub(crate) fn reference_definition(
     db: &RootDatabase,
-    file_id: FileId,
-    name_ref: &ast::NameRef,
+    name_ref: Source<&ast::NameRef>,
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
-    let name_kind = classify_name_ref(db, file_id, &name_ref).map(|d| d.kind);
+    let name_kind = classify_name_ref(db, name_ref).map(|d| d.kind);
     match name_kind {
         Some(Macro(mac)) => return Exact(mac.to_nav(db)),
         Some(Field(field)) => return Exact(field.to_nav(db)),
@@ -76,7 +77,7 @@ pub(crate) fn reference_definition(
     };
 
     // Fallback index based approach:
-    let navs = crate::symbol_index::index_resolve(db, name_ref)
+    let navs = crate::symbol_index::index_resolve(db, name_ref.ast)
         .into_iter()
         .map(|s| s.to_nav(db))
         .collect();
@@ -85,14 +86,13 @@ pub(crate) fn reference_definition(
 
 pub(crate) fn name_definition(
     db: &RootDatabase,
-    file_id: FileId,
-    name: &ast::Name,
+    name: Source<&ast::Name>,
 ) -> Option<Vec<NavigationTarget>> {
-    let parent = name.syntax().parent()?;
+    let parent = name.ast.syntax().parent()?;
 
     if let Some(module) = ast::Module::cast(parent.clone()) {
         if module.has_semi() {
-            let src = hir::Source { file_id: file_id.into(), ast: module };
+            let src = name.with_ast(module);
             if let Some(child_module) = hir::Module::from_declaration(db, src) {
                 let nav = child_module.to_nav(db);
                 return Some(vec![nav]);
@@ -100,20 +100,20 @@ pub(crate) fn name_definition(
         }
     }
 
-    if let Some(nav) = named_target(db, file_id, &parent) {
+    if let Some(nav) = named_target(db, name.with_ast(&parent)) {
         return Some(vec![nav]);
     }
 
     None
 }
 
-fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option<NavigationTarget> {
+fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<NavigationTarget> {
     match_ast! {
-        match node {
+        match (node.ast) {
             ast::StructDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -122,7 +122,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::EnumDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -131,7 +131,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::EnumVariant(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -140,7 +140,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::FnDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -149,7 +149,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::TypeAliasDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -158,7 +158,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::ConstDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -167,7 +167,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::StaticDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -176,7 +176,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::TraitDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -185,7 +185,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::RecordFieldDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -194,7 +194,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::Module(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     it.short_label(),
@@ -203,7 +203,7 @@ fn named_target(db: &RootDatabase, file_id: FileId, node: &SyntaxNode) -> Option
             ast::MacroCall(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    file_id.into(),
+                    node.file_id,
                     &it,
                     it.doc_comment_text(),
                     None,

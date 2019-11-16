@@ -123,14 +123,12 @@ pub(crate) fn classify_name(
 
 pub(crate) fn classify_name_ref(
     db: &RootDatabase,
-    file_id: FileId,
-    name_ref: &ast::NameRef,
+    name_ref: Source<&ast::NameRef>,
 ) -> Option<NameDefinition> {
     let _p = profile("classify_name_ref");
 
-    let parent = name_ref.syntax().parent()?;
-    let analyzer =
-        SourceAnalyzer::new(db, hir::Source::new(file_id.into(), name_ref.syntax()), None);
+    let parent = name_ref.ast.syntax().parent()?;
+    let analyzer = SourceAnalyzer::new(db, name_ref.map(|it| it.syntax()), None);
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
         tested_by!(goto_definition_works_for_methods);
@@ -150,17 +148,16 @@ pub(crate) fn classify_name_ref(
         tested_by!(goto_definition_works_for_record_fields);
         if let Some(record_lit) = record_field.syntax().ancestors().find_map(ast::RecordLit::cast) {
             let variant_def = analyzer.resolve_record_literal(&record_lit)?;
-            let hir_path = Path::from_name_ref(name_ref);
+            let hir_path = Path::from_name_ref(name_ref.ast);
             let hir_name = hir_path.as_ident()?;
             let field = variant_def.field(db, hir_name)?;
             return Some(from_struct_field(db, field));
         }
     }
 
-    let file_id = file_id.into();
-    let ast = ModuleSource::from_child_node(db, Source::new(file_id, &parent));
+    let ast = ModuleSource::from_child_node(db, name_ref.with_ast(&parent));
     // FIXME: find correct container and visibility for each case
-    let container = Module::from_definition(db, Source { file_id, ast })?;
+    let container = Module::from_definition(db, name_ref.with_ast(ast))?;
     let visibility = None;
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
@@ -171,7 +168,7 @@ pub(crate) fn classify_name_ref(
         }
     }
 
-    let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
+    let path = name_ref.ast.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = analyzer.resolve_path(db, &path)?;
     match resolved {
         PathResolution::Def(def) => Some(from_module_def(db, def, Some(container))),
