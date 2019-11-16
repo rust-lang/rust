@@ -1157,8 +1157,7 @@ impl fmt::Display for SymbolStr {
 impl<CTX> HashStable<CTX> for SymbolStr {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        let str = self as &str;
-        str.hash_stable(hcx, hasher)
+        self.string.hash_stable(hcx, hasher)
     }
 }
 
