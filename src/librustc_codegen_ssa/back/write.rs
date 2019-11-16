@@ -61,6 +61,7 @@ pub struct ModuleConfig {
 
     pub sanitizer: Option<Sanitizer>,
     pub sanitizer_recover: Vec<Sanitizer>,
+    pub sanitizer_memory_track_origins: usize,
 
     // Flags indicating which outputs to produce.
     pub emit_pre_lto_bc: bool,
@@ -102,6 +103,7 @@ impl ModuleConfig {
 
             sanitizer: None,
             sanitizer_recover: Default::default(),
+            sanitizer_memory_track_origins: 0,
 
             emit_no_opt_bc: false,
             emit_pre_lto_bc: false,
@@ -359,6 +361,8 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     modules_config.pgo_use = sess.opts.cg.profile_use.clone();
     modules_config.sanitizer = sess.opts.debugging_opts.sanitizer.clone();
     modules_config.sanitizer_recover = sess.opts.debugging_opts.sanitizer_recover.clone();
+    modules_config.sanitizer_memory_track_origins =
+        sess.opts.debugging_opts.sanitizer_memory_track_origins;
     modules_config.opt_level = Some(sess.opts.optimize);
     modules_config.opt_size = Some(sess.opts.optimize);
 

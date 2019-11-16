@@ -834,6 +834,7 @@ macro_rules! options {
             Some("one of: `address`, `leak`, `memory` or `thread`");
         pub const parse_sanitizer_list: Option<&str> =
             Some("comma separated list of sanitizers");
+        pub const parse_sanitizer_memory_track_origins: Option<&str> = None;
         pub const parse_linker_flavor: Option<&str> =
             Some(::rustc_target::spec::LinkerFlavor::one_of());
         pub const parse_optimization_fuel: Option<&str> =
@@ -1051,6 +1052,22 @@ macro_rules! options {
                 true
             } else {
                 false
+            }
+        }
+
+        fn parse_sanitizer_memory_track_origins(slot: &mut usize, v: Option<&str>) -> bool {
+            match v.map(|s| s.parse()) {
+                None => {
+                    *slot = 2;
+                    true
+                }
+                Some(Ok(i)) if i <= 2 => {
+                    *slot = i;
+                    true
+                }
+                _ => {
+                    false
+                }
             }
         }
 
@@ -1411,6 +1428,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
                                     "use a sanitizer"),
     sanitizer_recover: Vec<Sanitizer> = (vec![], parse_sanitizer_list, [TRACKED],
         "Enable recovery for selected sanitizers"),
+    sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
+        "Enable origins tracking in MemorySanitizer"),
     fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
         "set the optimization fuel quota for a crate"),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],

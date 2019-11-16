@@ -29,7 +29,7 @@ use std::path::{Path, PathBuf};
 use std::str;
 use std::sync::Arc;
 use std::slice;
-use libc::{c_uint, c_void, c_char, size_t};
+use libc::{c_int, c_uint, c_void, c_char, size_t};
 
 pub const RELOC_MODEL_ARGS : [(&str, llvm::RelocMode); 7] = [
     ("pic", llvm::RelocMode::PIC),
@@ -373,7 +373,7 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
                                 recover));
                     }
                     Sanitizer::Memory => {
-                        let track_origins = 0;
+                        let track_origins = config.sanitizer_memory_track_origins as c_int;
                         extra_passes.push(llvm::LLVMRustCreateMemorySanitizerPass(
                                 track_origins, recover));
                     }
