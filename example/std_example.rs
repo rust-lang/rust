@@ -53,7 +53,12 @@ fn main() {
     assert_eq!(0b100010000000000000000000000000000u128 >> 10, 0b10001000000000000000000u128);
     assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 >> 64, 0xFEDCBA98765432u128);
     assert_eq!(0xFEDCBA987654321123456789ABCDEFu128 as i128 >> 64, 0xFEDCBA98765432i128);
-    assert_eq!(353985398u128 * 932490u128, 330087843781020u128);
+
+    let tmp = 353985398u128;
+    assert_eq!(tmp * 932490u128, 330087843781020u128);
+
+    let tmp = -0x1234_5678_9ABC_DEF0i64;
+    assert_eq!(tmp as i128, -0x1234_5678_9ABC_DEF0i128);
 
     // Check that all u/i128 <-> float casts work correctly.
     let houndred_u128 = 100u128;

@@ -13,15 +13,19 @@ pub fn clif_intcast(
 
         // extend
         (_, types::I128) => {
-            let wider = if from == types::I64 {
+            let lo = if from == types::I64 {
                 val
             } else if signed {
                 fx.bcx.ins().sextend(types::I64, val)
             } else {
                 fx.bcx.ins().uextend(types::I64, val)
             };
-            let zero = fx.bcx.ins().iconst(types::I64, 0);
-            fx.bcx.ins().iconcat(wider, zero)
+            let hi = if signed {
+                fx.bcx.ins().sshr_imm(lo, 63)
+            } else {
+                fx.bcx.ins().iconst(types::I64, 0)
+            };
+            fx.bcx.ins().iconcat(lo, hi)
         }
         (_, _) if to.wider_or_equal(from) => {
             if signed {
