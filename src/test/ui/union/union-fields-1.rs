@@ -3,19 +3,19 @@
 union U1 {
     a: u8, // should not be reported
     b: u8, // should not be reported
-    c: u8, //~ ERROR field is never used
+    c: u8, //~ ERROR field is never read
 }
 union U2 {
-    a: u8, //~ ERROR field is never used
+    a: u8, //~ ERROR field is never read
     b: u8, // should not be reported
     c: u8, // should not be reported
 }
-union NoDropLike { a: u8 } //~ ERROR field is never used
+union NoDropLike { a: u8 } //~ ERROR field is never read
 
 union U {
     a: u8, // should not be reported
     b: u8, // should not be reported
-    c: u8, //~ ERROR field is never used
+    c: u8, //~ ERROR field is never read
 }
 type A = U;
 

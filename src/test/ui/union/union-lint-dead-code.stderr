@@ -1,4 +1,4 @@
-error: field is never used: `b`
+error: field is never read: `b`
   --> $DIR/union-lint-dead-code.rs:5:5
    |
 LL |     b: bool,
