@@ -306,7 +306,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let elem = args[2];
                 let input = args[0];
                 let (len, e_ty) = input.layout.ty.simd_size_and_type(self.tcx.tcx);
-                let len = len as u64;
                 assert!(
                     index < len,
                     "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
@@ -337,7 +336,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
                 let (len, e_ty) = args[0].layout.ty.simd_size_and_type(self.tcx.tcx);
                 assert!(
-                    index < len as u64,
+                    index < len,
                     "index `{}` is out-of-bounds of vector type `{}` with length `{}`",
                     index, e_ty, len
                 );

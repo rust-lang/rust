@@ -1819,20 +1819,20 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn simd_size(&self, _tcx: TyCtxt<'tcx>) -> usize {
+    pub fn simd_size(&self, _tcx: TyCtxt<'tcx>) -> u64 {
         // Parameter currently unused, but probably needed in the future to
         // allow `#[repr(simd)] struct Simd<T, const N: usize>([T; N]);`.
         match self.kind {
-            Adt(def, _) => def.non_enum_variant().fields.len(),
+            Adt(def, _) => def.non_enum_variant().fields.len() as u64,
             _ => bug!("simd_size called on invalid type")
         }
     }
 
-    pub fn simd_size_and_type(&self, tcx: TyCtxt<'tcx>) -> (usize, Ty<'tcx>) {
+    pub fn simd_size_and_type(&self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
         match self.kind {
             Adt(def, substs) => {
                 let variant = def.non_enum_variant();
-                (variant.fields.len(), variant.fields[0].ty(tcx, substs))
+                (variant.fields.len() as u64, variant.fields[0].ty(tcx, substs))
             }
             _ => bug!("simd_size_and_type called on invalid type")
         }

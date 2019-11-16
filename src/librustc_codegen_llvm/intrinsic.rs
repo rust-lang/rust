@@ -28,6 +28,7 @@ use syntax_pos::Span;
 
 use std::cmp::Ordering;
 use std::{iter, i128, u128};
+use std::convert::TryFrom;
 
 fn get_simple_intrinsic(cx: &CodegenCx<'ll, '_>, name: &str) -> Option<&'ll Value> {
     let llvm_name = match name {
@@ -1105,8 +1106,8 @@ fn generic_simd_intrinsic(
         let m_len = match in_ty.kind {
             // Note that this `.unwrap()` crashes for isize/usize, that's sort
             // of intentional as there's not currently a use case for that.
-            ty::Int(i) => i.bit_width().unwrap(),
-            ty::Uint(i) => i.bit_width().unwrap(),
+            ty::Int(i) => i.bit_width().unwrap() as u64,
+            ty::Uint(i) => i.bit_width().unwrap() as u64,
             _ => return_error!("`{}` is not an integral type", in_ty),
         };
         require_simd!(arg_tys[1], "argument");
@@ -1116,7 +1117,7 @@ fn generic_simd_intrinsic(
                  m_len, v_len
         );
         let i1 = bx.type_i1();
-        let i1xn = bx.type_vector(i1, m_len as u64);
+        let i1xn = bx.type_vector(i1, m_len);
         let m_i1s = bx.bitcast(args[0].immediate(), i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
@@ -1166,7 +1167,7 @@ fn generic_simd_intrinsic(
         require_simd!(ret_ty, "return");
 
         let out_len = ret_ty.simd_size(tcx);
-        require!(out_len == n,
+        require!(out_len == n as u64,
                  "expected return type of length {}, found `{}` with length {}",
                  n, ret_ty, out_len);
         require!(in_elem == ret_ty.simd_type(tcx),
@@ -1251,7 +1252,7 @@ fn generic_simd_intrinsic(
         // trailing bits.
         let expected_int_bits = in_len.max(8);
         match ret_ty.kind {
-           ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
+           ty::Uint(i) if i.bit_width() == Some(expected_int_bits as usize) => (),
             _ => return_error!(
                 "bitmask `{}`, expected `u{}`",
                 ret_ty, expected_int_bits
@@ -1276,7 +1277,8 @@ fn generic_simd_intrinsic(
 
         // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
         let shift_indices = vec![
-            bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _); in_len
+            bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _);
+            in_len as _
         ];
         let i_xn_msb = bx.lshr(i_xn, bx.const_vector(shift_indices.as_slice()));
         // Truncate vector to an <i1 x N>
@@ -1291,7 +1293,7 @@ fn generic_simd_intrinsic(
         name: &str,
         in_elem: &::rustc::ty::TyS<'_>,
         in_ty: &::rustc::ty::TyS<'_>,
-        in_len: usize,
+        in_len: u64,
         bx: &mut Builder<'a, 'll, 'tcx>,
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
@@ -1506,11 +1508,12 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = bx.type_i1();
-            let i1xn = bx.type_vector(i1, in_len as u64);
+            let i1xn = bx.type_vector(i1, in_len);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
         // Type of the vector of pointers:
+        let in_len = usize::try_from(in_len).unwrap();
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count);
         let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
 
@@ -1606,13 +1609,14 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = bx.type_i1();
-            let i1xn = bx.type_vector(i1, in_len as u64);
+            let i1xn = bx.type_vector(i1, in_len);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
         let ret_t = bx.type_void();
 
         // Type of the vector of pointers:
+        let in_len = usize::try_from(in_len).unwrap();
         let llvm_pointer_vec_ty = llvm_vector_ty(bx, underlying_ty, in_len, pointer_count);
         let llvm_pointer_vec_str = llvm_vector_str(underlying_ty, in_len, pointer_count);
 
