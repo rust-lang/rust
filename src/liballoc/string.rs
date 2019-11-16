@@ -1995,7 +1995,7 @@ impl Add<&str> for String {
 ///
 /// ```
 /// let a = String::from("hello world! ");
-/// let b = char::from('👋');
+/// let b = '👋';
 /// let c = a + b;
 /// // `a` is moved and can no longer be used here.
 /// ```
@@ -2004,7 +2004,7 @@ impl Add<&str> for String {
 ///
 /// ```
 /// let a = String::from("hello world! ");
-/// let b = char::from('👋');
+/// let b = '👋';
 /// let c = a.clone() + b;
 /// // `a` is still valid here.
 /// ```
