@@ -1,5 +1,5 @@
 use crate::base::*;
-use crate::proc_macro::{collect_derives, MarkAttrs};
+use crate::proc_macro::collect_derives;
 use crate::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::placeholders::{placeholder, PlaceholderExpander};
@@ -394,7 +394,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     let fragment = self.expand_invoc(invoc, &ext.kind);
                     self.collect_invocations(fragment, &[])
                 }
-                InvocationRes::DeriveContainer(exts) => {
+                InvocationRes::DeriveContainer(_exts) => {
+                    // FIXME: Consider using the derive resolutions (`_exts`) immediately,
+                    // instead of enqueuing the derives to be resolved again later.
                     let (derives, item) = match invoc.kind {
                         InvocationKind::DeriveContainer { derives, item } => (derives, item),
                         _ => unreachable!(),
@@ -421,20 +423,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
                     let mut item = self.fully_configure(item);
                     item.visit_attrs(|attrs| attrs.retain(|a| !a.has_name(sym::derive)));
-                    let mut helper_attrs = Vec::new();
-                    let mut has_copy = false;
-                    for ext in exts {
-                        helper_attrs.extend(&ext.helper_attrs);
-                        has_copy |= ext.is_derive_copy;
-                    }
-                    // Mark derive helpers inside this item as known and used.
-                    // FIXME: This is a hack, derive helpers should be integrated with regular name
-                    // resolution instead. For example, helpers introduced by a derive container
-                    // can be in scope for all code produced by that container's expansion.
-                    item.visit_with(&mut MarkAttrs(&helper_attrs));
-                    if has_copy {
-                        self.cx.resolver.add_derive_copy(invoc.expansion_data.id);
-                    }
 
                     let mut derive_placeholders = Vec::with_capacity(derives.len());
                     invocations.reserve(derives.len());

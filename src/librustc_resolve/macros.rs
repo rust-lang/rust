@@ -237,15 +237,26 @@ impl<'a> base::Resolver for Resolver<'a> {
                 // - Derives in the container need to know whether one of them is a built-in `Copy`.
                 // FIXME: Try to avoid repeated resolutions for derives here and in expansion.
                 let mut exts = Vec::new();
+                let mut helper_attrs = Vec::new();
                 for path in derives {
                     exts.push(match self.resolve_macro_path(
                         path, Some(MacroKind::Derive), &parent_scope, true, force
                     ) {
-                        Ok((Some(ext), _)) => ext,
+                        Ok((Some(ext), _)) => {
+                            let span = path.segments.last().unwrap().ident.span.modern();
+                            helper_attrs.extend(
+                                ext.helper_attrs.iter().map(|name| Ident::new(*name, span))
+                            );
+                            if ext.is_derive_copy {
+                                self.add_derive_copy(invoc_id);
+                            }
+                            ext
+                        }
                         Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
                         Err(Determinacy::Undetermined) => return Err(Indeterminate),
                     })
                 }
+                self.helper_attrs.insert(invoc_id, helper_attrs);
                 return Ok(InvocationRes::DeriveContainer(exts));
             }
         };
@@ -498,7 +509,19 @@ impl<'a> Resolver<'a> {
                 Flags::empty(),
             ));
             let result = match scope {
-                Scope::DeriveHelpers => {
+                Scope::DeriveHelpers(expn_id) => {
+                    if let Some(attr) = this.helper_attrs.get(&expn_id).and_then(|attrs| {
+                        attrs.iter().rfind(|i| ident == **i)
+                    }) {
+                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
+                                       ty::Visibility::Public, attr.span, expn_id)
+                                       .to_name_binding(this.arenas);
+                        Ok((binding, Flags::empty()))
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
+                }
+                Scope::DeriveHelpersCompat => {
                     let mut result = Err(Determinacy::Determined);
                     for derive in parent_scope.derives {
                         let parent_scope = &ParentScope { derives: &[], ..*parent_scope };

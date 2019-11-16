@@ -368,7 +368,16 @@ impl<'a> Resolver<'a> {
         let mut suggestions = Vec::new();
         self.visit_scopes(scope_set, parent_scope, ident, |this, scope, use_prelude, _| {
             match scope {
-                Scope::DeriveHelpers => {
+                Scope::DeriveHelpers(expn_id) => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+                    if filter_fn(res) {
+                        suggestions.extend(this.helper_attrs.get(&expn_id)
+                                               .into_iter().flatten().map(|ident| {
+                            TypoSuggestion::from_res(ident.name, res)
+                        }));
+                    }
+                }
+                Scope::DeriveHelpersCompat => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
                         for derive in parent_scope.derives {

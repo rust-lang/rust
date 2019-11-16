@@ -1,21 +1,102 @@
-error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
-  --> $DIR/derive-helper-shadowing.rs:8:3
+error: cannot use a derive helper attribute through an import
+  --> $DIR/derive-helper-shadowing.rs:40:15
    |
-LL | #[empty_helper]
-   |   ^^^^^^^^^^^^ ambiguous name
+LL |             #[renamed]
+   |               ^^^^^^^
+   |
+note: the derive helper attribute imported here
+  --> $DIR/derive-helper-shadowing.rs:39:17
+   |
+LL |             use empty_helper as renamed;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/derive-helper-shadowing.rs:36:22
+   |
+LL |             #[derive(GenHelperUse)]
+   |                      ^^^^^^^^^^^^
+
+error: cannot find attribute `empty_helper` in this scope
+  --> $DIR/derive-helper-shadowing.rs:14:11
+   |
+LL |         #[empty_helper]
+   |           ^^^^^^^^^^^^
+...
+LL |             gen_helper_use!();
+   |             ------------------ in this macro invocation
+
+error[E0659]: `empty_helper` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/derive-helper-shadowing.rs:24:13
+   |
+LL |         use empty_helper;
+   |             ^^^^^^^^^^^^ ambiguous name
    |
 note: `empty_helper` could refer to the derive helper attribute defined here
-  --> $DIR/derive-helper-shadowing.rs:9:10
+  --> $DIR/derive-helper-shadowing.rs:20:10
    |
 LL | #[derive(Empty)]
    |          ^^^^^
 note: `empty_helper` could also refer to the attribute macro imported here
-  --> $DIR/derive-helper-shadowing.rs:6:5
+  --> $DIR/derive-helper-shadowing.rs:10:5
    |
 LL | use test_macros::empty_attr as empty_helper;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
 
-error: aborting due to previous error
+error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/derive-helper-shadowing.rs:19:3
+   |
+LL | #[empty_helper]
+   |   ^^^^^^^^^^^^ ambiguous name
+   |
+note: `empty_helper` could refer to the derive helper attribute defined here
+  --> $DIR/derive-helper-shadowing.rs:20:10
+   |
+LL | #[derive(Empty)]
+   |          ^^^^^
+note: `empty_helper` could also refer to the attribute macro imported here
+  --> $DIR/derive-helper-shadowing.rs:10:5
+   |
+LL | use test_macros::empty_attr as empty_helper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
+
+error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/derive-helper-shadowing.rs:22:7
+   |
+LL |     #[empty_helper]
+   |       ^^^^^^^^^^^^ ambiguous name
+   |
+note: `empty_helper` could refer to the derive helper attribute defined here
+  --> $DIR/derive-helper-shadowing.rs:20:10
+   |
+LL | #[derive(Empty)]
+   |          ^^^^^
+note: `empty_helper` could also refer to the attribute macro imported here
+  --> $DIR/derive-helper-shadowing.rs:10:5
+   |
+LL | use test_macros::empty_attr as empty_helper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
+
+error[E0659]: `empty_helper` is ambiguous (derive helper attribute vs any other name)
+  --> $DIR/derive-helper-shadowing.rs:26:11
+   |
+LL |         #[empty_helper]
+   |           ^^^^^^^^^^^^ ambiguous name
+   |
+note: `empty_helper` could refer to the derive helper attribute defined here
+  --> $DIR/derive-helper-shadowing.rs:20:10
+   |
+LL | #[derive(Empty)]
+   |          ^^^^^
+note: `empty_helper` could also refer to the attribute macro imported here
+  --> $DIR/derive-helper-shadowing.rs:10:5
+   |
+LL | use test_macros::empty_attr as empty_helper;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `crate::empty_helper` to refer to this attribute macro unambiguously
+
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0659`.
