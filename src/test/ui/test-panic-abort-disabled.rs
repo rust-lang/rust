@@ -1,4 +1,4 @@
-// error-pattern:building tests with panic=abort is not yet supported
+// error-pattern:building tests with panic=abort is not supported
 // no-prefer-dynamic
 // compile-flags: --test -Cpanic=abort
 // run-flags: --test-threads=1

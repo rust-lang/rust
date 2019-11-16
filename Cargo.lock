@@ -4439,6 +4439,7 @@ version = "0.0.0"
 dependencies = [
  "arena",
  "cfg-if",
+ "log",
  "rustc_data_structures",
  "rustc_index",
  "rustc_macros",

@@ -254,7 +254,7 @@ where
     let mut pending = 0;
 
     let (tx, rx) = channel::<CompletedTest>();
-    let run_strategy = if opts.options.panic_abort {
+    let run_strategy = if opts.options.panic_abort && !opts.force_run_in_process {
         RunStrategy::SpawnPrimary
     } else {
         RunStrategy::InProcess

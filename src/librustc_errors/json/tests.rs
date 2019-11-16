@@ -1,11 +1,10 @@
 use super::*;
 
 use crate::json::JsonEmitter;
-use crate::source_map::{FilePathMapping, SourceMap};
-use crate::with_default_globals;
+use syntax_pos::source_map::{FilePathMapping, SourceMap};
 
-use errors::emitter::{ColorConfig, HumanReadableErrorType};
-use errors::Handler;
+use crate::emitter::{ColorConfig, HumanReadableErrorType};
+use crate::Handler;
 use rustc_serialize::json::decode;
 use syntax_pos::{BytePos, Span};
 
@@ -38,6 +37,13 @@ impl<T: Write> Write for Shared<T> {
     fn flush(&mut self) -> io::Result<()> {
         self.data.lock().unwrap().flush()
     }
+}
+
+fn with_default_globals(f: impl FnOnce()) {
+    let globals = syntax_pos::Globals::new(syntax_pos::edition::DEFAULT_EDITION);
+    syntax_pos::GLOBALS.set(&globals, || {
+        syntax_pos::GLOBALS.set(&globals, f)
+    })
 }
 
 /// Test the span yields correct positions in JSON.
