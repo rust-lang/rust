@@ -1141,6 +1141,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 &mut self.scopes.unwind_drops,
                 self.fn_span,
                 should_abort,
+                &mut None,
             );
         }
     }
@@ -1161,8 +1162,9 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         }
 
         // Build the drop tree for unwinding in the normal control flow paths.
-        let resume_block =
-            Self::build_unwind_tree(cfg, &mut self.scopes.unwind_drops, fn_span, should_abort);
+        let resume_block = &mut None;
+        let unwind_drops = &mut self.scopes.unwind_drops;
+        Self::build_unwind_tree(cfg, unwind_drops, fn_span, should_abort, resume_block);
 
         // Build the drop tree for unwinding when dropping a suspended
         // generator.
@@ -1176,18 +1178,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 drops.entry_points.push((drop_data.1, blocks[drop_idx].unwrap()));
             }
         }
-        let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        blocks[ROOT_NODE] = resume_block;
-        drops.build_mir::<Unwind>(cfg, &mut blocks);
-        if let (None, Some(new_resume_block)) = (resume_block, blocks[ROOT_NODE]) {
-            let terminator =
-                if should_abort { TerminatorKind::Abort } else { TerminatorKind::Resume };
-            cfg.terminate(
-                new_resume_block,
-                SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span: fn_span },
-                terminator,
-            );
-        }
+        Self::build_unwind_tree(cfg, drops, fn_span, should_abort, resume_block);
     }
 
     fn build_unwind_tree(
@@ -1195,20 +1186,20 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         drops: &mut DropTree,
         fn_span: Span,
         should_abort: bool,
-    ) -> Option<BasicBlock> {
+        resume_block: &mut Option<BasicBlock>,
+    ) {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
+        blocks[ROOT_NODE] = *resume_block;
         drops.build_mir::<Unwind>(cfg, &mut blocks);
-        if let Some(resume_block) = blocks[ROOT_NODE] {
+        if let (None, Some(resume)) = (*resume_block, blocks[ROOT_NODE]) {
             let terminator =
                 if should_abort { TerminatorKind::Abort } else { TerminatorKind::Resume };
             cfg.terminate(
-                resume_block,
+                resume,
                 SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span: fn_span },
                 terminator,
             );
-            Some(resume_block)
-        } else {
-            None
+            *resume_block = blocks[ROOT_NODE];
         }
     }
 }
