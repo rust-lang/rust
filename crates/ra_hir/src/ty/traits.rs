@@ -17,7 +17,7 @@ pub(crate) mod chalk;
 #[derive(Debug, Clone)]
 pub struct TraitSolver {
     krate: Crate,
-    inner: Arc<Mutex<chalk_solve::Solver>>,
+    inner: Arc<Mutex<chalk_solve::Solver<ChalkIr>>>,
 }
 
 /// We need eq for salsa
@@ -34,7 +34,7 @@ impl TraitSolver {
         &self,
         db: &impl HirDatabase,
         goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<ChalkIr>>>,
-    ) -> Option<chalk_solve::Solution> {
+    ) -> Option<chalk_solve::Solution<ChalkIr>> {
         let context = ChalkContext { db, krate: self.krate };
         debug!("solve goal: {:?}", goal);
         let mut solver = match self.inner.lock() {
@@ -196,7 +196,10 @@ pub(crate) fn trait_solve_query(
     solution.map(|solution| solution_from_chalk(db, solution))
 }
 
-fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -> Solution {
+fn solution_from_chalk(
+    db: &impl HirDatabase,
+    solution: chalk_solve::Solution<ChalkIr>,
+) -> Solution {
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<ChalkIr>>| {
         let value = subst
             .value
