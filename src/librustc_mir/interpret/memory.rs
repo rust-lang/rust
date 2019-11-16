@@ -792,13 +792,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Reads a 0x0000-terminated sequence of bytes from memory. Returns them as a slice.
-    /// Needed for reading wide-strings in Windows-OS 
+    /// Needed for reading wide-strings in Windows-OS
     pub fn read_wide_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, &[u8]> {
         let widestr_u8_initbyte = self.read_bytes(ptr, Size::from_bytes(1))?;
         let mut widestr_len = 0; // length in bytes
         unsafe {
             let mut tracker = &widestr_u8_initbyte[0] as *const u8;
-            while !(*tracker == 0 && *tracker.add(1) == 0) { 
+            while !(*tracker == 0 && *tracker.add(1) == 0) {
                 tracker = tracker.add(2);
                 widestr_len += 2;
             }
