@@ -907,6 +907,9 @@ pub trait PrettyPrinter<'tcx>:
         let u8 = self.tcx().types.u8;
 
         if let ty::Ref(_, ref_ty, _) = ty.kind {
+            // &str is a special case of references, and should override the general case, so we
+            // check for and handle that first.
+
             let byte_str = match (ct, &ref_ty.kind) {
                 (ConstValue::Scalar(Scalar::Ptr(ptr)), ty::Array(t, n)) if *t == u8 => {
                     let n = n.eval_usize(self.tcx(), ty::ParamEnv::empty());
@@ -988,6 +991,8 @@ pub trait PrettyPrinter<'tcx>:
                 p!(write("{:?}", ::std::char::from_u32(data as u32).unwrap())),
             (ConstValue::Scalar(value), ty::Ref(..)) |
             (ConstValue::Scalar(value), ty::RawPtr(_)) => {
+                // &str should already have been handled, so this is a general representation of a
+                // reference.
                 match value {
                     Scalar::Raw { data, size } => {
                         p!(write("0x{:01$x} : ", data, size as usize * 2));
