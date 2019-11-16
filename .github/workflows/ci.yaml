@@ -1,0 +1,86 @@
+name: Continuous integration
+on: [pull_request, push]
+
+jobs:
+  rust-tests:
+    name: Rust tests
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
+      CARGO_INCREMENTAL: 0
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: rustfmt, rust-src
+      - name: Generate lockfile
+        uses: actions-rs/cargo@v1
+        with:
+          command: generate-lockfile
+      - name: Cargo target cache
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Compile
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-run
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+      - name: Prepare build directory for cache
+        run: |
+          find ./target/debug -maxdepth 1 -type f -delete && \
+          rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*heavy_test*,*gen_lsp*,*thread_worker*} && \
+          rm -f  ./target/.rustc_info.json
+  vscode-tests:
+    name: VS Code tests
+    runs-on: ubuntu-latest
+    env:
+      CXX: g++-4.9
+      CC: gcc-4.9
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+      - name: Generate lockfile
+        uses: actions-rs/cargo@v1
+        with:
+          command: generate-lockfile
+      - name: Cargo target cache
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+      - name: Install Nodejs
+        uses: actions/setup-node@v1
+        with:
+          node-version: 12.x
+      - name: Install xvfb
+        run: sudo apt-get install xvfb
+      - run: npm ci
+        working-directory: ./editors/code
+      - run: npm run vscode:prepublish
+        working-directory: ./editors/code
+      - run: npm run travis
+        working-directory: ./editors/code
+      - name: Cleanup xvfb
+        uses: bcomnes/cleanup-xvfb@v1
+      - name: Prepare build directory for cache
+        run: |
+          find ./target/debug -maxdepth 1 -type f -delete && \
+          rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*heavy_test*,*gen_lsp*,*thread_worker*} && \
+          rm -f  ./target/.rustc_info.json
