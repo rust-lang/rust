@@ -1,5 +1,7 @@
 //! FIXME: write short doc here
 
+use std::iter::successors;
+
 use hir::{db::AstDatabase, Source};
 use ra_syntax::{
     algo::find_node_at_offset,
@@ -18,10 +20,8 @@ pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    go(db, Source::new(position.file_id.into(), position.offset))
-}
+    let offset = descend_into_macros(db, position);
 
-fn go(db: &RootDatabase, offset: Source<TextUnit>) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let syntax = db.parse_or_expand(offset.file_id)?;
 
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, offset.ast) {
@@ -32,16 +32,25 @@ fn go(db: &RootDatabase, offset: Source<TextUnit>) -> Option<RangeInfo<Vec<Navig
         let navs = name_definition(db, offset.with_ast(&name))?;
         return Some(RangeInfo::new(name.syntax().text_range(), navs));
     }
-    if let Some(macro_call) = find_node_at_offset::<ast::MacroCall>(&syntax, offset.ast) {
+    None
+}
+
+fn descend_into_macros(db: &RootDatabase, position: FilePosition) -> Source<TextUnit> {
+    successors(Some(Source::new(position.file_id.into(), position.offset)), |offset| {
+        let syntax = db.parse_or_expand(offset.file_id)?;
+        let macro_call = find_node_at_offset::<ast::MacroCall>(&syntax, offset.ast)?;
+        let tt = macro_call.token_tree()?;
+        if !tt.syntax().text_range().contains(offset.ast) {
+            return None;
+        }
         let source_analyzer =
             hir::SourceAnalyzer::new(db, offset.with_ast(macro_call.syntax()), None);
-        if let Some(exp) = source_analyzer.expand(db, &macro_call) {
-            if let Some(offset) = exp.translate_offset(db, offset.ast) {
-                return go(db, Source::new(exp.file_id(), offset));
-            }
-        }
-    }
-    None
+        let exp = source_analyzer.expand(db, &macro_call)?;
+        let next_offset = exp.translate_offset(db, offset.ast)?;
+        Some(Source::new(exp.file_id(), next_offset))
+    })
+    .last()
+    .unwrap()
 }
 
 #[derive(Debug)]
