@@ -3,6 +3,7 @@ error[E0573]: expected type, found variant `Ty::A`
    |
 LL |     B(Ty::A),
    |       ^^^^^ not a type
+   |
 help: try using the variant's enum
    |
 LL |     B(E),
@@ -15,6 +16,7 @@ error[E0573]: expected type, found variant `E::A`
    |
 LL | impl E::A {}
    |      ^^^^ not a type
+   |
 help: try using the variant's enum
    |
 LL | impl E {}

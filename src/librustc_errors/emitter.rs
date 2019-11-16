@@ -10,10 +10,11 @@
 use Destination::*;
 
 use syntax_pos::{SourceFile, Span, MultiSpan};
+use syntax_pos::source_map::SourceMap;
 
 use crate::{
-    Level, CodeSuggestion, Diagnostic, SubDiagnostic, pluralise,
-    SuggestionStyle, SourceMapper, SourceMapperDyn, DiagnosticId,
+    Level, CodeSuggestion, Diagnostic, SubDiagnostic, pluralize,
+    SuggestionStyle, DiagnosticId,
 };
 use crate::Level::Error;
 use crate::snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
@@ -49,7 +50,7 @@ impl HumanReadableErrorType {
     pub fn new_emitter(
         self,
         dst: Box<dyn Write + Send>,
-        source_map: Option<Lrc<SourceMapperDyn>>,
+        source_map: Option<Lrc<SourceMap>>,
         teach: bool,
         terminal_width: Option<usize>,
         external_macro_backtrace: bool,
@@ -192,7 +193,7 @@ pub trait Emitter {
         true
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>>;
+    fn source_map(&self) -> Option<&Lrc<SourceMap>>;
 
     /// Formats the substitutions of the primary_span
     ///
@@ -271,7 +272,7 @@ pub trait Emitter {
     // point directly at <*macros>. Since these are often difficult to read, this
     // will change the span to point at the use site.
     fn fix_multispans_in_std_macros(&self,
-                                    source_map: &Option<Lrc<SourceMapperDyn>>,
+                                    source_map: &Option<Lrc<SourceMap>>,
                                     span: &mut MultiSpan,
                                     children: &mut Vec<SubDiagnostic>,
                                     level: &Level,
@@ -311,7 +312,7 @@ pub trait Emitter {
     // <*macros>. Since these locations are often difficult to read, we move these Spans from
     // <*macros> to their corresponding use site.
     fn fix_multispan_in_std_macros(&self,
-                                   source_map: &Option<Lrc<SourceMapperDyn>>,
+                                   source_map: &Option<Lrc<SourceMap>>,
                                    span: &mut MultiSpan,
                                    always_backtrace: bool) -> bool {
         let sm = match source_map {
@@ -397,7 +398,7 @@ pub trait Emitter {
 }
 
 impl Emitter for EmitterWriter {
-    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         self.sm.as_ref()
     }
 
@@ -422,6 +423,14 @@ impl Emitter for EmitterWriter {
     fn should_show_explain(&self) -> bool {
         !self.short_message
     }
+}
+
+/// An emitter that does nothing when emitting a diagnostic.
+pub struct SilentEmitter;
+
+impl Emitter for SilentEmitter {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> { None }
+    fn emit_diagnostic(&mut self, _: &Diagnostic) {}
 }
 
 /// maximum number of lines we will print for each error; arbitrary.
@@ -468,7 +477,7 @@ impl ColorConfig {
 /// Handles the writing of `HumanReadableErrorType::Default` and `HumanReadableErrorType::Short`
 pub struct EmitterWriter {
     dst: Destination,
-    sm: Option<Lrc<SourceMapperDyn>>,
+    sm: Option<Lrc<SourceMap>>,
     short_message: bool,
     teach: bool,
     ui_testing: bool,
@@ -487,7 +496,7 @@ pub struct FileWithAnnotatedLines {
 impl EmitterWriter {
     pub fn stderr(
         color_config: ColorConfig,
-        source_map: Option<Lrc<SourceMapperDyn>>,
+        source_map: Option<Lrc<SourceMap>>,
         short_message: bool,
         teach: bool,
         terminal_width: Option<usize>,
@@ -507,7 +516,7 @@ impl EmitterWriter {
 
     pub fn new(
         dst: Box<dyn Write + Send>,
-        source_map: Option<Lrc<SourceMapperDyn>>,
+        source_map: Option<Lrc<SourceMap>>,
         short_message: bool,
         teach: bool,
         colored: bool,
@@ -1573,7 +1582,7 @@ impl EmitterWriter {
         }
         if suggestions.len() > MAX_SUGGESTIONS {
             let others = suggestions.len() - MAX_SUGGESTIONS;
-            let msg = format!("and {} other candidate{}", others, pluralise!(others));
+            let msg = format!("and {} other candidate{}", others, pluralize!(others));
             buffer.puts(row_num, max_line_num_len + 3, &msg, Style::NoStyle);
         } else if notice_capitalization {
             let msg = "notice the capitalization difference";
@@ -1583,27 +1592,26 @@ impl EmitterWriter {
         Ok(())
     }
 
-    fn emit_messages_default(&mut self,
-                             level: &Level,
-                             message: &[(String, Style)],
-                             code: &Option<DiagnosticId>,
-                             span: &MultiSpan,
-                             children: &[SubDiagnostic],
-                             suggestions: &[CodeSuggestion]) {
+    fn emit_messages_default(
+        &mut self,
+        level: &Level,
+        message: &[(String, Style)],
+        code: &Option<DiagnosticId>,
+        span: &MultiSpan,
+        children: &[SubDiagnostic],
+        suggestions: &[CodeSuggestion],
+    ) {
         let max_line_num_len = if self.ui_testing {
             ANONYMIZED_LINE_NUM.len()
         } else {
             self.get_max_line_num(span, children).to_string().len()
         };
 
-        match self.emit_message_default(span,
-                                        message,
-                                        code,
-                                        level,
-                                        max_line_num_len,
-                                        false) {
+        match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
             Ok(()) => {
-                if !children.is_empty() {
+                if !children.is_empty() || suggestions.iter().any(|s| {
+                    s.style != SuggestionStyle::CompletelyHidden
+                }) {
                     let mut buffer = StyledBuffer::new();
                     if !self.short_message {
                         draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
@@ -1678,7 +1686,7 @@ impl FileWithAnnotatedLines {
     /// This helps us quickly iterate over the whole message (including secondary file spans)
     pub fn collect_annotations(
         msp: &MultiSpan,
-        source_map: &Option<Lrc<SourceMapperDyn>>
+        source_map: &Option<Lrc<SourceMap>>
     ) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
                                   file: Lrc<SourceFile>,
@@ -1817,10 +1825,9 @@ impl FileWithAnnotatedLines {
                     // Every `|` that joins the beginning of the span (`___^`) to the end (`|__^`).
                     add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
                 }
-                if middle < ann.line_end - 1 {
-                    for line in ann.line_end - 1..ann.line_end {
-                        add_annotation_to_file(&mut output, file.clone(), line, ann.as_line());
-                    }
+                let line_end = ann.line_end - 1;
+                if middle < line_end {
+                    add_annotation_to_file(&mut output, file.clone(), line_end, ann.as_line());
                 }
             } else {
                 end_ann.annotation_type = AnnotationType::Singleline;
@@ -2061,7 +2068,7 @@ impl<'a> Drop for WritableDst<'a> {
 }
 
 /// Whether the original and suggested code are visually similar enough to warrant extra wording.
-pub fn is_case_difference(sm: &dyn SourceMapper, suggested: &str, sp: Span) -> bool {
+pub fn is_case_difference(sm: &SourceMap, suggested: &str, sp: Span) -> bool {
     // FIXME: this should probably be extended to also account for `FO0` → `FOO` and unicode.
     let found = sm.span_to_snippet(sp).unwrap();
     let ascii_confusables = &['c', 'f', 'i', 'k', 'o', 's', 'u', 'v', 'w', 'x', 'y', 'z'];

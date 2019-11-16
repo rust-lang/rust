@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         closure_hir_id: hir::HirId,
         span: Span,
         body: &hir::Body,
-        capture_clause: hir::CaptureClause,
+        capture_clause: hir::CaptureBy,
     ) {
         /*!
          * Analysis starting point.
@@ -141,8 +141,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 upvar_list.insert(var_hir_id, upvar_id);
 
                 let capture_kind = match capture_clause {
-                    hir::CaptureByValue => ty::UpvarCapture::ByValue,
-                    hir::CaptureByRef => {
+                    hir::CaptureBy::Value => ty::UpvarCapture::ByValue,
+                    hir::CaptureBy::Ref => {
                         let origin = UpvarRegion(upvar_id, span);
                         let upvar_region = self.next_region_var(origin);
                         let upvar_borrow = ty::UpvarBorrow {

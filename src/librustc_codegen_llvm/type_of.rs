@@ -1,9 +1,9 @@
-use crate::abi::{FnType};
+use crate::abi::{FnAbi};
 use crate::common::*;
 use crate::type_::Type;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, Align, LayoutOf, FnTypeExt, PointeeInfo, Size, TyLayout};
-use rustc_target::abi::{FloatTy, TyLayoutMethods};
+use rustc::ty::layout::{self, Align, LayoutOf, FnAbiExt, PointeeInfo, Size, TyLayout};
+use rustc_target::abi::TyLayoutMethods;
 use rustc::ty::print::obsolete::DefPathBasedNames;
 use rustc_codegen_ssa::traits::*;
 
@@ -239,7 +239,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         ty::ParamEnv::reveal_all(),
                         &sig,
                     );
-                    cx.fn_ptr_backend_type(&FnType::new(cx, sig, &[]))
+                    cx.fn_ptr_backend_type(&FnAbi::new(cx, sig, &[]))
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO)
             };
@@ -300,8 +300,8 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                                scalar: &layout::Scalar, offset: Size) -> &'a Type {
         match scalar.value {
             layout::Int(i, _) => cx.type_from_integer( i),
-            layout::Float(FloatTy::F32) => cx.type_f32(),
-            layout::Float(FloatTy::F64) => cx.type_f64(),
+            layout::F32 => cx.type_f32(),
+            layout::F64 => cx.type_f64(),
             layout::Pointer => {
                 // If we know the alignment, pick something better than i8.
                 let pointee = if let Some(pointee) = self.pointee_info_at(cx, offset) {

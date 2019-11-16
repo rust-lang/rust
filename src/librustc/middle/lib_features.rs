@@ -11,7 +11,8 @@ use syntax::ast::{Attribute, MetaItem, MetaItemKind};
 use syntax_pos::{Span, sym};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_macros::HashStable;
-use errors::DiagnosticId;
+
+use rustc_error_codes::*;
 
 #[derive(HashStable)]
 pub struct LibFeatures {
@@ -98,15 +99,16 @@ impl LibFeatureCollector<'tcx> {
             (Some(since), _, false) => {
                 if let Some(prev_since) = self.lib_features.stable.get(&feature) {
                     if *prev_since != since {
-                        let msg = format!(
-                            "feature `{}` is declared stable since {}, \
-                             but was previously declared stable since {}",
-                            feature,
-                            since,
-                            prev_since,
+                        self.span_feature_error(
+                            span,
+                            &format!(
+                                "feature `{}` is declared stable since {}, \
+                                 but was previously declared stable since {}",
+                                feature,
+                                since,
+                                prev_since,
+                            ),
                         );
-                        self.tcx.sess.struct_span_err_with_code(span, &msg,
-                            DiagnosticId::Error("E0711".into())).emit();
                         return;
                     }
                 }
@@ -117,16 +119,26 @@ impl LibFeatureCollector<'tcx> {
                 self.lib_features.unstable.insert(feature);
             }
             (Some(_), _, true) | (None, true, _) => {
-                let msg = format!(
-                    "feature `{}` is declared {}, but was previously declared {}",
-                    feature,
-                    if since.is_some() { "stable" } else { "unstable" },
-                    if since.is_none() { "stable" } else { "unstable" },
+                self.span_feature_error(
+                    span,
+                    &format!(
+                        "feature `{}` is declared {}, but was previously declared {}",
+                        feature,
+                        if since.is_some() { "stable" } else { "unstable" },
+                        if since.is_none() { "stable" } else { "unstable" },
+                    ),
                 );
-                self.tcx.sess.struct_span_err_with_code(span, &msg,
-                    DiagnosticId::Error("E0711".into())).emit();
             }
         }
+    }
+
+    fn span_feature_error(&self, span: Span, msg: &str) {
+        struct_span_err!(
+            self.tcx.sess,
+            span,
+            E0711,
+            "{}", &msg,
+        ).emit();
     }
 }
 

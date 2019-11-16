@@ -22,10 +22,14 @@ use syntax::attr::{self, Stability, Deprecation, RustcDeprecation};
 use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::{FxHashSet, FxHashMap};
 
-use std::mem::replace;
 use std::cmp::Ordering;
+use std::mem::replace;
+use std::num::NonZeroU32;
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Clone, Copy, Debug, Eq, Hash)]
+use rustc_error_codes::*;
+
+
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum StabilityLevel {
     Unstable,
     Stable,
@@ -441,7 +445,7 @@ impl<'tcx> Index<'tcx> {
                 let stability = tcx.intern_stability(Stability {
                     level: attr::StabilityLevel::Unstable {
                         reason: Some(Symbol::intern(reason)),
-                        issue: 27812,
+                        issue: NonZeroU32::new(27812),
                         is_soft: false,
                     },
                     feature: sym::rustc_private,
@@ -488,7 +492,7 @@ pub fn report_unstable(
     sess: &Session,
     feature: Symbol,
     reason: Option<Symbol>,
-    issue: u32,
+    issue: Option<NonZeroU32>,
     is_soft: bool,
     span: Span,
     soft_handler: impl FnOnce(&'static lint::Lint, Span, &str),
@@ -520,7 +524,7 @@ pub fn report_unstable(
             soft_handler(lint::builtin::SOFT_UNSTABLE, span, &msg)
         } else {
             emit_feature_err(
-                &sess.parse_sess, feature, span, GateIssue::Library(Some(issue)), &msg
+                &sess.parse_sess, feature, span, GateIssue::Library(issue), &msg
             );
         }
     }
@@ -586,7 +590,7 @@ pub fn rustc_deprecation_message(depr: &RustcDeprecation, path: &str) -> (String
 }
 
 pub fn early_report_deprecation(
-    sess: &Session,
+    lint_buffer: &'a mut lint::LintBuffer,
     message: &str,
     suggestion: Option<Symbol>,
     lint: &'static Lint,
@@ -597,7 +601,7 @@ pub fn early_report_deprecation(
     }
 
     let diag = BuiltinLintDiagnostics::DeprecatedMacro(suggestion, span);
-    sess.buffer_lint_with_diagnostic(lint, CRATE_NODE_ID, span, message, diag);
+    lint_buffer.buffer_lint_with_diagnostic(lint, CRATE_NODE_ID, span, message, diag);
 }
 
 fn late_report_deprecation(
@@ -637,7 +641,7 @@ pub enum EvalResult {
     Deny {
         feature: Symbol,
         reason: Option<Symbol>,
-        issue: u32,
+        issue: Option<NonZeroU32>,
         is_soft: bool,
     },
     /// The item does not have the `#[stable]` or `#[unstable]` marker assigned.
@@ -758,7 +762,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
-                if feature == sym::rustc_private && issue == 27812 {
+                if feature == sym::rustc_private && issue == NonZeroU32::new(27812) {
                     if self.sess.opts.debugging_opts.force_unstable_if_unmarked {
                         return EvalResult::Allow;
                     }
@@ -905,11 +909,10 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             // Warn if the user has enabled an already-stable lang feature.
             unnecessary_stable_feature_lint(tcx, span, feature, since);
         }
-        if lang_features.contains(&feature) {
+        if !lang_features.insert(feature) {
             // Warn if the user enables a lang feature multiple times.
             duplicate_feature_err(tcx.sess, span, feature);
         }
-        lang_features.insert(feature);
     }
 
     let declared_lib_features = &tcx.features().declared_lib_features;

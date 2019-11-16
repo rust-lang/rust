@@ -1,6 +1,8 @@
 error[E0412]: cannot find type `A` in this scope
   --> $DIR/associated-types-eq-1.rs:10:12
    |
+LL | fn foo2<I: Foo>(x: I) {
+   |         - similarly named type parameter `I` defined here
 LL |     let _: A = x.boo();
    |            ^ help: a type parameter with a similar name exists: `I`
 

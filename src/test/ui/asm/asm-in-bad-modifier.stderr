@@ -12,3 +12,5 @@ LL |         asm!("mov $1, $0" : "=r"(y) : "+r"(5));
 
 error: aborting due to 2 previous errors
 
+Some errors have detailed explanations: E0662, E0663.
+For more information about an error, try `rustc --explain E0662`.

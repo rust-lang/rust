@@ -30,7 +30,7 @@ use syntax_pos::Span;
 use std::{cmp, fmt, mem};
 use std::marker::PhantomData;
 
-pub mod error_codes;
+use rustc_error_codes::*;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.

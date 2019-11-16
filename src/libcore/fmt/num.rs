@@ -1,5 +1,7 @@
 //! Integer and floating-point number formatting
 
+// ignore-tidy-undocumented-unsafe
+
 
 use crate::fmt;
 use crate::ops::{Div, Rem, Sub};

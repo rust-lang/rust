@@ -67,6 +67,9 @@ declare_features! (
      Some("merged into `#![feature(slice_patterns)]`")),
     (removed, macro_reexport, "1.0.0", Some(29638), None,
      Some("subsumed by `pub use`")),
+    /// Allows using custom attributes (RFC 572).
+    (removed, custom_attribute, "1.0.0", Some(29642), None,
+     Some("removed in favor of `#![register_tool]` and `#![register_attr]`")),
     (removed, pushpop_unsafe, "1.2.0", None, None, None),
     (removed, needs_allocator, "1.4.0", Some(27389), None,
      Some("subsumed by `#![feature(allocator_internals)]`")),
@@ -99,6 +102,9 @@ declare_features! (
     /// + `__register_diagnostic`
     /// +`__build_diagnostic_array`
     (removed, rustc_diagnostic_macros, "1.38.0", None, None, None),
+    /// Allows using `#[on_unimplemented(..)]` on traits.
+    /// (Moved to `rustc_attrs`.)
+    (removed, on_unimplemented, "1.40.0", None, None, None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: removed features

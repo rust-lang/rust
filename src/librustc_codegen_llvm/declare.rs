@@ -13,13 +13,13 @@
 
 use crate::llvm;
 use crate::llvm::AttributePlace::Function;
-use crate::abi::{FnType, FnTypeLlvmExt};
+use crate::abi::{FnAbi, FnAbiLlvmExt};
 use crate::attributes;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::value::Value;
 use rustc::ty::{self, PolyFnSig};
-use rustc::ty::layout::{FnTypeExt, LayoutOf};
+use rustc::ty::layout::{FnAbiExt, LayoutOf};
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
@@ -100,14 +100,14 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let sig = self.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
-        let fty = FnType::new(self, sig, &[]);
-        let llfn = declare_raw_fn(self, name, fty.llvm_cconv(), fty.llvm_type(self));
+        let fn_abi = FnAbi::new(self, sig, &[]);
+        let llfn = declare_raw_fn(self, name, fn_abi.llvm_cconv(), fn_abi.llvm_type(self));
 
         if self.layout_of(sig.output()).abi.is_uninhabited() {
             llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
         }
 
-        fty.apply_attrs_llfn(self, llfn);
+        fn_abi.apply_attrs_llfn(self, llfn);
 
         llfn
     }

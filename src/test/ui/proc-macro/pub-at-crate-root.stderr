@@ -1,4 +1,4 @@
-error: `proc-macro` crate types cannot export any items other than functions tagged with `#[proc_macro_derive]` currently
+error: `proc-macro` crate types currently cannot export any items other than functions tagged with `#[proc_macro]`, `#[proc_macro_derive]`, or `#[proc_macro_attribute]`
   --> $DIR/pub-at-crate-root.rs:8:1
    |
 LL | / pub mod a {

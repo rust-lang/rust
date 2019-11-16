@@ -24,7 +24,7 @@ use std::path::Path;
 use std::env;
 
 use syntax::ast::{self, Attribute, NodeId, PatKind};
-use syntax::parse::token;
+use syntax::token;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{
     bounds_to_string,
@@ -272,7 +272,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
 
     fn process_method(
         &mut self,
-        sig: &'l ast::MethodSig,
+        sig: &'l ast::FnSig,
         body: Option<&'l ast::Block>,
         id: ast::NodeId,
         ident: ast::Ident,
@@ -300,7 +300,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             }
 
             if let ast::FunctionRetTy::Ty(ref ret_ty) = sig.decl.output {
-                v.visit_ty(ret_ty);
+                // In async functions, return types are desugared and redefined
+                // as an `impl Trait` existential type. Because of this, to match
+                // the definition paths when resolving nested types we need to
+                // start walking from the newly-created definition.
+                match sig.header.asyncness.node {
+                    ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                        v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
+                    }
+                    _ => v.visit_ty(ret_ty)
+                }
             }
 
             // walk the fn body
@@ -369,6 +378,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
         &mut self,
         item: &'l ast::Item,
         decl: &'l ast::FnDecl,
+        header: &'l ast::FnHeader,
         ty_params: &'l ast::Generics,
         body: &'l ast::Block,
     ) {
@@ -391,7 +401,16 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     // FIXME: Opaque type desugaring prevents us from easily
                     // processing trait bounds. See `visit_ty` for more details.
                 } else {
-                    v.visit_ty(&ret_ty);
+                    // In async functions, return types are desugared and redefined
+                    // as an `impl Trait` existential type. Because of this, to match
+                    // the definition paths when resolving nested types we need to
+                    // start walking from the newly-created definition.
+                    match header.asyncness.node {
+                        ast::IsAsync::Async { return_impl_trait_id, .. } => {
+                            v.nest_tables(return_impl_trait_id, |v| v.visit_ty(ret_ty))
+                        }
+                        _ => v.visit_ty(ret_ty)
+                    }
                 }
             }
 
@@ -1114,12 +1133,6 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 // trait.
                 self.visit_ty(ty)
             }
-            ast::ImplItemKind::OpaqueTy(ref bounds) => {
-                // FIXME: uses of the assoc type should ideally point to this
-                // 'def' and the name here should be a ref to the def in the
-                // trait.
-                self.process_bounds(&bounds);
-            }
             ast::ImplItemKind::Macro(_) => {}
         }
     }
@@ -1315,8 +1328,8 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                     );
                 }
             }
-            Fn(ref decl, .., ref ty_params, ref body) => {
-                self.process_fn(item, &decl, ty_params, &body)
+            Fn(ref sig, ref ty_params, ref body) => {
+                self.process_fn(item, &sig.decl, &sig.header, ty_params, &body)
             }
             Static(ref typ, _, ref expr) => self.process_static_or_const_item(item, typ, expr),
             Const(ref typ, ref expr) => self.process_static_or_const_item(item, &typ, &expr),
@@ -1363,38 +1376,6 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
                 }
 
                 self.visit_ty(&ty);
-                self.process_generic_params(ty_params, &qualname, item.id);
-            }
-            OpaqueTy(ref bounds, ref ty_params) => {
-                let qualname = format!("::{}",
-                    self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
-
-                let value = String::new();
-                if !self.span.filter_generated(item.ident.span) {
-                    let span = self.span_from_span(item.ident.span);
-                    let id = id_from_node_id(item.id, &self.save_ctxt);
-                    let hir_id = self.tcx.hir().node_to_hir_id(item.id);
-
-                    self.dumper.dump_def(
-                        &access_from!(self.save_ctxt, item, hir_id),
-                        Def {
-                            kind: DefKind::Type,
-                            id,
-                            span,
-                            name: item.ident.to_string(),
-                            qualname: qualname.clone(),
-                            value,
-                            parent: None,
-                            children: vec![],
-                            decl_id: None,
-                            docs: self.save_ctxt.docs_for_attrs(&item.attrs),
-                            sig: sig::item_signature(item, &self.save_ctxt),
-                            attributes: lower_attributes(item.attrs.clone(), &self.save_ctxt),
-                        },
-                    );
-                }
-
-                self.process_bounds(bounds);
                 self.process_generic_params(ty_params, &qualname, item.id);
             }
             Mac(_) => (),

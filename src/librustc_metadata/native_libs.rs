@@ -11,6 +11,8 @@ use syntax::feature_gate::{self, GateIssue};
 use syntax::symbol::{kw, sym, Symbol};
 use syntax::{span_err, struct_span_err};
 
+use rustc_error_codes::*;
+
 crate fn collect(tcx: TyCtxt<'_>) -> Vec<NativeLibrary> {
     let mut collector = Collector {
         tcx,
@@ -68,7 +70,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                         Some(name) => name,
                         None => continue, // skip like historical compilers
                     };
-                    lib.kind = match &kind.as_str()[..] {
+                    lib.kind = match &*kind.as_str() {
                         "static" => cstore::NativeStatic,
                         "static-nobundle" => cstore::NativeStaticNobundle,
                         "dylib" => cstore::NativeUnknown,
@@ -198,12 +200,10 @@ impl Collector<'tcx> {
                     self.tcx.sess.err(&format!("renaming of the library `{}` was specified, \
                                                 however this crate contains no `#[link(...)]` \
                                                 attributes referencing this library.", name));
-                } else if renames.contains(name) {
+                } else if !renames.insert(name) {
                     self.tcx.sess.err(&format!("multiple renamings were \
                                                 specified for library `{}` .",
                                                name));
-                } else {
-                    renames.insert(name);
                 }
             }
         }

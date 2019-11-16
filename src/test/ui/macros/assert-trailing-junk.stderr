@@ -2,13 +2,13 @@ error: expected one of `,`, `.`, `?`, or an operator, found `some`
   --> $DIR/assert-trailing-junk.rs:6:18
    |
 LL |     assert!(true some extra junk, "whatever");
-   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator here
+   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator
 
 error: expected one of `,`, `.`, `?`, or an operator, found `some`
   --> $DIR/assert-trailing-junk.rs:9:18
    |
 LL |     assert!(true some extra junk);
-   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator here
+   |                  ^^^^ expected one of `,`, `.`, `?`, or an operator
 
 error: no rules expected the token `blah`
   --> $DIR/assert-trailing-junk.rs:12:30

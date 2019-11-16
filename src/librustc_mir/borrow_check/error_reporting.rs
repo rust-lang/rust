@@ -838,12 +838,15 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             .get(location.statement_index)
         {
             Some(&Statement {
-                kind: StatementKind::Assign(box(Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                }, _)),
+                kind: StatementKind::Assign(box(ref place, _)),
                 ..
-            }) => local,
+            }) => {
+                if let Some(local) = place.as_local() {
+                    local
+                } else {
+                    return OtherUse(use_span);
+                }
+            }
             _ => return OtherUse(use_span),
         };
 

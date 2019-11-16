@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 // This test checks that the `remove extra angle brackets` error doesn't happen for some
 // potential edge-cases..

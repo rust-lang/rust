@@ -20,7 +20,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_index::vec::IndexVec;
 use syntax::ast::{self, Name, NodeId};
 use syntax::source_map::Spanned;
-use syntax_expand::base::MacroKind;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub mod blocks;
@@ -49,21 +49,21 @@ impl<'hir> Entry<'hir> {
         match self.node {
             Node::Item(ref item) => {
                 match item.kind {
-                    ItemKind::Fn(ref fn_decl, _, _, _) => Some(fn_decl),
+                    ItemKind::Fn(ref sig, _, _) => Some(&sig.decl),
                     _ => None,
                 }
             }
 
             Node::TraitItem(ref item) => {
                 match item.kind {
-                    TraitItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    TraitItemKind::Method(ref sig, _) => Some(&sig.decl),
                     _ => None
                 }
             }
 
             Node::ImplItem(ref item) => {
                 match item.kind {
-                    ImplItemKind::Method(ref method_sig, _) => Some(&method_sig.decl),
+                    ImplItemKind::Method(ref sig, _) => Some(&sig.decl),
                     _ => None,
                 }
             }
@@ -79,13 +79,40 @@ impl<'hir> Entry<'hir> {
         }
     }
 
+    fn fn_sig(&self) -> Option<&'hir FnSig> {
+        match &self.node {
+            Node::Item(item) => {
+                match &item.kind {
+                    ItemKind::Fn(sig, _, _) => Some(sig),
+                    _ => None,
+                }
+            }
+
+            Node::TraitItem(item) => {
+                match &item.kind {
+                    TraitItemKind::Method(sig, _) => Some(sig),
+                    _ => None
+                }
+            }
+
+            Node::ImplItem(item) => {
+                match &item.kind {
+                    ImplItemKind::Method(sig, _) => Some(sig),
+                    _ => None,
+                }
+            }
+
+            _ => None,
+        }
+    }
+
     fn associated_body(self) -> Option<BodyId> {
         match self.node {
             Node::Item(item) => {
                 match item.kind {
                     ItemKind::Const(_, body) |
                     ItemKind::Static(.., body) |
-                    ItemKind::Fn(_, _, _, body) => Some(body),
+                    ItemKind::Fn(.., body) => Some(body),
                     _ => None,
                 }
             }
@@ -156,9 +183,9 @@ impl Forest {
 
 /// This type is effectively a `HashMap<HirId, Entry<'hir>>`,
 /// but it is implemented as 2 layers of arrays.
-/// - first we have `A = Vec<Option<B>>` mapping a `DefIndex`'s index to an inner value
+/// - first we have `A = IndexVec<DefIndex, B>` mapping `DefIndex`s to an inner value
 /// - which is `B = IndexVec<ItemLocalId, Option<Entry<'hir>>` which gives you the `Entry`.
-pub(super) type HirEntryMap<'hir> = Vec<Option<IndexVec<ItemLocalId, Option<Entry<'hir>>>>>;
+pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Option<Entry<'hir>>>>;
 
 /// Represents a mapping from `NodeId`s to AST elements and their parent `NodeId`s.
 #[derive(Clone)]
@@ -222,8 +249,8 @@ impl<'map> Iterator for ParentHirIterator<'map> {
 impl<'hir> Map<'hir> {
     #[inline]
     fn lookup(&self, id: HirId) -> Option<&Entry<'hir>> {
-        let local_map = self.map.get(id.owner.index())?;
-        local_map.as_ref()?.get(id.local_id)?.as_ref()
+        let local_map = self.map.get(id.owner)?;
+        local_map.get(id.local_id)?.as_ref()
     }
 
     /// Registers a read in the dependency graph of the AST node with
@@ -450,6 +477,14 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    pub fn fn_sig_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnSig> {
+        if let Some(entry) = self.find_entry(hir_id) {
+            entry.fn_sig()
+        } else {
+            bug!("no entry for hir_id `{}`", hir_id)
+        }
+    }
+
     /// Returns the `HirId` that corresponds to the definition of
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
@@ -605,7 +640,7 @@ impl<'hir> Map<'hir> {
                 Node::TraitItem(ref trait_item) => Some(&trait_item.generics),
                 Node::Item(ref item) => {
                     match item.kind {
-                        ItemKind::Fn(_, _, ref generics, _) |
+                        ItemKind::Fn(_, ref generics, _) |
                         ItemKind::TyAlias(_, ref generics) |
                         ItemKind::Enum(_, ref generics) |
                         ItemKind::Struct(_, ref generics) |
@@ -702,9 +737,9 @@ impl<'hir> Map<'hir> {
                 ..
             }) => true,
             Node::Item(&Item {
-                kind: ItemKind::Fn(_, header, ..),
+                kind: ItemKind::Fn(ref sig, ..),
                 ..
-            }) => header.constness == Constness::Const,
+            }) => sig.header.constness == Constness::Const,
             _ => false,
         }
     }
@@ -1031,14 +1066,12 @@ impl<'hir> Map<'hir> {
         // see the comment on `HirEntryMap`.
         // Iterate over all the indices and return a reference to
         // local maps and their index given that they exist.
-        self.map.iter().enumerate().filter_map(|(i, local_map)| {
-            local_map.as_ref().map(|m| (i, m))
-        }).flat_map(move |(array_index, local_map)| {
+        self.map.iter_enumerated().flat_map(move |(owner, local_map)| {
             // Iterate over each valid entry in the local map.
             local_map.iter_enumerated().filter_map(move |(i, entry)| entry.map(move |_| {
                 // Reconstruct the `HirId` based on the 3 indices we used to find it.
                 HirId {
-                    owner: DefIndex::from(array_index),
+                    owner,
                     local_id: i,
                 }
             }))

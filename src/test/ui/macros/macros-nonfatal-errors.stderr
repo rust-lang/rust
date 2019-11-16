@@ -45,6 +45,7 @@ error: format argument must be a string literal
    |
 LL |     format!(invalid);
    |             ^^^^^^^
+   |
 help: you might be missing a string literal to format with
    |
 LL |     format!("{}", invalid);
@@ -88,3 +89,4 @@ LL |     trace_macros!(invalid);
 
 error: aborting due to 14 previous errors
 
+For more information about this error, try `rustc --explain E0665`.

@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // Regression test for #48551. Covers a case where duplicate candidates
 // arose during associated type projection.
 

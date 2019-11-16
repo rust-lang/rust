@@ -7,13 +7,13 @@ enum Fruit {
 fn should_return_fruit() -> Apple {
     //~^ ERROR cannot find type `Apple` in this scope
     Apple(5)
-    //~^ ERROR cannot find function `Apple` in this scope
+    //~^ ERROR cannot find function, tuple struct or tuple variant `Apple` in this scope
 }
 
 fn should_return_fruit_too() -> Fruit::Apple {
     //~^ ERROR expected type, found variant `Fruit::Apple`
     Apple(5)
-    //~^ ERROR cannot find function `Apple` in this scope
+    //~^ ERROR cannot find function, tuple struct or tuple variant `Apple` in this scope
 }
 
 fn foo() -> Ok {

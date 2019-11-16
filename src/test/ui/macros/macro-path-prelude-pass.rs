@@ -1,6 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
-
-#![feature(extern_prelude)]
+// check-pass
 
 mod m {
     fn check() {

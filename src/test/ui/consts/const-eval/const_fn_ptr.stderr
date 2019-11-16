@@ -7,7 +7,7 @@ LL |     X(x)
 warning: skipping const checks
   --> $DIR/const_fn_ptr.rs:16:5
    |
-LL |     X_const(x)
+LL |     X_CONST(x)
    |     ^^^^^^^^^^
 
 warning: skipping const checks
@@ -15,12 +15,4 @@ warning: skipping const checks
    |
 LL |     x(y)
    |     ^^^^
-
-warning: constant `X_const` should have an upper case name
-  --> $DIR/const_fn_ptr.rs:9:7
-   |
-LL | const X_const: fn(usize) -> usize = double_const;
-   |       ^^^^^^^ help: convert the identifier to upper case: `X_CONST`
-   |
-   = note: `#[warn(non_upper_case_globals)]` on by default
 

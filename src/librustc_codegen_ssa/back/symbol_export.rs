@@ -14,7 +14,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::SubstsRef;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
 use rustc_index::vec::IndexVec;
-use syntax_expand::allocator::ALLOCATOR_METHODS;
+use syntax::expand::allocator::ALLOCATOR_METHODS;
 
 pub type ExportedSymbols = FxHashMap<
     CrateNum,
@@ -129,9 +129,9 @@ fn reachable_non_generics_provider(
                 //
                 // In general though we won't link right if these
                 // symbols are stripped, and LTO currently strips them.
-                if &*name == "rust_eh_personality" ||
-                   &*name == "rust_eh_register_frames" ||
-                   &*name == "rust_eh_unregister_frames" {
+                if name == "rust_eh_personality" ||
+                   name == "rust_eh_register_frames" ||
+                   name == "rust_eh_unregister_frames" {
                     SymbolExportLevel::C
                 } else {
                     SymbolExportLevel::Rust
@@ -194,7 +194,7 @@ fn exported_symbols_provider_local(
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
-    if tcx.sess.allocator_kind.get().is_some() {
+    if tcx.allocator_kind().is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));
@@ -364,8 +364,9 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
 
     if is_extern && !std_internal {
-        // Emscripten cannot export statics, so reduce their export level here
-        if tcx.sess.target.target.options.is_like_emscripten {
+        let target = &tcx.sess.target.target.llvm_target;
+        // WebAssembly cannot export data symbols, so reduce their export level
+        if target.contains("wasm32") || target.contains("emscripten") {
             if let Some(Node::Item(&hir::Item {
                 kind: hir::ItemKind::Static(..),
                 ..

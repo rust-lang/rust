@@ -1,0 +1,76 @@
+error[E0658]: custom attributes cannot be applied to modules
+  --> $DIR/attributes-on-modules-fail.rs:6:1
+   |
+LL | #[identity_attr]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+
+error: `derive` may only be applied to structs, enums and unions
+  --> $DIR/attributes-on-modules-fail.rs:16:1
+   |
+LL | #[derive(Copy)]
+   | ^^^^^^^^^^^^^^^
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:20:1
+   |
+LL | mod module;
+   | ^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+
+error[E0658]: non-inline modules in proc macro input are unstable
+  --> $DIR/attributes-on-modules-fail.rs:24:5
+   |
+LL |     mod inner;
+   |     ^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+
+error[E0658]: custom attributes cannot be applied to modules
+  --> $DIR/attributes-on-modules-fail.rs:22:1
+   |
+LL | #[empty_attr]
+   | ^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/54727
+   = help: add `#![feature(proc_macro_hygiene)]` to the crate attributes to enable
+
+error[E0412]: cannot find type `Y` in this scope
+  --> $DIR/attributes-on-modules-fail.rs:10:14
+   |
+LL |     type A = Y;
+   |     ---------^- similarly named type alias `A` defined here
+   |
+help: a type alias with a similar name exists
+   |
+LL |     type A = A;
+   |              ^
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL |     use Y;
+   |
+
+error[E0412]: cannot find type `X` in this scope
+  --> $DIR/attributes-on-modules-fail.rs:14:10
+   |
+LL | type A = X;
+   | ---------^- similarly named type alias `A` defined here
+   |
+help: a type alias with a similar name exists
+   |
+LL | type A = A;
+   |          ^
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use m::X;
+   |
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0412, E0658.
+For more information about an error, try `rustc --explain E0412`.

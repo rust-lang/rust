@@ -1,0 +1,26 @@
+error: cannot use an explicitly registered attribute through an import
+  --> $DIR/register-attr-tool-import.rs:12:3
+   |
+LL | #[renamed_attr]
+   |   ^^^^^^^^^^^^
+   |
+note: the explicitly registered attribute imported here
+  --> $DIR/register-attr-tool-import.rs:9:5
+   |
+LL | use attr as renamed_attr; // OK
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: cannot use a tool module through an import
+  --> $DIR/register-attr-tool-import.rs:13:3
+   |
+LL | #[renamed_tool::attr]
+   |   ^^^^^^^^^^^^
+   |
+note: the tool module imported here
+  --> $DIR/register-attr-tool-import.rs:10:5
+   |
+LL | use tool as renamed_tool; // OK
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

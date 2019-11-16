@@ -295,8 +295,8 @@ impl<'a> State<'a> {
             hir::TyKind::Ptr(ref mt) => {
                 self.s.word("*");
                 match mt.mutbl {
-                    hir::MutMutable => self.word_nbsp("mut"),
-                    hir::MutImmutable => self.word_nbsp("const"),
+                    hir::Mutability::Mutable => self.word_nbsp("mut"),
+                    hir::Mutability::Immutable => self.word_nbsp("const"),
                 }
                 self.print_type(&mt.ty);
             }
@@ -390,7 +390,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::MutMutable {
+                if m == hir::Mutability::Mutable {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -506,7 +506,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Static(ref ty, m, expr) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::MutMutable {
+                if m == hir::Mutability::Mutable {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -533,10 +533,10 @@ impl<'a> State<'a> {
                 self.s.word(";");
                 self.end(); // end the outer cbox
             }
-            hir::ItemKind::Fn(ref decl, header, ref param_names, body) => {
+            hir::ItemKind::Fn(ref sig, ref param_names, body) => {
                 self.head("");
-                self.print_fn(decl,
-                              header,
+                self.print_fn(&sig.decl,
+                              sig.header,
                               Some(item.ident.name),
                               param_names,
                               &item.vis,
@@ -564,7 +564,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::GlobalAsm(ref ga) => {
                 self.head(visibility_qualified(&item.vis, "global asm"));
-                self.s.word(ga.asm.as_str().to_string());
+                self.s.word(ga.asm.to_string());
                 self.end()
             }
             hir::ItemKind::TyAlias(ref ty, ref generics) => {
@@ -835,7 +835,7 @@ impl<'a> State<'a> {
     }
     pub fn print_method_sig(&mut self,
                             ident: ast::Ident,
-                            m: &hir::MethodSig,
+                            m: &hir::FnSig,
                             generics: &hir::Generics,
                             vis: &hir::Visibility,
                             arg_names: &[ast::Ident],
@@ -1523,9 +1523,17 @@ impl<'a> State<'a> {
                                         colons_before_params)
             }
             hir::QPath::TypeRelative(ref qself, ref item_segment) => {
-                self.s.word("<");
-                self.print_type(qself);
-                self.s.word(">");
+                // If we've got a compound-qualified-path, let's push an additional pair of angle
+                // brackets, so that we pretty-print `<<A::B>::C>` as `<A::B>::C`, instead of just
+                // `A::B::C` (since the latter could be ambiguous to the user)
+                if let hir::TyKind::Path(hir::QPath::Resolved(None, _)) = &qself.kind {
+                    self.print_type(qself);
+                } else {
+                    self.s.word("<");
+                    self.print_type(qself);
+                    self.s.word(">");
+                }
+
                 self.s.word("::");
                 self.print_ident(item_segment.ident);
                 self.print_generic_args(item_segment.generic_args(),
@@ -1620,11 +1628,11 @@ impl<'a> State<'a> {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::MutImmutable);
+                        self.print_mutability(hir::Mutability::Immutable);
                     }
                     hir::BindingAnnotation::RefMut => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::MutMutable);
+                        self.print_mutability(hir::Mutability::Mutable);
                     }
                     hir::BindingAnnotation::Unannotated => {}
                     hir::BindingAnnotation::Mutable => {
@@ -1726,9 +1734,7 @@ impl<'a> State<'a> {
                     _ => false,
                 };
                 self.s.word("&");
-                if mutbl == hir::MutMutable {
-                    self.s.word("mut ");
-                }
+                self.s.word(mutbl.prefix_str());
                 if is_range_inner {
                     self.popen();
                 }
@@ -1847,7 +1853,7 @@ impl<'a> State<'a> {
         self.commasep(Inconsistent, &decl.inputs, |s, ty| {
             s.ibox(INDENT_UNIT);
             if let Some(arg_name) = arg_names.get(i) {
-                s.s.word(arg_name.as_str().to_string());
+                s.s.word(arg_name.to_string());
                 s.s.word(":");
                 s.s.space();
             } else if let Some(body_id) = body_id {
@@ -1903,10 +1909,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureClause) {
+    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
-            hir::CaptureByValue => self.word_space("move"),
-            hir::CaptureByRef => {},
+            hir::CaptureBy::Value => self.word_space("move"),
+            hir::CaptureBy::Ref => {},
         }
     }
 
@@ -2055,8 +2061,8 @@ impl<'a> State<'a> {
 
     pub fn print_mutability(&mut self, mutbl: hir::Mutability) {
         match mutbl {
-            hir::MutMutable => self.word_nbsp("mut"),
-            hir::MutImmutable => {},
+            hir::Mutability::Mutable => self.word_nbsp("mut"),
+            hir::Mutability::Immutable => {},
         }
     }
 

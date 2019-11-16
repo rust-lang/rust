@@ -1,7 +1,7 @@
 // Regression test for #61320
 // This is the same issue as #61311, just a larger test case.
 
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 pub struct AndThen<A, B, F>
 where

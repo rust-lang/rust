@@ -58,6 +58,8 @@ mod fpu_precision {
     pub struct FPUControlWord(u16);
 
     fn set_cw(cw: u16) {
+        // SAFETY: the `fldcw` instruction has been audited to be able to work correctly with
+        // any `u16`
         unsafe { asm!("fldcw $0" :: "m" (cw) :: "volatile") }
     }
 
@@ -74,6 +76,8 @@ mod fpu_precision {
 
         // Get the original value of the control word to restore it later, when the
         // `FPUControlWord` structure is dropped
+        // SAFETY: the `fnstcw` instruction has been audited to be able to work correctly with
+        // any `u16`
         unsafe { asm!("fnstcw $0" : "=*m" (&cw) ::: "volatile") }
 
         // Set the control word to the desired precision. This is achieved by masking away the old
@@ -143,13 +147,12 @@ pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Opt
 /// > not a bound for the true error, but bounds the difference between the approximation z and
 /// > the best possible approximation that uses p bits of significand.)
 pub fn bellerophon<T: RawFloat>(f: &Big, e: i16) -> T {
-    let slop;
-    if f <= &Big::from_u64(T::MAX_SIG) {
+    let slop = if f <= &Big::from_u64(T::MAX_SIG) {
         // The cases abs(e) < log5(2^N) are in fast_path()
-        slop = if e >= 0 { 0 } else { 3 };
+        if e >= 0 { 0 } else { 3 }
     } else {
-        slop = if e >= 0 { 1 } else { 4 };
-    }
+        if e >= 0 { 1 } else { 4 }
+    };
     let z = rawfp::big_to_fp(f).mul(&power_of_ten(e)).normalize();
     let exp_p_n = 1 << (P - T::SIG_BITS as u32);
     let lowbits: i64 = (z.f % exp_p_n) as i64;

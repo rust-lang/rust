@@ -10,7 +10,7 @@ fn main() {
 
     fn _f1() -> bool {
         // Should associate as `(let _ = (return (true && false)))`.
-        if let _ = return true && false {};
+        if let _ = return true && false {}; //~ WARNING unreachable_code
     }
     assert!(!_f1());
 }

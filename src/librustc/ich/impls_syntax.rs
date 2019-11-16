@@ -8,9 +8,9 @@ use std::mem;
 
 use syntax::ast;
 use syntax::feature_gate;
-use syntax::parse::token;
-use syntax::symbol::InternedString;
+use syntax::token;
 use syntax::tokenstream;
+use syntax_pos::symbol::SymbolStr;
 use syntax_pos::SourceFile;
 
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
@@ -18,20 +18,21 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 
-impl<'a> HashStable<StableHashingContext<'a>> for InternedString {
+impl<'a> HashStable<StableHashingContext<'a>> for SymbolStr {
     #[inline]
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.with(|s| s.hash_stable(hcx, hasher))
+        let str = self as &str;
+        str.hash_stable(hcx, hasher)
     }
 }
 
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for InternedString {
-    type KeyType = InternedString;
+impl<'a> ToStableHashKey<StableHashingContext<'a>> for SymbolStr {
+    type KeyType = SymbolStr;
 
     #[inline]
     fn to_stable_hash_key(&self,
                           _: &StableHashingContext<'a>)
-                          -> InternedString {
+                          -> SymbolStr {
         self.clone()
     }
 }
@@ -44,13 +45,13 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Name {
 }
 
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::Name {
-    type KeyType = InternedString;
+    type KeyType = SymbolStr;
 
     #[inline]
     fn to_stable_hash_key(&self,
                           _: &StableHashingContext<'a>)
-                          -> InternedString {
-        self.as_interned_str()
+                          -> SymbolStr {
+        self.as_str()
     }
 }
 
@@ -59,7 +60,7 @@ impl_stable_hash_for!(enum ::syntax::ast::AsmDialect {
     Intel
 });
 
-impl_stable_hash_for!(enum ::syntax_expand::base::MacroKind {
+impl_stable_hash_for!(enum ::syntax_pos::hygiene::MacroKind {
     Bang,
     Attr,
     Derive,
@@ -79,6 +80,7 @@ impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
     Msp430Interrupt,
     X86Interrupt,
     AmdGpuKernel,
+    EfiApi,
     Rust,
     C,
     System,
@@ -122,7 +124,6 @@ for ::syntax::attr::StabilityLevel {
 
 impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason, suggestion });
 
-
 impl_stable_hash_for!(enum ::syntax::attr::IntType {
     SignedInt(int_ty),
     UnsignedInt(uint_ty)
@@ -131,6 +132,11 @@ impl_stable_hash_for!(enum ::syntax::attr::IntType {
 impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
     Signed(int_ty),
     Unsigned(int_ty),
+    Unsuffixed
+});
+
+impl_stable_hash_for!(enum ::syntax::ast::LitFloatType {
+    Suffixed(float_ty),
     Unsuffixed
 });
 
@@ -146,8 +152,7 @@ impl_stable_hash_for!(enum ::syntax::ast::LitKind {
     Byte(value),
     Char(value),
     Int(value, lit_int_type),
-    Float(value, float_ty),
-    FloatUnsuffixed(value),
+    Float(value, lit_float_type),
     Bool(value),
     Err(value)
 });
@@ -163,6 +168,10 @@ impl_stable_hash_for!(enum ::syntax::ast::Defaultness { Default, Final });
 impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, ident });
 impl_stable_hash_for!(enum ::syntax::ast::StrStyle { Cooked, Raw(pounds) });
 impl_stable_hash_for!(enum ::syntax::ast::AttrStyle { Outer, Inner });
+impl_stable_hash_for!(enum ::syntax::ast::Movability { Static, Movable });
+impl_stable_hash_for!(enum ::syntax::ast::CaptureBy { Value, Ref });
+impl_stable_hash_for!(enum ::syntax::ast::IsAuto { Yes, No });
+impl_stable_hash_for!(enum ::syntax::ast::ImplPolarity { Positive, Negative });
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -175,7 +184,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
         let filtered: SmallVec<[&ast::Attribute; 8]> = self
             .iter()
             .filter(|attr| {
-                !attr.is_sugared_doc &&
+                !attr.is_doc_comment() &&
                 !attr.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name))
             })
             .collect();
@@ -205,19 +214,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         // Make sure that these have been filtered out.
         debug_assert!(!self.ident().map_or(false, |ident| hcx.is_ignored_attr(ident.name)));
-        debug_assert!(!self.is_sugared_doc);
+        debug_assert!(!self.is_doc_comment());
 
-        let ast::Attribute {
-            ref item,
-            id: _,
-            style,
-            is_sugared_doc: _,
-            span,
-        } = *self;
-
-        item.hash_stable(hcx, hasher);
-        style.hash_stable(hcx, hasher);
-        span.hash_stable(hcx, hasher);
+        let ast::Attribute { kind, id: _, style, span } = self;
+        if let ast::AttrKind::Normal(item) = kind {
+            item.hash_stable(hcx, hasher);
+            style.hash_stable(hcx, hasher);
+            span.hash_stable(hcx, hasher);
+        } else {
+            unreachable!();
+        }
     }
 }
 
@@ -424,6 +430,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
             ref lines,
             ref multibyte_chars,
             ref non_narrow_chars,
+            ref normalized_pos,
         } = *self;
 
         (name_hash as u64).hash_stable(hcx, hasher);
@@ -452,6 +459,12 @@ impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
         for &char_pos in non_narrow_chars.iter() {
             stable_non_narrow_char(char_pos, start_pos).hash_stable(hcx, hasher);
         }
+
+        normalized_pos.len().hash_stable(hcx, hasher);
+        for &char_pos in normalized_pos.iter() {
+            stable_normalized_pos(char_pos, start_pos).hash_stable(hcx, hasher);
+        }
+
     }
 }
 
@@ -480,6 +493,18 @@ fn stable_non_narrow_char(swc: ::syntax_pos::NonNarrowChar,
 
     (pos.0 - source_file_start.0, width as u32)
 }
+
+fn stable_normalized_pos(np: ::syntax_pos::NormalizedPos,
+                         source_file_start: ::syntax_pos::BytePos)
+                         -> (u32, u32) {
+    let ::syntax_pos::NormalizedPos {
+        pos,
+        diff
+    } = np;
+
+    (pos.0 - source_file_start.0, diff)
+}
+
 
 impl<'tcx> HashStable<StableHashingContext<'tcx>> for feature_gate::Features {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {

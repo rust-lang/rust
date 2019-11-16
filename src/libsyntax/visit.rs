@@ -14,7 +14,7 @@
 //! those that are created by the expansion of a macro.
 
 use crate::ast::*;
-use crate::parse::token::Token;
+use crate::token::Token;
 use crate::tokenstream::{TokenTree, TokenStream};
 
 use syntax_pos::Span;
@@ -25,7 +25,7 @@ pub enum FnKind<'a> {
     ItemFn(Ident, &'a FnHeader, &'a Visibility, &'a Block),
 
     /// E.g., `fn foo(&self)`.
-    Method(Ident, &'a MethodSig, Option<&'a Visibility>, &'a Block),
+    Method(Ident, &'a FnSig, Option<&'a Visibility>, &'a Block),
 
     /// E.g., `|x, y| body`.
     Closure(&'a Expr),
@@ -244,12 +244,11 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             visitor.visit_ty(typ);
             visitor.visit_expr(expr);
         }
-        ItemKind::Fn(ref declaration, ref header, ref generics, ref body) => {
+        ItemKind::Fn(ref sig, ref generics, ref body) => {
             visitor.visit_generics(generics);
-            visitor.visit_fn_header(header);
-            visitor.visit_fn(FnKind::ItemFn(item.ident, header,
-                                            &item.vis, body),
-                             declaration,
+            visitor.visit_fn_header(&sig.header);
+            visitor.visit_fn(FnKind::ItemFn(item.ident, &sig.header, &item.vis, body),
+                             &sig.decl,
                              item.span,
                              item.id)
         }
@@ -262,10 +261,6 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
         ItemKind::GlobalAsm(ref ga) => visitor.visit_global_asm(ga),
         ItemKind::TyAlias(ref typ, ref generics) => {
             visitor.visit_ty(typ);
-            visitor.visit_generics(generics)
-        }
-        ItemKind::OpaqueTy(ref bounds, ref generics) => {
-            walk_list!(visitor, visit_param_bound, bounds);
             visitor.visit_generics(generics)
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
@@ -629,9 +624,6 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
         ImplItemKind::TyAlias(ref ty) => {
             visitor.visit_ty(ty);
         }
-        ImplItemKind::OpaqueTy(ref bounds) => {
-            walk_list!(visitor, visit_param_bound, bounds);
-        }
         ImplItemKind::Macro(ref mac) => {
             visitor.visit_mac(mac);
         }
@@ -846,7 +838,10 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
 }
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
-    visitor.visit_tts(attr.tokens.clone());
+    match attr.kind {
+        AttrKind::Normal(ref item) => visitor.visit_tts(item.tokens.clone()),
+        AttrKind::DocComment(_) => {}
+    }
 }
 
 pub fn walk_tt<'a, V: Visitor<'a>>(visitor: &mut V, tt: TokenTree) {

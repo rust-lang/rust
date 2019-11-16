@@ -16,10 +16,10 @@ struct ParentWrapper<T>(T);
 
 impl<A, T: Parent<Ty = A>> Parent for ParentWrapper<T> {
     //~^ ERROR the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
-    //~| ERROR the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
     type Ty = A;
     type Assoc = ChildWrapper<T::Assoc>;
     //~^ ERROR the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
+    //~| ERROR the trait bound `<T as Parent>::Assoc: Child<A>` is not satisfied
 }
 
 fn main() {}

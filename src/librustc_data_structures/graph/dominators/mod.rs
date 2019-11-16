@@ -17,7 +17,7 @@ pub fn dominators<G: ControlFlowGraph>(graph: &G) -> Dominators<G::Node> {
     dominators_given_rpo(graph, &rpo)
 }
 
-pub fn dominators_given_rpo<G: ControlFlowGraph>(
+fn dominators_given_rpo<G: ControlFlowGraph>(
     graph: &G,
     rpo: &[G::Node],
 ) -> Dominators<G::Node> {
@@ -43,14 +43,12 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(
             let mut new_idom = None;
             for pred in graph.predecessors(node) {
                 if immediate_dominators[pred].is_some() {
-                    // (*)
                     // (*) dominators for `pred` have been calculated
-                    new_idom = intersect_opt(
-                        &post_order_rank,
-                        &immediate_dominators,
-                        new_idom,
-                        Some(pred),
-                    );
+                    new_idom = Some(if let Some(new_idom) = new_idom {
+                        intersect(&post_order_rank, &immediate_dominators, new_idom, pred)
+                    } else {
+                        pred
+                    });
                 }
             }
 
@@ -64,19 +62,6 @@ pub fn dominators_given_rpo<G: ControlFlowGraph>(
     Dominators {
         post_order_rank,
         immediate_dominators,
-    }
-}
-
-fn intersect_opt<Node: Idx>(
-    post_order_rank: &IndexVec<Node, usize>,
-    immediate_dominators: &IndexVec<Node, Option<Node>>,
-    node1: Option<Node>,
-    node2: Option<Node>,
-) -> Option<Node> {
-    match (node1, node2) {
-        (None, None) => None,
-        (Some(n), None) | (None, Some(n)) => Some(n),
-        (Some(n1), Some(n2)) => Some(intersect(post_order_rank, immediate_dominators, n1, n2)),
     }
 }
 

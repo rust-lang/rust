@@ -6,13 +6,11 @@
 //! FIXME(eddyb) implement a custom `PrettyPrinter` for this.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::interpret::ConstValue;
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Const, Instance, Ty, TyCtxt};
 use rustc::{bug, hir};
 use std::fmt::Write;
 use std::iter;
-use syntax::ast;
 
 /// Same as `unique_type_name()` but with the result pushed onto the given
 /// `output` parameter.
@@ -39,20 +37,9 @@ impl DefPathBasedNames<'tcx> {
             ty::Char => output.push_str("char"),
             ty::Str => output.push_str("str"),
             ty::Never => output.push_str("!"),
-            ty::Int(ast::IntTy::Isize) => output.push_str("isize"),
-            ty::Int(ast::IntTy::I8) => output.push_str("i8"),
-            ty::Int(ast::IntTy::I16) => output.push_str("i16"),
-            ty::Int(ast::IntTy::I32) => output.push_str("i32"),
-            ty::Int(ast::IntTy::I64) => output.push_str("i64"),
-            ty::Int(ast::IntTy::I128) => output.push_str("i128"),
-            ty::Uint(ast::UintTy::Usize) => output.push_str("usize"),
-            ty::Uint(ast::UintTy::U8) => output.push_str("u8"),
-            ty::Uint(ast::UintTy::U16) => output.push_str("u16"),
-            ty::Uint(ast::UintTy::U32) => output.push_str("u32"),
-            ty::Uint(ast::UintTy::U64) => output.push_str("u64"),
-            ty::Uint(ast::UintTy::U128) => output.push_str("u128"),
-            ty::Float(ast::FloatTy::F32) => output.push_str("f32"),
-            ty::Float(ast::FloatTy::F64) => output.push_str("f64"),
+            ty::Int(ty) => output.push_str(ty.name_str()),
+            ty::Uint(ty) => output.push_str(ty.name_str()),
+            ty::Float(ty) => output.push_str(ty.name_str()),
             ty::Adt(adt_def, substs) => {
                 self.push_def_path(adt_def.did, output);
                 self.push_generic_params(substs, iter::empty(), output, debug);
@@ -72,17 +59,15 @@ impl DefPathBasedNames<'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty: inner_type, mutbl }) => {
                 output.push('*');
                 match mutbl {
-                    hir::MutImmutable => output.push_str("const "),
-                    hir::MutMutable => output.push_str("mut "),
+                    hir::Mutability::Immutable => output.push_str("const "),
+                    hir::Mutability::Mutable => output.push_str("mut "),
                 }
 
                 self.push_type_name(inner_type, output, debug);
             }
             ty::Ref(_, inner_type, mutbl) => {
                 output.push('&');
-                if mutbl == hir::MutMutable {
-                    output.push_str("mut ");
-                }
+                output.push_str(mutbl.prefix_str());
 
                 self.push_type_name(inner_type, output, debug);
             }
@@ -114,9 +99,7 @@ impl DefPathBasedNames<'tcx> {
             ty::Foreign(did) => self.push_def_path(did, output),
             ty::FnDef(..) | ty::FnPtr(_) => {
                 let sig = t.fn_sig(self.tcx);
-                if sig.unsafety() == hir::Unsafety::Unsafe {
-                    output.push_str("unsafe ");
-                }
+                output.push_str(sig.unsafety().prefix_str());
 
                 let abi = sig.abi();
                 if abi != ::rustc_target::spec::abi::Abi::Rust {
@@ -186,21 +169,16 @@ impl DefPathBasedNames<'tcx> {
     // If `debug` is true, usually-unprintable consts (such as `Infer`) will be printed,
     // as well as the unprintable types of constants (see `push_type_name` for more details).
     pub fn push_const_name(&self, c: &Const<'tcx>, output: &mut String, debug: bool) {
-        match c.val {
-            ConstValue::Scalar(..) | ConstValue::Slice { .. } | ConstValue::ByRef { .. } => {
-                // FIXME(const_generics): we could probably do a better job here.
-                write!(output, "{:?}", c).unwrap()
-            }
-            _ => {
-                if debug {
-                    write!(output, "{:?}", c).unwrap()
-                } else {
-                    bug!(
-                        "DefPathBasedNames: trying to create const name for unexpected const: {:?}",
-                        c,
-                    );
-                }
-            }
+        if let ty::ConstKind::Value(_) = c.val {
+            // FIXME(const_generics): we could probably do a better job here.
+            write!(output, "{:?}", c).unwrap()
+        } else if debug {
+            write!(output, "{:?}", c).unwrap()
+        } else {
+            bug!(
+                "DefPathBasedNames: trying to create const name for unexpected const: {:?}",
+                c,
+            );
         }
         output.push_str(": ");
         self.push_type_name(c.ty, output, debug);
@@ -218,9 +196,9 @@ impl DefPathBasedNames<'tcx> {
         // foo::bar::ItemName::
         for part in self.tcx.def_path(def_id).data {
             if self.omit_disambiguators {
-                write!(output, "{}::", part.data.as_interned_str()).unwrap();
+                write!(output, "{}::", part.data.as_symbol()).unwrap();
             } else {
-                write!(output, "{}[{}]::", part.data.as_interned_str(), part.disambiguator)
+                write!(output, "{}[{}]::", part.data.as_symbol(), part.disambiguator)
                     .unwrap();
             }
         }

@@ -33,11 +33,10 @@ use rustc::traits::{
     InEnvironment,
     ChalkCanonicalGoal,
 };
-use rustc::ty::{self, TyCtxt, InferConst};
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
-use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
 
 use std::fmt::{self, Debug};
@@ -286,7 +285,7 @@ impl context::ContextOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
                     _ => false,
                 },
                 GenericArgKind::Const(ct) => match ct.val {
-                    ConstValue::Infer(InferConst::Canonical(debruijn, bound_ct)) => {
+                    ty::ConstKind::Bound(debruijn, bound_ct) => {
                         debug_assert_eq!(debruijn, ty::INNERMOST);
                         cvar == bound_ct
                     }

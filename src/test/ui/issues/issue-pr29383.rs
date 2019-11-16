@@ -6,7 +6,9 @@ enum E {
 fn main() {
     match None {
         None => {}
-        Some(E::A(..)) => {} //~ ERROR expected tuple struct/variant, found unit variant `E::A`
-        Some(E::B(..)) => {} //~ ERROR expected tuple struct/variant, found unit variant `E::B`
+        Some(E::A(..)) => {}
+        //~^ ERROR expected tuple struct or tuple variant, found unit variant `E::A`
+        Some(E::B(..)) => {}
+        //~^ ERROR expected tuple struct or tuple variant, found unit variant `E::B`
     }
 }

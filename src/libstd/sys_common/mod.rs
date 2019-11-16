@@ -45,10 +45,11 @@ pub mod backtrace;
 pub mod condvar;
 pub mod io;
 pub mod mutex;
-#[cfg(any(rustdoc, // see `mod os`, docs are generated for multiple platforms
+#[cfg(any(doc, // see `mod os`, docs are generated for multiple platforms
           unix,
           target_os = "redox",
           target_os = "cloudabi",
+          target_os = "hermit",
           target_arch = "wasm32",
           all(target_vendor = "fortanix", target_env = "sgx")))]
 pub mod os_str_bytes;
@@ -67,6 +68,7 @@ pub mod fs;
 cfg_if::cfg_if! {
     if #[cfg(any(target_os = "cloudabi",
                  target_os = "l4re",
+                 target_os = "hermit",
                  all(target_arch = "wasm32", not(target_os = "emscripten")),
                  all(target_vendor = "fortanix", target_env = "sgx")))] {
         pub use crate::sys::net;

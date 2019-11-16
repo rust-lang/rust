@@ -1,4 +1,4 @@
-error[E0531]: cannot find tuple struct/variant `x` in this scope
+error[E0531]: cannot find tuple struct or tuple variant `x` in this scope
   --> $DIR/issue-5927.rs:3:9
    |
 LL |         x(1) => x(1)

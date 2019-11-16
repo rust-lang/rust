@@ -26,6 +26,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(associated_type_bounds)]
 #![feature(range_is_empty)]
 #![feature(stmt_expr_attributes)]
+#![feature(bool_to_option)]
 
 #![recursion_limit="256"]
 
@@ -33,8 +34,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #[macro_use] extern crate rustc;
 #[macro_use] extern crate rustc_data_structures;
 #[macro_use] extern crate syntax;
-
-pub mod error_codes;
 
 mod borrow_check;
 mod build;
@@ -58,6 +57,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     providers.const_eval = const_eval::const_eval_provider;
     providers.const_eval_raw = const_eval::const_eval_raw_provider;
     providers.check_match = hair::pattern::check_match;
+    providers.const_caller_location = const_eval::const_caller_location;
     providers.const_field = |tcx, param_env_and_value| {
         let (param_env, (value, field)) = param_env_and_value.into_parts();
         const_eval::const_field(tcx, param_env, None, field, value)

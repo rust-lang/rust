@@ -14,7 +14,7 @@ LL | #![warn(rust_2018_compatibility)]
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 warning: `try` is a keyword in the 2018 edition
-  --> $DIR/try-ident.rs:10:4
+  --> $DIR/try-ident.rs:12:4
    |
 LL | fn try() {
    |    ^^^ help: you can use a raw identifier to stay compatible: `r#try`

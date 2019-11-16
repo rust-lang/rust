@@ -5,23 +5,23 @@
 // can be fixed to work with the correct ABI. See #63649 for further
 // discussion.
 
-use crate::abi::call::{FnType, ArgType};
+use crate::abi::call::{FnAbi, ArgAbi};
 
-fn classify_ret_ty<Ty>(ret: &mut ArgType<'_, Ty>) {
+fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     ret.extend_integer_width_to(32);
 }
 
-fn classify_arg_ty<Ty>(arg: &mut ArgType<'_, Ty>) {
+fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     arg.extend_integer_width_to(32);
 }
 
-pub fn compute_abi_info<Ty>(fty: &mut FnType<'_, Ty>) {
-    if !fty.ret.is_ignore() {
-        classify_ret_ty(&mut fty.ret);
+pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+    if !fn_abi.ret.is_ignore() {
+        classify_ret(&mut fn_abi.ret);
     }
 
-    for arg in &mut fty.args {
+    for arg in &mut fn_abi.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(arg);
+        classify_arg(arg);
     }
 }

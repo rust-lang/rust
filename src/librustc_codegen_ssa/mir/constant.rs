@@ -14,7 +14,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::Constant<'tcx>,
     ) -> Result<&'tcx ty::Const<'tcx>, ErrorHandled> {
         match constant.literal.val {
-            mir::interpret::ConstValue::Unevaluated(def_id, ref substs) => {
+            ty::ConstKind::Unevaluated(def_id, ref substs) => {
                 let substs = self.monomorphize(substs);
                 let instance = ty::Instance::resolve(
                     self.cx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs,

@@ -67,7 +67,7 @@ use crate::ty::adjustment;
 use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 use crate::ty::fold::TypeFoldable;
 
-use crate::hir::{MutImmutable, MutMutable, PatKind};
+use crate::hir::{Mutability, PatKind};
 use crate::hir::pat_util::EnumerateAndAdjustIterator;
 use crate::hir;
 use syntax::ast::{self, Name};
@@ -102,7 +102,7 @@ pub struct Upvar {
 }
 
 // different kinds of pointers:
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PointerKind<'tcx> {
     /// `Box<T>`
     Unique,
@@ -116,7 +116,7 @@ pub enum PointerKind<'tcx> {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g., a field
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq)]
 pub enum InteriorKind {
     InteriorField(FieldIndex),
     InteriorElement(InteriorOffsetKind),
@@ -139,13 +139,13 @@ impl Hash for FieldIndex {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq)]
 pub enum InteriorOffsetKind {
     Index,   // e.g., `array_expr[index_expr]`
     Pattern, // e.g., `fn foo([_, a, _, _]: [A; 4]) { ... }`
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -226,8 +226,8 @@ pub type McResult<T> = Result<T, ()>;
 impl MutabilityCategory {
     pub fn from_mutbl(m: hir::Mutability) -> MutabilityCategory {
         let ret = match m {
-            MutImmutable => McImmutable,
-            MutMutable => McDeclared
+            Mutability::Immutable => McImmutable,
+            Mutability::Mutable => McDeclared
         };
         debug!("MutabilityCategory::{}({:?}) => {:?}",
                "from_mutbl", m, ret);
@@ -274,7 +274,7 @@ impl MutabilityCategory {
                     let bm = *tables.pat_binding_modes()
                                     .get(p.hir_id)
                                     .expect("missing binding mode");
-                    if bm == ty::BindByValue(hir::MutMutable) {
+                    if bm == ty::BindByValue(Mutability::Mutable) {
                         McDeclared
                     } else {
                         McImmutable
@@ -663,8 +663,8 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                     span,
                     cat,
                     mutbl: match self.tcx.static_mutability(def_id).unwrap() {
-                        hir::MutImmutable => McImmutable,
-                        hir::MutMutable => McDeclared,
+                        Mutability::Immutable => McImmutable,
+                        Mutability::Mutable => McDeclared,
                     },
                     ty:expr_ty,
                     note: NoteNone

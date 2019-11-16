@@ -5,7 +5,6 @@
 
 use crate::hir::def::Namespace;
 use crate::mir::ProjectionKind;
-use crate::mir::interpret::ConstValue;
 use crate::ty::{self, Lift, Ty, TyCtxt, InferConst};
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use crate::ty::print::{FmtPrinter, Printer};
@@ -749,6 +748,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             ExistentialMismatch(ref x) => return tcx.lift(x).map(ExistentialMismatch),
             ConstMismatch(ref x) => return tcx.lift(x).map(ConstMismatch),
             IntrinsicCast => IntrinsicCast,
+            ObjectUnsafeCoercion(ref x) => return tcx.lift(x).map(ObjectUnsafeCoercion),
         })
     }
 }
@@ -1350,6 +1350,7 @@ EnumTypeFoldableImpl! {
         (ty::error::TypeError::ExistentialMismatch)(x),
         (ty::error::TypeError::ConstMismatch)(x),
         (ty::error::TypeError::IntrinsicCast),
+        (ty::error::TypeError::ObjectUnsafeCoercion)(x),
     }
 }
 
@@ -1376,30 +1377,25 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::Const<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for ty::ConstKind<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
-            ConstValue::ByRef { alloc, offset } =>
-                ConstValue::ByRef { alloc, offset },
-            ConstValue::Infer(ic) => ConstValue::Infer(ic.fold_with(folder)),
-            ConstValue::Param(p) => ConstValue::Param(p.fold_with(folder)),
-            ConstValue::Placeholder(p) => ConstValue::Placeholder(p),
-            ConstValue::Scalar(a) => ConstValue::Scalar(a),
-            ConstValue::Slice { data, start, end } => ConstValue::Slice { data, start, end },
-            ConstValue::Unevaluated(did, substs)
-                => ConstValue::Unevaluated(did, substs.fold_with(folder)),
+            ty::ConstKind::Infer(ic) => ty::ConstKind::Infer(ic.fold_with(folder)),
+            ty::ConstKind::Param(p) => ty::ConstKind::Param(p.fold_with(folder)),
+            ty::ConstKind::Unevaluated(did, substs)
+                => ty::ConstKind::Unevaluated(did, substs.fold_with(folder)),
+            ty::ConstKind::Value(_) | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(..) => *self,
         }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
-            ConstValue::ByRef { .. } => false,
-            ConstValue::Infer(ic) => ic.visit_with(visitor),
-            ConstValue::Param(p) => p.visit_with(visitor),
-            ConstValue::Placeholder(_) => false,
-            ConstValue::Scalar(_) => false,
-            ConstValue::Slice { .. } => false,
-            ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ty::ConstKind::Infer(ic) => ic.visit_with(visitor),
+            ty::ConstKind::Param(p) => p.visit_with(visitor),
+            ty::ConstKind::Unevaluated(_, substs) => substs.visit_with(visitor),
+            ty::ConstKind::Value(_) | ty::ConstKind::Bound(..)
+            | ty::ConstKind::Placeholder(_) => false,
         }
     }
 }

@@ -244,3 +244,30 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     }
 }
 } // cfg_if!
+
+cfg_if::cfg_if! {
+if #[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))] {
+    // We declare these as opaque types. This is fine since you just need to
+    // pass them to _GCC_specific_handler and forget about them.
+    pub enum EXCEPTION_RECORD {}
+    pub type LPVOID = *mut c_void;
+    pub enum CONTEXT {}
+    pub enum DISPATCHER_CONTEXT {}
+    pub type EXCEPTION_DISPOSITION = c_int;
+    type PersonalityFn = unsafe extern "C" fn(version: c_int,
+                                              actions: _Unwind_Action,
+                                              exception_class: _Unwind_Exception_Class,
+                                              exception_object: *mut _Unwind_Exception,
+                                              context: *mut _Unwind_Context)
+                                              -> _Unwind_Reason_Code;
+
+    extern "C" {
+        pub fn _GCC_specific_handler(exceptionRecord: *mut EXCEPTION_RECORD,
+                                establisherFrame: LPVOID,
+                                contextRecord: *mut CONTEXT,
+                                dispatcherContext: *mut DISPATCHER_CONTEXT,
+                                personality: PersonalityFn)
+                                -> EXCEPTION_DISPOSITION;
+    }
+}
+} // cfg_if!

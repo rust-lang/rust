@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // Regression test for #37655. The problem was a false edge created by
 // coercion that wound up requiring that `'a` (in `split()`) outlive
 // `'b`, which shouldn't be necessary.

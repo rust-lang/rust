@@ -2,14 +2,12 @@ use std::fmt;
 use rustc_macros::HashStable;
 use rustc_apfloat::{Float, ieee::{Double, Single}};
 
-use crate::ty::{Ty, InferConst, ParamConst, layout::{HasDataLayout, Size}, subst::SubstsRef};
-use crate::ty::PlaceholderConst;
-use crate::hir::def_id::DefId;
+use crate::ty::{Ty, layout::{HasDataLayout, Size}};
 
 use super::{InterpResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
 
 /// Represents the result of a raw const operation, pre-validation.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash, HashStable)]
+#[derive(Clone, HashStable)]
 pub struct RawConst<'tcx> {
     // the value lives here, at offset 0, and that allocation definitely is a `AllocKind::Memory`
     // (so you can use `AllocMap::unwrap_memory`).
@@ -22,15 +20,6 @@ pub struct RawConst<'tcx> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
          RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub enum ConstValue<'tcx> {
-    /// A const generic parameter.
-    Param(ParamConst),
-
-    /// Infer the value of the const.
-    Infer(InferConst<'tcx>),
-
-    /// A placeholder const - universally quantified higher-ranked const.
-    Placeholder(PlaceholderConst),
-
     /// Used only for types with `layout::abi::Scalar` ABI and ZSTs.
     ///
     /// Not using the enum `Value` to encode that this must not be `Undef`.
@@ -51,10 +40,6 @@ pub enum ConstValue<'tcx> {
         /// Offset into `alloc`
         offset: Size,
     },
-
-    /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
-    /// variants when the code is monomorphic enough for that.
-    Unevaluated(DefId, SubstsRef<'tcx>),
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -64,24 +49,10 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
-            ConstValue::Param(_) |
-            ConstValue::Infer(_) |
-            ConstValue::Placeholder(_) |
-            ConstValue::ByRef{ .. } |
-            ConstValue::Unevaluated(..) |
+            ConstValue::ByRef { .. } |
             ConstValue::Slice { .. } => None,
             ConstValue::Scalar(val) => Some(val),
         }
-    }
-
-    #[inline]
-    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar()?.to_bits(size).ok()
-    }
-
-    #[inline]
-    pub fn try_to_ptr(&self) -> Option<Pointer> {
-        self.try_to_scalar()?.to_ptr().ok()
     }
 }
 
@@ -434,7 +405,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as u64)
     }
 
-    pub fn to_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
+    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         Ok(b as u64)
     }
@@ -460,7 +431,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as i64)
     }
 
-    pub fn to_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
+    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'static, i64> {
         let sz = cx.data_layout().pointer_size;
         let b = self.to_bits(sz)?;
         let b = sign_extend(b, sz) as i128;
@@ -487,7 +458,7 @@ impl<Tag> From<Pointer<Tag>> for Scalar<Tag> {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Ord, PartialOrd, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Eq, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum ScalarMaybeUndef<Tag = (), Id = AllocId> {
     Scalar(Scalar<Tag, Id>),
     Undef,
@@ -587,8 +558,8 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
-    pub fn to_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
-        self.not_undef()?.to_usize(cx)
+    pub fn to_machine_usize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, u64> {
+        self.not_undef()?.to_machine_usize(cx)
     }
 
     #[inline(always)]
@@ -607,8 +578,8 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
-    pub fn to_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
-        self.not_undef()?.to_isize(cx)
+    pub fn to_machine_isize(self, cx: &impl HasDataLayout) -> InterpResult<'tcx, i64> {
+        self.not_undef()?.to_machine_isize(cx)
     }
 }
 

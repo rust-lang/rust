@@ -3,9 +3,10 @@
 //! is calculated in `rustc_mir::transform::generator` and may be a subset of the
 //! types computed here.
 
+use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Pat, PatKind, Expr};
+use rustc::hir::{self, Pat, PatKind, Expr, ExprKind};
 use rustc::middle::region::{self, YieldData};
 use rustc::ty::{self, Ty};
 use syntax_pos::Span;
@@ -184,7 +185,33 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx Expr) {
-        intravisit::walk_expr(self, expr);
+        match &expr.kind {
+            ExprKind::Call(callee, args) => match &callee.kind {
+                ExprKind::Path(qpath) => {
+                    let res = self.fcx.tables.borrow().qpath_res(qpath, callee.hir_id);
+                    match res {
+                        // Direct calls never need to keep the callee `ty::FnDef`
+                        // ZST in a temporary, so skip its type, just in case it
+                        // can significantly complicate the generator type.
+                        Res::Def(DefKind::Fn, _) |
+                        Res::Def(DefKind::Method, _) |
+                        Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => {
+                            // NOTE(eddyb) this assumes a path expression has
+                            // no nested expressions to keep track of.
+                            self.expr_count += 1;
+
+                            // Record the rest of the call expression normally.
+                            for arg in args {
+                                self.visit_expr(arg);
+                            }
+                        }
+                        _ => intravisit::walk_expr(self, expr),
+                    }
+                }
+                _ => intravisit::walk_expr(self, expr),
+            }
+            _ => intravisit::walk_expr(self, expr),
+        }
 
         self.expr_count += 1;
 
@@ -217,7 +244,13 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // can be reborrowed without needing to spill to a temporary.
         // If this were not the case, then we could conceivably have
         // to create intermediate temporaries.)
-        let ty = self.fcx.tables.borrow().expr_ty(expr);
-        self.record(ty, scope, Some(expr), expr.span);
+        //
+        // The type table might not have information for this expression
+        // if it is in a malformed scope. (#66387)
+        if let Some(ty) = self.fcx.tables.borrow().expr_ty_opt(expr) {
+            self.record(ty, scope, Some(expr), expr.span);
+        } else {
+            self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
+        }
     }
 }

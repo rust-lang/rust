@@ -33,10 +33,10 @@ error[E0271]: type mismatch resolving `<impl std::future::Future as std::future:
   --> $DIR/async-block-control-flow-static-semantics.rs:18:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
-   |                                       ^^^^^^ expected u8, found ()
+   |                                       ^^^^^^ expected (), found u8
    |
-   = note: expected type `u8`
-              found type `()`
+   = note: expected type `()`
+              found type `u8`
    = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
 
 error[E0308]: mismatched types
@@ -59,10 +59,10 @@ error[E0271]: type mismatch resolving `<impl std::future::Future as std::future:
   --> $DIR/async-block-control-flow-static-semantics.rs:27:39
    |
 LL |     let _: &dyn Future<Output = ()> = &block;
-   |                                       ^^^^^^ expected u8, found ()
+   |                                       ^^^^^^ expected (), found u8
    |
-   = note: expected type `u8`
-              found type `()`
+   = note: expected type `()`
+              found type `u8`
    = note: required for the cast to the object type `dyn std::future::Future<Output = ()>`
 
 error[E0308]: mismatched types

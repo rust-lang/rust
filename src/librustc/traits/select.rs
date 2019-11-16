@@ -2195,11 +2195,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if self.tcx().lang_items().unpin_trait() == Some(def_id) =>
                 {
                     match movability {
-                        hir::GeneratorMovability::Static => {
+                        hir::Movability::Static => {
                             // Immovable generators are never `Unpin`, so
                             // suppress the normal auto-impl candidate for it.
                         }
-                        hir::GeneratorMovability::Movable => {
+                        hir::Movability::Movable => {
                             // Movable generators are always `Unpin`, so add an
                             // unconditional builtin candidate.
                             candidates.vec.push(BuiltinCandidate {
@@ -2246,7 +2246,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     if let Some(principal) = data.principal() {
-                        principal.with_self_ty(self.tcx(), self_ty)
+                        if !self.infcx.tcx.features().object_safe_for_dispatch {
+                            principal.with_self_ty(self.tcx(), self_ty)
+                        } else if self.tcx().is_object_safe(principal.def_id()) {
+                            principal.with_self_ty(self.tcx(), self_ty)
+                        } else {
+                            return;
+                        }
                     } else {
                         // Only auto-trait bounds exist.
                         return;
@@ -2646,7 +2652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Char
             | ty::RawPtr(..)
             | ty::Never
-            | ty::Ref(_, _, hir::MutImmutable) => {
+            | ty::Ref(_, _, hir::Mutability::Immutable) => {
                 // Implementations provided in libcore
                 None
             }
@@ -2657,7 +2663,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(..)
             | ty::Foreign(..)
-            | ty::Ref(_, _, hir::MutMutable) => None,
+            | ty::Ref(_, _, hir::Mutability::Mutable) => None,
 
             ty::Array(element_ty, _) => {
                 // (*) binder moved here

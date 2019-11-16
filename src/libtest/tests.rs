@@ -1,11 +1,19 @@
 use super::*;
 
-use crate::test::{
-    filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored, RunStrategy,
-    // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
-    // TestType, TrFailedMsg, TrIgnored, TrOk,
-    ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts,
-    TrIgnored, TrOk,
+use crate::{
+    bench::Bencher,
+    console::OutputLocation,
+    options::OutputFormat,
+    time::{TimeThreshold, TestTimeOptions},
+    formatters::PrettyFormatter,
+    test::{
+        filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap,
+        RunIgnored, RunStrategy, ShouldPanic, StaticTestName, TestDesc,
+        TestDescAndFn, TestOpts, TrIgnored, TrOk,
+        // FIXME (introduced by #65251)
+        // ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TestTimeOptions,
+        // TestType, TrFailedMsg, TrIgnored, TrOk,
+    },
 };
 use std::sync::mpsc::channel;
 use std::time::Duration;
@@ -16,6 +24,7 @@ impl TestOpts {
             list: false,
             filter: None,
             filter_exact: false,
+            force_run_in_process: false,
             exclude_should_panic: false,
             run_ignored: RunIgnored::No,
             run_tests: false,
@@ -74,8 +83,8 @@ pub fn do_not_run_ignored_tests() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res != TrOk);
+    let result = rx.recv().unwrap().result;
+    assert!(result != TrOk);
 }
 
 #[test]
@@ -93,11 +102,11 @@ pub fn ignored_tests_result_in_ignored() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrIgnored);
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrIgnored);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic() {
@@ -116,11 +125,11 @@ fn test_should_panic() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_good_message() {
@@ -139,11 +148,11 @@ fn test_should_panic_good_message() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrOk);
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrOk);
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_bad_message() {
@@ -165,11 +174,11 @@ fn test_should_panic_bad_message() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
 }
 
-// FIXME: Re-enable emscripten once it can catch panics again
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn test_should_panic_but_succeeds() {
@@ -186,8 +195,8 @@ fn test_should_panic_but_succeeds() {
     };
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, res, _, _) = rx.recv().unwrap();
-    assert!(res == TrFailedMsg("test did not panic as expected".to_string()));
+    let result = rx.recv().unwrap().result;
+    assert!(result == TrFailedMsg("test did not panic as expected".to_string()));
 }
 
 fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
@@ -214,7 +223,7 @@ fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
     };
     let (tx, rx) = channel();
     run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, _, exec_time, _) = rx.recv().unwrap();
+    let exec_time = rx.recv().unwrap().exec_time;
     exec_time
 }
 
@@ -252,7 +261,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
     };
     let (tx, rx) = channel();
     run_test(&test_opts, false, desc, RunStrategy::InProcess, tx, Concurrent::No);
-    let (_, result, _, _) = rx.recv().unwrap();
+    let result = rx.recv().unwrap().result;
 
     result
 }
@@ -261,7 +270,7 @@ fn time_test_failure_template(test_type: TestType) -> TestResult {
 fn test_error_on_exceed() {
     let types = [TestType::UnitTest, TestType::IntegrationTest, TestType::DocTest];
 
-    for test_type in types.into_iter() {
+    for test_type in types.iter() {
         let result = time_test_failure_template(*test_type);
 
         assert_eq!(result, TestResult::TrTimedFail);
@@ -312,7 +321,7 @@ fn test_time_options_threshold() {
         (TestType::DocTest, doc.critical.as_millis(), true, true),
     ];
 
-    for (test_type, time, expected_warn, expected_critical) in test_vector.into_iter() {
+    for (test_type, time, expected_warn, expected_critical) in test_vector.iter() {
         let test_desc = typed_test_desc(*test_type);
         let exec_time = test_exec_time(*time as u64);
 
@@ -658,9 +667,9 @@ fn should_sort_failures_before_printing_them() {
         test_type: TestType::Unknown,
     };
 
-    let mut out = PrettyFormatter::new(Raw(Vec::new()), false, 10, false, None);
+    let mut out = PrettyFormatter::new(OutputLocation::Raw(Vec::new()), false, 10, false, None);
 
-    let st = ConsoleTestState {
+    let st = console::ConsoleTestState {
         log_out: None,
         total: 0,
         passed: 0,
@@ -678,8 +687,8 @@ fn should_sort_failures_before_printing_them() {
 
     out.write_failures(&st).unwrap();
     let s = match out.output_location() {
-        &Raw(ref m) => String::from_utf8_lossy(&m[..]),
-        &Pretty(_) => unreachable!(),
+        &OutputLocation::Raw(ref m) => String::from_utf8_lossy(&m[..]),
+        &OutputLocation::Pretty(_) => unreachable!(),
     };
 
     let apos = s.find("a").unwrap();

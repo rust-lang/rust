@@ -2,7 +2,7 @@ error: expected one of `)`, `,`, `@`, or `|`, found `[`
   --> $DIR/pat-lt-bracket-6.rs:5:19
    |
 LL |     let Test(&desc[..]) = x;
-   |                   ^ expected one of `)`, `,`, `@`, or `|` here
+   |                   ^ expected one of `)`, `,`, `@`, or `|`
 
 error[E0658]: subslice patterns are unstable
   --> $DIR/pat-lt-bracket-6.rs:5:20

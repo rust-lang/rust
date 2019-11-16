@@ -26,28 +26,6 @@ pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
 
-#[cfg(test)]
-mod tests;
-
-pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
-
-// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
-macro_rules! panictry_buffer {
-    ($handler:expr, $e:expr) => ({
-        use std::result::Result::{Ok, Err};
-        use errors::FatalError;
-        match $e {
-            Ok(e) => e,
-            Err(errs) => {
-                for e in errs {
-                    $handler.emit_diagnostic(&e);
-                }
-                FatalError.raise()
-            }
-        }
-    })
-}
-
 #[macro_export]
 macro_rules! unwrap_or {
     ($opt:expr, $default:expr) => {
@@ -67,7 +45,7 @@ pub struct Globals {
 impl Globals {
     fn new(edition: Edition) -> Globals {
         Globals {
-            // We have no idea how many attributes their will be, so just
+            // We have no idea how many attributes there will be, so just
             // initiate the vectors with 0 bits. We'll grow them as necessary.
             used_attrs: Lock::new(GrowableBitSet::new_empty()),
             known_attrs: Lock::new(GrowableBitSet::new_empty()),
@@ -99,31 +77,29 @@ pub mod diagnostics {
     pub mod macros;
 }
 
-pub mod error_codes;
-
 pub mod util {
+    pub mod classify;
+    pub mod comments;
     pub mod lev_distance;
+    pub mod literal;
     pub mod node_count;
     pub mod parser;
     pub mod map_in_place;
 }
 
-pub mod json;
-
 pub mod ast;
 pub mod attr;
-pub mod source_map;
-#[macro_use]
-pub mod config;
+pub mod expand;
+pub use syntax_pos::source_map;
 pub mod entry;
 pub mod feature_gate;
 pub mod mut_visit;
-pub mod parse;
 pub mod ptr;
 pub mod show_span;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
 pub mod sess;
+pub mod token;
 pub mod tokenstream;
 pub mod visit;
 

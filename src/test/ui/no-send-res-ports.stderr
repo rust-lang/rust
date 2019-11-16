@@ -1,5 +1,5 @@
 error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
-  --> $DIR/no-send-res-ports.rs:27:5
+  --> $DIR/no-send-res-ports.rs:26:5
    |
 LL |     thread::spawn(move|| {
    |     ^^^^^^^^^^^^^ `std::rc::Rc<()>` cannot be sent between threads safely
@@ -9,10 +9,10 @@ LL |     thread::spawn(move|| {
 LL |     F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
    |                          ---- required by this bound in `std::thread::spawn`
    |
-   = help: within `[closure@$DIR/no-send-res-ports.rs:27:19: 31:6 x:main::Foo]`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
+   = help: within `[closure@$DIR/no-send-res-ports.rs:26:19: 30:6 x:main::Foo]`, the trait `std::marker::Send` is not implemented for `std::rc::Rc<()>`
    = note: required because it appears within the type `Port<()>`
    = note: required because it appears within the type `main::Foo`
-   = note: required because it appears within the type `[closure@$DIR/no-send-res-ports.rs:27:19: 31:6 x:main::Foo]`
+   = note: required because it appears within the type `[closure@$DIR/no-send-res-ports.rs:26:19: 30:6 x:main::Foo]`
 
 error: aborting due to previous error
 

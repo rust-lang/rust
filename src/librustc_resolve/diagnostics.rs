@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::bug;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
@@ -10,18 +10,20 @@ use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use syntax::ast::{self, Ident, Path};
-use syntax_expand::base::MacroKind;
 use syntax::feature_gate::BUILTIN_ATTRIBUTES;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw};
 use syntax::util::lev_distance::find_best_match_for_name;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::{path_names_to_string, KNOWN_TOOLS};
+use crate::path_names_to_string;
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
+
+use rustc_error_codes::*;
 
 type Res = def::Res<ast::NodeId>;
 
@@ -56,21 +58,6 @@ fn reduce_impl_span_to_impl_keyword(cm: &SourceMap, impl_span: Span) -> Span {
     let impl_span = cm.span_until_char(impl_span, '<');
     let impl_span = cm.span_until_whitespace(impl_span);
     impl_span
-}
-
-crate fn add_typo_suggestion(
-    err: &mut DiagnosticBuilder<'_>, suggestion: Option<TypoSuggestion>, span: Span
-) -> bool {
-    if let Some(suggestion) = suggestion {
-        let msg = format!(
-            "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
-        );
-        err.span_suggestion(
-            span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
-        );
-        return true;
-    }
-    false
 }
 
 impl<'a> Resolver<'a> {
@@ -220,11 +207,11 @@ impl<'a> Resolver<'a> {
                 let origin_sp = origin.iter().copied().collect::<Vec<_>>();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
-                let msg = format!("variable `{}` is not bound in all patterns", name);
-                let mut err = self.session.struct_span_err_with_code(
+                let mut err = struct_span_err!(
+                    self.session,
                     msp,
-                    &msg,
-                    DiagnosticId::Error("E0408".into()),
+                    E0408,
+                    "variable `{}` is not bound in all patterns", name,
                 );
                 for sp in target_sp {
                     err.span_label(sp, format!("pattern doesn't bind `{}`", name));
@@ -367,16 +354,6 @@ impl<'a> Resolver<'a> {
                     span, "`Self` in type parameter default".to_string());
                 err
             }
-            ResolutionError::ConstParamDependentOnTypeParam => {
-                let mut err = struct_span_err!(
-                    self.session,
-                    span,
-                    E0671,
-                    "const parameters cannot depend on type parameters"
-                );
-                err.span_label(span, format!("const parameter depends on type parameter"));
-                err
-            }
         }
     }
 
@@ -425,6 +402,14 @@ impl<'a> Resolver<'a> {
                 Scope::Module(module) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
+                Scope::RegisteredAttrs => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Registered);
+                    if filter_fn(res) {
+                        suggestions.extend(this.registered_attrs.iter().map(|ident| {
+                            TypoSuggestion::from_res(ident.name, res)
+                        }));
+                    }
+                }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
                         let res = binding.res();
@@ -464,8 +449,8 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::ToolPrelude => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
-                    suggestions.extend(KNOWN_TOOLS.iter().map(|name| {
-                        TypoSuggestion::from_res(*name, res)
+                    suggestions.extend(this.registered_tools.iter().map(|ident| {
+                        TypoSuggestion::from_res(ident.name, res)
                     }));
                 }
                 Scope::StdLibPrelude => {
@@ -651,7 +636,7 @@ impl<'a> Resolver<'a> {
         let suggestion = self.early_lookup_typo_candidate(
             ScopeSet::Macro(macro_kind), parent_scope, ident, is_expected
         );
-        add_typo_suggestion(err, suggestion, ident.span);
+        self.add_typo_suggestion(err, suggestion, ident.span);
 
         if macro_kind == MacroKind::Derive &&
            (ident.as_str() == "Send" || ident.as_str() == "Sync") {
@@ -661,6 +646,33 @@ impl<'a> Resolver<'a> {
         if self.macro_names.contains(&ident.modern()) {
             err.help("have you added the `#[macro_use]` on the module/import?");
         }
+    }
+
+    crate fn add_typo_suggestion(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        suggestion: Option<TypoSuggestion>,
+        span: Span,
+    ) -> bool {
+        if let Some(suggestion) = suggestion {
+            let msg = format!(
+                "{} {} with a similar name exists", suggestion.res.article(), suggestion.res.descr()
+            );
+            err.span_suggestion(
+                span, &msg, suggestion.candidate.to_string(), Applicability::MaybeIncorrect
+            );
+            let def_span = suggestion.res.opt_def_id()
+                .and_then(|def_id| self.definitions.opt_span(def_id));
+            if let Some(span) = def_span {
+                err.span_label(span, &format!(
+                    "similarly named {} `{}` defined here",
+                    suggestion.res.descr(),
+                    suggestion.candidate.as_str(),
+                ));
+            }
+            return true;
+        }
+        false
     }
 }
 

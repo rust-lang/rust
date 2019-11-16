@@ -13,9 +13,9 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
 use std::intrinsics;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, List, Ty, TyCtxt};
 use crate::ty::subst::SubstsRef;
-use crate::mir::interpret::Allocation;
+use crate::mir::{self, interpret::Allocation};
 use syntax_pos::Span;
 
 /// The shorthand encoding uses an enum's variant index `usize`
@@ -76,7 +76,10 @@ pub fn encode_with_shorthand<E, T, M>(encoder: &mut E,
 
     // The shorthand encoding uses the same usize as the
     // discriminant, with an offset so they can't conflict.
+    #[cfg(bootstrap)]
     let discriminant = unsafe { intrinsics::discriminant_value(variant) };
+    #[cfg(not(bootstrap))]
+    let discriminant = intrinsics::discriminant_value(variant);
     assert!(discriminant < SHORTHAND_OFFSET as u64);
     let shorthand = start + SHORTHAND_OFFSET;
 
@@ -216,6 +219,18 @@ where
     let len = decoder.read_usize()?;
     let tcx = decoder.tcx();
     Ok(tcx.mk_substs((0..len).map(|_| Decodable::decode(decoder)))?)
+}
+
+#[inline]
+pub fn decode_place<D>(decoder: &mut D) -> Result<mir::Place<'tcx>, D::Error>
+where
+    D: TyDecoder<'tcx>,
+{
+    let base: mir::PlaceBase<'tcx> = Decodable::decode(decoder)?;
+    let len = decoder.read_usize()?;
+    let projection: &'tcx List<mir::PlaceElem<'tcx>> =
+        decoder.tcx().mk_place_elems((0..len).map(|_| Decodable::decode(decoder)))?;
+    Ok(mir::Place { base, projection })
 }
 
 #[inline]
@@ -410,6 +425,15 @@ macro_rules! implement_ty_decoder {
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<SubstsRef<'tcx>, Self::Error> {
                     decode_substs(self)
+                }
+            }
+
+            impl<$($typaram),*> SpecializedDecoder<$crate::mir::Place<'tcx>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(
+                    &mut self
+                ) -> Result<$crate::mir::Place<'tcx>, Self::Error> {
+                    decode_place(self)
                 }
             }
 

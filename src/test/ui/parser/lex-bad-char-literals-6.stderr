@@ -3,6 +3,7 @@ error: character literal may only contain one codepoint
    |
 LL |     let x: &str = 'ab';
    |                   ^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let x: &str = "ab";
@@ -13,6 +14,7 @@ error: character literal may only contain one codepoint
    |
 LL |     let y: char = 'cd';
    |                   ^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let y: char = "cd";
@@ -23,6 +25,7 @@ error: character literal may only contain one codepoint
    |
 LL |     let z = 'ef';
    |             ^^^^
+   |
 help: if you meant to write a `str` literal, use double quotes
    |
 LL |     let z = "ef";

@@ -9,6 +9,8 @@ use syntax::symbol::{kw, sym};
 use syntax::span_err;
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 pub fn expand_deriving_default(cx: &mut ExtCtxt<'_>,
                                span: Span,
                                mitem: &MetaItem,

@@ -1,24 +1,26 @@
 use rustc_lint;
 use rustc::session::{self, config};
+use rustc::hir::def::Namespace::TypeNS;
 use rustc::hir::def_id::{DefId, DefIndex, CrateNum, LOCAL_CRATE};
 use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{Ty, TyCtxt};
-use rustc::lint::{self, LintPass};
+use rustc::lint;
 use rustc::session::config::ErrorOutputType;
 use rustc::session::DiagnosticOutput;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_interface::interface;
 use rustc_driver::abort_on_err;
 use rustc_resolve as resolve;
-use rustc_metadata::cstore::CStore;
 
+use syntax::ast::CRATE_NODE_ID;
 use syntax::source_map;
 use syntax::attr;
 use syntax::feature_gate::UnstableFeatures;
-use syntax::json::JsonEmitter;
+use errors::json::JsonEmitter;
 use syntax::symbol::sym;
+use syntax_pos::DUMMY_SP;
 use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 
@@ -43,7 +45,6 @@ pub struct DocContext<'tcx> {
 
     pub tcx: TyCtxt<'tcx>,
     pub resolver: Rc<RefCell<interface::BoxedResolver>>,
-    pub cstore: Lrc<CStore>,
     /// Later on moved into `html::render::CACHE_KEY`
     pub renderinfo: RefCell<RenderInfo>,
     /// Later on moved through `clean::Crate` into `html::render::CACHE_KEY`
@@ -117,9 +118,7 @@ impl<'tcx> DocContext<'tcx> {
                     .def_path_table()
                     .next_id()
             } else {
-                self.cstore
-                    .def_path_table(crate_num)
-                    .next_id()
+                self.enter_resolver(|r| r.cstore().def_path_table(crate_num).next_id())
             };
 
             DefId {
@@ -250,8 +249,10 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         ..
     } = options;
 
+    let extern_names: Vec<String> = externs.iter().map(|(s,_)| s).cloned().collect();
+
     // Add the rustdoc cfg into the doc build.
-    cfgs.push("rustdoc".to_string());
+    cfgs.push("doc".to_string());
 
     let cpath = Some(input.clone());
     let input = Input::File(input);
@@ -273,10 +274,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = || {
-        lint::builtin::HardwiredLints
-            .get_lints()
+        lint::builtin::HardwiredLints::get_lints()
             .into_iter()
-            .chain(rustc_lint::SoftLints.get_lints().into_iter())
+            .chain(rustc_lint::SoftLints::get_lints().into_iter())
     };
 
     let lint_opts = lints().filter_map(|lint| {
@@ -339,6 +339,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         stderr: None,
         crate_name,
         lint_caps,
+        register_lints: None,
+        override_queries: None,
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {
@@ -347,7 +349,25 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         // We need to hold on to the complete resolver, so we cause everything to be
         // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
-        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.borrow().clone();
+        let resolver = {
+            let parts = abort_on_err(compiler.expansion(), sess).peek();
+            let resolver = parts.1.borrow();
+
+            // Before we actually clone it, let's force all the extern'd crates to
+            // actually be loaded, just in case they're only referred to inside
+            // intra-doc-links
+            resolver.borrow_mut().access(|resolver| {
+                for extern_name in &extern_names {
+                    resolver.resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
+                        .unwrap_or_else(
+                            |()| panic!("Unable to resolve external crate {}", extern_name)
+                        );
+                }
+            });
+
+            // Now we're good to clone the resolver because everything should be loaded
+            resolver.clone()
+        };
 
         if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
@@ -376,7 +396,6 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             let mut ctxt = DocContext {
                 tcx,
                 resolver,
-                cstore: compiler.cstore().clone(),
                 external_traits: Default::default(),
                 active_extern_traits: Default::default(),
                 renderinfo: RefCell::new(renderinfo),

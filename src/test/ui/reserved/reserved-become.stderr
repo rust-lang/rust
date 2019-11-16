@@ -3,6 +3,7 @@ error: expected identifier, found reserved keyword `become`
    |
 LL |     let become = 0;
    |         ^^^^^^ expected identifier, found reserved keyword
+   |
 help: you can escape reserved keywords to use them as identifiers
    |
 LL |     let r#become = 0;

@@ -1,4 +1,5 @@
 // ignore-tidy-filelength
+// ignore-tidy-undocumented-unsafe
 
 //! Slice management and manipulation.
 //!
@@ -28,7 +29,7 @@ use crate::fmt;
 use crate::intrinsics::{assume, exact_div, unchecked_sub, is_aligned_and_not_null};
 use crate::isize;
 use crate::iter::*;
-use crate::ops::{FnMut, self};
+use crate::ops::{FnMut, Range, self};
 use crate::option::Option;
 use crate::option::Option::{None, Some};
 use crate::result::Result;
@@ -405,6 +406,86 @@ impl<T> [T] {
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut [T] as *mut T
+    }
+
+    /// Returns the two raw pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_ptr`] for warnings on using these pointers. The end pointer
+    /// requires extra caution, as it does not point to a valid element in the
+    /// slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// It can also be useful to check if a pointer to an element refers to an
+    /// element of this slice:
+    ///
+    /// ```
+    /// #![feature(slice_ptr_range)]
+    ///
+    /// let a = [1, 2, 3];
+    /// let x = &a[1] as *const _;
+    /// let y = &5 as *const _;
+    ///
+    /// assert!(a.as_ptr_range().contains(&x));
+    /// assert!(!a.as_ptr_range().contains(&y));
+    /// ```
+    ///
+    /// [`as_ptr`]: #method.as_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[inline]
+    pub fn as_ptr_range(&self) -> Range<*const T> {
+        // The `add` here is safe, because:
+        //
+        //   - Both pointers are part of the same object, as pointing directly
+        //     past the object also counts.
+        //
+        //   - The size of the slice is never larger than isize::MAX bytes, as
+        //     noted here:
+        //       - https://github.com/rust-lang/unsafe-code-guidelines/issues/102#issuecomment-473340447
+        //       - https://doc.rust-lang.org/reference/behavior-considered-undefined.html
+        //       - https://doc.rust-lang.org/core/slice/fn.from_raw_parts.html#safety
+        //     (This doesn't seem normative yet, but the very same assumption is
+        //     made in many places, including the Index implementation of slices.)
+        //
+        //   - There is no wrapping around involved, as slices do not wrap past
+        //     the end of the address space.
+        //
+        // See the documentation of pointer::add.
+        let start = self.as_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
+    }
+
+    /// Returns the two unsafe mutable pointers spanning the slice.
+    ///
+    /// The returned range is half-open, which means that the end pointer
+    /// points *one past* the last element of the slice. This way, an empty
+    /// slice is represented by two equal pointers, and the difference between
+    /// the two pointers represents the size of the size.
+    ///
+    /// See [`as_mut_ptr`] for warnings on using these pointers. The end
+    /// pointer requires extra caution, as it does not point to a valid element
+    /// in the slice.
+    ///
+    /// This function is useful for interacting with foreign interfaces which
+    /// use two pointers to refer to a range of elements in memory, as is
+    /// common in C++.
+    ///
+    /// [`as_mut_ptr`]: #method.as_mut_ptr
+    #[unstable(feature = "slice_ptr_range", issue = "65807")]
+    #[inline]
+    pub fn as_mut_ptr_range(&mut self) -> Range<*mut T> {
+        // See as_ptr_range() above for why `add` here is safe.
+        let start = self.as_mut_ptr();
+        let end = unsafe { start.add(self.len()) };
+        start..end
     }
 
     /// Swaps two elements in the slice.
@@ -5192,18 +5273,24 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 ///
 /// # Safety
 ///
-/// This function is unsafe as there is no guarantee that the given pointer is
-/// valid for `len` elements, nor whether the lifetime inferred is a suitable
-/// lifetime for the returned slice.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// `data` must be non-null and aligned, even for zero-length slices. One
-/// reason for this is that enum layout optimizations may rely on references
-/// (including slices of any length) being aligned and non-null to distinguish
-/// them from other data. You can obtain a pointer that is usable as `data`
-/// for zero-length slices using [`NonNull::dangling()`].
+/// * `data` must be [valid] for reads for `len * mem::size_of::<T>()` many bytes,
+///   and it must be properly aligned. This means in particular:
 ///
-/// The total size of the slice must be no larger than `isize::MAX` **bytes**
-/// in memory. See the safety documentation of [`pointer::offset`].
+///     * The entire memory range of this slice must be contained within a single allocated object!
+///       Slices can never span across multiple allocated objects.
+///     * `data` must be non-null and aligned even for zero-length slices. One
+///       reason for this is that enum layout optimizations may rely on references
+///       (including slices of any length) being aligned and non-null to distinguish
+///       them from other data. You can obtain a pointer that is usable as `data`
+///       for zero-length slices using [`NonNull::dangling()`].
+///
+/// * The memory referenced by the returned slice must not be mutated for the duration
+///   of lifetime `'a`, except inside an `UnsafeCell`.
+///
+/// * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+///   See the safety documentation of [`pointer::offset`].
 ///
 /// # Caveat
 ///
@@ -5225,6 +5312,7 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 /// assert_eq!(slice[0], 42);
 /// ```
 ///
+/// [valid]: ../../std/ptr/index.html#safety
 /// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
 /// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 #[inline]
@@ -5232,28 +5320,45 @@ unsafe impl<'a, T> TrustedRandomAccess for RChunksExactMut<'a, T> {
 pub unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
     debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
-                  "attempt to create slice covering half the address space");
+                  "attempt to create slice covering at least half the address space");
     &*ptr::slice_from_raw_parts(data, len)
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
 /// mutable slice is returned.
 ///
-/// This function is unsafe for the same reasons as [`from_raw_parts`], as well
-/// as not being able to provide a non-aliasing guarantee of the returned
-/// mutable slice. `data` must be non-null and aligned even for zero-length
-/// slices as with [`from_raw_parts`]. The total size of the slice must be no
-/// larger than `isize::MAX` **bytes** in memory.
+/// # Safety
 ///
-/// See the documentation of [`from_raw_parts`] for more details.
+/// Behavior is undefined if any of the following conditions are violated:
 ///
+/// * `data` must be [valid] for writes for `len * mem::size_of::<T>()` many bytes,
+///   and it must be properly aligned. This means in particular:
+///
+///     * The entire memory range of this slice must be contained within a single allocated object!
+///       Slices can never span across multiple allocated objects.
+///     * `data` must be non-null and aligned even for zero-length slices. One
+///       reason for this is that enum layout optimizations may rely on references
+///       (including slices of any length) being aligned and non-null to distinguish
+///       them from other data. You can obtain a pointer that is usable as `data`
+///       for zero-length slices using [`NonNull::dangling()`].
+///
+/// * The memory referenced by the returned slice must not be accessed through any other pointer
+///   (not derived from the return value) for the duration of lifetime `'a`.
+///   Both read and write accesses are forbidden.
+///
+/// * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+///   See the safety documentation of [`pointer::offset`].
+///
+/// [valid]: ../../std/ptr/index.html#safety
+/// [`NonNull::dangling()`]: ../../std/ptr/struct.NonNull.html#method.dangling
+/// [`pointer::offset`]: ../../std/primitive.pointer.html#method.offset
 /// [`from_raw_parts`]: ../../std/slice/fn.from_raw_parts.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
     debug_assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
     debug_assert!(mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
-                  "attempt to create slice covering half the address space");
+                  "attempt to create slice covering at least half the address space");
     &mut *ptr::slice_from_raw_parts_mut(data, len)
 }
 

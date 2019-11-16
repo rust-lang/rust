@@ -19,14 +19,14 @@ use super::{
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 
-/// A `Value` represents a single immediate self-contained Rust value.
+/// An `Immediate` represents a single immediate self-contained Rust value.
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary
 /// operations and fat pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Immediate<Tag=(), Id=AllocId> {
     Scalar(ScalarMaybeUndef<Tag, Id>),
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
@@ -82,26 +82,6 @@ impl<'tcx, Tag> Immediate<Tag> {
             Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
         }
     }
-
-    /// Converts the immediate into a pointer (or a pointer-sized integer).
-    /// Throws away the second half of a ScalarPair!
-    #[inline]
-    pub fn to_scalar_ptr(self) -> InterpResult<'tcx, Scalar<Tag>> {
-        match self {
-            Immediate::Scalar(ptr) |
-            Immediate::ScalarPair(ptr, _) => ptr.not_undef(),
-        }
-    }
-
-    /// Converts the value into its metadata.
-    /// Throws away the first half of a ScalarPair!
-    #[inline]
-    pub fn to_meta(self) -> InterpResult<'tcx, Option<Scalar<Tag>>> {
-        Ok(match self {
-            Immediate::Scalar(_) => None,
-            Immediate::ScalarPair(_, meta) => Some(meta.not_undef()?),
-        })
-    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
@@ -123,7 +103,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Operand<Tag=(), Id=AllocId> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
@@ -153,7 +133,7 @@ impl<Tag> Operand<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct OpTy<'tcx, Tag=()> {
     op: Operand<Tag>, // Keep this private, it helps enforce invariants
     pub layout: TyLayout<'tcx>,
@@ -268,7 +248,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(ImmTy {
                     imm: scalar.into(),
@@ -286,10 +266,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 assert!(b_offset.bytes() > 0); // we later use the offset to tell apart the fields
                 let b_ptr = ptr.offset(b_offset, self)?;
                 let a_val = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, a_ptr, a_size)?;
                 let b_val = self.memory
-                    .get(ptr.alloc_id)?
+                    .get_raw(ptr.alloc_id)?
                     .read_scalar(self, b_ptr, b_size)?;
                 Ok(Some(ImmTy {
                     imm: Immediate::ScalarPair(a_val, b_val),
@@ -565,23 +545,27 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
         // Early-return cases.
-        match val.val {
-            ConstValue::Param(_) =>
+        let val_val = match val.val {
+            ty::ConstKind::Param(_) =>
                 throw_inval!(TooGeneric),
-            ConstValue::Unevaluated(def_id, substs) => {
+            ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
                 })?));
             }
-            _ => {}
-        }
+            ty::ConstKind::Infer(..) |
+            ty::ConstKind::Bound(..) |
+            ty::ConstKind::Placeholder(..) =>
+                bug!("eval_const_to_op: Unexpected ConstKind {:?}", val),
+            ty::ConstKind::Value(val_val) => val_val,
+        };
         // Other cases need layout.
         let layout = from_known_layout(layout, || {
             self.layout_of(val.ty)
         })?;
-        let op = match val.val {
+        let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
@@ -589,8 +573,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let ptr = self.tag_static_base_pointer(Pointer::new(id, offset));
                 Operand::Indirect(MemPlace::from_ptr(ptr, layout.align.abi))
             },
-            ConstValue::Scalar(x) =>
-                Operand::Immediate(tag_scalar(x).into()),
+            ConstValue::Scalar(x) => Operand::Immediate(tag_scalar(x).into()),
             ConstValue::Slice { data, start, end } => {
                 // We rely on mutability being set correctly in `data` to prevent writes
                 // where none should happen.
@@ -604,11 +587,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self,
                 ))
             }
-            ConstValue::Param(..) |
-            ConstValue::Infer(..) |
-            ConstValue::Placeholder(..) |
-            ConstValue::Unevaluated(..) =>
-                bug!("eval_const_to_op: Unexpected ConstValue {:?}", val),
         };
         Ok(OpTy { op, layout })
     }

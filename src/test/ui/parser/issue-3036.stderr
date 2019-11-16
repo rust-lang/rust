@@ -1,10 +1,10 @@
-error: expected one of `.`, `;`, `?`, or an operator, found `}`
-  --> $DIR/issue-3036.rs:6:1
+error: expected `;`, found ``}``
+  --> $DIR/issue-3036.rs:5:14
    |
 LL |     let x = 3
-   |              - expected one of `.`, `;`, `?`, or an operator here
+   |              ^ help: add `;` here
 LL | }
-   | ^ unexpected token
+   | - unexpected token
 
 error: aborting due to previous error
 

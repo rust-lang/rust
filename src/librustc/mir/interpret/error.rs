@@ -16,6 +16,8 @@ use syntax::symbol::Symbol;
 
 use std::{fmt, env};
 
+use rustc_error_codes::*;
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
     /// Already reported a lint or an error for this evaluation.

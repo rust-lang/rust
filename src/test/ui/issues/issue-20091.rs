@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// run-pass
 #![allow(stable_features)]
 
 // ignore-cloudabi no processes

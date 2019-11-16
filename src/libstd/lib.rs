@@ -220,7 +220,7 @@
 
 #![cfg_attr(test, feature(print_internals, set_stdio, update_panic_count))]
 #![cfg_attr(all(target_vendor = "fortanix", target_env = "sgx"),
-            feature(slice_index_methods, decl_macro, coerce_unsized,
+            feature(slice_index_methods, coerce_unsized,
                     sgx_platform, ptr_wrapping_offset_from))]
 #![cfg_attr(all(test, target_vendor = "fortanix", target_env = "sgx"),
             feature(fixed_size_array, maybe_uninit_extra))]
@@ -251,6 +251,7 @@
 #![feature(container_error_extra)]
 #![feature(core_intrinsics)]
 #![feature(custom_test_frameworks)]
+#![feature(decl_macro)]
 #![feature(doc_alias)]
 #![feature(doc_cfg)]
 #![feature(doc_keyword)]
@@ -275,13 +276,14 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(log_syntax)]
+#![feature(manually_drop_take)]
+#![feature(matches_macro)]
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]
-#![feature(non_exhaustive)]
-#![feature(on_unimplemented)]
+#![cfg_attr(bootstrap, feature(on_unimplemented))]
 #![feature(optin_builtin_traits)]
 #![feature(panic_info_message)]
 #![feature(panic_internals)]
@@ -526,6 +528,7 @@ pub use core::{
     writeln,
     // Unstable
     todo,
+    matches,
 };
 
 // Re-export built-in macros defined through libcore.

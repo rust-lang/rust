@@ -1,5 +1,4 @@
-// ignore-musl
-// ignore-x86
+// ignore-x86 FIXME: missing sysroot spans (#53081)
 // error-pattern: cycle detected
 
 struct Foo {

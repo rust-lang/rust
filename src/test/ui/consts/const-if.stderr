@@ -1,15 +1,37 @@
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-if.rs:1:20
+error[E0744]: `if` is not allowed in a `const`
+  --> $DIR/const-if.rs:1:16
    |
-LL | const _X: i32 = if true { 5 } else { 6 };
-   |                    ^^^^
+LL |   const _: i32 = if true {
+   |  ________________^
+LL | |     5
+LL | | } else {
+LL | |     6
+LL | | };
+   | |_^
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/const-if.rs:1:17
+error[E0744]: `match` is not allowed in a `const`
+  --> $DIR/const-if.rs:7:16
    |
-LL | const _X: i32 = if true { 5 } else { 6 };
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^
+LL |   const _: i32 = match 1 {
+   |  ________________^
+LL | |     2 => 3,
+LL | |     4 => 5,
+LL | |     _ => 0,
+LL | | };
+   | |_^
 
-error: aborting due to 2 previous errors
+error[E0744]: `if` is not allowed in a `const fn`
+  --> $DIR/const-if.rs:14:5
+   |
+LL |     if true { 5 } else { 6 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0019`.
+error[E0744]: `match` is not allowed in a `const fn`
+  --> $DIR/const-if.rs:18:5
+   |
+LL |     match 0 { 1 => 2, _ => 0 }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0744`.

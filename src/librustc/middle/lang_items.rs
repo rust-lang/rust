@@ -23,6 +23,8 @@ use rustc_macros::HashStable;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
 
+use rustc_error_codes::*;
+
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
@@ -297,6 +299,10 @@ language_item_table! {
 
     SizedTraitLangItem,          "sized",              sized_trait,             Target::Trait;
     UnsizeTraitLangItem,         "unsize",             unsize_trait,            Target::Trait;
+    // trait injected by #[derive(PartialEq)], (i.e. "Partial EQ").
+    StructuralPeqTraitLangItem,  "structural_peq",     structural_peq_trait,    Target::Trait;
+    // trait injected by #[derive(Eq)], (i.e. "Total EQ"; no, I will not apologize).
+    StructuralTeqTraitLangItem,  "structural_teq",     structural_teq_trait,    Target::Trait;
     CopyTraitLangItem,           "copy",               copy_trait,              Target::Trait;
     CloneTraitLangItem,          "clone",              clone_trait,             Target::Trait;
     SyncTraitLangItem,           "sync",               sync_trait,              Target::Trait;
@@ -366,6 +372,7 @@ language_item_table! {
     PanicFnLangItem,             "panic",              panic_fn,                Target::Fn;
     PanicBoundsCheckFnLangItem,  "panic_bounds_check", panic_bounds_check_fn,   Target::Fn;
     PanicInfoLangItem,           "panic_info",         panic_info,              Target::Struct;
+    PanicLocationLangItem,       "panic_location",     panic_location,          Target::Struct;
     PanicImplLangItem,           "panic_impl",         panic_impl,              Target::Fn;
     // Libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanicFnLangItem,        "begin_panic",        begin_panic_fn,          Target::Fn;
@@ -380,7 +387,7 @@ language_item_table! {
 
     EhPersonalityLangItem,       "eh_personality",     eh_personality,          Target::Fn;
     EhUnwindResumeLangItem,      "eh_unwind_resume",   eh_unwind_resume,        Target::Fn;
-    MSVCTryFilterLangItem,       "msvc_try_filter",    msvc_try_filter,         Target::Static;
+    EhCatchTypeinfoLangItem,     "eh_catch_typeinfo",  eh_catch_typeinfo,       Target::Static;
 
     OwnedBoxLangItem,            "owned_box",          owned_box,               Target::Struct;
 

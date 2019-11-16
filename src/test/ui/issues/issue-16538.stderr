@@ -1,11 +1,11 @@
 error[E0015]: calls in statics are limited to constant functions, tuple structs and tuple variants
-  --> $DIR/issue-16538.rs:13:27
+  --> $DIR/issue-16538.rs:11:27
    |
 LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `*const usize` cannot be shared between threads safely
-  --> $DIR/issue-16538.rs:13:1
+  --> $DIR/issue-16538.rs:11:1
    |
 LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `*const usize` cannot be shared between threads safely
@@ -13,7 +13,15 @@ LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
    = help: the trait `std::marker::Sync` is not implemented for `*const usize`
    = note: shared static variables must have a type that implements `Sync`
 
-error: aborting due to 2 previous errors
+error[E0133]: use of extern static is unsafe and requires unsafe function or block
+  --> $DIR/issue-16538.rs:11:34
+   |
+LL | static foo: *const Y::X = Y::foo(Y::x as *const Y::X);
+   |                                  ^^^^ use of extern static
+   |
+   = note: extern statics are not controlled by the Rust type system: invalid data, aliasing violations or data races will cause undefined behavior
 
-Some errors have detailed explanations: E0015, E0277.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0015, E0133, E0277.
 For more information about an error, try `rustc --explain E0015`.

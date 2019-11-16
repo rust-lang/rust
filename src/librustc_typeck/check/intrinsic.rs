@@ -1,15 +1,18 @@
 //! Type-checking for the rust-intrinsic and platform-intrinsic
 //! intrinsics that the compiler exposes.
 
+use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::subst::Subst;
 use crate::require_same_types;
 
 use rustc_target::spec::abi::Abi;
-use syntax::symbol::InternedString;
+use syntax::symbol::Symbol;
 
 use rustc::hir;
+
+use rustc_error_codes::*;
 
 use std::iter;
 
@@ -65,12 +68,14 @@ fn equate_intrinsic_type<'tcx>(
 /// Returns `true` if the given intrinsic is unsafe to call or not.
 pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
     match intrinsic {
-        "size_of" | "min_align_of" | "needs_drop" |
+        "size_of" | "min_align_of" | "needs_drop" | "caller_location" |
+        "size_of_val" | "min_align_of_val" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "wrapping_add" | "wrapping_sub" | "wrapping_mul" |
         "saturating_add" | "saturating_sub" |
         "rotate_left" | "rotate_right" |
         "ctpop" | "ctlz" | "cttz" | "bswap" | "bitreverse" |
+        "discriminant_value" | "type_id" | "likely" | "unlikely" |
         "minnumf32" | "minnumf64" | "maxnumf32" | "maxnumf64" | "type_name"
         => hir::Unsafety::Normal,
         _ => hir::Unsafety::Unsafe,
@@ -80,7 +85,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
 /// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
 /// and in libcore/intrinsics.rs
 pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
-    let param = |n| tcx.mk_ty_param(n, InternedString::intern(&format!("P{}", n)));
+    let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
     let name = it.ident.as_str();
 
     let mk_va_list_ty = |mutbl| {
@@ -143,6 +148,15 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                  ], tcx.types.usize)
             }
             "rustc_peek" => (1, vec![param(0)], param(0)),
+            "caller_location" => (
+                0,
+                vec![],
+                tcx.mk_imm_ref(
+                    tcx.lifetimes.re_static,
+                    tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
+                        .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
+                ),
+            ),
             "panic_if_uninhabited" => (1, Vec::new(), tcx.mk_unit()),
             "init" => (1, Vec::new(), param(0)),
             "uninit" => (1, Vec::new(), param(0)),
@@ -160,7 +174,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             "prefetch_read_instruction" | "prefetch_write_instruction" => {
                 (1, vec![tcx.mk_ptr(ty::TypeAndMut {
                           ty: param(0),
-                          mutbl: hir::MutImmutable
+                          mutbl: hir::Mutability::Immutable
                          }), tcx.types.i32],
                     tcx.mk_unit())
             }
@@ -176,13 +190,13 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::MutImmutable
+                      mutbl: hir::Mutability::Immutable
                   }),
                   tcx.types.isize
                ],
                tcx.mk_ptr(ty::TypeAndMut {
                    ty: param(0),
-                   mutbl: hir::MutImmutable
+                   mutbl: hir::Mutability::Immutable
                }))
             }
             "copy" | "copy_nonoverlapping" => {
@@ -190,11 +204,11 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::MutImmutable
+                      mutbl: hir::Mutability::Immutable
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::MutMutable
+                      mutbl: hir::Mutability::Mutable
                   }),
                   tcx.types.usize,
                ],
@@ -205,11 +219,11 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::MutMutable
+                      mutbl: hir::Mutability::Mutable
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::MutImmutable
+                      mutbl: hir::Mutability::Immutable
                   }),
                   tcx.types.usize,
                ],
@@ -220,7 +234,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
                       ty: param(0),
-                      mutbl: hir::MutMutable
+                      mutbl: hir::Mutability::Mutable
                   }),
                   tcx.types.u8,
                   tcx.types.usize,
@@ -307,6 +321,8 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                 (1, vec![param(0), param(0)],
                 tcx.intern_tup(&[param(0), tcx.types.bool])),
 
+            "ptr_offset_from" =>
+                (1, vec![ tcx.mk_imm_ptr(param(0)), tcx.mk_imm_ptr(param(0)) ], tcx.types.isize),
             "unchecked_div" | "unchecked_rem" | "exact_div" =>
                 (1, vec![param(0), param(0)], param(0)),
             "unchecked_shl" | "unchecked_shr" |
@@ -343,14 +359,14 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             }
 
             "va_start" | "va_end" => {
-                match mk_va_list_ty(hir::MutMutable) {
+                match mk_va_list_ty(hir::Mutability::Mutable) {
                     Some((va_list_ref_ty, _)) => (0, vec![va_list_ref_ty], tcx.mk_unit()),
                     None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
 
             "va_copy" => {
-                match mk_va_list_ty(hir::MutImmutable) {
+                match mk_va_list_ty(hir::Mutability::Immutable) {
                     Some((va_list_ref_ty, va_list_ty)) => {
                         let va_list_ptr_ty = tcx.mk_mut_ptr(va_list_ty);
                         (0, vec![va_list_ptr_ty, va_list_ref_ty], tcx.mk_unit())
@@ -360,7 +376,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
             }
 
             "va_arg" => {
-                match mk_va_list_ty(hir::MutMutable) {
+                match mk_va_list_ty(hir::Mutability::Mutable) {
                     Some((va_list_ref_ty, _)) => (1, vec![va_list_ref_ty], param(0)),
                     None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
@@ -368,6 +384,12 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
 
             "nontemporal_store" => {
                 (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_unit())
+            }
+
+            "miri_start_panic" => {
+                // FIXME - the relevant types aren't lang items,
+                // so it's not trivial to check this
+                return;
             }
 
             ref other => {
@@ -387,7 +409,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
 pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
     let param = |n| {
-        let name = InternedString::intern(&format!("P{}", n));
+        let name = Symbol::intern(&format!("P{}", n));
         tcx.mk_ty_param(n, name)
     };
 

@@ -11,7 +11,8 @@ impl Bar<[u8]> {
     const SIZE: usize = 32;
 
     fn new(slice: &[u8; Self::SIZE]) -> Self {
-        Foo(Box::new(*slice)) //~ ERROR: expected function, found trait `Foo`
+        Foo(Box::new(*slice))
+        //~^ ERROR: expected function, tuple struct or tuple variant, found trait `Foo`
     }
 }
 

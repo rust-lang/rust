@@ -2,11 +2,9 @@ pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
 use self::code_stats::CodeStats;
 
 use crate::dep_graph::cgu_reuse_tracker::CguReuseTracker;
-use crate::hir::def_id::CrateNum;
 use rustc_data_structures::fingerprint::Fingerprint;
 
 use crate::lint;
-use crate::lint::builtin::BuiltinLintDiagnostics;
 use crate::session::config::{OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
 use crate::session::search_paths::{PathKind, SearchPath};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
@@ -14,7 +12,7 @@ use crate::util::common::{duration_to_secs_str, ErrorReported};
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
-    self, Lrc, Lock, OneThread, Once, RwLock, AtomicU64, AtomicUsize, Ordering,
+    self, Lrc, Lock, OneThread, Once, AtomicU64, AtomicUsize, Ordering,
     Ordering::SeqCst,
 };
 
@@ -22,27 +20,26 @@ use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
 use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
-use syntax::ast::{self, NodeId};
 use syntax::edition::Edition;
-use syntax_expand::allocator::AllocatorKind;
 use syntax::feature_gate::{self, AttributeType};
-use syntax::json::JsonEmitter;
+use errors::json::JsonEmitter;
 use syntax::source_map;
-use syntax::sess::ParseSess;
+use syntax::sess::{ParseSess, ProcessCfgMod};
 use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
-use crate::util::profiling::{SelfProfiler, SelfProfilerRef};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
 use rustc_data_structures::jobserver;
+use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use ::jobserver::Client;
 
 use std;
-use std::cell::{self, Cell, RefCell};
+use std::cell::{self, RefCell};
 use std::env;
 use std::fmt;
 use std::io::Write;
+use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::Arc;
@@ -77,11 +74,6 @@ pub struct Session {
     /// if the value stored here has been affected by path remapping.
     pub working_dir: (PathBuf, bool),
 
-    // FIXME: `lint_store` and `buffered_lints` are not thread-safe,
-    // but are only used in a single thread.
-    pub lint_store: RwLock<lint::LintStore>,
-    pub buffered_lints: Lock<Option<lint::LintBuffer>>,
-
     /// Set of `(DiagnosticId, Option<Span>, message)` tuples tracking
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
@@ -108,12 +100,6 @@ pub struct Session {
     /// The maximum number of stackframes allowed in const eval.
     pub const_eval_stack_frame_limit: usize,
 
-    /// The `metadata::creader` module may inject an allocator/`panic_runtime`
-    /// dependency if it didn't already find one, and this tracks what was
-    /// injected.
-    pub allocator_kind: Once<Option<AllocatorKind>>,
-    pub injected_panic_runtime: Once<Option<CrateNum>>,
-
     /// Map from imported macro spans (which consist of
     /// the localized span for the macro body) to the
     /// macro name and definition span in the source crate.
@@ -131,9 +117,7 @@ pub struct Session {
     pub perf_stats: PerfStats,
 
     /// Data about code being compiled, gathered during compilation.
-    pub code_stats: Lock<CodeStats>,
-
-    next_node_id: OneThread<Cell<ast::NodeId>>,
+    pub code_stats: CodeStats,
 
     /// If `-zfuel=crate=n` is specified, `Some(crate)`.
     optimization_fuel_crate: Option<String>,
@@ -153,9 +137,6 @@ pub struct Session {
 
     /// Metadata about the allocators for the current crate being compiled.
     pub has_global_allocator: Once<bool>,
-
-    /// Metadata about the panic handlers for the current crate being compiled.
-    pub has_panic_handler: Once<bool>,
 
     /// Cap lint level specified by a driver specifically.
     pub driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -195,7 +176,7 @@ enum DiagnosticBuilderMethod {
 pub enum DiagnosticMessageId {
     ErrorId(u16), // EXXXX error code as integer
     LintId(lint::LintId),
-    StabilityId(u32), // issue number
+    StabilityId(Option<NonZeroU32>), // issue number
 }
 
 impl From<&'static lint::Lint> for DiagnosticMessageId {
@@ -310,6 +291,9 @@ impl Session {
     pub fn has_errors(&self) -> bool {
         self.diagnostic().has_errors()
     }
+    pub fn has_errors_or_delayed_span_bugs(&self) -> bool {
+        self.diagnostic().has_errors_or_delayed_span_bugs()
+    }
     pub fn abort_if_errors(&self) {
         self.diagnostic().abort_if_errors();
     }
@@ -361,50 +345,6 @@ impl Session {
         self.diagnostic().span_note_without_error(sp, msg)
     }
 
-    pub fn buffer_lint<S: Into<MultiSpan>>(
-        &self,
-        lint: &'static lint::Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-    ) {
-        match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => {
-                buffer.add_lint(lint, id, sp.into(), msg, BuiltinLintDiagnostics::Normal)
-            }
-            None => bug!("can't buffer lints after HIR lowering"),
-        }
-    }
-
-    pub fn buffer_lint_with_diagnostic<S: Into<MultiSpan>>(
-        &self,
-        lint: &'static lint::Lint,
-        id: ast::NodeId,
-        sp: S,
-        msg: &str,
-        diagnostic: BuiltinLintDiagnostics,
-    ) {
-        match *self.buffered_lints.borrow_mut() {
-            Some(ref mut buffer) => buffer.add_lint(lint, id, sp.into(), msg, diagnostic),
-            None => bug!("can't buffer lints after HIR lowering"),
-        }
-    }
-
-    pub fn reserve_node_ids(&self, count: usize) -> ast::NodeId {
-        let id = self.next_node_id.get();
-
-        match id.as_usize().checked_add(count) {
-            Some(next) => {
-                self.next_node_id.set(ast::NodeId::from_usize(next));
-            }
-            None => bug!("input too large; ran out of node-IDs!"),
-        }
-
-        id
-    }
-    pub fn next_node_id(&self) -> NodeId {
-        self.reserve_node_ids(1)
-    }
     pub fn diagnostic(&self) -> &errors::Handler {
         &self.parse_sess.span_diagnostic
     }
@@ -987,6 +927,7 @@ pub fn build_session(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
     registry: errors::registry::Registry,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     let file_path_mapping = sopts.file_path_mapping();
 
@@ -997,6 +938,7 @@ pub fn build_session(
         Lrc::new(source_map::SourceMap::new(file_path_mapping)),
         DiagnosticOutput::Default,
         Default::default(),
+        process_cfg_mod,
     )
 }
 
@@ -1075,6 +1017,7 @@ pub fn build_session_with_source_map(
     source_map: Lrc<source_map::SourceMap>,
     diagnostics_output: DiagnosticOutput,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     // FIXME: This is not general enough to make the warning lint completely override
     // normal diagnostic warnings, since the warning lint can also be denied and changed
@@ -1115,7 +1058,14 @@ pub fn build_session_with_source_map(
         },
     );
 
-    build_session_(sopts, local_crate_source_file, diagnostic_handler, source_map, lint_caps)
+    build_session_(
+        sopts,
+        local_crate_source_file,
+        diagnostic_handler,
+        source_map,
+        lint_caps,
+        process_cfg_mod,
+    )
 }
 
 fn build_session_(
@@ -1124,6 +1074,7 @@ fn build_session_(
     span_diagnostic: errors::Handler,
     source_map: Lrc<source_map::SourceMap>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    process_cfg_mod: ProcessCfgMod,
 ) -> Session {
     let self_profiler =
         if let SwitchWithOptPath::Enabled(ref d) = sopts.debugging_opts.self_profile {
@@ -1140,7 +1091,6 @@ fn build_session_(
             );
             match profiler {
                 Ok(profiler) => {
-                    crate::ty::query::QueryName::register_with_profiler(&profiler);
                     Some(Arc::new(profiler))
                 },
                 Err(e) => {
@@ -1162,6 +1112,7 @@ fn build_session_(
     let parse_sess = ParseSess::with_span_handler(
         span_diagnostic,
         source_map,
+        process_cfg_mod,
     );
     let sysroot = match &sopts.maybe_sysroot {
         Some(sysroot) => sysroot.clone(),
@@ -1213,8 +1164,6 @@ fn build_session_(
         sysroot,
         local_crate_source_file,
         working_dir,
-        lint_store: RwLock::new(lint::LintStore::new()),
-        buffered_lints: Lock::new(Some(Default::default())),
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: Lock::new(Vec::new()),
@@ -1224,9 +1173,6 @@ fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
-        next_node_id: OneThread::new(Cell::new(NodeId::from_u32(1))),
-        allocator_kind: Once::new(),
-        injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),
         incr_comp_session: OneThread::new(RefCell::new(IncrCompSession::NotInitialized)),
         cgu_reuse_tracker,
@@ -1245,7 +1191,6 @@ fn build_session_(
         print_fuel,
         jobserver: jobserver::client(),
         has_global_allocator: Once::new(),
-        has_panic_handler: Once::new(),
         driver_lint_caps,
         trait_methods_not_found: Lock::new(Default::default()),
         confused_type_with_std_module: Lock::new(Default::default()),

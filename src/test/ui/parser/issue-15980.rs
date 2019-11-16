@@ -9,9 +9,9 @@ fn main(){
             //~^ ERROR expected identifier, found keyword `return`
             //~| NOTE expected identifier, found keyword
         }
-        //~^ NOTE expected one of `.`, `=>`, `?`, or an operator here
+        //~^ NOTE expected one of `.`, `=>`, `?`, or an operator
         _ => {}
-        //~^ ERROR expected one of `.`, `=>`, `?`, or an operator, found `_`
+        //~^ ERROR expected one of `.`, `=>`, `?`, or an operator, found reserved identifier `_`
         //~| NOTE unexpected token
     }
 }

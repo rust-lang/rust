@@ -1,7 +1,7 @@
-use crate::abi::call::{FnType, ArgType, Uniform};
+use crate::abi::call::{FnAbi, ArgAbi, Uniform};
 use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgType<'a, Ty>) -> bool
+fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgAbi<'a, Ty>) -> bool
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -21,7 +21,7 @@ fn unwrap_trivial_aggregate<'a, Ty, C>(cx: &C, val: &mut ArgType<'a, Ty>) -> boo
 }
 
 
-fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -33,7 +33,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
     }
 }
 
-fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
+fn classify_arg<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -45,16 +45,16 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
     }
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
+pub fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
-    if !fty.ret.is_ignore() {
-        classify_ret_ty(cx, &mut fty.ret);
+    if !fn_abi.ret.is_ignore() {
+        classify_ret(cx, &mut fn_abi.ret);
     }
 
-    for arg in &mut fty.args {
+    for arg in &mut fn_abi.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(cx, arg);
+        classify_arg(cx, arg);
     }
 }

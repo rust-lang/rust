@@ -61,16 +61,19 @@ use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{
     Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast
 };
-use rustc::ty::{self, TypeAndMut, Ty, subst::SubstsRef};
+use rustc::ty::{self, TypeAndMut, Ty};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
+use rustc::ty::subst::SubstsRef;
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
 use syntax::feature_gate;
 use syntax::symbol::sym;
 use syntax_pos;
 use rustc_target::spec::abi::Abi;
+
+use rustc_error_codes::*;
 
 struct Coerce<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
@@ -98,10 +101,10 @@ fn coerce_mutbls<'tcx>(from_mutbl: hir::Mutability,
                        to_mutbl: hir::Mutability)
                        -> RelateResult<'tcx, ()> {
     match (from_mutbl, to_mutbl) {
-        (hir::MutMutable, hir::MutMutable) |
-        (hir::MutImmutable, hir::MutImmutable) |
-        (hir::MutMutable, hir::MutImmutable) => Ok(()),
-        (hir::MutImmutable, hir::MutMutable) => Err(TypeError::Mutability),
+        (hir::Mutability::Mutable, hir::Mutability::Mutable) |
+        (hir::Mutability::Immutable, hir::Mutability::Immutable) |
+        (hir::Mutability::Mutable, hir::Mutability::Immutable) => Ok(()),
+        (hir::Mutability::Immutable, hir::Mutability::Mutable) => Err(TypeError::Mutability),
     }
 }
 
@@ -196,9 +199,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // a "spurious" type variable, and we don't want to have that
         // type variable in memory if the coercion fails.
         let unsize = self.commit_if_ok(|_| self.coerce_unsized(a, b));
-        if unsize.is_ok() {
-            debug!("coerce: unsize successful");
-            return unsize;
+        match unsize {
+            Ok(_) => {
+                debug!("coerce: unsize successful");
+                return unsize;
+            }
+            Err(TypeError::ObjectUnsafeCoercion(did)) => {
+                debug!("coerce: unsize not object safe");
+                return Err(TypeError::ObjectUnsafeCoercion(did));
+            }
+            Err(_) => {}
         }
         debug!("coerce: unsize failed");
 
@@ -402,7 +412,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
         };
 
-        if ty == a && mt_a.mutbl == hir::MutImmutable && autoderef.step_count() == 1 {
+        if ty == a && mt_a.mutbl == hir::Mutability::Immutable && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with.  In that case, just skip it
@@ -414,7 +424,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
-            assert_eq!(mt_b.mutbl, hir::MutImmutable); // can only coerce &T -> &U
+            assert_eq!(mt_b.mutbl, hir::Mutability::Immutable); // can only coerce &T -> &U
             return success(vec![], ty, obligations);
         }
 
@@ -431,8 +441,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => span_bug!(span, "expected a ref type, got {:?}", ty),
         };
         let mutbl = match mt_b.mutbl {
-            hir::MutImmutable => AutoBorrowMutability::Immutable,
-            hir::MutMutable => AutoBorrowMutability::Mutable {
+            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
+            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
                 allow_two_phase_borrow: self.allow_two_phase,
             }
         };
@@ -477,8 +487,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
                 let mutbl = match mutbl_b {
-                    hir::MutImmutable => AutoBorrowMutability::Immutable,
-                    hir::MutMutable => AutoBorrowMutability::Mutable {
+                    hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
+                    hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
                         // We don't allow two-phase borrows here, at least for initial
                         // implementation. If it happens that this coercion is a function argument,
                         // the reborrow in coerce_borrowed_ptr will pick it up.
@@ -539,7 +549,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let mut selcx = traits::SelectionContext::new(self);
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
-        let cause = ObligationCause::misc(self.cause.span, self.body_id);
+        let cause = ObligationCause::new(
+            self.cause.span,
+            self.body_id,
+            ObligationCauseCode::Coercion { source, target },
+        );
 
         // Use a FIFO queue for this custom fulfillment procedure.
         //
@@ -566,14 +580,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
-                ty::Predicate::Trait(ref t) if traits.contains(&t.def_id()) => {
-                    if unsize_did == t.def_id() {
-                        if let ty::Tuple(..) = &t.skip_binder().input_types().nth(1).unwrap().kind {
+                ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
+                    if unsize_did == tr.def_id() {
+                        let sty = &tr.skip_binder().input_types().nth(1).unwrap().kind;
+                        if let ty::Tuple(..) = sty {
                             debug!("coerce_unsized: found unsized tuple coercion");
                             has_unsized_tuple_coercion = true;
                         }
                     }
-                    t.clone()
+                    tr.clone()
                 }
                 _ => {
                     coercion.obligations.push(obligation);
@@ -811,7 +826,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
     ) -> RelateResult<'tcx, Ty<'tcx>> {
-        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
@@ -829,7 +844,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Same as `try_coerce()`, but without side-effects.
     pub fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
-        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        let source = self.resolve_vars_with_obligations(expr_ty);
         debug!("coercion::can({:?} -> {:?})", source, target);
 
         let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
@@ -853,8 +868,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 -> RelateResult<'tcx, Ty<'tcx>>
         where E: AsCoercionSite
     {
-        let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
-        let new_ty = self.resolve_type_vars_with_obligations(new_ty);
+        let prev_ty = self.resolve_vars_with_obligations(prev_ty);
+        let new_ty = self.resolve_vars_with_obligations(new_ty);
         debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
 
         // Special-case that coercion alone cannot handle:
@@ -1333,7 +1348,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             err.span_label(return_sp, "expected because this return type...");
             err.span_label( *sp, format!(
                 "...is found to be `{}` here",
-                fcx.resolve_type_vars_with_obligations(expected),
+                fcx.resolve_vars_with_obligations(expected),
             ));
         }
         err

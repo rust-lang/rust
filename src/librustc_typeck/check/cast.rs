@@ -46,6 +46,8 @@ use syntax::ast;
 use syntax_pos::Span;
 use crate::util::common::ErrorReported;
 
+use rustc_error_codes::*;
+
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 pub struct CastCheck<'tcx> {
@@ -341,10 +343,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                                          tstr);
         match self.expr_ty.kind {
             ty::Ref(_, _, mt) => {
-                let mtstr = match mt {
-                    hir::MutMutable => "mut ",
-                    hir::MutImmutable => "",
-                };
+                let mtstr = mt.prefix_str();
                 if self.cast_ty.is_trait() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.cast_span) {
                         Ok(s) => {
@@ -428,19 +427,34 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             self.report_cast_to_unsized_type(fcx);
         } else if self.expr_ty.references_error() || self.cast_ty.references_error() {
             // No sense in giving duplicate error messages
-        } else if self.try_coercion_cast(fcx) {
-            self.trivial_cast_lint(fcx);
-            debug!(" -> CoercionCast");
-            fcx.tables.borrow_mut().set_coercion_cast(self.expr.hir_id.local_id);
-
         } else {
-            match self.do_check(fcx) {
-                Ok(k) => {
-                    debug!(" -> {:?}", k);
+            match self.try_coercion_cast(fcx) {
+                Ok(()) => {
+                    self.trivial_cast_lint(fcx);
+                    debug!(" -> CoercionCast");
+                    fcx.tables.borrow_mut()
+                        .set_coercion_cast(self.expr.hir_id.local_id);
                 }
-                Err(e) => self.report_cast_error(fcx, e),
+                Err(ty::error::TypeError::ObjectUnsafeCoercion(did)) => {
+                    self.report_object_unsafe_cast(&fcx, did);
+                }
+                Err(_) => {
+                    match self.do_check(fcx) {
+                        Ok(k) => {
+                            debug!(" -> {:?}", k);
+                        }
+                        Err(e) => self.report_cast_error(fcx, e),
+                    };
+                }
             };
         }
+    }
+
+    fn report_object_unsafe_cast(&self, fcx: &FnCtxt<'a, 'tcx>, did: DefId) {
+        let violations = fcx.tcx.object_safety_violations(did);
+        let mut err = fcx.tcx.report_object_safety_error(self.cast_span, did, violations);
+        err.note(&format!("required by cast to type '{}'", fcx.ty_to_string(self.cast_ty)));
+        err.emit();
     }
 
     /// Checks a cast, and report an error if one exists. In some cases, this
@@ -615,7 +629,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     ) -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
-        if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
+        if m_expr.mutbl == hir::Mutability::Immutable &&
+            m_cast.mutbl == hir::Mutability::Immutable {
             if let ty::Array(ety, _) = m_expr.ty.kind {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of
@@ -623,6 +638,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 // To allow raw pointers to work correctly, we
                 // need to special-case obtaining a raw pointer
                 // from a region pointer to a vector.
+
+                // Coerce to a raw pointer so that we generate AddressOf in MIR.
+                let array_ptr_type = fcx.tcx.mk_ptr(m_expr);
+                fcx.try_coerce(self.expr, self.expr_ty, array_ptr_type, AllowTwoPhase::No)
+                    .unwrap_or_else(|_| bug!(
+                        "could not cast from reference to array to pointer to array ({:?} to {:?})",
+                        self.expr_ty,
+                        array_ptr_type,
+                    ));
 
                 // this will report a type mismatch if needed
                 fcx.demand_eqtype(self.span, ety, m_cast.ty);
@@ -646,8 +670,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'tcx>) -> bool {
-        fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No).is_ok()
+    fn try_coercion_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+    ) -> Result<(), ty::error::TypeError<'_>> {
+        match fcx.try_coerce(self.expr, self.expr_ty, self.cast_ty, AllowTwoPhase::No) {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err),
+        }
     }
 }
 

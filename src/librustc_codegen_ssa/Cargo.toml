@@ -10,7 +10,7 @@ path = "lib.rs"
 test = false
 
 [dependencies]
-bitflags = "1.0.4"
+bitflags = "1.2.1"
 cc = "1.0.1"
 num_cpus = "1.0"
 memmap = "0.6"
@@ -21,7 +21,6 @@ tempfile = "3.1"
 
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
-syntax_expand = { path = "../libsyntax_expand" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc = { path = "../librustc" }
 rustc_apfloat = { path = "../librustc_apfloat" }
@@ -32,3 +31,4 @@ rustc_fs_util = { path = "../librustc_fs_util" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_index = { path = "../librustc_index" }
 rustc_target = { path = "../librustc_target" }
+rustc_error_codes = { path = "../librustc_error_codes" }

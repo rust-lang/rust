@@ -3,10 +3,11 @@ error: macros that expand to items must be delimited with braces or followed by 
    |
 LL | macro_rules! foo()
    |                 ^^
+   |
 help: change the delimiters to curly braces
    |
-LL | macro_rules! foo {}
-   |                  ^^
+LL | macro_rules! foo{}
+   |                 ^^
 help: add a semicolon
    |
 LL | macro_rules! foo();
@@ -22,9 +23,10 @@ LL | |     blah
 LL | |     blah
 LL | | )
    | |_^
+   |
 help: change the delimiters to curly braces
    |
-LL | bar! {
+LL | bar!{
 LL |     blah
 LL |     blah
 LL |     blah

@@ -108,7 +108,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                               expected: Ty<'tcx>,
                               allow_two_phase: AllowTwoPhase)
                               -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
-        let expected = self.resolve_type_vars_with_obligations(expected);
+        let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
             Ok(ty) => return (ty, None),
@@ -117,7 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
-        let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
+        let expr_ty = self.resolve_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
 
         if self.is_assign_to_bool(expr, expected) {
@@ -172,10 +172,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }).peekable();
 
             if compatible_variants.peek().is_some() {
-                let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
+                let expr_text = self.tcx.sess
+                    .source_map()
+                    .span_to_snippet(expr.span)
+                    .unwrap_or_else(|_| {
+                        print::to_string(print::NO_ANN, |s| s.print_expr(expr))
+                    });
                 let suggestions = compatible_variants
                     .map(|v| format!("{}({})", v, expr_text));
-                let msg = "try using a variant of the expected type";
+                let msg = "try using a variant of the expected enum";
                 err.span_suggestions(expr.span, msg, suggestions, Applicability::MaybeIncorrect);
             }
         }
@@ -303,7 +308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }) = parent {
                 if let Ok(src) = cm.span_to_snippet(sp) {
                     for field in fields {
-                        if field.ident.as_str() == src.as_str() && field.is_shorthand {
+                        if field.ident.as_str() == src && field.is_shorthand {
                             return true;
                         }
                     }
@@ -393,10 +398,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // bar(&x); // error, expected &mut
                 // ```
                 let ref_ty = match mutability {
-                    hir::Mutability::MutMutable => {
+                    hir::Mutability::Mutable => {
                         self.tcx.mk_mut_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
                     }
-                    hir::Mutability::MutImmutable => {
+                    hir::Mutability::Immutable => {
                         self.tcx.mk_imm_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
                     }
                 };
@@ -404,13 +409,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut sugg_sp = sp;
                     if let hir::ExprKind::MethodCall(segment, _sp, args) = &expr.kind {
                         let clone_trait = self.tcx.lang_items().clone_trait().unwrap();
-                        if let ([arg], Some(true), "clone") = (
+                        if let ([arg], Some(true), sym::clone) = (
                             &args[..],
                             self.tables.borrow().type_dependent_def_id(expr.hir_id).map(|did| {
                                 let ai = self.tcx.associated_item(did);
                                 ai.container == ty::TraitContainer(clone_trait)
                             }),
-                            &segment.ident.as_str()[..],
+                            segment.ident.name,
                         ) {
                             // If this expression had a clone call when suggesting borrowing
                             // we want to suggest removing it because it'd now be unecessary.
@@ -446,7 +451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })) = self.tcx.hir().find(
                             self.tcx.hir().get_parent_node(expr.hir_id),
                         ) {
-                            if mutability == hir::Mutability::MutMutable {
+                            if mutability == hir::Mutability::Mutable {
                                 // Found the following case:
                                 // fn foo(opt: &mut Option<String>){ opt = None }
                                 //                                   ---   ^^^^
@@ -465,12 +470,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
 
                         return Some(match mutability {
-                            hir::Mutability::MutMutable => (
+                            hir::Mutability::Mutable => (
                                 sp,
                                 "consider mutably borrowing here",
                                 format!("{}&mut {}", field_name, sugg_expr),
                             ),
-                            hir::Mutability::MutImmutable => (
+                            hir::Mutability::Immutable => (
                                 sp,
                                 "consider borrowing here",
                                 format!("{}&{}", field_name, sugg_expr),
@@ -548,7 +553,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_for_cast(
         &self,
-        err: &mut DiagnosticBuilder<'tcx>,
+        err: &mut DiagnosticBuilder<'_>,
         expr: &hir::Expr,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,

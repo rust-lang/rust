@@ -43,14 +43,14 @@ fn test_try_block_after_divergent_stmt() {
                 err()?;
             }
         }
-        // ~^^^^^ WARNING unreachable expression
+        //~^^^^^ WARNING unreachable expression
     };
 }
 
 fn test_wrapped_divergent_expr() {
     let _: Result<u32, ()> = {
         Err(return)
-        // ~^ WARNING unreachable call
+        //~^ WARNING unreachable call
     };
 }
 
@@ -61,7 +61,7 @@ fn test_expr_after_divergent_stmt_in_try_block() {
         }
 
         42
-        // ~^ WARNING unreachable expression
+        //~^ WARNING unreachable expression
     };
     println!("res: {:?}", res);
 }

@@ -1,7 +1,7 @@
 // Reference: MSP430 Embedded Application Binary Interface
 // http://www.ti.com/lit/an/slaa534/slaa534.pdf
 
-use crate::abi::call::{ArgType, FnType};
+use crate::abi::call::{ArgAbi, FnAbi};
 
 // 3.5 Structures or Unions Passed and Returned by Reference
 //
@@ -9,7 +9,7 @@ use crate::abi::call::{ArgType, FnType};
 // returned by reference. To pass a structure or union by reference, the caller
 // places its address in the appropriate location: either in a register or on
 // the stack, according to its position in the argument list. (..)"
-fn classify_ret_ty<Ty>(ret: &mut ArgType<'_, Ty>) {
+fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
     if ret.layout.is_aggregate() && ret.layout.size.bits() > 32 {
         ret.make_indirect();
     } else {
@@ -17,7 +17,7 @@ fn classify_ret_ty<Ty>(ret: &mut ArgType<'_, Ty>) {
     }
 }
 
-fn classify_arg_ty<Ty>(arg: &mut ArgType<'_, Ty>) {
+fn classify_arg<Ty>(arg: &mut ArgAbi<'_, Ty>) {
     if arg.layout.is_aggregate() && arg.layout.size.bits() > 32 {
         arg.make_indirect();
     } else {
@@ -25,15 +25,15 @@ fn classify_arg_ty<Ty>(arg: &mut ArgType<'_, Ty>) {
     }
 }
 
-pub fn compute_abi_info<Ty>(fty: &mut FnType<'_, Ty>) {
-    if !fty.ret.is_ignore() {
-        classify_ret_ty(&mut fty.ret);
+pub fn compute_abi_info<Ty>(fn_abi: &mut FnAbi<'_, Ty>) {
+    if !fn_abi.ret.is_ignore() {
+        classify_ret(&mut fn_abi.ret);
     }
 
-    for arg in &mut fty.args {
+    for arg in &mut fn_abi.args {
         if arg.is_ignore() {
             continue;
         }
-        classify_arg_ty(arg);
+        classify_arg(arg);
     }
 }

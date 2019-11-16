@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 fn test<F: Fn(&u64, &u64)>(f: F) {}
 

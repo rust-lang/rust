@@ -133,6 +133,8 @@
 //! [`Box<T>`]: ../../std/boxed/struct.Box.html
 //! [`i32`]: ../../std/primitive.i32.html
 
+// ignore-tidy-undocumented-unsafe
+
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{FromIterator, FusedIterator, TrustedLen};
@@ -395,10 +397,10 @@ impl<T> Option<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, def: T) -> T {
+    pub fn unwrap_or(self, default: T) -> T {
         match self {
             Some(x) => x,
-            None => def,
+            None => default,
         }
     }
 
@@ -837,9 +839,8 @@ impl<T> Option<T> {
     #[inline]
     #[stable(feature = "option_entry", since = "1.20.0")]
     pub fn get_or_insert_with<F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
-        match *self {
-            None => *self = Some(f()),
-            _ => (),
+        if let None = *self {
+            *self = Some(f());
         }
 
         match *self {
@@ -1568,7 +1569,6 @@ impl<T> Option<Option<T>> {
     /// # Examples
     /// Basic usage:
     /// ```
-    /// #![feature(option_flattening)]
     /// let x: Option<Option<u32>> = Some(Some(6));
     /// assert_eq!(Some(6), x.flatten());
     ///
@@ -1580,13 +1580,12 @@ impl<T> Option<Option<T>> {
     /// ```
     /// Flattening once only removes one level of nesting:
     /// ```
-    /// #![feature(option_flattening)]
     /// let x: Option<Option<Option<u32>>> = Some(Some(Some(6)));
     /// assert_eq!(Some(Some(6)), x.flatten());
     /// assert_eq!(Some(6), x.flatten().flatten());
     /// ```
     #[inline]
-    #[unstable(feature = "option_flattening", issue = "60258")]
+    #[stable(feature = "option_flattening", since = "1.40.0")]
     pub fn flatten(self) -> Option<T> {
         self.and_then(convert::identity)
     }

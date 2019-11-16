@@ -13,7 +13,7 @@ mod variant_struct_type {
         x: T
     }
     struct Bar<'a,'b> {
-        f: &'a Foo<&'b i32> //~ ERROR reference has a longer lifetime
+        f: &'a Foo<&'b i32>
     }
 }
 

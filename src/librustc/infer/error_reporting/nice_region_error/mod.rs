@@ -12,6 +12,7 @@ mod named_anon_conflict;
 mod placeholder_error;
 mod outlives_closure;
 mod static_impl_trait;
+mod trait_impl_difference;
 mod util;
 
 impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
@@ -73,6 +74,7 @@ impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
             .or_else(|| self.try_report_anon_anon_conflict())
             .or_else(|| self.try_report_outlives_closure())
             .or_else(|| self.try_report_static_impl_trait())
+            .or_else(|| self.try_report_impl_not_conforming_to_trait())
     }
 
     pub fn get_regions(&self) -> (Span, ty::Region<'tcx>, ty::Region<'tcx>) {

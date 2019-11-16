@@ -145,7 +145,7 @@ fn dump_matched_mir_node<'tcx, F>(
         let _: io::Result<()> = try {
             let mut file =
                 create_dump_file(tcx, "dot", pass_num, pass_name, disambiguator, source)?;
-            write_mir_fn_graphviz(tcx, source.def_id(), body, &mut file)?;
+            write_mir_fn_graphviz(tcx, source.def_id(), body, false, &mut file)?;
         };
     }
 }

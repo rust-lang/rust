@@ -14,7 +14,6 @@ use crate::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use crate::middle::free_region::RegionRelations;
 use crate::middle::lang_items;
 use crate::middle::region;
-use crate::mir::interpret::ConstValue;
 use crate::session::config::BorrowckMode;
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -32,7 +31,7 @@ use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::Symbol;
 use syntax_pos::Span;
 
 use self::combine::CombineFields;
@@ -392,7 +391,7 @@ pub enum RegionVariableOrigin {
     Coercion(Span),
 
     /// Region variables created as the values for early-bound regions
-    EarlyBoundRegion(Span, InternedString),
+    EarlyBoundRegion(Span, Symbol),
 
     /// Region variables created for bound regions
     /// in a function or method that is called
@@ -407,7 +406,7 @@ pub enum RegionVariableOrigin {
     NLL(NLLRegionVariableOrigin),
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug)]
 pub enum NLLRegionVariableOrigin {
     /// During NLL region processing, we create variables for free
     /// regions that we encounter in the function signature and
@@ -1662,7 +1661,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } = ct {
+        if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
                 self.infcx.const_unification_table
                     .borrow_mut()
                     .probe_value(*vid)

@@ -33,7 +33,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAt
     }
 
     match item.kind {
-        hir::ItemKind::Fn(_, header, ..) if header.is_const() => {
+        hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => {
             return true;
         }
         hir::ItemKind::Impl(..) |
@@ -225,8 +225,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
             if let Node::Item(item) = *node {
-                let reachable = if let hir::ItemKind::Fn(_, header, ..) = item.kind {
-                    header.abi != Abi::Rust
+                let reachable = if let hir::ItemKind::Fn(ref sig, ..) = item.kind {
+                    sig.header.abi != Abi::Rust
                 } else {
                     false
                 };

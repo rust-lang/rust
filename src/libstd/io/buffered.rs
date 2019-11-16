@@ -24,7 +24,9 @@ use crate::memchr;
 ///
 /// When the `BufReader<R>` is dropped, the contents of its buffer will be
 /// discarded. Creating multiple instances of a `BufReader<R>` on the same
-/// stream can cause data loss.
+/// stream can cause data loss. Reading from the underlying reader after
+/// unwrapping the `BufReader<R>` with `BufReader::into_inner` can also cause
+/// data loss.
 ///
 /// [`Read`]: ../../std/io/trait.Read.html
 /// [`TcpStream::read`]: ../../std/net/struct.TcpStream.html#method.read
@@ -179,7 +181,8 @@ impl<R> BufReader<R> {
 
     /// Unwraps this `BufReader<R>`, returning the underlying reader.
     ///
-    /// Note that any leftover data in the internal buffer is lost.
+    /// Note that any leftover data in the internal buffer is lost. Therefore,
+    /// a following read from the underlying reader may lead to data loss.
     ///
     /// # Examples
     ///
@@ -366,7 +369,7 @@ impl<R: Seek> Seek for BufReader<R> {
 ///
 /// It is critical to call [`flush`] before `BufWriter<W>` is dropped. Though
 /// dropping will attempt to flush the the contents of the buffer, any errors
-/// that happen in the process of dropping will be ignored. Calling ['flush']
+/// that happen in the process of dropping will be ignored. Calling [`flush`]
 /// ensures that the buffer is empty and thus dropping will not even attempt
 /// file operations.
 ///

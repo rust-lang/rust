@@ -1,8 +1,8 @@
-error[E0532]: expected unit struct/variant or constant, found function `foo::bar`
+error[E0532]: expected unit struct, unit variant or constant, found function `foo::bar`
   --> $DIR/issue-12863.rs:5:9
    |
 LL |         foo::bar => {}
-   |         ^^^^^^^^ not a unit struct/variant or constant
+   |         ^^^^^^^^ not a unit struct, unit variant or constant
 
 error: aborting due to previous error
 

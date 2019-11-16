@@ -10,9 +10,11 @@ use rustc::util::common::ErrorReported;
 use errors::{Applicability, DiagnosticId};
 
 use syntax_pos::Span;
-use syntax::errors::pluralise;
+use syntax::errors::pluralize;
 
 use super::{Inherited, FnCtxt, potentially_plural_count};
+
+use rustc_error_codes::*;
 
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
@@ -532,8 +534,8 @@ fn compare_self_type<'tcx>(
             let can_eq_self = |ty| infcx.can_eq(param_env, untransformed_self_ty, ty).is_ok();
             match ExplicitSelf::determine(self_arg_ty, can_eq_self) {
                 ExplicitSelf::ByValue => "self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::MutImmutable) => "&self".to_owned(),
-                ExplicitSelf::ByReference(_, hir::MutMutable) => "&mut self".to_owned(),
+                ExplicitSelf::ByReference(_, hir::Mutability::Immutable) => "&self".to_owned(),
+                ExplicitSelf::ByReference(_, hir::Mutability::Mutable) => "&mut self".to_owned(),
                 _ => format!("self: {}", self_arg_ty)
             }
         })
@@ -649,9 +651,9 @@ fn compare_number_of_generics<'tcx>(
                      declaration has {} {kind} parameter{}",
                     trait_.ident,
                     impl_count,
-                    pluralise!(impl_count),
+                    pluralize!(impl_count),
                     trait_count,
-                    pluralise!(trait_count),
+                    pluralize!(trait_count),
                     kind = kind,
                 ),
                 DiagnosticId::Error("E0049".into()),
@@ -666,7 +668,7 @@ fn compare_number_of_generics<'tcx>(
                         "expected {} {} parameter{}",
                         trait_count,
                         kind,
-                        pluralise!(trait_count),
+                        pluralize!(trait_count),
                     ));
                 }
                 for span in spans {
@@ -681,7 +683,7 @@ fn compare_number_of_generics<'tcx>(
                     "found {} {} parameter{}{}",
                     impl_count,
                     kind,
-                    pluralise!(impl_count),
+                    pluralize!(impl_count),
                     suffix.unwrap_or_else(|| String::new()),
                 ));
             }

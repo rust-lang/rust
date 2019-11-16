@@ -5,7 +5,7 @@ use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, TyLayout};
-use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
+use rustc_target::abi::call::{ArgAbi, CastTarget, FnAbi, Reg};
 use syntax_pos::DUMMY_SP;
 
 // This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
@@ -96,7 +96,7 @@ impl<T> DerivedTypeMethods<'tcx> for T where Self: BaseTypeMethods<'tcx> + MiscM
 pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     fn backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
     fn cast_backend_type(&self, ty: &CastTarget) -> Self::Type;
-    fn fn_ptr_backend_type(&self, ty: &FnType<'tcx, Ty<'tcx>>) -> Self::Type;
+    fn fn_ptr_backend_type(&self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>) -> Self::Type;
     fn reg_backend_type(&self, ty: &Reg) -> Self::Type;
     fn immediate_backend_type(&self, layout: TyLayout<'tcx>) -> Self::Type;
     fn is_backend_immediate(&self, layout: TyLayout<'tcx>) -> bool;
@@ -110,20 +110,20 @@ pub trait LayoutTypeMethods<'tcx>: Backend<'tcx> {
     ) -> Self::Type;
 }
 
-pub trait ArgTypeMethods<'tcx>: HasCodegen<'tcx> {
+pub trait ArgAbiMethods<'tcx>: HasCodegen<'tcx> {
     fn store_fn_arg(
         &mut self,
-        ty: &ArgType<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, Self::Value>,
     );
-    fn store_arg_ty(
+    fn store_arg(
         &mut self,
-        ty: &ArgType<'tcx, Ty<'tcx>>,
+        arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         val: Self::Value,
         dst: PlaceRef<'tcx, Self::Value>,
     );
-    fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> Self::Type;
+    fn arg_memory_ty(&self, arg_abi: &ArgAbi<'tcx, Ty<'tcx>>) -> Self::Type;
 }
 
 pub trait TypeMethods<'tcx>: DerivedTypeMethods<'tcx> + LayoutTypeMethods<'tcx> {}

@@ -24,7 +24,6 @@
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin, TypeVariableOriginKind};
 use crate::infer::{ConstVariableOrigin, ConstVariableOriginKind};
 use crate::infer::region_constraints::MemberConstraint;
-use crate::mir::interpret::ConstValue;
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use rustc_serialize::UseSpecializedDecodable;
@@ -33,7 +32,7 @@ use std::ops::Index;
 use syntax::source_map::Span;
 use crate::ty::fold::TypeFoldable;
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, InferConst, Lift, List, Region, TyCtxt};
+use crate::ty::{self, BoundVar, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -73,7 +72,7 @@ pub struct CanonicalVarValues<'tcx> {
 /// various parts of it with canonical variables. This struct stores
 /// those replaced bits to remember for when we process the query
 /// result.
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct OriginalQueryValues<'tcx> {
     /// Map from the universes that appear in the query to the
     /// universes in the caller context. For the time being, we only
@@ -447,7 +446,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 };
                 self.tcx.mk_const(
                     ty::Const {
-                        val: ConstValue::Placeholder(placeholder_mapped),
+                        val: ty::ConstKind::Placeholder(placeholder_mapped),
                         ty: self.tcx.types.err, // FIXME(const_generics)
                     }
                 ).into()
@@ -510,9 +509,7 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                     GenericArgKind::Const(ct) => {
                         tcx.mk_const(ty::Const {
                             ty: ct.ty,
-                            val: ConstValue::Infer(
-                                InferConst::Canonical(ty::INNERMOST, ty::BoundVar::from_u32(i))
-                            ),
+                            val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
                         }).into()
                     }
                 })

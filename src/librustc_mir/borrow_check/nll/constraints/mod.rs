@@ -71,7 +71,7 @@ impl Index<OutlivesConstraintIndex> for OutlivesConstraintSet {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct OutlivesConstraint {
     // NB. The ordering here is not significant for correctness, but
     // it is for convenience. Before we dump the constraints in the

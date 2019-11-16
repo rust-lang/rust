@@ -264,7 +264,7 @@ impl<'sess> OnDiskCache<'sess> {
             let sorted_cnums = sorted_cnums_including_local_crate(tcx);
             let prev_cnums: Vec<_> = sorted_cnums.iter()
                 .map(|&cnum| {
-                    let crate_name = tcx.original_crate_name(cnum).as_str().to_string();
+                    let crate_name = tcx.original_crate_name(cnum).to_string();
                     let crate_disambiguator = tcx.crate_disambiguator(cnum);
                     (cnum.as_u32(), crate_name, crate_disambiguator)
                 })
@@ -796,11 +796,6 @@ where
         }
 
         let span_data = span.data();
-
-        if span_data.hi < span_data.lo {
-            return TAG_INVALID_SPAN.encode(self);
-        }
-
         let (file_lo, line_lo, col_lo) = match self.source_map
                                                    .byte_pos_to_line_and_col(span_data.lo) {
             Some(pos) => pos,

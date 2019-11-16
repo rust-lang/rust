@@ -2,7 +2,7 @@ use crate::hir::BindingAnnotation::*;
 use crate::hir::BindingAnnotation;
 use crate::hir::Mutability;
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BindingMode {
     BindByReference(Mutability),
     BindByValue(Mutability),
@@ -13,10 +13,10 @@ CloneTypeFoldableAndLiftImpls! { BindingMode, }
 impl BindingMode {
     pub fn convert(ba: BindingAnnotation) -> BindingMode {
         match ba {
-            Unannotated => BindingMode::BindByValue(Mutability::MutImmutable),
-            Mutable => BindingMode::BindByValue(Mutability::MutMutable),
-            Ref => BindingMode::BindByReference(Mutability::MutImmutable),
-            RefMut => BindingMode::BindByReference(Mutability::MutMutable),
+            Unannotated => BindingMode::BindByValue(Mutability::Immutable),
+            Mutable => BindingMode::BindByValue(Mutability::Mutable),
+            Ref => BindingMode::BindByReference(Mutability::Immutable),
+            RefMut => BindingMode::BindByReference(Mutability::Mutable),
         }
     }
 }

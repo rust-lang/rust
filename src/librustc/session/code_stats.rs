@@ -1,6 +1,7 @@
 use rustc_target::abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashSet};
 use std::cmp::{self, Ordering};
+use rustc_data_structures::sync::Lock;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct VariantInfo {
@@ -44,13 +45,13 @@ pub struct TypeSizeInfo {
     pub variants: Vec<VariantInfo>,
 }
 
-#[derive(PartialEq, Eq, Debug, Default)]
+#[derive(Default)]
 pub struct CodeStats {
-    type_sizes: FxHashSet<TypeSizeInfo>,
+    type_sizes: Lock<FxHashSet<TypeSizeInfo>>,
 }
 
 impl CodeStats {
-    pub fn record_type_size<S: ToString>(&mut self,
+    pub fn record_type_size<S: ToString>(&self,
                                          kind: DataTypeKind,
                                          type_desc: S,
                                          align: Align,
@@ -73,11 +74,12 @@ impl CodeStats {
             opt_discr_size: opt_discr_size.map(|s| s.bytes()),
             variants,
         };
-        self.type_sizes.insert(info);
+        self.type_sizes.borrow_mut().insert(info);
     }
 
     pub fn print_type_sizes(&self) {
-        let mut sorted: Vec<_> = self.type_sizes.iter().collect();
+        let type_sizes = self.type_sizes.borrow();
+        let mut sorted: Vec<_> = type_sizes.iter().collect();
 
         // Primary sort: large-to-small.
         // Secondary sort: description (dictionary order)

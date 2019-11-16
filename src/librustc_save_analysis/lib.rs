@@ -29,7 +29,7 @@ use std::path::{Path, PathBuf};
 
 use syntax::ast::{self, Attribute, DUMMY_NODE_ID, NodeId, PatKind};
 use syntax::source_map::Spanned;
-use syntax::parse::lexer::comments::strip_doc_comment_decoration;
+use syntax::util::comments::strip_doc_comment_decoration;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{param_to_string, ty_to_string};
@@ -180,7 +180,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
 
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.kind {
-            ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
+            ast::ItemKind::Fn(ref sig, .., ref generics, _) => {
                 let qualname = format!("::{}",
                     self.tcx.def_path_str(self.tcx.hir().local_def_id_from_node_id(item.id)));
                 filter!(self.span_utils, item.ident.span);
@@ -190,7 +190,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
                     span: self.span_from_span(item.ident.span),
                     name: item.ident.to_string(),
                     qualname,
-                    value: make_signature(decl, generics),
+                    value: make_signature(&sig.decl, generics),
                     parent: None,
                     children: vec![],
                     decl_id: None,
@@ -885,7 +885,7 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         for attr in attrs {
             if attr.check_name(sym::doc) {
                 if let Some(val) = attr.value_str() {
-                    if attr.is_sugared_doc {
+                    if attr.is_doc_comment() {
                         result.push_str(&strip_doc_comment_decoration(&val.as_str()));
                     } else {
                         result.push_str(&val.as_str());
@@ -1195,7 +1195,7 @@ fn null_id() -> rls_data::Id {
 fn lower_attributes(attrs: Vec<Attribute>, scx: &SaveContext<'_, '_>) -> Vec<rls_data::Attribute> {
     attrs.into_iter()
     // Only retain real attributes. Doc comments are lowered separately.
-    .filter(|attr| attr.path != sym::doc)
+    .filter(|attr| !attr.has_name(sym::doc))
     .map(|mut attr| {
         // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
         // attribute. First normalize all inner attribute (#![..]) to outer

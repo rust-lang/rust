@@ -10,7 +10,7 @@
 #![feature(rustc_attrs)]
 #![cfg_attr(with_gate, feature(structural_match))]
 
-#[structural_match] //[no_gate]~ ERROR semantics of constant patterns is not yet settled
+
 struct Foo {
     x: u32
 }
@@ -25,3 +25,15 @@ fn main() { //[with_gate]~ ERROR compilation successful
         _ => { }
     }
 }
+
+impl std::marker::StructuralPartialEq for Foo { }
+//[no_gate]~^ ERROR use of unstable library feature 'structural_match'
+impl std::marker::StructuralEq for Foo { }
+//[no_gate]~^ ERROR use of unstable library feature 'structural_match'
+
+impl PartialEq<Foo> for Foo {
+    fn eq(&self, other: &Self) -> bool {
+        self.x == other.x
+    }
+}
+impl Eq for Foo { }

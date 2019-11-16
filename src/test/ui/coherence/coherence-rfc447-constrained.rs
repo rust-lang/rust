@@ -1,7 +1,4 @@
 // run-pass
-// revisions: old re
-
-#![cfg_attr(re, feature(re_rebalance_coherence))]
 // check that trait matching can handle impls whose types are only
 // constrained by a projection.
 

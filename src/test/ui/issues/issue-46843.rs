@@ -5,9 +5,8 @@ fn non_const() -> Thing {
 }
 
 pub const Q: i32 = match non_const() {
-    //~^ ERROR E0015
-    //~^^ ERROR unimplemented expression type
-    Thing::This => 1, //~ ERROR unimplemented expression type
+    //~^ ERROR `match` is not allowed in a `const`
+    Thing::This => 1,
     Thing::That => 0
 };
 

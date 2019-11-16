@@ -24,7 +24,7 @@ use std::marker::PhantomData;
 use std::ops::Range;
 use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
-use syntax::symbol::{kw, InternedString};
+use syntax::symbol::{kw, Symbol};
 
 use self::InferTy::*;
 use self::TyKind::*;
@@ -55,7 +55,7 @@ pub enum BoundRegion {
     ///
     /// The `DefId` is needed to distinguish free regions in
     /// the event of shadowing.
-    BrNamed(DefId, InternedString),
+    BrNamed(DefId, Symbol),
 
     /// Anonymous region for the implicit env pointer parameter
     /// to a closure
@@ -162,7 +162,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -304,8 +304,7 @@ static_assert_size!(TyKind<'_>, 24);
 /// type parameters is similar, but the role of CK and CS are
 /// different. CK represents the "yield type" and CS represents the
 /// "return type" of the generator.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with the types of the upvars.
@@ -392,8 +391,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug)]
 pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
@@ -1035,7 +1033,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug)]
 pub struct GenSig<'tcx> {
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
@@ -1123,16 +1121,16 @@ pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
          Hash, RustcEncodable, RustcDecodable, HashStable)]
 pub struct ParamTy {
     pub index: u32,
-    pub name: InternedString,
+    pub name: Symbol,
 }
 
 impl<'tcx> ParamTy {
-    pub fn new(index: u32, name: InternedString) -> ParamTy {
+    pub fn new(index: u32, name: Symbol) -> ParamTy {
         ParamTy { index, name: name }
     }
 
     pub fn for_self() -> ParamTy {
-        ParamTy::new(0, kw::SelfUpper.as_interned_str())
+        ParamTy::new(0, kw::SelfUpper)
     }
 
     pub fn for_def(def: &ty::GenericParamDef) -> ParamTy {
@@ -1148,11 +1146,11 @@ impl<'tcx> ParamTy {
          Eq, PartialEq, Ord, PartialOrd, HashStable)]
 pub struct ParamConst {
     pub index: u32,
-    pub name: InternedString,
+    pub name: Symbol,
 }
 
 impl<'tcx> ParamConst {
-    pub fn new(index: u32, name: InternedString) -> ParamConst {
+    pub fn new(index: u32, name: Symbol) -> ParamConst {
         ParamConst { index, name }
     }
 
@@ -1325,7 +1323,7 @@ impl<'tcx> rustc_serialize::UseSpecializedDecodable for Region<'tcx> {}
 pub struct EarlyBoundRegion {
     pub def_id: DefId,
     pub index: u32,
-    pub name: InternedString,
+    pub name: Symbol,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
@@ -1389,7 +1387,7 @@ pub struct BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub enum BoundTyKind {
     Anon,
-    Param(InternedString),
+    Param(Symbol),
 }
 
 impl_stable_hash_for!(struct BoundTy { var, kind });
@@ -1841,8 +1839,8 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_mutable_ptr(&self) -> bool {
         match self.kind {
-            RawPtr(TypeAndMut { mutbl: hir::Mutability::MutMutable, .. }) |
-            Ref(_, _, hir::Mutability::MutMutable) => true,
+            RawPtr(TypeAndMut { mutbl: hir::Mutability::Mutable, .. }) |
+            Ref(_, _, hir::Mutability::Mutable) => true,
             _ => false
         }
     }
@@ -2032,7 +2030,7 @@ impl<'tcx> TyS<'tcx> {
             Adt(def, _) if def.is_box() => {
                 Some(TypeAndMut {
                     ty: self.boxed_ty(),
-                    mutbl: hir::MutImmutable,
+                    mutbl: hir::Mutability::Immutable,
                 })
             },
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl }),
@@ -2259,17 +2257,17 @@ impl<'tcx> TyS<'tcx> {
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
-    pub val: ConstValue<'tcx>,
+    pub val: ConstKind<'tcx>,
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Const<'_>, 40);
+static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self {
-            val: ConstValue::Scalar(val),
+            val: ConstKind::Value(ConstValue::Scalar(val)),
             ty,
         })
     }
@@ -2319,7 +2317,7 @@ impl<'tcx> Const<'tcx> {
         // FIXME(const_generics): this doesn't work right now,
         // because it tries to relate an `Infer` to a `Param`.
         match self.val {
-            ConstValue::Unevaluated(did, substs) => {
+            ConstKind::Unevaluated(did, substs) => {
                 // if `substs` has no unresolved components, use and empty param_env
                 let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
                 // try to resolve e.g. associated constants to their definition on an impl
@@ -2365,6 +2363,49 @@ impl<'tcx> Const<'tcx> {
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
 
+/// Represents a constant in Rust.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
+         RustcEncodable, RustcDecodable, Hash, HashStable)]
+pub enum ConstKind<'tcx> {
+    /// A const generic parameter.
+    Param(ParamConst),
+
+    /// Infer the value of the const.
+    Infer(InferConst<'tcx>),
+
+    /// Bound const variable, used only when preparing a trait query.
+    Bound(DebruijnIndex, BoundVar),
+
+    /// A placeholder const - universally quantified higher-ranked const.
+    Placeholder(ty::PlaceholderConst),
+
+    /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
+    /// variants when the code is monomorphic enough for that.
+    Unevaluated(DefId, SubstsRef<'tcx>),
+
+    /// Used to hold computed value.
+    Value(ConstValue<'tcx>),
+}
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ConstKind<'_>, 40);
+
+impl<'tcx> ConstKind<'tcx> {
+    #[inline]
+    pub fn try_to_scalar(&self) -> Option<Scalar> {
+        if let ConstKind::Value(val) = self {
+            val.try_to_scalar()
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn try_to_bits(&self, size: ty::layout::Size) -> Option<u128> {
+        self.try_to_scalar()?.to_bits(size).ok()
+    }
+}
+
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd,
          Ord, RustcEncodable, RustcDecodable, Hash, HashStable)]
@@ -2373,6 +2414,4 @@ pub enum InferConst<'tcx> {
     Var(ConstVid<'tcx>),
     /// A fresh const variable. See `infer::freshen` for more details.
     Fresh(u32),
-    /// Canonicalized const variable, used only when preparing a trait query.
-    Canonical(DebruijnIndex, BoundVar),
 }

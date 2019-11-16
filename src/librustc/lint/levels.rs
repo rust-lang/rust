@@ -3,7 +3,7 @@ use std::cmp;
 use crate::hir::HirId;
 use crate::ich::StableHashingContext;
 use crate::lint::builtin;
-use crate::lint::context::CheckLintNameResult;
+use crate::lint::context::{LintStore, CheckLintNameResult};
 use crate::lint::{self, Lint, LintId, Level, LintSource};
 use crate::session::Session;
 use crate::util::nodemap::FxHashMap;
@@ -15,6 +15,8 @@ use syntax::feature_gate;
 use syntax::print::pprust;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::{Symbol, sym};
+
+use rustc_error_codes::*;
 
 pub struct LintLevelSets {
     list: Vec<LintSet>,
@@ -35,21 +37,24 @@ enum LintSet {
 }
 
 impl LintLevelSets {
-    pub fn new(sess: &Session) -> LintLevelSets {
+    pub fn new(sess: &Session, lint_store: &LintStore) -> LintLevelSets {
         let mut me = LintLevelSets {
             list: Vec::new(),
             lint_cap: Level::Forbid,
         };
-        me.process_command_line(sess);
+        me.process_command_line(sess, lint_store);
         return me
     }
 
-    pub fn builder(sess: &Session) -> LintLevelsBuilder<'_> {
-        LintLevelsBuilder::new(sess, LintLevelSets::new(sess))
+    pub fn builder<'a>(
+        sess: &'a Session,
+        warn_about_weird_lints: bool,
+        store: &LintStore,
+    ) -> LintLevelsBuilder<'a> {
+        LintLevelsBuilder::new(sess, warn_about_weird_lints, LintLevelSets::new(sess, store))
     }
 
-    fn process_command_line(&mut self, sess: &Session) {
-        let store = sess.lint_store.borrow();
+    fn process_command_line(&mut self, sess: &Session, store: &LintStore) {
         let mut specs = FxHashMap::default();
         self.lint_cap = sess.opts.lint_cap.unwrap_or(Level::Forbid);
 
@@ -161,14 +166,18 @@ pub struct BuilderPush {
 }
 
 impl<'a> LintLevelsBuilder<'a> {
-    pub fn new(sess: &'a Session, sets: LintLevelSets) -> LintLevelsBuilder<'a> {
+    pub fn new(
+        sess: &'a Session,
+        warn_about_weird_lints: bool,
+        sets: LintLevelSets,
+    ) -> LintLevelsBuilder<'a> {
         assert_eq!(sets.list.len(), 1);
         LintLevelsBuilder {
             sess,
             sets,
             cur: 0,
             id_to_set: Default::default(),
-            warn_about_weird_lints: sess.buffered_lints.borrow().is_some(),
+            warn_about_weird_lints,
         }
     }
 
@@ -186,9 +195,8 @@ impl<'a> LintLevelsBuilder<'a> {
     ///   #[allow]
     ///
     /// Don't forget to call `pop`!
-    pub fn push(&mut self, attrs: &[ast::Attribute]) -> BuilderPush {
+    pub fn push(&mut self, attrs: &[ast::Attribute], store: &LintStore) -> BuilderPush {
         let mut specs = FxHashMap::default();
-        let store = self.sess.lint_store.borrow();
         let sess = self.sess;
         let bad_attr = |span| {
             struct_span_err!(sess, span, E0452, "malformed lint attribute input")
@@ -202,11 +210,7 @@ impl<'a> LintLevelsBuilder<'a> {
             let meta = unwrap_or!(attr.meta(), continue);
             attr::mark_used(attr);
 
-            let mut metas = if let Some(metas) = meta.meta_item_list() {
-                metas
-            } else {
-                continue;
-            };
+            let mut metas = unwrap_or!(meta.meta_item_list(), continue);
 
             if metas.is_empty() {
                 // FIXME (#55112): issue unused-attributes lint for `#[level()]`

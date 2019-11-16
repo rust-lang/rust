@@ -310,15 +310,15 @@ fn test_type(cx: &ExtCtxt<'_>) -> TestType {
 fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
     let has_should_panic_attr = attr::contains_name(&i.attrs, sym::should_panic);
     let ref sd = cx.parse_sess.span_diagnostic;
-    if let ast::ItemKind::Fn(ref decl, ref header, ref generics, _) = i.kind {
-        if header.unsafety == ast::Unsafety::Unsafe {
+    if let ast::ItemKind::Fn(ref sig, ref generics, _) = i.kind {
+        if sig.header.unsafety == ast::Unsafety::Unsafe {
             sd.span_err(
                 i.span,
                 "unsafe functions cannot be used for tests"
             );
             return false
         }
-        if header.asyncness.node.is_async() {
+        if sig.header.asyncness.node.is_async() {
             sd.span_err(
                 i.span,
                 "async functions cannot be used for tests"
@@ -329,13 +329,13 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 
         // If the termination trait is active, the compiler will check that the output
         // type implements the `Termination` trait as `libtest` enforces that.
-        let has_output = match decl.output {
+        let has_output = match sig.decl.output {
             ast::FunctionRetTy::Default(..) => false,
             ast::FunctionRetTy::Ty(ref t) if t.kind.is_unit() => false,
             _ => true
         };
 
-        if !decl.inputs.is_empty() {
+        if !sig.decl.inputs.is_empty() {
             sd.span_err(i.span, "functions used as tests can not have any arguments");
             return false;
         }
@@ -361,10 +361,10 @@ fn has_test_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
 }
 
 fn has_bench_signature(cx: &ExtCtxt<'_>, i: &ast::Item) -> bool {
-    let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.kind {
+    let has_sig = if let ast::ItemKind::Fn(ref sig, _, _) = i.kind {
         // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
-        decl.inputs.len() == 1
+        sig.decl.inputs.len() == 1
     } else {
         false
     };

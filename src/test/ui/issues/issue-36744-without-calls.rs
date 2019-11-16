@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// build-pass
 // Tests for an LLVM abort when storing a lifetime-parametric fn into
 // context that is expecting one that is not lifetime-parametric
 // (i.e., has no `for <'_>`).

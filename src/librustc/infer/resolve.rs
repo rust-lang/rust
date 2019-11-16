@@ -1,7 +1,6 @@
 use super::{InferCtxt, FixupError, FixupResult, Span};
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use crate::mir::interpret::ConstValue;
-use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst, TypeFlags};
+use crate::ty::{self, Ty, Const, TyCtxt, TypeFoldable, InferConst};
 use crate::ty::fold::{TypeFolder, TypeVisitor};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -29,7 +28,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_infer_types() {
+        if !t.has_infer_types() && !t.has_infer_consts() {
             t // micro-optimize -- if there is nothing in this type that this fold affects...
         } else {
             let t = self.infcx.shallow_resolve(t);
@@ -38,7 +37,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for OpportunisticVarResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx Const<'tcx>) -> &'tcx Const<'tcx> {
-        if !ct.has_type_flags(TypeFlags::HAS_CT_INFER) {
+        if !ct.has_infer_consts() {
             ct // micro-optimize -- if there is nothing in this const that this fold affects...
         } else {
             let ct = self.infcx.shallow_resolve(ct);
@@ -230,11 +229,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         } else {
             let c = self.infcx.shallow_resolve(c);
             match c.val {
-                ConstValue::Infer(InferConst::Var(vid)) => {
+                ty::ConstKind::Infer(InferConst::Var(vid)) => {
                     self.err = Some(FixupError::UnresolvedConst(vid));
                     return self.tcx().consts.err;
                 }
-                ConstValue::Infer(InferConst::Fresh(_)) => {
+                ty::ConstKind::Infer(InferConst::Fresh(_)) => {
                     bug!("Unexpected const in full const resolver: {:?}", c);
                 }
                 _ => {}

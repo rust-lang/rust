@@ -5,6 +5,8 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::error_reporting::nice_region_error::util::AnonymousParamInfo;
 use crate::util::common::ErrorReported;
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when both the concerned regions are anonymous.
     ///

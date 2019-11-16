@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 #![allow(dead_code)]
 // Test that we can parse where clauses on various forms of tuple
 // structs.

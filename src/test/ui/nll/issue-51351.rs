@@ -6,7 +6,7 @@
 // of the closure, as they were not present in the closure's generic
 // declarations otherwise.
 //
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 
 fn creash<'a>() {
     let x: &'a () = &();

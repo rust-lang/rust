@@ -1363,20 +1363,24 @@ impl PathBuf {
     }
 
     fn _set_extension(&mut self, extension: &OsStr) -> bool {
-        if self.file_name().is_none() {
-            return false;
-        }
-
-        let mut stem = match self.file_stem() {
-            Some(stem) => stem.to_os_string(),
-            None => OsString::new(),
+        let file_stem = match self.file_stem() {
+            None => return false,
+            Some(f) => os_str_as_u8_slice(f),
         };
 
-        if !os_str_as_u8_slice(extension).is_empty() {
-            stem.push(".");
-            stem.push(extension);
+        // truncate until right after the file stem
+        let end_file_stem = file_stem[file_stem.len()..].as_ptr() as usize;
+        let start = os_str_as_u8_slice(&self.inner).as_ptr() as usize;
+        let v = self.as_mut_vec();
+        v.truncate(end_file_stem.wrapping_sub(start));
+
+        // add the new extension, if any
+        let new = os_str_as_u8_slice(extension);
+        if !new.is_empty() {
+            v.reserve_exact(new.len() + 1);
+            v.push(b'.');
+            v.extend_from_slice(new);
         }
-        self.set_file_name(&stem);
 
         true
     }

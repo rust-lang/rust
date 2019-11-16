@@ -1,33 +1,32 @@
 use crate::expand::{self, AstFragment, Invocation};
-use crate::hygiene::ExpnId;
 
+use rustc_parse::{self, parser, DirectoryOwnership, MACRO_ARGUMENTS};
 use syntax::ast::{self, NodeId, Attribute, Name, PatKind};
 use syntax::attr::{self, HasAttrs, Stability, Deprecation};
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
 use syntax::mut_visit::{self, MutVisitor};
-use syntax::parse::{self, parser, DirectoryOwnership};
-use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Ident, Symbol};
-use syntax::{ThinVec, MACRO_ARGUMENTS};
+use syntax::ThinVec;
+use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use smallvec::{smallvec, SmallVec};
 use syntax_pos::{FileName, Span, MultiSpan, DUMMY_SP};
-use syntax_pos::hygiene::{AstPass, ExpnData, ExpnKind};
-
+use syntax_pos::hygiene::{AstPass, ExpnId, ExpnData, ExpnKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{self, Lrc};
+
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::default::Default;
 
-pub use syntax_pos::hygiene::MacroKind;
+crate use syntax_pos::hygiene::MacroKind;
 
 #[derive(Debug,Clone)]
 pub enum Annotatable {
@@ -837,16 +836,6 @@ pub enum InvocationRes {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-bitflags::bitflags! {
-    /// Built-in derives that need some extra tracking beyond the usual macro functionality.
-    #[derive(Default)]
-    pub struct SpecialDerives: u8 {
-        const PARTIAL_EQ = 1 << 0;
-        const EQ         = 1 << 1;
-        const COPY       = 1 << 2;
-    }
-}
-
 pub trait Resolver {
     fn next_node_id(&mut self) -> NodeId;
 
@@ -868,10 +857,10 @@ pub trait Resolver {
         &mut self, invoc: &Invocation, eager_expansion_root: ExpnId, force: bool
     ) -> Result<InvocationRes, Indeterminate>;
 
-    fn check_unused_macros(&self);
+    fn check_unused_macros(&mut self);
 
-    fn has_derives(&self, expn_id: ExpnId, derives: SpecialDerives) -> bool;
-    fn add_derives(&mut self, expn_id: ExpnId, derives: SpecialDerives);
+    fn has_derive_copy(&self, expn_id: ExpnId) -> bool;
+    fn add_derive_copy(&mut self, expn_id: ExpnId);
 }
 
 #[derive(Clone)]
@@ -933,7 +922,7 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
     pub fn new_parser_from_tts(&self, stream: TokenStream) -> parser::Parser<'a> {
-        parse::stream_to_parser(self.parse_sess, stream, MACRO_ARGUMENTS)
+        rustc_parse::stream_to_parser(self.parse_sess, stream, MACRO_ARGUMENTS)
     }
     pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
     pub fn parse_sess(&self) -> &'a ParseSess { self.parse_sess }
@@ -964,18 +953,7 @@ impl<'a> ExtCtxt<'a> {
     ///
     /// Stops backtracing at include! boundary.
     pub fn expansion_cause(&self) -> Option<Span> {
-        let mut expn_id = self.current_expansion.id;
-        let mut last_macro = None;
-        loop {
-            let expn_data = expn_id.expn_data();
-            // Stop going up the backtrace once include! is encountered
-            if expn_data.is_root() || expn_data.kind.descr() == sym::include {
-                break;
-            }
-            expn_id = expn_data.call_site.ctxt().outer_expn();
-            last_macro = Some(expn_data.call_site);
-        }
-        last_macro
+        self.current_expansion.id.expansion_cause()
     }
 
     pub fn struct_span_warn<S: Into<MultiSpan>>(&self,
@@ -1063,7 +1041,7 @@ impl<'a> ExtCtxt<'a> {
         Symbol::intern(st)
     }
 
-    pub fn check_unused_macros(&self) {
+    pub fn check_unused_macros(&mut self) {
         self.resolver.check_unused_macros();
     }
 
@@ -1072,7 +1050,11 @@ impl<'a> ExtCtxt<'a> {
     /// This unifies the logic used for resolving `include_X!`, and `#[doc(include)]` file paths.
     ///
     /// Returns an absolute path to the file that `path` refers to.
-    pub fn resolve_path(&self, path: impl Into<PathBuf>, span: Span) -> PathBuf {
+    pub fn resolve_path(
+        &self,
+        path: impl Into<PathBuf>,
+        span: Span,
+    ) -> Result<PathBuf, DiagnosticBuilder<'a>> {
         let path = path.into();
 
         // Relative paths are resolved relative to the file in which they are found
@@ -1082,13 +1064,16 @@ impl<'a> ExtCtxt<'a> {
             let mut result = match self.source_map().span_to_unmapped_path(callsite) {
                 FileName::Real(path) => path,
                 FileName::DocTest(path, _) => path,
-                other => panic!("cannot resolve relative path in non-file source `{}`", other),
+                other => return Err(self.struct_span_err(
+                    span,
+                    &format!("cannot resolve relative path in non-file source `{}`", other),
+                )),
             };
             result.pop();
             result.push(path);
-            result
+            Ok(result)
         } else {
-            path
+            Ok(path)
         }
     }
 }

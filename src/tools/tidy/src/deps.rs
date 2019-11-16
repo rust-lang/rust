@@ -55,6 +55,9 @@ const EXCEPTIONS: &[&str] = &[
     "sized-chunks",       // MPL-2.0+, cargo via im-rc
     // FIXME: this dependency violates the documentation comment above:
     "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for `sgx` target
+    "dunce",              // CC0-1.0 mdbook-linkcheck
+    "codespan-reporting", // Apache-2.0 mdbook-linkcheck
+    "codespan",           // Apache-2.0 mdbook-linkcheck
 ];
 
 /// Which crates to check against the whitelist?
@@ -181,6 +184,7 @@ const WHITELIST: &[Crate<'_>] = &[
     Crate("winapi-util"),
     Crate("winapi-x86_64-pc-windows-gnu"),
     Crate("wincolor"),
+    Crate("hermit-abi"),
 ];
 
 // Some types for Serde to deserialize the output of `cargo metadata` to.

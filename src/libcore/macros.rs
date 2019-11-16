@@ -2,22 +2,29 @@
 ///
 /// For details, see `std::macros`.
 #[macro_export]
-#[allow_internal_unstable(core_panic)]
+#[allow_internal_unstable(core_panic,
+    // FIXME(anp, eddyb) `core_intrinsics` is used here to allow calling
+    // the `caller_location` intrinsic, but once  `#[track_caller]` is implemented,
+    // `panicking::{panic, panic_fmt}` can use that instead of a `Location` argument.
+    core_intrinsics,
+)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
     );
-    ($msg:expr) => ({
-        $crate::panicking::panic(&($msg, $crate::file!(), $crate::line!(), $crate::column!()))
-    });
+    ($msg:expr) => (
+        $crate::panicking::panic($msg, $crate::intrinsics::caller_location())
+    );
     ($msg:expr,) => (
         $crate::panic!($msg)
     );
-    ($fmt:expr, $($arg:tt)+) => ({
-        $crate::panicking::panic_fmt($crate::format_args!($fmt, $($arg)+),
-                                     &($crate::file!(), $crate::line!(), $crate::column!()))
-    });
+    ($fmt:expr, $($arg:tt)+) => (
+        $crate::panicking::panic_fmt(
+            $crate::format_args!($fmt, $($arg)+),
+            $crate::intrinsics::caller_location(),
+        )
+    );
 }
 
 /// Asserts that two expressions are equal to each other (using [`PartialEq`]).
@@ -236,6 +243,33 @@ macro_rules! debug_assert_eq {
 #[stable(feature = "assert_ne", since = "1.13.0")]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if $crate::cfg!(debug_assertions) { $crate::assert_ne!($($arg)*); })
+}
+
+/// Returns whether the given expression matches any of the given patterns.
+///
+/// Like in a `match` expression, the pattern can be optionally followed by `if`
+/// and a guard expression that has access to names bound by the pattern.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(matches_macro)]
+///
+/// let foo = 'f';
+/// assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
+///
+/// let bar = Some(4);
+/// assert!(matches!(bar, Some(x) if x > 2));
+/// ```
+#[macro_export]
+#[unstable(feature = "matches_macro", issue = "65721")]
+macro_rules! matches {
+    ($expression:expr, $( $pattern:pat )|+ $( if $guard: expr )?) => {
+        match $expression {
+            $( $pattern )|+ $( if $guard )? => true,
+            _ => false
+        }
+    }
 }
 
 /// Unwraps a result or propagates its error.
@@ -1216,6 +1250,10 @@ pub(crate) mod builtin {
     }
 
     /// Inline assembly.
+    ///
+    /// Read the [unstable book] for the usage.
+    ///
+    /// [unstable book]: ../unstable-book/library-features/asm.html
     #[unstable(feature = "asm", issue = "29722",
                reason = "inline assembly is not stable enough for use and is subject to change")]
     #[rustc_builtin_macro]

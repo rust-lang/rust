@@ -21,7 +21,7 @@ LL | fn october<'a, 'b, T>(s: &'b T) -> &'b T {
 error: lifetime parameter `'b` never used
   --> $DIR/zero-uses-in-fn.rs:18:17
    |
-LL | fn november<'a, 'b>(s: &'a str) -> (&'a str) {
+LL | fn november<'a, 'b>(s: &'a str) -> &'a str {
    |               --^^
    |               |
    |               help: elide the unused lifetime

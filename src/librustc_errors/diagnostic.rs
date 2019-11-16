@@ -34,7 +34,7 @@ pub struct SubDiagnostic {
     pub render_span: Option<MultiSpan>,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct DiagnosticStyledString(pub Vec<StringPart>);
 
 impl DiagnosticStyledString {
@@ -60,7 +60,7 @@ impl DiagnosticStyledString {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum StringPart {
     Normal(String),
     Highlighted(String),
@@ -150,6 +150,32 @@ impl Diagnostic {
                                -> &mut Self
     {
         self.note_expected_found_extra(label, expected, found, &"", &"")
+    }
+
+    pub fn note_unsuccessfull_coercion(&mut self,
+                                       expected: DiagnosticStyledString,
+                                       found: DiagnosticStyledString)
+                                       -> &mut Self
+    {
+        let mut msg: Vec<_> =
+            vec![(format!("required when trying to coerce from type `"),
+                  Style::NoStyle)];
+        msg.extend(expected.0.iter()
+                   .map(|x| match *x {
+                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+                   }));
+        msg.push((format!("` to type '"), Style::NoStyle));
+        msg.extend(found.0.iter()
+                   .map(|x| match *x {
+                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+                   }));
+        msg.push((format!("`"), Style::NoStyle));
+
+        // For now, just attach these as notes
+        self.highlighted_note(msg);
+        self
     }
 
     pub fn note_expected_found_extra(&mut self,

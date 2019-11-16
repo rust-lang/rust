@@ -20,6 +20,7 @@ LL |     i: Box<dyn T<usize, usize, usize, usize, B=usize>>,
    |            |
    |            associated type `A` must be specified
    |            associated type `C` must be specified
+   |
 help: if you meant to specify the associated types, write
    |
 LL |     i: Box<dyn T<usize, usize, A = usize, C = usize, B=usize>>,

@@ -36,6 +36,7 @@ pub mod const_prop;
 pub mod generator;
 pub mod inline;
 pub mod uniform_array_move_out;
+pub mod uninhabited_enum_branching;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
     self::qualify_consts::provide(providers);
@@ -210,13 +211,14 @@ fn mir_validated(
     }
 
     let mut body = tcx.mir_const(def_id).steal();
-    let qualify_and_promote_pass = qualify_consts::QualifyAndPromoteConstants::default();
+    let promote_pass = promote_consts::PromoteTemps::default();
     run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
         // What we need to run borrowck etc.
-        &qualify_and_promote_pass,
+        &qualify_consts::QualifyAndPromoteConstants::default(),
+        &promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
-    let promoted = qualify_and_promote_pass.promoted.into_inner();
+    let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
@@ -228,7 +230,7 @@ fn run_optimization_passes<'tcx>(
 ) {
     run_passes(tcx, body, InstanceDef::Item(def_id), promoted, MirPhase::Optimized, &[
         // Remove all things only needed by analysis
-        &no_landing_pads::NoLandingPads,
+        &no_landing_pads::NoLandingPads::new(tcx),
         &simplify_branches::SimplifyBranches::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
@@ -238,7 +240,7 @@ fn run_optimization_passes<'tcx>(
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
-        &no_landing_pads::NoLandingPads,
+        &no_landing_pads::NoLandingPads::new(tcx),
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
@@ -257,7 +259,9 @@ fn run_optimization_passes<'tcx>(
 
 
         // Optimizations begin.
-        &uniform_array_move_out::RestoreSubsliceArrayMoveOut,
+        &uninhabited_enum_branching::UninhabitedEnumBranching,
+        &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
+        &uniform_array_move_out::RestoreSubsliceArrayMoveOut::new(tcx),
         &inline::Inline,
 
         // Lowering generator control-flow and variables

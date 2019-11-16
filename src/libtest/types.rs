@@ -1,0 +1,145 @@
+//! Common types used by `libtest`.
+
+use std::fmt;
+use std::borrow::Cow;
+
+use super::options;
+use super::bench::Bencher;
+
+pub use NamePadding::*;
+pub use TestName::*;
+pub use TestFn::*;
+
+/// Type of the test according to the [rust book](https://doc.rust-lang.org/cargo/guide/tests.html)
+/// conventions.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TestType {
+    /// Unit-tests are expected to be in the `src` folder of the crate.
+    UnitTest,
+    /// Integration-style tests are expected to be in the `tests` folder of the crate.
+    IntegrationTest,
+    /// Doctests are created by the `librustdoc` manually, so it's a different type of test.
+    DocTest,
+    /// Tests for the sources that don't follow the project layout convention
+    /// (e.g. tests in raw `main.rs` compiled by calling `rustc --test` directly).
+    Unknown,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum NamePadding {
+    PadNone,
+    PadOnRight,
+}
+
+// The name of a test. By convention this follows the rules for rust
+// paths; i.e., it should be a series of identifiers separated by double
+// colons. This way if some test runner wants to arrange the tests
+// hierarchically it may.
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum TestName {
+    StaticTestName(&'static str),
+    DynTestName(String),
+    AlignedTestName(Cow<'static, str>, NamePadding),
+}
+
+impl TestName {
+    pub fn as_slice(&self) -> &str {
+        match *self {
+            StaticTestName(s) => s,
+            DynTestName(ref s) => s,
+            AlignedTestName(ref s, _) => &*s,
+        }
+    }
+
+    pub fn padding(&self) -> NamePadding {
+        match self {
+            &AlignedTestName(_, p) => p,
+            _ => PadNone,
+        }
+    }
+
+    pub fn with_padding(&self, padding: NamePadding) -> TestName {
+        let name = match self {
+            &TestName::StaticTestName(name) => Cow::Borrowed(name),
+            &TestName::DynTestName(ref name) => Cow::Owned(name.clone()),
+            &TestName::AlignedTestName(ref name, _) => name.clone(),
+        };
+
+        TestName::AlignedTestName(name, padding)
+    }
+}
+impl fmt::Display for TestName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self.as_slice(), f)
+    }
+}
+
+/// Represents a benchmark function.
+pub trait TDynBenchFn: Send {
+    fn run(&self, harness: &mut Bencher);
+}
+
+// A function that runs a test. If the function returns successfully,
+// the test succeeds; if the function panics then the test fails. We
+// may need to come up with a more clever definition of test in order
+// to support isolation of tests into threads.
+pub enum TestFn {
+    StaticTestFn(fn()),
+    StaticBenchFn(fn(&mut Bencher)),
+    DynTestFn(Box<dyn FnOnce() + Send>),
+    DynBenchFn(Box<dyn TDynBenchFn + 'static>),
+}
+
+impl TestFn {
+    pub fn padding(&self) -> NamePadding {
+        match *self {
+            StaticTestFn(..) => PadNone,
+            StaticBenchFn(..) => PadOnRight,
+            DynTestFn(..) => PadNone,
+            DynBenchFn(..) => PadOnRight,
+        }
+    }
+}
+
+impl fmt::Debug for TestFn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match *self {
+            StaticTestFn(..) => "StaticTestFn(..)",
+            StaticBenchFn(..) => "StaticBenchFn(..)",
+            DynTestFn(..) => "DynTestFn(..)",
+            DynBenchFn(..) => "DynBenchFn(..)",
+        })
+    }
+}
+
+// The definition of a single test. A test runner will run a list of
+// these.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct TestDesc {
+    pub name: TestName,
+    pub ignore: bool,
+    pub should_panic: options::ShouldPanic,
+    pub allow_fail: bool,
+    pub test_type: TestType,
+}
+
+impl TestDesc {
+    pub fn padded_name(&self, column_count: usize, align: NamePadding) -> String {
+        let mut name = String::from(self.name.as_slice());
+        let fill = column_count.saturating_sub(name.len());
+        let pad = " ".repeat(fill);
+        match align {
+            PadNone => name,
+            PadOnRight => {
+                name.push_str(&pad);
+                name
+            }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct TestDescAndFn {
+    pub desc: TestDesc,
+    pub testfn: TestFn,
+}

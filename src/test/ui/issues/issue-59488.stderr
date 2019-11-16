@@ -41,6 +41,7 @@ LL |     foo > foo;
    |     --- ^ --- fn() -> i32 {foo}
    |     |
    |     fn() -> i32 {foo}
+   |
 help: you might have forgotten to call this function
    |
 LL |     foo() > foo;

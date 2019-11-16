@@ -1,6 +1,5 @@
 use crate::ty::subst::{SubstsRef, GenericArgKind};
 use crate::ty::{self, Ty, TypeFlags, InferConst};
-use crate::mir::interpret::ConstValue;
 
 #[derive(Debug)]
 pub struct FlagComputation {
@@ -114,6 +113,7 @@ impl FlagComputation {
             }
 
             &ty::Placeholder(..) => {
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
             }
 
@@ -123,8 +123,7 @@ impl FlagComputation {
                 match infer {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
-                    ty::FreshFloatTy(_) => {
-                    }
+                    ty::FreshFloatTy(_) => {}
 
                     ty::TyVar(_) |
                     ty::IntVar(_) |
@@ -232,27 +231,27 @@ impl FlagComputation {
     fn add_const(&mut self, c: &ty::Const<'_>) {
         self.add_ty(c.ty);
         match c.val {
-            ConstValue::Unevaluated(_, substs) => {
+            ty::ConstKind::Unevaluated(_, substs) => {
                 self.add_substs(substs);
                 self.add_flags(TypeFlags::HAS_PROJECTION);
             },
-            ConstValue::Infer(infer) => {
+            ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_CT_INFER);
                 match infer {
                     InferConst::Fresh(_) => {}
-                    InferConst::Canonical(debruijn, _) => self.add_binder(debruijn),
                     InferConst::Var(_) => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX),
                 }
             }
-            ConstValue::Param(_) => {
-                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_PARAMS);
+            ty::ConstKind::Bound(debruijn, _) => self.add_binder(debruijn),
+            ty::ConstKind::Param(_) => {
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
+                self.add_flags(TypeFlags::HAS_PARAMS);
             }
-            ConstValue::Placeholder(_) => {
-                self.add_flags(TypeFlags::HAS_FREE_REGIONS | TypeFlags::HAS_CT_PLACEHOLDER);
+            ty::ConstKind::Placeholder(_) => {
+                self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
+                self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
             }
-            ConstValue::Scalar(_) => { }
-            ConstValue::Slice { data: _, start: _, end: _ } => { }
-            ConstValue::ByRef { alloc: _, offset: _ } => { }
+            ty::ConstKind::Value(_) => {}
         }
     }
 

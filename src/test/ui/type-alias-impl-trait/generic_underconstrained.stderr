@@ -1,8 +1,8 @@
 error: at least one trait must be specified
-  --> $DIR/generic_underconstrained.rs:6:40
+  --> $DIR/generic_underconstrained.rs:6:35
    |
 LL | type Underconstrained<T: Trait> = impl 'static;
-   |                                        ^^^^^^^
+   |                                   ^^^^^^^^^^^^
 
 error[E0277]: the trait bound `T: Trait` is not satisfied
   --> $DIR/generic_underconstrained.rs:6:1

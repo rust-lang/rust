@@ -20,6 +20,8 @@
 //! one function. Currently, the actual symbol is declared in the standard
 //! library, but the location of this may change over time.
 
+// ignore-tidy-undocumented-unsafe
+
 #![allow(dead_code, missing_docs)]
 #![unstable(feature = "core_panic",
             reason = "internal details of the implementation of the `panic!` \
@@ -34,7 +36,7 @@ use crate::panic::{Location, PanicInfo};
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[lang = "panic"]
-pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
+pub fn panic(expr: &str, location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }
     }
@@ -45,27 +47,27 @@ pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {
     // truncation and padding (even though none is used here). Using
     // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
     // output binary, saving up to a few kilobytes.
-    let (expr, file, line, col) = *expr_file_line_col;
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), &(file, line, col))
+    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]), location)
 }
 
 #[cold]
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[lang = "panic_bounds_check"]
-fn panic_bounds_check(file_line_col: &(&'static str, u32, u32),
-                     index: usize, len: usize) -> ! {
+fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }
     }
 
-    panic_fmt(format_args!("index out of bounds: the len is {} but the index is {}",
-                           len, index), file_line_col)
+    panic_fmt(
+        format_args!("index out of bounds: the len is {} but the index is {}", len, index),
+        location
+    )
 }
 
 #[cold]
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[cfg_attr(    feature="panic_immediate_abort" ,inline)]
-pub fn panic_fmt(fmt: fmt::Arguments<'_>, file_line_col: &(&'static str, u32, u32)) -> ! {
+pub fn panic_fmt(fmt: fmt::Arguments<'_>, location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }
     }
@@ -76,10 +78,6 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>, file_line_col: &(&'static str, u32, u3
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let (file, line, col) = *file_line_col;
-    let pi = PanicInfo::internal_constructor(
-        Some(&fmt),
-        Location::internal_constructor(file, line, col),
-    );
+    let pi = PanicInfo::internal_constructor(Some(&fmt), location);
     unsafe { panic_impl(&pi) }
 }

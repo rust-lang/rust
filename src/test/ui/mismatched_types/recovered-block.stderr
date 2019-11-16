@@ -3,6 +3,7 @@ error: missing `struct` for struct definition
    |
 LL |     pub Foo { text }
    |        ^
+   |
 help: add `struct` here to parse `Foo` as a public struct
    |
 LL |     pub struct Foo { text }
@@ -12,7 +13,7 @@ error: expected one of `(` or `<`, found `{`
   --> $DIR/recovered-block.rs:19:9
    |
 LL |     Foo { text: "".to_string() }
-   |         ^ expected one of `(` or `<` here
+   |         ^ expected one of `(` or `<`
 
 error: aborting due to 2 previous errors
 

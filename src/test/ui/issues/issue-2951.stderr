@@ -1,8 +1,13 @@
 error[E0308]: mismatched types
   --> $DIR/issue-2951.rs:3:10
    |
+LL | fn foo<T, U>(x: T, y: U) {
+   |        -  - found type parameter
+   |        |
+   |        expected type parameter
+LL |     let mut xx = x;
 LL |     xx = y;
-   |          ^ expected type parameter, found a different type parameter
+   |          ^ expected type parameter `T`, found type parameter `U`
    |
    = note: expected type `T`
               found type `U`

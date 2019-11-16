@@ -12,7 +12,6 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, GenericArgKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
-use crate::mir::interpret::ConstValue;
 use crate::util::common::ErrorReported;
 use crate::middle::lang_items;
 
@@ -184,7 +183,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                 // Now libcore provides that impl.
                 ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
                 ty::Char | ty::RawPtr(..) | ty::Never |
-                ty::Ref(_, _, hir::MutImmutable) => return Ok(()),
+                ty::Ref(_, _, hir::Mutability::Immutable) => return Ok(()),
 
                 ty::Adt(adt, substs) => (adt, substs),
 
@@ -566,7 +565,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
                     GenericArgKind::Const(&ty::Const {
-                        val: ConstValue::Param(ref pc),
+                        val: ty::ConstKind::Param(ref pc),
                         ..
                     }) => {
                         !impl_generics.const_param(pc, self).pure_wrt_drop
@@ -680,7 +679,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
     pub fn is_mutable_static(&self, def_id: DefId) -> bool {
-        self.static_mutability(def_id) == Some(hir::MutMutable)
+        self.static_mutability(def_id) == Some(hir::Mutability::Mutable)
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.
@@ -818,6 +817,8 @@ impl<'tcx> ty::TyS<'tcx> {
     ///
     /// (Note that this implies that if `ty` has a destructor attached,
     /// then `needs_drop` will definitely return `true` for `ty`.)
+    ///
+    /// Note that this method is used to check eligible types in unions.
     #[inline]
     pub fn needs_drop(&'tcx self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
         tcx.needs_drop_raw(param_env.and(self)).0

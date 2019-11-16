@@ -3,6 +3,7 @@ error: unexpected token: `...`
    |
 LL |     return ...1;
    |            ^^^
+   |
 help: use `..` for an exclusive range
    |
 LL |     return ..1;
@@ -17,6 +18,7 @@ error: unexpected token: `...`
    |
 LL |     let x = ...0;
    |             ^^^
+   |
 help: use `..` for an exclusive range
    |
 LL |     let x = ..0;
@@ -31,6 +33,7 @@ error: unexpected token: `...`
    |
 LL |     let x = 5...5;
    |              ^^^
+   |
 help: use `..` for an exclusive range
    |
 LL |     let x = 5..5;
@@ -45,6 +48,7 @@ error: unexpected token: `...`
    |
 LL |     for _ in 0...1 {}
    |               ^^^
+   |
 help: use `..` for an exclusive range
    |
 LL |     for _ in 0..1 {}

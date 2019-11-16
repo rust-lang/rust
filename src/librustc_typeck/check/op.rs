@@ -11,6 +11,8 @@ use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
     pub fn check_binop_assign(
@@ -179,7 +181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_expr_with_needs(lhs_expr, Needs::MutPlace)
             }
         };
-        let lhs_ty = self.resolve_type_vars_with_obligations(lhs_ty);
+        let lhs_ty = self.resolve_vars_with_obligations(lhs_ty);
 
         // N.B., as we have not yet type-checked the RHS, we don't have the
         // type at hand. Make a variable to represent it. The whole reason
@@ -196,7 +198,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // see `NB` above
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
-        let rhs_ty = self.resolve_type_vars_with_obligations(rhs_ty);
+        let rhs_ty = self.resolve_vars_with_obligations(rhs_ty);
 
         let return_ty = match result {
             Ok(method) => {
@@ -204,8 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                         let mutbl = match mutbl {
-                            hir::MutImmutable => AutoBorrowMutability::Immutable,
-                            hir::MutMutable => AutoBorrowMutability::Mutable {
+                            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
+                            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,
@@ -221,8 +223,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind {
                         let mutbl = match mutbl {
-                            hir::MutImmutable => AutoBorrowMutability::Immutable,
-                            hir::MutMutable => AutoBorrowMutability::Mutable {
+                            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
+                            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,

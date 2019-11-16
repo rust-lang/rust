@@ -2,7 +2,7 @@ error: expected one of `extern`, `fn`, or `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:6:12
    |
 LL |     unsafe 'b: {}
-   |            ^^ expected one of `extern`, `fn`, or `{` here
+   |            ^^ expected one of `extern`, `fn`, or `{`
 
 error: expected `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:10:13
@@ -27,7 +27,7 @@ error: expected one of `.`, `?`, `{`, or an operator, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:18:17
    |
 LL |     match false 'b: {}
-   |     -----       ^^ expected one of `.`, `?`, `{`, or an operator here
+   |     -----       ^^ expected one of `.`, `?`, `{`, or an operator
    |     |
    |     while parsing this match expression
 

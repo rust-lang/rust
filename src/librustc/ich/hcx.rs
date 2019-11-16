@@ -13,11 +13,10 @@ use std::cell::RefCell;
 
 use syntax::ast;
 use syntax::source_map::SourceMap;
-use syntax_expand::hygiene::SyntaxContext;
 use syntax::symbol::Symbol;
 use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::hygiene;
+use syntax_pos::hygiene::{self, SyntaxContext};
 
 use rustc_data_structures::stable_hasher::{
     HashStable, StableHasher, ToStableHashKey,
@@ -310,11 +309,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         // position that belongs to it, as opposed to hashing the first
         // position past it.
         let span = self.data();
-
-        if span.hi < span.lo {
-            return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
-        }
-
         let (file_lo, line_lo, col_lo) = match hcx.source_map()
                                                   .byte_pos_to_line_and_col(span.lo) {
             Some(pos) => pos,

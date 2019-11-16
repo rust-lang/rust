@@ -4,7 +4,7 @@ pub use self::Variance::*;
 pub use self::AssocItemContainer::*;
 pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
-pub use self::fold::TypeFoldable;
+pub use self::fold::{TypeFoldable, TypeVisitor};
 
 use crate::hir::{map as hir_map, GlobMap, TraitMap};
 use crate::hir::Node;
@@ -15,6 +15,7 @@ use rustc_macros::HashStable;
 use crate::ich::Fingerprint;
 use crate::ich::StableHashingContext;
 use crate::infer::canonical::Canonical;
+use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::mir::Body;
@@ -45,12 +46,12 @@ use std::{mem, ptr};
 use std::ops::Range;
 use syntax::ast::{self, Name, Ident, NodeId};
 use syntax::attr;
-use syntax_expand::hygiene::ExpnId;
-use syntax::symbol::{kw, sym, Symbol, InternedString};
+use syntax_pos::symbol::{kw, sym, Symbol};
+use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
 use smallvec;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxIndexMap};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_index::vec::{Idx, IndexVec};
 
@@ -62,7 +63,7 @@ pub use self::sty::{InferTy, ParamTy, ParamConst, InferConst, ProjectionTy, Exis
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TyKind, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
-pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const};
+pub use self::sty::{ExistentialProjection, PolyExistentialProjection, Const, ConstKind};
 pub use self::sty::{BoundRegion, EarlyBoundRegion, FreeRegion, Region};
 pub use self::sty::RegionKind;
 pub use self::sty::{TyVid, IntVid, FloatVid, ConstVid, RegionVid};
@@ -82,6 +83,10 @@ pub use self::context::{
 };
 
 pub use self::instance::{Instance, InstanceDef};
+
+pub use self::structural_match::search_for_structural_match_violation;
+pub use self::structural_match::type_marked_structural;
+pub use self::structural_match::NonStructuralMatchTy;
 
 pub use self::trait_def::TraitDef;
 
@@ -115,12 +120,14 @@ pub mod util;
 mod context;
 mod instance;
 mod structural_impls;
+mod structural_match;
 mod sty;
 
 // Data types
 
-#[derive(Clone)]
-pub struct Resolutions {
+pub struct ResolverOutputs {
+    pub definitions: hir_map::Definitions,
+    pub cstore: Box<CrateStoreDyn>,
     pub extern_crate_map: NodeMap<CrateNum>,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
@@ -159,7 +166,7 @@ impl AssocItemContainer {
 /// The "header" of an impl is everything outside the body: a Self type, a trait
 /// ref (in the case of a trait impl), and a set of predicates (from the
 /// bounds / where-clauses).
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug)]
 pub struct ImplHeader<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,
@@ -195,7 +202,7 @@ pub struct AssocItem {
     pub method_has_self_argument: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable)]
 pub enum AssocKind {
     Const,
     Method,
@@ -331,7 +338,7 @@ impl Visibility {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Hash, HashStable)]
+#[derive(Copy, Clone, PartialEq, RustcDecodable, RustcEncodable, HashStable)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -752,7 +759,7 @@ pub struct UpvarId {
     pub closure_expr_id: LocalDefId,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy, HashStable)]
+#[derive(Clone, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, HashStable)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -849,7 +856,7 @@ impl ty::EarlyBoundRegion {
     /// Does this early bound region have a name? Early bound regions normally
     /// always have names except when using anonymous lifetimes (`'_`).
     pub fn has_name(&self) -> bool {
-        self.name != kw::UnderscoreLifetime.as_interned_str()
+        self.name != kw::UnderscoreLifetime
     }
 }
 
@@ -866,7 +873,7 @@ pub enum GenericParamDefKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub struct GenericParamDef {
-    pub name: InternedString,
+    pub name: Symbol,
     pub def_id: DefId,
     pub index: u32,
 
@@ -1136,7 +1143,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, &'tcx [ty::Predicate<'tcx>]>,
+    pub predicates: FxHashMap<DefId, &'tcx [(ty::Predicate<'tcx>, Span)]>,
 }
 
 impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
@@ -2686,8 +2693,8 @@ impl<'tcx> TyS<'tcx> {
 impl BorrowKind {
     pub fn from_mutbl(m: hir::Mutability) -> BorrowKind {
         match m {
-            hir::MutMutable => MutBorrow,
-            hir::MutImmutable => ImmBorrow,
+            hir::Mutability::Mutable => MutBorrow,
+            hir::Mutability::Immutable => ImmBorrow,
         }
     }
 
@@ -2697,13 +2704,13 @@ impl BorrowKind {
     /// question.
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            MutBorrow => hir::MutMutable,
-            ImmBorrow => hir::MutImmutable,
+            MutBorrow => hir::Mutability::Mutable,
+            ImmBorrow => hir::Mutability::Immutable,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
-            UniqueImmBorrow => hir::MutMutable,
+            UniqueImmBorrow => hir::Mutability::Mutable,
         }
     }
 
@@ -3019,7 +3026,7 @@ impl<'tcx> TyCtxt<'tcx> {
                     }),
                 _ => def_key.disambiguated_data.data.get_opt_name().unwrap_or_else(|| {
                     bug!("item_name: no name for {:?}", self.def_path(id));
-                }).as_symbol(),
+                }),
             }
         }
     }
@@ -3139,6 +3146,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+#[derive(Clone)]
 pub struct AssocItemsIterator<'tcx> {
     tcx: TyCtxt<'tcx>,
     def_ids: &'tcx [DefId],
@@ -3393,14 +3401,12 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: DefId) -> hir::IsAsync {
     fn_like.asyncness()
 }
 
-
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     context::provide(providers);
     erase_regions::provide(providers);
     layout::provide(providers);
     util::provide(providers);
     constness::provide(providers);
-    crate::traits::query::dropck_outlives::provide(providers);
     *providers = ty::query::Providers {
         asyncness,
         associated_item,
@@ -3429,11 +3435,11 @@ pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub struct SymbolName {
     // FIXME: we don't rely on interning or equality here - better have
     // this be a `&'tcx str`.
-    pub name: InternedString
+    pub name: Symbol
 }
 
 impl_stable_hash_for!(struct self::SymbolName {
@@ -3443,8 +3449,21 @@ impl_stable_hash_for!(struct self::SymbolName {
 impl SymbolName {
     pub fn new(name: &str) -> SymbolName {
         SymbolName {
-            name: InternedString::intern(name)
+            name: Symbol::intern(name)
         }
+    }
+}
+
+impl PartialOrd for SymbolName {
+    fn partial_cmp(&self, other: &SymbolName) -> Option<Ordering> {
+        self.name.as_str().partial_cmp(&other.name.as_str())
+    }
+}
+
+/// Ordering must use the chars to ensure reproducible builds.
+impl Ord for SymbolName {
+    fn cmp(&self, other: &SymbolName) -> Ordering {
+        self.name.as_str().cmp(&other.name.as_str())
     }
 }
 

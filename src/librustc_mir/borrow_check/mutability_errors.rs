@@ -49,10 +49,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [],
             } => {
                 item_msg = format!("`{}`", access_place_desc.unwrap());
-                if let Place {
-                    base: PlaceBase::Local(_),
-                    projection: box [],
-                } = access_place {
+                if access_place.as_local().is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
                     let name = self.body.local_decls[*local]
@@ -153,10 +150,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }),
                 projection: [],
             } => {
-                if let Place {
-                    base: PlaceBase::Static(_),
-                    projection: box [],
-                } = access_place {
+                if let PlaceRef {
+                    base: &PlaceBase::Static(_),
+                    projection: &[],
+                } = access_place.as_ref() {
                     item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
                     reason = String::new();
                 } else {
@@ -274,7 +271,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // we have an explicit self. Do the same thing in this case and check
                         // for a `self: &mut Self` to suggest removing the `&mut`.
                         if let ty::Ref(
-                            _, _, hir::Mutability::MutMutable
+                            _, _, hir::Mutability::Mutable
                         ) = local_decl.ty.kind {
                             true
                         } else {
@@ -596,7 +593,7 @@ fn suggest_ampmut<'tcx>(
     }
 
     let ty_mut = local_decl.ty.builtin_deref(true).unwrap();
-    assert_eq!(ty_mut.mutbl, hir::MutImmutable);
+    assert_eq!(ty_mut.mutbl, hir::Mutability::Immutable);
     (highlight_span,
      if local_decl.ty.is_region_ptr() {
          format!("&mut {}", ty_mut.ty)
@@ -632,7 +629,7 @@ fn annotate_struct_field(
             // we can expect a field that is an immutable reference to a type.
             if let hir::Node::Field(field) = node {
                 if let hir::TyKind::Rptr(lifetime, hir::MutTy {
-                    mutbl: hir::Mutability::MutImmutable,
+                    mutbl: hir::Mutability::Immutable,
                     ref ty
                 }) = field.ty.kind {
                     // Get the snippets in two parts - the named lifetime (if there is one) and

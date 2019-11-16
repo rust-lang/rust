@@ -38,6 +38,7 @@ LL | | }
    |
 LL |   pass_dollar_crate!();
    |   --------------------- in this macro invocation
+   |
 help: possible candidate is found in another module, you can import it into scope
    |
 LL | use ItemUse;

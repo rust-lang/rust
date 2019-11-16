@@ -41,8 +41,8 @@
 #![feature(overlapping_marker_traits)]
 #![feature(extern_types)]
 #![feature(nll)]
-#![feature(non_exhaustive)]
 #![feature(optin_builtin_traits)]
+#![feature(option_expect_none)]
 #![feature(range_is_empty)]
 #![feature(slice_patterns)]
 #![feature(specialization)]
@@ -56,10 +56,10 @@
 #![feature(test)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
 #![feature(log_syntax)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
+#![feature(hash_raw_entry)]
 
 #![recursion_limit="512"]
 
@@ -83,8 +83,6 @@ mod tests;
 
 #[macro_use]
 mod macros;
-
-pub mod error_codes;
 
 #[macro_use]
 pub mod query;
@@ -125,7 +123,6 @@ pub mod util {
     pub mod captures;
     pub mod common;
     pub mod nodemap;
-    pub mod profiling;
     pub mod bug;
 }
 

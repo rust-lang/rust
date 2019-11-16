@@ -32,20 +32,21 @@ use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
-use syntax_expand::base::{MacroKind, SyntaxExtension};
-use syntax_expand::expand::AstFragment;
-use syntax_expand::hygiene::ExpnId;
 use syntax::feature_gate::is_builtin_attr;
-use syntax::parse::token::{self, Token};
+use syntax::token::{self, Token};
 use syntax::print::pprust;
 use syntax::{span_err, struct_span_err};
 use syntax::source_map::{respan, Spanned};
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
-
+use syntax_expand::base::SyntaxExtension;
+use syntax_expand::expand::AstFragment;
+use syntax_pos::hygiene::{MacroKind, ExpnId};
 use syntax_pos::{Span, DUMMY_SP};
 
 use log::debug;
+
+use rustc_error_codes::*;
 
 type Res = def::Res<NodeId>;
 
@@ -110,14 +111,14 @@ impl<'a> Resolver<'a> {
         }
 
         let (name, parent) = if def_id.index == CRATE_DEF_INDEX {
-            (self.cstore.crate_name_untracked(def_id.krate).as_interned_str(), None)
+            (self.cstore().crate_name_untracked(def_id.krate), None)
         } else {
-            let def_key = self.cstore.def_key(def_id);
+            let def_key = self.cstore().def_key(def_id);
             (def_key.disambiguated_data.data.get_opt_name().unwrap(),
              Some(self.get_module(DefId { index: def_key.parent.unwrap(), ..def_id })))
         };
 
-        let kind = ModuleKind::Def(DefKind::Mod, def_id, name.as_symbol());
+        let kind = ModuleKind::Def(DefKind::Mod, def_id, name);
         let module = self.arenas.alloc_module(ModuleData::new(
             parent, kind, def_id, ExpnId::root(), DUMMY_SP
         ));
@@ -142,8 +143,7 @@ impl<'a> Resolver<'a> {
     crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
-            Res::NonMacroAttr(attr_kind) =>
-                Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
+            Res::NonMacroAttr(attr_kind) => Some(self.non_macro_attr(attr_kind.is_used())),
             _ => None,
         }
     }
@@ -153,9 +153,8 @@ impl<'a> Resolver<'a> {
             return Some(ext.clone());
         }
 
-        let ext = Lrc::new(match self.cstore.load_macro_untracked(def_id, &self.session) {
-            LoadedMacro::MacroDef(item) =>
-                self.compile_macro(&item, self.cstore.crate_edition_untracked(def_id.krate)),
+        let ext = Lrc::new(match self.cstore().load_macro_untracked(def_id, &self.session) {
+            LoadedMacro::MacroDef(item, edition) => self.compile_macro(&item, edition),
             LoadedMacro::ProcMacro(ext) => ext,
         });
 
@@ -177,7 +176,7 @@ impl<'a> Resolver<'a> {
 
     crate fn build_reduced_graph_external(&mut self, module: Module<'a>) {
         let def_id = module.def_id().expect("unpopulated module without a def-id");
-        for child in self.cstore.item_children_untracked(def_id, self.session) {
+        for child in self.cstore().item_children_untracked(def_id, self.session) {
             let child = child.map_id(|_| panic!("unexpected id"));
             BuildReducedGraphVisitor { r: self, parent_scope: ParentScope::module(module) }
                 .build_reduced_graph_for_external_crate_res(child);
@@ -258,9 +257,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                 if self.r.is_accessible_from(vis, parent_scope.module) {
                                     vis
                                 } else {
-                                    let msg =
-                                        "visibilities can only be restricted to ancestor modules";
-                                    self.r.session.span_err(path.span, msg);
+                                    struct_span_err!(self.r.session, path.span, E0742,
+                                        "visibilities can only be restricted to ancestor modules")
+                                        .emit();
                                     ty::Visibility::Public
                                 }
                             }
@@ -451,7 +450,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                                     name: kw::PathRoot,
                                     span: source.ident.span,
                                 },
-                                id: Some(self.r.session.next_node_id()),
+                                id: Some(self.r.next_node_id()),
                             });
                             source.ident.name = crate_name;
                         }
@@ -702,13 +701,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(..) => {
-                let res = Res::Def(DefKind::TyAlias, self.r.definitions.local_def_id(item.id));
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
-            }
-
-            ItemKind::OpaqueTy(_, _) => {
-                let res = Res::Def(DefKind::OpaqueTy, self.r.definitions.local_def_id(item.id));
+            ItemKind::TyAlias(ref ty, _) => {
+                let def_kind = match ty.kind.opaque_top_hack() {
+                    None => DefKind::TyAlias,
+                    Some(_) => DefKind::OpaqueTy,
+                };
+                let res = Res::Def(def_kind, self.r.definitions.local_def_id(item.id));
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
@@ -851,12 +849,14 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             Res::Def(kind @ DefKind::Mod, def_id)
             | Res::Def(kind @ DefKind::Enum, def_id)
             | Res::Def(kind @ DefKind::Trait, def_id) => {
-                let module = self.r.new_module(parent,
-                                             ModuleKind::Def(kind, def_id, ident.name),
-                                             def_id,
-                                             expansion,
-                                             span);
-                self.r.define(parent, ident, TypeNS, (module, vis, DUMMY_SP, expansion));
+                let module = self.r.new_module(
+                    parent,
+                    ModuleKind::Def(kind, def_id, ident.name),
+                    def_id,
+                    expansion,
+                    span,
+                );
+                self.r.define(parent, ident, TypeNS, (module, vis, span, expansion));
             }
             Res::Def(DefKind::Struct, _)
             | Res::Def(DefKind::Union, _)
@@ -869,35 +869,35 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             | Res::Def(DefKind::AssocOpaqueTy, _)
             | Res::PrimTy(..)
             | Res::ToolMod =>
-                self.r.define(parent, ident, TypeNS, (res, vis, DUMMY_SP, expansion)),
+                self.r.define(parent, ident, TypeNS, (res, vis, span, expansion)),
             Res::Def(DefKind::Fn, _)
             | Res::Def(DefKind::Method, _)
             | Res::Def(DefKind::Static, _)
             | Res::Def(DefKind::Const, _)
             | Res::Def(DefKind::AssocConst, _)
             | Res::Def(DefKind::Ctor(..), _) =>
-                self.r.define(parent, ident, ValueNS, (res, vis, DUMMY_SP, expansion)),
+                self.r.define(parent, ident, ValueNS, (res, vis, span, expansion)),
             Res::Def(DefKind::Macro(..), _)
             | Res::NonMacroAttr(..) =>
-                self.r.define(parent, ident, MacroNS, (res, vis, DUMMY_SP, expansion)),
+                self.r.define(parent, ident, MacroNS, (res, vis, span, expansion)),
             Res::Def(DefKind::TyParam, _) | Res::Def(DefKind::ConstParam, _)
             | Res::Local(..) | Res::SelfTy(..) | Res::SelfCtor(..) | Res::Err =>
                 bug!("unexpected resolution: {:?}", res)
         }
         // Record some extra data for better diagnostics.
+        let cstore = self.r.cstore();
         match res {
             Res::Def(DefKind::Struct, def_id) | Res::Def(DefKind::Union, def_id) => {
-                let field_names =
-                    self.r.cstore.struct_field_names_untracked(def_id, self.r.session);
+                let field_names = cstore.struct_field_names_untracked(def_id, self.r.session);
                 self.insert_field_names(def_id, field_names);
             }
             Res::Def(DefKind::Method, def_id) => {
-                if self.r.cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
+                if cstore.associated_item_cloned_untracked(def_id).method_has_self_argument {
                     self.r.has_self.insert(def_id);
                 }
             }
             Res::Def(DefKind::Ctor(CtorOf::Struct, ..), def_id) => {
-                let parent = self.r.cstore.def_key(def_id).parent;
+                let parent = cstore.def_key(def_id).parent;
                 if let Some(struct_def_id) = parent.map(|index| DefId { index, ..def_id }) {
                     self.r.struct_constructors.insert(struct_def_id, (res, vis));
                 }
@@ -1229,8 +1229,10 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
-        if !attr.is_sugared_doc && is_builtin_attr(attr) {
-            self.r.builtin_attrs.push((attr.path.segments[0].ident, self.parent_scope));
+        if !attr.is_doc_comment() && is_builtin_attr(attr) {
+            self.r.builtin_attrs.push(
+                (attr.get_normal_item().path.segments[0].ident, self.parent_scope)
+            );
         }
         visit::walk_attribute(self, attr);
     }

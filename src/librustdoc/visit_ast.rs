@@ -8,9 +8,9 @@ use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::ty::TyCtxt;
 use syntax::ast;
-use syntax_expand::base::MacroKind;
 use syntax::source_map::Spanned;
 use syntax::symbol::sym;
+use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{self, Span};
 
 use std::mem;
@@ -438,8 +438,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.structs.push(self.visit_variant_data(item, ident.name, sd, gen)),
             hir::ItemKind::Union(ref sd, ref gen) =>
                 om.unions.push(self.visit_union_data(item, ident.name, sd, gen)),
-            hir::ItemKind::Fn(ref fd, header, ref gen, body) =>
-                self.visit_fn(om, item, ident.name, &**fd, header, gen, body),
+            hir::ItemKind::Fn(ref sig, ref gen, body) =>
+                self.visit_fn(om, item, ident.name, &sig.decl, sig.header, gen, body),
             hir::ItemKind::TyAlias(ref ty, ref gen) => {
                 let t = Typedef {
                     ty,

@@ -5,7 +5,7 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_index::vec::Idx;
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
-use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue};
+use rustc::mir::interpret::{GlobalId, ErrorHandled};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -628,6 +628,11 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             let cast = if cx.tables().is_coercion_cast(source.hir_id) {
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
+            } else if cx.tables().expr_ty(source).is_region_ptr() {
+                // Special cased so that we can type check that the element
+                // type of the source matches the pointed to type of the
+                // destination.
+                ExprKind::Pointer { source: source.to_ref(), cast: PointerCast::ArrayToPointer }
             } else {
                 // check whether this is casting an enum variant discriminant
                 // to prevent cycles, we refer to the discriminant initializer
@@ -687,7 +692,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             // and not the beginning of discriminants (which is always `0`)
                             let substs = InternalSubsts::identity_for_item(cx.tcx(), did);
                             let lhs = mk_const(cx.tcx().mk_const(ty::Const {
-                                val: ConstValue::Unevaluated(did, substs),
+                                val: ty::ConstKind::Unevaluated(did, substs),
                                 ty: var_ty,
                             }));
                             let bin = ExprKind::Binary {
@@ -855,8 +860,8 @@ impl ToBorrowKind for AutoBorrowMutability {
 impl ToBorrowKind for hir::Mutability {
     fn to_borrow_kind(&self) -> BorrowKind {
         match *self {
-            hir::MutMutable => BorrowKind::Mut { allow_two_phase_borrow: false },
-            hir::MutImmutable => BorrowKind::Shared,
+            hir::Mutability::Mutable => BorrowKind::Mut { allow_two_phase_borrow: false },
+            hir::Mutability::Immutable => BorrowKind::Shared,
         }
     }
 }
@@ -908,8 +913,8 @@ fn convert_path_expr<'a, 'tcx>(
             let generics = cx.tcx.generics_of(item_def_id);
             let local_def_id = cx.tcx.hir().local_def_id(hir_id);
             let index = generics.param_def_id_to_index[&local_def_id];
-            let name = cx.tcx.hir().name(hir_id).as_interned_str();
-            let val = ConstValue::Param(ty::ParamConst::new(index, name));
+            let name = cx.tcx.hir().name(hir_id);
+            let val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(
                     ty::Const {
@@ -927,7 +932,7 @@ fn convert_path_expr<'a, 'tcx>(
             debug!("convert_path_expr: (const) user_ty={:?}", user_ty);
             ExprKind::Literal {
                 literal: cx.tcx.mk_const(ty::Const {
-                    val: ConstValue::Unevaluated(def_id, substs),
+                    val: ty::ConstKind::Unevaluated(def_id, substs),
                     ty: cx.tables().node_type(expr.hir_id),
                 }),
                 user_ty,
@@ -1008,7 +1013,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::MutImmutable,
+                                                               mutbl: hir::Mutability::Immutable,
                                                            });
                         Expr {
                             ty: closure_ty,
@@ -1029,7 +1034,7 @@ fn convert_var(
                         let ref_closure_ty = cx.tcx.mk_ref(region,
                                                            ty::TypeAndMut {
                                                                ty: closure_ty,
-                                                               mutbl: hir::MutMutable,
+                                                               mutbl: hir::Mutability::Mutable,
                                                            });
                         Expr {
                             ty: closure_ty,

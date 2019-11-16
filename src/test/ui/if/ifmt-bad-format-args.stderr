@@ -9,6 +9,7 @@ error: format argument must be a string literal
    |
 LL |     format_args!(|| {});
    |                  ^^^^^
+   |
 help: you might be missing a string literal to format with
    |
 LL |     format_args!("{}", || {});

@@ -199,7 +199,7 @@ use rustc_data_structures::sync::{MTRef, MTLock, ParallelIterator, par_iter};
 
 use std::iter;
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
+#[derive(PartialEq)]
 pub enum MonoItemCollectionMode {
     Eager,
     Lazy
@@ -1071,7 +1071,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
 
     fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
         match ii.kind {
-            hir::ImplItemKind::Method(hir::MethodSig { .. }, _) => {
+            hir::ImplItemKind::Method(hir::FnSig { .. }, _) => {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);
                 self.push_if_root(def_id);
             }
@@ -1284,15 +1284,15 @@ fn collect_const<'tcx>(
     );
 
     match substituted_constant.val {
-        ConstValue::Scalar(Scalar::Ptr(ptr)) =>
+        ty::ConstKind::Value(ConstValue::Scalar(Scalar::Ptr(ptr))) =>
             collect_miri(tcx, ptr.alloc_id, output),
-        ConstValue::Slice { data: alloc, start: _, end: _ } |
-        ConstValue::ByRef { alloc, .. } => {
+        ty::ConstKind::Value(ConstValue::Slice { data: alloc, start: _, end: _ }) |
+        ty::ConstKind::Value(ConstValue::ByRef { alloc, .. }) => {
             for &((), id) in alloc.relocations().values() {
                 collect_miri(tcx, id, output);
             }
         }
-        ConstValue::Unevaluated(def_id, substs) => {
+        ty::ConstKind::Unevaluated(def_id, substs) => {
             let instance = ty::Instance::resolve(tcx,
                                                 param_env,
                                                 def_id,

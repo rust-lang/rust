@@ -46,7 +46,7 @@ impl Handle {
     pub fn into_raw(self) -> c::HANDLE {
         let ret = self.raw();
         mem::forget(self);
-        return ret;
+        ret
     }
 }
 

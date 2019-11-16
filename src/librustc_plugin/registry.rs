@@ -1,8 +1,7 @@
 //! Used by plugin crates to tell `rustc` about the plugins they provide.
 
-use rustc::lint::{EarlyLintPassObject, LateLintPassObject, LintId, Lint};
+use rustc::lint::LintStore;
 use rustc::session::Session;
-use rustc::util::nodemap::FxHashMap;
 
 use syntax_expand::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExtension};
 use syntax_expand::base::MacroExpanderFn;
@@ -26,6 +25,9 @@ pub struct Registry<'a> {
     /// from the plugin registrar.
     pub sess: &'a Session,
 
+    /// The `LintStore` allows plugins to register new lints.
+    pub lint_store: &'a mut LintStore,
+
     #[doc(hidden)]
     pub args_hidden: Option<Vec<ast::NestedMetaItem>>,
 
@@ -36,15 +38,6 @@ pub struct Registry<'a> {
     pub syntax_exts: Vec<NamedSyntaxExtension>,
 
     #[doc(hidden)]
-    pub early_lint_passes: Vec<EarlyLintPassObject>,
-
-    #[doc(hidden)]
-    pub late_lint_passes: Vec<LateLintPassObject>,
-
-    #[doc(hidden)]
-    pub lint_groups: FxHashMap<&'static str, (Vec<LintId>, Option<&'static str>)>,
-
-    #[doc(hidden)]
     pub llvm_passes: Vec<String>,
 
     #[doc(hidden)]
@@ -53,15 +46,13 @@ pub struct Registry<'a> {
 
 impl<'a> Registry<'a> {
     #[doc(hidden)]
-    pub fn new(sess: &'a Session, krate_span: Span) -> Registry<'a> {
+    pub fn new(sess: &'a Session, lint_store: &'a mut LintStore, krate_span: Span) -> Registry<'a> {
         Registry {
             sess,
+            lint_store,
             args_hidden: None,
             krate_span,
             syntax_exts: vec![],
-            early_lint_passes: vec![],
-            late_lint_passes: vec![],
-            lint_groups: FxHashMap::default(),
             llvm_passes: vec![],
             attributes: vec![],
         }
@@ -99,27 +90,6 @@ impl<'a> Registry<'a> {
         self.register_syntax_extension(Symbol::intern(name), ext);
     }
 
-    /// Register a compiler lint pass.
-    pub fn register_early_lint_pass(&mut self, lint_pass: EarlyLintPassObject) {
-        self.early_lint_passes.push(lint_pass);
-    }
-
-    /// Register a compiler lint pass.
-    pub fn register_late_lint_pass(&mut self, lint_pass: LateLintPassObject) {
-        self.late_lint_passes.push(lint_pass);
-    }
-    /// Register a lint group.
-    pub fn register_lint_group(
-        &mut self,
-        name: &'static str,
-        deprecated_name: Option<&'static str>,
-        to: Vec<&'static Lint>
-    ) {
-        self.lint_groups.insert(name,
-                                (to.into_iter().map(|x| LintId::of(x)).collect(),
-                                 deprecated_name));
-    }
-
     /// Register an LLVM pass.
     ///
     /// Registration with LLVM itself is handled through static C++ objects with
@@ -131,7 +101,6 @@ impl<'a> Registry<'a> {
 
     /// Register an attribute with an attribute type.
     ///
-    /// Registered attributes will bypass the `custom_attribute` feature gate.
     /// `Whitelisted` attributes will additionally not trigger the `unused_attribute`
     /// lint. `CrateLevel` attributes will not be allowed on anything other than a crate.
     pub fn register_attribute(&mut self, name: Symbol, ty: AttributeType) {

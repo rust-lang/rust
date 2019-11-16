@@ -3,6 +3,7 @@ error[E0689]: can't call method `pow` on ambiguous numeric type `{float}`
    |
 LL |     let a = (1.0).pow(1.0);
    |                   ^^^
+   |
 help: you must specify a concrete type for this numeric value, like `f32`
    |
 LL |     let a = (1.0_f32).pow(1.0);

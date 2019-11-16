@@ -1,0 +1,12 @@
+error[E0658]: the `#[register_tool]` attribute is an experimental feature
+  --> $DIR/feature-gate-register_tool.rs:1:1
+   |
+LL | #![register_tool(tool)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/66079
+   = help: add `#![feature(register_tool)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

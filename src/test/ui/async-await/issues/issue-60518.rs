@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // edition:2018
 
 // This is a regression test to ensure that simple bindings (where replacement arguments aren't

@@ -2,7 +2,7 @@ error: expected one of `,`, `:`, or `>`, found `'b`
   --> $DIR/bounds-lifetime-1.rs:1:17
    |
 LL | type A = for<'a 'b> fn();
-   |                 ^^ expected one of `,`, `:`, or `>` here
+   |                 ^^ expected one of `,`, `:`, or `>`
 
 error: aborting due to previous error
 

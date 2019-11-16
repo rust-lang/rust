@@ -27,8 +27,8 @@ struct SalsaStorage {
     _parse: <ParseQuery as Query<RootDatabase>>::Data, //~ ERROR overflow
 }
 
-impl Database for RootDatabase { //~ ERROR overflow
-    type Storage = SalsaStorage;
+impl Database for RootDatabase {
+    type Storage = SalsaStorage; //~ ERROR overflow
 }
 impl HasQueryGroup for RootDatabase {}
 impl<DB> Query<DB> for ParseQuery

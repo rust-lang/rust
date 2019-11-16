@@ -2,7 +2,7 @@ error: expected one of `:`, `;`, `=`, `@`, or `|`, found `<`
   --> $DIR/issue-22647.rs:2:15
    |
 LL |     let caller<F> = |f: F|
-   |               ^ expected one of `:`, `;`, `=`, `@`, or `|` here
+   |               ^ expected one of `:`, `;`, `=`, `@`, or `|`
 
 error: aborting due to previous error
 

@@ -14,6 +14,7 @@
 - [Targets](targets/index.md)
     - [Built-in Targets](targets/built-in.md)
     - [Custom Targets](targets/custom.md)
+    - [Known Issues](targets/known-issues.md)
 - [Profile-guided Optimization](profile-guided-optimization.md)
 - [Linker-plugin based LTO](linker-plugin-lto.md)
 - [Contributing to `rustc`](contributing.md)

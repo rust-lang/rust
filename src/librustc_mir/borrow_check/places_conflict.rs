@@ -64,14 +64,8 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
 
     // This Local/Local case is handled by the more general code below, but
     // it's so common that it's a speed win to check for it first.
-    if let Place {
-        base: PlaceBase::Local(l1),
-        projection: box [],
-    } = borrow_place {
-        if let PlaceRef {
-            base: PlaceBase::Local(l2),
-            projection: [],
-        } = access_place {
+    if let Some(l1) = borrow_place.as_local() {
+        if let Some(l2) = access_place.as_local() {
             return l1 == l2;
         }
     }
@@ -252,11 +246,13 @@ fn place_components_conflict<'tcx>(
                     debug!("borrow_conflicts_with_place: shallow access behind ptr");
                     return false;
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
+                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Immutable), _) => {
                     // Shouldn't be tracked
                     bug!("Tracking borrow behind shared reference.");
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::MutMutable), AccessDepth::Drop) => {
+                (ProjectionElem::Deref,
+                 ty::Ref(_, _, hir::Mutability::Mutable),
+                 AccessDepth::Drop) => {
                     // Values behind a mutable reference are not access either by dropping a
                     // value, or by StorageDead
                     debug!("borrow_conflicts_with_place: drop access behind ptr");

@@ -569,8 +569,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         if self.should_warn_about_item(item) {
-            // For items that have a definition with a signature followed by a
-            // block, point only at the signature.
+            // For most items, we want to highlight its identifier
             let span = match item.kind {
                 hir::ItemKind::Fn(..) |
                 hir::ItemKind::Mod(..) |
@@ -578,7 +577,19 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
                 hir::ItemKind::Struct(..) |
                 hir::ItemKind::Union(..) |
                 hir::ItemKind::Trait(..) |
-                hir::ItemKind::Impl(..) => self.tcx.sess.source_map().def_span(item.span),
+                hir::ItemKind::Impl(..) => {
+                    // FIXME(66095): Because item.span is annotated with things
+                    // like expansion data, and ident.span isn't, we use the
+                    // def_span method if it's part of a macro invocation
+                    // (and thus has asource_callee set).
+                    // We should probably annotate ident.span with the macro
+                    // context, but that's a larger change.
+                    if item.span.source_callee().is_some() {
+                        self.tcx.sess.source_map().def_span(item.span)
+                    } else {
+                        item.ident.span
+                    }
+                },
                 _ => item.span,
             };
             let participle = match item.kind {

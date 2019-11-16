@@ -307,46 +307,6 @@ warning: path statement with no effect
   |
 ```
 
-## patterns-in-fns-without-body
-
-This lint detects patterns in functions without body were that were
-previously erroneously allowed. Some example code that triggers this lint:
-
-```rust
-trait Trait {
-    fn foo(mut arg: u8);
-}
-```
-
-This will produce:
-
-```text
-warning: patterns aren't allowed in methods without bodies
- --> src/main.rs:2:12
-  |
-2 |     fn foo(mut arg: u8);
-  |            ^^^^^^^
-  |
-  = note: `#[warn(patterns_in_fns_without_body)]` on by default
-  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-  = note: for more information, see issue #35203 <https://github.com/rust-lang/rust/issues/35203>
-```
-
-To fix this, remove the pattern; it can be used in the implementation without
-being used in the definition. That is:
-
-```rust
-trait Trait {
-    fn foo(arg: u8);
-}
-
-impl Trait for i32 {
-    fn foo(mut arg: u8) {
-
-    }
-}
-```
-
 ## plugin-as-library
 
 This lint detects when compiler plugins are used as ordinary library in
@@ -593,30 +553,6 @@ warning: function cannot return without recursing
   | ^^^^^^^^ cannot return without recursing
 2 |     foo();
   |     ----- recursive call site
-  |
-```
-
-## unions-with-drop-fields
-
-This lint detects use of unions that contain fields with possibly non-trivial drop code. Some
-example code that triggers this lint:
-
-```rust
-#![feature(untagged_unions)]
-
-union U {
-    s: String,
-}
-```
-
-This will produce:
-
-```text
-warning: union contains a field with possibly non-trivial drop code, drop code of union fields is ignored when dropping the union
- --> src/main.rs:4:5
-  |
-4 |     s: String,
-  |     ^^^^^^^^^
   |
 ```
 

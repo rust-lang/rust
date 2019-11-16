@@ -13,14 +13,9 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_errors::registry::Registry;
-use rustc_lint;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_mir;
-use rustc_passes;
-use rustc_plugin;
-use rustc_privacy;
-use rustc_resolve;
-use rustc_typeck;
+use rustc_resolve::{self, Resolver};
+use rustc_error_codes;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::io::{self, Write};
@@ -37,23 +32,16 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::source_map::{FileLoader, RealFileLoader, SourceMap};
 use syntax::symbol::{Symbol, sym};
 use syntax::{self, ast, attr};
+use syntax_expand::config::process_configure_mod;
 use syntax_pos::edition::Edition;
 #[cfg(not(parallel_compiler))]
 use std::{thread, panic};
 
 pub fn diagnostics_registry() -> Registry {
     let mut all_errors = Vec::new();
-    all_errors.extend_from_slice(&rustc::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_typeck::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_resolve::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_privacy::error_codes::DIAGNOSTICS);
+    all_errors.extend_from_slice(&rustc_error_codes::DIAGNOSTICS);
     // FIXME: need to figure out a way to get these back in here
     // all_errors.extend_from_slice(get_codegen_backend(sess).diagnostics());
-    all_errors.extend_from_slice(&rustc_metadata::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_passes::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_plugin::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_mir::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&syntax::error_codes::DIAGNOSTICS);
 
     Registry::new(&all_errors)
 }
@@ -104,14 +92,14 @@ pub fn create_session(
         source_map.clone(),
         diagnostic_output,
         lint_caps,
+        process_configure_mod,
     );
 
-    let codegen_backend = get_codegen_backend(&sess);
+    sess.prof.register_queries(|profiler| {
+        rustc::ty::query::QueryName::register_with_profiler(&profiler);
+    });
 
-    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    if sess.unstable_options() {
-        rustc_lint::register_internals(&mut sess.lint_store.borrow_mut(), Some(&sess));
-    }
+    let codegen_backend = get_codegen_backend(&sess);
 
     let mut cfg = config::build_configuration(&sess, config::to_crate_config(cfg));
     add_configuration(&mut cfg, &sess, &*codegen_backend);
@@ -532,6 +520,63 @@ pub(crate) fn compute_crate_disambiguator(session: &Session) -> CrateDisambiguat
     CrateDisambiguator::from(hasher.finish::<Fingerprint>())
 }
 
+pub(crate) fn check_attr_crate_type(attrs: &[ast::Attribute], lint_buffer: &mut lint::LintBuffer) {
+    // Unconditionally collect crate types from attributes to make them used
+    for a in attrs.iter() {
+        if a.check_name(sym::crate_type) {
+            if let Some(n) = a.value_str() {
+                if let Some(_) = categorize_crate_type(n) {
+                    return;
+                }
+
+                if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().kind {
+                    let span = spanned.span;
+                    let lev_candidate = find_best_match_for_name(
+                        CRATE_TYPES.iter().map(|(k, _)| k),
+                        &n.as_str(),
+                        None
+                    );
+                    if let Some(candidate) = lev_candidate {
+                        lint_buffer.buffer_lint_with_diagnostic(
+                            lint::builtin::UNKNOWN_CRATE_TYPES,
+                            ast::CRATE_NODE_ID,
+                            span,
+                            "invalid `crate_type` value",
+                            lint::builtin::BuiltinLintDiagnostics::
+                                UnknownCrateTypes(
+                                    span,
+                                    "did you mean".to_string(),
+                                    format!("\"{}\"", candidate)
+                                )
+                        );
+                    } else {
+                        lint_buffer.buffer_lint(
+                            lint::builtin::UNKNOWN_CRATE_TYPES,
+                            ast::CRATE_NODE_ID,
+                            span,
+                            "invalid `crate_type` value"
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+
+const CRATE_TYPES: &[(Symbol, config::CrateType)] = &[
+    (sym::rlib, config::CrateType::Rlib),
+    (sym::dylib, config::CrateType::Dylib),
+    (sym::cdylib, config::CrateType::Cdylib),
+    (sym::lib, config::default_lib_output()),
+    (sym::staticlib, config::CrateType::Staticlib),
+    (sym::proc_dash_macro, config::CrateType::ProcMacro),
+    (sym::bin, config::CrateType::Executable),
+];
+
+fn categorize_crate_type(s: Symbol) -> Option<config::CrateType> {
+    Some(CRATE_TYPES.iter().find(|(key, _)| *key == s)?.1)
+}
+
 pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<config::CrateType> {
     // Unconditionally collect crate types from attributes to make them used
     let attr_types: Vec<config::CrateType> = attrs
@@ -539,56 +584,8 @@ pub fn collect_crate_types(session: &Session, attrs: &[ast::Attribute]) -> Vec<c
         .filter_map(|a| {
             if a.check_name(sym::crate_type) {
                 match a.value_str() {
-                    Some(sym::rlib) => Some(config::CrateType::Rlib),
-                    Some(sym::dylib) => Some(config::CrateType::Dylib),
-                    Some(sym::cdylib) => Some(config::CrateType::Cdylib),
-                    Some(sym::lib) => Some(config::default_lib_output()),
-                    Some(sym::staticlib) => Some(config::CrateType::Staticlib),
-                    Some(sym::proc_dash_macro) => Some(config::CrateType::ProcMacro),
-                    Some(sym::bin) => Some(config::CrateType::Executable),
-                    Some(n) => {
-                        let crate_types = vec![
-                            sym::rlib,
-                            sym::dylib,
-                            sym::cdylib,
-                            sym::lib,
-                            sym::staticlib,
-                            sym::proc_dash_macro,
-                            sym::bin
-                        ];
-
-                        if let ast::MetaItemKind::NameValue(spanned) = a.meta().unwrap().kind {
-                            let span = spanned.span;
-                            let lev_candidate = find_best_match_for_name(
-                                crate_types.iter(),
-                                &n.as_str(),
-                                None
-                            );
-                            if let Some(candidate) = lev_candidate {
-                                session.buffer_lint_with_diagnostic(
-                                    lint::builtin::UNKNOWN_CRATE_TYPES,
-                                    ast::CRATE_NODE_ID,
-                                    span,
-                                    "invalid `crate_type` value",
-                                    lint::builtin::BuiltinLintDiagnostics::
-                                        UnknownCrateTypes(
-                                            span,
-                                            "did you mean".to_string(),
-                                            format!("\"{}\"", candidate)
-                                        )
-                                );
-                            } else {
-                                session.buffer_lint(
-                                    lint::builtin::UNKNOWN_CRATE_TYPES,
-                                    ast::CRATE_NODE_ID,
-                                    span,
-                                    "invalid `crate_type` value"
-                                );
-                            }
-                        }
-                        None
-                    }
-                    None => None
+                    Some(s) => categorize_crate_type(s),
+                    _ => None,
                 }
             } else {
                 None
@@ -712,18 +709,18 @@ pub fn build_output_filenames(
 //    ambitious form of the closed RFC #1637. See also [#34511].
 //
 // [#34511]: https://github.com/rust-lang/rust/issues/34511#issuecomment-322340401
-pub struct ReplaceBodyWithLoop<'a> {
+pub struct ReplaceBodyWithLoop<'a, 'b> {
     within_static_or_const: bool,
     nested_blocks: Option<Vec<ast::Block>>,
-    sess: &'a Session,
+    resolver: &'a mut Resolver<'b>,
 }
 
-impl<'a> ReplaceBodyWithLoop<'a> {
-    pub fn new(sess: &'a Session) -> ReplaceBodyWithLoop<'a> {
+impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
+    pub fn new(resolver: &'a mut Resolver<'b>) -> ReplaceBodyWithLoop<'a, 'b> {
         ReplaceBodyWithLoop {
             within_static_or_const: false,
             nested_blocks: None,
-            sess
+            resolver,
         }
     }
 
@@ -783,14 +780,18 @@ impl<'a> ReplaceBodyWithLoop<'a> {
             false
         }
     }
+
+    fn is_sig_const(sig: &ast::FnSig) -> bool {
+        sig.header.constness.node == ast::Constness::Const ||
+            ReplaceBodyWithLoop::should_ignore_fn(&sig.decl)
+    }
 }
 
-impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
+impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
     fn visit_item_kind(&mut self, i: &mut ast::ItemKind) {
         let is_const = match i {
             ast::ItemKind::Static(..) | ast::ItemKind::Const(..) => true,
-            ast::ItemKind::Fn(ref decl, ref header, _, _) =>
-                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::ItemKind::Fn(ref sig, _, _) => Self::is_sig_const(sig),
             _ => false,
         };
         self.run(is_const, |s| noop_visit_item_kind(i, s))
@@ -799,8 +800,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     fn flat_map_trait_item(&mut self, i: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
         let is_const = match i.kind {
             ast::TraitItemKind::Const(..) => true,
-            ast::TraitItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
-                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::TraitItemKind::Method(ref sig, _) => Self::is_sig_const(sig),
             _ => false,
         };
         self.run(is_const, |s| noop_flat_map_trait_item(i, s))
@@ -809,8 +809,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     fn flat_map_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
         let is_const = match i.kind {
             ast::ImplItemKind::Const(..) => true,
-            ast::ImplItemKind::Method(ast::MethodSig { ref decl, ref header, .. }, _) =>
-                header.constness.node == ast::Constness::Const || Self::should_ignore_fn(decl),
+            ast::ImplItemKind::Method(ref sig, _) => Self::is_sig_const(sig),
             _ => false,
         };
         self.run(is_const, |s| noop_flat_map_impl_item(i, s))
@@ -823,40 +822,40 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
     fn visit_block(&mut self, b: &mut P<ast::Block>) {
         fn stmt_to_block(rules: ast::BlockCheckMode,
                          s: Option<ast::Stmt>,
-                         sess: &Session) -> ast::Block {
+                         resolver: &mut Resolver<'_>) -> ast::Block {
             ast::Block {
                 stmts: s.into_iter().collect(),
                 rules,
-                id: sess.next_node_id(),
+                id: resolver.next_node_id(),
                 span: syntax_pos::DUMMY_SP,
             }
         }
 
-        fn block_to_stmt(b: ast::Block, sess: &Session) -> ast::Stmt {
+        fn block_to_stmt(b: ast::Block, resolver: &mut Resolver<'_>) -> ast::Stmt {
             let expr = P(ast::Expr {
-                id: sess.next_node_id(),
+                id: resolver.next_node_id(),
                 kind: ast::ExprKind::Block(P(b), None),
                 span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
             });
 
             ast::Stmt {
-                id: sess.next_node_id(),
+                id: resolver.next_node_id(),
                 kind: ast::StmtKind::Expr(expr),
                 span: syntax_pos::DUMMY_SP,
             }
         }
 
-        let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.sess);
+        let empty_block = stmt_to_block(BlockCheckMode::Default, None, self.resolver);
         let loop_expr = P(ast::Expr {
             kind: ast::ExprKind::Loop(P(empty_block), None),
-            id: self.sess.next_node_id(),
+            id: self.resolver.next_node_id(),
             span: syntax_pos::DUMMY_SP,
                 attrs: ThinVec::new(),
         });
 
         let loop_stmt = ast::Stmt {
-            id: self.sess.next_node_id(),
+            id: self.resolver.next_node_id(),
             span: syntax_pos::DUMMY_SP,
             kind: ast::StmtKind::Expr(loop_expr),
         };
@@ -874,7 +873,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
                     // we put a Some in there earlier with that replace(), so this is valid
                     let new_blocks = self.nested_blocks.take().unwrap();
                     self.nested_blocks = old_blocks;
-                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, &self.sess)));
+                    stmts.extend(new_blocks.into_iter().map(|b| block_to_stmt(b, self.resolver)));
                 }
 
                 let mut new_block = ast::Block {
@@ -888,7 +887,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a> {
                         old_blocks.push(new_block);
                     }
 
-                    stmt_to_block(b.rules, Some(loop_stmt), self.sess)
+                    stmt_to_block(b.rules, Some(loop_stmt), &mut self.resolver)
                 } else {
                     //push `loop {}` onto the end of our fresh block and yield that
                     new_block.stmts.push(loop_stmt);

@@ -11,28 +11,26 @@ use crate::{Resolver, ResolutionError, BindingKey, Segment, ModuleKind};
 use crate::{names_to_string, module_to_string};
 use crate::diagnostics::Suggestion;
 
-use errors::{Applicability, pluralise};
+use errors::{Applicability, pluralize};
 
 use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
 use rustc::lint::builtin::BuiltinLintDiagnostics;
-use rustc::lint::builtin::{
-    DUPLICATE_MACRO_EXPORTS,
-    PUB_USE_OF_PRIVATE_EXTERN_CRATE,
-    UNUSED_IMPORTS,
-};
+use rustc::lint::builtin::{PUB_USE_OF_PRIVATE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::{self, PartialRes, Export};
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{bug, span_bug};
 
-use syntax::ast::{Ident, Name, NodeId, CRATE_NODE_ID};
-use syntax_expand::hygiene::ExpnId;
+use syntax::ast::{Ident, Name, NodeId};
 use syntax::symbol::kw;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::{struct_span_err, unwrap_or};
+use syntax_pos::hygiene::ExpnId;
 use syntax_pos::{MultiSpan, Span};
+
+use rustc_error_codes::*;
 
 use log::*;
 
@@ -496,13 +494,13 @@ impl<'a> Resolver<'a> {
                         if let (&NameBindingKind::Res(_, true), &NameBindingKind::Res(_, true)) =
                                (&old_binding.kind, &binding.kind) {
 
-                            this.session.buffer_lint_with_diagnostic(
-                                DUPLICATE_MACRO_EXPORTS,
-                                CRATE_NODE_ID,
+                            this.session.struct_span_err(
                                 binding.span,
                                 &format!("a macro named `{}` has already been exported", key.ident),
-                                BuiltinLintDiagnostics::DuplicatedMacroExports(
-                                    key.ident, old_binding.span, binding.span));
+                            )
+                            .span_label(binding.span, format!("`{}` already exported", key.ident))
+                            .span_note(old_binding.span, "previous macro export is now shadowed")
+                            .emit();
 
                             resolution.binding = Some(binding);
                         } else {
@@ -673,13 +671,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     self.throw_unresolved_import_error(errors, None);
                     errors = vec![];
                 }
-                if !seen_spans.contains(&err.span) {
+                if seen_spans.insert(err.span) {
                     let path = import_path_to_string(
                         &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
                         &import.subclass,
                         err.span,
                     );
-                    seen_spans.insert(err.span);
                     errors.push((path, err));
                     prev_root_id = import.root_id;
                 }
@@ -731,7 +728,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             let msg = format!(
                 "unresolved import{} {}",
-                pluralise!(paths.len()),
+                pluralize!(paths.len()),
                 paths.join(", "),
             );
 
@@ -978,8 +975,11 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 if !is_prelude &&
                    max_vis.get() != ty::Visibility::Invisible && // Allow empty globs.
                    !max_vis.get().is_at_least(directive.vis.get(), &*self) {
-                    let msg = "A non-empty glob must import something with the glob's visibility";
-                    self.r.session.span_err(directive.span, msg);
+                    let msg =
+                    "glob import doesn't reexport anything because no candidate is public enough";
+                    self.r.lint_buffer.buffer_lint(
+                        UNUSED_IMPORTS, directive.id, directive.span, msg,
+                    );
                 }
                 return None;
             }
@@ -1148,7 +1148,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                    re-exported (error E0365), consider declaring with \
                                    `pub`",
                                    ident);
-                self.r.session.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+                self.r.lint_buffer.buffer_lint(PUB_USE_OF_PRIVATE_EXTERN_CRATE,
                                          directive.id,
                                          directive.span,
                                          &msg);
@@ -1273,7 +1273,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             let mut redundant_spans: Vec<_> = redundant_span.present_items().collect();
             redundant_spans.sort();
             redundant_spans.dedup();
-            self.r.session.buffer_lint_with_diagnostic(
+            self.r.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 directive.id,
                 directive.span,
@@ -1345,7 +1345,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 if res != Res::Err {
                     if let Some(def_id) = res.opt_def_id() {
                         if !def_id.is_local() {
-                            this.cstore.export_macros_untracked(def_id.krate);
+                            this.cstore().export_macros_untracked(def_id.krate);
                         }
                     }
                     reexports.push(Export {

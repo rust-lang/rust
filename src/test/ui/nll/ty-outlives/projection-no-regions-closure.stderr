@@ -4,7 +4,7 @@ note: External requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:22 ~ projection_no_regions_closure[317d]::no_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:13 ~ projection_no_regions_closure[317d]::no_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                T,
                i32,
@@ -25,7 +25,7 @@ LL | |
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:19 ~ projection_no_regions_closure[317d]::no_region[0]) with substs [
+   = note: defining type: DefId(0:10 ~ projection_no_regions_closure[317d]::no_region[0]) with substs [
                '_#1r,
                T,
            ]
@@ -44,7 +44,7 @@ note: External requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:26 ~ projection_no_regions_closure[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:17 ~ projection_no_regions_closure[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                T,
                i32,
@@ -64,7 +64,7 @@ LL | |     with_signature(x, |mut y| Box::new(y.next()))
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:23 ~ projection_no_regions_closure[317d]::correct_region[0]) with substs [
+   = note: defining type: DefId(0:14 ~ projection_no_regions_closure[317d]::correct_region[0]) with substs [
                '_#1r,
                T,
            ]
@@ -75,7 +75,7 @@ note: External requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:31 ~ projection_no_regions_closure[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:22 ~ projection_no_regions_closure[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                '_#2r,
                T,
@@ -97,7 +97,7 @@ LL | |
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:27 ~ projection_no_regions_closure[317d]::wrong_region[0]) with substs [
+   = note: defining type: DefId(0:18 ~ projection_no_regions_closure[317d]::wrong_region[0]) with substs [
                '_#1r,
                '_#2r,
                T,
@@ -117,7 +117,7 @@ note: External requirements
 LL |     with_signature(x, |mut y| Box::new(y.next()))
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:36 ~ projection_no_regions_closure[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: DefId(0:27 ~ projection_no_regions_closure[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
                '_#1r,
                '_#2r,
                T,
@@ -139,7 +139,7 @@ LL | |     with_signature(x, |mut y| Box::new(y.next()))
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:32 ~ projection_no_regions_closure[317d]::outlives_region[0]) with substs [
+   = note: defining type: DefId(0:23 ~ projection_no_regions_closure[317d]::outlives_region[0]) with substs [
                '_#1r,
                '_#2r,
                T,

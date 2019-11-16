@@ -75,8 +75,6 @@ This API is completely unstable and subject to change.
 
 #[macro_use] extern crate rustc;
 
-pub mod error_codes;
-
 mod astconv;
 mod check;
 mod check_unused;
@@ -106,11 +104,11 @@ use rustc::util;
 use syntax_pos::{DUMMY_SP, Span};
 use util::common::time;
 
+use rustc_error_codes::*;
+
 use std::iter;
 
 use astconv::{AstConv, Bounds};
-pub use collect::checked_type_of;
-
 pub struct TypeAndSubsts<'tcx> {
     substs: SubstsRef<'tcx>,
     ty: Ty<'tcx>,

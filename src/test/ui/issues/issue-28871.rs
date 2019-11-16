@@ -1,4 +1,4 @@
-// build-pass (FIXME(62277): could be check-pass?)
+// check-pass
 // Regression test for #28871. The problem is that rustc encountered
 // two ways to project, one from a where clause and one from the where
 // clauses on the trait definition. (In fact, in this case, the where

@@ -1,13 +1,10 @@
 //! A copy of the `Qualif` trait in `qualify_consts.rs` that is suitable for the new validator.
 
 use rustc::mir::*;
-use rustc::mir::interpret::ConstValue;
 use rustc::ty::{self, Ty};
-use rustc_index::bit_set::BitSet;
 use syntax_pos::DUMMY_SP;
 
-use super::Item as ConstCx;
-use super::validation::Mode;
+use super::{ConstKind, Item as ConstCx};
 
 #[derive(Clone, Copy)]
 pub struct QualifSet(u8);
@@ -44,7 +41,7 @@ pub trait Qualif {
 
     fn in_projection_structurally(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &BitSet<Local>,
+        per_local: &impl Fn(Local) -> bool,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         if let [proj_base @ .., elem] = place.projection {
@@ -65,7 +62,7 @@ pub trait Qualif {
                 ProjectionElem::ConstantIndex { .. } |
                 ProjectionElem::Downcast(..) => qualif,
 
-                ProjectionElem::Index(local) => qualif || per_local.contains(*local),
+                ProjectionElem::Index(local) => qualif || per_local(*local),
             }
         } else {
             bug!("This should be called if projection is not empty");
@@ -74,7 +71,7 @@ pub trait Qualif {
 
     fn in_projection(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &BitSet<Local>,
+        per_local: &impl Fn(Local) -> bool,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         Self::in_projection_structurally(cx, per_local, place)
@@ -82,14 +79,14 @@ pub trait Qualif {
 
     fn in_place(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &BitSet<Local>,
+        per_local: &impl Fn(Local) -> bool,
         place: PlaceRef<'_, 'tcx>,
     ) -> bool {
         match place {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [],
-            } => per_local.contains(*local),
+            } => per_local(*local),
             PlaceRef {
                 base: PlaceBase::Static(box Static {
                     kind: StaticKind::Promoted(..),
@@ -112,7 +109,7 @@ pub trait Qualif {
 
     fn in_operand(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &BitSet<Local>,
+        per_local: &impl Fn(Local) -> bool,
         operand: &Operand<'tcx>,
     ) -> bool {
         match *operand {
@@ -120,12 +117,12 @@ pub trait Qualif {
             Operand::Move(ref place) => Self::in_place(cx, per_local, place.as_ref()),
 
             Operand::Constant(ref constant) => {
-                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
+                if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty)
                     } else {
-                        let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let bits = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = QualifSet(bits).contains::<Self>();
 
@@ -143,7 +140,7 @@ pub trait Qualif {
 
     fn in_rvalue_structurally(
         cx: &ConstCx<'_, 'tcx>,
-        per_local: &BitSet<Local>,
+        per_local: &impl Fn(Local) -> bool,
         rvalue: &Rvalue<'tcx>,
     ) -> bool {
         match *rvalue {
@@ -164,8 +161,8 @@ pub trait Qualif {
 
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if let box [proj_base @ .., elem] = &place.projection {
-                    if ProjectionElem::Deref == *elem {
+                if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
+                    if ProjectionElem::Deref == elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, per_local, PlaceRef {
@@ -185,13 +182,17 @@ pub trait Qualif {
         }
     }
 
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {
+    fn in_rvalue(
+        cx: &ConstCx<'_, 'tcx>,
+        per_local: &impl Fn(Local) -> bool,
+        rvalue: &Rvalue<'tcx>,
+    ) -> bool {
         Self::in_rvalue_structurally(cx, per_local, rvalue)
     }
 
     fn in_call(
         cx: &ConstCx<'_, 'tcx>,
-        _per_local: &BitSet<Local>,
+        _per_local: &impl Fn(Local) -> bool,
         _callee: &Operand<'tcx>,
         _args: &[Operand<'tcx>],
         return_ty: Ty<'tcx>,
@@ -216,7 +217,11 @@ impl Qualif for HasMutInterior {
         !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
     }
 
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {
+    fn in_rvalue(
+        cx: &ConstCx<'_, 'tcx>,
+        per_local: &impl Fn(Local) -> bool,
+        rvalue: &Rvalue<'tcx>,
+    ) -> bool {
         match *rvalue {
             // Returning `true` for `Rvalue::Ref` indicates the borrow isn't
             // allowed in constants (and the `Checker` will error), and/or it
@@ -229,14 +234,17 @@ impl Qualif for HasMutInterior {
                     // mutably without consequences.
                     match ty.kind {
                         // Inside a `static mut`, &mut [...] is also allowed.
-                        ty::Array(..) | ty::Slice(_) if cx.mode == Mode::StaticMut => {},
+                        | ty::Array(..)
+                        | ty::Slice(_)
+                        if cx.const_kind == Some(ConstKind::StaticMut)
+                        => {},
 
-                        // FIXME(ecstaticmorse): uncomment the following match arm to stop marking
-                        // `&mut []` as `HasMutInterior`.
-                        /*
-                        ty::Array(_, len) if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
-                            => {},
-                        */
+                        // FIXME(eddyb): We only return false for `&mut []` outside a const
+                        // context which seems unnecessary given that this is merely a ZST.
+                        | ty::Array(_, len)
+                        if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
+                            && cx.const_kind == None
+                        => {},
 
                         _ => return true,
                     }
@@ -275,7 +283,11 @@ impl Qualif for NeedsDrop {
         ty.needs_drop(cx.tcx, cx.param_env)
     }
 
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, per_local: &BitSet<Local>, rvalue: &Rvalue<'tcx>) -> bool {
+    fn in_rvalue(
+        cx: &ConstCx<'_, 'tcx>,
+        per_local: &impl Fn(Local) -> bool,
+        rvalue: &Rvalue<'tcx>,
+    ) -> bool {
         if let Rvalue::Aggregate(ref kind, _) = *rvalue {
             if let AggregateKind::Adt(def, ..) = **kind {
                 if def.has_dtor(cx.tcx) {

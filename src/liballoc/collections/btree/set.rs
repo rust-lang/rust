@@ -194,16 +194,16 @@ pub struct Difference<'a, T: 'a> {
 #[derive(Debug)]
 enum DifferenceInner<'a, T: 'a> {
     Stitch {
-        // iterate all of self and some of other, spotting matches along the way
+        // iterate all of `self` and some of `other`, spotting matches along the way
         self_iter: Iter<'a, T>,
         other_iter: Peekable<Iter<'a, T>>,
     },
     Search {
-        // iterate a small set, look up in the large set
+        // iterate `self`, look up in `other`
         self_iter: Iter<'a, T>,
         other_set: &'a BTreeSet<T>,
     },
-    Iterate(Iter<'a, T>), // simply stream self's elements
+    Iterate(Iter<'a, T>), // simply produce all values in `self`
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -356,7 +356,7 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T> {
         let (self_min, self_max) = if let (Some(self_min), Some(self_max)) =
-            (self.iter().next(), self.iter().next_back())
+            (self.first(), self.last())
         {
             (self_min, self_max)
         } else {
@@ -365,7 +365,7 @@ impl<T: Ord> BTreeSet<T> {
             };
         };
         let (other_min, other_max) = if let (Some(other_min), Some(other_max)) =
-            (other.iter().next(), other.iter().next_back())
+            (other.first(), other.last())
         {
             (other_min, other_max)
         } else {
@@ -450,7 +450,7 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>) -> Intersection<'a, T> {
         let (self_min, self_max) = if let (Some(self_min), Some(self_max)) =
-            (self.iter().next(), self.iter().next_back())
+            (self.first(), self.last())
         {
             (self_min, self_max)
         } else {
@@ -459,7 +459,7 @@ impl<T: Ord> BTreeSet<T> {
             };
         };
         let (other_min, other_max) = if let (Some(other_min), Some(other_max)) =
-            (other.iter().next(), other.iter().next_back())
+            (other.first(), other.last())
         {
             (other_min, other_max)
         } else {
@@ -625,14 +625,14 @@ impl<T: Ord> BTreeSet<T> {
             return false;
         }
         let (self_min, self_max) = if let (Some(self_min), Some(self_max)) =
-            (self.iter().next(), self.iter().next_back())
+            (self.first(), self.last())
         {
             (self_min, self_max)
         } else {
             return true; // self is empty
         };
         let (other_min, other_max) = if let (Some(other_min), Some(other_max)) =
-            (other.iter().next(), other.iter().next_back())
+            (other.first(), other.last())
         {
             (other_min, other_max)
         } else {
@@ -654,14 +654,12 @@ impl<T: Ord> BTreeSet<T> {
             Less => (),
         }
         if self_iter.len() <= other.len() / ITER_PERFORMANCE_TIPPING_SIZE_DIFF {
-            // Big difference in number of elements.
             for next in self_iter {
                 if !other.contains(next) {
                     return false;
                 }
             }
         } else {
-            // Self is not much smaller than other set.
             let mut other_iter = other.iter();
             other_iter.next();
             other_iter.next_back();
@@ -700,6 +698,96 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_superset(&self, other: &BTreeSet<T>) -> bool {
         other.is_subset(self)
+    }
+
+    /// Returns a reference to the first value in the set, if any.
+    /// This value is always the minimum of all values in the set.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut map = BTreeSet::new();
+    /// assert_eq!(map.first(), None);
+    /// map.insert(1);
+    /// assert_eq!(map.first(), Some(&1));
+    /// map.insert(2);
+    /// assert_eq!(map.first(), Some(&1));
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn first(&self) -> Option<&T> {
+        self.map.first_key_value().map(|(k, _)| k)
+    }
+
+    /// Returns a reference to the last value in the set, if any.
+    /// This value is always the maximum of all values in the set.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut map = BTreeSet::new();
+    /// assert_eq!(map.first(), None);
+    /// map.insert(1);
+    /// assert_eq!(map.last(), Some(&1));
+    /// map.insert(2);
+    /// assert_eq!(map.last(), Some(&2));
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn last(&self) -> Option<&T> {
+        self.map.last_key_value().map(|(k, _)| k)
+    }
+
+    /// Removes the first value from the set and returns it, if any.
+    /// The first value is always the minimum value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set = BTreeSet::new();
+    ///
+    /// set.insert(1);
+    /// while let Some(n) = set.pop_first() {
+    ///     assert_eq!(n, 1);
+    /// }
+    /// assert!(set.is_empty());
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn pop_first(&mut self) -> Option<T> {
+        self.map.first_entry().map(|entry| entry.remove_entry().0)
+    }
+
+    /// Removes the last value from the set and returns it, if any.
+    /// The last value is always the maximum value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(map_first_last)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set = BTreeSet::new();
+    ///
+    /// set.insert(1);
+    /// while let Some(n) = set.pop_last() {
+    ///     assert_eq!(n, 1);
+    /// }
+    /// assert!(set.is_empty());
+    /// ```
+    #[unstable(feature = "map_first_last", issue = "62924")]
+    pub fn pop_last(&mut self) -> Option<T> {
+        self.map.last_entry().map(|entry| entry.remove_entry().0)
     }
 
     /// Adds a value to the set.

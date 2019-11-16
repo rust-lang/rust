@@ -1,5 +1,3 @@
-#![feature(re_rebalance_coherence)]
-
 // compile-flags:--crate-name=test
 // aux-build:coherence_lib.rs
 
@@ -10,7 +8,7 @@ use std::rc::Rc;
 struct Local;
 
 impl<T> Remote1<Local> for T {
-    //~^ ERROR type parameter `T` must be used as the type parameter for some local type
+    //~^ ERROR type parameter `T` must be covered by another type
 }
 
 fn main() {}

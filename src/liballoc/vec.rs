@@ -154,8 +154,8 @@ use crate::raw_vec::RawVec;
 /// println!("{}", v[6]); // it will panic!
 /// ```
 ///
-/// In conclusion: always check if the index you want to get really exists
-/// before doing it.
+/// Use [`get`] and [`get_mut`] if you want to check whether the index is in
+/// the `Vec`.
 ///
 /// # Slicing
 ///
@@ -277,6 +277,8 @@ use crate::raw_vec::RawVec;
 /// The order has changed in the past and may change again.
 ///
 /// [`vec!`]: ../../std/macro.vec.html
+/// [`get`]: ../../std/vec/struct.Vec.html#method.get
+/// [`get_mut`]: ../../std/vec/struct.Vec.html#method.get_mut
 /// [`Index`]: ../../std/ops/trait.Index.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`&str`]: ../../std/primitive.str.html
@@ -358,6 +360,44 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Decomposes a `Vec<T>` into its raw components.
+    ///
+    /// Returns the raw pointer to the underlying data, the length of
+    /// the vector (in elements), and the allocated capacity of the
+    /// data (in elements). These are the same arguments in the same
+    /// order as the arguments to [`from_raw_parts`].
+    ///
+    /// After calling this function, the caller is responsible for the
+    /// memory previously managed by the `Vec`. The only way to do
+    /// this is to convert the raw pointer, length, and capacity back
+    /// into a `Vec` with the [`from_raw_parts`] function, allowing
+    /// the destructor to perform the cleanup.
+    ///
+    /// [`from_raw_parts`]: #method.from_raw_parts
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(vec_into_raw_parts)]
+    /// let v: Vec<i32> = vec![-1, 0, 1];
+    ///
+    /// let (ptr, len, cap) = v.into_raw_parts();
+    ///
+    /// let rebuilt = unsafe {
+    ///     // We can now make changes to the components, such as
+    ///     // transmuting the raw pointer to a compatible type.
+    ///     let ptr = ptr as *mut u32;
+    ///
+    ///     Vec::from_raw_parts(ptr, len, cap)
+    /// };
+    /// assert_eq!(rebuilt, [4294967295, 0, 1]);
+    /// ```
+    #[unstable(feature = "vec_into_raw_parts", reason = "new API", issue = "65816")]
+    pub fn into_raw_parts(self) -> (*mut T, usize, usize) {
+        let mut me = mem::ManuallyDrop::new(self);
+        (me.as_mut_ptr(), me.len(), me.capacity())
+    }
+
     /// Creates a `Vec<T>` directly from the raw components of another vector.
     ///
     /// # Safety
@@ -373,7 +413,11 @@ impl<T> Vec<T> {
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal data structures. For example it is **not** safe
-    /// to build a `Vec<u8>` from a pointer to a C `char` array and a `size_t`.
+    /// to build a `Vec<u8>` from a pointer to a C `char` array with length `size_t`.
+    /// It's also not safe to build one from a `Vec<u16>` and its length, because
+    /// the allocator cares about the alignment, and these two types have different
+    /// alignments. The buffer was allocated with alignment 2 (for `u16`), but after
+    /// turning it into a `Vec<u8>` it'll be deallocated with alignment 1.
     ///
     /// The ownership of `ptr` is effectively transferred to the
     /// `Vec<T>` which may then deallocate, reallocate or change the
@@ -389,7 +433,12 @@ impl<T> Vec<T> {
     /// use std::ptr;
     /// use std::mem;
     ///
-    /// let mut v = vec![1, 2, 3];
+    /// let v = vec![1, 2, 3];
+    ///
+    // FIXME Update this when vec_into_raw_parts is stabilized
+    /// // Prevent running `v`'s destructor so we are in complete control
+    /// // of the allocation.
+    /// let mut v = mem::ManuallyDrop::new(v);
     ///
     /// // Pull out the various important pieces of information about `v`
     /// let p = v.as_mut_ptr();
@@ -397,10 +446,6 @@ impl<T> Vec<T> {
     /// let cap = v.capacity();
     ///
     /// unsafe {
-    ///     // Cast `v` into the void: no destructor run, so we are in
-    ///     // complete control of the allocation to which `p` points.
-    ///     mem::forget(v);
-    ///
     ///     // Overwrite memory with 4, 5, 6
     ///     for i in 0..len as isize {
     ///         ptr::write(p.offset(i), 4 + i);
@@ -682,25 +727,20 @@ impl<T> Vec<T> {
     /// [`drain`]: #method.drain
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
-        if mem::needs_drop::<T>() {
-            let current_len = self.len;
-            unsafe {
-                let mut ptr = self.as_mut_ptr().add(self.len);
-                // Set the final length at the end, keeping in mind that
-                // dropping an element might panic. Works around a missed
-                // optimization, as seen in the following issue:
-                // https://github.com/rust-lang/rust/issues/51802
-                let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-                // drop any extra elements
-                for _ in len..current_len {
-                    local_len.decrement_len(1);
-                    ptr = ptr.offset(-1);
-                    ptr::drop_in_place(ptr);
-                }
+        // This is safe because:
+        //
+        // * the slice passed to `drop_in_place` is valid; the `len > self.len`
+        //   case avoids creating an invalid slice, and
+        // * the `len` of the vector is shrunk before calling `drop_in_place`,
+        //   such that no value will be dropped twice in case `drop_in_place`
+        //   were to panic once (if it panics twice, the program aborts).
+        unsafe {
+            if len > self.len {
+                return;
             }
-        } else if len <= self.len {
+            let s = self.get_unchecked_mut(len..) as *mut _;
             self.len = len;
+            ptr::drop_in_place(s);
         }
     }
 
@@ -816,7 +856,7 @@ impl<T> Vec<T> {
     ///
     /// [`truncate`]: #method.truncate
     /// [`resize`]: #method.resize
-    /// [`extend`]: #method.extend-1
+    /// [`extend`]: ../../std/iter/trait.Extend.html#tymethod.extend
     /// [`clear`]: #method.clear
     ///
     /// # Safety
@@ -1584,11 +1624,6 @@ impl<'a> SetLenOnDrop<'a> {
     #[inline]
     fn increment_len(&mut self, increment: usize) {
         self.local_len += increment;
-    }
-
-    #[inline]
-    fn decrement_len(&mut self, decrement: usize) {
-        self.local_len -= decrement;
     }
 }
 

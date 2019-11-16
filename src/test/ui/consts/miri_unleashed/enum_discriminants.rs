@@ -21,7 +21,7 @@ const OVERFLOW: usize = {
     }
 
     let x = Foo::B;
-    match x {
+    match x { //~ WARNING skipping const checks
         Foo::B => 0,
         _ => panic!(),
     }
@@ -86,17 +86,21 @@ const MORE_OVERFLOW: usize = {
     }
 
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
+        //~^ WARNING skipping const checks
         unreachable!()
     }
     if let E1::V1 { .. } = (E1::V1 { f: true }) {
+        //~^ WARNING skipping const checks
     } else {
         unreachable!()
     }
 
     if let E2::V1 { .. } = E2::V3::<Infallible> {
+        //~^ WARNING skipping const checks
         unreachable!()
     }
     if let E2::V3 { .. } = E2::V3::<Infallible> {
+        //~^ WARNING skipping const checks
     } else {
         unreachable!()
     }

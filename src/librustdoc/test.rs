@@ -17,6 +17,7 @@ use std::path::PathBuf;
 use std::process::{self, Command, Stdio};
 use std::str;
 use syntax::symbol::sym;
+use syntax_expand::config::process_configure_mod;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
 use tempfile::Builder as TempFileBuilder;
 use testing;
@@ -63,7 +64,7 @@ pub fn run(options: Options) -> i32 {
     };
 
     let mut cfgs = options.cfgs.clone();
-    cfgs.push("rustdoc".to_owned());
+    cfgs.push("doc".to_owned());
     cfgs.push("doctest".to_owned());
     let config = interface::Config {
         opts: sessopts,
@@ -77,6 +78,8 @@ pub fn run(options: Options) -> i32 {
         stderr: None,
         crate_name: options.crate_name.clone(),
         lint_caps: Default::default(),
+        register_lints: None,
+        override_queries: None,
     };
 
     let mut test_args = options.test_args.clone();
@@ -280,6 +283,9 @@ fn run_test(
     for codegen_options_str in &options.codegen_options_strs {
         compiler.arg("-C").arg(&codegen_options_str);
     }
+    for debugging_option_str in &options.debugging_options_strs {
+        compiler.arg("-Z").arg(&debugging_option_str);
+    }
     if no_run {
         compiler.arg("--emit=metadata");
     }
@@ -394,7 +400,8 @@ pub fn make_test(s: &str,
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
-        use crate::syntax::{parse, sess::ParseSess, source_map::FilePathMapping};
+        use crate::syntax::{sess::ParseSess, source_map::FilePathMapping};
+        use rustc_parse::maybe_new_parser_from_source_str;
         use errors::emitter::EmitterWriter;
         use errors::Handler;
 
@@ -407,13 +414,13 @@ pub fn make_test(s: &str,
         let emitter = EmitterWriter::new(box io::sink(), None, false, false, false, None, false);
         // FIXME(misdreavus): pass `-Z treat-err-as-bug` to the doctest parser
         let handler = Handler::with_emitter(false, None, box emitter);
-        let sess = ParseSess::with_span_handler(handler, cm);
+        let sess = ParseSess::with_span_handler(handler, cm, process_configure_mod);
 
         let mut found_main = false;
         let mut found_extern_crate = cratename.is_none();
         let mut found_macro = false;
 
-        let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
             Ok(p) => p,
             Err(errs) => {
                 for mut err in errs {

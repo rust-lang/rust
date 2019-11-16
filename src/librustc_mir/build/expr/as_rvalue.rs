@@ -1,6 +1,5 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 
 use crate::build::expr::category::{Category, RvalueFunc};
@@ -9,11 +8,16 @@ use crate::hair::*;
 use rustc::middle::region;
 use rustc::mir::interpret::PanicInfo;
 use rustc::mir::*;
-use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty, UpvarSubsts};
+use rustc::ty::{self, Ty, UpvarSubsts};
 use syntax_pos::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    /// See comment on `as_local_operand`
+    /// Returns an rvalue suitable for use until the end of the current
+    /// scope expression.
+    ///
+    /// The operand returned from this function will *not be valid* after
+    /// an ExprKind::Scope is passed, so please do *not* return it from
+    /// functions to avoid bad miscompiles.
     pub fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Rvalue<'tcx>>
     where
         M: Mirror<'tcx, Output = Expr<'tcx>>,
@@ -23,7 +27,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Compile `expr`, yielding an rvalue.
-    pub fn as_rvalue<M>(
+    fn as_rvalue<M>(
         &mut self,
         block: BasicBlock,
         scope: Option<region::Scope>,
@@ -65,16 +69,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Repeat { value, count } => {
                 let value_operand = unpack!(block = this.as_operand(block, scope, value));
                 block.and(Rvalue::Repeat(value_operand, count))
-            }
-            ExprKind::Borrow {
-                borrow_kind,
-                arg,
-            } => {
-                let arg_place = match borrow_kind {
-                    BorrowKind::Shared => unpack!(block = this.as_read_only_place(block, arg)),
-                    _ => unpack!(block = this.as_place(block, arg)),
-                };
-                block.and(Rvalue::Ref(this.hir.tcx().lifetimes.re_erased, borrow_kind, arg_place))
             }
             ExprKind::Binary { op, lhs, rhs } => {
                 let lhs = unpack!(block = this.as_operand(block, scope, lhs));
@@ -139,7 +133,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // initialize the box contents:
                 unpack!(
                     block = this.into(
-                        &Place::from(result).deref(),
+                        &this.hir.tcx().mk_place_deref(Place::from(result)),
                         block, value
                     )
                 );
@@ -256,72 +250,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 };
                 block.and(Rvalue::Aggregate(result, operands))
             }
-            ExprKind::Adt {
-                adt_def,
-                variant_index,
-                substs,
-                user_ty,
-                fields,
-                base,
-            } => {
-                // see (*) above
-                let is_union = adt_def.is_union();
-                let active_field_index = if is_union {
-                    Some(fields[0].name.index())
-                } else {
-                    None
-                };
-
-                // first process the set of fields that were provided
-                // (evaluating them in order given by user)
-                let fields_map: FxHashMap<_, _> = fields
-                    .into_iter()
-                    .map(|f| {
-                        (
-                            f.name,
-                            unpack!(block = this.as_operand(block, scope, f.expr)),
-                        )
-                    }).collect();
-
-                let field_names = this.hir.all_fields(adt_def, variant_index);
-
-                let fields = if let Some(FruInfo { base, field_types }) = base {
-                    let base = unpack!(block = this.as_place(block, base));
-
-                    // MIR does not natively support FRU, so for each
-                    // base-supplied field, generate an operand that
-                    // reads it from the base.
-                    field_names
-                        .into_iter()
-                        .zip(field_types.into_iter())
-                        .map(|(n, ty)| match fields_map.get(&n) {
-                            Some(v) => v.clone(),
-                            None => this.consume_by_copy_or_move(base.clone().field(n, ty)),
-                        }).collect()
-                } else {
-                    field_names
-                        .iter()
-                        .filter_map(|n| fields_map.get(n).cloned())
-                        .collect()
-                };
-
-                let inferred_ty = expr.ty;
-                let user_ty = user_ty.map(|ty| {
-                    this.canonical_user_type_annotations.push(CanonicalUserTypeAnnotation {
-                        span: source_info.span,
-                        user_ty: ty,
-                        inferred_ty,
-                    })
-                });
-                let adt = box AggregateKind::Adt(
-                    adt_def,
-                    variant_index,
-                    substs,
-                    user_ty,
-                    active_field_index,
-                );
-                block.and(Rvalue::Aggregate(adt, fields))
-            }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
                 block = unpack!(this.stmt_expr(block, expr, None));
                 block.and(this.unit_rvalue())
@@ -346,6 +274,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Match { .. }
             | ExprKind::NeverToAny { .. }
             | ExprKind::Use { .. }
+            | ExprKind::Borrow { .. }
+            | ExprKind::Adt { .. }
             | ExprKind::Loop { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Call { .. }
@@ -397,8 +327,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let val_fld = Field::new(0);
             let of_fld = Field::new(1);
 
-            let val = result_value.clone().field(val_fld, ty);
-            let of = result_value.field(of_fld, bool_ty);
+            let tcx = self.hir.tcx();
+            let val = tcx.mk_place_field(result_value.clone(), val_fld, ty);
+            let of = tcx.mk_place_field(result_value, of_fld, bool_ty);
 
             let err = PanicInfo::Overflow(op);
 
@@ -496,14 +427,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let arg_place = unpack!(block = this.as_place(block, arg));
 
-        let mutability = match arg_place {
-            Place {
-                base: PlaceBase::Local(local),
-                projection: box [],
+        let mutability = match arg_place.as_ref() {
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: &[],
             } => this.local_decls[local].mutability,
-            Place {
-                base: PlaceBase::Local(local),
-                projection: box [ProjectionElem::Deref],
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: &[ProjectionElem::Deref],
             } => {
                 debug_assert!(
                     this.local_decls[local].is_ref_for_guard(),
@@ -511,13 +442,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 );
                 this.local_decls[local].mutability
             }
-            Place {
+            PlaceRef {
                 ref base,
-                projection: box [ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
+                projection: &[ref proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             }
-            | Place {
+            | PlaceRef {
                 ref base,
-                projection: box [
+                projection: &[
                     ref proj_base @ ..,
                     ProjectionElem::Field(upvar_index, _),
                     ProjectionElem::Deref

@@ -203,6 +203,10 @@ pub unsafe fn create_module(
     let llvm_target = SmallCStr::new(&sess.target.target.llvm_target);
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
 
+    if get_reloc_model(sess) == llvm::RelocMode::PIC {
+        llvm::LLVMRustSetModulePICLevel(llmod);
+    }
+
     if is_pie_binary(sess) {
         llvm::LLVMRustSetModulePIELevel(llmod);
     }

@@ -536,7 +536,7 @@ impl Ipv4Addr {
     /// // the broadcast address is not global
     /// assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_global(), false);
     ///
-    /// // the broadcast address is not global
+    /// // the address space designated for documentation is not global
     /// assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_global(), false);
     /// assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_global(), false);
     /// assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_global(), false);
@@ -633,8 +633,8 @@ impl Ipv4Addr {
     /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
     /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
     ///
-    /// [IETF RFC 1112]: https://tools.ietf.org/html/rfc1112
-    /// [errate 423]: https://www.rfc-editor.org/errata/eid423
+    /// [IETF RFC 2544]: https://tools.ietf.org/html/rfc2544
+    /// [errata 423]: https://www.rfc-editor.org/errata/eid423
     /// [`true`]: ../../std/primitive.bool.html
     ///
     /// # Examples
@@ -1130,7 +1130,7 @@ impl Ipv6Addr {
     /// The following return [`false`]:
     ///
     /// - the loopback address
-    /// - link-local, site-local, and unique local unicast addresses
+    /// - link-local and unique local unicast addresses
     /// - interface-, link-, realm-, admin- and site-local multicast addresses
     ///
     /// [`true`]: ../../std/primitive.bool.html

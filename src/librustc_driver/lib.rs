@@ -25,8 +25,6 @@ extern crate lazy_static;
 
 pub extern crate rustc_plugin_impl as plugin;
 
-use pretty::{PpMode, UserIdentifiedItem};
-
 //use rustc_resolve as resolve;
 use rustc_save_analysis as save;
 use rustc_save_analysis::DumpHandler;
@@ -36,12 +34,13 @@ use rustc::session::config::nightly_options;
 use rustc::session::{early_error, early_warn};
 use rustc::lint::Lint;
 use rustc::lint;
+use rustc::middle::cstore::MetadataLoader;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty::TyCtxt;
 use rustc::util::common::{set_time_depth, time, print_time_passes_entry, ErrorReported};
 use rustc_metadata::locator;
-use rustc_metadata::cstore::CStore;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use errors::PResult;
 use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
@@ -64,7 +63,6 @@ use std::time::Instant;
 use syntax::ast;
 use syntax::source_map::FileLoader;
 use syntax::feature_gate::{GatedCfg, UnstableFeatures};
-use syntax::parse::{self, PResult};
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, FileName};
 
@@ -182,6 +180,8 @@ pub fn run_compiler(
             stderr: None,
             crate_name: None,
             lint_caps: Default::default(),
+            register_lints: None,
+            override_queries: None,
         };
         callbacks.config(&mut config);
         config
@@ -202,9 +202,13 @@ pub fn run_compiler(
                     interface::run_compiler(config, |compiler| {
                         let sopts = &compiler.session().opts;
                         if sopts.describe_lints {
+                            let lint_store = rustc_lint::new_lint_store(
+                                sopts.debugging_opts.no_interleave_lints,
+                                compiler.session().unstable_options(),
+                            );
                             describe_lints(
                                 compiler.session(),
-                                &*compiler.session().lint_store.borrow(),
+                                &lint_store,
                                 false
                             );
                             return;
@@ -255,6 +259,8 @@ pub fn run_compiler(
         stderr: None,
         crate_name: None,
         lint_caps: Default::default(),
+        register_lints: None,
+        override_queries: None,
     };
 
     callbacks.config(&mut config);
@@ -269,7 +275,7 @@ pub fn run_compiler(
             compiler.output_file(),
         ).and_then(|| RustcDefaultCalls::list_metadata(
             sess,
-            compiler.cstore(),
+            &*compiler.codegen_backend().metadata_loader(),
             &matches,
             compiler.input()
         ));
@@ -278,33 +284,29 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        let pretty_info = parse_pretty(sess, &matches);
-
         compiler.parse()?;
 
-        if let Some((ppm, opt_uii)) = pretty_info {
+        if let Some((ppm, opt_uii)) = &sess.opts.pretty {
             if ppm.needs_ast_map(&opt_uii) {
-                pretty::visit_crate(sess, &mut compiler.parse()?.peek_mut(), ppm);
                 compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                     let expanded_crate = compiler.expansion()?.take().0;
                     pretty::print_after_hir_lowering(
                         tcx,
                         compiler.input(),
                         &expanded_crate,
-                        ppm,
+                        *ppm,
                         opt_uii.clone(),
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
                     Ok(())
                 })?;
             } else {
-                let mut krate = compiler.parse()?.take();
-                pretty::visit_crate(sess, &mut krate, ppm);
+                let krate = compiler.parse()?.take();
                 pretty::print_after_parsing(
                     sess,
                     &compiler.input(),
                     &krate,
-                    ppm,
+                    *ppm,
                     compiler.output_file().as_ref().map(|p| &**p),
                 );
             }
@@ -321,12 +323,14 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        compiler.register_plugins()?;
+        {
+            let (_, _, lint_store) = &*compiler.register_plugins()?.peek();
 
-        // Lint plugins are registered; now we can process command line flags.
-        if sess.opts.describe_lints {
-            describe_lints(&sess, &sess.lint_store.borrow(), true);
-            return sess.compile_status();
+            // Lint plugins are registered; now we can process command line flags.
+            if sess.opts.describe_lints {
+                describe_lints(&sess, &lint_store, true);
+                return sess.compile_status();
+            }
         }
 
         compiler.expansion()?;
@@ -391,7 +395,7 @@ pub fn run_compiler(
         mem::drop(compiler.global_ctxt()?.take());
 
         if sess.opts.debugging_opts.print_type_sizes {
-            sess.code_stats.borrow().print_type_sizes();
+            sess.code_stats.print_type_sizes();
         }
 
         compiler.link()?;
@@ -461,28 +465,6 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>, Option
     }
 }
 
-fn parse_pretty(sess: &Session,
-                matches: &getopts::Matches)
-                -> Option<(PpMode, Option<UserIdentifiedItem>)> {
-    let pretty = if sess.opts.debugging_opts.unstable_options {
-        matches.opt_default("pretty", "normal").map(|a| {
-            // stable pretty-print variants only
-            pretty::parse_pretty(sess, &a, false)
-        })
-    } else {
-        None
-    };
-
-    if pretty.is_none() {
-        sess.opts.debugging_opts.unpretty.as_ref().map(|a| {
-            // extended with unstable pretty-print variants
-            pretty::parse_pretty(sess, &a, true)
-        })
-    } else {
-        pretty
-    }
-}
-
 // Whether to stop or continue compilation.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Compilation {
@@ -542,13 +524,13 @@ fn handle_explain(code: &str,
             let mut text = String::new();
 
             // Slice off the leading newline and print.
-            for line in description[1..].lines() {
+            for line in description.lines() {
                 let indent_level = line.find(|c: char| !c.is_whitespace())
                     .unwrap_or_else(|| line.len());
                 let dedented_line = &line[indent_level..];
                 if dedented_line.starts_with("```") {
                     is_in_code_block = !is_in_code_block;
-                    text.push_str(&line[..(indent_level+3)]);
+                    text.push_str(&line[..(indent_level + 3)]);
                 } else if is_in_code_block && dedented_line.starts_with("# ") {
                     continue;
                 } else {
@@ -604,7 +586,7 @@ fn show_content_with_pager(content: &String) {
 
 impl RustcDefaultCalls {
     pub fn list_metadata(sess: &Session,
-                         cstore: &CStore,
+                         metadata_loader: &dyn MetadataLoader,
                          matches: &getopts::Matches,
                          input: &Input)
                          -> Compilation {
@@ -616,7 +598,7 @@ impl RustcDefaultCalls {
                     let mut v = Vec::new();
                     locator::list_file_metadata(&sess.target.target,
                                                 path,
-                                                cstore,
+                                                metadata_loader,
                                                 &mut v)
                             .unwrap();
                     println!("{}", String::from_utf8(v).unwrap());
@@ -835,8 +817,7 @@ Available lint options:
 
 ");
 
-    fn sort_lints(sess: &Session, lints: Vec<(&'static Lint, bool)>) -> Vec<&'static Lint> {
-        let mut lints: Vec<_> = lints.into_iter().map(|(x, _)| x).collect();
+    fn sort_lints(sess: &Session, mut lints: Vec<&'static Lint>) -> Vec<&'static Lint> {
         // The sort doesn't case-fold but it's doubtful we care.
         lints.sort_by_cached_key(|x: &&Lint| (x.default_level(sess), x.name));
         lints
@@ -852,7 +833,7 @@ Available lint options:
     let (plugin, builtin): (Vec<_>, _) = lint_store.get_lints()
                                                    .iter()
                                                    .cloned()
-                                                   .partition(|&(_, p)| p);
+                                                   .partition(|&lint| lint.is_plugin);
     let plugin = sort_lints(sess, plugin);
     let builtin = sort_lints(sess, builtin);
 
@@ -1036,12 +1017,6 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
     //   (unstable option being used on stable)
     nightly_options::check_nightly_options(&matches, &config::rustc_optgroups());
 
-    // Late check to see if @file was used without unstable options enabled
-    if crate::args::used_unstable_argsfile() && !nightly_options::is_unstable_enabled(&matches) {
-        early_error(ErrorOutputType::default(),
-            "@path is unstable - use -Z unstable-options to enable its use");
-    }
-
     if matches.opt_present("h") || matches.opt_present("help") {
         // Only show unstable options in --help if we accept unstable options.
         usage(matches.opt_present("verbose"), nightly_options::is_unstable_enabled(&matches));
@@ -1088,14 +1063,16 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
 }
 
 fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<ast::Attribute>> {
-    match *input {
-        Input::File(ref ifile) => {
-            parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
+    match input {
+        Input::File(ifile) => {
+            rustc_parse::parse_crate_attrs_from_file(ifile, &sess.parse_sess)
         }
-        Input::Str { ref name, ref input } => {
-            parse::parse_crate_attrs_from_source_str(name.clone(),
-                                                     input.clone(),
-                                                     &sess.parse_sess)
+        Input::Str { name, input } => {
+            rustc_parse::parse_crate_attrs_from_source_str(
+                name.clone(),
+                input.clone(),
+                &sess.parse_sess,
+            )
         }
     }
 }

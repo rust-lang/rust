@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `Bar: std::hash::Hash` is not satisfied
-  --> $DIR/issue-21160.rs:10:12
+  --> $DIR/issue-21160.rs:9:12
    |
 LL | struct Foo(Bar);
    |            ^^^ the trait `std::hash::Hash` is not implemented for `Bar`

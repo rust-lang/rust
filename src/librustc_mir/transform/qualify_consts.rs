@@ -6,7 +6,6 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::IndexVec;
-use rustc_data_structures::fx::FxHashSet;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -15,12 +14,9 @@ use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::mir::*;
-use rustc::mir::interpret::ConstValue;
-use rustc::mir::traversal::ReversePostorder;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
 use rustc::session::config::nightly_options;
-use syntax::ast::LitKind;
 use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
@@ -33,8 +29,9 @@ use std::usize;
 
 use rustc::hir::HirId;
 use crate::transform::{MirPass, MirSource};
-use super::promote_consts::{self, Candidate, TempState};
 use crate::transform::check_consts::ops::{self, NonConstOp};
+
+use rustc_error_codes::*;
 
 /// What kind of item we are in.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -71,7 +68,7 @@ impl fmt::Display for Mode {
     }
 }
 
-const QUALIF_COUNT: usize = 4;
+const QUALIF_COUNT: usize = 2;
 
 // FIXME(eddyb) once we can use const generics, replace this array with
 // something like `IndexVec` but for fixed-size arrays (`IndexArray`?).
@@ -80,20 +77,20 @@ struct PerQualif<T>([T; QUALIF_COUNT]);
 
 impl<T: Clone> PerQualif<T> {
     fn new(x: T) -> Self {
-        PerQualif([x.clone(), x.clone(), x.clone(), x])
+        PerQualif([x.clone(), x])
     }
 }
 
 impl<T> PerQualif<T> {
     fn as_mut(&mut self) -> PerQualif<&mut T> {
-        let [x0, x1, x2, x3] = &mut self.0;
-        PerQualif([x0, x1, x2, x3])
+        let [x0, x1] = &mut self.0;
+        PerQualif([x0, x1])
     }
 
     fn zip<U>(self, other: PerQualif<U>) -> PerQualif<(T, U)> {
-        let [x0, x1, x2, x3] = self.0;
-        let [y0, y1, y2, y3] = other.0;
-        PerQualif([(x0, y0), (x1, y1), (x2, y2), (x3, y3)])
+        let [x0, x1] = self.0;
+        let [y0, y1] = other.0;
+        PerQualif([(x0, y0), (x1, y1)])
     }
 }
 
@@ -206,6 +203,9 @@ trait Qualif {
                 ProjectionElem::ConstantIndex { .. } |
                 ProjectionElem::Downcast(..) => qualif,
 
+                // FIXME(eddyb) shouldn't this be masked *after* including the
+                // index local? Then again, it's `usize` which is neither
+                // `HasMutInterior` nor `NeedsDrop`.
                 ProjectionElem::Index(local) => qualif || Self::in_local(cx, *local),
             }
         } else {
@@ -252,12 +252,12 @@ trait Qualif {
             Operand::Move(ref place) => Self::in_place(cx, place.as_ref()),
 
             Operand::Constant(ref constant) => {
-                if let ConstValue::Unevaluated(def_id, _) = constant.literal.val {
+                if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty).unwrap_or(false)
                     } else {
-                        let (bits, _) = cx.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let bits = cx.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = PerQualif::decode_from_bits(bits).0[Self::IDX];
 
@@ -292,8 +292,8 @@ trait Qualif {
 
             Rvalue::Ref(_, _, ref place) => {
                 // Special-case reborrows to be more like a copy of the reference.
-                if let box [proj_base @ .., elem] = &place.projection {
-                    if ProjectionElem::Deref == *elem {
+                if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
+                    if ProjectionElem::Deref == elem {
                         let base_ty = Place::ty_from(&place.base, proj_base, cx.body, cx.tcx).ty;
                         if let ty::Ref(..) = base_ty.kind {
                             return Self::in_place(cx, PlaceRef {
@@ -426,193 +426,6 @@ impl Qualif for NeedsDrop {
     }
 }
 
-/// Not promotable at all - non-`const fn` calls, `asm!`,
-/// pointer comparisons, ptr-to-int casts, etc.
-/// Inside a const context all constness rules apply, so promotion simply has to follow the regular
-/// constant rules (modulo interior mutability or `Drop` rules which are handled `HasMutInterior`
-/// and `NeedsDrop` respectively). Basically this duplicates the checks that the const-checking
-/// visitor enforces by emitting errors when working in const context.
-struct IsNotPromotable;
-
-impl Qualif for IsNotPromotable {
-    const IDX: usize = 2;
-
-    fn in_static(cx: &ConstCx<'_, 'tcx>, static_: &Static<'tcx>) -> bool {
-        match static_.kind {
-            StaticKind::Promoted(_, _) => unreachable!(),
-            StaticKind::Static => {
-                // Only allow statics (not consts) to refer to other statics.
-                let allowed = cx.mode == Mode::Static || cx.mode == Mode::StaticMut;
-
-                !allowed ||
-                    cx.tcx.get_attrs(static_.def_id).iter().any(
-                        |attr| attr.check_name(sym::thread_local)
-                    )
-            }
-        }
-    }
-
-    fn in_projection(
-        cx: &ConstCx<'_, 'tcx>,
-        place: PlaceRef<'_, 'tcx>,
-    ) -> bool {
-        if let [proj_base @ .., elem] = place.projection {
-            match elem {
-                ProjectionElem::Deref |
-                ProjectionElem::Downcast(..) => return true,
-
-                ProjectionElem::ConstantIndex {..} |
-                ProjectionElem::Subslice {..} |
-                ProjectionElem::Index(_) => {}
-
-                ProjectionElem::Field(..) => {
-                    if cx.mode == Mode::NonConstFn {
-                        let base_ty = Place::ty_from(place.base, proj_base, cx.body, cx.tcx).ty;
-                        if let Some(def) = base_ty.ty_adt_def() {
-                            // No promotion of union field accesses.
-                            if def.is_union() {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-
-            Self::in_projection_structurally(cx, place)
-        } else {
-            bug!("This should be called if projection is not empty");
-        }
-    }
-
-    fn in_rvalue(cx: &ConstCx<'_, 'tcx>, rvalue: &Rvalue<'tcx>) -> bool {
-        match *rvalue {
-            Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if cx.mode == Mode::NonConstFn => {
-                let operand_ty = operand.ty(cx.body, cx.tcx);
-                let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
-                let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
-                match (cast_in, cast_out) {
-                    (CastTy::Ptr(_), CastTy::Int(_)) |
-                    (CastTy::FnPtr, CastTy::Int(_)) => {
-                        // in normal functions, mark such casts as not promotable
-                        return true;
-                    }
-                    _ => {}
-                }
-            }
-
-            Rvalue::BinaryOp(op, ref lhs, _) if cx.mode == Mode::NonConstFn => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(cx.body, cx.tcx).kind {
-                    assert!(op == BinOp::Eq || op == BinOp::Ne ||
-                            op == BinOp::Le || op == BinOp::Lt ||
-                            op == BinOp::Ge || op == BinOp::Gt ||
-                            op == BinOp::Offset);
-
-                    // raw pointer operations are not allowed inside promoteds
-                    return true;
-                }
-            }
-
-            Rvalue::NullaryOp(NullOp::Box, _) => return true,
-
-            _ => {}
-        }
-
-        Self::in_rvalue_structurally(cx, rvalue)
-    }
-
-    fn in_call(
-        cx: &ConstCx<'_, 'tcx>,
-        callee: &Operand<'tcx>,
-        args: &[Operand<'tcx>],
-        _return_ty: Ty<'tcx>,
-    ) -> bool {
-        let fn_ty = callee.ty(cx.body, cx.tcx);
-        match fn_ty.kind {
-            ty::FnDef(def_id, _) => {
-                match cx.tcx.fn_sig(def_id).abi() {
-                    Abi::RustIntrinsic |
-                    Abi::PlatformIntrinsic => {
-                        assert!(!cx.tcx.is_const_fn(def_id));
-                        match &cx.tcx.item_name(def_id).as_str()[..] {
-                            | "size_of"
-                            | "min_align_of"
-                            | "needs_drop"
-                            | "type_id"
-                            | "bswap"
-                            | "bitreverse"
-                            | "ctpop"
-                            | "cttz"
-                            | "cttz_nonzero"
-                            | "ctlz"
-                            | "ctlz_nonzero"
-                            | "wrapping_add"
-                            | "wrapping_sub"
-                            | "wrapping_mul"
-                            | "unchecked_shl"
-                            | "unchecked_shr"
-                            | "rotate_left"
-                            | "rotate_right"
-                            | "add_with_overflow"
-                            | "sub_with_overflow"
-                            | "mul_with_overflow"
-                            | "saturating_add"
-                            | "saturating_sub"
-                            | "transmute"
-                            | "simd_insert"
-                            | "simd_extract"
-                            => return true,
-
-                            _ => {}
-                        }
-                    }
-                    _ => {
-                        let is_const_fn =
-                            cx.tcx.is_const_fn(def_id) ||
-                            cx.tcx.is_unstable_const_fn(def_id).is_some() ||
-                            cx.is_const_panic_fn(def_id);
-                        if !is_const_fn {
-                            return true;
-                        }
-                    }
-                }
-            }
-            _ => return true,
-        }
-
-        Self::in_operand(cx, callee) || args.iter().any(|arg| Self::in_operand(cx, arg))
-    }
-}
-
-/// Refers to temporaries which cannot be promoted *implicitly*.
-/// Explicit promotion happens e.g. for constant arguments declared via `rustc_args_required_const`.
-/// Implicit promotion has almost the same rules, except that disallows `const fn` except for
-/// those marked `#[rustc_promotable]`. This is to avoid changing a legitimate run-time operation
-/// into a failing compile-time operation e.g. due to addresses being compared inside the function.
-struct IsNotImplicitlyPromotable;
-
-impl Qualif for IsNotImplicitlyPromotable {
-    const IDX: usize = 3;
-
-    fn in_call(
-        cx: &ConstCx<'_, 'tcx>,
-        callee: &Operand<'tcx>,
-        args: &[Operand<'tcx>],
-        _return_ty: Ty<'tcx>,
-    ) -> bool {
-        if cx.mode == Mode::NonConstFn {
-            if let ty::FnDef(def_id, _) = callee.ty(cx.body, cx.tcx).kind {
-                // Never promote runtime `const fn` calls of
-                // functions without `#[rustc_promotable]`.
-                if !cx.tcx.is_promotable_const_fn(def_id) {
-                    return true;
-                }
-            }
-        }
-
-        Self::in_operand(cx, callee) || args.iter().any(|arg| Self::in_operand(cx, arg))
-    }
-}
-
 // Ensure the `IDX` values are sequential (`0..QUALIF_COUNT`).
 macro_rules! static_assert_seq_qualifs {
     ($i:expr => $first:ident $(, $rest:ident)*) => {
@@ -627,7 +440,7 @@ macro_rules! static_assert_seq_qualifs {
     };
 }
 static_assert_seq_qualifs!(
-    0 => HasMutInterior, NeedsDrop, IsNotPromotable, IsNotImplicitlyPromotable
+    0 => HasMutInterior, NeedsDrop
 );
 
 impl ConstCx<'_, 'tcx> {
@@ -635,9 +448,6 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs[NeedsDrop] = NeedsDrop::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
-        qualifs[IsNotImplicitlyPromotable] =
-            IsNotImplicitlyPromotable::in_any_value_of_ty(self, ty).unwrap_or(false);
         qualifs
     }
 
@@ -645,8 +455,6 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_local(self, local);
         qualifs[NeedsDrop] = NeedsDrop::in_local(self, local);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_local(self, local);
-        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_local(self, local);
         qualifs
     }
 
@@ -654,8 +462,6 @@ impl ConstCx<'_, 'tcx> {
         let mut qualifs = PerQualif::default();
         qualifs[HasMutInterior] = HasMutInterior::in_value(self, source);
         qualifs[NeedsDrop] = NeedsDrop::in_value(self, source);
-        qualifs[IsNotPromotable] = IsNotPromotable::in_value(self, source);
-        qualifs[IsNotImplicitlyPromotable] = IsNotImplicitlyPromotable::in_value(self, source);
         qualifs
     }
 }
@@ -670,10 +476,6 @@ struct Checker<'a, 'tcx> {
 
     span: Span,
     def_id: DefId,
-    rpo: ReversePostorder<'a, 'tcx>,
-
-    temp_promotion_state: IndexVec<Local, TempState>,
-    promotion_candidates: Vec<Candidate>,
 
     /// If `true`, do not emit errors to the user, merely collect them in `errors`.
     suppress_errors: bool,
@@ -702,9 +504,6 @@ impl Deref for Checker<'a, 'tcx> {
 impl<'a, 'tcx> Checker<'a, 'tcx> {
     fn new(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>, mode: Mode) -> Self {
         assert!(def_id.is_local());
-        let mut rpo = traversal::reverse_postorder(body);
-        let temps = promote_consts::collect_temps(body, &mut rpo);
-        rpo.reset();
 
         let param_env = tcx.param_env(def_id);
 
@@ -725,23 +524,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     }
                 }
             }
-            if !temps[local].is_promotable() {
-                cx.per_local[IsNotPromotable].insert(local);
-            }
-            if let LocalKind::Var = body.local_kind(local) {
-                // Sanity check to prevent implicit and explicit promotion of
-                // named locals
-                assert!(cx.per_local[IsNotPromotable].contains(local));
-            }
         }
 
         Checker {
             cx,
             span: body.span,
             def_id,
-            rpo,
-            temp_promotion_state: temps,
-            promotion_candidates: vec![],
             errors: vec![],
             suppress_errors: false,
         }
@@ -786,16 +574,15 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         let mut qualifs = self.qualifs_in_value(source);
 
         match source {
-            ValueSource::Rvalue(&Rvalue::Ref(_, kind, ref place)) => {
+            ValueSource::Rvalue(&Rvalue::Ref(_, kind, _)) => {
                 // Getting `true` from `HasMutInterior::in_rvalue` means
                 // the borrowed place is disallowed from being borrowed,
                 // due to either a mutable borrow (with some exceptions),
                 // or an shared borrow of a value with interior mutability.
-                // Then `HasMutInterior` is replaced with `IsNotPromotable`,
+                // Then `HasMutInterior` is cleared
                 // to avoid duplicate errors (e.g. from reborrowing).
                 if qualifs[HasMutInterior] {
                     qualifs[HasMutInterior] = false;
-                    qualifs[IsNotPromotable] = true;
 
                     debug!("suppress_errors: {}", self.suppress_errors);
                     if self.mode.requires_const_checking() && !self.suppress_errors {
@@ -825,55 +612,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                             }
                         }
                     }
-                } else if let BorrowKind::Mut { .. } | BorrowKind::Shared = kind {
-                    // Don't promote BorrowKind::Shallow borrows, as they don't
-                    // reach codegen.
-
-                    // We might have a candidate for promotion.
-                    let candidate = Candidate::Ref(location);
-                    // Start by traversing to the "base", with non-deref projections removed.
-                    let deref_proj =
-                        place.projection.iter().rev().find(|&elem| *elem == ProjectionElem::Deref);
-
-                    debug!(
-                        "qualify_consts: promotion candidate: place={:?} {:?}",
-                        place.base, deref_proj
-                    );
-                    // We can only promote interior borrows of promotable temps (non-temps
-                    // don't get promoted anyway).
-                    // (If we bailed out of the loop due to a `Deref` above, we will definitely
-                    // not enter the conditional here.)
-                    if let (PlaceBase::Local(local), None) = (&place.base, deref_proj) {
-                        if self.body.local_kind(*local) == LocalKind::Temp {
-                            debug!("qualify_consts: promotion candidate: local={:?}", local);
-                            // The borrowed place doesn't have `HasMutInterior`
-                            // (from `in_rvalue`), so we can safely ignore
-                            // `HasMutInterior` from the local's qualifications.
-                            // This allows borrowing fields which don't have
-                            // `HasMutInterior`, from a type that does, e.g.:
-                            // `let _: &'static _ = &(Cell::new(1), 2).1;`
-                            let mut local_qualifs = self.qualifs_in_local(*local);
-                            // Any qualifications, except HasMutInterior (see above), disqualify
-                            // from promotion.
-                            // This is, in particular, the "implicit promotion" version of
-                            // the check making sure that we don't run drop glue during const-eval.
-                            local_qualifs[HasMutInterior] = false;
-                            if !local_qualifs.0.iter().any(|&qualif| qualif) {
-                                debug!("qualify_consts: promotion candidate: {:?}", candidate);
-                                self.promotion_candidates.push(candidate);
-                            }
-                        }
-                    }
-                }
-            },
-            ValueSource::Rvalue(&Rvalue::Repeat(ref operand, _)) => {
-                let candidate = Candidate::Repeat(location);
-                let not_promotable = IsNotImplicitlyPromotable::in_operand(self, operand) ||
-                                     IsNotPromotable::in_operand(self, operand);
-                debug!("assign: self.def_id={:?} operand={:?}", self.def_id, operand);
-                if !not_promotable && self.tcx.features().const_in_array_repeat_expressions {
-                    debug!("assign: candidate={:?}", candidate);
-                    self.promotion_candidates.push(candidate);
                 }
             },
             _ => {},
@@ -912,14 +650,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         let kind = self.body.local_kind(index);
         debug!("store to {:?} {:?}", kind, index);
 
-        // Only handle promotable temps in non-const functions.
-        if self.mode == Mode::NonConstFn {
-            if kind != LocalKind::Temp ||
-               !self.temp_promotion_state[index].is_promotable() {
-                return;
-            }
-        }
-
         // this is overly restrictive, because even full assignments do not clear the qualif
         // While we could special case full assignments, this would be inconsistent with
         // aggregates where we overwrite all fields via assignments, which would not get
@@ -929,22 +659,10 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 per_local.insert(index);
             }
         }
-
-        // Ensure the `IsNotPromotable` qualification is preserved.
-        // NOTE(eddyb) this is actually unnecessary right now, as
-        // we never replace the local's qualif, but we might in
-        // the future, and so it serves to catch changes that unset
-        // important bits (in which case, asserting `contains` could
-        // be replaced with calling `insert` to re-set the bit).
-        if kind == LocalKind::Temp {
-            if !self.temp_promotion_state[index].is_promotable() {
-                assert!(self.cx.per_local[IsNotPromotable].contains(index));
-            }
-        }
     }
 
     /// Check a whole const, static initializer or const fn.
-    fn check_const(&mut self) -> (u8, &'tcx BitSet<Local>) {
+    fn check_const(&mut self) -> u8 {
         use crate::transform::check_consts as new_checker;
 
         debug!("const-checking {} {:?}", self.mode, self.def_id);
@@ -957,8 +675,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
         }
 
         let item = new_checker::Item::new(self.tcx, self.def_id, self.body);
-        let mut_borrowed_locals = new_checker::validation::compute_indirectly_mutable_locals(&item);
-        let mut validator = new_checker::validation::Validator::new(&item, &mut_borrowed_locals);
+        let mut validator = new_checker::validation::Validator::new(&item);
 
         validator.suppress_errors = !use_new_validator;
         self.suppress_errors = use_new_validator;
@@ -1007,8 +724,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                     bb = target;
                 }
                 _ => {
-                    self.not_const(ops::Loop);
-                    validator.check_op(ops::Loop);
+                    if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                        self.tcx.sess.delay_span_bug(
+                            self.span,
+                            "complex control flow is forbidden in a const context",
+                        );
+                    }
                     break;
                 }
             }
@@ -1033,49 +754,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        // Collect all the temps we need to promote.
-        let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
-
-        debug!("qualify_const: promotion_candidates={:?}", self.promotion_candidates);
-        for candidate in &self.promotion_candidates {
-            match *candidate {
-                Candidate::Repeat(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(box(_, Rvalue::Repeat(
-                        Operand::Move(Place {
-                            base: PlaceBase::Local(index),
-                            projection: box [],
-                        }),
-                        _
-                    ))) = self.body[bb].statements[stmt_idx].kind {
-                        promoted_temps.insert(index);
-                    }
-                }
-                Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
-                    if let StatementKind::Assign(
-                        box(
-                            _,
-                            Rvalue::Ref(_, _, Place {
-                                base: PlaceBase::Local(index),
-                                projection: box [],
-                            })
-                        )
-                    ) = self.body[bb].statements[stmt_idx].kind {
-                        promoted_temps.insert(index);
-                    }
-                }
-                Candidate::Argument { .. } => {}
-            }
-        }
-
-        let mut qualifs = self.qualifs_in_local(RETURN_PLACE);
-
-        // Account for errors in consts by using the
-        // conservative type qualification instead.
-        if qualifs[IsNotPromotable] {
-            qualifs = self.qualifs_in_any_value_of_ty(body.return_ty());
-        }
-
-        (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
+        self.qualifs_in_local(RETURN_PLACE).encode_to_bits()
     }
 }
 
@@ -1108,19 +787,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
 
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
-                    if self.mode == Mode::Static
-                        && context.is_mutating_use()
-                        && !self.suppress_errors
-                    {
-                        // this is not strictly necessary as miri will also bail out
-                        // For interior mutability we can't really catch this statically as that
-                        // goes through raw pointers and intermediate temporaries, so miri has
-                        // to catch this anyway
-                        self.tcx.sess.span_err(
-                            self.span,
-                            "cannot mutate statics in the initializer of another static",
-                        );
-                    }
                     return;
                 }
                 unleash_miri!(self);
@@ -1237,10 +903,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         match *operand {
             Operand::Move(ref place) => {
                 // Mark the consumed locals to indicate later drops are noops.
-                if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } = *place {
+                if let Some(local) = place.as_local() {
                     self.cx.per_local[NeedsDrop].remove(local);
                 }
             }
@@ -1256,8 +919,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
             // Special-case reborrows.
             let mut reborrow_place = None;
-            if let box [proj_base @ .., elem] = &place.projection {
-                if *elem == ProjectionElem::Deref {
+            if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
+                if elem == ProjectionElem::Deref {
                     let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         reborrow_place = Some(proj_base);
@@ -1391,16 +1054,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
             }
 
             let fn_ty = func.ty(self.body, self.tcx);
-            let mut callee_def_id = None;
-            let mut is_shuffle = false;
             match fn_ty.kind {
                 ty::FnDef(def_id, _) => {
-                    callee_def_id = Some(def_id);
                     match self.tcx.fn_sig(def_id).abi() {
                         Abi::RustIntrinsic |
                         Abi::PlatformIntrinsic => {
                             assert!(!self.tcx.is_const_fn(def_id));
-                            match &self.tcx.item_name(def_id).as_str()[..] {
+                            match &*self.tcx.item_name(def_id).as_str() {
                                 // special intrinsic that can be called diretly without an intrinsic
                                 // feature gate needs a language feature gate
                                 "transmute" => {
@@ -1417,10 +1077,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                                                 is gated in {}s", self.mode));
                                         }
                                     }
-                                }
-
-                                name if name.starts_with("simd_shuffle") => {
-                                    is_shuffle = true;
                                 }
 
                                 // no need to check feature gates, intrinsics are only callable
@@ -1510,44 +1166,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 }
             }
 
-            // No need to do anything in constants and statics, as everything is "constant" anyway
-            // so promotion would be useless.
-            if self.mode != Mode::Static && self.mode != Mode::Const {
-                let constant_args = callee_def_id.and_then(|id| {
-                    args_required_const(self.tcx, id)
-                }).unwrap_or_default();
-                for (i, arg) in args.iter().enumerate() {
-                    if !(is_shuffle && i == 2 || constant_args.contains(&i)) {
-                        continue;
-                    }
-
-                    let candidate = Candidate::Argument { bb: location.block, index: i };
-                    // Since the argument is required to be constant,
-                    // we care about constness, not promotability.
-                    // If we checked for promotability, we'd miss out on
-                    // the results of function calls (which are never promoted
-                    // in runtime code).
-                    // This is not a problem, because the argument explicitly
-                    // requests constness, in contrast to regular promotion
-                    // which happens even without the user requesting it.
-                    // We can error out with a hard error if the argument is not
-                    // constant here.
-                    if !IsNotPromotable::in_operand(self, arg) {
-                        debug!("visit_terminator_kind: candidate={:?}", candidate);
-                        self.promotion_candidates.push(candidate);
-                    } else {
-                        if is_shuffle {
-                            span_err!(self.tcx.sess, self.span, E0526,
-                                      "shuffle indices are not constant");
-                        } else {
-                            self.tcx.sess.span_err(self.span,
-                                &format!("argument {} is required to be a constant",
-                                         i + 1));
-                        }
-                    }
-                }
-            }
-
             // Check callee and argument operands.
             self.visit_operand(func, location);
             for arg in args {
@@ -1568,10 +1186,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
-                let needs_drop = if let Place {
-                    base: PlaceBase::Local(local),
-                    projection: box [],
-                } = *place {
+                let needs_drop = if let Some(local) = place.as_local() {
                     if NeedsDrop::in_local(self, local) {
                         Some(self.body.local_decls[local].source_info.span)
                     } else {
@@ -1630,7 +1245,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Checker<'a, 'tcx> {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
-                self.not_const(ops::IfOrMatch);
+                if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                    self.tcx.sess.delay_span_bug(
+                        self.span,
+                        "complex control flow is forbidden in a const context",
+                    );
+                }
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
@@ -1652,7 +1272,11 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
+// FIXME(eddyb) this is only left around for the validation logic
+// in `promote_consts`, see the comment in `validate_operand`.
+pub(super) const QUALIF_ERROR_BIT: u8 = 1 << 2;
+
+fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> u8 {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1661,7 +1285,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> (u8, &BitSet<Local>) {
 
     if body.return_ty().references_error() {
         tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
-        return (1 << IsNotPromotable::IDX, tcx.arena.alloc(BitSet::new_empty(0)));
+        return QUALIF_ERROR_BIT;
     }
 
     Checker::new(tcx, def_id, body, Mode::Const).check_const()
@@ -1697,49 +1321,34 @@ impl<'tcx> MirPass<'tcx> for QualifyAndPromoteConstants<'tcx> {
         let mode = determine_mode(tcx, hir_id, def_id);
 
         debug!("run_pass: mode={:?}", mode);
-        if let Mode::NonConstFn | Mode::ConstFn = mode {
-            // This is ugly because Checker holds onto mir,
-            // which can't be mutated until its scope ends.
-            let (temps, candidates) = {
-                let mut checker = Checker::new(tcx, def_id, body, mode);
-                if let Mode::ConstFn = mode {
-                    if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                        checker.check_const();
-                    } else if tcx.is_min_const_fn(def_id) {
-                        // Enforce `min_const_fn` for stable `const fn`s.
-                        use super::qualify_min_const_fn::is_min_const_fn;
-                        if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
-                            error_min_const_fn_violation(tcx, span, err);
-                        } else {
-                            // this should not produce any errors, but better safe than sorry
-                            // FIXME(#53819)
-                            checker.check_const();
-                        }
-                    } else {
-                        // Enforce a constant-like CFG for `const fn`.
-                        checker.check_const();
-                    }
-                } else {
-                    while let Some((bb, data)) = checker.rpo.next() {
-                        checker.visit_basic_block_data(bb, data);
-                    }
+        if let Mode::NonConstFn = mode {
+            // No need to const-check a non-const `fn` now that we don't do promotion here.
+            return;
+        } else if let Mode::ConstFn = mode {
+            let mut checker = Checker::new(tcx, def_id, body, mode);
+            let use_min_const_fn_checks =
+                !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you &&
+                tcx.is_min_const_fn(def_id);
+            if use_min_const_fn_checks {
+                // Enforce `min_const_fn` for stable `const fn`s.
+                use super::qualify_min_const_fn::is_min_const_fn;
+                if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
+                    error_min_const_fn_violation(tcx, span, err);
+                    return;
                 }
+            }
 
-                (checker.temp_promotion_state, checker.promotion_candidates)
-            };
-
-            // Do the actual promotion, now that we know what's viable.
-            self.promoted.set(
-                promote_consts::promote_candidates(def_id, body, tcx, temps, candidates)
-            );
+            // `check_const` should not produce any errors, but better safe than sorry
+            // FIXME(#53819)
+            // Enforce a constant-like CFG for `const fn`.
+            checker.check_const();
         } else {
             check_short_circuiting_in_const_local(tcx, body, mode);
 
-            let promoted_temps = match mode {
-                Mode::Const => tcx.mir_const_qualif(def_id).1,
-                _ => Checker::new(tcx, def_id, body, mode).check_const().1,
+            match mode {
+                Mode::Const => tcx.mir_const_qualif(def_id),
+                _ => Checker::new(tcx, def_id, body, mode).check_const(),
             };
-            remove_drop_and_storage_dead_on_promoted_locals(body, promoted_temps);
         }
 
         if mode == Mode::Static && !tcx.has_attr(def_id, sym::thread_local) {
@@ -1755,8 +1364,8 @@ fn determine_mode(tcx: TyCtxt<'_>, hir_id: HirId, def_id: DefId) -> Mode {
         hir::BodyOwnerKind::Fn if tcx.is_const_fn(def_id) => Mode::ConstFn,
         hir::BodyOwnerKind::Fn => Mode::NonConstFn,
         hir::BodyOwnerKind::Const => Mode::Const,
-        hir::BodyOwnerKind::Static(hir::MutImmutable) => Mode::Static,
-        hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
+        hir::BodyOwnerKind::Static(hir::Mutability::Immutable) => Mode::Static,
+        hir::BodyOwnerKind::Static(hir::Mutability::Mutable) => Mode::StaticMut,
     }
 }
 
@@ -1800,39 +1409,6 @@ fn check_short_circuiting_in_const_local(tcx: TyCtxt<'_>, body: &mut Body<'tcx>,
     }
 }
 
-/// In `const` and `static` everything without `StorageDead`
-/// is `'static`, we don't have to create promoted MIR fragments,
-/// just remove `Drop` and `StorageDead` on "promoted" locals.
-fn remove_drop_and_storage_dead_on_promoted_locals(
-    body: &mut Body<'tcx>,
-    promoted_temps: &BitSet<Local>,
-) {
-    debug!("run_pass: promoted_temps={:?}", promoted_temps);
-
-    for block in body.basic_blocks_mut() {
-        block.statements.retain(|statement| {
-            match statement.kind {
-                StatementKind::StorageDead(index) => !promoted_temps.contains(index),
-                _ => true
-            }
-        });
-        let terminator = block.terminator_mut();
-        match terminator.kind {
-            TerminatorKind::Drop {
-                location: Place {
-                    base: PlaceBase::Local(index),
-                    projection: box [],
-                },
-                target,
-                ..
-            } if promoted_temps.contains(index) => {
-                terminator.kind = TerminatorKind::Goto { target };
-            }
-            _ => {}
-        }
-    }
-}
-
 fn check_static_is_sync(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, hir_id: HirId) {
     let ty = body.return_ty();
     tcx.infer_ctxt().enter(|infcx| {
@@ -1844,19 +1420,6 @@ fn check_static_is_sync(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, hir_id: HirId)
             infcx.report_fulfillment_errors(&err, None, false);
         }
     });
-}
-
-fn args_required_const(tcx: TyCtxt<'_>, def_id: DefId) -> Option<FxHashSet<usize>> {
-    let attrs = tcx.get_attrs(def_id);
-    let attr = attrs.iter().find(|a| a.check_name(sym::rustc_args_required_const))?;
-    let mut ret = FxHashSet::default();
-    for meta in attr.meta_item_list()? {
-        match meta.literal()?.kind {
-            LitKind::Int(a, _) => { ret.insert(a as usize); }
-            _ => return None,
-        }
-    }
-    Some(ret)
 }
 
 fn validator_mismatch(

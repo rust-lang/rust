@@ -13,7 +13,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
         panic!("couldn't generate random bytes: {}",
                io::Error::last_os_error());
     }
-    return v
+    v
 }
 
 #[cfg(target_vendor = "uwp")]

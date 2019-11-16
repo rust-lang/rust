@@ -2,7 +2,7 @@ error: expected one of `crate`, `fn`, or `{`, found `crte`
   --> $DIR/extern-crate-unexpected-token.rs:1:8
    |
 LL | extern crte foo;
-   |        ^^^^ expected one of `crate`, `fn`, or `{` here
+   |        ^^^^ expected one of `crate`, `fn`, or `{`
 
 error: aborting due to previous error
 

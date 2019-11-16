@@ -13,7 +13,7 @@ use errors::DiagnosticBuilder;
 use syntax::ast;
 use syntax::source_map::respan;
 use syntax_expand::base::{self, *};
-use syntax::parse::token;
+use syntax::token;
 use syntax::ptr::P;
 use syntax_pos::Span;
 use syntax::tokenstream::TokenStream;

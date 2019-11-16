@@ -23,7 +23,7 @@ libc = { version = "0.2.51", default-features = false, features = ['rustc-dep-of
 compiler_builtins = { version = "0.1.16" }
 profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 unwind = { path = "../libunwind" }
-hashbrown = { version = "0.6.1", default-features = false, features = ['rustc-dep-of-std'] }
+hashbrown = { version = "0.6.2", default-features = false, features = ['rustc-dep-of-std'] }
 
 [dependencies.backtrace_rs]
 package = "backtrace"
@@ -49,6 +49,9 @@ dlmalloc = { version = "0.1", features = ['rustc-dep-of-std'] }
 
 [target.x86_64-fortanix-unknown-sgx.dependencies]
 fortanix-sgx-abi = { version = "0.3.2", features = ['rustc-dep-of-std'] }
+
+[target.'cfg(all(any(target_arch = "x86_64", target_arch = "aarch64"), target_os = "hermit"))'.dependencies]
+hermit-abi = { version = "0.1", features = ['rustc-dep-of-std'] }
 
 [target.wasm32-wasi.dependencies]
 wasi = { version = "0.7.0", features = ['rustc-dep-of-std', 'alloc'] }

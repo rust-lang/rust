@@ -182,8 +182,7 @@ use std::iter;
 use std::vec;
 
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_target::spec::abi::Abi;
-use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use syntax::ast::{self, Abi, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::source_map::respan;
@@ -191,8 +190,8 @@ use syntax::util::map_in_place::MapInPlace;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{Symbol, kw, sym};
-use syntax_expand::base::{Annotatable, ExtCtxt, SpecialDerives};
-use syntax_pos::{Span};
+use syntax_expand::base::{Annotatable, ExtCtxt};
+use syntax_pos::Span;
 
 use ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
@@ -426,10 +425,8 @@ impl<'a> TraitDef<'a> {
                     }
                 };
                 let container_id = cx.current_expansion.id.expn_data().parent;
-                let is_always_copy =
-                    cx.resolver.has_derives(container_id, SpecialDerives::COPY) &&
-                    has_no_type_params;
-                let use_temporaries = is_packed && is_always_copy;
+                let always_copy = has_no_type_params && cx.resolver.has_derive_copy(container_id);
+                let use_temporaries = is_packed && always_copy;
 
                 let newitem = match item.kind {
                     ast::ItemKind::Struct(ref struct_def, ref generics) => {
@@ -740,7 +737,7 @@ impl<'a> TraitDef<'a> {
                                          self,
                                          type_ident,
                                          generics,
-                                         Abi::Rust,
+                                         sym::Rust,
                                          explicit_self,
                                          tys,
                                          body)
@@ -795,7 +792,7 @@ impl<'a> TraitDef<'a> {
                                          self,
                                          type_ident,
                                          generics,
-                                         Abi::Rust,
+                                         sym::Rust,
                                          explicit_self,
                                          tys,
                                          body)
@@ -921,7 +918,7 @@ impl<'a> MethodDef<'a> {
                      trait_: &TraitDef<'_>,
                      type_ident: Ident,
                      generics: &Generics,
-                     abi: Abi,
+                     abi: Symbol,
                      explicit_self: Option<ast::ExplicitSelf>,
                      arg_types: Vec<(Ident, P<ast::Ty>)>,
                      body: P<Expr>)
@@ -951,23 +948,27 @@ impl<'a> MethodDef<'a> {
             ast::Unsafety::Normal
         };
 
+        let trait_lo_sp = trait_.span.shrink_to_lo();
+
+        let sig = ast::FnSig {
+            header: ast::FnHeader {
+                unsafety,
+                abi: Abi::new(abi, trait_lo_sp),
+                ..ast::FnHeader::default()
+            },
+            decl: fn_decl,
+        };
+
         // Create the method.
         ast::ImplItem {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             generics: fn_generics,
             span: trait_.span,
-            vis: respan(trait_.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+            vis: respan(trait_lo_sp, ast::VisibilityKind::Inherited),
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            kind: ast::ImplItemKind::Method(ast::MethodSig {
-                                                header: ast::FnHeader {
-                                                    unsafety, abi,
-                                                    ..ast::FnHeader::default()
-                                                },
-                                                decl: fn_decl,
-                                            },
-                                            body_block),
+            kind: ast::ImplItemKind::Method(sig, body_block),
             tokens: None,
         }
     }

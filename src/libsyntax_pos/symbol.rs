@@ -9,7 +9,7 @@ use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
 
-use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
+use std::cmp::{PartialEq, PartialOrd, Ord};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
@@ -110,6 +110,7 @@ symbols! {
         aarch64_target_feature,
         abi,
         abi_amdgpu_kernel,
+        abi_efiapi,
         abi_msp430_interrupt,
         abi_ptx,
         abi_sysv64,
@@ -147,6 +148,7 @@ symbols! {
         associated_type_bounds,
         associated_type_defaults,
         associated_types,
+        assume_init,
         async_await,
         async_closure,
         attr,
@@ -369,6 +371,7 @@ symbols! {
         issue_5723_bootstrap,
         issue_tracker_base_url,
         item,
+        item_context: "ItemContext",
         item_like_imports,
         iter,
         Iterator,
@@ -415,7 +418,10 @@ symbols! {
         match_beginning_vert,
         match_default_bindings,
         may_dangle,
-        mem,
+        maybe_uninit_uninit,
+        maybe_uninit_zeroed,
+        mem_uninitialized,
+        mem_zeroed,
         member_constraints,
         message,
         meta,
@@ -426,6 +432,7 @@ symbols! {
         module,
         module_path,
         more_struct_aliases,
+        move_val_init,
         movbe_target_feature,
         must_use,
         naked,
@@ -459,6 +466,7 @@ symbols! {
         no_std,
         not,
         note,
+        object_safe_for_dispatch,
         Ok,
         omit_gdb_pretty_printer_section,
         on,
@@ -539,6 +547,8 @@ symbols! {
         recursion_limit,
         reexport_test_harness_main,
         reflect,
+        register_attr,
+        register_tool,
         relaxed_adts,
         repr,
         repr128,
@@ -560,6 +570,7 @@ symbols! {
         rust_2018_preview,
         rust_begin_unwind,
         rustc,
+        Rust,
         RustcDecodable,
         RustcEncodable,
         rustc_allocator,
@@ -706,7 +717,6 @@ symbols! {
         underscore_imports,
         underscore_lifetimes,
         uniform_paths,
-        uninitialized,
         universal_impl_trait,
         unmarked_api,
         unreachable_code,
@@ -731,14 +741,12 @@ symbols! {
         visible_private_types,
         volatile,
         warn,
-        warn_directory_ownership,
         wasm_import_module,
         wasm_target_feature,
         while_let,
         windows,
         windows_subsystem,
         Yield,
-        zeroed,
     }
 }
 
@@ -764,11 +772,6 @@ impl Ident {
     #[inline]
     pub fn invalid() -> Ident {
         Ident::with_dummy_span(kw::Invalid)
-    }
-
-    /// Maps an interned string to an identifier with an empty syntax context.
-    pub fn from_interned_str(string: InternedString) -> Ident {
-        Ident::with_dummy_span(string.as_symbol())
     }
 
     /// Maps a string to an identifier with a dummy span.
@@ -808,15 +811,10 @@ impl Ident {
         Ident::new(self.name, self.span.modern_and_legacy())
     }
 
-    /// Convert the name to a `LocalInternedString`. This is a slowish
-    /// operation because it requires locking the symbol interner.
-    pub fn as_str(self) -> LocalInternedString {
+    /// Convert the name to a `SymbolStr`. This is a slowish operation because
+    /// it requires locking the symbol interner.
+    pub fn as_str(self) -> SymbolStr {
         self.name.as_str()
-    }
-
-    /// Convert the name to an `InternedString`.
-    pub fn as_interned_str(self) -> InternedString {
-        self.name.as_interned_str()
     }
 }
 
@@ -903,28 +901,14 @@ impl Symbol {
         })
     }
 
-    /// Access two symbols' chars. This is a slowish operation because it
-    /// requires locking the symbol interner, but it is faster than calling
-    /// `with()` twice.
-    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: Symbol, f: F) -> R {
-        with_interner(|interner| {
-            f(interner.get(self), interner.get(other))
-        })
-    }
-
-    /// Convert to a `LocalInternedString`. This is a slowish operation because
-    /// it requires locking the symbol interner.
-    pub fn as_str(self) -> LocalInternedString {
+    /// Convert to a `SymbolStr`. This is a slowish operation because it
+    /// requires locking the symbol interner.
+    pub fn as_str(self) -> SymbolStr {
         with_interner(|interner| unsafe {
-            LocalInternedString {
+            SymbolStr {
                 string: std::mem::transmute::<&str, &str>(interner.get(self))
             }
         })
-    }
-
-    /// Convert to an `InternedString`.
-    pub fn as_interned_str(self) -> InternedString {
-        InternedString { symbol: self }
     }
 
     pub fn as_u32(self) -> u32 {
@@ -994,6 +978,7 @@ impl Interner {
         self.names.insert(string, name);
         name
     }
+
     // Get the symbol as a string. `Symbol::as_str()` should be used in
     // preference to this function.
     pub fn get(&self, symbol: Symbol) -> &str {
@@ -1099,147 +1084,56 @@ impl Ident {
     }
 }
 
-// If an interner exists, return it. Otherwise, prepare a fresh one.
 #[inline]
 fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
     GLOBALS.with(|globals| f(&mut *globals.symbol_interner.lock()))
 }
 
-/// An alternative to `Symbol` and `InternedString`, useful when the chars
-/// within the symbol need to be accessed. It deliberately has limited
-/// functionality and should only be used for temporary values.
+/// An alternative to `Symbol`, useful when the chars within the symbol need to
+/// be accessed. It deliberately has limited functionality and should only be
+/// used for temporary values.
 ///
 /// Because the interner outlives any thread which uses this type, we can
 /// safely treat `string` which points to interner data, as an immortal string,
 /// as long as this type never crosses between threads.
 //
-// FIXME: ensure that the interner outlives any thread which uses
-// `LocalInternedString`, by creating a new thread right after constructing the
-// interner.
-#[derive(Eq, PartialOrd, Ord)]
-pub struct LocalInternedString {
+// FIXME: ensure that the interner outlives any thread which uses `SymbolStr`,
+// by creating a new thread right after constructing the interner.
+#[derive(Clone, Eq, PartialOrd, Ord)]
+pub struct SymbolStr {
     string: &'static str,
 }
 
-impl<U: ?Sized> std::convert::AsRef<U> for LocalInternedString
-where
-    str: std::convert::AsRef<U>
-{
-    #[inline]
-    fn as_ref(&self) -> &U {
-        self.string.as_ref()
-    }
-}
-
-impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for LocalInternedString {
+// This impl allows a `SymbolStr` to be directly equated with a `String` or
+// `&str`.
+impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
     fn eq(&self, other: &T) -> bool {
         self.string == other.deref()
     }
 }
 
-impl !Send for LocalInternedString {}
-impl !Sync for LocalInternedString {}
+impl !Send for SymbolStr {}
+impl !Sync for SymbolStr {}
 
-impl std::ops::Deref for LocalInternedString {
+/// This impl means that if `ss` is a `SymbolStr`:
+/// - `*ss` is a `str`;
+/// - `&*ss` is a `&str`;
+/// - `&ss as &str` is a `&str`, which means that `&ss` can be passed to a
+///   function expecting a `&str`.
+impl std::ops::Deref for SymbolStr {
     type Target = str;
     #[inline]
     fn deref(&self) -> &str { self.string }
 }
 
-impl fmt::Debug for LocalInternedString {
+impl fmt::Debug for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Debug::fmt(self.string, f)
     }
 }
 
-impl fmt::Display for LocalInternedString {
+impl fmt::Display for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
-    }
-}
-
-/// An alternative to `Symbol` that is focused on string contents.
-///
-/// Its implementations of `Hash`, `PartialOrd` and `Ord` work with the
-/// string chars rather than the symbol integer. This is useful when hash
-/// stability is required across compile sessions, or a guaranteed sort
-/// ordering is required.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct InternedString {
-    symbol: Symbol,
-}
-
-impl InternedString {
-    /// Maps a string to its interned representation.
-    pub fn intern(string: &str) -> Self {
-        InternedString {
-            symbol: Symbol::intern(string)
-        }
-    }
-
-    pub fn with<F: FnOnce(&str) -> R, R>(self, f: F) -> R {
-        self.symbol.with(f)
-    }
-
-    fn with2<F: FnOnce(&str, &str) -> R, R>(self, other: &InternedString, f: F) -> R {
-        self.symbol.with2(other.symbol, f)
-    }
-
-    pub fn as_symbol(self) -> Symbol {
-        self.symbol
-    }
-
-    /// Convert to a `LocalInternedString`. This is a slowish operation because it
-    /// requires locking the symbol interner.
-    pub fn as_str(self) -> LocalInternedString {
-        self.symbol.as_str()
-    }
-}
-
-impl Hash for InternedString {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.with(|str| str.hash(state))
-    }
-}
-
-impl PartialOrd<InternedString> for InternedString {
-    fn partial_cmp(&self, other: &InternedString) -> Option<Ordering> {
-        if self.symbol == other.symbol {
-            return Some(Ordering::Equal);
-        }
-        self.with2(other, |self_str, other_str| self_str.partial_cmp(other_str))
-    }
-}
-
-impl Ord for InternedString {
-    fn cmp(&self, other: &InternedString) -> Ordering {
-        if self.symbol == other.symbol {
-            return Ordering::Equal;
-        }
-        self.with2(other, |self_str, other_str| self_str.cmp(other_str))
-    }
-}
-
-impl fmt::Debug for InternedString {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Debug::fmt(&str, f))
-    }
-}
-
-impl fmt::Display for InternedString {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.with(|str| fmt::Display::fmt(&str, f))
-    }
-}
-
-impl Decodable for InternedString {
-    fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(InternedString::intern(&d.read_str()?))
-    }
-}
-
-impl Encodable for InternedString {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.with(|string| s.emit_str(string))
     }
 }

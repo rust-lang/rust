@@ -430,8 +430,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let contains_ref_bindings = arms.iter()
             .filter_map(|a| a.pat.contains_explicit_ref_binding())
             .max_by_key(|m| match *m {
-                hir::MutMutable => 1,
-                hir::MutImmutable => 0,
+                hir::Mutability::Mutable => 1,
+                hir::Mutability::Immutable => 0,
             });
 
         if let Some(m) = contains_ref_bindings {

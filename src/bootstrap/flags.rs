@@ -448,12 +448,12 @@ Arguments:
 
         Flags {
             verbose: matches.opt_count("verbose"),
-            stage: matches.opt_str("stage").map(|j| j.parse().unwrap()),
+            stage: matches.opt_str("stage").map(|j| j.parse().expect("`stage` should be a number")),
             dry_run: matches.opt_present("dry-run"),
             on_fail: matches.opt_str("on-fail"),
             rustc_error_format: matches.opt_str("error-format"),
             keep_stage: matches.opt_strs("keep-stage")
-                .into_iter().map(|j| j.parse().unwrap())
+                .into_iter().map(|j| j.parse().expect("`keep-stage` should be a number"))
                 .collect(),
             host: split(&matches.opt_strs("host"))
                 .into_iter()
@@ -464,7 +464,7 @@ Arguments:
                 .map(|x| INTERNER.intern_string(x))
                 .collect::<Vec<_>>(),
             config: cfg_file,
-            jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
+            jobs: matches.opt_str("jobs").map(|j| j.parse().expect("`jobs` should be a number")),
             cmd,
             incremental: matches.opt_present("incremental"),
             exclude: split(&matches.opt_strs("exclude"))

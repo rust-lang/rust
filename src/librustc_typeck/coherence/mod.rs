@@ -12,6 +12,8 @@ use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
 
+use rustc_error_codes::*;
+
 mod builtin;
 mod inherent_impls;
 mod inherent_impls_overlap;
@@ -183,8 +185,11 @@ fn check_impl_overlap<'tcx>(tcx: TyCtxt<'tcx>, hir_id: HirId) {
 
         for component_def_id in component_def_ids {
             if !tcx.is_object_safe(component_def_id) {
-                // This is an error, but it will be reported by wfcheck.  Ignore it here.
+                // Without the 'object_safe_for_dispatch' feature this is an error
+                // which will be reported by wfcheck.  Ignore it here.
                 // This is tested by `coherence-impl-trait-for-trait-object-safe.rs`.
+                // With the feature enabled, the trait is not implemented automatically,
+                // so this is valid.
             } else {
                 let mut supertrait_def_ids =
                     traits::supertrait_def_ids(tcx, component_def_id);

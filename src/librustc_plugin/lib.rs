@@ -59,7 +59,6 @@
 
 pub use registry::Registry;
 
-pub mod error_codes;
 pub mod registry;
 pub mod load;
 pub mod build;

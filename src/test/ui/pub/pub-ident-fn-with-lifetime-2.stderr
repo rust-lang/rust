@@ -3,6 +3,7 @@ error: missing `fn` for method definition
    |
 LL | pub   bar<'a>(&self, _s: &'a usize) -> bool { true }
    |    ^^^
+   |
 help: add `fn` here to parse `bar` as a public method
    |
 LL | pub fn bar<'a>(&self, _s: &'a usize) -> bool { true }

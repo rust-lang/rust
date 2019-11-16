@@ -27,6 +27,7 @@ error[E0308]: mismatched types
    |
 LL |     let c: i32 = 1i8;
    |                  ^^^ expected i32, found i8
+   |
 help: change the type of the numeric literal from `i8` to `i32`
    |
 LL |     let c: i32 = 1i32;
@@ -37,6 +38,7 @@ error[E0308]: mismatched types
    |
 LL |     let d: i8 = c;
    |                 ^ expected i8, found i32
+   |
 help: you can convert an `i32` to `i8` and panic if the converted value wouldn't fit
    |
 LL |     let d: i8 = c.try_into().unwrap();

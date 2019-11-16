@@ -23,7 +23,7 @@ LL | |     });
    | |_______- in this macro invocation
 
 warning: irrefutable while-let pattern
-  --> $DIR/while-let.rs:25:5
+  --> $DIR/while-let.rs:27:5
    |
 LL | /     while let _a = 1 {
 LL | |         println!("irrefutable pattern");

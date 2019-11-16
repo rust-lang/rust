@@ -59,6 +59,8 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         stderr: None,
         crate_name: None,
         lint_caps: Default::default(),
+        register_lints: None,
+        override_queries: None,
     };
 
     interface::run_compiler(config, |compiler| {

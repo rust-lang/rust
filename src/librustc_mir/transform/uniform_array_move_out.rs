@@ -61,7 +61,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UniformArrayMoveOutVisitor<'a, 'tcx> {
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
         if let Rvalue::Use(Operand::Move(ref src_place)) = rvalue {
-            if let box [proj_base @ .., elem] = &src_place.projection {
+            if let &[ref proj_base @ .., elem] = src_place.projection.as_ref() {
                 if let ProjectionElem::ConstantIndex{offset: _,
                                                      min_length: _,
                                                      from_end: false} = elem {
@@ -116,16 +116,13 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                             min_length: size,
                             from_end: false,
                         });
-                        self.patch.add_assign(location,
-                                              Place::from(temp),
-                                              Rvalue::Use(
-                                                  Operand::Move(
-                                                      Place {
-                                                          base: base.clone(),
-                                                          projection: projection.into_boxed_slice(),
-                                                      }
-                                                  )
-                                              )
+                        self.patch.add_assign(
+                            location,
+                            Place::from(temp),
+                            Rvalue::Use(Operand::Move(Place {
+                                base: base.clone(),
+                                projection: self.tcx.intern_place_elems(&projection),
+                            })),
                         );
                         temp
                     }).collect();
@@ -153,16 +150,13 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
                         min_length: size,
                         from_end: false,
                     });
-                    self.patch.add_assign(location,
-                                          dst_place.clone(),
-                                          Rvalue::Use(
-                                              Operand::Move(
-                                                  Place {
-                                                      base: base.clone(),
-                                                      projection: projection.into_boxed_slice(),
-                                                  }
-                                              )
-                                          )
+                    self.patch.add_assign(
+                        location,
+                        dst_place.clone(),
+                        Rvalue::Use(Operand::Move(Place {
+                            base: base.clone(),
+                            projection: self.tcx.intern_place_elems(&projection),
+                        })),
                     );
                 }
                 _ => {}
@@ -185,9 +179,11 @@ impl<'a, 'tcx> UniformArrayMoveOutVisitor<'a, 'tcx> {
 //
 // replaced by _10 = move _2[:-1];
 
-pub struct RestoreSubsliceArrayMoveOut;
+pub struct RestoreSubsliceArrayMoveOut<'tcx> {
+    tcx: TyCtxt<'tcx>
+}
 
-impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
+impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
         let mut patch = MirPatch::new(body);
         let param_env = tcx.param_env(src.def_id());
@@ -203,18 +199,17 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
                 if let StatementKind::Assign(box(ref dst_place, ref rval)) = statement.kind {
                     if let Rvalue::Aggregate(box AggregateKind::Array(_), ref items) = *rval {
                         let items : Vec<_> = items.iter().map(|item| {
-                            if let Operand::Move(Place {
-                                base: PlaceBase::Local(local),
-                                projection: box [],
-                            }) = item {
-                                let local_use = &visitor.locals_use[*local];
-                                let opt_index_and_place =
-                                    Self::try_get_item_source(local_use, body);
-                                // each local should be used twice:
-                                //  in assign and in aggregate statements
-                                if local_use.use_count == 2 && opt_index_and_place.is_some() {
-                                    let (index, src_place) = opt_index_and_place.unwrap();
-                                    return Some((local_use, index, src_place));
+                            if let Operand::Move(place) = item {
+                                if let Some(local) = place.as_local() {
+                                    let local_use = &visitor.locals_use[local];
+                                    let opt_index_and_place =
+                                        Self::try_get_item_source(local_use, body);
+                                    // each local should be used twice:
+                                    //  in assign and in aggregate statements
+                                    if local_use.use_count == 2 && opt_index_and_place.is_some() {
+                                        let (index, src_place) = opt_index_and_place.unwrap();
+                                        return Some((local_use, index, src_place));
+                                    }
                                 }
                             }
                             None
@@ -230,7 +225,9 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
                                 None
                             }
                         });
-                        Self::check_and_patch(*candidate, &items, opt_size, &mut patch, dst_place);
+                        let restore_subslice = RestoreSubsliceArrayMoveOut { tcx };
+                        restore_subslice
+                            .check_and_patch(*candidate, &items, opt_size, &mut patch, dst_place);
                     }
                 }
             }
@@ -239,15 +236,20 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut {
     }
 }
 
-impl RestoreSubsliceArrayMoveOut {
+impl RestoreSubsliceArrayMoveOut<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        RestoreSubsliceArrayMoveOut { tcx }
+    }
+
     // Checks that source has size, all locals are inited from same source place and
     // indices is an integer interval. If all checks pass do the replacent.
     // items are Vec<Option<LocalUse, index in source array, source place for init local>>
-    fn check_and_patch<'tcx>(candidate: Location,
-                             items: &[Option<(&LocalUse, u32, PlaceRef<'_, 'tcx>)>],
-                             opt_size: Option<u64>,
-                             patch: &mut MirPatch<'tcx>,
-                             dst_place: &Place<'tcx>) {
+    fn check_and_patch(&self,
+                       candidate: Location,
+                       items: &[Option<(&LocalUse, u32, PlaceRef<'_, 'tcx>)>],
+                       opt_size: Option<u64>,
+                       patch: &mut MirPatch<'tcx>,
+                       dst_place: &Place<'tcx>) {
         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
 
         if opt_size.is_some() && items.iter().all(
@@ -280,46 +282,40 @@ impl RestoreSubsliceArrayMoveOut {
                 dst_place.clone(),
                 Rvalue::Use(Operand::Move(Place {
                     base: src_place.base.clone(),
-                    projection: projection.into_boxed_slice(),
+                    projection: self.tcx.intern_place_elems(&projection),
                 })),
             );
         }
     }
 
-    fn try_get_item_source<'a, 'tcx>(local_use: &LocalUse,
-                                     body: &'a Body<'tcx>) -> Option<(u32, PlaceRef<'a, 'tcx>)> {
+    fn try_get_item_source<'a>(local_use: &LocalUse,
+                               body: &'a Body<'tcx>) -> Option<(u32, PlaceRef<'a, 'tcx>)> {
         if let Some(location) = local_use.first_use {
             let block = &body[location.block];
             if block.statements.len() > location.statement_index {
                 let statement = &block.statements[location.statement_index];
                 if let StatementKind::Assign(
-                    box(
-                        Place {
-                            base: PlaceBase::Local(_),
-                            projection: box [],
-                        },
-                        Rvalue::Use(Operand::Move(Place {
-                            base: _,
-                            projection: box [.., ProjectionElem::ConstantIndex {
-                                offset, min_length: _, from_end: false
-                            }],
-                        })),
-                    )
+                    box(place, Rvalue::Use(Operand::Move(src_place)))
                 ) = &statement.kind {
-                    // FIXME remove once we can use slices patterns
-                    if let StatementKind::Assign(
-                        box(
-                            _,
-                            Rvalue::Use(Operand::Move(Place {
+                    if let (Some(_), PlaceRef {
+                        base: _,
+                        projection: &[.., ProjectionElem::ConstantIndex {
+                            offset, min_length: _, from_end: false
+                        }],
+                    }) = (place.as_local(), src_place.as_ref()) {
+                        if let StatementKind::Assign(
+                            box(_, Rvalue::Use(Operand::Move(place)))
+                        ) = &statement.kind {
+                            if let PlaceRef {
                                 base,
-                                projection: box [proj_base @ .., _],
-                            })),
-                        )
-                    ) = &statement.kind {
-                        return Some((*offset, PlaceRef {
-                            base,
-                            projection: proj_base,
-                        }))
+                                projection: &[ref proj_base @ .., _],
+                            } = place.as_ref() {
+                                return Some((offset, PlaceRef {
+                                    base,
+                                    projection: proj_base,
+                                }))
+                            }
+                        }
                     }
                 }
             }

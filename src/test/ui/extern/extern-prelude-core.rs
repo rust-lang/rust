@@ -1,5 +1,5 @@
 // run-pass
-#![feature(extern_prelude, lang_items, start)]
+#![feature(lang_items, start)]
 #![no_std]
 
 extern crate std as other;

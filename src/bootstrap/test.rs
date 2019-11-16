@@ -386,8 +386,17 @@ impl Step for Miri {
             extra_features: Vec::new(),
         });
         if let Some(miri) = miri {
+            let mut cargo = builder.cargo(compiler, Mode::ToolRustc, host, "install");
+            cargo.arg("xargo");
+            // Configure `cargo install` path. cargo adds a `bin/`.
+            cargo.env("CARGO_INSTALL_ROOT", &builder.out);
+
+            let mut cargo = Command::from(cargo);
+            if !try_run(builder, &mut cargo) {
+                return;
+            }
+
             // # Run `cargo miri setup`.
-            // As a side-effect, this will install xargo.
             let mut cargo = tool::prepare_tool_cargo(
                 builder,
                 compiler,
@@ -412,9 +421,7 @@ impl Step for Miri {
             cargo.env("XARGO_RUST_SRC", builder.src.join("src"));
             // Debug things.
             cargo.env("RUST_BACKTRACE", "1");
-            // Configure `cargo install` path, and let cargo-miri know that that's where
-            // xargo ends up.
-            cargo.env("CARGO_INSTALL_ROOT", &builder.out); // cargo adds a `bin/`
+            // Let cargo-miri know where xargo ended up.
             cargo.env("XARGO", builder.out.join("bin").join("xargo"));
 
             let mut cargo = Command::from(cargo);
@@ -427,7 +434,7 @@ impl Step for Miri {
             // (We do this separately from the above so that when the setup actually
             // happens we get some output.)
             // We re-use the `cargo` from above.
-            cargo.arg("--env");
+            cargo.arg("--print-sysroot");
 
             // FIXME: Is there a way in which we can re-use the usual `run` helpers?
             let miri_sysroot = if builder.config.dry_run {
@@ -437,13 +444,11 @@ impl Step for Miri {
                 let out = cargo.output()
                     .expect("We already ran `cargo miri setup` before and that worked");
                 assert!(out.status.success(), "`cargo miri setup` returned with non-0 exit code");
-                // Output is "MIRI_SYSROOT=<str>\n".
+                // Output is "<sysroot>\n".
                 let stdout = String::from_utf8(out.stdout)
                     .expect("`cargo miri setup` stdout is not valid UTF-8");
-                let stdout = stdout.trim();
-                builder.verbose(&format!("`cargo miri setup --env` returned: {:?}", stdout));
-                let sysroot = stdout.splitn(2, '=')
-                    .nth(1).expect("`cargo miri setup` stdout did not contain '='");
+                let sysroot = stdout.trim_end();
+                builder.verbose(&format!("`cargo miri setup --print-sysroot` said: {:?}", sysroot));
                 sysroot.to_owned()
             };
 
@@ -565,7 +570,12 @@ impl Step for Clippy {
             let host_libs = builder
                 .stage_out(compiler, Mode::ToolRustc)
                 .join(builder.cargo_dir());
+            let target_libs = builder
+                .stage_out(compiler, Mode::ToolRustc)
+                .join(&self.host)
+                .join(builder.cargo_dir());
             cargo.env("HOST_LIBS", host_libs);
+            cargo.env("TARGET_LIBS", target_libs);
             // clippy tests need to find the driver
             cargo.env("CLIPPY_DRIVER_PATH", clippy);
 
@@ -1165,7 +1175,7 @@ impl Step for Compiletest {
                     }).to_string()
             })
         };
-        let lldb_exe = if builder.config.lldb_enabled && !target.contains("emscripten") {
+        let lldb_exe = if builder.config.lldb_enabled {
             // Test against the lldb that was just built.
             builder.llvm_out(target).join("bin").join("lldb")
         } else {
@@ -1234,7 +1244,6 @@ impl Step for Compiletest {
         if builder.config.llvm_enabled() {
             let llvm_config = builder.ensure(native::Llvm {
                 target: builder.config.build,
-                emscripten: false,
             });
             if !builder.config.dry_run {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));

@@ -135,6 +135,7 @@ impl FusedIterator for EscapeDefault {}
 #[stable(feature = "ascii_escape_display", since = "1.39.0")]
 impl fmt::Display for EscapeDefault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // SAFETY: ok because `escape_default` created only valid utf-8 data
         f.write_str(unsafe { from_utf8_unchecked(&self.data[self.range.clone()]) })
     }
 }

@@ -2,7 +2,7 @@ error: expected `|`, found `}`
   --> $DIR/issue-43196.rs:3:1
    |
 LL |     |
-   |      - expected `|` here
+   |      - expected `|`
 LL | }
    | ^ unexpected token
 

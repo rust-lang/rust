@@ -16,6 +16,7 @@ use crate::borrow_check::nll::type_check::free_region_relations::{
 };
 use crate::borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
 use crate::borrow_check::nll::ToRegionVid;
+use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
@@ -26,7 +27,7 @@ use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::mir::interpret::{ConstValue, PanicInfo};
+use rustc::mir::interpret::PanicInfo;
 use rustc::mir::tcx::PlaceTy;
 use rustc::mir::visit::{PlaceContext, Visitor, NonMutatingUseContext};
 use rustc::mir::*;
@@ -35,6 +36,7 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{self, ObligationCause, PredicateObligations};
 use rustc::ty::adjustment::{PointerCast};
+use rustc::ty::cast::CastTy;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, SubstsRef, GenericArgKind, UserSubsts};
 use rustc::ty::{
@@ -48,6 +50,8 @@ use rustc::ty::layout::VariantIdx;
 use std::rc::Rc;
 use std::{fmt, iter, mem};
 use syntax_pos::{Span, DUMMY_SP};
+
+use rustc_error_codes::*;
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -307,7 +311,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
-            if let ConstValue::Unevaluated(def_id, substs) = constant.literal.val {
+            if let ty::ConstKind::Unevaluated(def_id, substs) = constant.literal.val {
                 if let Err(terr) = self.cx.fully_perform_op(
                     location.to_locations(),
                     ConstraintCategory::Boring,
@@ -480,13 +484,13 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if place.projection.is_empty() {
             if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let is_promoted = match place {
-                    Place {
-                        base: PlaceBase::Static(box Static {
+                let is_promoted = match place.as_ref() {
+                    PlaceRef {
+                        base: &PlaceBase::Static(box Static {
                             kind: StaticKind::Promoted(..),
                             ..
                         }),
-                        projection: box [],
+                        projection: &[],
                     } => true,
                     _ => false,
                 };
@@ -1366,11 +1370,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // they are not caused by the user, but rather artifacts
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
-                let category = match *place {
-                    Place {
-                        base: PlaceBase::Local(RETURN_PLACE),
-                        projection: box [],
-                    } => if let BorrowCheckContext {
+                let category = match place.as_local() {
+                    Some(RETURN_PLACE) => if let BorrowCheckContext {
                         universal_regions:
                             UniversalRegions {
                                 defining_ty: DefiningTy::Const(def_id, _),
@@ -1386,10 +1387,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     } else {
                         ConstraintCategory::Return
                     },
-                    Place {
-                        base: PlaceBase::Local(l),
-                        projection: box [],
-                    } if !body.local_decls[l].is_user_variable.is_some() => {
+                    Some(l) if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1675,11 +1673,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(body, tcx).ty;
                 let dest_ty = self.normalize(dest_ty, term_location);
-                let category = match *dest {
-                    Place {
-                        base: PlaceBase::Local(RETURN_PLACE),
-                        projection: box [],
-                    } => {
+                let category = match dest.as_local() {
+                    Some(RETURN_PLACE) => {
                         if let BorrowCheckContext {
                             universal_regions:
                                 UniversalRegions {
@@ -1698,10 +1693,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ConstraintCategory::Return
                         }
                     }
-                    Place {
-                        base: PlaceBase::Local(l),
-                        projection: box [],
-                    } if !body.local_decls[l].is_user_variable.is_some() => {
+                    Some(l) if !body.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1995,12 +1987,19 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     let span = body.source_info(location).span;
                     let ty = operand.ty(body, tcx);
                     if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
+                        // To determine if `const_in_array_repeat_expressions` feature gate should
+                        // be mentioned, need to check if the rvalue is promotable.
+                        let should_suggest =
+                            should_suggest_const_in_array_repeat_expressions_attribute(
+                                tcx, self.mir_def_id, body, operand);
+                        debug!("check_rvalue: should_suggest={:?}", should_suggest);
+
                         self.infcx.report_selection_error(
                             &traits::Obligation::new(
                                 ObligationCause::new(
                                     span,
                                     self.tcx().hir().def_index_to_hir_id(self.mir_def_id.index),
-                                    traits::ObligationCauseCode::RepeatVec,
+                                    traits::ObligationCauseCode::RepeatVec(should_suggest),
                                 ),
                                 self.param_env,
                                 ty::Predicate::Trait(ty::Binder::bind(ty::TraitPredicate {
@@ -2141,7 +2140,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_from = match op.ty(body, tcx).kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
-                                mutbl: hir::MutMutable,
+                                mutbl: hir::Mutability::Mutable,
                             }) => ty_from,
                             _ => {
                                 span_mirbug!(
@@ -2156,7 +2155,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_to = match ty.kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_to,
-                                mutbl: hir::MutImmutable,
+                                mutbl: hir::Mutability::Immutable,
                             }) => ty_to,
                             _ => {
                                 span_mirbug!(
@@ -2181,72 +2180,125 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 ty_from,
                                 ty_to,
                                 terr
+                            );
+                        }
+                    }
+
+                    CastKind::Pointer(PointerCast::ArrayToPointer)  => {
+                        let ty_from = op.ty(body, tcx);
+
+                        let opt_ty_elem = match ty_from.kind {
+                            ty::RawPtr(
+                                ty::TypeAndMut { mutbl: hir::Mutability::Immutable, ty: array_ty }
+                            ) => {
+                                match array_ty.kind {
+                                    ty::Array(ty_elem, _) => Some(ty_elem),
+                                    _ => None,
+                                }
+                            }
+                            _ => None,
+                        };
+
+                        let ty_elem = match opt_ty_elem {
+                            Some(ty_elem) => ty_elem,
+                            None => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "ArrayToPointer cast from unexpected type {:?}",
+                                    ty_from,
+                                );
+                                return;
+                            }
+                        };
+
+                        let ty_to = match ty.kind {
+                            ty::RawPtr(
+                                ty::TypeAndMut { mutbl: hir::Mutability::Immutable, ty: ty_to }
+                            ) => {
+                                ty_to
+                            }
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "ArrayToPointer cast to unexpected type {:?}",
+                                    ty,
+                                );
+                                return;
+                            }
+                        };
+
+                        if let Err(terr) = self.sub_types(
+                            ty_elem,
+                            ty_to,
+                            location.to_locations(),
+                            ConstraintCategory::Cast,
+                        ) {
+                            span_mirbug!(
+                                self,
+                                rvalue,
+                                "relating {:?} with {:?} yields {:?}",
+                                ty_elem,
+                                ty_to,
+                                terr
                             )
                         }
                     }
 
                     CastKind::Misc => {
-                        if let ty::Ref(_, mut ty_from, _) = op.ty(body, tcx).kind {
-                            let (mut ty_to, mutability) = if let ty::RawPtr(ty::TypeAndMut {
-                                ty: ty_to,
-                                mutbl,
-                            }) = ty.kind {
-                                (ty_to, mutbl)
-                            } else {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "invalid cast types {:?} -> {:?}",
-                                    op.ty(body, tcx),
-                                    ty,
-                                );
-                                return;
-                            };
-
-                            // Handle the direct cast from `&[T; N]` to `*const T` by unwrapping
-                            // any array we find.
-                            while let ty::Array(ty_elem_from, _) = ty_from.kind {
-                                ty_from = ty_elem_from;
-                                if let ty::Array(ty_elem_to, _) = ty_to.kind {
-                                    ty_to = ty_elem_to;
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_from = CastTy::from_ty(ty_from);
+                        let cast_ty_to = CastTy::from_ty(ty);
+                        match (cast_ty_from, cast_ty_to) {
+                            (Some(CastTy::RPtr(ref_tm)), Some(CastTy::Ptr(ptr_tm))) => {
+                                if let hir::Mutability::Mutable = ptr_tm.mutbl {
+                                    if let Err(terr) = self.eq_types(
+                                        ref_tm.ty,
+                                        ptr_tm.ty,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast,
+                                    ) {
+                                        span_mirbug!(
+                                            self,
+                                            rvalue,
+                                            "equating {:?} with {:?} yields {:?}",
+                                            ref_tm.ty,
+                                            ptr_tm.ty,
+                                            terr
+                                        )
+                                    }
                                 } else {
-                                    break;
+                                    if let Err(terr) = self.sub_types(
+                                        ref_tm.ty,
+                                        ptr_tm.ty,
+                                        location.to_locations(),
+                                        ConstraintCategory::Cast,
+                                    ) {
+                                        span_mirbug!(
+                                            self,
+                                            rvalue,
+                                            "relating {:?} with {:?} yields {:?}",
+                                            ref_tm.ty,
+                                            ptr_tm.ty,
+                                            terr
+                                        )
+                                    }
                                 }
-                            }
-
-                            if let hir::MutMutable = mutability {
-                                if let Err(terr) = self.eq_types(
-                                    ty_from,
-                                    ty_to,
-                                    location.to_locations(),
-                                    ConstraintCategory::Cast,
-                                ) {
-                                    span_mirbug!(
-                                        self,
-                                        rvalue,
-                                        "equating {:?} with {:?} yields {:?}",
-                                        ty_from,
-                                        ty_to,
-                                        terr
-                                    )
-                                }
-                            } else {
-                                if let Err(terr) = self.sub_types(
-                                    ty_from,
-                                    ty_to,
-                                    location.to_locations(),
-                                    ConstraintCategory::Cast,
-                                ) {
-                                    span_mirbug!(
-                                        self,
-                                        rvalue,
-                                        "relating {:?} with {:?} yields {:?}",
-                                        ty_from,
-                                        ty_to,
-                                        terr
-                                    )
-                                }
-                            }
+                            },
+                            (None, _)
+                            | (_, None)
+                            | (_, Some(CastTy::FnPtr))
+                            | (Some(CastTy::Float), Some(CastTy::Ptr(_)))
+                            | (Some(CastTy::Ptr(_)), Some(CastTy::Float))
+                            | (Some(CastTy::FnPtr), Some(CastTy::Float)) => span_mirbug!(
+                                self,
+                                rvalue,
+                                "Invalid cast {:?} -> {:?}",
+                                ty_from,
+                                ty,
+                            ),
+                            _ => (),
                         }
                     }
                 }
@@ -2432,7 +2484,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             location, borrow_region, borrowed_place
         );
 
-        let mut cursor = &*borrowed_place.projection;
+        let mut cursor = borrowed_place.projection.as_ref();
         while let [proj_base @ .., elem] = cursor {
             cursor = proj_base;
 
@@ -2454,13 +2506,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             });
 
                             match mutbl {
-                                hir::Mutability::MutImmutable => {
+                                hir::Mutability::Immutable => {
                                     // Immutable reference. We don't need the base
                                     // to be valid for the entire lifetime of
                                     // the borrow.
                                     break;
                                 }
-                                hir::Mutability::MutMutable => {
+                                hir::Mutability::Mutable => {
                                     // Mutable reference. We *do* need the base
                                     // to be valid, because after the base becomes
                                     // invalid, someone else can use our mutable deref.
