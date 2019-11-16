@@ -283,7 +283,7 @@ impl<'tcx> Scopes<'tcx> {
 
     /// Returns the topmost active scope, which is known to be alive until
     /// the next scope expression.
-    pub(super) fn topmost(&self) -> region::Scope {
+    fn topmost(&self) -> region::Scope {
         self.scopes.last().expect("topmost_scope: no scopes present").region_scope
     }
 
@@ -297,7 +297,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     // ==========================
     //  Start a breakable scope, which tracks where `continue`, `break` and
     //  `return` should branch to.
-    pub fn in_breakable_scope<F>(
+    crate fn in_breakable_scope<F>(
         &mut self,
         loop_block: Option<BasicBlock>,
         break_destination: Place<'tcx>,
@@ -547,7 +547,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// This path terminates in GeneratorDrop. Returns the start of the path.
     /// None indicates there’s no cleanup to do at this point.
-    pub fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
+    crate fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
         let drops = self.scopes.scopes.iter().flat_map(|scope| &scope.drops);
         let mut next_drop = ROOT_NODE;
         for drop in drops {
@@ -832,7 +832,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// This path terminates in Resume. The path isn't created until after all
     /// of the non-unwind paths in this item have been lowered.
-    pub fn diverge_from(&mut self, start: BasicBlock) {
+    crate fn diverge_from(&mut self, start: BasicBlock) {
         let next_drop = self.diverge_cleanup();
         self.scopes.unwind_drops.add_entry(start, next_drop);
     }
@@ -887,7 +887,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// This is only needed for `match` arm scopes, because they have one
     /// entrance per pattern, but only one exit.
-    pub(crate) fn clear_top_scope(&mut self, region_scope: region::Scope) {
+    crate fn clear_top_scope(&mut self, region_scope: region::Scope) {
         let top_scope = self.scopes.scopes.last_mut().unwrap();
 
         assert_eq!(top_scope.region_scope, region_scope);
@@ -1018,30 +1018,24 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
 
     crate fn build_drop_trees(&mut self, should_abort: bool) {
         if self.is_generator {
-            Self::build_generator_drop_tree(
+            self.build_generator_drop_trees(should_abort);
+        } else {
+            Self::build_unwind_tree(
                 &mut self.cfg,
-                &mut self.scopes.generator_drops,
+                &mut self.scopes.unwind_drops,
                 self.fn_span,
                 should_abort,
             );
         }
-        Self::build_unwind_tree(
-            &mut self.cfg,
-            &mut self.scopes.unwind_drops,
-            self.fn_span,
-            should_abort,
-        );
     }
 
-    fn build_generator_drop_tree(
-        cfg: &mut CFG<'tcx>,
-        drops: &mut DropTree,
-        fn_span: Span,
-        should_abort: bool,
-    ) {
+    fn build_generator_drop_trees(&mut self, should_abort: bool) {
+        // Build the drop tree for dropping the generator while it's suspended.
+        let drops = &mut self.scopes.generator_drops;
+        let cfg = &mut self.cfg;
+        let fn_span = self.fn_span;
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         build_drop_tree::<GeneratorDrop>(cfg, drops, &mut blocks);
-        // TODO: unwind?
         if let Some(root_block) = blocks[ROOT_NODE] {
             cfg.terminate(
                 root_block,
@@ -1049,7 +1043,13 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 TerminatorKind::GeneratorDrop,
             );
         }
-        // Reuse the generator drop tree as the unwind tree.
+
+        // Build the drop tree for unwinding in the normal control flow paths.
+        let resume_block =
+            Self::build_unwind_tree(cfg, &mut self.scopes.unwind_drops, fn_span, should_abort);
+
+        // Build the drop tree for unwinding when dropping a suspended
+        // generator.
         //
         // This is a different tree to the standard unwind paths here to
         // prevent drop elaboration from creating drop flags that would have
@@ -1060,7 +1060,18 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 drops.entry_points.push((drop_data.1, blocks[drop_idx].unwrap()));
             }
         }
-        Self::build_unwind_tree(cfg, drops, fn_span, should_abort);
+        let mut blocks = IndexVec::from_elem(None, &drops.drops);
+        blocks[ROOT_NODE] = resume_block;
+        build_drop_tree::<Unwind>(cfg, drops, &mut blocks);
+        if let (None, Some(new_resume_block)) = (resume_block, blocks[ROOT_NODE]) {
+            let terminator =
+                if should_abort { TerminatorKind::Abort } else { TerminatorKind::Resume };
+            cfg.terminate(
+                new_resume_block,
+                SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span: fn_span },
+                terminator,
+            );
+        }
     }
 
     fn build_unwind_tree(
@@ -1068,7 +1079,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         drops: &mut DropTree,
         fn_span: Span,
         should_abort: bool,
-    ) {
+    ) -> Option<BasicBlock> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         build_drop_tree::<Unwind>(cfg, drops, &mut blocks);
         if let Some(resume_block) = blocks[ROOT_NODE] {
@@ -1079,6 +1090,9 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
                 SourceInfo { scope: OUTERMOST_SOURCE_SCOPE, span: fn_span },
                 terminator,
             );
+            Some(resume_block)
+        } else {
+            None
         }
     }
 }
