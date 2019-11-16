@@ -19,20 +19,20 @@ fn bar() -> bool {
 //         goto -> bb1;
 //     }
 //     bb1: {
-//         falseUnwind -> [real: bb3, cleanup: bb4];
+//         falseUnwind -> [real: bb2, cleanup: bb11];
 //     }
 //     ...
-//     bb11: {
+//     bb9: {
 //         ...
 //         goto -> bb1;
 //     }
 // END rustc.main.SimplifyCfg-initial.before.mir
 // START rustc.main.SimplifyCfg-initial.after.mir
 //     bb0: {
-//         falseUnwind -> [real: bb1, cleanup: bb2];
+//         falseUnwind -> [real: bb1, cleanup: bb6];
 //     }
 //     ...
-//     bb5: {
+//     bb4: {
 //         ...
 //         goto -> bb0;
 //     }
@@ -43,7 +43,7 @@ fn bar() -> bool {
 //     }
 //     bb1: {
 //         StorageLive(_2);
-//         _2 = const bar() -> bb3;
+//         _2 = const bar() -> bb2;
 //     }
 // END rustc.main.SimplifyCfg-early-opt.before.mir
 // START rustc.main.SimplifyCfg-early-opt.after.mir

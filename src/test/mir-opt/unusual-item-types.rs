@@ -30,18 +30,12 @@ fn main() {
 //     _0 = const 2i32;
 //     return;
 // }
-// bb1 (cleanup): {
-//     resume;
-// }
 // END rustc.{{impl}}-ASSOCIATED_CONSTANT.mir_map.0.mir
 
 // START rustc.E-V-{{constant}}.mir_map.0.mir
 // bb0: {
 //     _0 = const 5isize;
 //     return;
-// }
-// bb1 (cleanup): {
-//     resume;
 // }
 // END rustc.E-V-{{constant}}.mir_map.0.mir
 

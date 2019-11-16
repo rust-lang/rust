@@ -65,12 +65,12 @@ fn main() {
 //     ...
 //     bb0: {
 //         ...
-//         _3 = const Test::foo(move _4, move _6) -> [return: bb2, unwind: bb3];
+//         _3 = const Test::foo(move _4, move _6) -> [return: bb1, unwind: bb7];
 //     }
 //
 //     ...
 //
-//     bb2: {
+//     bb1: {
 //         Retag(_3);
 //         ...
 //         _9 = move _3;
@@ -87,13 +87,13 @@ fn main() {
 //         _12 = move _13 as *mut i32 (Misc);
 //         Retag([raw] _12);
 //         ...
-//         _16 = move _17(move _18) -> bb5;
+//         _16 = move _17(move _18) -> bb3;
 //     }
 //
-//     bb5: {
+//     bb3: {
 //         Retag(_16);
 //         ...
-//         _20 = const Test::foo_shr(move _21, move _23) -> [return: bb6, unwind: bb7];
+//         _20 = const Test::foo_shr(move _21, move _23) -> [return: bb4, unwind: bb6];
 //     }
 //
 //     ...

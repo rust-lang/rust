@@ -14,26 +14,20 @@ fn main() {}
 // START rustc.match_bool.mir_map.0.mir
 // bb0: {
 //     FakeRead(ForMatchedPlace, _1);
-//     switchInt(_1) -> [false: bb3, otherwise: bb2];
+//     switchInt(_1) -> [false: bb2, otherwise: bb1];
 // }
-// bb1 (cleanup): {
-//     resume;
+// bb1: {
+//     falseEdges -> [real: bb3, imaginary: bb2];
 // }
 // bb2: {
-//     falseEdges -> [real: bb4, imaginary: bb3];
+//     _0 = const 20usize;
+//     goto -> bb4;
 // }
 // bb3: {
-//     _0 = const 20usize;
-//     goto -> bb5;
+//     _0 = const 10usize;
+//     goto -> bb4;
 // }
 // bb4: {
-//     _0 = const 10usize;
-//     goto -> bb5;
-// }
-// bb5: {
-//     goto -> bb6;
-// }
-// bb6: {
 //     return;
 // }
 // END rustc.match_bool.mir_map.0.mir
