@@ -126,7 +126,7 @@ mod break_keyword { }
 /// look like this:
 ///
 /// ```rust
-/// const WORDS: &str = "hello rust!";
+/// const WORDS: &'static str = "hello rust!";
 /// ```
 ///
 /// Thanks to static lifetime elision, you usually don't have to explicitly use 'static:
