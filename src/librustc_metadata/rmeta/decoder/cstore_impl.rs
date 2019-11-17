@@ -52,7 +52,7 @@ macro_rules! provide {
                 assert!(!$def_id.is_local());
 
                 let $cdata = $tcx.crate_data_as_any($def_id.krate);
-                let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
+                let $cdata = $cdata.downcast_ref::<rmeta::CrateMetadata>()
                     .expect("CrateStore created data is not a CrateMetadata");
 
                 if $tcx.dep_graph.is_fully_enabled() {

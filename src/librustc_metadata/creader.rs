@@ -1,8 +1,8 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
-use crate::cstore::{self, CStore};
+use crate::cstore::CStore;
 use crate::locator::{CrateLocator, CratePaths};
-use crate::rmeta::{CrateRoot, CrateDep, MetadataBlob};
+use crate::rmeta::{CrateMetadata, CrateNumMap, CrateRoot, CrateDep, MetadataBlob};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
@@ -46,9 +46,9 @@ pub struct CrateLoader<'a> {
 
 fn dump_crates(cstore: &CStore) {
     info!("resolved crates:");
-    cstore.iter_crate_data(|_, data| {
+    cstore.iter_crate_data(|cnum, data| {
         info!("  name: {}", data.root.name);
-        info!("  cnum: {}", data.cnum);
+        info!("  cnum: {}", cnum);
         info!("  hash: {}", data.root.hash);
         info!("  reqd: {:?}", *data.dep_kind.lock());
         let CrateSource { dylib, rlib, rmeta } = data.source.clone();
@@ -224,7 +224,7 @@ impl<'a> CrateLoader<'a> {
             self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span)
         });
 
-        self.cstore.set_crate_data(cnum, cstore::CrateMetadata::new(
+        self.cstore.set_crate_data(cnum, CrateMetadata::new(
             self.sess,
             metadata,
             crate_root,
@@ -439,10 +439,10 @@ impl<'a> CrateLoader<'a> {
                           krate: CrateNum,
                           span: Span,
                           dep_kind: DepKind)
-                          -> cstore::CrateNumMap {
+                          -> CrateNumMap {
         debug!("resolving deps of external crate");
         if crate_root.proc_macro_data.is_some() {
-            return cstore::CrateNumMap::new();
+            return CrateNumMap::new();
         }
 
         // The map from crate numbers in the crate we're resolving to local crate numbers.
@@ -792,7 +792,7 @@ impl<'a> CrateLoader<'a> {
     fn inject_dependency_if(&self,
                             krate: CrateNum,
                             what: &str,
-                            needs_dep: &dyn Fn(&cstore::CrateMetadata) -> bool) {
+                            needs_dep: &dyn Fn(&CrateMetadata) -> bool) {
         // don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.

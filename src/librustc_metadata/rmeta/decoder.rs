@@ -1,27 +1,30 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::cstore::CrateMetadata;
 use crate::rmeta::*;
 use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
 
 use rustc_index::vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Lock, Once, AtomicCell};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
+use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir;
+use rustc::middle::cstore::{CrateSource, ExternCrate};
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary, ForeignModule};
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel};
 use rustc::hir::def::{self, Res, DefKind, CtorOf, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
-use rustc::dep_graph::{DepNodeIndex, DepKind};
+use rustc_data_structures::svh::Svh;
+use rustc::dep_graph::{self, DepNodeIndex};
 use rustc::middle::lang_items;
 use rustc::mir::{self, interpret};
-use rustc::mir::interpret::AllocDecodingSession;
+use rustc::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
 use rustc::mir::{Body, Promoted};
+use rustc::util::common::record_time;
 use rustc::util::captures::Captures;
 
 use std::io;
@@ -46,9 +49,75 @@ mod cstore_impl;
 
 crate struct MetadataBlob(MetadataRef);
 
+// A map from external crate numbers (as decoded from some crate file) to
+// local crate numbers (as generated during this session). Each external
+// crate may refer to types in other external crates, and each has their
+// own crate numbers.
+crate type CrateNumMap = IndexVec<CrateNum, CrateNum>;
+
+crate struct CrateMetadata {
+    /// The primary crate data - binary metadata blob.
+    blob: MetadataBlob,
+
+    // --- Some data pre-decoded from the metadata blob, usually for performance ---
+
+    /// Properties of the whole crate.
+    /// NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
+    /// lifetime is only used behind `Lazy`, and therefore acts like an
+    /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
+    /// is being used to decode those values.
+    crate root: CrateRoot<'static>,
+    /// For each definition in this crate, we encode a key. When the
+    /// crate is loaded, we read all the keys and put them in this
+    /// hashmap, which gives the reverse mapping. This allows us to
+    /// quickly retrace a `DefPath`, which is needed for incremental
+    /// compilation support.
+    def_path_table: DefPathTable,
+    /// Trait impl data.
+    /// FIXME: Used only from queries and can use query cache,
+    /// so pre-decoding can probably be avoided.
+    trait_impls: FxHashMap<(u32, DefIndex), Lazy<[DefIndex]>>,
+    /// Proc macro descriptions for this crate, if it's a proc macro crate.
+    raw_proc_macros: Option<&'static [ProcMacro]>,
+    /// Source maps for code from the crate.
+    source_map_import_info: Once<Vec<ImportedSourceFile>>,
+    /// Used for decoding interpret::AllocIds in a cached & thread-safe manner.
+    alloc_decoding_state: AllocDecodingState,
+    /// The `DepNodeIndex` of the `DepNode` representing this upstream crate.
+    /// It is initialized on the first access in `get_crate_dep_node_index()`.
+    /// Do not access the value directly, as it might not have been initialized yet.
+    /// The field must always be initialized to `DepNodeIndex::INVALID`.
+    dep_node_index: AtomicCell<DepNodeIndex>,
+
+    // --- Other significant crate properties ---
+
+    /// ID of this crate, from the current compilation session's point of view.
+    cnum: CrateNum,
+    /// Maps crate IDs as they are were seen from this crate's compilation sessions into
+    /// IDs as they are seen from the current compilation session.
+    cnum_map: CrateNumMap,
+    /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
+    crate dependencies: Lock<Vec<CrateNum>>,
+    /// How to link (or not link) this crate to the currently compiled crate.
+    crate dep_kind: Lock<DepKind>,
+    /// Filesystem location of this crate.
+    crate source: CrateSource,
+    /// Whether or not this crate should be consider a private dependency
+    /// for purposes of the 'exported_private_dependencies' lint
+    private_dep: bool,
+    /// The hash for the host proc macro. Used to support `-Z dual-proc-macro`.
+    host_hash: Option<Svh>,
+
+    // --- Data used only for improving diagnostics ---
+
+    /// Information about the `extern crate` item or path that caused this crate to be loaded.
+    /// If this is `None`, then the crate was injected (e.g., by the allocator).
+    crate extern_crate: Lock<Option<ExternCrate>>,
+}
+
 /// Holds information about a syntax_pos::SourceFile imported from another crate.
 /// See `imported_source_files()` for more information.
-crate struct ImportedSourceFile {
+struct ImportedSourceFile {
     /// This SourceFile's byte-offset within the source_map of its original crate
     original_start_pos: syntax_pos::BytePos,
     /// The end of this SourceFile within the source_map of its original crate
@@ -485,6 +554,46 @@ impl<'tcx> EntryKind<'tcx> {
 }
 
 impl<'a, 'tcx> CrateMetadata {
+    crate fn new(
+        sess: &Session,
+        blob: MetadataBlob,
+        root: CrateRoot<'static>,
+        raw_proc_macros: Option<&'static [ProcMacro]>,
+        cnum: CrateNum,
+        cnum_map: CrateNumMap,
+        dep_kind: DepKind,
+        source: CrateSource,
+        private_dep: bool,
+        host_hash: Option<Svh>,
+    ) -> CrateMetadata {
+        let def_path_table = record_time(&sess.perf_stats.decode_def_path_tables_time, || {
+            root.def_path_table.decode((&blob, sess))
+        });
+        let trait_impls = root.impls.decode((&blob, sess))
+            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls)).collect();
+        let alloc_decoding_state =
+            AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
+        let dependencies = Lock::new(cnum_map.iter().cloned().collect());
+        CrateMetadata {
+            blob,
+            root,
+            def_path_table,
+            trait_impls,
+            raw_proc_macros,
+            source_map_import_info: Once::new(),
+            alloc_decoding_state,
+            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
+            cnum,
+            cnum_map,
+            dependencies,
+            dep_kind: Lock::new(dep_kind),
+            source,
+            private_dep,
+            host_hash,
+            extern_crate: Lock::new(None),
+        }
+    }
+
     fn is_proc_macro_crate(&self) -> bool {
         self.root.proc_macro_decls_static.is_some()
     }
@@ -1391,7 +1500,7 @@ impl<'a, 'tcx> CrateMetadata {
             // would always write the same value.
 
             let def_path_hash = self.def_path_hash(CRATE_DEF_INDEX);
-            let dep_node = def_path_hash.to_dep_node(DepKind::CrateMetadata);
+            let dep_node = def_path_hash.to_dep_node(dep_graph::DepKind::CrateMetadata);
 
             dep_node_index = tcx.dep_graph.dep_node_index_of(&dep_node);
             assert!(dep_node_index != DepNodeIndex::INVALID);

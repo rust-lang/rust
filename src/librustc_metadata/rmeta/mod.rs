@@ -25,7 +25,7 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 pub use decoder::{provide, provide_extern};
-crate use decoder::{ImportedSourceFile, MetadataBlob};
+crate use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
 
 mod decoder;
 mod encoder;
@@ -197,10 +197,10 @@ crate struct CrateRoot<'tcx> {
     native_libraries: Lazy<[NativeLibrary]>,
     foreign_modules: Lazy<[ForeignModule]>,
     source_map: Lazy<[syntax_pos::SourceFile]>,
-    pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
-    pub impls: Lazy<[TraitImpls]>,
+    def_path_table: Lazy<hir::map::definitions::DefPathTable>,
+    impls: Lazy<[TraitImpls]>,
     exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
-    pub interpret_alloc_index: Lazy<[u32]>,
+    interpret_alloc_index: Lazy<[u32]>,
 
     per_def: LazyPerDefTables<'tcx>,
 
@@ -229,8 +229,8 @@ crate struct CrateDep {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct TraitImpls {
-    pub trait_id: (u32, DefIndex),
-    pub impls: Lazy<[DefIndex]>,
+    trait_id: (u32, DefIndex),
+    impls: Lazy<[DefIndex]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
