@@ -12,6 +12,7 @@ use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
 use rustc::middle::region;
 use rustc::mir::*;
+use rustc::ty::layout::VariantIdx;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
@@ -83,6 +84,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn match_expr(
         &mut self,
         destination: &Place<'tcx>,
+        destination_scope: Option<region::Scope>,
         span: Span,
         mut block: BasicBlock,
         scrutinee: ExprRef<'tcx>,
@@ -103,6 +105,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         self.lower_match_arms(
             destination,
+            destination_scope,
             scrutinee_place,
             scrutinee_span,
             arm_candidates,
@@ -209,81 +212,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    /// Lower the bindings, guards and arm bodies of a `match` expression.
-    ///
-    /// The decision tree should have already been created
-    /// (by [Builder::lower_match_tree]).
-    ///
-    /// `outer_source_info` is the SourceInfo for the whole match.
-    fn lower_match_arms(
-        &mut self,
-        destination: &Place<'tcx>,
-        scrutinee_place: Place<'tcx>,
-        scrutinee_span: Span,
-        arm_candidates: Vec<(&'_ Arm<'tcx>, Candidate<'_, 'tcx>)>,
-        outer_source_info: SourceInfo,
-        fake_borrow_temps: Vec<(Place<'tcx>, Local)>,
-    ) -> BlockAnd<()> {
-        let match_scope = self.scopes.topmost();
-
-        let arm_end_blocks: Vec<_> = arm_candidates
-            .into_iter()
-            .map(|(arm, candidate)| {
-                debug!("lowering arm {:?}\ncanidate = {:?}", arm, candidate);
-
-                let arm_source_info = self.source_info(arm.span);
-                let arm_scope = (arm.scope, arm_source_info);
-                self.in_scope(arm_scope, arm.lint_level, |this| {
-                    let body = this.hir.mirror(arm.body.clone());
-                    let scope = this.declare_bindings(
-                        None,
-                        arm.span,
-                        &arm.pattern,
-                        ArmHasGuard(arm.guard.is_some()),
-                        Some((Some(&scrutinee_place), scrutinee_span)),
-                    );
-
-                    let arm_block = this.bind_pattern(
-                        outer_source_info,
-                        candidate,
-                        arm.guard.as_ref().map(|g| (g, match_scope)),
-                        &fake_borrow_temps,
-                        scrutinee_span,
-                        // Some(arm.scope),
-                    );
-
-                    if let Some(source_scope) = scope {
-                        this.source_scope = source_scope;
-                    }
-
-                    this.into(destination, arm_block, body)
-                })
-            })
-            .collect();
-
-        // all the arm blocks will rejoin here
-        let end_block = self.cfg.start_new_block();
-
-        for arm_block in arm_end_blocks {
-            self.cfg.goto(unpack!(arm_block), outer_source_info, end_block);
-        }
-
-        self.source_scope = outer_source_info.scope;
-
-        end_block.unit()
-    }
-
     /// Binds the variables and ascribes types for a given `match` arm or
     /// `let` binding.
     ///
     /// Also check if the guard matches, if it's provided.
     /// `arm_scope` should be `Some` if and only if this is called for a
     /// `match` arm.
-    fn bind_pattern(
+    crate fn bind_pattern(
         &mut self,
         outer_source_info: SourceInfo,
         candidate: Candidate<'_, 'tcx>,
-        guard: Option<(&Guard<'tcx>, region::Scope)>,
+        guard: Option<&Guard<'tcx>>,
         fake_borrow_temps: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
         arm_scope: Option<region::Scope>,
@@ -363,13 +302,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Binding { mode: BindingMode::ByValue, var, subpattern: None, .. } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.into(&place, block, initializer));
+                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
+
+                unpack!(block = self.into(&place, Some(region_scope), block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
                 self.cfg.push_fake_read(block, source_info, FakeReadCause::ForLet, place);
 
-                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -396,9 +336,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ascription:
                     hair::pattern::Ascription { user_ty: pat_ascription_ty, variance: _, user_ty_span },
             } => {
+                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard, true);
-                unpack!(block = self.into(&place, block, initializer));
+                unpack!(block = self.into(&place, Some(region_scope), block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -436,7 +377,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
-                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -655,7 +595,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 }
 
 #[derive(Debug)]
-struct Candidate<'pat, 'tcx> {
+pub(super) struct Candidate<'pat, 'tcx> {
     /// `Span` of the original pattern that gave rise to this candidate
     span: Span,
 
@@ -1560,10 +1500,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         parent_bindings: &[(Vec<Binding<'tcx>>, Vec<Ascription<'tcx>>)],
-        guard: Option<(&Guard<'tcx>, region::Scope)>,
+        guard: Option<&Guard<'tcx>>,
         fake_borrows: &Vec<(Place<'tcx>, Local)>,
         scrutinee_span: Span,
-        //region_scope: region::Scope,
+        schedule_drops: bool,
     ) -> BasicBlock {
         debug!("bind_and_guard_matched_candidate(candidate={:?})", candidate);
 
@@ -1672,7 +1612,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         //      the reference that we create for the arm.
         //    * So we eagerly create the reference for the arm and then take a
         //      reference to that.
-        if let Some((guard, region_scope)) = guard {
+        if let Some(guard) = guard {
             let tcx = self.hir.tcx();
             let bindings = parent_bindings
                 .iter()
@@ -1716,11 +1656,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 unreachable
             });
             let outside_scope = self.cfg.start_new_block();
-            self.exit_top_scope(
-                otherwise_post_guard_block,
-                candidate.otherwise_block.unwrap(),
-                source_info,
-            );
+            self.exit_top_scope(otherwise_post_guard_block, outside_scope, source_info);
             self.false_edges(
                 outside_scope,
                 otherwise_block,

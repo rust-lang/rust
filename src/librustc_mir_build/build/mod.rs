@@ -584,8 +584,12 @@ where
         let arg_scope_s = (arg_scope, source_info);
         // Attribute epilogue to function's closing brace
         let fn_end = span.shrink_to_hi();
-        let return_block =
-            unpack!(builder.in_breakable_scope(None, Place::return_place(), fn_end, |builder| {
+        let return_block = unpack!(builder.in_breakable_scope(
+            None,
+            Place::return_place(),
+            Some(call_site_scope),
+            fn_end,
+            |builder| {
                 Some(builder.in_scope(arg_scope_s, LintLevel::Inherited, |builder| {
                     builder.args_and_body(
                         START_BLOCK,
@@ -595,7 +599,8 @@ where
                         &body.value,
                     )
                 }))
-            },));
+            },
+        ));
         let source_info = builder.source_info(fn_end);
         builder.cfg.terminate(return_block, source_info, TerminatorKind::Return);
         let should_abort = should_abort_on_panic(tcx, fn_def_id, abi);
@@ -604,6 +609,7 @@ where
         if let Some(unreachable_block) = builder.cached_unreachable_block {
             builder.cfg.terminate(unreachable_block, source_info, TerminatorKind::Unreachable);
         }
+        builder.unschedule_return_place_drop();
         return_block.unit()
     }));
 
@@ -633,7 +639,9 @@ fn construct_const<'a, 'tcx>(
     let mut block = START_BLOCK;
     let ast_expr = &tcx.hir().body(body_id).value;
     let expr = builder.hir.mirror(ast_expr);
-    unpack!(block = builder.into_expr(&Place::return_place(), block, expr));
+    // We don't provide a scope because we can't unwind in constants, so won't
+    // need to drop the return place.
+    unpack!(block = builder.into_expr(&Place::return_place(), None, block, expr));
 
     let source_info = builder.source_info(span);
     builder.cfg.terminate(block, source_info, TerminatorKind::Return);
@@ -934,7 +942,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         let body = self.hir.mirror(ast_body);
-        self.into(&Place::return_place(), block, body)
+        let call_site =
+            region::Scope { id: ast_body.hir_id.local_id, data: region::ScopeData::CallSite };
+        self.into(&Place::return_place(), Some(call_site), block, body)
     }
 
     fn set_correct_source_scope_for_arg(

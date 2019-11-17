@@ -37,7 +37,7 @@ impl Drop for S {
 //     }
 //     bb1: {
 //         _1 = move _2;
-//         drop(_2) -> bb2;
+//         drop(_2) -> [return: bb2, unwind: bb6];
 //     }
 //     bb2: {
 //         StorageDead(_2);
