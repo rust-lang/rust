@@ -51,7 +51,7 @@ crate const METADATA_HEADER: &[u8; 8] =
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
-crate trait LazyMeta {
+trait LazyMeta {
     type Meta: Copy + 'static;
 
     /// Returns the minimum encoded size.
@@ -105,7 +105,7 @@ impl<T: Encodable> LazyMeta for [T] {
 #[must_use]
 // FIXME(#59875) the `Meta` parameter only exists to dodge
 // invariance wrt `T` (coming from the `meta: T::Meta` field).
-crate struct Lazy<T, Meta = <T as LazyMeta>::Meta>
+struct Lazy<T, Meta = <T as LazyMeta>::Meta>
     where T: ?Sized + LazyMeta<Meta = Meta>,
           Meta: 'static + Copy,
 {
@@ -188,7 +188,7 @@ crate struct CrateRoot<'tcx> {
     proc_macro_decls_static: Option<DefIndex>,
     proc_macro_stability: Option<attr::Stability>,
 
-    pub crate_deps: Lazy<[CrateDep]>,
+    crate_deps: Lazy<[CrateDep]>,
     dylib_dependency_formats: Lazy<[Option<LinkagePreference>]>,
     lib_features: Lazy<[(Symbol, Option<Symbol>)]>,
     lang_items: Lazy<[(DefIndex, usize)]>,
@@ -204,9 +204,8 @@ crate struct CrateRoot<'tcx> {
 
     per_def: LazyPerDefTables<'tcx>,
 
-    /// The DefIndex's of any proc macros delcared by
-    /// this crate
-    pub proc_macro_data: Option<Lazy<[DefIndex]>>,
+    /// The DefIndex's of any proc macros delcared by this crate.
+    proc_macro_data: Option<Lazy<[DefIndex]>>,
 
     compiler_builtins: bool,
     pub needs_allocator: bool,

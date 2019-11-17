@@ -768,10 +768,11 @@ impl<'a> CrateLocator<'a> {
         }
 
         let root = metadata.get_root();
-        if let Some(is_proc_macro) = self.is_proc_macro {
-            if root.proc_macro_data.is_some() != is_proc_macro {
+        if let Some(expected_is_proc_macro) = self.is_proc_macro {
+            let is_proc_macro = root.is_proc_macro_crate();
+            if is_proc_macro != expected_is_proc_macro {
                 info!("Rejecting via proc macro: expected {} got {}",
-                      is_proc_macro, root.proc_macro_data.is_some());
+                      expected_is_proc_macro, is_proc_macro);
                 return None;
             }
         }

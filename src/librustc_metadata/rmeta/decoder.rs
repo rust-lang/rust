@@ -126,7 +126,7 @@ struct ImportedSourceFile {
     translated_source_file: Lrc<syntax_pos::SourceFile>,
 }
 
-crate struct DecodeContext<'a, 'tcx> {
+pub(super) struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
     cdata: Option<&'a CrateMetadata>,
     sess: Option<&'tcx Session>,
@@ -142,7 +142,7 @@ crate struct DecodeContext<'a, 'tcx> {
 }
 
 /// Abstract over the various ways one can create metadata decoders.
-crate trait Metadata<'a, 'tcx>: Copy {
+pub(super) trait Metadata<'a, 'tcx>: Copy {
     fn raw_bytes(self) -> &'a [u8];
     fn cdata(self) -> Option<&'a CrateMetadata> { None }
     fn sess(self) -> Option<&'tcx Session> { None }
@@ -218,7 +218,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
 }
 
 impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
-    crate fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
+    fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
         T::decode(&mut dcx).unwrap()
@@ -226,7 +226,7 @@ impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
 }
 
 impl<'a: 'x, 'tcx: 'x, 'x, T: Encodable + Decodable> Lazy<[T]> {
-    crate fn decode<M: Metadata<'a, 'tcx>>(
+    fn decode<M: Metadata<'a, 'tcx>>(
         self,
         metadata: M,
     ) -> impl ExactSizeIterator<Item = T> + Captures<'a> + Captures<'tcx> + 'x {
@@ -553,6 +553,19 @@ impl<'tcx> EntryKind<'tcx> {
     }
 }
 
+impl CrateRoot<'_> {
+    crate fn is_proc_macro_crate(&self) -> bool {
+        self.proc_macro_data.is_some()
+    }
+
+    crate fn decode_crate_deps(
+        &self,
+        metadata: &'a MetadataBlob,
+    ) -> impl ExactSizeIterator<Item = CrateDep> + Captures<'a> {
+        self.crate_deps.decode(metadata)
+    }
+}
+
 impl<'a, 'tcx> CrateMetadata {
     crate fn new(
         sess: &Session,
@@ -595,12 +608,11 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     fn is_proc_macro_crate(&self) -> bool {
-        self.root.proc_macro_decls_static.is_some()
+        self.root.is_proc_macro_crate()
     }
 
     fn is_proc_macro(&self, id: DefIndex) -> bool {
-        self.is_proc_macro_crate() &&
-            self.root.proc_macro_data.unwrap().decode(self).find(|x| *x == id).is_some()
+        self.root.proc_macro_data.and_then(|data| data.decode(self).find(|x| *x == id)).is_some()
     }
 
     fn maybe_kind(&self, item_id: DefIndex) -> Option<EntryKind<'tcx>> {

@@ -213,7 +213,7 @@ impl<'a> CrateLoader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
-        let raw_proc_macros =  crate_root.proc_macro_data.map(|_| {
+        let raw_proc_macros = if crate_root.is_proc_macro_crate() {
             let temp_root;
             let (dlsym_source, dlsym_root) = match &host_lib {
                 Some(host_lib) =>
@@ -221,8 +221,10 @@ impl<'a> CrateLoader<'a> {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span)
-        });
+            Some(self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span))
+        } else {
+            None
+        };
 
         self.cstore.set_crate_data(cnum, CrateMetadata::new(
             self.sess,
@@ -348,7 +350,7 @@ impl<'a> CrateLoader<'a> {
         match result {
             (LoadResult::Previous(cnum), None) => {
                 let data = self.cstore.get_crate_data(cnum);
-                if data.root.proc_macro_data.is_some() {
+                if data.root.is_proc_macro_crate() {
                     dep_kind = DepKind::UnexportedMacrosOnly;
                 }
                 data.dep_kind.with_lock(|data_dep_kind| {
@@ -441,14 +443,14 @@ impl<'a> CrateLoader<'a> {
                           dep_kind: DepKind)
                           -> CrateNumMap {
         debug!("resolving deps of external crate");
-        if crate_root.proc_macro_data.is_some() {
+        if crate_root.is_proc_macro_crate() {
             return CrateNumMap::new();
         }
 
         // The map from crate numbers in the crate we're resolving to local crate numbers.
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
-        std::iter::once(krate).chain(crate_root.crate_deps.decode(metadata).map(|dep| {
+        std::iter::once(krate).chain(crate_root.decode_crate_deps(metadata).map(|dep| {
             info!("resolving dep crate {} hash: `{}` extra filename: `{}`", dep.name, dep.hash,
                   dep.extra_filename);
             if dep.kind == DepKind::UnexportedMacrosOnly {
