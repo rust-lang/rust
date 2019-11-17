@@ -3,7 +3,7 @@ import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
 import { CargoWatchProvider } from './commands/cargo_watch';
-import { ExpandMacroHoverProvider } from './commands/expand_macro'
+import { ExpandMacroHoverProvider } from './commands/expand_macro';
 import { HintsUpdater } from './commands/inlay_hints';
 import {
     interactivelyStartCargoWatch,
@@ -92,11 +92,11 @@ export function activate(context: vscode.ExtensionContext) {
     const allNotifications: Iterable<
         [string, lc.GenericNotificationHandler]
     > = [
-            [
-                'rust-analyzer/publishDecorations',
-                notifications.publishDecorations.handle
-            ]
-        ];
+        [
+            'rust-analyzer/publishDecorations',
+            notifications.publishDecorations.handle
+        ]
+    ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode
