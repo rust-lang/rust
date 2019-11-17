@@ -1,4 +1,4 @@
-error: field is never used: `c`
+error: field is never read: `c`
   --> $DIR/union-fields-1.rs:6:5
    |
 LL |     c: u8,
@@ -10,19 +10,19 @@ note: lint level defined here
 LL | #![deny(dead_code)]
    |         ^^^^^^^^^
 
-error: field is never used: `a`
+error: field is never read: `a`
   --> $DIR/union-fields-1.rs:9:5
    |
 LL |     a: u8,
    |     ^^^^^
 
-error: field is never used: `a`
+error: field is never read: `a`
   --> $DIR/union-fields-1.rs:13:20
    |
 LL | union NoDropLike { a: u8 }
    |                    ^^^^^
 
-error: field is never used: `c`
+error: field is never read: `c`
   --> $DIR/union-fields-1.rs:18:5
    |
 LL |     c: u8,
