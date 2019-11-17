@@ -2,7 +2,7 @@
 
 extern crate rustc;
 extern crate rustc_interface;
-extern crate rustc_driver as _;
+extern crate rustc_driver;
 extern crate syntax;
 
 use rustc::session::DiagnosticOutput;
@@ -61,6 +61,7 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
         lint_caps: Default::default(),
         register_lints: None,
         override_queries: None,
+        registry: rustc_driver::diagnostics_registry(),
     };
 
     interface::run_compiler(config, |compiler| {

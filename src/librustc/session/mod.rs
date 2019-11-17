@@ -1037,12 +1037,11 @@ pub fn build_session_with_source_map(
 
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
-    let emitter = match diagnostics_output {
-        DiagnosticOutput::Default => default_emitter(&sopts, registry, &source_map, None),
-        DiagnosticOutput::Raw(write) => {
-            default_emitter(&sopts, registry, &source_map, Some(write))
-        }
+    let write_dest = match diagnostics_output {
+        DiagnosticOutput::Default => None,
+        DiagnosticOutput::Raw(write) => Some(write),
     };
+    let emitter = default_emitter(&sopts, registry, &source_map, write_dest);
 
     let diagnostic_handler = errors::Handler::with_emitter_and_flags(
         emitter,

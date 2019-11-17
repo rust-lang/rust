@@ -80,6 +80,7 @@ pub fn run(options: Options) -> i32 {
         lint_caps: Default::default(),
         register_lints: None,
         override_queries: None,
+        registry: rustc_driver::diagnostics_registry(),
     };
 
     let mut test_args = options.test_args.clone();
