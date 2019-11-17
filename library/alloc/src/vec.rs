@@ -2216,14 +2216,22 @@ impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
         // A common case is passing a vector into a function which immediately
         // re-collects into a vector. We can short circuit this if the IntoIter
         // has not been advanced at all.
-        if iterator.buf.as_ptr() as *const _ == iterator.ptr {
+        // We can also reuse the memory and move the data to the front if
+        // allocating a new vector and moving to it would result in the same capacity
+        let non_zero_offset = iterator.buf.as_ptr() as *const _ != iterator.ptr;
+        if !non_zero_offset || iterator.len() >= iterator.cap / 2 {
             unsafe {
                 let it = ManuallyDrop::new(iterator);
+                if non_zero_offset {
+                    ptr::copy(it.ptr, it.buf.as_ptr(), it.len());
+                }
                 return Vec::from_raw_parts(it.buf.as_ptr(), it.len(), it.cap);
             }
         }
 
-        from_into_iter_source(iterator)
+        let mut vec = Vec::new();
+        vec.extend(iterator);
+        vec
     }
 }
 
