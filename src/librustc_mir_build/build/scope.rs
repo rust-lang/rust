@@ -642,27 +642,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn leave_top_scope(&mut self, block: BasicBlock) -> BasicBlock {
         // If we are emitting a `drop` statement, we need to have the cached
         // diverge cleanup pads ready in case that drop panics.
-        let scope = self.scopes.scopes.last().expect("exit_top_scope called with no scopes");
+        let needs_cleanup = self.scopes.scopes.last().map_or(false, |scope| scope.needs_cleanup());
         let is_generator = self.generator_kind.is_some();
-        let needs_cleanup = scope.needs_cleanup();
+        let unwind_to = if needs_cleanup { self.diverge_cleanup() } else { DropIdx::MAX };
 
-        let unwind_to = if needs_cleanup {
-            let mut drops = self
-                .scopes
-                .scopes
-                .iter()
-                .flat_map(|scope| &scope.drops)
-                .filter(|drop| is_generator || drop.kind == DropKind::Value);
-            let mut next_drop = ROOT_NODE;
-            let mut drop_info = drops.next().unwrap();
-            for previous_drop_info in drops {
-                next_drop = self.scopes.unwind_drops.add_drop(*drop_info, next_drop);
-                drop_info = previous_drop_info;
-            }
-            next_drop
-        } else {
-            DropIdx::MAX
-        };
+        let scope = self.scopes.scopes.last().expect("exit_top_scope called with no scopes");
         unpack!(build_scope_drops(
             &mut self.cfg,
             &mut self.scopes.unwind_drops,
@@ -1097,16 +1081,18 @@ fn build_scope_drops<'tcx>(
 
         match drop_data.kind {
             DropKind::Value => {
+                debug_assert_eq!(unwind_drops.drops[unwind_to].0.local, drop_data.local);
+                debug_assert_eq!(unwind_drops.drops[unwind_to].0.kind, drop_data.kind);
+                unwind_to = unwind_drops.drops[unwind_to].1;
                 // If the operand has been moved, and we are not on an unwind
                 // path, then don't generate the drop. (We only take this into
                 // account for non-unwind paths so as not to disturb the
                 // caching mechanism.)
                 if scope.moved_locals.iter().any(|&o| o == local) {
-                    unwind_to = unwind_drops.drops[unwind_to].1;
                     continue;
                 }
 
-                unwind_drops.entry_points.push((unwind_to, block));
+                unwind_drops.add_entry(block, unwind_to);
 
                 let next = cfg.start_new_block();
                 cfg.terminate(
@@ -1118,6 +1104,8 @@ fn build_scope_drops<'tcx>(
             }
             DropKind::Storage => {
                 if storage_dead_on_unwind {
+                    debug_assert_eq!(unwind_drops.drops[unwind_to].0.local, drop_data.local);
+                    debug_assert_eq!(unwind_drops.drops[unwind_to].0.kind, drop_data.kind);
                     unwind_to = unwind_drops.drops[unwind_to].1;
                 }
                 // Only temps and vars need their storage dead.
@@ -1214,6 +1202,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         // optimization is, but it is here.
         for (drop_idx, drop_data) in drops.drops.iter_enumerated() {
             if let DropKind::Value = drop_data.0.kind {
+                debug_assert!(drop_data.1 < drops.drops.next_index());
                 drops.entry_points.push((drop_data.1, blocks[drop_idx].unwrap()));
             }
         }
