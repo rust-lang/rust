@@ -248,32 +248,36 @@ use log::{debug, info, warn};
 use rustc_error_codes::*;
 
 #[derive(Clone)]
-crate struct CrateMismatch {
+struct CrateMismatch {
     path: PathBuf,
     got: String,
 }
 
 #[derive(Clone)]
 crate struct CrateLocator<'a> {
-    pub sess: &'a Session,
-    pub span: Span,
-    pub crate_name: Symbol,
+    // Immutable per-session configuration.
+    sess: &'a Session,
+    metadata_loader: &'a dyn MetadataLoader,
+
+    // Immutable per-search configuration.
+    crate_name: Symbol,
     pub hash: Option<&'a Svh>,
     pub host_hash: Option<&'a Svh>,
-    pub extra_filename: Option<&'a str>,
-    // points to either self.sess.target.target or self.sess.host, must match triple
+    extra_filename: Option<&'a str>,
     pub target: &'a Target,
     pub triple: TargetTriple,
     pub filesearch: FileSearch<'a>,
-    pub root: Option<&'a CratePaths>,
-    pub rejected_via_hash: Vec<CrateMismatch>,
-    pub rejected_via_triple: Vec<CrateMismatch>,
-    pub rejected_via_kind: Vec<CrateMismatch>,
-    pub rejected_via_version: Vec<CrateMismatch>,
-    pub rejected_via_filename: Vec<CrateMismatch>,
-    pub should_match_name: bool,
+    span: Span,
+    root: Option<&'a CratePaths>,
     pub is_proc_macro: Option<bool>,
-    pub metadata_loader: &'a dyn MetadataLoader,
+
+    // Mutable in-progress state or output.
+    rejected_via_hash: Vec<CrateMismatch>,
+    rejected_via_triple: Vec<CrateMismatch>,
+    rejected_via_kind: Vec<CrateMismatch>,
+    rejected_via_version: Vec<CrateMismatch>,
+    rejected_via_filename: Vec<CrateMismatch>,
+    should_match_name: bool,
 }
 
 crate struct CratePaths {
@@ -299,6 +303,49 @@ impl fmt::Display for CrateFlavor {
 }
 
 impl<'a> CrateLocator<'a> {
+    crate fn new(
+        sess: &'a Session,
+        metadata_loader: &'a dyn MetadataLoader,
+        crate_name: Symbol,
+        hash: Option<&'a Svh>,
+        host_hash: Option<&'a Svh>,
+        extra_filename: Option<&'a str>,
+        is_host: bool,
+        path_kind: PathKind,
+        span: Span,
+        root: Option<&'a CratePaths>,
+        is_proc_macro: Option<bool>,
+    ) -> CrateLocator<'a> {
+        CrateLocator {
+            sess,
+            metadata_loader,
+            crate_name,
+            hash,
+            host_hash,
+            extra_filename,
+            target: if is_host { &sess.host } else { &sess.target.target },
+            triple: if is_host {
+                TargetTriple::from_triple(config::host_triple())
+            } else {
+                sess.opts.target_triple.clone()
+            },
+            filesearch: if is_host {
+                sess.host_filesearch(path_kind)
+            } else {
+                sess.target_filesearch(path_kind)
+            },
+            span,
+            root,
+            is_proc_macro,
+            rejected_via_hash: Vec::new(),
+            rejected_via_triple: Vec::new(),
+            rejected_via_kind: Vec::new(),
+            rejected_via_version: Vec::new(),
+            rejected_via_filename: Vec::new(),
+            should_match_name: true,
+        }
+    }
+
     crate fn reset(&mut self) {
         self.rejected_via_hash.clear();
         self.rejected_via_triple.clear();
@@ -926,26 +973,19 @@ pub fn find_plugin_registrar(
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let is_cross = target_triple != host_triple;
     let mut target_only = false;
-    let mut locator = CrateLocator {
+    let mut locator = CrateLocator::new(
         sess,
-        span,
-        crate_name: name,
-        hash: None,
-        host_hash: None,
-        extra_filename: None,
-        filesearch: sess.host_filesearch(PathKind::Crate),
-        target: &sess.host,
-        triple: host_triple,
-        root: None,
-        rejected_via_hash: vec![],
-        rejected_via_triple: vec![],
-        rejected_via_kind: vec![],
-        rejected_via_version: vec![],
-        rejected_via_filename: vec![],
-        should_match_name: true,
-        is_proc_macro: None,
         metadata_loader,
-    };
+        name,
+        None, // hash
+        None, // host_hash
+        None, // extra_filename
+        true, // is_host
+        PathKind::Crate,
+        span,
+        None, // root
+        None, // is_proc_macro
+    );
 
     let library = locator.maybe_load_library_crate().or_else(|| {
         if !is_cross {

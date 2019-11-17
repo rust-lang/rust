@@ -350,26 +350,19 @@ impl<'a> CrateLoader<'a> {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
-            let mut locator = CrateLocator {
-                sess: self.sess,
-                span,
-                crate_name: name,
+            let mut locator = CrateLocator::new(
+                self.sess,
+                self.metadata_loader,
+                name,
                 hash,
                 host_hash,
                 extra_filename,
-                filesearch: self.sess.target_filesearch(path_kind),
-                target: &self.sess.target.target,
-                triple: self.sess.opts.target_triple.clone(),
+                false, // is_host
+                path_kind,
+                span,
                 root,
-                rejected_via_hash: vec![],
-                rejected_via_triple: vec![],
-                rejected_via_kind: vec![],
-                rejected_via_version: vec![],
-                rejected_via_filename: vec![],
-                should_match_name: true,
-                is_proc_macro: Some(false),
-                metadata_loader: self.metadata_loader,
-            };
+                Some(false), // is_proc_macro
+            );
 
             self.load(&mut locator).map(|r| (r, None)).or_else(|| {
                 dep_kind = DepKind::UnexportedMacrosOnly;
