@@ -161,7 +161,7 @@ impl ExpansionInfo {
     pub fn translate_offset(&self, offset: TextUnit) -> Option<TextUnit> {
         let offset = offset.checked_sub(self.arg_start.1)?;
         let token_id = self.macro_arg.1.token_by_offset(offset)?;
-        let token_id = tt::TokenId(token_id.0 + self.macro_def.0.shift());
+        let token_id = self.macro_def.0.map_id_down(token_id);
 
         let (r, _) = self.exp_map.ranges.iter().find(|(_, tid)| *tid == token_id)?;
         Some(r.start())
@@ -170,11 +170,11 @@ impl ExpansionInfo {
     pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
         let token_id = look_in_rev_map(&self.exp_map, from)?;
 
-        let shift = self.macro_def.0.shift();
-        let (token_map, (file_id, start_offset), token_id) = if token_id.0 >= shift {
-            (&self.macro_arg.1, self.arg_start, tt::TokenId(token_id.0 - shift).into())
-        } else {
-            (&self.macro_def.1, self.def_start, token_id)
+        let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
+
+        let (token_map, (file_id, start_offset)) = match origin {
+            mbe::Origin::Call => (&self.macro_arg.1, self.arg_start),
+            mbe::Origin::Def => (&self.macro_def.1, self.def_start),
         };
 
         let range = token_map.relative_range_of(token_id)?;
