@@ -95,16 +95,6 @@ impl ConstKind {
             ConstKind::ConstFn | ConstKind::Const => false,
         }
     }
-
-    /// Returns `true` if the value returned by this item must be `Sync`.
-    ///
-    /// This returns false for `StaticMut` since all accesses to one are `unsafe` anyway.
-    pub fn requires_sync(self) -> bool {
-        match self {
-            ConstKind::Static => true,
-            ConstKind::ConstFn | ConstKind::Const |  ConstKind::StaticMut => false,
-        }
-    }
 }
 
 impl fmt::Display for ConstKind {

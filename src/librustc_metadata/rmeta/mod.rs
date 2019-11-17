@@ -260,7 +260,7 @@ crate struct LazyPerDefTables<'tcx> {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 enum EntryKind<'tcx> {
-    Const(ConstQualif, Lazy<RenderedConst>),
+    Const(mir::ConstQualifs, Lazy<RenderedConst>),
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -288,14 +288,8 @@ enum EntryKind<'tcx> {
     Method(Lazy<MethodData>),
     AssocType(AssocContainer),
     AssocOpaqueTy(AssocContainer),
-    AssocConst(AssocContainer, ConstQualif, Lazy<RenderedConst>),
+    AssocConst(AssocContainer, mir::ConstQualifs, Lazy<RenderedConst>),
     TraitAlias,
-}
-
-/// Additional data for EntryKind::Const and EntryKind::AssocConst
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable)]
-struct ConstQualif {
-    mir: u8,
 }
 
 /// Contains a constant which has been rendered to a String.

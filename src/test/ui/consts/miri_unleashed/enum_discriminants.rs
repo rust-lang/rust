@@ -1,5 +1,8 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you
+// compile-flags: -Zunleash-the-miri-inside-of-you -Awarnings
 // run-pass
+
+// miri unleashed warnings are not useful and change frequently, so they are silenced above.
+#![feature(const_panic)]
 
 //! Make sure that we read and write enum discriminants correctly for corner cases caused
 //! by layout optimizations.
@@ -21,7 +24,7 @@ const OVERFLOW: usize = {
     }
 
     let x = Foo::B;
-    match x { //~ WARNING skipping const checks
+    match x {
         Foo::B => 0,
         _ => panic!(),
     }
@@ -86,21 +89,17 @@ const MORE_OVERFLOW: usize = {
     }
 
     if let E1::V2 { .. } = (E1::V1 { f: true }) {
-        //~^ WARNING skipping const checks
         unreachable!()
     }
     if let E1::V1 { .. } = (E1::V1 { f: true }) {
-        //~^ WARNING skipping const checks
     } else {
         unreachable!()
     }
 
     if let E2::V1 { .. } = E2::V3::<Infallible> {
-        //~^ WARNING skipping const checks
         unreachable!()
     }
     if let E2::V3 { .. } = E2::V3::<Infallible> {
-        //~^ WARNING skipping const checks
     } else {
         unreachable!()
     }

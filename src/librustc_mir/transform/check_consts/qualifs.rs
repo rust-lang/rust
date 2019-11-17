@@ -6,12 +6,10 @@ use syntax_pos::DUMMY_SP;
 
 use super::{ConstKind, Item as ConstCx};
 
-#[derive(Clone, Copy)]
-pub struct QualifSet(u8);
-
-impl QualifSet {
-    fn contains<Q: ?Sized + Qualif>(self) -> bool {
-        self.0 & (1 << Q::IDX) != 0
+pub fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> ConstQualifs {
+    ConstQualifs {
+        has_mut_interior: HasMutInterior::in_any_value_of_ty(cx, ty),
+        needs_drop: NeedsDrop::in_any_value_of_ty(cx, ty),
     }
 }
 
@@ -22,13 +20,13 @@ impl QualifSet {
 ///
 /// The default implementations proceed structurally.
 pub trait Qualif {
-    const IDX: usize;
-
     /// The name of the file used to debug the dataflow analysis that computes this qualif.
     const ANALYSIS_NAME: &'static str;
 
     /// Whether this `Qualif` is cleared when a local is moved from.
     const IS_CLEARED_ON_MOVE: bool = false;
+
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool;
 
     /// Return the qualification that is (conservatively) correct for any value
     /// of the type.
@@ -122,9 +120,8 @@ pub trait Qualif {
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty)
                     } else {
-                        let bits = cx.tcx.at(constant.span).mir_const_qualif(def_id);
-
-                        let qualif = QualifSet(bits).contains::<Self>();
+                        let qualifs = cx.tcx.at(constant.span).mir_const_qualif(def_id);
+                        let qualif = Self::in_qualifs(&qualifs);
 
                         // Just in case the type is more specific than
                         // the definition, e.g., impl associated const
@@ -210,8 +207,11 @@ pub trait Qualif {
 pub struct HasMutInterior;
 
 impl Qualif for HasMutInterior {
-    const IDX: usize = 0;
     const ANALYSIS_NAME: &'static str = "flow_has_mut_interior";
+
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
+        qualifs.has_mut_interior
+    }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         !ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP)
@@ -275,9 +275,12 @@ impl Qualif for HasMutInterior {
 pub struct NeedsDrop;
 
 impl Qualif for NeedsDrop {
-    const IDX: usize = 1;
     const ANALYSIS_NAME: &'static str = "flow_needs_drop";
     const IS_CLEARED_ON_MOVE: bool = true;
+
+    fn in_qualifs(qualifs: &ConstQualifs) -> bool {
+        qualifs.needs_drop
+    }
 
     fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         ty.needs_drop(cx.tcx, cx.param_env)

@@ -1,21 +1,25 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
+use rustc::hir::HirId;
+use rustc::middle::lang_items;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;
+use rustc::traits::{self, TraitEngine};
 use rustc::ty::cast::CastTy;
-use rustc::ty;
+use rustc::ty::{self, TyCtxt};
 use rustc_index::bit_set::BitSet;
 use rustc_target::spec::abi::Abi;
+use rustc_error_codes::*;
 use syntax::symbol::sym;
 use syntax_pos::Span;
 
-use std::fmt;
+use std::borrow::Cow;
 use std::ops::Deref;
 
 use crate::dataflow::{self as old_dataflow, generic as dataflow};
 use self::old_dataflow::IndirectlyMutableLocals;
 use super::ops::{self, NonConstOp};
-use super::qualifs::{HasMutInterior, NeedsDrop};
+use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstKind, Item, Qualif, is_lang_panic_fn};
 
@@ -85,6 +89,19 @@ impl Qualifs<'a, 'mir, 'tcx> {
             || self.indirectly_mutable(local, location)
     }
 
+    /// Returns `true` if `local` is `HasMutInterior` at the given `Location`.
+    ///
+    /// Only updates the cursor if absolutely necessary.
+    fn has_mut_interior_lazy_seek(&mut self, local: Local, location: Location) -> bool {
+        if !self.has_mut_interior.in_any_value_of_ty.contains(local) {
+            return false;
+        }
+
+        self.has_mut_interior.cursor.seek_before(location);
+        self.has_mut_interior.cursor.get().contains(local)
+            || self.indirectly_mutable(local, location)
+    }
+
     /// Returns `true` if `local` is `HasMutInterior`, but requires the `has_mut_interior` and
     /// `indirectly_mutable` cursors to be updated beforehand.
     fn has_mut_interior_eager_seek(&self, local: Local) -> bool {
@@ -94,6 +111,35 @@ impl Qualifs<'a, 'mir, 'tcx> {
 
         self.has_mut_interior.cursor.get().contains(local)
             || self.indirectly_mutable.get().contains(local)
+    }
+
+    fn in_return_place(&mut self, item: &Item<'_, 'tcx>) -> ConstQualifs {
+        // Find the `Return` terminator if one exists.
+        //
+        // If no `Return` terminator exists, this MIR is divergent. Just return the conservative
+        // qualifs for the return type.
+        let return_block = item.body
+            .basic_blocks()
+            .iter_enumerated()
+            .find(|(_, block)| {
+                match block.terminator().kind {
+                    TerminatorKind::Return => true,
+                    _ => false,
+                }
+            })
+            .map(|(bb, _)| bb);
+
+        let return_block = match return_block {
+            None => return qualifs::in_any_value_of_ty(item, item.body.return_ty()),
+            Some(bb) => bb,
+        };
+
+        let return_loc = item.body.terminator_loc(return_block);
+
+        ConstQualifs {
+            needs_drop: self.needs_drop_lazy_seek(RETURN_PLACE, return_loc),
+            has_mut_interior: self.has_mut_interior_lazy_seek(RETURN_PLACE, return_loc),
+        }
     }
 }
 
@@ -114,11 +160,6 @@ pub struct Validator<'a, 'mir, 'tcx> {
     /// this set is empty. Note that if we start removing locals from
     /// `derived_from_illegal_borrow`, just checking at the end won't be enough.
     derived_from_illegal_borrow: BitSet<Local>,
-
-    errors: Vec<(Span, String)>,
-
-    /// Whether to actually emit errors or just store them in `errors`.
-    pub(crate) suppress_errors: bool,
 }
 
 impl Deref for Validator<'_, 'mir, 'tcx> {
@@ -172,21 +213,55 @@ impl Validator<'a, 'mir, 'tcx> {
             span: item.body.span,
             item,
             qualifs,
-            errors: vec![],
             derived_from_illegal_borrow: BitSet::new_empty(item.body.local_decls.len()),
-            suppress_errors: false,
         }
     }
 
-    pub fn take_errors(&mut self) -> Vec<(Span, String)> {
-        std::mem::replace(&mut self.errors, vec![])
+    pub fn check_body(&mut self) {
+        let Item { tcx, body, def_id, const_kind, ..  } = *self.item;
+
+        let use_min_const_fn_checks =
+            tcx.is_min_const_fn(def_id)
+            && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
+
+        if use_min_const_fn_checks {
+            // Enforce `min_const_fn` for stable `const fn`s.
+            use crate::transform::qualify_min_const_fn::is_min_const_fn;
+            if let Err((span, err)) = is_min_const_fn(tcx, def_id, body) {
+                error_min_const_fn_violation(tcx, span, err);
+                return;
+            }
+        }
+
+        check_short_circuiting_in_const_local(self.item);
+
+        if body.is_cfg_cyclic() {
+            // We can't provide a good span for the error here, but this should be caught by the
+            // HIR const-checker anyways.
+            self.check_op_spanned(ops::Loop, body.span);
+        }
+
+        self.visit_body(body);
+
+        // Ensure that the end result is `Sync` in a non-thread local `static`.
+        let should_check_for_sync = const_kind == Some(ConstKind::Static)
+            && !tcx.has_attr(def_id, sym::thread_local);
+
+        if should_check_for_sync {
+            let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
+            check_return_ty_is_sync(tcx, body, hir_id);
+        }
+    }
+
+    pub fn qualifs_in_return_place(&mut self) -> ConstQualifs {
+        self.qualifs.in_return_place(self.item)
     }
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
     /// context. Returns `Forbidden` if an error was emitted.
     pub fn check_op_spanned<O>(&mut self, op: O, span: Span) -> CheckOpResult
     where
-        O: NonConstOp + fmt::Debug
+        O: NonConstOp
     {
         trace!("check_op: op={:?}", op);
 
@@ -204,22 +279,37 @@ impl Validator<'a, 'mir, 'tcx> {
             return CheckOpResult::Unleashed;
         }
 
-        if !self.suppress_errors {
-            op.emit_error(self, span);
-        }
-
-        self.errors.push((span, format!("{:?}", op)));
+        op.emit_error(self, span);
         CheckOpResult::Forbidden
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
-    pub fn check_op(&mut self, op: impl NonConstOp + fmt::Debug) -> CheckOpResult {
+    pub fn check_op(&mut self, op: impl NonConstOp) -> CheckOpResult {
         let span = self.span;
         self.check_op_spanned(op, span)
     }
 }
 
 impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
+    fn visit_basic_block_data(
+        &mut self,
+        bb: BasicBlock,
+        block: &BasicBlockData<'tcx>,
+    ) {
+        trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
+
+        // Just as the old checker did, we skip const-checking basic blocks on the unwind path.
+        // These blocks often drop locals that would otherwise be returned from the function.
+        //
+        // FIXME: This shouldn't be unsound since a panic at compile time will cause a compiler
+        // error anyway, but maybe we should do more here?
+        if block.is_cleanup {
+            return;
+        }
+
+        self.super_basic_block_data(bb, block);
+    }
+
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
@@ -451,14 +541,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
-                // FIXME: make this the `emit_error` impl of `ops::IfOrMatch` once the const
-                // checker is no longer run in compatability mode.
-                if !self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
-                    self.tcx.sess.delay_span_bug(
-                        self.span,
-                        "complex control flow is forbidden in a const context",
-                    );
-                }
+                self.check_op(ops::IfOrMatch);
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
@@ -563,4 +646,59 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             _ => {}
         }
     }
+}
+
+fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
+    struct_span_err!(tcx.sess, span, E0723, "{}", msg)
+        .note("for more information, see issue https://github.com/rust-lang/rust/issues/57563")
+        .help("add `#![feature(const_fn)]` to the crate attributes to enable")
+        .emit();
+}
+
+fn check_short_circuiting_in_const_local(item: &Item<'_, 'tcx>) {
+    let body = item.body;
+
+    if body.control_flow_destroyed.is_empty() {
+        return;
+    }
+
+    let mut locals = body.vars_iter();
+    if let Some(local) = locals.next() {
+        let span = body.local_decls[local].source_info.span;
+        let mut error = item.tcx.sess.struct_span_err(
+            span,
+            &format!(
+                "new features like let bindings are not permitted in {}s \
+                which also use short circuiting operators",
+                item.const_kind(),
+            ),
+        );
+        for (span, kind) in body.control_flow_destroyed.iter() {
+            error.span_note(
+                *span,
+                &format!("use of {} here does not actually short circuit due to \
+                the const evaluator presently not being able to do control flow. \
+                See https://github.com/rust-lang/rust/issues/49146 for more \
+                information.", kind),
+            );
+        }
+        for local in locals {
+            let span = body.local_decls[local].source_info.span;
+            error.span_note(span, "more locals defined here");
+        }
+        error.emit();
+    }
+}
+
+fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) {
+    let ty = body.return_ty();
+    tcx.infer_ctxt().enter(|infcx| {
+        let cause = traits::ObligationCause::new(body.span, hir_id, traits::SharedStatic);
+        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        let sync_def_id = tcx.require_lang_item(lang_items::SyncTraitLangItem, Some(body.span));
+        fulfillment_cx.register_bound(&infcx, ty::ParamEnv::empty(), ty, sync_def_id, cause);
+        if let Err(err) = fulfillment_cx.select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(&err, None, false);
+        }
+    });
 }

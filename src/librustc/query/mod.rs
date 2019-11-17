@@ -91,9 +91,9 @@ rustc_queries! {
         }
 
         /// Maps DefId's that have an associated `mir::Body` to the result
-        /// of the MIR qualify_consts pass. The actual meaning of
-        /// the value isn't known except to the pass itself.
-        query mir_const_qualif(key: DefId) -> u8 {
+        /// of the MIR const-checking pass. This is the set of qualifs in
+        /// the final value of a `const`.
+        query mir_const_qualif(key: DefId) -> mir::ConstQualifs {
             desc { |tcx| "const checking `{}`", tcx.def_path_str(key) }
             cache_on_disk_if { key.is_local() }
         }

@@ -138,7 +138,15 @@ impl NonConstOp for HeapAllocation {
 
 #[derive(Debug)]
 pub struct IfOrMatch;
-impl NonConstOp for IfOrMatch {}
+impl NonConstOp for IfOrMatch {
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        // This should be caught by the HIR const-checker.
+        item.tcx.sess.delay_span_bug(
+            span,
+            "complex control flow is forbidden in a const context",
+        );
+    }
+}
 
 #[derive(Debug)]
 pub struct LiveDrop;
@@ -154,7 +162,15 @@ impl NonConstOp for LiveDrop {
 
 #[derive(Debug)]
 pub struct Loop;
-impl NonConstOp for Loop {}
+impl NonConstOp for Loop {
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        // This should be caught by the HIR const-checker.
+        item.tcx.sess.delay_span_bug(
+            span,
+            "complex control flow is forbidden in a const context",
+        );
+    }
+}
 
 #[derive(Debug)]
 pub struct MutBorrow(pub BorrowKind);

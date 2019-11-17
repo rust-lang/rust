@@ -952,12 +952,12 @@ impl<'a, 'tcx> CrateMetadata {
             .decode((self, tcx))
     }
 
-    fn mir_const_qualif(&self, id: DefIndex) -> u8 {
+    fn mir_const_qualif(&self, id: DefIndex) -> mir::ConstQualifs {
         match self.kind(id) {
             EntryKind::Const(qualif, _) |
             EntryKind::AssocConst(AssocContainer::ImplDefault, qualif, _) |
             EntryKind::AssocConst(AssocContainer::ImplFinal, qualif, _) => {
-                qualif.mir
+                qualif
             }
             _ => bug!(),
         }

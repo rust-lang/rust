@@ -1,8 +1,8 @@
 use crate::{build, shim};
 use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{Body, MirPhase, Promoted};
-use rustc::ty::{TyCtxt, InstanceDef};
+use rustc::mir::{Body, MirPhase, Promoted, ConstQualifs};
+use rustc::ty::{TyCtxt, InstanceDef, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::hir;
@@ -25,7 +25,6 @@ pub mod rustc_peek;
 pub mod elaborate_drops;
 pub mod add_call_guards;
 pub mod promote_consts;
-pub mod qualify_consts;
 pub mod qualify_min_const_fn;
 pub mod remove_noop_landing_pads;
 pub mod dump_mir;
@@ -39,12 +38,12 @@ pub mod uniform_array_move_out;
 pub mod uninhabited_enum_branching;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
-    self::qualify_consts::provide(providers);
     self::check_unsafety::provide(providers);
     *providers = Providers {
         mir_keys,
         mir_built,
         mir_const,
+        mir_const_qualif,
         mir_validated,
         optimized_mir,
         is_mir_available,
@@ -185,6 +184,41 @@ pub fn run_passes(
     body.phase = mir_phase;
 }
 
+fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
+    let const_kind = check_consts::ConstKind::for_item(tcx, def_id);
+
+    // No need to const-check a non-const `fn`.
+    if const_kind.is_none() {
+        return Default::default();
+    }
+
+    // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
+    // cannot yet be stolen), because `mir_validated()`, which steals
+    // from `mir_const(), forces this query to execute before
+    // performing the steal.
+    let body = &tcx.mir_const(def_id).borrow();
+
+    if body.return_ty().references_error() {
+        tcx.sess.delay_span_bug(body.span, "mir_const_qualif: MIR had errors");
+        return Default::default();
+    }
+
+    let item = check_consts::Item {
+        body,
+        tcx,
+        def_id,
+        const_kind,
+        param_env: tcx.param_env(def_id),
+    };
+
+    let mut validator = check_consts::validation::Validator::new(&item);
+    validator.check_body();
+
+    // We return the qualifs in the return place for every MIR body, even though it is only used
+    // when deciding to promote a reference to a `const` for now.
+    validator.qualifs_in_return_place().into()
+}
+
 fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
@@ -203,18 +237,14 @@ fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
-    let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
-    if let hir::BodyOwnerKind::Const = tcx.hir().body_owner_kind(hir_id) {
-        // Ensure that we compute the `mir_const_qualif` for constants at
-        // this point, before we steal the mir-const result.
-        let _ = tcx.mir_const_qualif(def_id);
-    }
+    // Ensure that we compute the `mir_const_qualif` for constants at
+    // this point, before we steal the mir-const result.
+    let _ = tcx.mir_const_qualif(def_id);
 
     let mut body = tcx.mir_const(def_id).steal();
     let promote_pass = promote_consts::PromoteTemps::default();
     run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
         // What we need to run borrowck etc.
-        &qualify_consts::QualifyAndPromoteConstants::default(),
         &promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);

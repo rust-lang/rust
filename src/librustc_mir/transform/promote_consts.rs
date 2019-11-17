@@ -582,30 +582,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             Operand::Copy(place) |
             Operand::Move(place) => self.validate_place(place.as_ref()),
 
-            Operand::Constant(constant) => {
-                if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
-                    if self.tcx.trait_of_item(def_id).is_some() {
-                        // Don't peek inside trait associated constants.
-                        // (see below what we do for other consts, for now)
-                    } else {
-                        // HACK(eddyb) ensure that errors propagate correctly.
-                        // FIXME(eddyb) remove this once the old promotion logic
-                        // is gone - we can always promote constants even if they
-                        // fail to pass const-checking, as compilation would've
-                        // errored independently and promotion can't change that.
-                        let bits = self.tcx.at(constant.span).mir_const_qualif(def_id);
-                        if bits == super::qualify_consts::QUALIF_ERROR_BIT {
-                            self.tcx.sess.delay_span_bug(
-                                constant.span,
-                                "promote_consts: MIR had errors",
-                            );
-                            return Err(Unpromotable);
-                        }
-                    }
-                }
-
-                Ok(())
-            }
+            // The qualifs for a constant (e.g. `HasMutInterior`) are checked in
+            // `validate_rvalue` upon access.
+            Operand::Constant(_) => Ok(()),
         }
     }
 
