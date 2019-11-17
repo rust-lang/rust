@@ -2096,32 +2096,19 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let mut max_suffix_len = self_suffix;
                 let mut max_fixed_len = 0;
 
-                for row in matrix.heads() {
-                    match *row.kind {
-                        PatKind::Constant { value } => {
-                            // extract the length of an array/slice from a constant
-                            match (value.val, &value.ty.kind) {
-                                (_, ty::Array(_, n)) => {
-                                    max_fixed_len =
-                                        cmp::max(max_fixed_len, n.eval_usize(tcx, param_env))
-                                }
-                                (
-                                    ty::ConstKind::Value(ConstValue::Slice { start, end, .. }),
-                                    ty::Slice(_),
-                                ) => max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64),
-                                _ => {}
+                let head_ctors =
+                    matrix.heads().filter_map(|pat| pat_constructor(tcx, param_env, pat));
+                for ctor in head_ctors {
+                    match ctor {
+                        Slice(slice) => match slice.pattern_kind() {
+                            FixedLen(len) => {
+                                max_fixed_len = cmp::max(max_fixed_len, len);
                             }
-                        }
-                        PatKind::Slice { ref prefix, slice: None, ref suffix }
-                        | PatKind::Array { ref prefix, slice: None, ref suffix } => {
-                            let fixed_len = prefix.len() as u64 + suffix.len() as u64;
-                            max_fixed_len = cmp::max(max_fixed_len, fixed_len);
-                        }
-                        PatKind::Slice { ref prefix, slice: Some(_), ref suffix }
-                        | PatKind::Array { ref prefix, slice: Some(_), ref suffix } => {
-                            max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
-                            max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
-                        }
+                            VarLen(prefix, suffix) => {
+                                max_prefix_len = cmp::max(max_prefix_len, prefix);
+                                max_suffix_len = cmp::max(max_suffix_len, suffix);
+                            }
+                        },
                         _ => {}
                     }
                 }
