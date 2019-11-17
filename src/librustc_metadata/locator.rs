@@ -261,6 +261,7 @@ crate struct CrateLocator<'a> {
 
     // Immutable per-search configuration.
     crate_name: Symbol,
+    exact_paths: Vec<PathBuf>,
     pub hash: Option<&'a Svh>,
     pub host_hash: Option<&'a Svh>,
     extra_filename: Option<&'a str>,
@@ -277,7 +278,6 @@ crate struct CrateLocator<'a> {
     rejected_via_kind: Vec<CrateMismatch>,
     rejected_via_version: Vec<CrateMismatch>,
     rejected_via_filename: Vec<CrateMismatch>,
-    should_match_name: bool,
 }
 
 crate struct CratePaths {
@@ -326,6 +326,15 @@ impl<'a> CrateLocator<'a> {
             sess,
             metadata_loader,
             crate_name,
+            exact_paths: if hash.is_none() {
+                sess.opts.externs.get(&crate_name.as_str()).into_iter()
+                    .flat_map(|entry| entry.locations.iter())
+                    .filter_map(|location| location.clone().map(PathBuf::from)).collect()
+            } else {
+                // SVH being specified means this is a transitive dependency,
+                // so `--extern` options do not apply.
+                Vec::new()
+            },
             hash,
             host_hash,
             extra_filename,
@@ -348,7 +357,6 @@ impl<'a> CrateLocator<'a> {
             rejected_via_kind: Vec::new(),
             rejected_via_version: Vec::new(),
             rejected_via_filename: Vec::new(),
-            should_match_name: true,
         }
     }
 
@@ -361,6 +369,9 @@ impl<'a> CrateLocator<'a> {
     }
 
     crate fn maybe_load_library_crate(&mut self) -> Option<Library> {
+        if !self.exact_paths.is_empty() {
+            return self.find_commandline_library();
+        }
         let mut seen_paths = FxHashSet::default();
         match self.extra_filename {
             Some(s) => self.find_library_crate(s, &mut seen_paths)
@@ -486,21 +497,6 @@ impl<'a> CrateLocator<'a> {
                           extra_prefix: &str,
                           seen_paths: &mut FxHashSet<PathBuf>)
                           -> Option<Library> {
-        // If an SVH is specified, then this is a transitive dependency that
-        // must be loaded via -L plus some filtering.
-        if self.hash.is_none() {
-            self.should_match_name = false;
-            if let Some(entry) = self.sess.opts.externs.get(&self.crate_name.as_str()) {
-                // Only use `--extern crate_name=path` here, not `--extern crate_name`.
-                if entry.locations.iter().any(|l| l.is_some()) {
-                    return self.find_commandline_library(
-                        entry.locations.iter().filter_map(|l| l.as_ref()),
-                    );
-                }
-            }
-            self.should_match_name = true;
-        }
-
         let dypair = self.dylibname();
         let staticpair = self.staticlibname();
 
@@ -777,7 +773,7 @@ impl<'a> CrateLocator<'a> {
             }
         }
 
-        if self.should_match_name {
+        if self.exact_paths.is_empty() {
             if self.crate_name != root.name {
                 info!("Rejecting via crate name");
                 return None;
@@ -824,9 +820,7 @@ impl<'a> CrateLocator<'a> {
         (t.options.staticlib_prefix.clone(), t.options.staticlib_suffix.clone())
     }
 
-    fn find_commandline_library<'b, LOCS>(&mut self, locs: LOCS) -> Option<Library>
-        where LOCS: Iterator<Item = &'b String>
-    {
+    fn find_commandline_library(&mut self) -> Option<Library> {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
@@ -836,10 +830,12 @@ impl<'a> CrateLocator<'a> {
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
         {
-            let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
+                let crate_name = self.crate_name;
+                let rejected_via_filename = &mut self.rejected_via_filename;
+                let locs = self.exact_paths.iter().filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
-                                      self.crate_name,
+                                      crate_name,
                                       loc.display()));
                     return false;
                 }
@@ -847,7 +843,7 @@ impl<'a> CrateLocator<'a> {
                     Some(file) => file,
                     None => {
                         sess.err(&format!("extern location for {} is not a file: {}",
-                                          self.crate_name,
+                                          crate_name,
                                           loc.display()));
                         return false;
                     }
@@ -862,8 +858,8 @@ impl<'a> CrateLocator<'a> {
                     }
                 }
 
-                self.rejected_via_filename.push(CrateMismatch {
-                    path: loc.clone(),
+                rejected_via_filename.push(CrateMismatch {
+                    path: (*loc).clone(),
                     got: String::new(),
                 });
 
