@@ -40,8 +40,8 @@ fn main() {
 // END rustc.E-V-{{constant}}.mir_map.0.mir
 
 // START rustc.ptr-drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
-//     bb0: {
-//     goto -> bb7;
+// bb0: {
+//     goto -> bb6;
 // }
 // bb1: {
 //     return;
@@ -53,17 +53,14 @@ fn main() {
 //     goto -> bb1;
 // }
 // bb4 (cleanup): {
-//     goto -> bb2;
+//     drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> bb2;
 // }
-// bb5 (cleanup): {
-//     drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> bb4;
+// bb5: {
+//     drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb3, unwind: bb2];
 // }
 // bb6: {
-//     drop(((*_1).0: alloc::raw_vec::RawVec<i32>)) -> [return: bb3, unwind: bb4];
-// }
-// bb7: {
 //     _2 = &mut (*_1);
-//     _3 = const <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb6, unwind: bb5];
+//     _3 = const <std::vec::Vec<i32> as std::ops::Drop>::drop(move _2) -> [return: bb5, unwind: bb4];
 // }
 // END rustc.ptr-drop_in_place.std__vec__Vec_i32_.AddMovesForPackedDrops.before.mir
 

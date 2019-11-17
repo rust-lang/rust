@@ -361,16 +361,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_terminator(&mut self, term: &Terminator<'tcx>) {
         match term.kind {
             TerminatorKind::Goto { target: _ }
+            | TerminatorKind::Return
             | TerminatorKind::Resume
             | TerminatorKind::Abort
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdges { .. }
             | TerminatorKind::FalseUnwind { .. }
             | TerminatorKind::Unreachable => {}
-
-            TerminatorKind::Return => {
-                self.gather_move(&Place::return_place());
-            }
 
             TerminatorKind::Assert { ref cond, .. } => {
                 self.gather_operand(cond);
