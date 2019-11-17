@@ -141,7 +141,7 @@ impl<'a> CrateLoader<'a> {
             let prev_kind = source.dylib.as_ref().or(source.rlib.as_ref())
                                   .or(source.rmeta.as_ref())
                                   .expect("No sources for crate").1;
-            if ret.is_none() && (prev_kind == kind || prev_kind == PathKind::All) {
+            if kind.matches(prev_kind) {
                 ret = Some(cnum);
             }
         });

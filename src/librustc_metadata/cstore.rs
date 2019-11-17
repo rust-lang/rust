@@ -90,8 +90,8 @@ crate struct CrateMetadata {
 #[derive(Clone)]
 pub struct CStore {
     metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
-    pub(crate) injected_panic_runtime: Option<CrateNum>,
-    pub(crate) allocator_kind: Option<AllocatorKind>,
+    crate injected_panic_runtime: Option<CrateNum>,
+    crate allocator_kind: Option<AllocatorKind>,
 }
 
 pub enum LoadedMacro {
