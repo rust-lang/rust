@@ -4,9 +4,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(optin_builtin_traits)]
 
 pub use emitter::ColorConfig;
 
