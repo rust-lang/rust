@@ -40,47 +40,73 @@ pub use crate::syntax_bridge::{
 /// and `$()*` have special meaning (see `Var` and `Repeat` data structures)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MacroRules {
-    pub(crate) rules: Vec<Rule>,
+    rules: Vec<Rule>,
     /// Highest id of the token we have in TokenMap
-    pub(crate) shift: u32,
+    shift: Shift,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Rule {
-    pub(crate) lhs: tt::Subtree,
-    pub(crate) rhs: tt::Subtree,
+struct Rule {
+    lhs: tt::Subtree,
+    rhs: tt::Subtree,
 }
 
-// Find the max token id inside a subtree
-fn max_id(subtree: &tt::Subtree) -> Option<u32> {
-    subtree
-        .token_trees
-        .iter()
-        .filter_map(|tt| match tt {
-            tt::TokenTree::Subtree(subtree) => max_id(subtree),
-            tt::TokenTree::Leaf(tt::Leaf::Ident(ident))
-                if ident.id != tt::TokenId::unspecified() =>
-            {
-                Some(ident.id.0)
-            }
-            _ => None,
-        })
-        .max()
-}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Shift(u32);
 
-/// Shift given TokenTree token id
-fn shift_subtree(tt: &mut tt::Subtree, shift: u32) {
-    for t in tt.token_trees.iter_mut() {
-        match t {
-            tt::TokenTree::Leaf(leaf) => match leaf {
-                tt::Leaf::Ident(ident) if ident.id != tt::TokenId::unspecified() => {
-                    ident.id.0 += shift;
-                }
-                _ => (),
-            },
-            tt::TokenTree::Subtree(tt) => shift_subtree(tt, shift),
+impl Shift {
+    fn new(tt: &tt::Subtree) -> Shift {
+        // Note that TokenId is started from zero,
+        // We have to add 1 to prevent duplication.
+        let value = max_id(tt).map_or(0, |it| it + 1);
+        return Shift(value);
+
+        // Find the max token id inside a subtree
+        fn max_id(subtree: &tt::Subtree) -> Option<u32> {
+            subtree
+                .token_trees
+                .iter()
+                .filter_map(|tt| match tt {
+                    tt::TokenTree::Subtree(subtree) => max_id(subtree),
+                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident))
+                        if ident.id != tt::TokenId::unspecified() =>
+                    {
+                        Some(ident.id.0)
+                    }
+                    _ => None,
+                })
+                .max()
         }
     }
+
+    /// Shift given TokenTree token id
+    fn shift_all(self, tt: &mut tt::Subtree) {
+        for t in tt.token_trees.iter_mut() {
+            match t {
+                tt::TokenTree::Leaf(leaf) => match leaf {
+                    tt::Leaf::Ident(ident) => ident.id = self.shift(ident.id),
+                    _ => (),
+                },
+                tt::TokenTree::Subtree(tt) => self.shift_all(tt),
+            }
+        }
+    }
+
+    fn shift(self, id: tt::TokenId) -> tt::TokenId {
+        if id == tt::TokenId::unspecified() {
+            return id;
+        }
+        tt::TokenId(id.0 + self.0)
+    }
+
+    fn unshift(self, id: tt::TokenId) -> Option<tt::TokenId> {
+        id.0.checked_sub(self.0).map(tt::TokenId)
+    }
+}
+
+pub enum Origin {
+    Def,
+    Call,
 }
 
 impl MacroRules {
@@ -105,21 +131,25 @@ impl MacroRules {
             validate(&rule.lhs)?;
         }
 
-        // Note that TokenId is started from zero,
-        // We have to add 1 to prevent duplication.
-        let shift = max_id(tt).map_or(0, |it| it + 1);
-        Ok(MacroRules { rules, shift })
+        Ok(MacroRules { rules, shift: Shift::new(tt) })
     }
 
     pub fn expand(&self, tt: &tt::Subtree) -> Result<tt::Subtree, ExpandError> {
         // apply shift
         let mut tt = tt.clone();
-        shift_subtree(&mut tt, self.shift);
+        self.shift.shift_all(&mut tt);
         mbe_expander::expand(self, &tt)
     }
 
-    pub fn shift(&self) -> u32 {
-        self.shift
+    pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
+        self.shift.shift(id)
+    }
+
+    pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, Origin) {
+        match self.shift.unshift(id) {
+            Some(id) => (id, Origin::Call),
+            None => (id, Origin::Def),
+        }
     }
 }
 
