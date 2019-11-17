@@ -711,7 +711,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             fn_span: span,
             arg_count,
             generator_kind,
-            scopes: scope::Scopes::new(is_generator),
+            scopes: scope::Scopes::new(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,

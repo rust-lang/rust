@@ -155,8 +155,10 @@ struct BreakableScope<'tcx> {
     /// The destination of the loop/block expression itself (i.e., where to put
     /// the result of a `break` or `return` expression)
     break_destination: Place<'tcx>,
-    /// Drops that happen on the
-    drops: DropTree,
+    /// Drops that happen on the `break`/`return` path.
+    break_drops: DropTree,
+    /// Drops that happen on the `continue` path.
+    continue_drops: Option<DropTree>,
 }
 
 /// The target of an expression that breaks out of a scope
@@ -172,10 +174,8 @@ rustc_index::newtype_index! {
 }
 
 const ROOT_NODE: DropIdx = DropIdx::from_u32_const(0);
-const CONTINUE_NODE: DropIdx = DropIdx::from_u32_const(1);
 
-/// A tree (usually, sometimes this is a forest of two trees) of drops that we
-/// have deferred lowering. It's used for:
+/// A tree of drops that we have deferred lowering. It's used for:
 ///
 /// * Drops on unwind paths
 /// * Drops on generator drop paths (when a suspended generator is dropped)
@@ -189,12 +189,10 @@ struct DropTree {
     drops: IndexVec<DropIdx, (DropData, DropIdx)>,
     /// Map for finding the inverse of the `next_drop` relation:
     ///
-    /// `previous_drops[(next_drop[i], drops[i].local, drops[i].kind] == i`
+    /// `previous_drops[(drops[i].1, drops[i].0.local, drops[i].0.kind] == i`
     previous_drops: FxHashMap<(DropIdx, Local, DropKind), DropIdx>,
     /// Edges into the `DropTree` that need to be added once it's lowered.
     entry_points: Vec<(DropIdx, BasicBlock)>,
-    /// The first non-root nodes in the forest.
-    first_non_root: DropIdx,
 }
 
 impl Scope {
@@ -225,15 +223,14 @@ trait DropTreeBuilder<'tcx> {
 }
 
 impl DropTree {
-    fn new(num_roots: usize) -> Self {
+    fn new() -> Self {
         let fake_source_info = SourceInfo { span: DUMMY_SP, scope: OUTERMOST_SOURCE_SCOPE };
         let fake_data =
             DropData { source_info: fake_source_info, local: Local::MAX, kind: DropKind::Storage };
         let drop_idx = DropIdx::MAX;
-        let drops = IndexVec::from_elem_n((fake_data, drop_idx), num_roots);
+        let drops = IndexVec::from_elem_n((fake_data, drop_idx), 1);
         Self {
             drops,
-            first_non_root: DropIdx::from_usize(num_roots),
             entry_points: Vec::new(),
             previous_drops: FxHashMap::default(),
         }
@@ -248,6 +245,7 @@ impl DropTree {
     }
 
     fn add_entry(&mut self, from: BasicBlock, to: DropIdx) {
+        debug_assert!(to < self.drops.next_index());
         self.entry_points.push((to, from));
     }
 
@@ -285,9 +283,11 @@ impl DropTree {
         }
 
         let mut needs_block = IndexVec::from_elem(Block::None, &self.drops);
-        if self.first_non_root > CONTINUE_NODE {
-            // `continue` already has its own node.
-            needs_block[CONTINUE_NODE] = Block::Own;
+        if blocks[ROOT_NODE].is_some() {
+            // In some cases (such as drops for `continue`) the root node
+            // already has a block. In this case, make sure that we don't
+            // override it.
+            needs_block[ROOT_NODE] = Block::Own;
         }
 
         // Sort so that we only need to check the last
@@ -315,7 +315,7 @@ impl DropTree {
             if let DropKind::Value = drop_data.0.kind {
                 needs_block[drop_data.1] = Block::Own;
             } else {
-                if drop_idx >= self.first_non_root {
+                if drop_idx != ROOT_NODE {
                     match &mut needs_block[drop_data.1] {
                         pred @ Block::None => *pred = Block::Shares(drop_idx),
                         pred @ Block::Shares(_) => *pred = Block::Own,
@@ -347,7 +347,7 @@ impl DropTree {
                     cfg.terminate(block, drop_data.0.source_info, terminator);
                 }
                 // Root nodes don't correspond to a drop.
-                DropKind::Storage if drop_idx < self.first_non_root => {}
+                DropKind::Storage if drop_idx == ROOT_NODE => {}
                 DropKind::Storage => {
                     let stmt = Statement {
                         source_info: drop_data.0.source_info,
@@ -366,12 +366,12 @@ impl DropTree {
 }
 
 impl<'tcx> Scopes<'tcx> {
-    pub(crate) fn new(is_generator: bool) -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             scopes: Vec::new(),
             breakable_scopes: Vec::new(),
-            unwind_drops: DropTree::new(1),
-            generator_drops: DropTree::new(is_generator as usize),
+            unwind_drops: DropTree::new(),
+            generator_drops: DropTree::new(),
         }
     }
 
@@ -429,13 +429,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let scope = BreakableScope {
             region_scope,
             break_destination,
-            drops: DropTree::new(1 + loop_block.is_some() as usize),
+            break_drops: DropTree::new(),
+            continue_drops: loop_block.map(|_| DropTree::new()),
         };
         self.scopes.breakable_scopes.push(scope);
         let normal_exit_block = f(self);
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
-        let break_block = self.build_exit_tree(breakable_scope.drops, loop_block);
+        let break_block = self.build_exit_tree(breakable_scope.break_drops, None);
+        breakable_scope.continue_drops.map(|drops| {
+            self.build_exit_tree(drops, loop_block);
+        });
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
             (None, None) => self.cfg.start_new_block().unit(),
@@ -600,10 +604,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let region_scope = self.scopes.breakable_scopes[break_index].region_scope;
         let scope_index = self.scopes.scope_index(region_scope, span);
-        let exited_scopes = &self.scopes.scopes[scope_index + 1..];
-        let scope_drops = exited_scopes.iter().flat_map(|scope| &scope.drops);
+        let drops = if destination.is_some() {
+            &mut self.scopes.breakable_scopes[break_index].break_drops
+        } else {
+            self.scopes.breakable_scopes[break_index].continue_drops.as_mut().unwrap()
+        };
 
-        let drops = &mut self.scopes.breakable_scopes[break_index].drops;
         let mut drop_idx = DropIdx::from_u32(destination.is_none() as u32);
         for drop in scope_drops {
             drop_idx = drops.add_drop(*drop, drop_idx);
@@ -1095,15 +1101,13 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         continue_block: Option<BasicBlock>,
     ) -> Option<BlockAnd<()>> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        if continue_block.is_some() {
-            blocks[CONTINUE_NODE] = continue_block;
-        }
+        blocks[ROOT_NODE] = continue_block;
+
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
             let unwind_target = self.diverge_cleanup();
-            let num_roots = drops.first_non_root.index();
-            let mut unwind_indices = IndexVec::from_elem_n(unwind_target, num_roots);
-            for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(num_roots) {
+            let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
+            for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
                 match drop_data.0.kind {
                     DropKind::Storage => {
                         if self.is_generator {
