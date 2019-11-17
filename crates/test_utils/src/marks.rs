@@ -4,7 +4,7 @@
 //! See <https://matklad.github.io/2018/06/18/a-trick-for-test-maintenance.html>
 //! for details, but the TL;DR is that you write your test as
 //!
-//! ```rust,no_run
+//! ```
 //! #[test]
 //! fn test_foo() {
 //!     covers!(test_foo);
@@ -13,7 +13,7 @@
 //!
 //! and in the code under test you write
 //!
-//! ```rust,no_run
+//! ```
 //! # use test_utils::tested_by;
 //! # fn some_condition() -> bool { true }
 //! fn foo() {

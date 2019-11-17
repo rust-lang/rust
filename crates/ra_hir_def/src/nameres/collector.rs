@@ -165,7 +165,7 @@ where
     /// crate::foo!();
     /// ```
     ///
-    /// Well, this code compiles, bacause the plain path `foo` in `use` is searched
+    /// Well, this code compiles, because the plain path `foo` in `use` is searched
     /// in the legacy textual scope only.
     /// ```rust
     /// macro_rules! foo { () => {} }

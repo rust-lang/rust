@@ -4,6 +4,9 @@ name = "ra_hir_def"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 log = "0.4.5"
 once_cell = "1.0.1"

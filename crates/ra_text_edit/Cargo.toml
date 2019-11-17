@@ -5,6 +5,9 @@ version = "0.1.0"
 authors = ["rust-analyzer developers"]
 publish = false
 
+[lib]
+doctest = false
+
 [dependencies]
 text_unit = "0.1.6"
 

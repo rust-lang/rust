@@ -5,5 +5,8 @@ version = "0.1.0"
 authors = ["rust-analyzer developers"]
 publish = false
 
+[lib]
+doctest = false
+
 [dependencies]
 drop_bomb = "0.1.4"

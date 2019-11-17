@@ -4,6 +4,9 @@ name = "test_utils"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 difference = "2.0.0"
 text_unit = "0.1.2"

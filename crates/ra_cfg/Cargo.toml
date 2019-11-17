@@ -4,6 +4,9 @@ name = "ra_cfg"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 rustc-hash = "1.0.1"
 
