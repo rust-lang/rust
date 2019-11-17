@@ -16,7 +16,7 @@ use ra_syntax::{
     ast::{self, AstNode},
     match_ast, AstPtr,
     SyntaxKind::*,
-    SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
+    SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextUnit,
 };
 
 use crate::{
@@ -131,11 +131,16 @@ pub struct Expansion {
 }
 
 impl Expansion {
-    pub fn translate_offset(&self, db: &impl HirDatabase, offset: TextUnit) -> Option<TextUnit> {
+    pub fn map_token_down(
+        &self,
+        db: &impl HirDatabase,
+        token: Source<&SyntaxToken>,
+    ) -> Option<Source<SyntaxToken>> {
         let exp_info = self.file_id().expansion_info(db)?;
-        exp_info.translate_offset(offset)
+        exp_info.map_token_down(token)
     }
-    pub fn file_id(&self) -> HirFileId {
+
+    fn file_id(&self) -> HirFileId {
         self.macro_call_id.as_file(MacroFileKind::Items)
     }
 }

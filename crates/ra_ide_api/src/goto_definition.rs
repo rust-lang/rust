@@ -4,9 +4,8 @@ use std::iter::successors;
 
 use hir::{db::AstDatabase, Source};
 use ra_syntax::{
-    algo::find_node_at_offset,
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode, SyntaxNode, TextUnit,
+    match_ast, AstNode, SyntaxNode, SyntaxToken,
 };
 
 use crate::{
@@ -20,37 +19,42 @@ pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let offset = descend_into_macros(db, position);
+    let token = descend_into_macros(db, position)?;
 
-    let syntax = db.parse_or_expand(offset.file_id)?;
+    let res = match_ast! {
+        match (token.ast.parent()) {
+            ast::NameRef(name_ref) => {
+                let navs = reference_definition(db, token.with_ast(&name_ref)).to_vec();
+                RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec())
+            },
+            ast::Name(name) => {
+                let navs = name_definition(db, token.with_ast(&name))?;
+                RangeInfo::new(name.syntax().text_range(), navs)
 
-    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(&syntax, offset.ast) {
-        let navs = reference_definition(db, offset.with_ast(&name_ref)).to_vec();
-        return Some(RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec()));
-    }
-    if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, offset.ast) {
-        let navs = name_definition(db, offset.with_ast(&name))?;
-        return Some(RangeInfo::new(name.syntax().text_range(), navs));
-    }
-    None
+            },
+            _ => return None,
+        }
+    };
+
+    Some(res)
 }
 
-fn descend_into_macros(db: &RootDatabase, position: FilePosition) -> Source<TextUnit> {
-    successors(Some(Source::new(position.file_id.into(), position.offset)), |offset| {
-        let syntax = db.parse_or_expand(offset.file_id)?;
-        let macro_call = find_node_at_offset::<ast::MacroCall>(&syntax, offset.ast)?;
+fn descend_into_macros(db: &RootDatabase, position: FilePosition) -> Option<Source<SyntaxToken>> {
+    let file = db.parse_or_expand(position.file_id.into())?;
+    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+
+    successors(Some(Source::new(position.file_id.into(), token)), |token| {
+        let macro_call = token.ast.ancestors().find_map(ast::MacroCall::cast)?;
         let tt = macro_call.token_tree()?;
-        if !tt.syntax().text_range().contains(offset.ast) {
+        if !token.ast.text_range().is_subrange(&tt.syntax().text_range()) {
             return None;
         }
         let source_analyzer =
-            hir::SourceAnalyzer::new(db, offset.with_ast(macro_call.syntax()), None);
+            hir::SourceAnalyzer::new(db, token.with_ast(token.ast.parent()).as_ref(), None);
         let exp = source_analyzer.expand(db, &macro_call)?;
-        let next_offset = exp.translate_offset(db, offset.ast)?;
-        Some(Source::new(exp.file_id(), next_offset))
+        exp.map_token_down(db, token.as_ref())
     })
     .last()
-    .unwrap()
 }
 
 #[derive(Debug)]

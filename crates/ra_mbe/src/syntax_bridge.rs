@@ -77,14 +77,14 @@ pub fn token_tree_to_syntax_node(
 }
 
 impl TokenMap {
-    pub fn token_by_offset(&self, relative_offset: TextUnit) -> Option<tt::TokenId> {
+    pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
         let (idx, _) =
-            self.tokens.iter().enumerate().find(|(_, range)| range.contains(relative_offset))?;
+            self.tokens.iter().enumerate().find(|(_, range)| **range == relative_range)?;
         Some(tt::TokenId(idx as u32))
     }
 
-    pub fn relative_range_of(&self, tt: tt::TokenId) -> Option<TextRange> {
-        let idx = tt.0 as usize;
+    pub fn relative_range_of(&self, token_id: tt::TokenId) -> Option<TextRange> {
+        let idx = token_id.0 as usize;
         self.tokens.get(idx).copied()
     }
 
@@ -96,6 +96,11 @@ impl TokenMap {
 }
 
 impl RevTokenMap {
+    pub fn range_by_token(&self, token_id: tt::TokenId) -> Option<TextRange> {
+        let &(r, _) = self.ranges.iter().find(|(_, tid)| *tid == token_id)?;
+        Some(r)
+    }
+
     fn add(&mut self, relative_range: TextRange, token_id: tt::TokenId) {
         self.ranges.push((relative_range, token_id.clone()))
     }
