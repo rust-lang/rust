@@ -232,7 +232,7 @@ pub struct InferCtxt<'a, 'tcx> {
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See the `error_reporting` module for more details.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, TypeFoldable)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
     Regions(ExpectedFound<ty::Region<'tcx>>),
@@ -1778,16 +1778,6 @@ impl RegionVariableOrigin {
             UpvarRegion(_, a) => a,
             NLL(..) => bug!("NLL variable used with `span`"),
         }
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
-        (ValuePairs::Types)(a),
-        (ValuePairs::Regions)(a),
-        (ValuePairs::Consts)(a),
-        (ValuePairs::TraitRefs)(a),
-        (ValuePairs::PolyTraitRefs)(a),
     }
 }
 

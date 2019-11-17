@@ -730,7 +730,8 @@ pub type CanonicalUserSubsts<'tcx> = Canonical<'tcx, UserSubsts<'tcx>>;
 
 /// Stores the user-given substs to reach some fully qualified path
 /// (e.g., `<T>::Item` or `<T as Trait>::Item`).
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct UserSubsts<'tcx> {
     /// The substitutions for the item as given by the user.
     pub substs: SubstsRef<'tcx>,
@@ -738,13 +739,6 @@ pub struct UserSubsts<'tcx> {
     /// The self type, in the case of a `<T>::Item` path (when applied
     /// to an inherent impl). See `UserSelfTy` below.
     pub user_self_ty: Option<UserSelfTy<'tcx>>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserSubsts<'tcx> {
-        substs,
-        user_self_ty,
-    }
 }
 
 BraceStructLiftImpl! {
@@ -771,17 +765,11 @@ BraceStructLiftImpl! {
 /// the impl (with the substs from `UserSubsts`) and apply those to
 /// the self type, giving `Foo<?A>`. Finally, we unify that with
 /// the self type here, which contains `?A` to be `&'static u32`
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct UserSelfTy<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserSelfTy<'tcx> {
-        impl_def_id,
-        self_ty,
-    }
 }
 
 BraceStructLiftImpl! {

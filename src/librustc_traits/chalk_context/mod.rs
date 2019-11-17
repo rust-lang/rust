@@ -38,6 +38,7 @@ use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
 use syntax_pos::DUMMY_SP;
+use rustc_macros::TypeFoldable;
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
@@ -65,16 +66,10 @@ crate struct UniverseMap;
 
 crate type RegionConstraint<'tcx> = ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 crate struct ConstrainedSubst<'tcx> {
     subst: CanonicalVarValues<'tcx>,
     constraints: Vec<RegionConstraint<'tcx>>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ConstrainedSubst<'tcx> {
-        subst, constraints
-    }
 }
 
 impl context::Context for ChalkArenas<'tcx> {

@@ -86,7 +86,7 @@ impl MirPhase {
 }
 
 /// The lowered representation of a single function.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, TypeFoldable)]
 pub struct Body<'tcx> {
     /// A list of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -446,7 +446,7 @@ impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable, TypeFoldable)]
 pub enum ClearCrossCrate<T> {
     Clear,
     Set(T),
@@ -723,7 +723,7 @@ impl_stable_hash_for!(struct BlockTailInfo { tail_result_is_ignored });
 ///
 /// This can be a binding declared by the user, a temporary inserted by the compiler, a function
 /// argument, or the return place.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct LocalDecl<'tcx> {
     /// Whether this is a mutable minding (i.e., `let x` or `let mut x`).
     ///
@@ -1012,7 +1012,7 @@ impl BasicBlock {
 ///////////////////////////////////////////////////////////////////////////
 // BasicBlockData and Terminator
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct BasicBlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
@@ -1543,7 +1543,7 @@ impl<'tcx> TerminatorKind<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Statements
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct Statement<'tcx> {
     pub source_info: SourceInfo,
     pub kind: StatementKind<'tcx>,
@@ -1569,7 +1569,7 @@ impl Statement<'_> {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum StatementKind<'tcx> {
     /// Write the RHS Rvalue to the LHS Place.
     Assign(Box<(Place<'tcx>, Rvalue<'tcx>)>),
@@ -1677,7 +1677,7 @@ pub enum FakeReadCause {
     ForIndex,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct InlineAsm<'tcx> {
     pub asm: HirInlineAsm,
     pub outputs: Box<[Place<'tcx>]>,
@@ -2419,15 +2419,9 @@ pub struct Constant<'tcx> {
 /// The first will lead to the constraint `w: &'1 str` (for some
 /// inferred region `'1`). The second will lead to the constraint `w:
 /// &'static str`.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct UserTypeProjections {
     pub(crate) contents: Vec<(UserTypeProjection, Span)>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserTypeProjections {
-        contents
-    }
 }
 
 impl<'tcx> UserTypeProjections {
@@ -2738,7 +2732,7 @@ rustc_index::newtype_index! {
 }
 
 /// The layout of generator state.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
     pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,
@@ -2935,92 +2929,6 @@ CloneTypeFoldableAndLiftImpls! {
     SourceScopeData,
     SourceScopeLocalData,
     UserTypeAnnotationIndex,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for Body<'tcx> {
-        phase,
-        basic_blocks,
-        source_scopes,
-        source_scope_local_data,
-        yield_ty,
-        generator_drop,
-        generator_layout,
-        local_decls,
-        user_type_annotations,
-        arg_count,
-        __upvar_debuginfo_codegen_only_do_not_use,
-        spread_arg,
-        control_flow_destroyed,
-        span,
-        cache,
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for GeneratorLayout<'tcx> {
-        field_tys,
-        variant_fields,
-        storage_conflicts,
-        __local_debuginfo_codegen_only_do_not_use,
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
-        mutability,
-        is_user_variable,
-        internal,
-        ty,
-        user_ty,
-        name,
-        source_info,
-        is_block_tail,
-        visibility_scope,
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
-        statements,
-        terminator,
-        is_cleanup,
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
-        source_info, kind
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for StatementKind<'tcx> {
-        (StatementKind::Assign)(a),
-        (StatementKind::FakeRead)(cause, place),
-        (StatementKind::SetDiscriminant) { place, variant_index },
-        (StatementKind::StorageLive)(a),
-        (StatementKind::StorageDead)(a),
-        (StatementKind::InlineAsm)(a),
-        (StatementKind::Retag)(kind, place),
-        (StatementKind::AscribeUserType)(a, v),
-        (StatementKind::Nop),
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for InlineAsm<'tcx> {
-        asm,
-        outputs,
-        inputs,
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx, T> TypeFoldable<'tcx> for ClearCrossCrate<T> {
-        (ClearCrossCrate::Clear),
-        (ClearCrossCrate::Set)(a),
-    } where T: TypeFoldable<'tcx>
 }
 
 impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {

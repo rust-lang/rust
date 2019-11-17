@@ -280,7 +280,7 @@ pub struct SelectionCache<'tcx> {
 /// required for associated types to work in default impls, as the bounds
 /// are visible both as projection bounds and as where-clauses from the
 /// parameter environment.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, TypeFoldable)]
 enum SelectionCandidate<'tcx> {
     /// If has_nested is false, there are no *further* obligations
     BuiltinCandidate {
@@ -335,23 +335,6 @@ impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
                 return tcx.lift(trait_ref).map(ParamCandidate);
             }
         })
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for SelectionCandidate<'tcx> {
-        (SelectionCandidate::BuiltinCandidate) { has_nested },
-        (SelectionCandidate::ParamCandidate)(poly_trait_ref),
-        (SelectionCandidate::ImplCandidate)(def_id),
-        (SelectionCandidate::AutoImplCandidate)(def_id),
-        (SelectionCandidate::ProjectionCandidate),
-        (SelectionCandidate::ClosureCandidate),
-        (SelectionCandidate::GeneratorCandidate),
-        (SelectionCandidate::FnPointerCandidate),
-        (SelectionCandidate::TraitAliasCandidate)(def_id),
-        (SelectionCandidate::ObjectCandidate),
-        (SelectionCandidate::BuiltinObjectCandidate),
-        (SelectionCandidate::BuiltinUnsizeCandidate),
     }
 }
 

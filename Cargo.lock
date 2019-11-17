@@ -3866,6 +3866,7 @@ dependencies = [
  "log",
  "rustc",
  "rustc_data_structures",
+ "rustc_macros",
  "rustc_target",
  "smallvec 1.0.0",
  "syntax",

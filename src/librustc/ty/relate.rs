@@ -307,14 +307,8 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TypeFoldable)]
 struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
-
-TupleStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for GeneratorWitness<'tcx> {
-        a
-    }
-}
 
 impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(

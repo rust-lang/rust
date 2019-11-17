@@ -66,7 +66,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
 }
 
 /// Result from the `normalize_projection_ty` query.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeFoldable)]
 pub struct NormalizationResult<'tcx> {
     /// Result of normalization.
     pub normalized_ty: Ty<'tcx>,
@@ -191,12 +191,6 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
 
     fn fold_const(&mut self, constant: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
         constant.eval(self.infcx.tcx, self.param_env)
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for NormalizationResult<'tcx> {
-        normalized_ty
     }
 }
 

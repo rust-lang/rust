@@ -166,7 +166,7 @@ impl AssocItemContainer {
 /// The "header" of an impl is everything outside the body: a Self type, a trait
 /// ref (in the case of a trait impl), and a set of predicates (from the
 /// bounds / where-clauses).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeFoldable)]
 pub struct ImplHeader<'tcx> {
     pub impl_def_id: DefId,
     pub self_ty: Ty<'tcx>,
@@ -832,7 +832,7 @@ pub struct UpvarBorrow<'tcx> {
 pub type UpvarListMap = FxHashMap<DefId, FxIndexMap<hir::HirId, UpvarId>>;
 pub type UpvarCaptureMap<'tcx> = FxHashMap<UpvarId, UpvarCapture<'tcx>>;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, TypeFoldable)]
 pub struct ClosureUpvar<'tcx> {
     pub res: Res,
     pub span: Span,
@@ -1097,7 +1097,8 @@ impl<'tcx> GenericPredicates<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo: Bar<A, B, C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -1247,7 +1248,8 @@ impl<'tcx> Predicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: TraitRef<'tcx>
 }
@@ -1275,8 +1277,8 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
-         Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct OutlivesPredicate<A, B>(pub A, pub B); // `A: B`
 pub type PolyOutlivesPredicate<A, B> = ty::Binder<OutlivesPredicate<A, B>>;
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>, ty::Region<'tcx>>;
@@ -1284,7 +1286,8 @@ pub type TypeOutlivesPredicate<'tcx> = OutlivesPredicate<Ty<'tcx>, ty::Region<'t
 pub type PolyRegionOutlivesPredicate<'tcx> = ty::Binder<RegionOutlivesPredicate<'tcx>>;
 pub type PolyTypeOutlivesPredicate<'tcx> = ty::Binder<TypeOutlivesPredicate<'tcx>>;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct SubtypePredicate<'tcx> {
     pub a_is_expected: bool,
     pub a: Ty<'tcx>,
@@ -1304,7 +1307,8 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// equality between arbitrary types. Processing an instance of
 /// Form #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub ty: Ty<'tcx>,
@@ -1534,7 +1538,7 @@ impl<'tcx> Predicate<'tcx> {
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
 /// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
 /// [usize:Bar<isize>]]`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeFoldable)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
@@ -1658,7 +1662,7 @@ pub type PlaceholderConst = Placeholder<BoundVar>;
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
 /// particular point.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TypeFoldable)]
 pub struct ParamEnv<'tcx> {
     /// `Obligation`s that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
@@ -1764,7 +1768,7 @@ impl<'tcx> ParamEnv<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable)]
 pub struct ParamEnvAnd<'tcx, T> {
     pub param_env: ParamEnv<'tcx>,
     pub value: T,

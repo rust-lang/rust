@@ -307,7 +307,8 @@ pub struct ResolvedOpaqueTy<'tcx> {
 ///
 /// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
 /// the scope that contains `x`.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, HashStable, PartialEq)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(HashStable, TypeFoldable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
@@ -315,12 +316,6 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub span: Span,
     /// Span of the scope of the captured binding.
     pub scope_span: Option<Span>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for GeneratorInteriorTypeCause<'tcx> {
-        ty, span, scope_span
-    }
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug)]
@@ -831,17 +826,11 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for CanonicalUserTypeAnnotation<'tcx> {
-        user_ty, span, inferred_ty
-    }
 }
 
 BraceStructLiftImpl! {
@@ -903,20 +892,13 @@ impl CanonicalUserType<'tcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
     TypeOf(DefId, UserSubsts<'tcx>),
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserType<'tcx> {
-        (UserType::Ty)(ty),
-        (UserType::TypeOf)(def, substs),
-    }
 }
 
 EnumLiftImpl! {
