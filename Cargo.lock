@@ -266,7 +266,7 @@ dependencies = [
 
 [[package]]
 name = "cargo"
-version = "0.41.0"
+version = "0.42.0"
 dependencies = [
  "atty",
  "bytesize",
@@ -276,7 +276,7 @@ dependencies = [
  "clap",
  "core-foundation",
  "crates-io",
- "crossbeam-utils 0.6.5",
+ "crossbeam-utils 0.7.0",
  "crypto-hash",
  "curl",
  "curl-sys",
@@ -665,7 +665,7 @@ checksum = "e7ca8a5221364ef15ce201e8ed2f609fc312682a8f4e0e3d4aa5879764e0fa3b"
 
 [[package]]
 name = "crates-io"
-version = "0.29.0"
+version = "0.30.0"
 dependencies = [
  "curl",
  "failure",
@@ -778,6 +778,17 @@ version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8306fcef4a7b563b76b7dd949ca48f52bc1141aa067d2ea09565f3e2652aa5c"
 dependencies = [
+ "cfg-if",
+ "lazy_static 1.3.0",
+]
+
+[[package]]
+name = "crossbeam-utils"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce446db02cdc3165b94ae73111e570793400d0794e46125cc4056c81cbb039f4"
+dependencies = [
+ "autocfg",
  "cfg-if",
  "lazy_static 1.3.0",
 ]
