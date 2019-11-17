@@ -54,7 +54,7 @@ fn main() {
 //     StorageLive(_6);
 //     StorageLive(_7);
 //     _7 = move _2;
-//     _6 = const take::<Foo>(move _7) -> [return: bb2, unwind: bb11];
+//     _6 = const take::<Foo>(move _7) -> [return: bb2, unwind: bb9];
 // }
 // bb2: {
 //     StorageDead(_7);
@@ -62,7 +62,7 @@ fn main() {
 //     StorageLive(_8);
 //     StorageLive(_9);
 //     _9 = move _3;
-//     _8 = const take::<Bar>(move _9) -> [return: bb3, unwind: bb10];
+//     _8 = const take::<Bar>(move _9) -> [return: bb3, unwind: bb8];
 // }
 // bb3: {
 //     StorageDead(_9);
@@ -70,7 +70,7 @@ fn main() {
 //     ...
 //     StorageDead(_3);
 //     StorageDead(_2);
-//     drop(_1) -> [return: bb4, unwind: bb9];
+//     drop(_1) -> [return: bb4, unwind: bb11];
 // }
 // bb4: {
 //     return;
@@ -78,36 +78,36 @@ fn main() {
 // bb5: {
 //     ...
 //     StorageDead(_3);
-//     drop(_2) -> [return: bb6, unwind: bb8];
+//     drop(_2) -> [return: bb6, unwind: bb12];
 // }
 // bb6: {
 //     StorageDead(_2);
-//     drop(_1) -> [return: bb7, unwind: bb9];
+//     drop(_1) -> [return: bb7, unwind: bb11];
 // }
 // bb7: {
 //     generator_drop;
 // }
 // bb8 (cleanup): {
-//     StorageDead(_2);
-//     drop(_1) -> bb9;
-// }
-// bb9 (cleanup): {
-//     resume;
-// }
-// bb10 (cleanup): {
 //     StorageDead(_9);
 //     StorageDead(_8);
-//     goto -> bb12;
+//     goto -> bb10;
 // }
-// bb11 (cleanup): {
+// bb9 (cleanup): {
 //     StorageDead(_7);
 //     StorageDead(_6);
-//     goto -> bb12;
+//     goto -> bb10;
 // }
-// bb12 (cleanup): {
+// bb10 (cleanup): {
 //     StorageDead(_3);
 //     StorageDead(_2);
-//     drop(_1) -> bb9;
+//     drop(_1) -> bb11;
+// }
+// bb11 (cleanup): {
+//     resume;
+// }
+// bb12 (cleanup): {
+//     StorageDead(_2);
+//     drop(_1) -> bb11;
 // }
 
 // END rustc.main-{{closure}}.StateTransform.before.mir
