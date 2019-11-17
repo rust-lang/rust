@@ -735,7 +735,7 @@ impl LoweringContext<'_> {
 
     fn lower_foreign_mod(&mut self, fm: &ForeignMod) -> hir::ForeignMod {
         hir::ForeignMod {
-            abi: self.lower_abi(fm.abi),
+            abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
             items: fm.items
                 .iter()
                 .map(|x| self.lower_foreign_item(x))
@@ -1283,18 +1283,26 @@ impl LoweringContext<'_> {
             unsafety: h.unsafety,
             asyncness: self.lower_asyncness(h.asyncness.node),
             constness: h.constness.node,
-            abi: self.lower_abi(h.abi),
+            abi: self.lower_extern(h.ext),
         }
     }
 
-    pub(super) fn lower_abi(&mut self, abi: Abi) -> abi::Abi {
-        abi::lookup(&abi.symbol.as_str()).unwrap_or_else(|| {
+    pub(super) fn lower_abi(&mut self, abi: StrLit) -> abi::Abi {
+        abi::lookup(&abi.symbol_unescaped.as_str()).unwrap_or_else(|| {
             self.error_on_invalid_abi(abi);
             abi::Abi::Rust
         })
     }
 
-    fn error_on_invalid_abi(&self, abi: Abi) {
+    pub(super) fn lower_extern(&mut self, ext: Extern) -> abi::Abi {
+        match ext {
+            Extern::None => abi::Abi::Rust,
+            Extern::Implicit => abi::Abi::C,
+            Extern::Explicit(abi) => self.lower_abi(abi),
+        }
+    }
+
+    fn error_on_invalid_abi(&self, abi: StrLit) {
         struct_span_err!(
             self.sess,
             abi.span,

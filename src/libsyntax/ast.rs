@@ -1422,6 +1422,33 @@ pub struct Lit {
     pub span: Span,
 }
 
+/// Same as `Lit`, but restricted to string literals.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub struct StrLit {
+    /// The original literal token as written in source code.
+    pub style: StrStyle,
+    pub symbol: Symbol,
+    pub suffix: Option<Symbol>,
+    pub span: Span,
+    /// The unescaped "semantic" representation of the literal lowered from the original token.
+    /// FIXME: Remove this and only create the semantic representation during lowering to HIR.
+    pub symbol_unescaped: Symbol,
+}
+
+impl StrLit {
+    crate fn as_lit(&self) -> Lit {
+        let token_kind = match self.style {
+            StrStyle::Cooked => token::Str,
+            StrStyle::Raw(n) => token::StrRaw(n),
+        };
+        Lit {
+            token: token::Lit::new(token_kind, self.symbol, self.suffix),
+            span: self.span,
+            kind: LitKind::Str(self.symbol_unescaped, self.style),
+        }
+    }
+}
+
 // Clippy uses Hash and PartialEq
 /// Type of the integer literal based on provided suffix.
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
@@ -1745,7 +1772,7 @@ pub struct Ty {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct BareFnTy {
     pub unsafety: Unsafety,
-    pub abi: Abi,
+    pub ext: Extern,
     pub generic_params: Vec<GenericParam>,
     pub decl: P<FnDecl>,
 }
@@ -2128,7 +2155,7 @@ pub struct Mod {
 /// E.g., `extern { .. }` or `extern C { .. }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignMod {
-    pub abi: Abi,
+    pub abi: Option<StrLit>,
     pub items: Vec<ForeignItem>,
 }
 
@@ -2411,24 +2438,17 @@ impl Item {
     }
 }
 
-/// A reference to an ABI.
-///
-/// In AST our notion of an ABI is still syntactic unlike in `rustc_target::spec::abi::Abi`.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, PartialEq)]
-pub struct Abi {
-    pub symbol: Symbol,
-    pub span: Span,
+/// `extern` qualifier on a function item or function type.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum Extern {
+    None,
+    Implicit,
+    Explicit(StrLit),
 }
 
-impl Abi {
-    pub fn new(symbol: Symbol, span: Span) -> Self {
-        Self { symbol, span }
-    }
-}
-
-impl Default for Abi {
-    fn default() -> Self {
-        Self::new(sym::Rust, DUMMY_SP)
+impl Extern {
+    pub fn from_abi(abi: Option<StrLit>) -> Extern {
+        abi.map_or(Extern::Implicit, Extern::Explicit)
     }
 }
 
@@ -2441,7 +2461,7 @@ pub struct FnHeader {
     pub unsafety: Unsafety,
     pub asyncness: Spanned<IsAsync>,
     pub constness: Spanned<Constness>,
-    pub abi: Abi,
+    pub ext: Extern,
 }
 
 impl Default for FnHeader {
@@ -2450,7 +2470,7 @@ impl Default for FnHeader {
             unsafety: Unsafety::Normal,
             asyncness: dummy_spanned(IsAsync::NotAsync),
             constness: dummy_spanned(Constness::NotConst),
-            abi: Abi::default(),
+            ext: Extern::None,
         }
     }
 }
