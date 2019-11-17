@@ -1219,7 +1219,7 @@ impl<'a> LoweringContext<'a> {
                                     ImplTraitContext::disallowed(),
                                 ),
                                 unsafety: f.unsafety,
-                                abi: this.lower_abi(f.abi),
+                                abi: this.lower_extern(f.ext),
                                 decl: this.lower_fn_decl(&f.decl, None, false, None),
                                 param_names: this.lower_fn_params_to_names(&f.decl),
                             }))

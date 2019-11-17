@@ -778,13 +778,12 @@ impl<'a> Parser<'a> {
 
         macro_rules! parse_lit {
             () => {
-                match self.parse_lit() {
-                    Ok(literal) => {
+                match self.parse_opt_lit() {
+                    Some(literal) => {
                         hi = self.prev_span;
                         ex = ExprKind::Lit(literal);
                     }
-                    Err(mut err) => {
-                        err.cancel();
+                    None => {
                         return Err(self.expected_expression_found());
                     }
                 }
@@ -1074,11 +1073,39 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    /// Matches `lit = true | false | token_lit`.
+    /// Returns a string literal if the next token is a string literal.
+    /// In case of error returns `Some(lit)` if the next token is a literal with a wrong kind,
+    /// and returns `None` if the next token is not literal at all.
+    pub fn parse_str_lit(&mut self) -> Result<ast::StrLit, Option<Lit>> {
+        match self.parse_opt_lit() {
+            Some(lit) => match lit.kind {
+                ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
+                    style,
+                    symbol: lit.token.symbol,
+                    suffix: lit.token.suffix,
+                    span: lit.span,
+                    symbol_unescaped,
+                }),
+                _ => Err(Some(lit)),
+            }
+            None => Err(None),
+        }
+    }
+
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
+        self.parse_opt_lit().ok_or_else(|| {
+            let msg = format!("unexpected token: {}", self.this_token_descr());
+            self.span_fatal(self.token.span, &msg)
+        })
+    }
+
+    /// Matches `lit = true | false | token_lit`.
+    /// Returns `None` if the next token is not a literal.
+    pub(super) fn parse_opt_lit(&mut self) -> Option<Lit> {
         let mut recovered = None;
         if self.token == token::Dot {
-            // Attempt to recover `.4` as `0.4`.
+            // Attempt to recover `.4` as `0.4`. We don't currently have any syntax where
+            // dot would follow an optional literal, so we do this unconditionally.
             recovered = self.look_ahead(1, |next_token| {
                 if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
                         = next_token.kind {
@@ -1107,11 +1134,10 @@ impl<'a> Parser<'a> {
         match Lit::from_token(token) {
             Ok(lit) => {
                 self.bump();
-                Ok(lit)
+                Some(lit)
             }
             Err(LitError::NotLiteral) => {
-                let msg = format!("unexpected token: {}", self.this_token_descr());
-                Err(self.span_fatal(token.span, &msg))
+                None
             }
             Err(err) => {
                 let span = token.span;
@@ -1120,18 +1146,18 @@ impl<'a> Parser<'a> {
                     _ => unreachable!(),
                 };
                 self.bump();
-                self.error_literal_from_token(err, lit, span);
+                self.report_lit_error(err, lit, span);
                 // Pack possible quotes and prefixes from the original literal into
                 // the error literal's symbol so they can be pretty-printed faithfully.
                 let suffixless_lit = token::Lit::new(lit.kind, lit.symbol, None);
                 let symbol = Symbol::intern(&suffixless_lit.to_string());
                 let lit = token::Lit::new(token::Err, symbol, lit.suffix);
-                Lit::from_lit_token(lit, span).map_err(|_| unreachable!())
+                Some(Lit::from_lit_token(lit, span).unwrap_or_else(|_| unreachable!()))
             }
         }
     }
 
-    fn error_literal_from_token(&self, err: LitError, lit: token::Lit, span: Span) {
+    fn report_lit_error(&self, err: LitError, lit: token::Lit, span: Span) {
         // Checks if `s` looks like i32 or u1234 etc.
         fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
             s.len() > 1

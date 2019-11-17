@@ -30,9 +30,8 @@ use crate::{id_from_def_id, id_from_node_id, SaveContext};
 use rls_data::{SigElement, Signature};
 
 use rustc::hir::def::{Res, DefKind};
-use syntax::ast::{self, NodeId};
+use syntax::ast::{self, Extern, NodeId};
 use syntax::print::pprust;
-use syntax_pos::sym;
 
 pub fn item_signature(item: &ast::Item, scx: &SaveContext<'_, '_>) -> Option<Signature> {
     if !scx.config.signatures {
@@ -157,9 +156,11 @@ fn text_sig(text: String) -> Signature {
     }
 }
 
-fn push_abi(text: &mut String, abi: ast::Abi) {
-    if abi.symbol != sym::Rust {
-        text.push_str(&format!("extern \"{}\" ", abi.symbol));
+fn push_extern(text: &mut String, ext: Extern) {
+    match ext {
+        Extern::None => {}
+        Extern::Implicit => text.push_str("extern "),
+        Extern::Explicit(abi) => text.push_str(&format!("extern \"{}\" ", abi.symbol)),
     }
 }
 
@@ -237,7 +238,7 @@ impl Sig for ast::Ty {
                 if f.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                push_abi(&mut text, f.abi);
+                push_extern(&mut text, f.ext);
                 text.push_str("fn(");
 
                 let mut defs = vec![];
@@ -387,7 +388,7 @@ impl Sig for ast::Item {
                 if header.unsafety == ast::Unsafety::Unsafe {
                     text.push_str("unsafe ");
                 }
-                push_abi(&mut text, header.abi);
+                push_extern(&mut text, header.ext);
                 text.push_str("fn ");
 
                 let mut sig = name_and_generics(text, offset, generics, self.id, self.ident, scx)?;
@@ -936,7 +937,7 @@ fn make_method_signature(
     if m.header.unsafety == ast::Unsafety::Unsafe {
         text.push_str("unsafe ");
     }
-    push_abi(&mut text, m.header.abi);
+    push_extern(&mut text, m.header.ext);
     text.push_str("fn ");
 
     let mut sig = name_and_generics(text, 0, generics, id, ident, scx)?;

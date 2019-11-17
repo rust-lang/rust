@@ -21,11 +21,10 @@ use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::edition::Edition;
-use syntax::feature_gate::{self, AttributeType};
+use syntax::feature_gate;
 use errors::json::JsonEmitter;
 use syntax::source_map;
 use syntax::sess::{ParseSess, ProcessCfgMod};
-use syntax::symbol::Symbol;
 use syntax_pos::{MultiSpan, Span};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
@@ -79,7 +78,6 @@ pub struct Session {
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
     pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
-    pub plugin_attributes: Lock<Vec<(Symbol, AttributeType)>>,
     pub crate_types: Once<Vec<config::CrateType>>,
     /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
@@ -1039,12 +1037,11 @@ pub fn build_session_with_source_map(
 
     let external_macro_backtrace = sopts.debugging_opts.external_macro_backtrace;
 
-    let emitter = match diagnostics_output {
-        DiagnosticOutput::Default => default_emitter(&sopts, registry, &source_map, None),
-        DiagnosticOutput::Raw(write) => {
-            default_emitter(&sopts, registry, &source_map, Some(write))
-        }
+    let write_dest = match diagnostics_output {
+        DiagnosticOutput::Default => None,
+        DiagnosticOutput::Raw(write) => Some(write),
     };
+    let emitter = default_emitter(&sopts, registry, &source_map, write_dest);
 
     let diagnostic_handler = errors::Handler::with_emitter_and_flags(
         emitter,
@@ -1166,7 +1163,6 @@ fn build_session_(
         working_dir,
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
-        plugin_attributes: Lock::new(Vec::new()),
         crate_types: Once::new(),
         crate_disambiguator: Once::new(),
         features: Once::new(),

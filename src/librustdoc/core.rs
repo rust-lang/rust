@@ -21,7 +21,6 @@ use syntax::feature_gate::UnstableFeatures;
 use errors::json::JsonEmitter;
 use syntax::symbol::sym;
 use syntax_pos::DUMMY_SP;
-use errors;
 use errors::emitter::{Emitter, EmitterWriter};
 
 use std::cell::RefCell;
@@ -341,6 +340,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         lint_caps,
         register_lints: None,
         override_queries: None,
+        registry: rustc_driver::diagnostics_registry(),
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {

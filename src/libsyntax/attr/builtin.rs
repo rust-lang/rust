@@ -667,7 +667,10 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
             break
         }
 
-        let meta = attr.meta().unwrap();
+        let meta = match attr.meta() {
+            Some(meta) => meta,
+            None => continue,
+        };
         depr = match &meta.kind {
             MetaItemKind::Word => Some(Deprecation { since: None, note: None }),
             MetaItemKind::NameValue(..) => {

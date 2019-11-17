@@ -191,10 +191,10 @@ macro_rules! gate_feature_post {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
-    fn check_abi(&self, abi: ast::Abi) {
-        let ast::Abi { symbol, span } = abi;
+    fn check_abi(&self, abi: ast::StrLit) {
+        let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
-        match &*symbol.as_str() {
+        match &*symbol_unescaped.as_str() {
             // Stable
             "Rust" |
             "C" |
@@ -255,6 +255,12 @@ impl<'a> PostExpansionVisitor<'a> {
                     &format!("unrecognized ABI not caught in lowering: {}", abi),
                 )
             }
+        }
+    }
+
+    fn check_extern(&self, ext: ast::Extern) {
+        if let ast::Extern::Explicit(abi) = ext {
+            self.check_abi(abi);
         }
     }
 
@@ -388,7 +394,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.kind {
             ast::ItemKind::ForeignMod(ref foreign_module) => {
-                self.check_abi(foreign_module.abi);
+                if let Some(abi) = foreign_module.abi {
+                    self.check_abi(abi);
+                }
             }
 
             ast::ItemKind::Fn(..) => {
@@ -511,7 +519,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
         match ty.kind {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
-                self.check_abi(bare_fn_ty.abi);
+                self.check_extern(bare_fn_ty.ext);
             }
             ast::TyKind::Never => {
                 gate_feature_post!(&self, never_type, ty.span,
@@ -605,7 +613,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             // Stability of const fn methods are covered in
             // `visit_trait_item` and `visit_impl_item` below; this is
             // because default methods don't pass through this point.
-            self.check_abi(header.abi);
+            self.check_extern(header.ext);
         }
 
         if fn_decl.c_variadic() {
@@ -639,7 +647,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match ti.kind {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
-                    self.check_abi(sig.header.abi);
+                    self.check_extern(sig.header.ext);
                 }
                 if sig.decl.c_variadic() {
                     gate_feature_post!(&self, c_variadic, ti.span,
