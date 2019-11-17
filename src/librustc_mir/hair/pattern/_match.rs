@@ -347,6 +347,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
             ) => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
 
             (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => s.fold_with(self),
+            (_, &PatKind::AscribeUserType { subpattern: ref s, .. }) => s.fold_with(self),
             _ => pat.super_fold_with(self),
         }
     }
@@ -1759,9 +1760,7 @@ fn pat_constructor<'tcx>(
     pat: &Pat<'tcx>,
 ) -> Option<Constructor<'tcx>> {
     match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => {
-            pat_constructor(tcx, param_env, subpattern)
-        }
+        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
         PatKind::Binding { .. } | PatKind::Wild => None,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(Single),
         PatKind::Variant { adt_def, variant_index, .. } => {
@@ -2262,21 +2261,17 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
 /// fields filled with wild patterns.
 fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    mut pat: &'q Pat<'tcx>,
+    pat: &'q Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
-    while let PatKind::AscribeUserType { ref subpattern, .. } = *pat.kind {
-        pat = subpattern;
-    }
-
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
         return if pat.is_wildcard() { Some(PatStack::default()) } else { None };
     }
 
     let result = match *pat.kind {
-        PatKind::AscribeUserType { .. } => bug!(), // Handled above
+        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
 
         PatKind::Binding { .. } | PatKind::Wild => {
             Some(PatStack::from_slice(ctor_wild_subpatterns))
