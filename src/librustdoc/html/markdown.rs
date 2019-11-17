@@ -680,9 +680,7 @@ impl LangString {
                     seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
-                x if allow_error_code_check && x.starts_with("edition") => {
-                    // allow_error_code_check is true if we're on nightly, which
-                    // is needed for edition support
+                x if x.starts_with("edition") => {
                     data.edition = x[7..].parse::<Edition>().ok();
                 }
                 x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
