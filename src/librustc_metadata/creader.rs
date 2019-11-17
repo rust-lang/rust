@@ -1,7 +1,7 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use crate::cstore::{self, CStore};
-use crate::locator::{self, CratePaths};
+use crate::locator::{CrateLocator, CratePaths};
 use crate::rmeta::{CrateRoot, CrateDep, MetadataBlob};
 use rustc_data_structures::sync::{Lock, Once, AtomicCell};
 
@@ -68,13 +68,13 @@ enum LoadResult {
 }
 
 enum LoadError<'a> {
-    LocatorError(locator::Context<'a>),
+    LocatorError(CrateLocator<'a>),
 }
 
 impl<'a> LoadError<'a> {
     fn report(self) -> ! {
         match self {
-            LoadError::LocatorError(locate_ctxt) => locate_ctxt.report_errs(),
+            LoadError::LocatorError(locator) => locator.report_errs(),
         }
     }
 }
@@ -267,15 +267,15 @@ impl<'a> CrateLoader<'a> {
 
     fn load_proc_macro<'b>(
         &self,
-        locate_ctxt: &mut locator::Context<'b>,
+        locator: &mut CrateLocator<'b>,
         path_kind: PathKind,
     ) -> Option<(LoadResult, Option<Library>)>
     where
         'a: 'b,
     {
-        // Use a new locator Context so trying to load a proc macro doesn't affect the error
+        // Use a new crate locator so trying to load a proc macro doesn't affect the error
         // message we emit
-        let mut proc_macro_locator = locate_ctxt.clone();
+        let mut proc_macro_locator = locator.clone();
 
         // Try to load a proc macro
         proc_macro_locator.is_proc_macro = Some(true);
@@ -287,10 +287,10 @@ impl<'a> CrateLoader<'a> {
                 LoadResult::Previous(cnum) => return Some((LoadResult::Previous(cnum), None)),
                 LoadResult::Loaded(library) => Some(LoadResult::Loaded(library))
             };
-            locate_ctxt.hash = locate_ctxt.host_hash;
-            // Use the locate_ctxt when looking for the host proc macro crate, as that is required
+            locator.hash = locator.host_hash;
+            // Use the locator when looking for the host proc macro crate, as that is required
             // so we want it to affect the error message
-            (locate_ctxt, result)
+            (locator, result)
         } else {
             (&mut proc_macro_locator, None)
         };
@@ -350,7 +350,7 @@ impl<'a> CrateLoader<'a> {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
-            let mut locate_ctxt = locator::Context {
+            let mut locator = CrateLocator {
                 sess: self.sess,
                 span,
                 crate_name: name,
@@ -371,10 +371,10 @@ impl<'a> CrateLoader<'a> {
                 metadata_loader: self.metadata_loader,
             };
 
-            self.load(&mut locate_ctxt).map(|r| (r, None)).or_else(|| {
+            self.load(&mut locator).map(|r| (r, None)).or_else(|| {
                 dep_kind = DepKind::UnexportedMacrosOnly;
-                self.load_proc_macro(&mut locate_ctxt, path_kind)
-            }).ok_or_else(move || LoadError::LocatorError(locate_ctxt))?
+                self.load_proc_macro(&mut locator, path_kind)
+            }).ok_or_else(move || LoadError::LocatorError(locator))?
         };
 
         match result {
@@ -395,8 +395,8 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn load(&self, locate_ctxt: &mut locator::Context<'_>) -> Option<LoadResult> {
-        let library = locate_ctxt.maybe_load_library_crate()?;
+    fn load(&self, locator: &mut CrateLocator<'_>) -> Option<LoadResult> {
+        let library = locator.maybe_load_library_crate()?;
 
         // In the case that we're loading a crate, but not matching
         // against a hash, we could load a crate which has the same hash
@@ -407,11 +407,11 @@ impl<'a> CrateLoader<'a> {
         // don't want to match a host crate against an equivalent target one
         // already loaded.
         let root = library.metadata.get_root();
-        if locate_ctxt.triple == self.sess.opts.target_triple {
+        if locator.triple == self.sess.opts.target_triple {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
                 if data.root.name == root.name && root.hash == data.root.hash {
-                    assert!(locate_ctxt.hash.is_none());
+                    assert!(locator.hash.is_none());
                     info!("load success, going to previous cnum: {}", cnum);
                     result = LoadResult::Previous(cnum);
                 }

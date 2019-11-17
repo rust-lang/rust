@@ -254,7 +254,7 @@ crate struct CrateMismatch {
 }
 
 #[derive(Clone)]
-crate struct Context<'a> {
+crate struct CrateLocator<'a> {
     pub sess: &'a Session,
     pub span: Span,
     pub crate_name: Symbol,
@@ -298,7 +298,7 @@ impl fmt::Display for CrateFlavor {
     }
 }
 
-impl<'a> Context<'a> {
+impl<'a> CrateLocator<'a> {
     crate fn reset(&mut self) {
         self.rejected_via_hash.clear();
         self.rejected_via_triple.clear();
@@ -926,7 +926,7 @@ pub fn find_plugin_registrar(
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let is_cross = target_triple != host_triple;
     let mut target_only = false;
-    let mut locate_ctxt = Context {
+    let mut locator = CrateLocator {
         sess,
         span,
         crate_name: name,
@@ -947,7 +947,7 @@ pub fn find_plugin_registrar(
         metadata_loader,
     };
 
-    let library = locate_ctxt.maybe_load_library_crate().or_else(|| {
+    let library = locator.maybe_load_library_crate().or_else(|| {
         if !is_cross {
             return None
         }
@@ -955,15 +955,15 @@ pub fn find_plugin_registrar(
         // try to load a plugin registrar function,
         target_only = true;
 
-        locate_ctxt.target = &sess.target.target;
-        locate_ctxt.triple = target_triple;
-        locate_ctxt.filesearch = sess.target_filesearch(PathKind::Crate);
+        locator.target = &sess.target.target;
+        locator.triple = target_triple;
+        locator.filesearch = sess.target_filesearch(PathKind::Crate);
 
-        locate_ctxt.maybe_load_library_crate()
+        locator.maybe_load_library_crate()
     });
     let library = match library {
         Some(l) => l,
-        None => locate_ctxt.report_errs(),
+        None => locator.report_errs(),
     };
 
     if target_only {
