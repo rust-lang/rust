@@ -3,19 +3,15 @@
     html_playground_url = "https://play.rust-lang.org/"
 )]
 #![feature(rustc_private)]
-#![feature(arbitrary_self_types)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
-#![feature(set_stdio)]
 #![feature(test)]
 #![feature(vec_remove_item)]
 #![feature(ptr_offset_from)]
 #![feature(crate_visibility_modifier)]
-#![feature(drain_filter)]
 #![feature(never_type)]
-#![feature(unicode_internals)]
 #![recursion_limit = "256"]
 
 extern crate env_logger;
