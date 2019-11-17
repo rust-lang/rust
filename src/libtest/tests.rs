@@ -15,6 +15,7 @@ use crate::{
         // TestType, TrFailedMsg, TrIgnored, TrOk,
     },
 };
+use std::any::TypeId;
 use std::sync::mpsc::channel;
 use std::time::Duration;
 
@@ -161,7 +162,9 @@ fn test_should_panic_bad_message() {
         panic!("an error message");
     }
     let expected = "foobar";
-    let failed_msg = "panic did not include expected string";
+    let failed_msg = r#"panic did not contain expected string
+      panic message: `"an error message"`,
+ expected substring: `"foobar"`"#;
     let desc = TestDescAndFn {
         desc: TestDesc {
             name: StaticTestName("whatever"),
@@ -175,7 +178,35 @@ fn test_should_panic_bad_message() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
+    assert_eq!(result, TrFailedMsg(failed_msg.to_string()));
+}
+
+// FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
+#[test]
+#[cfg(not(target_os = "emscripten"))]
+fn test_should_panic_non_string_message_type() {
+    use crate::tests::TrFailedMsg;
+    fn f() {
+        panic!(1i32);
+    }
+    let expected = "foobar";
+    let failed_msg = format!(r#"expected panic with string value,
+ found non-string value: `{:?}`
+     expected substring: `"foobar"`"#, TypeId::of::<i32>());
+    let desc = TestDescAndFn {
+        desc: TestDesc {
+            name: StaticTestName("whatever"),
+            ignore: false,
+            should_panic: ShouldPanic::YesWithMessage(expected),
+            allow_fail: false,
+            test_type: TestType::Unknown,
+        },
+        testfn: DynTestFn(Box::new(f)),
+    };
+    let (tx, rx) = channel();
+    run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
+    let result = rx.recv().unwrap().result;
+    assert_eq!(result, TrFailedMsg(failed_msg));
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
