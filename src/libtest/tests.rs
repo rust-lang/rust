@@ -85,7 +85,7 @@ pub fn do_not_run_ignored_tests() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result != TrOk);
+    assert_ne!(result, TrOk);
 }
 
 #[test]
@@ -104,7 +104,7 @@ pub fn ignored_tests_result_in_ignored() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrIgnored);
+    assert_eq!(result, TrIgnored);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
@@ -127,7 +127,7 @@ fn test_should_panic() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrOk);
+    assert_eq!(result, TrOk);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
@@ -150,7 +150,7 @@ fn test_should_panic_good_message() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrOk);
+    assert_eq!(result, TrOk);
 }
 
 // FIXME: Re-enable emscripten once it can catch panics again (introduced by #65251)
@@ -227,7 +227,7 @@ fn test_should_panic_but_succeeds() {
     let (tx, rx) = channel();
     run_test(&TestOpts::new(), false, desc, RunStrategy::InProcess, tx, Concurrent::No);
     let result = rx.recv().unwrap().result;
-    assert!(result == TrFailedMsg("test did not panic as expected".to_string()));
+    assert_eq!(result, TrFailedMsg("test did not panic as expected".to_string()));
 }
 
 fn report_time_test_template(report_time: bool) -> Option<TestExecTime> {
@@ -601,7 +601,7 @@ pub fn sort_tests() {
     ];
 
     for (a, b) in expected.iter().zip(filtered) {
-        assert!(*a == b.desc.name.to_string());
+        assert_eq!(*a, b.desc.name.to_string());
     }
 }
 
