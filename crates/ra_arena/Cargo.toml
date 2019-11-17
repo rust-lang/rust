@@ -3,3 +3,6 @@ edition = "2018"
 name = "ra_arena"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
+
+[lib]
+doctest = false

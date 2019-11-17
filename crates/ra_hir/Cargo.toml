@@ -4,6 +4,9 @@ name = "ra_hir"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 arrayvec = "0.5.1"
 log = "0.4.5"

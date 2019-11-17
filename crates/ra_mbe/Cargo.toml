@@ -4,6 +4,9 @@ name = "ra_mbe"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 ra_syntax = { path = "../ra_syntax" }
 ra_parser = { path = "../ra_parser" }
@@ -14,4 +17,3 @@ log = "0.4.5"
 
 [dev-dependencies]
 test_utils = { path = "../test_utils" }
-

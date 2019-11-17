@@ -79,7 +79,7 @@ pub enum TypeCtor {
     ///
     /// For example the type of `bar` here:
     ///
-    /// ```rust
+    /// ```
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
@@ -89,7 +89,7 @@ pub enum TypeCtor {
     ///
     /// For example the type of `bar` here:
     ///
-    /// ```rust
+    /// ```
     /// fn foo() -> i32 { 1 }
     /// let bar: fn() -> i32 = foo;
     /// ```
