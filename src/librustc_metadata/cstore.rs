@@ -7,7 +7,9 @@ use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate};
 use rustc::mir::interpret::AllocDecodingState;
+use rustc::session::Session;
 use rustc_index::vec::IndexVec;
+use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::sync::{Lrc, Lock, Once, AtomicCell};
 use rustc_data_structures::svh::Svh;
@@ -95,6 +97,48 @@ pub struct CStore {
 pub enum LoadedMacro {
     MacroDef(ast::Item, Edition),
     ProcMacro(SyntaxExtension),
+}
+
+impl CrateMetadata {
+    crate fn new(
+        sess: &Session,
+        blob: MetadataBlob,
+        root: CrateRoot<'static>,
+        raw_proc_macros: Option<&'static [ProcMacro]>,
+        cnum: CrateNum,
+        cnum_map: CrateNumMap,
+        dep_kind: DepKind,
+        source: CrateSource,
+        private_dep: bool,
+        host_hash: Option<Svh>,
+    ) -> CrateMetadata {
+        let def_path_table = record_time(&sess.perf_stats.decode_def_path_tables_time, || {
+            root.def_path_table.decode((&blob, sess))
+        });
+        let trait_impls = root.impls.decode((&blob, sess))
+            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls)).collect();
+        let alloc_decoding_state =
+            AllocDecodingState::new(root.interpret_alloc_index.decode(&blob).collect());
+        let dependencies = Lock::new(cnum_map.iter().cloned().collect());
+        CrateMetadata {
+            blob,
+            root,
+            def_path_table,
+            trait_impls,
+            raw_proc_macros,
+            source_map_import_info: Once::new(),
+            alloc_decoding_state,
+            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
+            cnum,
+            cnum_map,
+            dependencies,
+            dep_kind: Lock::new(dep_kind),
+            source,
+            private_dep,
+            host_hash,
+            extern_crate: Lock::new(None),
+        }
+    }
 }
 
 impl Default for CStore {

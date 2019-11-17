@@ -3,19 +3,15 @@
 use crate::cstore::{self, CStore};
 use crate::locator::{CrateLocator, CratePaths};
 use crate::rmeta::{CrateRoot, CrateDep, MetadataBlob};
-use rustc_data_structures::sync::{Lock, Once, AtomicCell};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
-use rustc::dep_graph::DepNodeIndex;
 use rustc::middle::cstore::DepKind;
-use rustc::mir::interpret::AllocDecodingState;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
-use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -217,8 +213,6 @@ impl<'a> CrateLoader<'a> {
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
-        let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
-
         let raw_proc_macros =  crate_root.proc_macro_data.map(|_| {
             let temp_root;
             let (dlsym_source, dlsym_root) = match &host_lib {
@@ -230,37 +224,18 @@ impl<'a> CrateLoader<'a> {
             self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span)
         });
 
-        let interpret_alloc_index: Vec<u32> = crate_root.interpret_alloc_index
-                                                        .decode(&metadata)
-                                                        .collect();
-        let trait_impls = crate_root
-            .impls
-            .decode((&metadata, self.sess))
-            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
-            .collect();
-
-        let def_path_table = record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
-            crate_root.def_path_table.decode((&metadata, self.sess))
-        });
-
-        self.cstore.set_crate_data(cnum, cstore::CrateMetadata {
-            extern_crate: Lock::new(None),
-            def_path_table,
-            trait_impls,
-            root: crate_root,
-            host_hash,
-            blob: metadata,
-            cnum_map,
+        self.cstore.set_crate_data(cnum, cstore::CrateMetadata::new(
+            self.sess,
+            metadata,
+            crate_root,
+            raw_proc_macros,
             cnum,
-            dependencies: Lock::new(dependencies),
-            source_map_import_info: Once::new(),
-            alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
-            dep_kind: Lock::new(dep_kind),
+            cnum_map,
+            dep_kind,
             source,
             private_dep,
-            raw_proc_macros,
-            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
-        });
+            host_hash,
+        ));
 
         cnum
     }
