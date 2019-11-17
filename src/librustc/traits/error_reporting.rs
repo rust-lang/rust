@@ -1230,6 +1230,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
+    fn mk_obligation_for_def_id(
+        &self,
+        def_id: DefId,
+        output_ty: Ty<'tcx>,
+        cause: ObligationCause<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> PredicateObligation<'tcx> {
+        let new_trait_ref = ty::TraitRef {
+            def_id,
+            substs: self.tcx.mk_substs_trait(output_ty, &[]),
+        };
+        Obligation::new(cause, param_env, new_trait_ref.to_predicate())
+    }
+
+
+    /// We tried to apply the bound to an `fn` or closure. Check whether calling it would
+    /// evaluate to a type that *would* satisfy the trait binding. If it would, suggest calling
+    /// it: `bar(foo)` → `bar(foo())`. This case is *very* likely to be hit if `foo` is `async`.
     fn suggest_fn_call(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -1248,19 +1266,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => return,
         };
         let msg = format!("use parentheses to call the {}", callable);
-        // We tried to apply the bound to an `fn` or closure. Check whether calling it would
-        // evaluate to a type that *would* satisfy the trait binding. If it would, suggest calling
-        // it: `bar(foo)` → `bar(foo())`. This case is *very* likely to be hit if `foo` is `async`.
 
-        let new_trait_ref = ty::TraitRef {
-            def_id: trait_ref.def_id(),
-            substs: self.tcx.mk_substs_trait(output_ty.skip_binder(), &[]),
-        };
-        let obligation = Obligation::new(
+        let obligation = self.mk_obligation_for_def_id(
+            trait_ref.def_id(),
+            output_ty.skip_binder(),
             obligation.cause.clone(),
             obligation.param_env,
-            new_trait_ref.to_predicate(),
         );
+
         let get_name = |err: &mut DiagnosticBuilder<'_>, kind: &hir::PatKind| -> Option<String> {
             // Get the local name of this closure. This can be inaccurate because
             // of the possibility of reassignment, but this should be good enough.
@@ -1277,73 +1290,72 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         match self.evaluate_obligation(&obligation) {
             Ok(EvaluationResult::EvaluatedToOk) |
             Ok(EvaluationResult::EvaluatedToOkModuloRegions) |
-            Ok(EvaluationResult::EvaluatedToAmbig) => {
-                let hir = self.tcx.hir();
-                // Get the name of the callable and the arguments to be used in the suggestion.
-                let snippet = match hir.get_if_local(def_id) {
-                    Some(hir::Node::Expr(hir::Expr {
-                        kind: hir::ExprKind::Closure(_, decl, _, span, ..),
-                        ..
-                    })) => {
-                        err.span_label(*span, "consider calling this closure");
-                        let hir_id = match hir.as_local_hir_id(def_id) {
-                            Some(hir_id) => hir_id,
-                            None => return,
-                        };
-                        let parent_node = hir.get_parent_node(hir_id);
-                        let name = match hir.find(parent_node) {
-                            Some(hir::Node::Stmt(hir::Stmt {
-                                kind: hir::StmtKind::Local(local), ..
-                            })) => match get_name(err, &local.pat.kind) {
-                                Some(name) => name,
-                                None => return,
-                            },
-                            // Different to previous arm because one is `&hir::Local` and the other
-                            // is `P<hir::Local>`.
-                            Some(hir::Node::Local(local)) => match get_name(err, &local.pat.kind) {
-                                Some(name) => name,
-                                None => return,
-                            },
-                            _ => return,
-                        };
-                        let args = decl.inputs.iter()
-                            .map(|_| "_")
-                            .collect::<Vec<_>>().join(", ");
-                        format!("{}({})", name, args)
-                    }
-                    Some(hir::Node::Item(hir::Item {
-                        ident,
-                        kind: hir::ItemKind::Fn(.., body_id),
-                        ..
-                    })) => {
-                        err.span_label(ident.span, "consider calling this function");
-                        let body = hir.body(*body_id);
-                        let args = body.params.iter()
-                            .map(|arg| match &arg.pat.kind {
-                                hir::PatKind::Binding(_, _, ident, None)
-                                if ident.name != kw::SelfLower => ident.to_string(),
-                                _ => "_".to_string(),
-                            }).collect::<Vec<_>>().join(", ");
-                        format!("{}({})", ident, args)
-                    }
+            Ok(EvaluationResult::EvaluatedToAmbig) => {}
+            _ => return,
+        }
+        let hir = self.tcx.hir();
+        // Get the name of the callable and the arguments to be used in the suggestion.
+        let snippet = match hir.get_if_local(def_id) {
+            Some(hir::Node::Expr(hir::Expr {
+                kind: hir::ExprKind::Closure(_, decl, _, span, ..),
+                ..
+            })) => {
+                err.span_label(*span, "consider calling this closure");
+                let hir_id = match hir.as_local_hir_id(def_id) {
+                    Some(hir_id) => hir_id,
+                    None => return,
+                };
+                let parent_node = hir.get_parent_node(hir_id);
+                let name = match hir.find(parent_node) {
+                    Some(hir::Node::Stmt(hir::Stmt {
+                        kind: hir::StmtKind::Local(local), ..
+                    })) => match get_name(err, &local.pat.kind) {
+                        Some(name) => name,
+                        None => return,
+                    },
+                    // Different to previous arm because one is `&hir::Local` and the other
+                    // is `P<hir::Local>`.
+                    Some(hir::Node::Local(local)) => match get_name(err, &local.pat.kind) {
+                        Some(name) => name,
+                        None => return,
+                    },
                     _ => return,
                 };
-                if points_at_arg {
-                    // When the obligation error has been ensured to have been caused by
-                    // an argument, the `obligation.cause.span` points at the expression
-                    // of the argument, so we can provide a suggestion. This is signaled
-                    // by `points_at_arg`. Otherwise, we give a more general note.
-                    err.span_suggestion(
-                        obligation.cause.span,
-                        &msg,
-                        snippet,
-                        Applicability::HasPlaceholders,
-                    );
-                } else {
-                    err.help(&format!("{}: `{}`", msg, snippet));
-                }
+                let args = decl.inputs.iter()
+                    .map(|_| "_")
+                    .collect::<Vec<_>>().join(", ");
+                format!("{}({})", name, args)
             }
-            _ => {}
+            Some(hir::Node::Item(hir::Item {
+                ident,
+                kind: hir::ItemKind::Fn(.., body_id),
+                ..
+            })) => {
+                err.span_label(ident.span, "consider calling this function");
+                let body = hir.body(*body_id);
+                let args = body.params.iter()
+                    .map(|arg| match &arg.pat.kind {
+                        hir::PatKind::Binding(_, _, ident, None)
+                        if ident.name != kw::SelfLower => ident.to_string(),
+                        _ => "_".to_string(),
+                    }).collect::<Vec<_>>().join(", ");
+                format!("{}({})", ident, args)
+            }
+            _ => return,
+        };
+        if points_at_arg {
+            // When the obligation error has been ensured to have been caused by
+            // an argument, the `obligation.cause.span` points at the expression
+            // of the argument, so we can provide a suggestion. This is signaled
+            // by `points_at_arg`. Otherwise, we give a more general note.
+            err.span_suggestion(
+                obligation.cause.span,
+                &msg,
+                snippet,
+                Applicability::HasPlaceholders,
+            );
+        } else {
+            err.help(&format!("{}: `{}`", msg, snippet));
         }
     }
 
@@ -1377,12 +1389,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if let ty::Ref(_, t_type, _) = trait_type.kind {
                     trait_type = t_type;
 
-                    let substs = self.tcx.mk_substs_trait(trait_type, &[]);
-                    let new_trait_ref = ty::TraitRef::new(trait_ref.def_id, substs);
-                    let new_obligation = Obligation::new(
+                    let new_obligation = self.mk_obligation_for_def_id(
+                        trait_ref.def_id,
+                        trait_type,
                         ObligationCause::dummy(),
                         obligation.param_env,
-                        new_trait_ref.to_predicate(),
                     );
 
                     if self.predicate_may_hold(&new_obligation) {
@@ -1440,12 +1451,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     hir::Mutability::Immutable => self.tcx.mk_mut_ref(region, t_type),
                 };
 
-                let substs = self.tcx.mk_substs_trait(&trait_type, &[]);
-                let new_trait_ref = ty::TraitRef::new(trait_ref.skip_binder().def_id, substs);
-                let new_obligation = Obligation::new(
+                let new_obligation = self.mk_obligation_for_def_id(
+                    trait_ref.skip_binder().def_id,
+                    trait_type,
                     ObligationCause::dummy(),
                     obligation.param_env,
-                    new_trait_ref.to_predicate(),
                 );
 
                 if self.evaluate_obligation_no_overflow(
