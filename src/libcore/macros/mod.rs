@@ -1,6 +1,4 @@
-/// Panics the current thread.
-///
-/// For details, see `std::macros`.
+#[doc(include = "panic.md")]
 #[macro_export]
 #[allow_internal_unstable(core_panic,
     // FIXME(anp, eddyb) `core_intrinsics` is used here to allow calling
