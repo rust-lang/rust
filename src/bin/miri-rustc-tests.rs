@@ -29,16 +29,6 @@ struct MiriCompilerCalls {
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn after_parsing(&mut self, compiler: &interface::Compiler) -> Compilation {
-        let attr = (
-            syntax::symbol::Symbol::intern("miri"),
-            syntax::feature_gate::AttributeType::Whitelisted,
-        );
-        compiler.session().plugin_attributes.borrow_mut().push(attr);
-
-        Compilation::Continue
-    }
-
     fn after_analysis(&mut self, compiler: &interface::Compiler) -> Compilation {
         compiler.session().abort_if_errors();
         compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
