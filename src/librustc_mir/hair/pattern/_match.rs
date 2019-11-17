@@ -594,6 +594,63 @@ enum SliceKind {
     VarLen(u64, u64),
 }
 
+impl SliceKind {
+    fn arity(self) -> u64 {
+        match self {
+            FixedLen(length) => length,
+            VarLen(prefix, suffix) => prefix + suffix,
+        }
+    }
+
+    /// Whether this pattern includes patterns of length `other_len`.
+    fn covers_length(self, other_len: u64) -> bool {
+        match self {
+            FixedLen(len) => len == other_len,
+            VarLen(prefix, suffix) => prefix + suffix <= other_len,
+        }
+    }
+
+    /// Returns a collection of slices that spans the values covered by `self`, subtracted by the
+    /// values covered by `other`: i.e., `self \ other` (in set notation).
+    fn subtract(self, other: Self) -> SmallVec<[Self; 1]> {
+        // Remember, `VarLen(i, j)` covers the union of `FixedLen` from `i + j` to infinity.
+        // Naming: we remove the "neg" constructors from the "pos" ones.
+        match self {
+            FixedLen(pos_len) => {
+                if other.covers_length(pos_len) {
+                    smallvec![]
+                } else {
+                    smallvec![self]
+                }
+            }
+            VarLen(pos_prefix, pos_suffix) => {
+                let pos_len = pos_prefix + pos_suffix;
+                match other {
+                    FixedLen(neg_len) => {
+                        if neg_len < pos_len {
+                            smallvec![self]
+                        } else {
+                            (pos_len..neg_len)
+                                .map(FixedLen)
+                                // We know that `neg_len + 1 >= pos_len >= pos_suffix`.
+                                .chain(Some(VarLen(neg_len + 1 - pos_suffix, pos_suffix)))
+                                .collect()
+                        }
+                    }
+                    VarLen(neg_prefix, neg_suffix) => {
+                        let neg_len = neg_prefix + neg_suffix;
+                        if neg_len <= pos_len {
+                            smallvec![]
+                        } else {
+                            (pos_len..neg_len).map(FixedLen).collect()
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// A constructor for array and slice patterns.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 struct Slice {
@@ -630,62 +687,7 @@ impl Slice {
     }
 
     fn arity(self) -> u64 {
-        match self.pattern_kind() {
-            FixedLen(length) => length,
-            VarLen(prefix, suffix) => prefix + suffix,
-        }
-    }
-
-    /// Whether this pattern includes patterns of length `other_len`.
-    fn covers_length(self, other_len: u64) -> bool {
-        match self.value_kind() {
-            FixedLen(len) => len == other_len,
-            VarLen(prefix, suffix) => prefix + suffix <= other_len,
-        }
-    }
-
-    /// Returns a collection of slices that spans the values covered by `self`, subtracted by the
-    /// values covered by `other`: i.e., `self \ other` (in set notation).
-    fn subtract(self, other: Self) -> SmallVec<[Self; 1]> {
-        // Remember, `VarLen(i, j)` covers the union of `FixedLen` from `i + j` to infinity.
-        // Naming: we remove the "neg" constructors from the "pos" ones.
-        match self.value_kind() {
-            FixedLen(pos_len) => {
-                if other.covers_length(pos_len) {
-                    smallvec![]
-                } else {
-                    smallvec![self]
-                }
-            }
-            VarLen(pos_prefix, pos_suffix) => {
-                let pos_len = pos_prefix + pos_suffix;
-                match other.value_kind() {
-                    FixedLen(neg_len) => {
-                        if neg_len < pos_len {
-                            smallvec![self]
-                        } else {
-                            (pos_len..neg_len)
-                                .map(FixedLen)
-                                // We know that `neg_len + 1 >= pos_len >= pos_suffix`.
-                                .chain(Some(VarLen(neg_len + 1 - pos_suffix, pos_suffix)))
-                                .map(|kind| Slice { array_len: None, kind })
-                                .collect()
-                        }
-                    }
-                    VarLen(neg_prefix, neg_suffix) => {
-                        let neg_len = neg_prefix + neg_suffix;
-                        if neg_len <= pos_len {
-                            smallvec![]
-                        } else {
-                            (pos_len..neg_len)
-                                .map(FixedLen)
-                                .map(|kind| Slice { array_len: None, kind })
-                                .collect()
-                        }
-                    }
-                }
-            }
-        }
+        self.pattern_kind().arity()
     }
 }
 
@@ -743,26 +745,25 @@ impl<'tcx> Constructor<'tcx> {
             &Slice(slice) => match slice.value_kind() {
                 FixedLen(self_len) => {
                     let overlaps = |c: &Constructor<'_>| match *c {
-                        Slice(other_slice) => other_slice.covers_length(self_len),
+                        Slice(other_slice) => other_slice.value_kind().covers_length(self_len),
                         _ => false,
                     };
                     if other_ctors.iter().any(overlaps) { vec![] } else { vec![Slice(slice)] }
                 }
                 VarLen(..) => {
-                    let mut remaining_slices = vec![slice];
+                    let mut remaining_slices = vec![slice.value_kind()];
 
                     // For each used slice, subtract from the current set of slices.
-                    // Naming: we remove the "neg" constructors from the "pos" ones.
-                    for neg_ctor in other_ctors {
-                        let neg_slice = match neg_ctor {
-                            Slice(slice) => *slice,
-                            // FIXME(#65413): If `neg_ctor` is not a slice, we assume it doesn't
+                    for other_ctor in other_ctors {
+                        let other_slice = match other_ctor {
+                            Slice(slice) => slice.value_kind(),
+                            // FIXME(#65413): If `other_ctor` is not a slice, we assume it doesn't
                             // cover any value here.
                             _ => continue,
                         };
                         remaining_slices = remaining_slices
                             .into_iter()
-                            .flat_map(|pos_slice| pos_slice.subtract(neg_slice))
+                            .flat_map(|remaining_slice| remaining_slice.subtract(other_slice))
                             .collect();
 
                         // If the constructors that have been considered so far already cover
@@ -772,7 +773,11 @@ impl<'tcx> Constructor<'tcx> {
                         }
                     }
 
-                    remaining_slices.into_iter().map(Slice).collect()
+                    remaining_slices
+                        .into_iter()
+                        .map(|kind| Slice { array_len: slice.array_len, kind })
+                        .map(Slice)
+                        .collect()
                 }
             },
             IntRange(self_range) => {
