@@ -363,8 +363,12 @@ impl DropTree {
                     cfg.push(block, stmt);
                     let target = blocks[drop_data.1].unwrap();
                     if target != block {
+                        // Diagnostics don't use this `Span` but debuginfo
+                        // might, which could cause breakpoints to end up in the
+                        // wrong place.
+                        let source_info = SourceInfo { span: DUMMY_SP, ..drop_data.0.source_info };
                         let terminator = TerminatorKind::Goto { target };
-                        cfg.terminate(block, drop_data.0.source_info, terminator);
+                        cfg.terminate(block, source_info, terminator);
                     }
                 }
             }
