@@ -97,7 +97,7 @@ fn main() {
     }
     const CONST1: &[bool; 1] = &[true];
     match s1 {
-    //~^ ERROR `&[..]` not covered
+    //~^ ERROR `&[false]` not covered
         CONST1 => {}
     }
     match s1 {

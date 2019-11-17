@@ -747,7 +747,7 @@ impl<'tcx> Constructor<'tcx> {
                     .iter()
                     .filter_map(|c: &Constructor<'_>| match c {
                         Slice(slice) => Some(*slice),
-                        // FIXME(#65413): We ignore `ConstantValue`s here.
+                        // FIXME(oli-obk): implement `deref` for `ConstValue`
                         ConstantValue(..) => None,
                         _ => bug!("bad slice pattern constructor {:?}", c),
                     })
@@ -1771,7 +1771,19 @@ fn pat_constructor<'tcx>(
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantValue(value))
+                match (value.val, &value.ty.kind) {
+                    (_, ty::Array(_, n)) => {
+                        let len = n.eval_usize(tcx, param_env);
+                        Some(Slice(Slice { array_len: Some(len), kind: FixedLen(len) }))
+                    }
+                    (ty::ConstKind::Value(ConstValue::Slice { start, end, .. }), ty::Slice(_)) => {
+                        let len = (end - start) as u64;
+                        Some(Slice(Slice { array_len: None, kind: FixedLen(len) }))
+                    }
+                    // FIXME(oli-obk): implement `deref` for `ConstValue`
+                    // (ty::ConstKind::Value(ConstValue::ByRef { .. }), ty::Slice(_)) => { ... }
+                    _ => Some(ConstantValue(value)),
+                }
             }
         }
         PatKind::Range(PatRange { lo, hi, end }) => {

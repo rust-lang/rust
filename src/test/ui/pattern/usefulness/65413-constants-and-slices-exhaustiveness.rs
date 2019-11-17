@@ -1,3 +1,4 @@
+// check-pass
 #![feature(slice_patterns)]
 #![deny(unreachable_patterns)]
 
@@ -8,8 +9,7 @@ fn main() {
     match x {
         &[] => {}
         &[1..=255] => {}
-        // this shouldn't be unreachable
-        C0 => {} //~ unreachable pattern
+        C0 => {}
         &[_, _, ..] => {}
     }
 }
