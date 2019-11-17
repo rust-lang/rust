@@ -613,13 +613,6 @@ impl<'a> Resolver<'a> {
                 } else {
                     Err(Determinacy::Determined)
                 }
-                Scope::LegacyPluginHelpers => if this.session.plugin_attributes.borrow().iter()
-                                                     .any(|(name, _)| ident.name == *name) {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
-                    ok(res, DUMMY_SP, this.arenas)
-                } else {
-                    Err(Determinacy::Determined)
-                }
                 Scope::ExternPrelude => match this.extern_prelude_get(ident, !record_used) {
                     Some(binding) => Ok((binding, Flags::empty())),
                     None => Err(Determinacy::determined(

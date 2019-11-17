@@ -105,7 +105,6 @@ enum Scope<'a> {
     RegisteredAttrs,
     MacroUsePrelude,
     BuiltinAttrs,
-    LegacyPluginHelpers,
     ExternPrelude,
     ToolPrelude,
     StdLibPrelude,
@@ -1466,9 +1465,6 @@ impl<'a> Resolver<'a> {
         // 4b. "Standard library prelude" part implemented through `macro-use` (closed, controlled).
         // 4c. Standard library prelude (de-facto closed, controlled).
         // 6. Language prelude: builtin attributes (closed, controlled).
-        // 4-6. Legacy plugin helpers (open, not controlled). Similar to derive helpers,
-        //    but introduced by legacy plugins using `register_attribute`. Priority is somewhere
-        //    in prelude, not sure where exactly (creates ambiguities with any other prelude names).
 
         let rust_2015 = ident.span.rust_2015();
         let (ns, macro_kind, is_absolute_path) = match scope_set {
@@ -1498,7 +1494,6 @@ impl<'a> Resolver<'a> {
                 Scope::RegisteredAttrs => use_prelude,
                 Scope::MacroUsePrelude => use_prelude || rust_2015,
                 Scope::BuiltinAttrs => true,
-                Scope::LegacyPluginHelpers => use_prelude || rust_2015,
                 Scope::ExternPrelude => use_prelude || is_absolute_path,
                 Scope::ToolPrelude => use_prelude,
                 Scope::StdLibPrelude => use_prelude || ns == MacroNS,
@@ -1558,8 +1553,7 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::RegisteredAttrs => Scope::MacroUsePrelude,
                 Scope::MacroUsePrelude => Scope::StdLibPrelude,
-                Scope::BuiltinAttrs => Scope::LegacyPluginHelpers,
-                Scope::LegacyPluginHelpers => break, // nowhere else to search
+                Scope::BuiltinAttrs => break, // nowhere else to search
                 Scope::ExternPrelude if is_absolute_path => break,
                 Scope::ExternPrelude => Scope::ToolPrelude,
                 Scope::ToolPrelude => Scope::StdLibPrelude,

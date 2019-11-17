@@ -42,8 +42,6 @@ pub enum NonMacroAttrKind {
     DeriveHelper,
     /// Single-segment custom attribute registered with `#[register_attr]`.
     Registered,
-    /// Single-segment custom attribute registered by a legacy plugin (`register_attribute`).
-    LegacyPluginHelper,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
@@ -330,7 +328,6 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Tool => "tool attribute",
             NonMacroAttrKind::DeriveHelper => "derive helper attribute",
             NonMacroAttrKind::Registered => "explicitly registered attribute",
-            NonMacroAttrKind::LegacyPluginHelper => "legacy plugin helper attribute",
         }
     }
 
@@ -345,8 +342,7 @@ impl NonMacroAttrKind {
     pub fn is_used(self) -> bool {
         match self {
             NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper => true,
-            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered |
-            NonMacroAttrKind::LegacyPluginHelper => false,
+            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered  => false,
         }
     }
 }
