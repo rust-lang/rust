@@ -2,17 +2,20 @@ use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 use crate::build::ForGuard::OutsideGuard;
 use crate::build::matches::ArmHasGuard;
 use crate::hair::*;
+use rustc::middle::region;
 use rustc::mir::*;
 use rustc::hir;
 use syntax_pos::Span;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
-    pub fn ast_block(&mut self,
-                     destination: &Place<'tcx>,
-                     block: BasicBlock,
-                     ast_block: &'tcx hir::Block,
-                     source_info: SourceInfo)
-                     -> BlockAnd<()> {
+    pub fn ast_block(
+        &mut self,
+        destination: &Place<'tcx>,
+        scope: Option<region::Scope>,
+        block: BasicBlock,
+        ast_block: &'tcx hir::Block,
+        source_info: SourceInfo,
+    ) -> BlockAnd<()> {
         let Block {
             region_scope,
             opt_destruction_scope,
@@ -21,17 +24,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             expr,
             targeted_by_break,
             safety_mode
-        } =
-            self.hir.mirror(ast_block);
+        } = self.hir.mirror(ast_block);
         self.in_opt_scope(opt_destruction_scope.map(|de|(de, source_info)), move |this| {
             this.in_scope((region_scope, source_info), LintLevel::Inherited, move |this| {
                 if targeted_by_break {
                     this.in_breakable_scope(
                         None,
                         destination.clone(),
+                        scope,
                         span,
                         |this| Some(this.ast_block_stmts(
                             destination,
+                            scope,
                             block,
                             span,
                             stmts,
@@ -40,21 +44,30 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         )),
                     )
                 } else {
-                    this.ast_block_stmts(destination, block, span, stmts, expr,
-                                         safety_mode)
+                    this.ast_block_stmts(
+                        destination,
+                        scope,
+                        block,
+                        span,
+                        stmts,
+                        expr,
+                        safety_mode,
+                    )
                 }
             })
         })
     }
 
-    fn ast_block_stmts(&mut self,
-                       destination: &Place<'tcx>,
-                       mut block: BasicBlock,
-                       span: Span,
-                       stmts: Vec<StmtRef<'tcx>>,
-                       expr: Option<ExprRef<'tcx>>,
-                       safety_mode: BlockSafety)
-                       -> BlockAnd<()> {
+    fn ast_block_stmts(
+        &mut self,
+        destination: &Place<'tcx>,
+        scope: Option<region::Scope>,
+        mut block: BasicBlock,
+        span: Span,
+        stmts: Vec<StmtRef<'tcx>>,
+        expr: Option<ExprRef<'tcx>>,
+        safety_mode: BlockSafety,
+    ) -> BlockAnd<()> {
         let this = self;
 
         // This convoluted structure is to avoid using recursion as we walk down a list
@@ -180,7 +193,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.block_context.currently_ignores_tail_results();
             this.block_context.push(BlockFrame::TailExpr { tail_result_is_ignored });
 
-            unpack!(block = this.into(destination, block, expr));
+            unpack!(block = this.into(destination, scope, block, expr));
             let popped = this.block_context.pop();
 
             assert!(popped.map_or(false, |bf|bf.is_tail_expr()));

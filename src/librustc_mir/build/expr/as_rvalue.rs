@@ -130,11 +130,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg
                     .push_assign(block, source_info, &Place::from(result), box_);
 
-                // initialize the box contents:
+                // Initialize the box contents. No scope is needed since the
+                // `Box` is already scheduled to be dropped.
                 unpack!(
                     block = this.into(
                         &this.hir.tcx().mk_place_deref(Place::from(result)),
-                        block, value
+                        None,
+                        block,
+                        value,
                     )
                 );
                 block.and(Rvalue::Use(Operand::Move(Place::from(result))))

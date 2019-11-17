@@ -11,6 +11,7 @@ use crate::build::{BlockAnd, BlockAndExtension, Builder};
 use crate::build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use crate::hair::{self, *};
 use rustc::hir::HirId;
+use rustc::middle::region;
 use rustc::mir::*;
 use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
@@ -101,6 +102,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub fn match_expr(
         &mut self,
         destination: &Place<'tcx>,
+        destination_scope: Option<region::Scope>,
         span: Span,
         mut block: BasicBlock,
         scrutinee: ExprRef<'tcx>,
@@ -227,54 +229,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         // Step 5. Create everything else: the guards and the arms.
-        let arm_end_blocks: Vec<_> = arm_candidates.into_iter().map(|(arm, mut candidates)| {
-            let arm_source_info = self.source_info(arm.span);
-            let arm_scope = (arm.scope, arm_source_info);
-            self.in_scope(arm_scope, arm.lint_level, |this| {
-                let body = this.hir.mirror(arm.body.clone());
-                let scope = this.declare_bindings(
-                    None,
-                    arm.span,
-                    &arm.top_pats_hack()[0],
-                    ArmHasGuard(arm.guard.is_some()),
-                    Some((Some(&scrutinee_place), scrutinee_span)),
-                );
-
-                let arm_block;
-                if candidates.len() == 1 {
-                    arm_block = this.bind_and_guard_matched_candidate(
-                        candidates.pop().unwrap(),
-                        arm.guard.clone(),
-                        &fake_borrow_temps,
-                        scrutinee_span,
-                        //match_scope,
-                    );
-                } else {
-                    arm_block = this.cfg.start_new_block();
-                    for candidate in candidates {
-                        this.clear_top_scope(arm.scope);
-                        let binding_end = this.bind_and_guard_matched_candidate(
-                            candidate,
-                            arm.guard.clone(),
-                            &fake_borrow_temps,
-                            scrutinee_span,
-                            //match_scope,
-                        );
-                        this.cfg.terminate(
-                            binding_end,
-                            source_info,
-                            TerminatorKind::Goto { target: arm_block },
-                        );
-                    }
-                }
-
-                if let Some(source_scope) = scope {
-                    this.source_scope = source_scope;
-                }
-
-                this.into(destination, arm_block, body)
-            })
-        }).collect();
+        let arm_end_blocks = self.build_match_arms(
+            arm_candidates,
+            destination,
+            destination_scope,
+            fake_borrow_temps,
+            scrutinee_span,
+            Some((Some(&scrutinee_place), scrutinee_span)),
+        );
 
         // all the arm blocks will rejoin here
         let end_block = self.cfg.start_new_block();
@@ -308,8 +270,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             } => {
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
-                unpack!(block = self.into(&place, block, initializer));
+                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
 
+                unpack!(block = self.into(&place, Some(region_scope), block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let source_info = self.source_info(irrefutable_pat.span);
@@ -321,7 +284,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
-                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -349,9 +311,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty_span,
                 },
             } => {
+                let region_scope = self.hir.region_scope_tree.var_scope(var.local_id);
                 let place =
                     self.storage_live_binding(block, var, irrefutable_pat.span, OutsideGuard);
-                unpack!(block = self.into(&place, block, initializer));
+                unpack!(block = self.into(&place, Some(region_scope), block, initializer));
 
                 // Inject a fake read, see comments on `FakeReadCause::ForLet`.
                 let pattern_source_info = self.source_info(irrefutable_pat.span);
@@ -397,7 +360,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     },
                 );
 
-                self.schedule_drop_for_binding(var, irrefutable_pat.span, OutsideGuard);
                 block.unit()
             }
 
@@ -1344,7 +1306,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Note: we do not check earlier that if there is a guard,
     /// there cannot be move bindings. We avoid a use-after-move by only
     /// moving the binding once the guard has evaluated to true (see below).
-    fn bind_and_guard_matched_candidate<'pat>(
+    crate fn bind_and_guard_matched_candidate<'pat>(
         &mut self,
         candidate: Candidate<'pat, 'tcx>,
         guard: Option<Guard<'tcx>>,

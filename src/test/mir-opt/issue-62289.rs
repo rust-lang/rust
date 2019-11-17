@@ -24,7 +24,7 @@ fn main() {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         _4 = std::option::Option::<u32>::None;
-//         _3 = const <std::option::Option<u32> as std::ops::Try>::into_result(move _4) -> [return: bb1, unwind: bb12];
+//         _3 = const <std::option::Option<u32> as std::ops::Try>::into_result(move _4) -> [return: bb1, unwind: bb13];
 //     }
 //     bb1: {
 //         StorageDead(_4);
@@ -40,16 +40,16 @@ fn main() {
 //         StorageLive(_8);
 //         StorageLive(_9);
 //         _9 = _6;
-//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb4, unwind: bb12];
+//         _8 = const <std::option::NoneError as std::convert::From<std::option::NoneError>>::from(move _9) -> [return: bb4, unwind: bb13];
 //     }
 //     bb4: {
 //         StorageDead(_9);
-//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb5, unwind: bb12];
+//         _0 = const <std::option::Option<std::boxed::Box<u32>> as std::ops::Try>::from_error(move _8) -> [return: bb5, unwind: bb13];
 //     }
 //     bb5: {
 //         StorageDead(_8);
 //         StorageDead(_6);
-//         drop(_2) -> bb9;
+//         drop(_2) -> [return: bb9, unwind: bb11];
 //     }
 //     bb6: {
 //         StorageLive(_10);
@@ -57,12 +57,12 @@ fn main() {
 //         (*_2) = _10;
 //         StorageDead(_10);
 //         _1 = move _2;
-//         drop(_2) -> [return: bb7, unwind: bb11];
+//         drop(_2) -> [return: bb7, unwind: bb12];
 //     }
 //     bb7: {
 //         StorageDead(_2);
 //         _0 = std::option::Option::<std::boxed::Box<u32>>::Some(move _1,);
-//         drop(_1) -> bb8;
+//         drop(_1) -> [return: bb8, unwind: bb11];
 //     }
 //     bb8: {
 //         StorageDead(_1);
@@ -79,12 +79,15 @@ fn main() {
 //         return;
 //     }
 //     bb11 (cleanup): {
-//         drop(_1) -> bb13;
+//         drop(_0) -> bb14;
 //     }
 //     bb12 (cleanup): {
-//         drop(_2) -> bb13;
+//         drop(_1) -> bb14;
 //     }
 //     bb13 (cleanup): {
+//         drop(_2) -> bb14;
+//     }
+//     bb14 (cleanup): {
 //         resume;
 //     }
 // }
