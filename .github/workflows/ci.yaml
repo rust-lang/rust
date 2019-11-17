@@ -75,7 +75,7 @@ jobs:
         working-directory: ./editors/code
       - run: npm run vscode:prepublish
         working-directory: ./editors/code
-      - run: npm run travis
+      - run: xvfb-run --auto-servernum npm run travis
         working-directory: ./editors/code
       - name: Cleanup xvfb
         uses: bcomnes/cleanup-xvfb@v1
