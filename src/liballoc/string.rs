@@ -2072,7 +2072,8 @@ impl Add<&&String> for String {
 /// // `a` is moved and can no longer be used here.
 /// ```
 ///
-/// If you want to keep using the initial `String`, you can clone it and append to the clone instead:
+/// If you want to keep using the initial `String`, you can clone it and append to the
+/// clone instead:
 ///
 /// ```
 /// let a = String::from("hello world! ");

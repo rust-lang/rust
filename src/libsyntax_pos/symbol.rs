@@ -1129,9 +1129,8 @@ impl !Sync for SymbolStr {}
 /// - `&*ss` is a `&str`;
 /// - `&ss as &str` is a `&str`, which means that `&ss` can be passed to a
 ///   function expecting a `&str`.
-/// 
-/// FIXME: This has no meaning anymore since the addition of implementations
-/// of `Add<char> for String`, `Add<&&str> for String`, and `Add<&&String> for String`.
+///
+/// FIXME: This has no meaning anymore since the addition of `impl Add<char> for String`.
 /// Due to the outstanding Deref coercion issue this Deref implementation gets ignored.
 /// Issue: https://github.com/rust-lang/rust/issues/51916
 impl std::ops::Deref for SymbolStr {
