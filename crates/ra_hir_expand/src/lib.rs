@@ -83,14 +83,13 @@ impl HirFileId {
                     loc.def.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
 
                 let macro_def = db.macro_def(loc.def)?;
-                let shift = macro_def.0.shift();
                 let exp_map = db.parse_macro(macro_file)?.1;
                 let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
                 let arg_start = (loc.ast_id.file_id, arg_start);
                 let def_start = (loc.def.ast_id.file_id, def_start);
 
-                Some(ExpansionInfo { arg_start, def_start, macro_arg, macro_def, exp_map, shift })
+                Some(ExpansionInfo { arg_start, def_start, macro_arg, macro_def, exp_map })
             }
         }
     }
@@ -152,7 +151,6 @@ impl MacroCallId {
 pub struct ExpansionInfo {
     pub(crate) arg_start: (HirFileId, TextUnit),
     pub(crate) def_start: (HirFileId, TextUnit),
-    pub(crate) shift: u32,
 
     pub(crate) macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
     pub(crate) macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
@@ -163,7 +161,7 @@ impl ExpansionInfo {
     pub fn translate_offset(&self, offset: TextUnit) -> Option<TextUnit> {
         let offset = offset.checked_sub(self.arg_start.1)?;
         let token_id = self.macro_arg.1.token_by_offset(offset)?;
-        let token_id = tt::TokenId(token_id.0 + self.shift);
+        let token_id = tt::TokenId(token_id.0 + self.macro_def.0.shift());
 
         let (r, _) = self.exp_map.ranges.iter().find(|(_, tid)| *tid == token_id)?;
         Some(r.start())
@@ -172,8 +170,9 @@ impl ExpansionInfo {
     pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
         let token_id = look_in_rev_map(&self.exp_map, from)?;
 
-        let (token_map, (file_id, start_offset), token_id) = if token_id.0 >= self.shift {
-            (&self.macro_arg.1, self.arg_start, tt::TokenId(token_id.0 - self.shift).into())
+        let shift = self.macro_def.0.shift();
+        let (token_map, (file_id, start_offset), token_id) = if token_id.0 >= shift {
+            (&self.macro_arg.1, self.arg_start, tt::TokenId(token_id.0 - shift).into())
         } else {
             (&self.macro_def.1, self.def_start, token_id)
         };
