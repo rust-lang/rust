@@ -9,7 +9,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
-#![feature(label_break_value)]
 #![feature(nll)]
 #![recursion_limit = "256"]
 
