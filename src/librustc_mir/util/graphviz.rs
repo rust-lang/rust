@@ -103,7 +103,7 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
 
     // Basic block number at the top.
     let (blk, color) = if data.is_cleanup {
-        (format!("{} (cleanup)", block.index()), "light blue")
+        (format!("{} (cleanup)", block.index()), "lightblue")
     } else {
         (format!("{}", block.index()), "gray")
     };
