@@ -203,6 +203,7 @@ symbols! {
         const_constructor,
         const_extern_fn,
         const_fn,
+        const_fn_mut_refs,
         const_fn_union,
         const_generics,
         const_if_match,
