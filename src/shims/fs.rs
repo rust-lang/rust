@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Write};
 
-use rustc::ty::layout::Size;
+use rustc::ty::layout::{Size, Align};
 
 use crate::stacked_borrows::Tag;
 use crate::*;
@@ -166,18 +166,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("read")?;
 
-        let ptr_size = this.pointer_size().bits();
-
-        // We cap the number of read bytes to the largest value that we are able to fit in both the
-        // host's and target's `isize`.
-        let count = this
-            .read_scalar(count_op)?
-            .to_machine_usize(&*this.tcx)?
-            .min((1 << (ptr_size - 1)) - 1) // max value of target `isize`
-            .min(isize::max_value() as u64);
-
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf = this.read_scalar(buf_op)?.not_undef()?;
+        let count = this
+            .read_scalar(count_op)?
+            .to_machine_usize(&*this.tcx)?;
+
+        // Check that the *entire* buffer is actually valid memory.
+        this.memory.check_ptr_access(buf, Size::from_bytes(count), Align::from_bytes(1).unwrap())?;
+
+        // We cap the number of read bytes to the largest value that we are able to fit in both the
+        // host's and target's `isize`. This saves us from having to handle overflows later.
+        let count = count
+            .min(this.isize_max() as u64)
+            .min(isize::max_value() as u64);
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             // This can never fail because `count` was capped to be smaller than
@@ -219,18 +221,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("write")?;
 
-        let ptr_size = this.pointer_size().bits();
-
-        // We cap the number of read bytes to the largest value that we are able to fit in both the
-        // host's and target's `isize`.
-        let count = this
-            .read_scalar(count_op)?
-            .to_machine_usize(&*this.tcx)?
-            .min((1 << (ptr_size - 1)) - 1) // max value of target `isize`
-            .min(isize::max_value() as u64);
-
         let fd = this.read_scalar(fd_op)?.to_i32()?;
         let buf = this.read_scalar(buf_op)?.not_undef()?;
+        let count = this
+            .read_scalar(count_op)?
+            .to_machine_usize(&*this.tcx)?;
+
+        // Check that the *entire* buffer is actually valid memory.
+        this.memory.check_ptr_access(buf, Size::from_bytes(count), Align::from_bytes(1).unwrap())?;
+
+        // We cap the number of written bytes to the largest value that we are able to fit in both the
+        // host's and target's `isize`. This saves us from having to handle overflows later.
+        let count = count
+            .min(this.isize_max() as u64)
+            .min(isize::max_value() as u64);
 
         if let Some(handle) = this.machine.file_handler.handles.get_mut(&fd) {
             let bytes = this.memory.read_bytes(buf, Size::from_bytes(count))?;
