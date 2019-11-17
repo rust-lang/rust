@@ -59,7 +59,7 @@ pub static RUST_FAVICON: &'static [u8] = include_bytes!("static/favicon.ico");
 /// The built-in themes given to every documentation site.
 pub mod themes {
     /// The "light" theme, selected by default when no setting is available. Used as the basis for
-    /// the `--theme-checker` functionality.
+    /// the `--check-theme` functionality.
     pub static LIGHT: &'static str = include_str!("static/themes/light.css");
 
     /// The "dark" theme.

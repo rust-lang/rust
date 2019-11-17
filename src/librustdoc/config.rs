@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -281,12 +282,12 @@ impl Options {
         // check for deprecated options
         check_deprecated_options(&matches, &diag);
 
-        let to_check = matches.opt_strs("theme-checker");
+        let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
             let mut errors = 0;
 
-            println!("rustdoc: [theme-checker] Starting tests!");
+            println!("rustdoc: [check-theme] Starting tests! (Ignoring all other arguments)");
             for theme_file in to_check.iter() {
                 print!(" - Checking \"{}\"...", theme_file);
                 let (success, differences) = theme::test_theme_against(theme_file, &paths, &diag);
@@ -357,22 +358,34 @@ impl Options {
         }
 
         let mut themes = Vec::new();
-        if matches.opt_present("themes") {
+        if matches.opt_present("theme") {
             let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
 
-            for (theme_file, theme_s) in matches.opt_strs("themes")
+            for (theme_file, theme_s) in matches.opt_strs("theme")
                                                 .iter()
                                                 .map(|s| (PathBuf::from(&s), s.to_owned())) {
                 if !theme_file.is_file() {
-                    diag.struct_err("option --themes arguments must all be files").emit();
+                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
+                        .help("arguments to --theme must be files")
+                        .emit();
+                    return Err(1);
+                }
+                if theme_file.extension() != Some(OsStr::new("css")) {
+                    diag.struct_err(&format!("invalid argument: \"{}\"", theme_s))
+                        .emit();
                     return Err(1);
                 }
                 let (success, ret) = theme::test_theme_against(&theme_file, &paths, &diag);
-                if !success || !ret.is_empty() {
-                    diag.struct_err(&format!("invalid theme: \"{}\"", theme_s))
-                        .help("check what's wrong with the --theme-checker option")
-                        .emit();
+                if !success {
+                    diag.struct_err(&format!("error loading theme file: \"{}\"", theme_s)).emit();
                     return Err(1);
+                } else if !ret.is_empty() {
+                    diag.struct_warn(&format!("theme file \"{}\" is missing CSS rules from the \
+                                               default theme", theme_s))
+                        .warn("the theme may appear incorrect when loaded")
+                        .help(&format!("to see what rules are missing, call `rustdoc \
+                                        --check-theme \"{}\"`", theme_s))
+                        .emit();
                 }
                 themes.push(theme_file);
             }
