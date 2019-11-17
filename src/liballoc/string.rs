@@ -1982,6 +1982,91 @@ impl Add<&str> for String {
     }
 }
 
+// This had to be added to avoid breakage after adding `impl Add<char> for String`
+#[allow(missing_docs)]
+#[stable(feature = "extra_add_string_and_dbl_ref_str", since = "1.41.0")]
+impl Add<&&str> for String {
+    type Output = String;
+
+    #[inline]
+    fn add(mut self, other: &&str) -> String {
+        self.push_str(other);
+        self
+    }
+}
+
+// This had to be added to avoid breakage after adding `impl Add<char> for String`
+#[allow(missing_docs)]
+#[stable(feature = "extra_add_string_and_ref_string", since = "1.41.0")]
+impl Add<&String> for String {
+    type Output = String;
+
+    #[inline]
+    fn add(mut self, other: &String) -> String {
+        self.push_str(other);
+        self
+    }
+}
+
+// This had to be added to avoid breakage after adding `impl Add<char> for String`
+#[allow(missing_docs)]
+#[stable(feature = "extra_add_string_and_dbl_ref_string", since = "1.41.0")]
+impl Add<&&String> for String {
+    type Output = String;
+
+    #[inline]
+    fn add(mut self, other: &&String) -> String {
+        self.push_str(other);
+        self
+    }
+}
+
+/// Implements the `+` operator for concatenating a string and a char together.
+///
+/// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
+/// necessary). This is done to avoid allocating a new `String` and copying the entire contents on
+/// every operation, which would lead to `O(n^2)` running time when building an `n`-byte string by
+/// repeated concatenation.
+///
+/// # Examples
+///
+/// Concatenating a `String` with a `char` takes the `String` by value and copies the `char`:
+///
+/// ```
+/// let a = String::from("hello world! ");
+/// let b = '👋';
+/// let c = a + b;
+/// // `a` is moved and can no longer be used here.
+/// ```
+///
+/// If you want to keep using the initial `String`, you can clone it and append to the
+/// clone instead:
+///
+/// ```
+/// let a = String::from("hello world! ");
+/// let b = '👋';
+/// let c = a.clone() + b;
+/// // `a` is still valid here.
+/// ```
+///
+/// Concatenating `char` to a `&str` slice can be done by converting the `&str` to a `String`:
+///
+/// ```
+/// let a = "hello world! ";
+/// let b = '👋';
+/// let c = a.to_string() + b;
+/// ```
+#[stable(feature = "add_string_and_char", since = "1.41.0")]
+impl Add<char> for String {
+    type Output = String;
+
+    #[inline]
+    fn add(mut self, other: char) -> String {
+        self.push(other);
+        self
+    }
+}
+
 /// Implements the `+=` operator for appending to a `String`.
 ///
 /// This has the same behavior as the [`push_str`][String::push_str] method.
@@ -1990,6 +2075,28 @@ impl AddAssign<&str> for String {
     #[inline]
     fn add_assign(&mut self, other: &str) {
         self.push_str(other);
+    }
+}
+
+/// Implements the `+=` operator for appending to a `String`.
+///
+/// This has the same behavior as the [`push_str`][String::push_str] method.
+#[stable(feature = "string_add_assign_string", since = "1.41.0")]
+impl AddAssign<&String> for String {
+    #[inline]
+    fn add_assign(&mut self, other: &String) {
+        self.push_str(other);
+    }
+}
+
+/// Implements the `+=` operator for appending a `char` to a `String`.
+///
+/// This has the same behavior as the [`push`][String::push] method.
+#[stable(feature = "string_add_assign_char", since = "1.41.0")]
+impl AddAssign<char> for String {
+    #[inline]
+    fn add_assign(&mut self, other: char) {
+        self.push(other);
     }
 }
 
