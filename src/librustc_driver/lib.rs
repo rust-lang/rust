@@ -5,12 +5,7 @@
 //! This API is completely unstable and subject to change.
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
-#![feature(box_syntax)]
-#![cfg_attr(unix, feature(libc))]
 #![feature(nll)]
-#![feature(set_stdio)]
-#![feature(no_debug)]
-#![feature(integer_atomics)]
 #![recursion_limit = "256"]
 
 pub extern crate getopts;
