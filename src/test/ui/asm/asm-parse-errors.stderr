@@ -8,13 +8,13 @@ error: expected string literal
   --> $DIR/asm-parse-errors.rs:5:18
    |
 LL |     asm!("nop" : struct);
-   |                  ^^^^^^ expected string literal
+   |                  ^^^^^^ not a string literal
 
 error: expected string literal
   --> $DIR/asm-parse-errors.rs:6:30
    |
 LL |     asm!("mov %eax, $$0x2" : struct);
-   |                              ^^^^^^ expected string literal
+   |                              ^^^^^^ not a string literal
 
 error: expected `(`, found keyword `struct`
   --> $DIR/asm-parse-errors.rs:7:39
@@ -32,7 +32,7 @@ error: expected string literal
   --> $DIR/asm-parse-errors.rs:9:44
    |
 LL |     asm!("in %dx, %al" : "={al}"(result) : struct);
-   |                                            ^^^^^^ expected string literal
+   |                                            ^^^^^^ not a string literal
 
 error: expected `(`, found keyword `struct`
   --> $DIR/asm-parse-errors.rs:10:51
@@ -50,13 +50,13 @@ error: expected string literal
   --> $DIR/asm-parse-errors.rs:12:36
    |
 LL |     asm!("mov $$0x200, %eax" : : : struct);
-   |                                    ^^^^^^ expected string literal
+   |                                    ^^^^^^ not a string literal
 
 error: expected string literal
   --> $DIR/asm-parse-errors.rs:13:45
    |
 LL |     asm!("mov eax, 2" : "={eax}"(foo) : : : struct);
-   |                                             ^^^^^^ expected string literal
+   |                                             ^^^^^^ not a string literal
 
 error: inline assembly must be a string literal
   --> $DIR/asm-parse-errors.rs:14:10

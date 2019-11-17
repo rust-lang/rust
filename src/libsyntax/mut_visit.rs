@@ -441,7 +441,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
             vis.visit_mt(mt);
         }
         TyKind::BareFn(bft) => {
-            let BareFnTy { unsafety: _, abi: _, generic_params, decl } = bft.deref_mut();
+            let BareFnTy { unsafety: _, ext: _, generic_params, decl } = bft.deref_mut();
             generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
             vis.visit_fn_decl(decl);
         }
@@ -974,7 +974,7 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
 }
 
 pub fn noop_visit_fn_header<T: MutVisitor>(header: &mut FnHeader, vis: &mut T) {
-    let FnHeader { unsafety: _, asyncness, constness: _, abi: _ } = header;
+    let FnHeader { unsafety: _, asyncness, constness: _, ext: _ } = header;
     vis.visit_asyncness(&mut asyncness.node);
 }
 

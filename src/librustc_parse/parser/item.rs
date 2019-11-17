@@ -3,9 +3,9 @@ use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
 
-use syntax::ast::{self, Abi, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
+use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
 use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
-use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness};
+use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, VariantData, StructField};
 use syntax::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
@@ -105,7 +105,7 @@ impl<'a> Parser<'a> {
                 return Ok(Some(self.parse_item_extern_crate(lo, vis, attrs)?));
             }
 
-            let abi = self.parse_opt_abi()?;
+            let abi = self.parse_abi();
 
             if self.eat_keyword(kw::Fn) {
                 // EXTERN FUNCTION ITEM
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
                     unsafety: Unsafety::Normal,
                     asyncness: respan(fn_span, IsAsync::NotAsync),
                     constness: respan(fn_span, Constness::NotConst),
-                    abi,
+                    ext: Extern::from_abi(abi),
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             } else if self.check(&token::OpenDelim(token::Brace)) {
@@ -143,14 +143,14 @@ impl<'a> Parser<'a> {
                 if self.check_keyword(kw::Extern) {
                     self.sess.gated_spans.gate(sym::const_extern_fn, lo.to(self.token.span));
                 }
-                let abi = self.parse_extern_abi()?;
+                let ext = self.parse_extern()?;
                 self.bump(); // `fn`
 
                 let header = FnHeader {
                     unsafety,
                     asyncness: respan(const_span, IsAsync::NotAsync),
                     constness: respan(const_span, Constness::Const),
-                    abi,
+                    ext,
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             }
@@ -193,7 +193,7 @@ impl<'a> Parser<'a> {
                     unsafety,
                     asyncness,
                     constness: respan(fn_span, Constness::NotConst),
-                    abi: Abi::new(sym::Rust, fn_span),
+                    ext: Extern::None,
                 };
                 return self.parse_item_fn(lo, vis, attrs, header);
             }
@@ -230,7 +230,7 @@ impl<'a> Parser<'a> {
                 unsafety: Unsafety::Normal,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
-                abi: Abi::new(sym::Rust, fn_span),
+                ext: Extern::None,
             };
             return self.parse_item_fn(lo, vis, attrs, header);
         }
@@ -242,14 +242,14 @@ impl<'a> Parser<'a> {
             self.bump(); // `unsafe`
             // `{` is also expected after `unsafe`; in case of error, include it in the diagnostic.
             self.check(&token::OpenDelim(token::Brace));
-            let abi = self.parse_extern_abi()?;
+            let ext = self.parse_extern()?;
             self.expect_keyword(kw::Fn)?;
             let fn_span = self.prev_span;
             let header = FnHeader {
                 unsafety: Unsafety::Unsafe,
                 asyncness: respan(fn_span, IsAsync::NotAsync),
                 constness: respan(fn_span, Constness::NotConst),
-                abi,
+                ext,
             };
             return self.parse_item_fn(lo, vis, attrs, header);
         }
@@ -1100,7 +1100,7 @@ impl<'a> Parser<'a> {
     fn parse_item_foreign_mod(
         &mut self,
         lo: Span,
-        abi: Abi,
+        abi: Option<StrLit>,
         visibility: Visibility,
         mut attrs: Vec<Attribute>,
         extern_sp: Span,
@@ -1775,9 +1775,16 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
+        let is_c_abi = match header.ext {
+            ast::Extern::None => false,
+            ast::Extern::Implicit => true,
+            ast::Extern::Explicit(abi) => abi.symbol_unescaped == sym::C,
+        };
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,
-            allow_c_variadic: header.abi.symbol == sym::C && header.unsafety == Unsafety::Unsafe,
+            // FIXME: Parsing should not depend on ABI or unsafety and
+            // the variadic parameter should always be parsed.
+            allow_c_variadic: is_c_abi && header.unsafety == Unsafety::Unsafe,
             is_name_required: |_| true,
         })?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1905,11 +1912,11 @@ impl<'a> Parser<'a> {
         }
         let asyncness = respan(self.prev_span, asyncness);
         let unsafety = self.parse_unsafety();
-        let (constness, unsafety, abi) = if is_const_fn {
-            (respan(const_span, Constness::Const), unsafety, Abi::default())
+        let (constness, unsafety, ext) = if is_const_fn {
+            (respan(const_span, Constness::Const), unsafety, Extern::None)
         } else {
-            let abi = self.parse_extern_abi()?;
-            (respan(self.prev_span, Constness::NotConst), unsafety, abi)
+            let ext = self.parse_extern()?;
+            (respan(self.prev_span, Constness::NotConst), unsafety, ext)
         };
         if !self.eat_keyword(kw::Fn) {
             // It is possible for `expect_one_of` to recover given the contents of
@@ -1917,7 +1924,7 @@ impl<'a> Parser<'a> {
             // account for this.
             if !self.expect_one_of(&[], &[])? { unreachable!() }
         }
-        Ok(FnHeader { constness, unsafety, asyncness, abi })
+        Ok(FnHeader { constness, unsafety, asyncness, ext })
     }
 
     /// Parse the "signature", including the identifier, parameters, and generics of a function.

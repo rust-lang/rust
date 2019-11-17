@@ -2,19 +2,17 @@
 //
 use State::*;
 
+use errors::{DiagnosticBuilder, PResult};
 use rustc_data_structures::thin_vec::ThinVec;
-
-use errors::DiagnosticBuilder;
-
-use syntax::ast;
-use syntax_expand::base::{self, *};
-use syntax::token::{self, Token};
+use rustc_parse::parser::Parser;
+use syntax_expand::base::*;
+use syntax_pos::Span;
+use syntax::{span_err, struct_span_err};
+use syntax::ast::{self, AsmDialect};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
-use syntax::ast::AsmDialect;
-use syntax_pos::Span;
+use syntax::token::{self, Token};
 use syntax::tokenstream::{self, TokenStream};
-use syntax::{span_err, struct_span_err};
 
 use rustc_error_codes::*;
 
@@ -45,7 +43,7 @@ const OPTIONS: &[Symbol] = &[sym::volatile, sym::alignstack, sym::intel];
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
                        sp: Span,
                        tts: TokenStream)
-                       -> Box<dyn base::MacResult + 'cx> {
+                       -> Box<dyn MacResult + 'cx> {
     let mut inline_asm = match parse_inline_asm(cx, sp, tts) {
         Ok(Some(inline_asm)) => inline_asm,
         Ok(None) => return DummyResult::any(sp),
@@ -67,6 +65,18 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
         span: cx.with_def_site_ctxt(sp),
         attrs: ThinVec::new(),
     }))
+}
+
+fn parse_asm_str<'a>(p: &mut Parser<'a>) -> PResult<'a, Symbol> {
+    match p.parse_str_lit() {
+        Ok(str_lit) => Ok(str_lit.symbol_unescaped),
+        Err(opt_lit) => {
+            let span = opt_lit.map_or(p.token.span, |lit| lit.span);
+            let mut err = p.sess.span_diagnostic.struct_span_err(span, "expected string literal");
+            err.span_label(span, "not a string literal");
+            Err(err)
+        }
+    }
 }
 
 fn parse_inline_asm<'a>(
@@ -144,7 +154,7 @@ fn parse_inline_asm<'a>(
                         p.eat(&token::Comma);
                     }
 
-                    let (constraint, _) = p.parse_str()?;
+                    let constraint = parse_asm_str(&mut p)?;
 
                     let span = p.prev_span;
 
@@ -189,7 +199,7 @@ fn parse_inline_asm<'a>(
                         p.eat(&token::Comma);
                     }
 
-                    let (constraint, _) = p.parse_str()?;
+                    let constraint = parse_asm_str(&mut p)?;
 
                     if constraint.as_str().starts_with("=") {
                         span_err!(cx, p.prev_span, E0662,
@@ -212,7 +222,7 @@ fn parse_inline_asm<'a>(
                         p.eat(&token::Comma);
                     }
 
-                    let (s, _) = p.parse_str()?;
+                    let s = parse_asm_str(&mut p)?;
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.prev_span, "expected a clobber, found an option");
@@ -225,7 +235,7 @@ fn parse_inline_asm<'a>(
                 }
             }
             Options => {
-                let (option, _) = p.parse_str()?;
+                let option = parse_asm_str(&mut p)?;
 
                 if option == sym::volatile {
                     // Indicates that the inline assembly has side effects
