@@ -742,44 +742,50 @@ impl<'tcx> Constructor<'tcx> {
             Single | Variant(_) | ConstantValue(..) | FloatRange(..) => {
                 if other_ctors.iter().any(|c| c == self) { vec![] } else { vec![self.clone()] }
             }
-            &Slice(slice) => match slice.value_kind() {
-                FixedLen(self_len) => {
-                    let overlaps = |c: &Constructor<'_>| match *c {
-                        Slice(other_slice) => other_slice.value_kind().covers_length(self_len),
-                        _ => false,
-                    };
-                    if other_ctors.iter().any(overlaps) { vec![] } else { vec![Slice(slice)] }
-                }
-                VarLen(..) => {
-                    let mut remaining_slices = vec![slice.value_kind()];
+            &Slice(slice) => {
+                let mut other_slices = other_ctors
+                    .iter()
+                    .filter_map(|c: &Constructor<'_>| match c {
+                        Slice(slice) => Some(*slice),
+                        // FIXME(#65413): We ignore `ConstantValue`s here.
+                        ConstantValue(..) => None,
+                        _ => bug!("bad slice pattern constructor {:?}", c),
+                    })
+                    .map(Slice::value_kind);
 
-                    // For each used slice, subtract from the current set of slices.
-                    for other_ctor in other_ctors {
-                        let other_slice = match other_ctor {
-                            Slice(slice) => slice.value_kind(),
-                            // FIXME(#65413): If `other_ctor` is not a slice, we assume it doesn't
-                            // cover any value here.
-                            _ => continue,
-                        };
-                        remaining_slices = remaining_slices
-                            .into_iter()
-                            .flat_map(|remaining_slice| remaining_slice.subtract(other_slice))
-                            .collect();
-
-                        // If the constructors that have been considered so far already cover
-                        // the entire range of `self`, no need to look at more constructors.
-                        if remaining_slices.is_empty() {
-                            break;
+                match slice.value_kind() {
+                    FixedLen(self_len) => {
+                        if other_slices.any(|other_slice| other_slice.covers_length(self_len)) {
+                            vec![]
+                        } else {
+                            vec![Slice(slice)]
                         }
                     }
+                    kind @ VarLen(..) => {
+                        let mut remaining_slices = vec![kind];
 
-                    remaining_slices
-                        .into_iter()
-                        .map(|kind| Slice { array_len: slice.array_len, kind })
-                        .map(Slice)
-                        .collect()
+                        // For each used slice, subtract from the current set of slices.
+                        for other_slice in other_slices {
+                            remaining_slices = remaining_slices
+                                .into_iter()
+                                .flat_map(|remaining_slice| remaining_slice.subtract(other_slice))
+                                .collect();
+
+                            // If the constructors that have been considered so far already cover
+                            // the entire range of `self`, no need to look at more constructors.
+                            if remaining_slices.is_empty() {
+                                break;
+                            }
+                        }
+
+                        remaining_slices
+                            .into_iter()
+                            .map(|kind| Slice { array_len: slice.array_len, kind })
+                            .map(Slice)
+                            .collect()
+                    }
                 }
-            },
+            }
             IntRange(self_range) => {
                 let mut remaining_ranges = vec![self_range.clone()];
                 for other_ctor in other_ctors {
