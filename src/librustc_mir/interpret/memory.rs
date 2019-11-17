@@ -797,7 +797,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         let widestr_u8_initbyte = self.read_bytes(ptr, Size::from_bytes(1))?;
         let mut widestr_len = 0; // length in bytes
         // The below unsafe block uses a raw-pointer(*const u8) to find the length
-        // of the wide-string, which terminates with a double null byte. 
+        // of the wide-string, which terminates with a double null byte.
         // The below unsafe block doesn't write anything to Memory.
         // Each character in a wide-string takes up two bytes.
         unsafe {
