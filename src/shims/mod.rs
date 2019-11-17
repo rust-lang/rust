@@ -27,7 +27,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         );
 
         // First, run the common hooks also supported by CTFE.
-        if this.hook_fn(instance, args, dest)? {
+        if this.hook_panic_fn(instance, args, dest)? {
             this.goto_block(ret)?;
             return Ok(None);
         }

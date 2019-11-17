@@ -22,7 +22,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if this.emulate_intrinsic(span, instance, args, dest)? {
+        if this.emulate_intrinsic(span, instance, args, Some(dest))? {
             return Ok(());
         }
         let tcx = &{this.tcx.tcx};

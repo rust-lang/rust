@@ -335,7 +335,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     mir,
                     Some(ret_place),
                     // Directly return to caller.
-                    StackPopCleanup::Goto(Some(ret)),
+                    StackPopCleanup::Goto { ret: Some(ret), unwind: None },
                 )?;
                 let mut args = this.frame().body.args_iter();
 
