@@ -102,9 +102,6 @@ pub struct Scopes<'tcx> {
 
     /// Drops that need to be done on paths to the `GeneratorDrop` terminator.
     generator_drops: DropTree,
-
-    // TODO: implement caching
-    // cached_unwind_drop: DropIdx,
 }
 
 #[derive(Debug)]
@@ -125,6 +122,14 @@ struct Scope {
     drops: Vec<DropData>,
 
     moved_locals: Vec<Local>,
+
+    /// The drop index that will drop everything in and below this scope on an
+    /// unwind path.
+    cached_unwind_block: Option<DropIdx>,
+
+    /// The drop index that will drop everything in and below this scope on a
+    /// generator drop path.
+    cached_generator_drop_block: Option<DropIdx>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -210,6 +215,11 @@ impl Scope {
             DropKind::Value => true,
             DropKind::Storage => false,
         })
+    }
+
+    fn invalidate_cache(&mut self) {
+        self.cached_unwind_block = None;
+        self.cached_generator_drop_block = None;
     }
 }
 
@@ -387,6 +397,8 @@ impl<'tcx> Scopes<'tcx> {
             region_scope_span: region_scope.1.span,
             drops: vec![],
             moved_locals: vec![],
+            cached_unwind_block: None,
+            cached_generator_drop_block: None,
         });
     }
 
@@ -405,10 +417,6 @@ impl<'tcx> Scopes<'tcx> {
             .unwrap_or_else(|| {
                 span_bug!(span, "region_scope {:?} does not enclose", region_scope)
             })
-    }
-
-    fn iter_mut(&mut self) -> impl DoubleEndedIterator<Item=&mut Scope> + '_ {
-        self.scopes.iter_mut().rev()
     }
 
     /// Returns the topmost active scope, which is known to be alive until
@@ -611,10 +619,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             self.scopes.breakable_scopes[break_index].continue_drops.as_mut().unwrap()
         };
-
-        let mut drop_idx = DropIdx::from_u32(destination.is_none() as u32);
-        for drop in scope_drops {
-            drop_idx = drops.add_drop(*drop, drop_idx);
+        let mut drop_idx = ROOT_NODE;
+        for scope in &self.scopes.scopes[scope_index + 1..] {
+            for drop in &scope.drops {
+                drop_idx = drops.add_drop(*drop, drop_idx);
+            }
         }
         drops.add_entry(block, drop_idx);
         // `build_drop_tree` doesn't have access to our source_info, so we
@@ -669,19 +678,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             is_generator && needs_cleanup,
             self.arg_count,
         ))
-    }
-
-    /// Sets up a path that performs all required cleanup for dropping a generator.
-    ///
-    /// This path terminates in GeneratorDrop. Returns the start of the path.
-    /// None indicates there’s no cleanup to do at this point.
-    crate fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
-        let drops = self.scopes.scopes.iter().flat_map(|scope| &scope.drops);
-        let mut next_drop = ROOT_NODE;
-        for drop in drops {
-            next_drop = self.scopes.generator_drops.add_drop(*drop, next_drop);
-        }
-        self.scopes.generator_drops.add_entry(yield_block, next_drop);
     }
 
     /// Creates a new source scope, nested in the current one.
@@ -778,8 +774,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         local: Local,
         drop_kind: DropKind,
     ) {
-        // TODO: add back in caching.
-        let _needs_drop = match drop_kind {
+        let needs_drop = match drop_kind {
             DropKind::Value => {
                 if !self.hir.needs_drop(self.local_decls[local].ty) { return }
                 true
@@ -796,21 +791,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         };
 
-        let scope = self.scopes.iter_mut()
-            .find(|scope| scope.region_scope == region_scope)
-            .unwrap_or_else(|| {
-                span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
-            });
+        let invalidate_caches = needs_drop || self.is_generator;
+        for scope in self.scopes.scopes.iter_mut().rev() {
+            if invalidate_caches {
+                scope.invalidate_cache();
+            }
 
-        let region_scope_span = region_scope.span(self.hir.tcx(), &self.hir.region_scope_tree);
-        // Attribute scope exit drops to scope's closing brace.
-        let scope_end = self.hir.tcx().sess.source_map().end_point(region_scope_span);
+            if scope.region_scope == region_scope {
+                let region_scope_span = region_scope.span(self.hir.tcx(), &self.hir.region_scope_tree);
+                // Attribute scope exit drops to scope's closing brace.
+                let scope_end = self.hir.tcx().sess.source_map().end_point(region_scope_span);
 
-        scope.drops.push(DropData {
-            source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
-            local,
-            kind: drop_kind,
-        });
+                scope.drops.push(DropData {
+                    source_info: SourceInfo { span: scope_end, scope: scope.source_scope },
+                    local,
+                    kind: drop_kind,
+                });
+
+                return;
+            }
+        }
+
+        span_bug!(span, "region scope {:?} not in scope to drop {:?}", region_scope, local);
     }
 
     /// Indicates that the "local operand" stored in `local` is
@@ -857,7 +859,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             Some(local_scope) => {
-                self.scopes.iter_mut().find(|scope| scope.region_scope == local_scope)
+                self.scopes.scopes.iter_mut().rfind(|scope| scope.region_scope == local_scope)
                     .unwrap_or_else(|| bug!("scope {:?} not found in scope list!", local_scope))
             }
         };
@@ -914,6 +916,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     // Manually drop the condition on both branches.
                     let top_scope = self.scopes.scopes.last_mut().unwrap();
                     let top_drop_data = top_scope.drops.pop().unwrap();
+                    if self.is_generator {
+                        top_scope.invalidate_cache();
+                    }
 
                     match top_drop_data.kind {
                         DropKind::Value { .. } => {
@@ -950,14 +955,20 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     fn diverge_cleanup(&mut self) -> DropIdx {
         let is_generator = self.is_generator;
-        let drops = self.scopes.scopes.iter()
-            .flat_map(|scope| &scope.drops)
-            .filter(|drop| is_generator || drop.kind == DropKind::Value);
-        let mut next_drop = ROOT_NODE;
-        for drop in drops {
-            next_drop = self.scopes.unwind_drops.add_drop(*drop, next_drop);
+        let (uncached_scope, mut cached_drop) = self.scopes.scopes.iter().enumerate().rev()
+            .find_map(|(scope_idx, scope)| {
+                scope.cached_unwind_block.map(|cached_block| (scope_idx + 1, cached_block))
+            })
+            .unwrap_or((0, ROOT_NODE));
+        for scope in &mut self.scopes.scopes[uncached_scope..] {
+            for drop in &scope.drops {
+                if is_generator || drop.kind == DropKind::Value {
+                    cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
+                }
+            }
+            scope.cached_unwind_block = Some(cached_drop);
         }
-        next_drop
+        cached_drop
     }
 
     /// Prepares to create a path that performs all required cleanup for
@@ -968,6 +979,25 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     crate fn diverge_from(&mut self, start: BasicBlock) {
         let next_drop = self.diverge_cleanup();
         self.scopes.unwind_drops.add_entry(start, next_drop);
+    }
+
+    /// Sets up a path that performs all required cleanup for dropping a generator.
+    ///
+    /// This path terminates in GeneratorDrop. Returns the start of the path.
+    /// None indicates there’s no cleanup to do at this point.
+    crate fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
+        let (uncached_scope, mut cached_drop) = self.scopes.scopes.iter().enumerate().rev()
+            .find_map(|(scope_idx, scope)| {
+                scope.cached_generator_drop_block.map(|cached_block| (scope_idx + 1, cached_block))
+            })
+            .unwrap_or((0, ROOT_NODE));
+        for scope in &mut self.scopes.scopes[uncached_scope..] {
+            for drop in &scope.drops {
+                cached_drop = self.scopes.generator_drops.add_drop(*drop, cached_drop);
+            }
+            scope.cached_generator_drop_block = Some(cached_drop);
+        }
+        self.scopes.generator_drops.add_entry(yield_block, cached_drop);
     }
 
     /// Utility function for *non*-scope code to build their own drops
@@ -1027,6 +1057,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert_eq!(top_scope.region_scope, region_scope);
 
         top_scope.drops.clear();
+        top_scope.invalidate_cache();
     }
 }
 
