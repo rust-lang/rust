@@ -1,10 +1,10 @@
 //! FIXME: write short doc here
 
 use crate::{db::RootDatabase, FilePosition};
+use hir::db::AstDatabase;
 use ra_db::SourceDatabase;
 use rustc_hash::FxHashMap;
 
-use hir::db::AstDatabase;
 use ra_syntax::{
     algo::{find_node_at_offset, replace_descendants},
     ast::{self},
@@ -47,13 +47,14 @@ fn expand_macro_recur(
 ) -> Option<SyntaxNode> {
     let analyzer = hir::SourceAnalyzer::new(db, source, None);
     let expansion = analyzer.expand(db, &macro_call)?;
-    let expanded: SyntaxNode = db.parse_or_expand(expansion.file_id())?;
+    let new_source = expansion.source(db);
+    let expanded: SyntaxNode = db.parse_or_expand(new_source.file_id)?;
 
     let children = expanded.descendants().filter_map(ast::MacroCall::cast);
     let mut replaces = FxHashMap::default();
 
     for child in children.into_iter() {
-        let source = hir::Source::new(expansion.file_id(), source.ast);
+        let source = new_source.with_ast(source.ast);
         let new_node = expand_macro_recur(db, source, &child)?;
 
         replaces.insert(child.syntax().clone().into(), new_node.into());
