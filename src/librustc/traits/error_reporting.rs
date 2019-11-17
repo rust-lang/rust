@@ -1244,6 +1244,42 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         Obligation::new(cause, param_env, new_trait_ref.to_predicate())
     }
 
+    /// Given a closure's `DefId`, return the given name of the closure.
+    ///
+    /// This doesn't account for reassignments, but it's only used for suggestions.
+    fn get_closure_name(
+        &self,
+        def_id: DefId,
+        err: &mut DiagnosticBuilder<'_>,
+        msg: &str,
+    ) -> Option<String> {
+        let get_name = |err: &mut DiagnosticBuilder<'_>, kind: &hir::PatKind| -> Option<String> {
+            // Get the local name of this closure. This can be inaccurate because
+            // of the possibility of reassignment, but this should be good enough.
+            match &kind {
+                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
+                    Some(format!("{}", name))
+                }
+                _ => {
+                    err.note(&msg);
+                    None
+                }
+            }
+        };
+
+        let hir = self.tcx.hir();
+        let hir_id = hir.as_local_hir_id(def_id)?;
+        let parent_node = hir.get_parent_node(hir_id);
+        match hir.find(parent_node) {
+            Some(hir::Node::Stmt(hir::Stmt {
+                kind: hir::StmtKind::Local(local), ..
+            })) => get_name(err, &local.pat.kind),
+            // Different to previous arm because one is `&hir::Local` and the other
+            // is `P<hir::Local>`.
+            Some(hir::Node::Local(local)) => get_name(err, &local.pat.kind),
+            _ => return None,
+        }
+    }
 
     /// We tried to apply the bound to an `fn` or closure. Check whether calling it would
     /// evaluate to a type that *would* satisfy the trait binding. If it would, suggest calling
@@ -1274,19 +1310,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             obligation.param_env,
         );
 
-        let get_name = |err: &mut DiagnosticBuilder<'_>, kind: &hir::PatKind| -> Option<String> {
-            // Get the local name of this closure. This can be inaccurate because
-            // of the possibility of reassignment, but this should be good enough.
-            match &kind {
-                hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
-                    Some(format!("{}", name))
-                }
-                _ => {
-                    err.note(&msg);
-                    None
-                }
-            }
-        };
         match self.evaluate_obligation(&obligation) {
             Ok(EvaluationResult::EvaluatedToOk) |
             Ok(EvaluationResult::EvaluatedToOkModuloRegions) |
@@ -1301,29 +1324,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 ..
             })) => {
                 err.span_label(*span, "consider calling this closure");
-                let hir_id = match hir.as_local_hir_id(def_id) {
-                    Some(hir_id) => hir_id,
+                let name = match self.get_closure_name(def_id, err, &msg) {
+                    Some(name) => name,
                     None => return,
-                };
-                let parent_node = hir.get_parent_node(hir_id);
-                let name = match hir.find(parent_node) {
-                    Some(hir::Node::Stmt(hir::Stmt {
-                        kind: hir::StmtKind::Local(local), ..
-                    })) => match get_name(err, &local.pat.kind) {
-                        Some(name) => name,
-                        None => return,
-                    },
-                    // Different to previous arm because one is `&hir::Local` and the other
-                    // is `P<hir::Local>`.
-                    Some(hir::Node::Local(local)) => match get_name(err, &local.pat.kind) {
-                        Some(name) => name,
-                        None => return,
-                    },
-                    _ => return,
                 };
                 let args = decl.inputs.iter()
                     .map(|_| "_")
-                    .collect::<Vec<_>>().join(", ");
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 format!("{}({})", name, args)
             }
             Some(hir::Node::Item(hir::Item {
@@ -1336,9 +1344,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let args = body.params.iter()
                     .map(|arg| match &arg.pat.kind {
                         hir::PatKind::Binding(_, _, ident, None)
+                        // FIXME: provide a better suggestion when encountering `SelfLower`, it
+                        // should suggest a method call.
                         if ident.name != kw::SelfLower => ident.to_string(),
                         _ => "_".to_string(),
-                    }).collect::<Vec<_>>().join(", ");
+                    })
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 format!("{}({})", ident, args)
             }
             _ => return,
