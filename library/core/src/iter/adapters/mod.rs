@@ -69,10 +69,6 @@ pub unsafe trait SourceIter {
     /// rely on it not being modified.
     ///
     /// Adapters must not rely on exclusive ownership or immutability of the source.
-    /// For example a peeking adapter could either exploit [`TrustedRandomAccess`] to look ahead
-    /// or implement this trait, but it cannot do both because a caller could call `next()` or any
-    /// other mutating method on the source between iteration steps and thus invalidate the peeked
-    /// values.
     /// The lack of exclusive ownership also requires that adapters must uphold the source's
     /// public API even when they have crate- or module-internal access.
     ///
@@ -84,7 +80,6 @@ pub unsafe trait SourceIter {
     /// access to the underlying storage of an iterator while restricting any statefulness
     /// and side-effects of the pipeline stages from affecting or relying on that storage.
     ///
-    /// [`TrustedRandomAccess`]: trait.TrustedRandomAccess.html
     /// [`next()`]: trait.Iterator.html#method.next
     fn as_inner(&mut self) -> &mut Self::Source;
 }
