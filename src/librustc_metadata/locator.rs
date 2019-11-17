@@ -281,8 +281,14 @@ crate struct CrateLocator<'a> {
 }
 
 crate struct CratePaths {
-    pub name: Symbol,
-    pub source: CrateSource,
+    name: Symbol,
+    source: CrateSource,
+}
+
+impl CratePaths {
+    crate fn new(name: Symbol, source: CrateSource) -> CratePaths {
+        CratePaths { name, source }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]

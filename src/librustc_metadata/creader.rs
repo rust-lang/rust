@@ -207,7 +207,7 @@ impl<'a> CrateLoader<'a> {
         let root = if let Some(root) = root {
             root
         } else {
-            crate_paths = CratePaths { name: crate_root.name, source: source.clone() };
+            crate_paths = CratePaths::new(crate_root.name, source.clone());
             &crate_paths
         };
 
