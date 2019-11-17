@@ -41,3 +41,9 @@ fn entropy_rng() {
 fn num_cpus() {
     assert_eq!(num_cpus::get(), 1);
 }
+
+#[test]
+#[should_panic]
+fn do_panic() { // In large, friendly letters :)
+    panic!("Explicit panic from test!");
+}
