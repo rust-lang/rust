@@ -410,7 +410,7 @@ impl cstore::CStore {
         let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
 
         let data = self.get_crate_data(id.krate);
-        if data.is_proc_macro_crate() {
+        if data.root.is_proc_macro_crate() {
             return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
         }
 

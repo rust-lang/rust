@@ -607,10 +607,6 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    fn is_proc_macro_crate(&self) -> bool {
-        self.root.is_proc_macro_crate()
-    }
-
     fn is_proc_macro(&self, id: DefIndex) -> bool {
         self.root.proc_macro_data.and_then(|data| data.decode(self).find(|x| *x == id)).is_some()
     }
@@ -895,7 +891,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     /// Iterates over the language items in the given crate.
     fn get_lang_items(&self, tcx: TyCtxt<'tcx>) -> &'tcx [(DefId, usize)] {
-        if self.is_proc_macro_crate() {
+        if self.root.is_proc_macro_crate() {
             // Proc macro crates do not export any lang-items to the target.
             &[]
         } else {
@@ -911,7 +907,7 @@ impl<'a, 'tcx> CrateMetadata {
         &self,
         tcx: TyCtxt<'tcx>,
     ) -> &'tcx FxHashMap<Symbol, DefId> {
-        tcx.arena.alloc(if self.is_proc_macro_crate() {
+        tcx.arena.alloc(if self.root.is_proc_macro_crate() {
             // Proc macro crates do not export any diagnostic-items to the target.
             Default::default()
         } else {
@@ -1219,7 +1215,7 @@ impl<'a, 'tcx> CrateMetadata {
         tcx: TyCtxt<'tcx>,
         filter: Option<DefId>,
     ) -> &'tcx [DefId] {
-        if self.is_proc_macro_crate() {
+        if self.root.is_proc_macro_crate() {
             // proc-macro crates export no trait impls.
             return &[]
         }
@@ -1263,7 +1259,7 @@ impl<'a, 'tcx> CrateMetadata {
 
 
     fn get_native_libraries(&self, sess: &Session) -> Vec<NativeLibrary> {
-        if self.is_proc_macro_crate() {
+        if self.root.is_proc_macro_crate() {
             // Proc macro crates do not have any *target* native libraries.
             vec![]
         } else {
@@ -1272,7 +1268,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     fn get_foreign_modules(&self, tcx: TyCtxt<'tcx>) -> &'tcx [ForeignModule] {
-        if self.is_proc_macro_crate() {
+        if self.root.is_proc_macro_crate() {
             // Proc macro crates do not have any *target* foreign modules.
             &[]
         } else {
@@ -1295,7 +1291,7 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     fn get_missing_lang_items(&self, tcx: TyCtxt<'tcx>) -> &'tcx [lang_items::LangItem] {
-        if self.is_proc_macro_crate() {
+        if self.root.is_proc_macro_crate() {
             // Proc macro crates do not depend on any target weak lang-items.
             &[]
         } else {
@@ -1319,7 +1315,7 @@ impl<'a, 'tcx> CrateMetadata {
         &self,
         tcx: TyCtxt<'tcx>,
     ) -> Vec<(ExportedSymbol<'tcx>, SymbolExportLevel)> {
-        if self.is_proc_macro_crate() {
+        if self.root.is_proc_macro_crate() {
             // If this crate is a custom derive crate, then we're not even going to
             // link those in so we skip those crates.
             vec![]
