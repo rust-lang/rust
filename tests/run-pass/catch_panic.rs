@@ -1,3 +1,4 @@
+// ignore-windows: Unwind panicking does not currently work on Windows
 use std::panic::catch_unwind;
 use std::cell::Cell;
 
