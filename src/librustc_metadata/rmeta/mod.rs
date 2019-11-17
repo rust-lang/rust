@@ -14,6 +14,7 @@ use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::MetadataRef;
 use rustc_serialize::Encodable;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
@@ -24,6 +25,7 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 pub use decoder::{provide, provide_extern};
+crate use decoder::{ImportedSourceFile, MetadataBlob};
 
 mod decoder;
 mod encoder;

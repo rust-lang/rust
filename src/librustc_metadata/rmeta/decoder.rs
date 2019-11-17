@@ -1,6 +1,6 @@
 // Decoding metadata from a single crate's metadata
 
-use crate::cstore::{self, CrateMetadata, MetadataBlob};
+use crate::cstore::CrateMetadata;
 use crate::rmeta::*;
 use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
 
@@ -43,6 +43,19 @@ use proc_macro::bridge::client::ProcMacro;
 pub use cstore_impl::{provide, provide_extern};
 
 mod cstore_impl;
+
+crate struct MetadataBlob(MetadataRef);
+
+/// Holds information about a syntax_pos::SourceFile imported from another crate.
+/// See `imported_source_files()` for more information.
+crate struct ImportedSourceFile {
+    /// This SourceFile's byte-offset within the source_map of its original crate
+    original_start_pos: syntax_pos::BytePos,
+    /// The end of this SourceFile within the source_map of its original crate
+    original_end_pos: syntax_pos::BytePos,
+    /// The imported SourceFile's representation within the local source_map
+    translated_source_file: Lrc<syntax_pos::SourceFile>,
+}
 
 crate struct DecodeContext<'a, 'tcx> {
     opaque: opaque::Decoder<'a>,
@@ -393,7 +406,11 @@ for DecodeContext<'a, 'tcx> {
 
 implement_ty_decoder!( DecodeContext<'a, 'tcx> );
 
-impl<'tcx> MetadataBlob {
+impl MetadataBlob {
+    crate fn new(metadata_ref: MetadataRef) -> MetadataBlob {
+        MetadataBlob(metadata_ref)
+    }
+
     crate fn is_compatible(&self) -> bool {
         self.raw_bytes().starts_with(METADATA_HEADER)
     }
@@ -1296,7 +1313,7 @@ impl<'a, 'tcx> CrateMetadata {
     fn imported_source_files(
         &'a self,
         local_source_map: &source_map::SourceMap,
-    ) -> &[cstore::ImportedSourceFile] {
+    ) -> &[ImportedSourceFile] {
         self.source_map_import_info.init_locking(|| {
             let external_source_map = self.root.source_map.decode(self);
 
@@ -1351,7 +1368,7 @@ impl<'a, 'tcx> CrateMetadata {
                        local_version.name, start_pos, end_pos,
                        local_version.start_pos, local_version.end_pos);
 
-                cstore::ImportedSourceFile {
+                ImportedSourceFile {
                     original_start_pos: start_pos,
                     original_end_pos: end_pos,
                     translated_source_file: local_version,

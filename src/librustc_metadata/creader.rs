@@ -1,8 +1,8 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
-use crate::cstore::{self, CStore, MetadataBlob};
+use crate::cstore::{self, CStore};
 use crate::locator::{self, CratePaths};
-use crate::rmeta::{CrateRoot, CrateDep};
+use crate::rmeta::{CrateRoot, CrateDep, MetadataBlob};
 use rustc_data_structures::sync::{Lock, Once, AtomicCell};
 
 use rustc::hir::def_id::CrateNum;

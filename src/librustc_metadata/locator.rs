@@ -212,9 +212,8 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use crate::cstore::MetadataBlob;
 use crate::creader::Library;
-use crate::rmeta::{METADATA_HEADER, rustc_version};
+use crate::rmeta::{METADATA_HEADER, rustc_version, MetadataBlob};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
@@ -907,7 +906,7 @@ fn get_metadata_section_imp(target: &Target,
             rustc_erase_owner!(OwningRef::new(StableDerefMmap(mmap)).map_owner_box())
         }
     };
-    let blob = MetadataBlob(raw_bytes);
+    let blob = MetadataBlob::new(raw_bytes);
     if blob.is_compatible() {
         Ok(blob)
     } else {

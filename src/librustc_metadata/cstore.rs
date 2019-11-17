@@ -1,7 +1,7 @@
 // The crate store - a central repo for information collected about external
 // crates and libraries
 
-use crate::rmeta;
+use crate::rmeta::{CrateRoot, ImportedSourceFile, Lazy, MetadataBlob};
 use rustc::dep_graph::DepNodeIndex;
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::map::definitions::DefPathTable;
@@ -9,13 +9,12 @@ use rustc::middle::cstore::{CrateSource, DepKind, ExternCrate};
 use rustc::mir::interpret::AllocDecodingState;
 use rustc_index::vec::IndexVec;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::sync::{Lrc, Lock, MetadataRef, Once, AtomicCell};
+use rustc_data_structures::sync::{Lrc, Lock, Once, AtomicCell};
 use rustc_data_structures::svh::Svh;
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax_expand::base::SyntaxExtension;
 use syntax::expand::allocator::AllocatorKind;
-use syntax_pos;
 use proc_macro::bridge::client::ProcMacro;
 
 pub use crate::rmeta::{provide, provide_extern};
@@ -25,19 +24,6 @@ pub use crate::rmeta::{provide, provide_extern};
 // crate may refer to types in other external crates, and each has their
 // own crate numbers.
 crate type CrateNumMap = IndexVec<CrateNum, CrateNum>;
-
-crate struct MetadataBlob(pub MetadataRef);
-
-/// Holds information about a syntax_pos::SourceFile imported from another crate.
-/// See `imported_source_files()` for more information.
-crate struct ImportedSourceFile {
-    /// This SourceFile's byte-offset within the source_map of its original crate
-    pub original_start_pos: syntax_pos::BytePos,
-    /// The end of this SourceFile within the source_map of its original crate
-    pub original_end_pos: syntax_pos::BytePos,
-    /// The imported SourceFile's representation within the local source_map
-    pub translated_source_file: Lrc<syntax_pos::SourceFile>,
-}
 
 crate struct CrateMetadata {
     /// The primary crate data - binary metadata blob.
@@ -50,7 +36,7 @@ crate struct CrateMetadata {
     /// lifetime is only used behind `Lazy`, and therefore acts like an
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
     /// is being used to decode those values.
-    crate root: rmeta::CrateRoot<'static>,
+    crate root: CrateRoot<'static>,
     /// For each definition in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
     /// hashmap, which gives the reverse mapping. This allows us to
@@ -60,7 +46,7 @@ crate struct CrateMetadata {
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
     /// so pre-decoding can probably be avoided.
-    crate trait_impls: FxHashMap<(u32, DefIndex), rmeta::Lazy<[DefIndex]>>,
+    crate trait_impls: FxHashMap<(u32, DefIndex), Lazy<[DefIndex]>>,
     /// Proc macro descriptions for this crate, if it's a proc macro crate.
     crate raw_proc_macros: Option<&'static [ProcMacro]>,
     /// Source maps for code from the crate.
