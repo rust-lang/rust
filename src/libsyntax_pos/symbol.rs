@@ -1104,6 +1104,15 @@ pub struct SymbolStr {
     string: &'static str,
 }
 
+/// FIXME: This is not needed once we are able to fix the Deref coercion issue.
+/// Issue: https://github.com/rust-lang/rust/issues/51916
+impl SymbolStr {
+    #[inline]
+    pub fn get_str(&self) -> &str {
+        self.string
+    }
+}
+
 // This impl allows a `SymbolStr` to be directly equated with a `String` or
 // `&str`.
 impl<T: std::ops::Deref<Target = str>> std::cmp::PartialEq<T> for SymbolStr {
@@ -1120,6 +1129,11 @@ impl !Sync for SymbolStr {}
 /// - `&*ss` is a `&str`;
 /// - `&ss as &str` is a `&str`, which means that `&ss` can be passed to a
 ///   function expecting a `&str`.
+/// 
+/// FIXME: This has no meaning anymore since the addition of implementations
+/// of `Add<char> for String`, `Add<&&str> for String`, and `Add<&&String> for String`.
+/// Due to the outstanding Deref coercion issue this Deref implementation gets ignored.
+/// Issue: https://github.com/rust-lang/rust/issues/51916
 impl std::ops::Deref for SymbolStr {
     type Target = str;
     #[inline]

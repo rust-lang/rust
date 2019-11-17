@@ -1084,7 +1084,9 @@ impl<'a> Parser<'a> {
                 if let token::Literal(token::Lit { kind: token::Integer, symbol, suffix })
                         = next_token.kind {
                     if self.token.span.hi() == next_token.span.lo() {
-                        let s = String::from("0.") + &symbol.as_str();
+                        // FIXME: Should just be `&symbol.as_str()` but can't as of now due to Deref coercion
+                        // Issue: https://github.com/rust-lang/rust/issues/51916
+                        let s = String::from("0.") + &symbol.as_str().get_str();
                         let kind = TokenKind::lit(token::Float, Symbol::intern(&s), suffix);
                         return Some(Token::new(kind, self.token.span.to(next_token.span)));
                     }
