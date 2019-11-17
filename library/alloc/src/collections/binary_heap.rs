@@ -1175,7 +1175,7 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(issue = "0", feature = "inplace_iteration")]
 unsafe impl<T> SourceIter for IntoIter<T> {
-    type Source = crate::vec::IntoIter<T>;
+    type Source = impl Iterator<Item = T>;
 
     #[inline]
     fn as_inner(&mut self) -> &mut Self::Source {
