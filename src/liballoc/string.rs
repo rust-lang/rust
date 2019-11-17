@@ -1982,8 +1982,9 @@ impl Add<&str> for String {
     }
 }
 
+// This had to be added to avoid breakage after adding `impl Add<char> for String`
 #[allow(missing_docs)]
-#[stable(feature = "add_string_and_dbl_ref_str", since = "1.41.0")]
+#[stable(feature = "extra_add_string_and_dbl_ref_str", since = "1.41.0")]
 impl Add<&&str> for String {
     type Output = String;
 
@@ -1994,44 +1995,9 @@ impl Add<&&str> for String {
     }
 }
 
-/// Implements the `+` operator for concatenating two `String`s.
-///
-/// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
-/// necessary). This is done to avoid allocating a new `String` and copying the entire contents on
-/// every operation, which would lead to `O(n^2)` running time when building an `n`-byte string by
-/// repeated concatenation.
-///
-/// The string on the right-hand side is only borrowed; its contents are copied into the returned
-/// `String`.
-///
-/// # Examples
-///
-/// Concatenating two `String`s takes the first by value and borrows the second:
-///
-/// ```
-/// let a = String::from("hello");
-/// let b = String::from(" world");
-/// let c = a + &b;
-/// // `a` is moved and can no longer be used here.
-/// ```
-///
-/// If you want to keep using the first `String`, you can clone it and append to the clone instead:
-///
-/// ```
-/// let a = String::from("hello");
-/// let b = String::from(" world");
-/// let c = a.clone() + &b;
-/// // `a` is still valid here.
-/// ```
-///
-/// Concatenating `&str` slices can be done by converting the first to a `String`:
-///
-/// ```
-/// let a = "hello";
-/// let b = " world";
-/// let c = a.to_string() + b;
-/// ```
-#[stable(feature = "add_string_and_ref_string", since = "1.41.0")]
+// This had to be added to avoid breakage after adding `impl Add<char> for String`
+#[allow(missing_docs)]
+#[stable(feature = "extra_add_string_and_ref_string", since = "1.41.0")]
 impl Add<&String> for String {
     type Output = String;
 
@@ -2042,8 +2008,9 @@ impl Add<&String> for String {
     }
 }
 
+// This had to be added to avoid breakage after adding `impl Add<char> for String`
 #[allow(missing_docs)]
-#[stable(feature = "add_string_and_dbl_ref_string", since = "1.41.0")]
+#[stable(feature = "extra_add_string_and_dbl_ref_string", since = "1.41.0")]
 impl Add<&&String> for String {
     type Output = String;
 
@@ -2114,7 +2081,7 @@ impl AddAssign<&str> for String {
 /// Implements the `+=` operator for appending to a `String`.
 ///
 /// This has the same behavior as the [`push_str`][String::push_str] method.
-#[stable(feature = "stringaddassign_string", since = "1.41.0")]
+#[stable(feature = "string_add_assign_string", since = "1.41.0")]
 impl AddAssign<&String> for String {
     #[inline]
     fn add_assign(&mut self, other: &String) {
@@ -2125,7 +2092,7 @@ impl AddAssign<&String> for String {
 /// Implements the `+=` operator for appending a `char` to a `String`.
 ///
 /// This has the same behavior as the [`push`][String::push] method.
-#[stable(feature = "stringaddassign_char", since = "1.41.0")]
+#[stable(feature = "string_add_assign_char", since = "1.41.0")]
 impl AddAssign<char> for String {
     #[inline]
     fn add_assign(&mut self, other: char) {
