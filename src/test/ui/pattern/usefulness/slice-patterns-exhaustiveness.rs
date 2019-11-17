@@ -12,11 +12,11 @@ fn main() {
         [true, .., true] => {}
     }
     match s3 {
-    //~^ ERROR `&[false, .., _]` not covered
+    //~^ ERROR `&[false, ..]` not covered
         [true, .., true] => {}
     }
     match s10 {
-    //~^ ERROR `&[false, .., _]` not covered
+    //~^ ERROR `&[false, ..]` not covered
         [true, .., true] => {}
     }
 

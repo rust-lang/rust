@@ -957,8 +957,20 @@ impl<'tcx> Constructor<'tcx> {
                     PatKind::Slice { prefix: subpatterns.collect(), slice: None, suffix: vec![] }
                 }
                 VarLen(prefix, _) => {
-                    let prefix = subpatterns.by_ref().take(prefix as usize).collect();
-                    let suffix = subpatterns.collect();
+                    let mut prefix: Vec<_> = subpatterns.by_ref().take(prefix as usize).collect();
+                    let mut suffix: Vec<_> = subpatterns.collect();
+                    if slice.array_len.is_some() {
+                        // Improves diagnostics a bit: if the type is a known-size array, instead
+                        // of reporting `[x, _, .., _, y]`, we prefer to report `[x, .., y]`.
+                        // This is incorrect if the size is not known, since `[_, ..]` captures
+                        // arrays of lengths `>= 1` whereas `[..]` captures any length.
+                        while !suffix.is_empty() && suffix.first().unwrap().is_wildcard() {
+                            suffix.remove(0);
+                        }
+                        while !prefix.is_empty() && prefix.last().unwrap().is_wildcard() {
+                            prefix.pop();
+                        }
+                    }
                     let wild = Pat::wildcard_from_ty(ty);
                     PatKind::Slice { prefix, slice: Some(wild), suffix }
                 }
