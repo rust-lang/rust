@@ -5,11 +5,12 @@ test test::rng ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
 
-running 4 tests
+running 5 tests
+test do_panic ... ok
 test entropy_rng ... ok
 test num_cpus ... ok
 test simple1 ... ok
 test simple2 ... ok
 
-test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 
