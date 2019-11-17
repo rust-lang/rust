@@ -240,15 +240,8 @@ pub fn register_plugins<'a>(
         }
     });
 
-    let Registry {
-        syntax_exts,
-        llvm_passes,
-        attributes,
-        ..
-    } = registry;
-
+    let Registry { syntax_exts, llvm_passes, .. } = registry;
     *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-    *sess.plugin_attributes.borrow_mut() = attributes;
 
     Ok((krate, PluginInfo { syntax_exts }, Lrc::new(lint_store)))
 }

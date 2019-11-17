@@ -437,15 +437,6 @@ impl<'a> Resolver<'a> {
                         }));
                     }
                 }
-                Scope::LegacyPluginHelpers => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
-                    if filter_fn(res) {
-                        let plugin_attributes = this.session.plugin_attributes.borrow();
-                        suggestions.extend(plugin_attributes.iter().map(|(name, _)| {
-                            TypoSuggestion::from_res(*name, res)
-                        }));
-                    }
-                }
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
