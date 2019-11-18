@@ -6,7 +6,7 @@ const A: u32 = 3;
 
 struct Const<const P: *const u32>;
 
-impl<const P: *const u32> Const<{P}> {
+impl<const P: *const u32> Const<P> {
     fn get() -> u32 {
         unsafe {
             *P

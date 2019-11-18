@@ -3,11 +3,11 @@
 #![feature(const_generics)]
 //~^ WARN the feature `const_generics` is incomplete and may cause the compiler to crash
 
-struct Foo<T, const N: usize>([T; {N}]);
+struct Foo<T, const N: usize>([T; N]);
 
-impl<T, const N: usize> Foo<T, {N}> {
+impl<T, const N: usize> Foo<T, N> {
     fn foo(&self) -> usize {
-        {N}
+        N
     }
 }
 

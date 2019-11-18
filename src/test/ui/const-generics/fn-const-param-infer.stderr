@@ -7,10 +7,10 @@ LL | #![feature(const_generics, const_compare_raw_pointers)]
    = note: `#[warn(incomplete_features)]` on by default
 
 error[E0308]: mismatched types
-  --> $DIR/fn-const-param-infer.rs:16:33
+  --> $DIR/fn-const-param-infer.rs:16:31
    |
-LL |     let _: Checked<{not_one}> = Checked::<{not_two}>;
-   |                                 ^^^^^^^^^^^^^^^^^^^^ expected `not_one`, found `not_two`
+LL |     let _: Checked<not_one> = Checked::<not_two>;
+   |                               ^^^^^^^^^^^^^^^^^^ expected `not_one`, found `not_two`
    |
    = note: expected type `Checked<not_one>`
               found type `Checked<not_two>`
@@ -25,10 +25,10 @@ LL |     let _ = Checked::<{generic_arg::<u32>}>;
               found type `fn(u32) -> bool {generic_arg::<u32>}`
 
 error[E0282]: type annotations needed
-  --> $DIR/fn-const-param-infer.rs:22:24
+  --> $DIR/fn-const-param-infer.rs:22:23
    |
-LL |     let _ = Checked::<{generic}>;
-   |                        ^^^^^^^ cannot infer type for `T`
+LL |     let _ = Checked::<generic>;
+   |                       ^^^^^^^ cannot infer type for `T`
 
 error[E0308]: mismatched types
   --> $DIR/fn-const-param-infer.rs:25:40
