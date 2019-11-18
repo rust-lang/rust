@@ -13,7 +13,7 @@ use crate::LlvmCodegenBackend;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, run_assembler};
 use rustc_codegen_ssa::traits::*;
-use rustc::session::config::{self, OutputType, Passes, Lto, SwitchWithOptPath};
+use rustc::session::config::{self, OutputType, Passes, Lto, Sanitizer, SwitchWithOptPath};
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, CompiledModule};
@@ -323,7 +323,7 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
-    if config.opt_level.is_some() {
+    if let Some(opt_level) = config.opt_level {
         // Create the two optimizing pass managers. These mirror what clang
         // does, and are by populated by LLVM's default PassManagerBuilder.
         // Each manager has a different set of passes, but they also share
@@ -363,6 +363,28 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 }
             }
 
+            if let Some(sanitizer) = &config.sanitizer {
+                match sanitizer {
+                    Sanitizer::Address => {
+                        let recover = false;
+                        extra_passes.push(llvm::LLVMRustCreateAddressSanitizerFunctionPass(
+                                recover));
+                        extra_passes.push(llvm::LLVMRustCreateModuleAddressSanitizerPass(
+                                recover));
+                    }
+                    Sanitizer::Memory => {
+                        let track_origins = 0;
+                        let recover = false;
+                        extra_passes.push(llvm::LLVMRustCreateMemorySanitizerPass(
+                                track_origins, recover));
+                    }
+                    Sanitizer::Thread => {
+                        extra_passes.push(llvm::LLVMRustCreateThreadSanitizerPass());
+                    }
+                    _ => {}
+                }
+            }
+
             for pass_name in &cgcx.plugin_passes {
                 if let Some(pass) = find_pass(pass_name) {
                     extra_passes.push(pass);
@@ -384,8 +406,7 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
             if !config.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
                 llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
-                let opt_level = config.opt_level.map(|x| to_llvm_opt_settings(x).0)
-                    .unwrap_or(llvm::CodeGenOptLevel::None);
+                let opt_level = to_llvm_opt_settings(opt_level).0;
                 let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal ||
                     (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
                 with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {

@@ -18,6 +18,9 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
+#include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
+#include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
 
@@ -74,6 +77,29 @@ extern "C" LLVMPassRef LLVMRustFindAndCreatePass(const char *PassName) {
     return wrap(PI->createPass());
   }
   return nullptr;
+}
+
+extern "C" LLVMPassRef LLVMRustCreateAddressSanitizerFunctionPass(bool Recover) {
+  const bool CompileKernel = false;
+
+  return wrap(createAddressSanitizerFunctionPass(CompileKernel, Recover));
+}
+
+extern "C" LLVMPassRef LLVMRustCreateModuleAddressSanitizerPass(bool Recover) {
+  const bool CompileKernel = false;
+
+  return wrap(createModuleAddressSanitizerLegacyPassPass(CompileKernel, Recover));
+}
+
+extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool Recover) {
+  const bool CompileKernel = false;
+
+  return wrap(createMemorySanitizerLegacyPassPass(
+      MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
+}
+
+extern "C" LLVMPassRef LLVMRustCreateThreadSanitizerPass() {
+  return wrap(createThreadSanitizerLegacyPassPass());
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
