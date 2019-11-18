@@ -800,6 +800,10 @@ impl HirDisplay for &Ty {
 
 impl HirDisplay for ApplicationTy {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        if f.should_truncate() {
+            return write!(f, "…");
+        }
+
         match self.ctor {
             TypeCtor::Bool => write!(f, "bool")?,
             TypeCtor::Char => write!(f, "char")?,
@@ -901,6 +905,10 @@ impl HirDisplay for ApplicationTy {
 
 impl HirDisplay for ProjectionTy {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        if f.should_truncate() {
+            return write!(f, "…");
+        }
+
         let trait_name = self
             .associated_ty
             .parent_trait(f.db)
@@ -919,6 +927,10 @@ impl HirDisplay for ProjectionTy {
 
 impl HirDisplay for Ty {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        if f.should_truncate() {
+            return write!(f, "…");
+        }
+
         match self {
             Ty::Apply(a_ty) => a_ty.hir_fmt(f)?,
             Ty::Projection(p_ty) => p_ty.hir_fmt(f)?,
@@ -1001,6 +1013,10 @@ impl HirDisplay for Ty {
 
 impl TraitRef {
     fn hir_fmt_ext(&self, f: &mut HirFormatter<impl HirDatabase>, use_as: bool) -> fmt::Result {
+        if f.should_truncate() {
+            return write!(f, "…");
+        }
+
         self.substs[0].hir_fmt(f)?;
         if use_as {
             write!(f, " as ")?;
@@ -1031,6 +1047,10 @@ impl HirDisplay for &GenericPredicate {
 
 impl HirDisplay for GenericPredicate {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result {
+        if f.should_truncate() {
+            return write!(f, "…");
+        }
+
         match self {
             GenericPredicate::Implemented(trait_ref) => trait_ref.hir_fmt(f)?,
             GenericPredicate::Projection(projection_pred) => {

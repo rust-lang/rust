@@ -87,7 +87,7 @@ export class HintsUpdater {
                 range: hint.range,
                 renderOptions: {
                     after: {
-                        contentText: `: ${this.truncateHint(hint.label)}`
+                        contentText: `: ${hint.label}`
                     }
                 }
             }));
@@ -96,18 +96,6 @@ export class HintsUpdater {
                 newDecorations
             );
         }
-    }
-
-    private truncateHint(label: string): string {
-        if (!Server.config.maxInlayHintLength) {
-            return label;
-        }
-
-        let newLabel = label.substring(0, Server.config.maxInlayHintLength);
-        if (label.length > Server.config.maxInlayHintLength) {
-            newLabel += '…';
-        }
-        return newLabel;
     }
 
     private async queryHints(documentUri: string): Promise<InlayHint[] | null> {

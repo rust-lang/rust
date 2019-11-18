@@ -7,15 +7,30 @@ use crate::db::HirDatabase;
 pub struct HirFormatter<'a, 'b, DB> {
     pub db: &'a DB,
     fmt: &'a mut fmt::Formatter<'b>,
+    buf: String,
+    curr_size: usize,
+    max_size: Option<usize>,
 }
 
 pub trait HirDisplay {
     fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> fmt::Result;
+
     fn display<'a, DB>(&'a self, db: &'a DB) -> HirDisplayWrapper<'a, DB, Self>
     where
         Self: Sized,
     {
-        HirDisplayWrapper(db, self)
+        HirDisplayWrapper(db, self, None)
+    }
+
+    fn display_truncated<'a, DB>(
+        &'a self,
+        db: &'a DB,
+        max_size: Option<usize>,
+    ) -> HirDisplayWrapper<'a, DB, Self>
+    where
+        Self: Sized,
+    {
+        HirDisplayWrapper(db, self, max_size)
     }
 }
 
@@ -41,11 +56,25 @@ where
 
     /// This allows using the `write!` macro directly with a `HirFormatter`.
     pub fn write_fmt(&mut self, args: fmt::Arguments) -> fmt::Result {
-        fmt::write(self.fmt, args)
+        // We write to a buffer first to track output size
+        self.buf.clear();
+        fmt::write(&mut self.buf, args)?;
+        self.curr_size += self.buf.len();
+
+        // Then we write to the internal formatter from the buffer
+        self.fmt.write_str(&self.buf)
+    }
+
+    pub fn should_truncate(&self) -> bool {
+        if let Some(max_size) = self.max_size {
+            self.curr_size >= max_size
+        } else {
+            false
+        }
     }
 }
 
-pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T);
+pub struct HirDisplayWrapper<'a, DB, T>(&'a DB, &'a T, Option<usize>);
 
 impl<'a, DB, T> fmt::Display for HirDisplayWrapper<'a, DB, T>
 where
@@ -53,6 +82,12 @@ where
     T: HirDisplay,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.1.hir_fmt(&mut HirFormatter { db: self.0, fmt: f })
+        self.1.hir_fmt(&mut HirFormatter {
+            db: self.0,
+            fmt: f,
+            buf: String::with_capacity(20),
+            curr_size: 0,
+            max_size: self.2,
+        })
     }
 }
