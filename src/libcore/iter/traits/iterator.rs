@@ -1,3 +1,7 @@
+// ignore-tidy-filelength
+// This file almost exclusively consists of the definition of `Iterator`. We
+// can't split that into multiple files.
+
 use crate::cmp::{self, Ordering};
 use crate::ops::{Add, Try};
 
@@ -387,6 +391,26 @@ pub trait Iterator {
     ///
     /// [`once`] is commonly used to adapt a single value into a chain of
     /// other kinds of iteration.
+    ///
+    ///
+    /// # Overflowing behavior for long iterators
+    ///
+    /// This method allows to easily build an iterator that yields more than
+    /// [`usize::MAX`] items. In that case, some methods that return `usize`
+    /// are not guarded against overflow. For example, this includes the
+    /// following methods:
+    ///
+    /// - [`Iterator::count`]
+    /// - [`Iterator::enumerate`]
+    /// - [`Iterator::position`] and [`Iterator::rposition`]
+    /// - [`ExactSizeIterator::len`]
+    ///
+    /// An overflow in those methods leads to a wrong result or a panic. If
+    /// debug assertions are enabled, a panic is guaranteed.
+    ///
+    ///
+    /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
+    ///
     ///
     /// # Examples
     ///

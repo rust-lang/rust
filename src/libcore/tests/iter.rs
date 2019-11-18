@@ -257,6 +257,50 @@ fn test_iterator_chain_size_hint() {
 }
 
 #[test]
+fn test_iterator_chain_len() {
+    let xs = [0, 1, 2];
+    let ys = [30, 40, 50, 60];
+
+    // First iterator is exhausted first
+    let mut iter = xs.iter().chain(&ys);
+    assert_eq!(iter.len(), 7);
+    assert_eq!(iter.next(), Some(&0));
+    assert_eq!(iter.len(), 6);
+    assert_eq!(iter.next(), Some(&1));
+    assert_eq!(iter.len(), 5);
+    assert_eq!(iter.next_back(), Some(&60));
+    assert_eq!(iter.len(), 4);
+    assert_eq!(iter.next(), Some(&2));
+    assert_eq!(iter.len(), 3);
+    assert_eq!(iter.next(), Some(&30));
+    assert_eq!(iter.len(), 2);
+    assert_eq!(iter.next(), Some(&40));
+    assert_eq!(iter.len(), 1);
+    assert_eq!(iter.next(), Some(&50));
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.next(), None);
+
+    // Second iterator is exhausted first
+    let mut iter = xs.iter().chain(&ys);
+    assert_eq!(iter.len(), 7);
+    assert_eq!(iter.next_back(), Some(&60));
+    assert_eq!(iter.len(), 6);
+    assert_eq!(iter.next(), Some(&0));
+    assert_eq!(iter.len(), 5);
+    assert_eq!(iter.next_back(), Some(&50));
+    assert_eq!(iter.len(), 4);
+    assert_eq!(iter.next_back(), Some(&40));
+    assert_eq!(iter.len(), 3);
+    assert_eq!(iter.next_back(), Some(&30));
+    assert_eq!(iter.len(), 2);
+    assert_eq!(iter.next(), Some(&1));
+    assert_eq!(iter.len(), 1);
+    assert_eq!(iter.next(), Some(&2));
+    assert_eq!(iter.len(), 0);
+    assert_eq!(iter.next(), None);
+}
+
+#[test]
 fn test_zip_nth() {
     let xs = [0, 1, 2, 4, 5];
     let ys = [10, 11, 12];
