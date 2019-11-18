@@ -71,6 +71,7 @@ pub use self::sty::BoundRegion::*;
 pub use self::sty::InferTy::*;
 pub use self::sty::RegionKind::*;
 pub use self::sty::TyKind::*;
+pub use crate::ty::diagnostics::*;
 
 pub use self::binding::BindingMode;
 pub use self::binding::BindingMode::*;
@@ -122,6 +123,7 @@ mod instance;
 mod structural_impls;
 mod structural_match;
 mod sty;
+mod diagnostics;
 
 // Data types
 
@@ -549,50 +551,6 @@ impl<'tcx> Eq for TyS<'tcx> {}
 impl<'tcx> Hash for TyS<'tcx> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         (self as *const TyS<'_>).hash(s)
-    }
-}
-
-impl<'tcx> TyS<'tcx> {
-    pub fn is_primitive_ty(&self) -> bool {
-        match self.kind {
-            Bool | Char | Str | Int(_) | Uint(_) | Float(_) |
-            Infer(InferTy::IntVar(_)) | Infer(InferTy::FloatVar(_)) |
-            Infer(InferTy::FreshIntTy(_)) | Infer(InferTy::FreshFloatTy(_)) => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_simple_ty(&self) -> bool {
-        match self.kind {
-            Bool | Char | Str | Int(_) | Uint(_) | Float(_) |
-            Infer(InferTy::IntVar(_)) | Infer(InferTy::FloatVar(_)) |
-            Infer(InferTy::FreshIntTy(_)) | Infer(InferTy::FreshFloatTy(_)) => true,
-            Ref(_, x, _) | Array(x, _) | Slice(x) => x.peel_refs().is_simple_ty(),
-            Tuple(tys) if tys.is_empty() => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_simple_text(&self) -> bool {
-        match self.kind {
-            Adt(_, substs) => substs.types().next().is_none(),
-            Ref(_, ty, _) => ty.is_simple_text(),
-            _ if self.is_simple_ty() => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_suggestable(&self) -> bool {
-        match self.kind {
-            Opaque(..) |
-            FnDef(..) |
-            FnPtr(..) |
-            Dynamic(..) |
-            Closure(..) |
-            Infer(..) |
-            Projection(..) => false,
-            _ => true,
-        }
     }
 }
 

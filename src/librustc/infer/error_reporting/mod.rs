@@ -1197,10 +1197,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         };
 
         if let Some((expected, found)) = expected_found {
-            let expected_label = exp_found.map(|ef| ef.expected.prefix_string())
-                .unwrap_or("type".into());
-            let found_label = exp_found.map(|ef| ef.found.prefix_string())
-                .unwrap_or("type".into());
+            let expected_label = exp_found.map_or("type".into(), |ef| ef.expected.prefix_string());
+            let found_label = exp_found.map_or("type".into(), |ef| ef.found.prefix_string());
             match (&terr, expected == found) {
                 (TypeError::Sorts(values), extra) => {
                     let sort_string = |ty: Ty<'tcx>| match (extra, &ty.kind) {
