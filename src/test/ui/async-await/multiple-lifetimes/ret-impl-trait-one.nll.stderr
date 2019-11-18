@@ -10,6 +10,8 @@ LL | |
 LL | |     (a, b)
 LL | | }
    | |_^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to previous error
 

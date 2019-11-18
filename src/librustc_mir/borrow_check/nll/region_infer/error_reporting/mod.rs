@@ -18,6 +18,10 @@ use syntax::errors::Applicability;
 use syntax::symbol::kw;
 use syntax_pos::Span;
 
+use self::outlives_suggestion::OutlivesSuggestionBuilder;
+
+pub mod outlives_suggestion;
+
 mod region_name;
 mod var_name;
 
@@ -56,7 +60,6 @@ enum Trace {
 /// Various pieces of state used when reporting borrow checker errors.
 pub struct ErrorReportingCtx<'a, 'b, 'tcx> {
     /// The region inference context used for borrow chekcing this MIR body.
-    #[allow(dead_code)] // FIXME(mark-i-m): used by outlives suggestions
     region_infcx: &'b RegionInferenceContext<'tcx>,
 
     /// The inference context used for type checking.
@@ -370,6 +373,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr: RegionVid,
         fr_origin: NLLRegionVariableOrigin,
         outlived_fr: RegionVid,
+        outlives_suggestion: &mut OutlivesSuggestionBuilder,
         renctx: &mut RegionErrorNamingCtx,
     ) -> DiagnosticBuilder<'a> {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
@@ -415,9 +419,22 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 self.report_fnmut_error(&errctx, &errci, renctx)
             }
             (ConstraintCategory::Assignment, true, false)
-            | (ConstraintCategory::CallArgument, true, false) =>
-                self.report_escaping_data_error(&errctx, &errci, renctx),
-            _ => self.report_general_error(&errctx, &errci, renctx),
+            | (ConstraintCategory::CallArgument, true, false) => {
+                let mut db = self.report_escaping_data_error(&errctx, &errci, renctx);
+
+                outlives_suggestion.intermediate_suggestion(&errctx, &errci, renctx, &mut db);
+                outlives_suggestion.collect_constraint(fr, outlived_fr);
+
+                db
+            }
+            _ => {
+                let mut db = self.report_general_error(&errctx, &errci, renctx);
+
+                outlives_suggestion.intermediate_suggestion(&errctx, &errci, renctx, &mut db);
+                outlives_suggestion.collect_constraint(fr, outlived_fr);
+
+                db
+            }
         }
     }
 

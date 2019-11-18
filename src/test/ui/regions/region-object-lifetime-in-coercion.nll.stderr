@@ -32,6 +32,8 @@ LL | fn d<'a,'b>(v: &'a [u8]) -> Box<dyn Foo+'b> {
    |      lifetime `'a` defined here
 LL |     Box::new(v)
    |     ^^^^^^^^^^^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to 4 previous errors
 

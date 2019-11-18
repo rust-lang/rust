@@ -11,6 +11,7 @@ use crate::borrow_check::nll::{
     region_infer::values::{
         PlaceholderIndices, RegionElement, ToElementIndex
     },
+    region_infer::error_reporting::outlives_suggestion::OutlivesSuggestionBuilder,
     type_check::{free_region_relations::UniversalRegionRelations, Locations},
 };
 use crate::borrow_check::Upvar;
@@ -1326,6 +1327,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) {
+        let mut outlives_suggestion = OutlivesSuggestionBuilder::new(mir_def_id);
+
         for (fr, fr_definition) in self.definitions.iter_enumerated() {
             match fr_definition.origin {
                 NLLRegionVariableOrigin::FreeRegion => {
@@ -1339,6 +1342,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         mir_def_id,
                         fr,
                         &mut propagated_outlives_requirements,
+                        &mut outlives_suggestion,
                         errors_buffer,
                         region_naming,
                     );
@@ -1353,6 +1357,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
         }
+
+        // Emit outlives suggestions
+        outlives_suggestion.add_suggestion(body, self, infcx, errors_buffer, region_naming);
     }
 
     /// Checks the final value for the free region `fr` to see if it
@@ -1371,6 +1378,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
+        outlives_suggestion: &mut OutlivesSuggestionBuilder,
         errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) {
@@ -1399,6 +1407,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
+                outlives_suggestion,
                 errors_buffer,
                 region_naming,
             );
@@ -1416,6 +1425,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
+                outlives_suggestion,
                 errors_buffer,
                 region_naming,
             ) {
@@ -1438,6 +1448,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         upvars: &[Upvar],
         mir_def_id: DefId,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
+        outlives_suggestion: &mut OutlivesSuggestionBuilder,
         errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) -> Option<ErrorReported> {
@@ -1497,6 +1508,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             longer_fr,
             NLLRegionVariableOrigin::FreeRegion,
             shorter_fr,
+            outlives_suggestion,
             region_naming,
         );
 

@@ -8,6 +8,8 @@ LL | fn method2<'a,'b,T>(x: &'a T, y: &'b T)
 ...
 LL |     let a: <T as Trait<'a>>::Type = make_any();
    |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
   --> $DIR/associated-types-subtyping-1.rs:35:13
@@ -19,6 +21,8 @@ LL | fn method3<'a,'b,T>(x: &'a T, y: &'b T)
 ...
 LL |     let _c: <T as Trait<'a>>::Type = b;
    |             ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to 2 previous errors
 

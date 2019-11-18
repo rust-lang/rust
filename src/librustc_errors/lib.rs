@@ -575,6 +575,11 @@ impl Handler {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
     }
 
+    /// Construct a builder at the `Help` level with the `msg`.
+    pub fn struct_help(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Help, msg)
+    }
+
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: &str) -> FatalError {
         self.emit_diag_at_span(Diagnostic::new(Fatal, msg), span);
         FatalError

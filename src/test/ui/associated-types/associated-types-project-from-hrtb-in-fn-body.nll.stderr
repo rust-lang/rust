@@ -8,6 +8,8 @@ LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
 ...
 LL |     let z: I::A = if cond { x } else { y };
    |                             ^ assignment requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:40
@@ -19,6 +21,10 @@ LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
 ...
 LL |     let z: I::A = if cond { x } else { y };
    |                                        ^ assignment requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+help: `'a` and `'b` must be the same: replace one with the other
 
 error: aborting due to 2 previous errors
 

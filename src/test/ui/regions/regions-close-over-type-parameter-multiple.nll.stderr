@@ -8,6 +8,8 @@ LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait +
 LL |     // A outlives 'a AND 'b...but not 'c.
 LL |     box v as Box<dyn SomeTrait + 'a>
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'c`
+   |
+   = help: consider adding the following bound: `'a: 'c`
 
 error: aborting due to previous error
 

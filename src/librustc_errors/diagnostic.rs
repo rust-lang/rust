@@ -6,7 +6,7 @@ use crate::Applicability;
 use crate::Level;
 use crate::snippet::Style;
 use std::fmt;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
@@ -17,6 +17,11 @@ pub struct Diagnostic {
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Vec<CodeSuggestion>,
+
+    /// This is not used for highlighting or rendering any error message.  Rather, it can be used
+    /// as a sort key to sort a buffer of diagnostics.  By default, it is the primary span of
+    /// `span` if there is one.  Otherwise, it is `DUMMY_SP`.
+    pub sort_span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -87,6 +92,7 @@ impl Diagnostic {
             span: MultiSpan::new(),
             children: vec![],
             suggestions: vec![],
+            sort_span: DUMMY_SP,
         }
     }
 
@@ -116,6 +122,11 @@ impl Diagnostic {
 
     pub fn cancelled(&self) -> bool {
         self.level == Level::Cancelled
+    }
+
+    /// Set the sorting span.
+    pub fn set_sort_span(&mut self, sp: Span) {
+        self.sort_span = sp;
     }
 
     /// Adds a span/label to be included in the resulting snippet.
@@ -457,6 +468,9 @@ impl Diagnostic {
 
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
+        if let Some(span) = self.span.primary_span() {
+            self.sort_span = span;
+        }
         self
     }
 

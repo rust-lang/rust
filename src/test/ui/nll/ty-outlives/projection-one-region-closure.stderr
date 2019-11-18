@@ -50,6 +50,8 @@ LL | fn no_relationships_late<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 note: External requirements
   --> $DIR/projection-one-region-closure.rs:56:29
@@ -104,6 +106,8 @@ LL | fn no_relationships_early<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
 ...
 LL |     with_signature(cell, t, |cell, t| require(cell, t));
    |                                       ^^^^^^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 note: External requirements
   --> $DIR/projection-one-region-closure.rs:70:29
