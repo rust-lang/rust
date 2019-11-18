@@ -736,12 +736,11 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.3.8"
+version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f0ed1a4de2235cabda8558ff5840bffb97fcb64c97827f354a451307df5f72b"
+checksum = "c8ec7fcd21571dc78f96cc96243cab8d8f035247c3efd16c687be154c3fa9efa"
 dependencies = [
  "crossbeam-utils 0.6.5",
- "smallvec 0.6.10",
 ]
 
 [[package]]
@@ -3424,8 +3423,7 @@ dependencies = [
 [[package]]
 name = "rustc-rayon"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f32767f90d938f1b7199a174ef249ae1924f6e5bbdb9d112fea141e016f25b3a"
+source = "git+https://github.com/spastorino/rustc-rayon?branch=latch-target-thread-rustc#dd85f978633ae564515b7d1c82ba3d1cff76b1f1"
 dependencies = [
  "crossbeam-deque 0.7.1",
  "either",
@@ -3447,9 +3445,9 @@ dependencies = [
 [[package]]
 name = "rustc-rayon-core"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ea2427831f0053ea3ea73559c8eabd893133a51b251d142bacee53c62a288cb3"
+source = "git+https://github.com/spastorino/rustc-rayon?branch=latch-target-thread-rustc#dd85f978633ae564515b7d1c82ba3d1cff76b1f1"
 dependencies = [
+ "crossbeam-channel",
  "crossbeam-deque 0.7.1",
  "crossbeam-queue",
  "crossbeam-utils 0.6.5",
