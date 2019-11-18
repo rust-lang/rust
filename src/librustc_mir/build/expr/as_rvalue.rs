@@ -270,6 +270,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 resume.and(this.unit_rvalue())
             }
             ExprKind::Literal { .. }
+            | ExprKind::StaticRef { .. }
             | ExprKind::Block { .. }
             | ExprKind::Match { .. }
             | ExprKind::NeverToAny { .. }

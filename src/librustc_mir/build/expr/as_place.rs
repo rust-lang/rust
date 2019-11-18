@@ -285,6 +285,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::StaticRef { .. }
             | ExprKind::InlineAsm { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Call { .. } => {

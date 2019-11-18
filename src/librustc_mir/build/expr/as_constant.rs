@@ -45,6 +45,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     literal,
                 }
             },
+            ExprKind::StaticRef { literal, .. } => {
+                Constant {
+                    span,
+                    user_ty: None,
+                    literal,
+                }
+            }
             _ => span_bug!(span, "expression is not a valid constant {:?}", kind),
         }
     }

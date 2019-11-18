@@ -104,13 +104,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         //
                         // opt_match_place is None for let [mut] x = ... statements,
                         // whether or not the right-hand side is a place expression
-                        if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                            opt_match_place: Some((ref opt_match_place, match_span)),
-                            binding_mode: _,
-                            opt_ty_info: _,
-                            pat_span: _,
-                        }))) = local_decl.is_user_variable
-                        {
+                        if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                            VarBindingForm {
+                                opt_match_place: Some((ref opt_match_place, match_span)),
+                                binding_mode: _,
+                                opt_ty_info: _,
+                                pat_span: _,
+                            },
+                        ))) = local_decl.local_info {
                             let stmt_source_info = self.body.source_info(location);
                             self.append_binding_error(
                                 grouped_errors,
@@ -242,7 +243,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             (
                 match kind {
                     IllegalMoveOriginKind::Static => {
-                        self.report_cannot_move_from_static(original_path, span)
+                        unreachable!();
                     }
                     IllegalMoveOriginKind::BorrowedContent { target_place } => {
                         self.report_cannot_move_from_borrowed_content(
@@ -272,12 +273,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         place: &Place<'tcx>,
         span: Span
     ) -> DiagnosticBuilder<'a> {
-        let description = if place.projection.is_empty() {
+        let description = if place.projection.len() == 1 {
             format!("static item `{}`", self.describe_place(place.as_ref()).unwrap())
         } else {
             let base_static = PlaceRef {
                 base: &place.base,
-                projection: &place.projection[..1],
+                projection: &[ProjectionElem::Deref],
             };
 
             format!(
@@ -327,6 +328,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     "variables bound in patterns cannot be moved from \
                      until after the end of the pattern guard");
                 return err;
+            } else if decl.is_ref_to_static() {
+                return self.report_cannot_move_from_static(move_place, span);
             }
         }
 
@@ -508,12 +511,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let mut suggestions: Vec<(Span, &str, String)> = Vec::new();
         for local in binds_to {
             let bind_to = &self.body.local_decls[*local];
-            if let Some(
+            if let LocalInfo::User(
                 ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                     pat_span,
                     ..
                 }))
-            ) = bind_to.is_user_variable {
+            ) = bind_to.local_info {
                 if let Ok(pat_snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(pat_span)
                 {
                     if pat_snippet.starts_with('&') {

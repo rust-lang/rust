@@ -512,34 +512,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                 projection: [],
             } => self.validate_local(*local),
             PlaceRef {
-                base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted { .. },
-                    ..
-                }),
+                base: PlaceBase::Static(_),
                 projection: [],
             } => bug!("qualifying already promoted MIR"),
-            PlaceRef {
-                base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Static,
-                    def_id,
-                    ..
-                }),
-                projection: [],
-            } => {
-                // Only allow statics (not consts) to refer to other statics.
-                // FIXME(eddyb) does this matter at all for promotion?
-                let is_static = self.const_kind.map_or(false, |k| k.is_static());
-                if !is_static {
-                    return Err(Unpromotable);
-                }
-
-                let is_thread_local = self.tcx.has_attr(*def_id, sym::thread_local);
-                if is_thread_local {
-                    return Err(Unpromotable);
-                }
-
-                Ok(())
-            }
             PlaceRef {
                 base: _,
                 projection: [proj_base @ .., elem],
@@ -584,7 +559,23 @@ impl<'tcx> Validator<'_, 'tcx> {
 
             // The qualifs for a constant (e.g. `HasMutInterior`) are checked in
             // `validate_rvalue` upon access.
-            Operand::Constant(_) => Ok(()),
+            Operand::Constant(c) => {
+                if let Some(def_id) = c.check_static_ptr(self.tcx) {
+                    // Only allow statics (not consts) to refer to other statics.
+                    // FIXME(eddyb) does this matter at all for promotion?
+                    let is_static = self.const_kind.map_or(false, |k| k.is_static());
+                    if !is_static {
+                        return Err(Unpromotable);
+                    }
+
+                    let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
+                    if is_thread_local {
+                        return Err(Unpromotable);
+                    }
+                }
+
+                Ok(())
+            },
         }
     }
 

@@ -3,7 +3,7 @@ use rustc::hir::def::Namespace;
 use rustc::hir::def_id::DefId;
 use rustc::hir::GeneratorKind;
 use rustc::mir::{
-    AggregateKind, Constant, Field, Local, LocalKind, Location, Operand,
+    AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand,
     Place, PlaceBase, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind,
     Static, StaticKind, Terminator, TerminatorKind,
 };
@@ -12,7 +12,6 @@ use rustc::ty::layout::VariantIdx;
 use rustc::ty::print::Print;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
-use syntax::symbol::sym;
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -179,6 +178,31 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 buf.push_str(&self.infcx.tcx.item_name(*def_id).to_string());
             }
             PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: [ProjectionElem::Deref]
+            } if self.body.local_decls[local].is_ref_for_guard() => {
+                self.append_place_to_string(
+                    PlaceRef {
+                        base: &PlaceBase::Local(local),
+                        projection: &[],
+                    },
+                    buf,
+                    autoderef,
+                    &including_downcast,
+                )?;
+            },
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: [ProjectionElem::Deref]
+            } if self.body.local_decls[local].is_ref_to_static() => {
+                let local_info = &self.body.local_decls[local].local_info;
+                if let LocalInfo::StaticRef { def_id, .. } = *local_info {
+                    buf.push_str(&self.infcx.tcx.item_name(def_id).as_str());
+                } else {
+                    unreachable!();
+                }
+            },
+            PlaceRef {
                 base,
                 projection: [proj_base @ .., elem],
             } => {
@@ -208,32 +232,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 )?;
                             } else {
                                 match (proj_base, base) {
-                                    ([], PlaceBase::Local(local)) => {
-                                        if self.body.local_decls[*local].is_ref_for_guard() {
-                                            self.append_place_to_string(
-                                                PlaceRef {
-                                                    base,
-                                                    projection: proj_base,
-                                                },
-                                                buf,
-                                                autoderef,
-                                                &including_downcast,
-                                            )?;
-                                        } else {
-                                            // FIXME deduplicate this and the _ => body below
-                                            buf.push_str(&"*");
-                                            self.append_place_to_string(
-                                                PlaceRef {
-                                                    base,
-                                                    projection: proj_base,
-                                                },
-                                                buf,
-                                                autoderef,
-                                                &including_downcast,
-                                            )?;
-                                        }
-                                    }
-
                                     _ => {
                                         buf.push_str(&"*");
                                         self.append_place_to_string(
@@ -437,30 +435,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     );
                 }
             }
-        }
-    }
-
-    /// Checks if a place is a thread-local static.
-    pub fn is_place_thread_local(&self, place_ref: PlaceRef<'cx, 'tcx>) -> bool {
-        if let PlaceRef {
-            base: PlaceBase::Static(box Static {
-                kind: StaticKind::Static,
-                def_id,
-                ..
-            }),
-            projection: [],
-        } = place_ref {
-            let attrs = self.infcx.tcx.get_attrs(*def_id);
-            let is_thread_local = attrs.iter().any(|attr| attr.check_name(sym::thread_local));
-
-            debug!(
-                "is_place_thread_local: attrs={:?} is_thread_local={:?}",
-                attrs, is_thread_local
-            );
-            is_thread_local
-        } else {
-            debug!("is_place_thread_local: no");
-            false
         }
     }
 

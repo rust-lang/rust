@@ -3,8 +3,8 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::{AsyncGeneratorKind, GeneratorKind};
 use rustc::mir::{
     self, AggregateKind, BindingForm, BorrowKind, ClearCrossCrate, ConstraintCategory,
-    FakeReadCause, Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, PlaceRef,
-    ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
+    FakeReadCause, Local, LocalDecl, LocalInfo, LocalKind, Location, Operand, Place, PlaceBase,
+    PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::FxHashSet;
@@ -744,6 +744,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 projection: root_place_projection,
             }, borrow_span));
 
+        if let PlaceBase::Local(local) = borrow.borrowed_place.base {
+            if self.body.local_decls[local].is_ref_to_thread_local() {
+                let err = self.report_thread_local_value_does_not_live_long_enough(
+                    drop_span,
+                    borrow_span,
+                );
+                err.buffer(&mut self.errors_buffer);
+                return;
+            }
+        };
+
         if let StorageDeadOrDrop::Destructor(dropped_ty) =
             self.classify_drop_access_kind(borrow.borrowed_place.as_ref())
         {
@@ -770,9 +781,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             explanation
         );
         let err = match (place_desc, explanation) {
-            (Some(_), _) if self.is_place_thread_local(root_place) => {
-                self.report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span)
-            }
             // If the outlives constraint comes from inside the closure,
             // for example:
             //
@@ -1509,19 +1517,22 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // place being assigned later.
         let (place_description, assigned_span) = match local_decl {
             Some(LocalDecl {
-                is_user_variable: Some(ClearCrossCrate::Clear),
+                local_info: LocalInfo::User(ClearCrossCrate::Clear),
                 ..
             })
             | Some(LocalDecl {
-                is_user_variable:
-                    Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                        opt_match_place: None,
-                        ..
-                    }))),
+                local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                    opt_match_place: None,
+                    ..
+                }))),
                 ..
             })
             | Some(LocalDecl {
-                is_user_variable: None,
+                local_info: LocalInfo::StaticRef { .. },
+                ..
+            })
+            | Some(LocalDecl {
+                local_info: LocalInfo::Other,
                 ..
             })
             | None => (self.describe_place(place.as_ref()), assigned_span),

@@ -264,6 +264,11 @@ pub enum ExprKind<'tcx> {
         literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
+    /// A literal containing the address of a `static`
+    StaticRef {
+        literal: &'tcx Const<'tcx>,
+        def_id: DefId,
+    },
     InlineAsm {
         asm: &'tcx hir::InlineAsmInner,
         outputs: Vec<ExprRef<'tcx>>,

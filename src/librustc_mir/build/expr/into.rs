@@ -231,7 +231,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         source_info,
                         visibility_scope: source_info.scope,
                         internal: true,
-                        is_user_variable: None,
+                        local_info: LocalInfo::Other,
                         is_block_tail: None,
                     });
                     let ptr_temp = Place::from(ptr_temp);
@@ -425,6 +425,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::StaticRef { .. }
             | ExprKind::Yield { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above
