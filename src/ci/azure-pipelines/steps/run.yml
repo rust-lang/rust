@@ -28,6 +28,9 @@ steps:
 - checkout: self
   fetchDepth: 2
 
+- bash: src/ci/scripts/setup-environment.sh
+  displayName: Setup environment
+
 - bash: src/ci/scripts/should-skip-this.sh
   displayName: Decide whether to run this job
 
