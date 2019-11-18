@@ -80,7 +80,8 @@ trait GenericRadix {
             }
         }
         let buf = &buf[curr..];
-        // SAFETY: only chars in buf are created by Self::digit which are asuumed to be valid utf8
+        // SAFETY: only chars in `buf` are created by `Self::digit` which are asuumed to be
+        // valid UTF-8
         let buf = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(
             MaybeUninit::first_ptr(buf),
             buf.len()
@@ -206,7 +207,7 @@ macro_rules! impl_Display {
                 let d1 = (rem / 100) << 1;
                 let d2 = (rem % 100) << 1;
                 curr -= 4;
-                // SAFETY: d1, d2 are each max 198, so buf_ptr[d1..d1 + 1] is safe to access
+                // SAFETY: `d1`, `d2` are each max 198, so `buf_ptr[d1..d1 + 1]` is safe to access
                 unsafe {
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
                     ptr::copy_nonoverlapping(lut_ptr.offset(d2), buf_ptr.offset(curr + 2), 2);
@@ -221,7 +222,7 @@ macro_rules! impl_Display {
                 let d1 = (n % 100) << 1;
                 n /= 100;
                 curr -= 2;
-                // SAFETY: d1 is max 198, so buf_ptr[d1..d1 + 1] is safe to access
+                // SAFETY: `d1` is max 198, so `buf_ptr[d1..d1 + 1]` is safe to access
                 unsafe {
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
                 }
@@ -230,21 +231,22 @@ macro_rules! impl_Display {
             // decode last 1 or 2 chars
             if n < 10 {
                 curr -= 1;
-                // SAFETY: curr is still less than buf.len() and since n < 10, n + '0' is valid utf8
+                // SAFETY: `curr` is still less than `buf.len()` and since `n` < 10, `n + '0'` is
+                // valid UTF-8
                 unsafe {
                     *buf_ptr.offset(curr) = (n as u8) + b'0';
                 }
             } else {
                 let d1 = n << 1;
                 curr -= 2;
-                // SAFETY: d1 is max 18, so buf_ptr[d1..d1 + 1] is safe to access
+                // SAFETY: `d1` is max 18, so `buf_ptr[d1..d1 + 1]` is safe to access
                 unsafe {
                     ptr::copy_nonoverlapping(lut_ptr.offset(d1), buf_ptr.offset(curr), 2);
                 }
             }
 
-            // SAFETY: curr > 0 (since we made buf large enough), and all the chars are valid utf8
-            // since DEC_DIGITS_LUT is
+            // SAFETY: `curr` > 0 (since we made `buf` large enough), and all the chars are valid
+            // UTF-8 since `DEC_DIGITS_LUT` is
             let buf_slice = unsafe {
                 str::from_utf8_unchecked(
                     slice::from_raw_parts(buf_ptr.offset(curr), buf.len() - curr as usize))

@@ -18,7 +18,7 @@ struct CopyOnDrop<T> {
 
 impl<T> Drop for CopyOnDrop<T> {
     fn drop(&mut self) {
-        // SAFETY: both *src and *dest are (supposedly) properly aligned T
+        // SAFETY: both `*src` and `*dest` are (supposedly) properly aligned `T`
         unsafe { ptr::copy_nonoverlapping(self.src, self.dest, 1); }
     }
 }
@@ -223,7 +223,7 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     let mut offsets_l = [MaybeUninit::<u8>::uninit(); BLOCK];
 
     // The current block on the right side (from `r.sub(block_r)` to `r`).
-    // SAFETY: safe because we only end up accessing r.offset(-1)
+    // SAFETY: safe because we only end up accessing `r.offset(-1)`
     let mut r = unsafe { l.add(v.len()) };
     let mut block_r = BLOCK;
     let mut start_r = ptr::null_mut();
@@ -272,8 +272,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
             let mut elem = l;
 
             for i in 0..block_l {
-                // SAFETY: elem and end_l are always within an offset of [0, block_l) from l
-                // when accessed
+                // SAFETY: `elem` and `end_l` are always within an offset of `[0, block_l)`
+                // from `l` when accessed
                 unsafe {
                     // Branchless comparison.
                     *end_l = i as u8;
@@ -290,8 +290,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
             let mut elem = r;
 
             for i in 0..block_r {
-                // SAFETY: elem and end_r are always within an offset of [0, block_r) from r
-                // when accessed
+                // SAFETY: `elem` and `end_r` are always within an offset of `[0, block_r)`
+                // from `r` when accessed
                 unsafe {
                     // Branchless comparison.
                     elem = elem.offset(-1);
@@ -311,7 +311,7 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
             // Instead of swapping one pair at the time, it is more efficient to perform a cyclic
             // permutation. This is not strictly equivalent to swapping, but produces a similar
             // result using fewer memory operations.
-            // SAFETY: safe since we keep start_l < end_l and start_r < end_r
+            // SAFETY: safe since we keep `start_l < end_l` and `start_r < end_r`
             unsafe {
                 let tmp = ptr::read(left!());
                 ptr::copy_nonoverlapping(right!(), left!(), 1);
@@ -332,13 +332,13 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_l == end_l {
             // All out-of-order elements in the left block were moved. Move to the next block.
-            // SAFETY: we check that width(l, r) > 2 * block before dereferencing
+            // SAFETY: we check that `width(l, r) > 2 * block` before dereferencing
             l = unsafe { l.offset(block_l as isize) };
         }
 
         if start_r == end_r {
             // All out-of-order elements in the right block were moved. Move to the previous block.
-            // SAFETY: we check that width(l, r) > 2 * block before dereferencing
+            // SAFETY: we check that `width(l, r) > 2 * block` before dereferencing
             r = unsafe { r.offset(-(block_r as isize)) };
         }
 
@@ -357,9 +357,9 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
         debug_assert_eq!(width(l, r), block_l);
         while start_l < end_l {
             // SAFETY: this is safe since
-            // - l < start_l < end_l < r,
-            // - l only increases, and
-            // - r only decreases
+            // - `l < start_l < end_l < r`,
+            // - `l` only increases, and
+            // - `r` only decreases
             unsafe {
                 end_l = end_l.offset(-1);
                 ptr::swap(l.offset(*end_l as isize), r.offset(-1));
@@ -404,7 +404,7 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
 
         // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
         // operation panics, the pivot will be automatically written back into the slice.
-        // SAFETY: pivot points to the first element of v
+        // SAFETY: `pivot` points to the first element of `v`
         let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
         let _pivot_guard = CopyOnDrop {
             src: &mut *tmp,
@@ -415,7 +415,7 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
         // Find the first pair of out-of-order elements.
         let mut l = 0;
         let mut r = v.len();
-        // SAFETY: safe since 0 <= l < r <= v.len(), l only increases, and r only decreases
+        // SAFETY: safe since `0 <= l < r <= v.len()`, `l` only increases, and `r` only decreases
         unsafe {
             // Find the first element greater then or equal to the pivot.
             while l < r && is_less(v.get_unchecked(l), pivot) {
@@ -455,7 +455,7 @@ fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
 
     // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
     // operation panics, the pivot will be automatically written back into the slice.
-    // SAFETY: pivot points to the first element of v
+    // SAFETY: `pivot` points to the first element of `v`
     let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
     let _pivot_guard = CopyOnDrop {
         src: &mut *tmp,
@@ -467,7 +467,7 @@ fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
     let mut l = 0;
     let mut r = v.len();
     loop {
-        // SAFETY: safe since 0 <= l < r <= v.len(), l only increases, and r only decreases
+        // SAFETY: safe since `0 <= l < r <= v.een()`, `l` only increases, and `r` only decreases
         unsafe {
             // Find the first element greater that the pivot.
             while l < r && !is_less(pivot, v.get_unchecked(l)) {
@@ -567,8 +567,8 @@ fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
 
     if len >= 8 {
         // Swaps indices so that `v[a] <= v[b]`.
-        // SAFETY: a, b, and c are all in bounds, and if len >= SHORTEST_MEDIAN_OF_MEDIANS
-        // then so are them +/- 1
+        // SAFETY: `a`, `b`, and `c` are all in bounds, and if `len >= SHORTEST_MEDIAN_OF_MEDIANS`
+        // then they are still in bounds plus-or-minus 1
         let mut sort2 = |a: &mut usize, b: &mut usize| unsafe {
             if is_less(v.get_unchecked(*b), v.get_unchecked(*a)) {
                 ptr::swap(a, b);

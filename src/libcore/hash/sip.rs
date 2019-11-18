@@ -220,7 +220,7 @@ impl<S: Sip> Hasher<S> {
         let needed = 8 - self.ntail;
         let fill = cmp::min(length, needed);
         if fill == 8 {
-            // SAFETY: msg has exactly sizeof(u64) == 8
+            // SAFETY: `msg` has exactly `sizeof(u64)` bytes
             self.tail = unsafe { load_int_le!(msg, 0, u64) };
         } else {
             // SAFETY: fill < 7
@@ -271,7 +271,7 @@ impl<S: Sip> super::Hasher for Hasher<S> {
     // see short_write comment for explanation
     #[inline]
     fn write_usize(&mut self, i: usize) {
-        // SAFETY: bytes leaves scope as i does
+        // SAFETY: `bytes` leaves scope as `i` does
         let bytes = unsafe {
             crate::slice::from_raw_parts(&i as *const usize as *const u8, mem::size_of::<usize>())
         };
@@ -293,7 +293,7 @@ impl<S: Sip> super::Hasher for Hasher<S> {
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;
-            // SAFETY: needed < 8 since self.ntail != 0
+            // SAFETY: `needed < 8` since `self.ntail != 0`
             self.tail |= unsafe { u8to64_le(msg, 0, cmp::min(length, needed)) } << 8 * self.ntail;
             if length < needed {
                 self.ntail += length;

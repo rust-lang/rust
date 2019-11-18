@@ -845,7 +845,7 @@ impl<T> Option<T> {
 
         match *self {
             Some(ref mut v) => v,
-            // SAFETY: *self is always Some(F)
+            // SAFETY: `*self` is always `Some`
             None => unsafe { hint::unreachable_unchecked() },
         }
     }

@@ -340,7 +340,7 @@ impl<T> MaybeUninit<T> {
     #[inline]
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
-        // SAFETY: depends on T, see above comment
+        // SAFETY: depends on `T`, see above comment
         unsafe {
             u.as_mut_ptr().write_bytes(0u8, 1);
         }

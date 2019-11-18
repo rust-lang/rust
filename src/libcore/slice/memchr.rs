@@ -61,8 +61,8 @@ pub fn memchr(x: u8, text: &[u8]) -> Option<usize> {
 
     if len >= 2 * usize_bytes {
         while offset <= len - 2 * usize_bytes {
-            // SAFETY: both u and v can be read since
-            // ptr + offset + usize_bytes <= ptr + len - usize_bytes < ptr + len
+            // SAFETY: both `u` and `v` can be read since
+            // `ptr + offset + usize_bytes <= ptr + len - usize_bytes < ptr + len`
             // means the pointers are in bounds
             unsafe {
                 let u = *(ptr.add(offset) as *const usize);
@@ -114,8 +114,8 @@ pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
     let chunk_bytes = mem::size_of::<Chunk>();
 
     while offset > min_aligned_offset {
-        // SAFETY: since offset is always aligned, offset > min_aligned_offset means
-        // that offset - 2 * chunk_bytes is within bounds.
+        // SAFETY: since `offset` is always aligned, `offset > min_aligned_offset` means
+        // that `offset - 2 * chunk_bytes` is within bounds.
         unsafe {
             let u = *(ptr.offset(offset as isize - 2 * chunk_bytes as isize) as *const Chunk);
             let v = *(ptr.offset(offset as isize - chunk_bytes as isize) as *const Chunk);

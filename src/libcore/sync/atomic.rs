@@ -2456,7 +2456,6 @@ pub fn fence(order: Ordering) {
     // to conventionally implement fences at
     // https://github.com/WebAssembly/tool-conventions/issues/59. We should
     // follow that discussion and implement a solution when one comes about!
-
     #[cfg(not(target_arch = "wasm32"))]
     // SAFETY: using an atomic fence is safe
     unsafe {

@@ -242,7 +242,7 @@ impl Layout {
         let alloc_size = padded_size.checked_mul(n)
             .ok_or(LayoutErr { private: () })?;
 
-        // SAFETY: self.align is already known to be valid and alloc_size has been
+        // SAFETY: `self.align` is already known to be valid and `alloc_size` has been
         // padded already.
         unsafe {
             Ok((Layout::from_size_align_unchecked(alloc_size, self.align()), padded_size))

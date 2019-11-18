@@ -69,7 +69,7 @@ impl<T: Sized> Unique<T> {
     // FIXME: rename to dangling() to match NonNull?
     #[inline]
     pub const fn empty() -> Self {
-        // SAFETY: must not be dereferenced, but mem::align_of::<T>() > 0 if T is sized
+        // SAFETY: must not be dereferenced, but `mem::align_of::<T>() > 0` if `T` is sized
         unsafe {
             Unique::new_unchecked(mem::align_of::<T>() as *mut T)
         }
@@ -92,7 +92,7 @@ impl<T: ?Sized> Unique<T> {
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
-            // SAFETY: just checked that ptr > 0
+            // SAFETY: just checked that `ptr > 0`
             Some(unsafe { Unique { pointer: ptr as _, _marker: PhantomData } })
         } else {
             None
@@ -128,7 +128,7 @@ impl<T: ?Sized> Unique<T> {
     /// Casts to a pointer of another type.
     #[inline]
     pub const fn cast<U>(self) -> Unique<U> {
-        // SAFETY: self.pointer is non-null
+        // SAFETY: `self.pointer` is non-null
         unsafe {
             Unique::new_unchecked(self.as_ptr() as *mut U)
         }
@@ -188,7 +188,7 @@ impl<T: ?Sized> From<&T> for Unique<T> {
 impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     #[inline]
     fn from(p: NonNull<T>) -> Self {
-        // SAFETY: NonNull::as_ptr() can't be null
+        // SAFETY: `NonNull::as_ptr()` can't be null
         unsafe { Unique::new_unchecked(p.as_ptr()) }
     }
 }

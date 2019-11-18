@@ -15,7 +15,7 @@ impl Utf8Lossy {
     }
 
     pub fn from_bytes(bytes: &[u8]) -> &Utf8Lossy {
-        // SAFETY: both use the same memory layout, and utf8 correctness isn't required
+        // SAFETY: both use the same memory layout, and UTF-8 correctness isn't required
         unsafe { mem::transmute(bytes) }
     }
 
@@ -70,7 +70,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
                 let w = core_str::utf8_char_width(byte);
 
                 macro_rules! error { () => ({
-                    // SAFETY: we have checked up to i that source is valid utf8
+                    // SAFETY: we have checked up to `i` that source is valid UTF-8
                     unsafe {
                         let r = Utf8LossyChunk {
                             valid: core_str::from_utf8_unchecked(&self.source[0..i_]),
@@ -131,7 +131,7 @@ impl<'a> Iterator for Utf8LossyChunksIter<'a> {
         }
 
         let r = Utf8LossyChunk {
-            // SAFETY: we have checked that the entire source is valid utf8
+            // SAFETY: we have checked that the entire source is valid UTF-8
             valid: unsafe { core_str::from_utf8_unchecked(self.source) },
             broken: &[],
         };
