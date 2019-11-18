@@ -36,7 +36,7 @@ pub fn codegen_llvm_intrinsic_call<'tcx>(
 
         // Used by `_mm_movemask_epi8` and `_mm256_movemask_epi8`
         llvm.x86.sse2.pmovmskb.128 | llvm.x86.avx2.pmovmskb | llvm.x86.sse2.movmsk.pd, (c a) {
-            let (lane_layout, lane_count) = lane_type_and_count(fx, a.layout(), intrinsic);
+            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, a.layout());
             let lane_ty = fx.clif_type(lane_layout.ty).unwrap();
             assert!(lane_count <= 32);
 

@@ -127,20 +127,19 @@ macro atomic_minmax($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $
     $ret.write_cvalue($fx, ret_val);
 }
 
-fn lane_type_and_count<'tcx>(
-    fx: &FunctionCx<'_, 'tcx, impl Backend>,
+pub fn lane_type_and_count<'tcx>(
+    tcx: TyCtxt<'tcx>,
     layout: TyLayout<'tcx>,
-    intrinsic: &str,
 ) -> (TyLayout<'tcx>, u32) {
     assert!(layout.ty.is_simd());
     let lane_count = match layout.fields {
         layout::FieldPlacement::Array { stride: _, count } => u32::try_from(count).unwrap(),
-        _ => panic!(
-            "Non vector type {:?} passed to or returned from simd_* intrinsic {}",
-            layout.ty, intrinsic
-        ),
+        _ => unreachable!("lane_type_and_count({:?})", layout),
     };
-    let lane_layout = layout.field(fx, 0);
+    let lane_layout = layout.field(&ty::layout::LayoutCx {
+        tcx,
+        param_env: ParamEnv::reveal_all(),
+    }, 0).unwrap();
     (lane_layout, lane_count)
 }
 
@@ -161,8 +160,8 @@ fn simd_for_each_lane<'tcx, B: Backend>(
     assert_eq!(x.layout(), y.layout());
     let layout = x.layout();
 
-    let (lane_layout, lane_count) = lane_type_and_count(fx, layout, intrinsic);
-    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx, ret.layout(), intrinsic);
+    let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, layout);
+    let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
     assert_eq!(lane_count, ret_lane_count);
 
     for lane in 0..lane_count {

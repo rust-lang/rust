@@ -21,8 +21,8 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_cast, (c a) {
-            let (lane_layout, lane_count) = lane_type_and_count(fx, a.layout(), intrinsic);
-            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx, ret.layout(), intrinsic);
+            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, a.layout());
+            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
             assert_eq!(lane_count, ret_lane_count);
 
             let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
@@ -65,8 +65,8 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
             assert_eq!(x.layout(), y.layout());
             let layout = x.layout();
 
-            let (lane_type, lane_count) = lane_type_and_count(fx, layout, intrinsic);
-            let (ret_lane_type, ret_lane_count) = lane_type_and_count(fx, ret.layout(), intrinsic);
+            let (lane_type, lane_count) = lane_type_and_count(fx.tcx, layout);
+            let (ret_lane_type, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
 
             assert_eq!(lane_type, ret_lane_type);
             assert_eq!(n, ret_lane_count);
@@ -124,7 +124,7 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
             };
 
             let idx = idx_const.val.try_to_bits(Size::from_bytes(4 /* u32*/)).expect(&format!("kind not scalar: {:?}", idx_const));
-            let (_lane_type, lane_count) = lane_type_and_count(fx, v.layout(), intrinsic);
+            let (_lane_type, lane_count) = lane_type_and_count(fx.tcx, v.layout());
             if idx >= lane_count.into() {
                 fx.tcx.sess.span_fatal(fx.mir.span, &format!("[simd_extract] idx {} >= lane_count {}", idx, lane_count));
             }
