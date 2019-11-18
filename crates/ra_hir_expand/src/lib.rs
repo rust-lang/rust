@@ -159,7 +159,7 @@ pub struct ExpansionInfo {
 
     macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
-    exp_map: Arc<mbe::RevTokenMap>,
+    exp_map: Arc<mbe::TokenMap>,
 }
 
 impl ExpansionInfo {
@@ -186,7 +186,7 @@ impl ExpansionInfo {
             mbe::Origin::Def => (&self.macro_def.1, &self.def),
         };
 
-        let range = token_map.relative_range_of(token_id)?;
+        let range = token_map.range_by_token(token_id)?;
         let token = algo::find_covering_element(
             tt.ast.syntax(),
             range + tt.ast.syntax().text_range().start(),

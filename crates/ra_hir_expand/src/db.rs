@@ -59,10 +59,8 @@ pub trait AstDatabase: SourceDatabase {
     fn intern_macro(&self, macro_call: MacroCallLoc) -> MacroCallId;
     fn macro_arg(&self, id: MacroCallId) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>>;
     fn macro_def(&self, id: MacroDefId) -> Option<Arc<(TokenExpander, mbe::TokenMap)>>;
-    fn parse_macro(
-        &self,
-        macro_file: MacroFile,
-    ) -> Option<(Parse<SyntaxNode>, Arc<mbe::RevTokenMap>)>;
+    fn parse_macro(&self, macro_file: MacroFile)
+        -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)>;
     fn macro_expand(&self, macro_call: MacroCallId) -> Result<Arc<tt::Subtree>, String>;
 }
 
@@ -136,7 +134,7 @@ pub(crate) fn parse_or_expand(db: &dyn AstDatabase, file_id: HirFileId) -> Optio
 pub(crate) fn parse_macro(
     db: &dyn AstDatabase,
     macro_file: MacroFile,
-) -> Option<(Parse<SyntaxNode>, Arc<mbe::RevTokenMap>)> {
+) -> Option<(Parse<SyntaxNode>, Arc<mbe::TokenMap>)> {
     let _p = profile("parse_macro_query");
 
     let macro_call_id = macro_file.macro_call_id;
