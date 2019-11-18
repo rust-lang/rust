@@ -193,7 +193,9 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             None
         }
     } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
-        if let Some(name_kind) = classify_name(db, position.file_id, &name).map(|d| d.kind) {
+        if let Some(name_kind) =
+            classify_name(db, Source::new(position.file_id.into(), &name)).map(|d| d.kind)
+        {
             let mut _b: bool = true;
             res.extend(hover_text_from_name_kind(db, name_kind, &mut _b));
         }

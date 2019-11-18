@@ -1,7 +1,6 @@
 //! Functions that are used to classify an element from its definition or reference.
 
 use hir::{FromSource, Module, ModuleSource, Path, PathResolution, Source, SourceAnalyzer};
-use ra_db::FileId;
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode};
 use test_utils::tested_by;
@@ -12,19 +11,14 @@ use super::{
 };
 use crate::db::RootDatabase;
 
-pub(crate) fn classify_name(
-    db: &RootDatabase,
-    file_id: FileId,
-    name: &ast::Name,
-) -> Option<NameDefinition> {
+pub(crate) fn classify_name(db: &RootDatabase, name: Source<&ast::Name>) -> Option<NameDefinition> {
     let _p = profile("classify_name");
-    let parent = name.syntax().parent()?;
-    let file_id = file_id.into();
+    let parent = name.ast.syntax().parent()?;
 
     match_ast! {
         match parent {
             ast::BindPat(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let local = hir::Local::from_source(db, src)?;
                 Some(NameDefinition {
                     visibility: None,
@@ -34,7 +28,7 @@ pub(crate) fn classify_name(
             },
             ast::RecordFieldDef(it) => {
                 let ast = hir::FieldSource::Named(it);
-                let src = hir::Source { file_id, ast };
+                let src = name.with_ast(ast);
                 let field = hir::StructField::from_source(db, src)?;
                 Some(from_struct_field(db, field))
             },
@@ -42,42 +36,42 @@ pub(crate) fn classify_name(
                 let def = {
                     if !it.has_semi() {
                         let ast = hir::ModuleSource::Module(it);
-                        let src = hir::Source { file_id, ast };
+                        let src = name.with_ast(ast);
                         hir::Module::from_definition(db, src)
                     } else {
-                        let src = hir::Source { file_id, ast: it };
+                        let src = name.with_ast(it);
                         hir::Module::from_declaration(db, src)
                     }
                 }?;
                 Some(from_module_def(db, def.into(), None))
             },
             ast::StructDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::Struct::from_source(db, src)?;
                 Some(from_module_def(db, def.into(), None))
             },
             ast::EnumDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::Enum::from_source(db, src)?;
                 Some(from_module_def(db, def.into(), None))
             },
             ast::TraitDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::Trait::from_source(db, src)?;
                 Some(from_module_def(db, def.into(), None))
             },
             ast::StaticDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::Static::from_source(db, src)?;
                 Some(from_module_def(db, def.into(), None))
             },
             ast::EnumVariant(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::EnumVariant::from_source(db, src)?;
                 Some(from_module_def(db, def.into(), None))
             },
             ast::FnDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::Function::from_source(db, src)?;
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
                     Some(from_assoc_item(db, def.into()))
@@ -86,7 +80,7 @@ pub(crate) fn classify_name(
                 }
             },
             ast::ConstDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::Const::from_source(db, src)?;
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
                     Some(from_assoc_item(db, def.into()))
@@ -95,7 +89,7 @@ pub(crate) fn classify_name(
                 }
             },
             ast::TypeAliasDef(it) => {
-                let src = hir::Source { file_id, ast: it };
+                let src = name.with_ast(it);
                 let def = hir::TypeAlias::from_source(db, src)?;
                 if parent.parent().and_then(ast::ItemList::cast).is_some() {
                     Some(from_assoc_item(db, def.into()))
@@ -104,11 +98,11 @@ pub(crate) fn classify_name(
                 }
             },
             ast::MacroCall(it) => {
-                let src = hir::Source { file_id, ast: it};
+                let src = name.with_ast(it);
                 let def = hir::MacroDef::from_source(db, src.clone())?;
 
                 let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
-                let module = Module::from_definition(db, Source::new(file_id, module_src))?;
+                let module = Module::from_definition(db, src.with_ast(module_src))?;
 
                 Some(NameDefinition {
                     visibility: None,
