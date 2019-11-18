@@ -5,7 +5,7 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_index::vec::Idx;
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
-use rustc::mir::interpret::{GlobalId, ErrorHandled, ConstValue, Scalar};
+use rustc::mir::interpret::{GlobalId, ErrorHandled, Scalar};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -978,11 +978,9 @@ fn convert_path_expr<'a, 'tcx>(
                 ty,
                 temp_lifetime,
                 span: expr.span,
-                kind: ExprKind::Literal {
-                    literal: cx.tcx.mk_const(ty::Const {
-                        ty, val: ConstValue::Scalar(Scalar::Ptr(ptr.into())),
-                    }),
-                    user_ty: None,
+                kind: ExprKind::StaticRef {
+                    literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
+                    def_id: id,
                 }
             }.to_ref() }
         },

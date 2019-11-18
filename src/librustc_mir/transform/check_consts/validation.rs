@@ -425,7 +425,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
                 if is_thread_local {
                     self.check_op(ops::ThreadLocalAccess);
-                } else if self.const_kind() != ConstKind::Static || !context.is_mutating_use() {
+                } else {
                     self.check_op(ops::StaticAccess);
                 }
             }

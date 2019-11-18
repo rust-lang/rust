@@ -16,7 +16,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
         match constant.literal.val {
-            mir::interpret::ConstValue::Unevaluated(def_id, substs)
+            ty::ConstKind::Unevaluated(def_id, substs)
                 if self.cx.tcx().is_static(def_id) => {
                     assert!(substs.is_empty(), "we don't support generic statics yet");
                     let static_ = bx.get_static(def_id);

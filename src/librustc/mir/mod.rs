@@ -7,7 +7,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir;
-use crate::mir::interpret::{ConstValue, GlobalAlloc, PanicInfo, Scalar};
+use crate::mir::interpret::{GlobalAlloc, PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -2343,8 +2343,8 @@ pub struct Constant<'tcx> {
 
 impl Constant<'tcx> {
     pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
-        match self.literal.val {
-            ConstValue::Scalar(Scalar::Ptr(ptr)) => match tcx.alloc_map.lock().get(ptr.alloc_id) {
+        match self.literal.val.try_to_scalar() {
+            Some(Scalar::Ptr(ptr)) => match tcx.alloc_map.lock().get(ptr.alloc_id) {
                 Some(GlobalAlloc::Static(def_id)) => Some(def_id),
                 Some(_) => None,
                 None => {
