@@ -8,15 +8,32 @@ use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxToken};
 use crate::{db::RootDatabase, FileRange};
 
 pub(crate) fn original_range(db: &RootDatabase, node: Source<&SyntaxNode>) -> FileRange {
-    let text_range = node.ast.text_range();
-    let (file_id, range) = node
-        .file_id
-        .expansion_info(db)
-        .and_then(|expansion_info| expansion_info.find_range(text_range))
-        .unwrap_or((node.file_id, text_range));
+    let expansion = match node.file_id.expansion_info(db) {
+        None => {
+            return FileRange {
+                file_id: node.file_id.original_file(db),
+                range: node.ast.text_range(),
+            }
+        }
+        Some(it) => it,
+    };
+    // FIXME: the following completely wrong.
+    //
+    // *First*, we should try to map first and last tokens of node, and, if that
+    // fails, return the range of the overall macro expansions.
+    //
+    // *Second*, we should handle recurside macro expansions
 
-    // FIXME: handle recursive macro generated macro
-    FileRange { file_id: file_id.original_file(db), range }
+    let token = node
+        .ast
+        .descendants_with_tokens()
+        .filter_map(|it| it.into_token())
+        .find_map(|it| expansion.map_token_up(node.with_ast(&it)));
+
+    match token {
+        Some(it) => FileRange { file_id: it.file_id.original_file(db), range: it.ast.text_range() },
+        None => FileRange { file_id: node.file_id.original_file(db), range: node.ast.text_range() },
+    }
 }
 
 pub(crate) fn descend_into_macros(

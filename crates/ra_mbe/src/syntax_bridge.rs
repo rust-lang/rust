@@ -20,7 +20,7 @@ pub struct TokenMap {
 /// Maps relative range of the expanded syntax node to `tt::TokenId`
 #[derive(Debug, PartialEq, Eq, Default)]
 pub struct RevTokenMap {
-    pub ranges: Vec<(TextRange, tt::TokenId)>,
+    ranges: Vec<(TextRange, tt::TokenId)>,
 }
 
 /// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
@@ -96,6 +96,10 @@ impl TokenMap {
 }
 
 impl RevTokenMap {
+    pub fn token_by_range(&self, relative_range: TextRange) -> Option<tt::TokenId> {
+        self.ranges.iter().find(|&it| it.0 == relative_range).map(|it| it.1)
+    }
+
     pub fn range_by_token(&self, token_id: tt::TokenId) -> Option<TextRange> {
         let &(r, _) = self.ranges.iter().find(|(_, tid)| *tid == token_id)?;
         Some(r)
