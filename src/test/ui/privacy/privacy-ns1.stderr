@@ -20,30 +20,8 @@ LL | use foo2::Bar;
 LL | use foo3::Bar;
    |
 
-error[E0573]: expected type, found function `Bar`
-  --> $DIR/privacy-ns1.rs:35:17
-   |
-LL |     pub struct Baz;
-   |     --------------- similarly named struct `Baz` defined here
-...
-LL |     let _x: Box<Bar>;
-   |                 ^^^
-   |
-help: a struct with a similar name exists
-   |
-LL |     let _x: Box<Baz>;
-   |                 ^^^
-help: possible better candidates are found in other modules, you can import them into scope
-   |
-LL | use foo1::Bar;
-   |
-LL | use foo2::Bar;
-   |
-LL | use foo3::Bar;
-   |
-
 error[E0425]: cannot find function, tuple struct or tuple variant `Bar` in this scope
-  --> $DIR/privacy-ns1.rs:50:5
+  --> $DIR/privacy-ns1.rs:51:5
    |
 LL |     pub struct Baz;
    |     --------------- similarly named unit struct `Baz` defined here
@@ -65,7 +43,7 @@ LL | use foo3::Bar;
    |
 
 error[E0412]: cannot find type `Bar` in this scope
-  --> $DIR/privacy-ns1.rs:51:17
+  --> $DIR/privacy-ns1.rs:52:17
    |
 LL |     pub struct Baz;
    |     --------------- similarly named struct `Baz` defined here
@@ -86,7 +64,19 @@ LL | use foo2::Bar;
 LL | use foo3::Bar;
    |
 
-error: aborting due to 4 previous errors
+error[E0107]: wrong number of const arguments: expected 0, found 1
+  --> $DIR/privacy-ns1.rs:35:17
+   |
+LL |     let _x: Box<Bar>;
+   |                 ^^^ unexpected const argument
 
-Some errors have detailed explanations: E0412, E0423, E0425, E0573.
-For more information about an error, try `rustc --explain E0412`.
+error[E0107]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/privacy-ns1.rs:35:13
+   |
+LL |     let _x: Box<Bar>;
+   |             ^^^^^^^^ expected 1 type argument
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0107, E0412, E0423, E0425.
+For more information about an error, try `rustc --explain E0107`.

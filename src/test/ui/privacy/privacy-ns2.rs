@@ -38,14 +38,16 @@ pub mod foo2 {
 fn test_single2() {
     use foo2::Bar;
 
-    let _x : Box<Bar>; //~ ERROR expected type, found function `Bar`
+    let _x : Box<Bar>; //~ ERROR wrong number of const arguments: expected 0, found 1
+    //~^ ERROR wrong number of type arguments: expected 1, found 0
     let _x : Bar(); //~ ERROR expected type, found function `Bar`
 }
 
 fn test_list2() {
     use foo2::{Bar,Baz};
 
-    let _x: Box<Bar>; //~ ERROR expected type, found function `Bar`
+    let _x: Box<Bar>; //~ ERROR wrong number of const arguments: expected 0, found 1
+    //~^ ERROR wrong number of type arguments: expected 1, found 0
 }
 
 // neither public
