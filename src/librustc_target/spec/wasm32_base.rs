@@ -140,6 +140,9 @@ pub fn options() -> TargetOptions {
         has_elf_tls: true,
         tls_model: "local-exec".to_string(),
 
+        // gdb scripts don't work on wasm blobs
+        emit_debug_gdb_scripts: false,
+
         .. Default::default()
     }
 }
