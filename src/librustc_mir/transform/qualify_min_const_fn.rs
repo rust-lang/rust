@@ -333,9 +333,11 @@ fn check_terminator(
             span,
             "loops and conditional expressions are not stable in const fn".into(),
         )),
-        | TerminatorKind::FalseEdges { .. }
-        | TerminatorKind::SwitchInt { .. }
-        => Ok(()),
+
+        TerminatorKind::FalseEdges { .. } => Ok(()),
+        TerminatorKind::SwitchInt { discr, switch_ty: _, values: _, targets: _ } => {
+            check_operand(tcx, discr, span, def_id, body)
+        }
 
         | TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))
