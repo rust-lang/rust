@@ -1,2 +1,2 @@
-status = ["CI / Rust", "CI / TypeScript"]
+status = ["Rust", "TypeScript"]
 delete_merged_branches = true
