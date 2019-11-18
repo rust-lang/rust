@@ -197,13 +197,8 @@ fn test_add_assign() {
     assert_eq!(s.as_str(), "abc");
     s += "ประเทศไทย中华Việt Nam ";
     assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam ");
-
-    let s2 = "OPS ".to_string();
-    s += &s2;
-    assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam OPS ");
-
     s += '👋';
-    assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam 👋");
+    assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam 👋")
 }
 
 #[test]
