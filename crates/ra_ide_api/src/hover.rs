@@ -1,11 +1,11 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, HasSource, HirDisplay, Source};
+use hir::{db::AstDatabase, Adt, HasSource, HirDisplay};
 use ra_db::SourceDatabase;
 use ra_syntax::{
-    algo::{ancestors_at_offset, find_covering_element, find_node_at_offset},
+    algo::find_covering_element,
     ast::{self, DocCommentsOwner},
-    AstNode,
+    match_ast, AstNode,
 };
 
 use crate::{
@@ -14,6 +14,7 @@ use crate::{
         description_from_symbol, docs_from_symbol, macro_label, rust_code_markup,
         rust_code_markup_with_doc, ShortLabel,
     },
+    expand::descend_into_macros,
     references::{classify_name, classify_name_ref, NameKind, NameKind::*},
     FilePosition, FileRange, RangeInfo,
 };
@@ -162,55 +163,56 @@ fn hover_text_from_name_kind(
 }
 
 pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeInfo<HoverResult>> {
-    let parse = db.parse(position.file_id);
-    let file = parse.tree();
+    let file = db.parse_or_expand(position.file_id.into())?;
+    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = descend_into_macros(db, position.file_id, token);
 
     let mut res = HoverResult::new();
 
-    let mut range = if let Some(name_ref) =
-        find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)
-    {
-        let mut no_fallback = false;
-        if let Some(name_kind) =
-            classify_name_ref(db, Source::new(position.file_id.into(), &name_ref)).map(|d| d.kind)
-        {
-            res.extend(hover_text_from_name_kind(db, name_kind, &mut no_fallback))
-        }
+    let mut range = match_ast! {
+        match (token.ast.parent()) {
+            ast::NameRef(name_ref) => {
+                let mut no_fallback = false;
+                if let Some(name_kind) =
+                    classify_name_ref(db, token.with_ast(&name_ref)).map(|d| d.kind)
+                {
+                    res.extend(hover_text_from_name_kind(db, name_kind, &mut no_fallback))
+                }
 
-        if res.is_empty() && !no_fallback {
-            // Fallback index based approach:
-            let symbols = crate::symbol_index::index_resolve(db, &name_ref);
-            for sym in symbols {
-                let docs = docs_from_symbol(db, &sym);
-                let desc = description_from_symbol(db, &sym);
-                res.extend(hover_text(docs, desc));
-            }
-        }
+                if res.is_empty() && !no_fallback {
+                    // Fallback index based approach:
+                    let symbols = crate::symbol_index::index_resolve(db, &name_ref);
+                    for sym in symbols {
+                        let docs = docs_from_symbol(db, &sym);
+                        let desc = description_from_symbol(db, &sym);
+                        res.extend(hover_text(docs, desc));
+                    }
+                }
 
-        if !res.is_empty() {
-            Some(name_ref.syntax().text_range())
-        } else {
-            None
-        }
-    } else if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
-        if let Some(name_kind) =
-            classify_name(db, Source::new(position.file_id.into(), &name)).map(|d| d.kind)
-        {
-            let mut _b: bool = true;
-            res.extend(hover_text_from_name_kind(db, name_kind, &mut _b));
-        }
+                if !res.is_empty() {
+                    Some(name_ref.syntax().text_range())
+                } else {
+                    None
+                }
+            },
+            ast::Name(name) => {
+                if let Some(name_kind) = classify_name(db, token.with_ast(&name)).map(|d| d.kind) {
+                    let mut _b: bool = true;
+                    res.extend(hover_text_from_name_kind(db, name_kind, &mut _b));
+                }
 
-        if !res.is_empty() {
-            Some(name.syntax().text_range())
-        } else {
-            None
+                if !res.is_empty() {
+                    Some(name.syntax().text_range())
+                } else {
+                    None
+                }
+            },
+            _ => None,
         }
-    } else {
-        None
     };
 
     if range.is_none() {
-        let node = ancestors_at_offset(file.syntax(), position.offset).find(|n| {
+        let node = token.ast.ancestors().find(|n| {
             ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some()
         })?;
         let frange = FileRange { file_id: position.file_id, range: node.text_range() };
@@ -714,6 +716,28 @@ fn func(foo: i32) { if true { <|>foo; }; }
         );
         let hover = analysis.hover(position).unwrap().unwrap();
         assert_eq!(trim_markup_opt(hover.info.first()), Some("i32"));
+        assert_eq!(hover.info.is_exact(), true);
+    }
+
+    #[test]
+    fn test_hover_through_macro() {
+        let (analysis, position) = single_file_with_position(
+            "
+            macro_rules! id {
+                ($($tt:$tt)*) => { $($tt)* }
+            }
+
+            fn foo() {}
+
+            id! {
+                fn bar() {
+                    foo<|>();
+                }
+            }
+            ",
+        );
+        let hover = analysis.hover(position).unwrap().unwrap();
+        assert_eq!(trim_markup_opt(hover.info.first()), Some("fn foo()"));
         assert_eq!(hover.info.is_exact(), true);
     }
 }
