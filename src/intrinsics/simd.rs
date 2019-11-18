@@ -21,22 +21,15 @@ pub fn codegen_simd_intrinsic_call<'tcx>(
         };
 
         simd_cast, (c a) {
-            let (lane_layout, lane_count) = lane_type_and_count(fx.tcx, a.layout());
-            let (ret_lane_layout, ret_lane_count) = lane_type_and_count(fx.tcx, ret.layout());
-            assert_eq!(lane_count, ret_lane_count);
+            simd_for_each_lane(fx, intrinsic, a, ret, |fx, lane_layout, ret_lane_layout, lane| {
+                let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
 
-            let ret_lane_ty = fx.clif_type(ret_lane_layout.ty).unwrap();
+                let from_signed = type_sign(lane_layout.ty);
+                let to_signed = type_sign(ret_lane_layout.ty);
 
-            let from_signed = type_sign(lane_layout.ty);
-            let to_signed = type_sign(ret_lane_layout.ty);
-
-            for lane in 0..lane_count {
-                let lane = mir::Field::new(lane.try_into().unwrap());
-
-                let a_lane = a.value_field(fx, lane).load_scalar(fx);
-                let res = clif_int_or_float_cast(fx, a_lane, from_signed, ret_lane_ty, to_signed);
-                ret.place_field(fx, lane).write_cvalue(fx, CValue::by_val(res, ret_lane_layout));
-            }
+                let ret_lane = clif_int_or_float_cast(fx, lane, from_signed, ret_lane_ty, to_signed);
+                CValue::by_val(ret_lane, ret_lane_layout)
+            });
         };
 
         simd_eq, (c x, c y) {

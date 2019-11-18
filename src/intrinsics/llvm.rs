@@ -86,7 +86,7 @@ pub fn codegen_llvm_intrinsic_call<'tcx>(
                 kind => unreachable!("kind {:?}", kind),
             };
 
-            simd_for_each_lane(fx, intrinsic, x, y, ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
+            simd_pair_for_each_lane(fx, intrinsic, x, y, ret, |fx, lane_layout, res_lane_layout, x_lane, y_lane| {
                 let res_lane = match lane_layout.ty.kind {
                     ty::Float(_) => fx.bcx.ins().fcmp(flt_cc, x_lane, y_lane),
                     _ => unreachable!("{:?}", lane_layout.ty),
