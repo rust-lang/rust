@@ -1,3 +1,5 @@
+pub mod llvm;
+
 use crate::prelude::*;
 
 macro intrinsic_pat {
@@ -35,7 +37,7 @@ macro intrinsic_substs {
     }
 }
 
-pub macro intrinsic_match {
+macro intrinsic_match {
     ($fx:expr, $intrinsic:expr, $substs:expr, $args:expr,
     _ => $unknown:block;
     $(
@@ -128,7 +130,7 @@ macro_rules! atomic_minmax {
     };
 }
 
-pub fn lane_type_and_count<'tcx>(
+fn lane_type_and_count<'tcx>(
     fx: &FunctionCx<'_, 'tcx, impl Backend>,
     layout: TyLayout<'tcx>,
     intrinsic: &str,
@@ -145,7 +147,7 @@ pub fn lane_type_and_count<'tcx>(
     (lane_layout, lane_count)
 }
 
-pub fn simd_for_each_lane<'tcx, B: Backend>(
+fn simd_for_each_lane<'tcx, B: Backend>(
     fx: &mut FunctionCx<'_, 'tcx, B>,
     intrinsic: &str,
     x: CValue<'tcx>,
@@ -177,7 +179,7 @@ pub fn simd_for_each_lane<'tcx, B: Backend>(
     }
 }
 
-pub fn bool_to_zero_or_max_uint<'tcx>(
+fn bool_to_zero_or_max_uint<'tcx>(
     fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
     layout: TyLayout<'tcx>,
     val: Value,

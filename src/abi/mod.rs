@@ -419,7 +419,7 @@ pub fn codegen_terminator_call<'tcx>(
             ty::Instance::resolve(fx.tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap();
 
         if fx.tcx.symbol_name(instance).name.as_str().starts_with("llvm.") {
-            crate::llvm_intrinsics::codegen_llvm_intrinsic_call(
+            crate::intrinsics::llvm::codegen_llvm_intrinsic_call(
                 fx,
                 &fx.tcx.symbol_name(instance).name.as_str(),
                 substs,

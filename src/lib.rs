@@ -45,7 +45,6 @@ mod discriminant;
 mod driver;
 mod intrinsics;
 mod linkage;
-mod llvm_intrinsics;
 mod main_shim;
 mod metadata;
 mod num;
