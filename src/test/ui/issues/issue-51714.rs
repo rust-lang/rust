@@ -10,5 +10,5 @@ fn main() {
 
     [(); return while let Some(n) = Some(0) {}];
     //~^ ERROR return statement outside of function body
-    //~| ERROR `while let` is not allowed in a `const`
+    //~| ERROR `while` is not allowed in a `const`
 }

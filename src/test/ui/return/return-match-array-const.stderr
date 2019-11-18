@@ -1,20 +1,29 @@
-error[E0744]: `match` is not allowed in a `const`
+error[E0658]: `match` is not allowed in a `const`
   --> $DIR/return-match-array-const.rs:2:17
    |
 LL |     [(); return match 0 { n => n }];
    |                 ^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error[E0744]: `match` is not allowed in a `const`
+error[E0658]: `match` is not allowed in a `const`
   --> $DIR/return-match-array-const.rs:6:17
    |
 LL |     [(); return match 0 { 0 => 0 }];
    |                 ^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error[E0744]: `match` is not allowed in a `const`
+error[E0658]: `match` is not allowed in a `const`
   --> $DIR/return-match-array-const.rs:10:17
    |
 LL |     [(); return match () { 'a' => 0, _ => 0 }];
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0572]: return statement outside of function body
   --> $DIR/return-match-array-const.rs:2:10
@@ -36,5 +45,5 @@ LL |     [(); return match () { 'a' => 0, _ => 0 }];
 
 error: aborting due to 6 previous errors
 
-Some errors have detailed explanations: E0572, E0744.
+Some errors have detailed explanations: E0572, E0658.
 For more information about an error, try `rustc --explain E0572`.
