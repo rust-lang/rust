@@ -120,8 +120,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::StructDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -129,8 +128,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::EnumDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -138,8 +136,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::EnumVariant(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -147,8 +144,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::FnDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -156,8 +152,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::TypeAliasDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -165,8 +160,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::ConstDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -174,8 +168,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::StaticDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -183,8 +176,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::TraitDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -192,8 +184,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::RecordFieldDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -201,8 +192,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::Module(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -210,8 +200,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::MacroCall(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.file_id,
-                    &it,
+                    node.with_ast(&it),
                     it.doc_comment_text(),
                     None,
                 ))
