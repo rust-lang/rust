@@ -22,9 +22,9 @@ use crate::{
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParam {
     // FIXME: give generic params proper IDs
-    pub(crate) idx: u32,
-    pub(crate) name: Name,
-    pub(crate) default: Option<Path>,
+    pub idx: u32,
+    pub name: Name,
+    pub default: Option<Path>,
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
