@@ -1130,7 +1130,7 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
                 self.end = a;
                 Some(elt)
             },
-            // SAFETY: `self.start` and `self.end` always lie on unicode boudaries
+            // SAFETY: `self.start` and `self.end` always lie on unicode boundaries
             None => unsafe {
                 self.finished = true;
                 Some(haystack.get_unchecked(self.start..self.end))

@@ -492,7 +492,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: not threadsafe, but it's OK since we know C`ell` isn't threadsafe
+        // SAFETY: not threadsafe, but it's OK since we know `Cell` isn't threadsafe
         unsafe {
             &mut *self.value.get()
         }
