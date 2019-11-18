@@ -318,6 +318,7 @@ E0590: include_str!("./error_codes/E0590.md"),
 E0591: include_str!("./error_codes/E0591.md"),
 E0592: include_str!("./error_codes/E0592.md"),
 E0593: include_str!("./error_codes/E0593.md"),
+E0594: include_str!("./error_codes/E0594.md"),
 E0595: include_str!("./error_codes/E0595.md"),
 E0596: include_str!("./error_codes/E0596.md"),
 E0597: include_str!("./error_codes/E0597.md"),
@@ -566,7 +567,6 @@ E0744: include_str!("./error_codes/E0744.md"),
 //  E0563, // cannot determine a type for this `impl Trait` removed in 6383de15
 //  E0564, // only named lifetimes are allowed in `impl Trait`,
            // but `{}` was found in the type `{}`
-    E0594, // cannot assign to {}
 //  E0598, // lifetime of {} is too short to guarantee its contents can be...
 //  E0611, // merged into E0616
 //  E0612, // merged into E0609
