@@ -38,6 +38,7 @@ pub mod registry;
 mod styled_buffer;
 mod lock;
 pub mod json;
+pub use snippet::Style;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 

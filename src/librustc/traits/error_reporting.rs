@@ -33,7 +33,7 @@ use crate::ty::subst::Subst;
 use crate::ty::SubtypePredicate;
 use crate::util::nodemap::{FxHashMap, FxHashSet};
 
-use errors::{Applicability, DiagnosticBuilder, pluralize};
+use errors::{Applicability, DiagnosticBuilder, pluralize, Style};
 use std::fmt;
 use syntax::ast;
 use syntax::symbol::{sym, kw};
@@ -713,20 +713,24 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 match obligation.predicate {
                     ty::Predicate::Trait(ref trait_predicate) => {
-                        let trait_predicate =
-                            self.resolve_vars_if_possible(trait_predicate);
+                        let trait_predicate = self.resolve_vars_if_possible(trait_predicate);
 
                         if self.tcx.sess.has_errors() && trait_predicate.references_error() {
                             return;
                         }
                         let trait_ref = trait_predicate.to_poly_trait_ref();
-                        let (post_message, pre_message) =
-                            self.get_parent_trait_ref(&obligation.cause.code)
-                                .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
+                        let (
+                            post_message,
+                            pre_message,
+                        ) = self.get_parent_trait_ref(&obligation.cause.code)
+                            .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
                             .unwrap_or_default();
 
-                        let OnUnimplementedNote { message, label, note }
-                            = self.on_unimplemented_note(trait_ref, obligation);
+                        let OnUnimplementedNote {
+                            message,
+                            label,
+                            note,
+                        } = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try = self.tcx.sess.source_map().span_to_snippet(span)
                             .map(|s| &s == "?")
@@ -767,6 +771,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 )
                             };
 
+                        if self.suggest_add_reference_to_arg(
+                            &obligation,
+                            &mut err,
+                            &trait_ref,
+                            points_at_arg,
+                            have_alt_message,
+                        ) {
+                            self.note_obligation_cause(&mut err, obligation);
+                            err.emit();
+                            return;
+                        }
                         if let Some(ref s) = label {
                             // If it has a custom `#[rustc_on_unimplemented]`
                             // error message, let's display it as the label!
@@ -1296,6 +1311,73 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn suggest_add_reference_to_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut DiagnosticBuilder<'tcx>,
+        trait_ref: &ty::Binder<ty::TraitRef<'tcx>>,
+        points_at_arg: bool,
+        has_custom_message: bool,
+    ) -> bool {
+        if !points_at_arg {
+            return false;
+        }
+
+        let span = obligation.cause.span;
+        let param_env = obligation.param_env;
+        let trait_ref = trait_ref.skip_binder();
+
+        if let ObligationCauseCode::ImplDerivedObligation(obligation) = &obligation.cause.code {
+            // Try to apply the original trait binding obligation by borrowing.
+            let self_ty = trait_ref.self_ty();
+            let found = self_ty.to_string();
+            let new_self_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_static, self_ty);
+            let substs = self.tcx.mk_substs_trait(new_self_ty, &[]);
+            let new_trait_ref = ty::TraitRef::new(obligation.parent_trait_ref.def_id(), substs);
+            let new_obligation = Obligation::new(
+                ObligationCause::dummy(),
+                param_env,
+                new_trait_ref.to_predicate(),
+            );
+            if self.predicate_must_hold_modulo_regions(&new_obligation) {
+                if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
+                    // We have a very specific type of error, where just borrowing this argument
+                    // might solve the problem. In cases like this, the important part is the
+                    // original type obligation, not the last one that failed, which is arbitrary.
+                    // Because of this, we modify the error to refer to the original obligation and
+                    // return early in the caller.
+                    let msg = format!(
+                        "the trait bound `{}: {}` is not satisfied",
+                        found,
+                        obligation.parent_trait_ref.skip_binder(),
+                    );
+                    if has_custom_message {
+                        err.note(&msg);
+                    } else {
+                        err.message = vec![(msg, Style::NoStyle)];
+                    }
+                    if snippet.starts_with('&') {
+                        // This is already a literal borrow and the obligation is failing
+                        // somewhere else in the obligation chain. Do not suggest non-sense.
+                        return false;
+                    }
+                    err.span_label(span, &format!(
+                        "expected an implementor of trait `{}`",
+                        obligation.parent_trait_ref.skip_binder(),
+                    ));
+                    err.span_suggestion(
+                        span,
+                        "consider borrowing here",
+                        format!("&{}", snippet),
+                        Applicability::MaybeIncorrect,
+                    );
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Whenever references are used by mistake, like `for (i, e) in &vec.iter().enumerate()`,
