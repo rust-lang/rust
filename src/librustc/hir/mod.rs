@@ -1749,6 +1749,20 @@ pub enum MatchSource {
     AwaitDesugar,
 }
 
+impl MatchSource {
+    pub fn name(self) -> &'static str {
+        use MatchSource::*;
+        match self {
+            Normal => "match",
+            IfDesugar { .. } | IfLetDesugar { .. } => "if",
+            WhileDesugar | WhileLetDesugar => "while",
+            ForLoopDesugar => "for",
+            TryDesugar => "?",
+            AwaitDesugar => ".await",
+        }
+    }
+}
+
 /// The loop type that yielded an `ExprKind::Loop`.
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum LoopSource {
@@ -1766,8 +1780,7 @@ impl LoopSource {
     pub fn name(self) -> &'static str {
         match self {
             LoopSource::Loop => "loop",
-            LoopSource::While => "while",
-            LoopSource::WhileLet => "while let",
+            LoopSource::While | LoopSource::WhileLet => "while",
             LoopSource::ForLoop => "for",
         }
     }
