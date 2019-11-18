@@ -197,8 +197,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             },
             ast::Name(name) => {
                 if let Some(name_kind) = classify_name(db, token.with_ast(&name)).map(|d| d.kind) {
-                    let mut _b: bool = true;
-                    res.extend(hover_text_from_name_kind(db, name_kind, &mut _b));
+                    res.extend(hover_text_from_name_kind(db, name_kind, &mut true));
                 }
 
                 if !res.is_empty() {
@@ -721,23 +720,20 @@ fn func(foo: i32) { if true { <|>foo; }; }
 
     #[test]
     fn test_hover_through_macro() {
-        let (analysis, position) = single_file_with_position(
+        check_hover_result(
             "
+            //- /lib.rs
             macro_rules! id {
-                ($($tt:$tt)*) => { $($tt)* }
+                ($($tt:tt)*) => { $($tt)* }
             }
-
             fn foo() {}
-
             id! {
                 fn bar() {
-                    foo<|>();
+                    fo<|>o();
                 }
             }
             ",
+            &["fn foo()"],
         );
-        let hover = analysis.hover(position).unwrap().unwrap();
-        assert_eq!(trim_markup_opt(hover.info.first()), Some("fn foo()"));
-        assert_eq!(hover.info.is_exact(), true);
     }
 }
