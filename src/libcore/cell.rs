@@ -367,7 +367,7 @@ impl<T> Cell<T> {
         if ptr::eq(self, other) {
             return;
         }
-        // SAFETY: Cell is not Sync
+        // SAFETY: not threadsafe, but it's OK since we know Cell isn't threadsafe
         unsafe {
             ptr::swap(self.value.get(), other.value.get());
         }
@@ -387,7 +387,7 @@ impl<T> Cell<T> {
     /// ```
     #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn replace(&self, val: T) -> T {
-        // SAFETY: Cell is not Sync
+        // SAFETY: not threadsafe, but it's OK since we know Cell isn't threadsafe
         mem::replace(unsafe { &mut *self.value.get() }, val)
     }
 
@@ -424,7 +424,7 @@ impl<T:Copy> Cell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> T {
-        // SAFETY: Cell is not Sync
+        // SAFETY: not threadsafe, but it's OK since we know Cell isn't threadsafe
         unsafe{ *self.value.get() }
     }
 
@@ -492,7 +492,7 @@ impl<T: ?Sized> Cell<T> {
     #[inline]
     #[stable(feature = "cell_get_mut", since = "1.11.0")]
     pub fn get_mut(&mut self) -> &mut T {
-        // SAFETY: &mut ensures unique access
+        // SAFETY: not threadsafe, but it's OK since we know Cell isn't threadsafe
         unsafe {
             &mut *self.value.get()
         }
