@@ -18,13 +18,18 @@
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
 #include "llvm/Transforms/IPO/FunctionImport.h"
-#include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
-#include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
-#include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
-
 #include "llvm-c/Transforms/PassManagerBuilder.h"
+
+#include "llvm/Transforms/Instrumentation.h"
+#if LLVM_VERSION_GE(9, 0)
+#include "llvm/Transforms/Instrumentation/AddressSanitizer.h"
+#endif
+#if LLVM_VERSION_GE(8, 0)
+#include "llvm/Transforms/Instrumentation/ThreadSanitizer.h"
+#include "llvm/Transforms/Instrumentation/MemorySanitizer.h"
+#endif
 
 using namespace llvm;
 using namespace llvm::legacy;
@@ -88,18 +93,30 @@ extern "C" LLVMPassRef LLVMRustCreateAddressSanitizerFunctionPass(bool Recover) 
 extern "C" LLVMPassRef LLVMRustCreateModuleAddressSanitizerPass(bool Recover) {
   const bool CompileKernel = false;
 
+#if LLVM_VERSION_GE(9, 0)
   return wrap(createModuleAddressSanitizerLegacyPassPass(CompileKernel, Recover));
+#else
+  return wrap(createAddressSanitizerModulePass(CompileKernel, Recover));
+#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool Recover) {
+#if LLVM_VERSION_GE(8, 0)
   const bool CompileKernel = false;
 
   return wrap(createMemorySanitizerLegacyPassPass(
       MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
+#else
+  return wrap(createMemorySanitizerPass(TrackOrigins, Recover));
+#endif
 }
 
 extern "C" LLVMPassRef LLVMRustCreateThreadSanitizerPass() {
+#if LLVM_VERSION_GE(8, 0)
   return wrap(createThreadSanitizerLegacyPassPass());
+#else
+  return wrap(createThreadSanitizerPass());
+#endif
 }
 
 extern "C" LLVMRustPassKind LLVMRustPassKind(LLVMPassRef RustPass) {
