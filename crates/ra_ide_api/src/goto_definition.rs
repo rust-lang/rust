@@ -1,16 +1,15 @@
 //! FIXME: write short doc here
 
-use std::iter::successors;
-
 use hir::{db::AstDatabase, Source};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
-    match_ast, AstNode, SyntaxNode, SyntaxToken,
+    match_ast, AstNode, SyntaxNode,
 };
 
 use crate::{
     db::RootDatabase,
     display::{ShortLabel, ToNav},
+    expand::descend_into_macros,
     references::{classify_name_ref, NameKind::*},
     FilePosition, NavigationTarget, RangeInfo,
 };
@@ -19,7 +18,9 @@ pub(crate) fn goto_definition(
     db: &RootDatabase,
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
-    let token = descend_into_macros(db, position)?;
+    let file = db.parse_or_expand(position.file_id.into())?;
+    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = descend_into_macros(db, position.file_id, token);
 
     let res = match_ast! {
         match (token.ast.parent()) {
@@ -37,24 +38,6 @@ pub(crate) fn goto_definition(
     };
 
     Some(res)
-}
-
-fn descend_into_macros(db: &RootDatabase, position: FilePosition) -> Option<Source<SyntaxToken>> {
-    let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
-
-    successors(Some(Source::new(position.file_id.into(), token)), |token| {
-        let macro_call = token.ast.ancestors().find_map(ast::MacroCall::cast)?;
-        let tt = macro_call.token_tree()?;
-        if !token.ast.text_range().is_subrange(&tt.syntax().text_range()) {
-            return None;
-        }
-        let source_analyzer =
-            hir::SourceAnalyzer::new(db, token.with_ast(token.ast.parent()).as_ref(), None);
-        let exp = source_analyzer.expand(db, &macro_call)?;
-        exp.map_token_down(db, token.as_ref())
-    })
-    .last()
 }
 
 #[derive(Debug)]
