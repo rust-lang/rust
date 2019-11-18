@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as jsonc from 'jsonc-parser';
 import * as path from 'path';
 import * as vscode from 'vscode';
 
@@ -140,7 +141,6 @@ function readFileText(filePath: string): string {
     return fs.readFileSync(filePath, 'utf8');
 }
 
-// Might need to replace with JSONC if a theme contains comments.
 function parseJSON(content: string): any {
-    return JSON.parse(content);
+    return jsonc.parse(content);
 }
