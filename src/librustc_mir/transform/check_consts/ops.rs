@@ -52,7 +52,11 @@ pub trait NonConstOp: std::fmt::Debug {
 /// A `Downcast` projection.
 #[derive(Debug)]
 pub struct Downcast;
-impl NonConstOp for Downcast {}
+impl NonConstOp for Downcast {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_if_match)
+    }
+}
 
 /// A function call where the callee is a pointer.
 #[derive(Debug)]
