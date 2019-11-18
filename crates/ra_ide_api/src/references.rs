@@ -110,7 +110,7 @@ fn find_name<'a>(
     position: FilePosition,
 ) -> Option<RangeInfo<(String, NameDefinition)>> {
     if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
-        let def = classify_name(db, position.file_id, &name)?;
+        let def = classify_name(db, Source::new(position.file_id.into(), &name))?;
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, (name.text().to_string(), def)));
     }

@@ -94,7 +94,8 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             }
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
-                let name_kind = classify_name(db, file_id, &name).map(|d| d.kind);
+                let name_kind =
+                    classify_name(db, Source::new(file_id.into(), &name)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {
