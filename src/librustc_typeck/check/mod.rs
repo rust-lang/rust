@@ -879,6 +879,30 @@ fn used_trait_imports(tcx: TyCtxt<'_>, def_id: DefId) -> &DefIdSet {
 /// variables introduced by the projection of associated types. This ensures that
 /// any opaque types used in the signature continue to refer to generic parameters,
 /// allowing them to be considered for defining uses in the function body
+///
+/// For example, consider this code.
+///
+/// ```rust
+/// trait MyTrait {
+///     type MyItem;
+///     fn use_it(self) -> Self::MyItem
+/// }
+/// impl<T, I> MyTrait for T where T: Iterator<Item = I> {
+///     type MyItem = impl Iterator<Item = I>;
+///     fn use_it(self) -> Self::MyItem {
+///         self
+///     }
+/// }
+/// ```
+///
+/// When we normalize the signature of `use_it` from the impl block,
+/// we will normalize `Self::MyItem` to the opaque type `impl Iterator<Item = I>`
+/// However, this projection result may contain inference variables, due
+/// to the way that projection works. We didn't have any inference variables
+/// in the signature to begin with - leaving them in will cause us to incorrectly
+/// conclude that we don't have a defining use of `MyItem`. By mapping inference
+/// variables back to the actual generic parameters, we will correctly see that
+/// we have a defining use of `MyItem`
 fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFoldable<'tcx> {
     struct FixupFolder<'tcx> {
         tcx: TyCtxt<'tcx>
@@ -893,6 +917,14 @@ fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFol
             match ty.kind {
                 ty::Opaque(def_id, substs) => {
                     debug!("fixup_opaque_types: found type {:?}", ty);
+                    // Here, we replace any inference variables that occur within
+                    // the substs of an opaque type. By definition, any type occuring
+                    // in the substs has a corresponding generic parameter, which is what
+                    // we replace it with.
+                    // This replacement is only run on the function signature, so any
+                    // inference variables that we come across must be the rust of projection
+                    // (there's no other way for a user to get inference variables into
+                    // a function signature).
                     if ty.needs_infer() {
                         let new_substs = InternalSubsts::for_item(self.tcx, def_id, |param, _| {
                             let old_param = substs[param.index as usize];
