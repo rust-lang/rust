@@ -938,7 +938,7 @@ fn fixup_opaque_types<'tcx, T>(tcx: TyCtxt<'tcx>, val: &T) -> T where T: TypeFol
                                     }
                                 },
                                 GenericArgKind::Const(old_const) => {
-                                    if let ConstValue::Infer(_) = old_const.val {
+                                    if let ty::ConstKind::Infer(_) = old_const.val {
                         // This should never happen - we currently do not support
                         // 'const projections', e.g.:
                         // `impl<T: SomeTrait> MyTrait for T where <T as SomeTrait>::MyConst == 25`
