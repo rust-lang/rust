@@ -1,4 +1,2 @@
-status = [
-  "continuous-integration/travis-ci/push",
-]
+status = ["CI / Rust", "CI / TypeScript"]
 delete_merged_branches = true

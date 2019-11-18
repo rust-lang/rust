@@ -1,0 +1,39 @@
+name: rustdoc
+on:
+  push:
+   branches:
+     - master
+
+jobs:
+  rustdoc:
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: -D warnings
+      CARGO_INCREMENTAL: 0
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v1
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          components: rustfmt, rust-src
+
+      - name: Build Documentation
+        uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --all --no-deps
+
+      - name: Deploy Docs
+        uses: peaceiris/actions-gh-pages@v2.6.0-rc0
+        env:
+          ACTIONS_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
+          PUBLISH_BRANCH: gh-pages
+          PUBLISH_DIR: ./target/doc
+        with:
+          forceOrphan: true
