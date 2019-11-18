@@ -3,16 +3,15 @@
 //! FIXME: this might be better as a "generic" fixed-point combinator,
 //! but is not as ugly as it is right now.
 
-use rustc::mir::{BasicBlock, Local, Location};
-use rustc::ty::RegionVid;
+use rustc::mir::{BasicBlock, Location};
 use rustc_index::bit_set::BitIter;
 
 use crate::borrow_check::location::LocationIndex;
 
-use polonius_engine::Output;
+use crate::borrow_check::nll::PoloniusOutput;
 
 use crate::dataflow::indexes::BorrowIndex;
-use crate::dataflow::move_paths::{HasMoveData, MovePathIndex};
+use crate::dataflow::move_paths::HasMoveData;
 use crate::dataflow::Borrows;
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::MaybeUninitializedPlaces;
@@ -20,8 +19,6 @@ use crate::dataflow::{FlowAtLocation, FlowsAtLocation};
 use either::Either;
 use std::fmt;
 use std::rc::Rc;
-
-crate type PoloniusOutput = Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>;
 
 crate struct Flows<'b, 'tcx> {
     borrows: FlowAtLocation<'tcx, Borrows<'b, 'tcx>>,
