@@ -3,9 +3,9 @@
 //! It's unclear if we need this long-term, but it's definitelly useful while we
 //! are splitting the hir.
 
-use hir_def::{AdtId, DefWithBodyId, EnumVariantId, ModuleDefId};
+use hir_def::{AdtId, AssocItemId, DefWithBodyId, EnumVariantId, ModuleDefId};
 
-use crate::{Adt, DefWithBody, EnumVariant, ModuleDef};
+use crate::{Adt, AssocItem, DefWithBody, EnumVariant, ModuleDef};
 
 macro_rules! from_id {
     ($(($id:path, $ty:path)),*) => {$(
@@ -27,6 +27,7 @@ from_id![
     (hir_def::StaticId, crate::Static),
     (hir_def::ConstId, crate::Const),
     (hir_def::FunctionId, crate::Function),
+    (hir_def::ImplId, crate::ImplBlock),
     (hir_expand::MacroDefId, crate::MacroDef)
 ];
 
@@ -68,6 +69,16 @@ impl From<DefWithBody> for DefWithBodyId {
             DefWithBody::Function(it) => DefWithBodyId::FunctionId(it.id),
             DefWithBody::Static(it) => DefWithBodyId::StaticId(it.id),
             DefWithBody::Const(it) => DefWithBodyId::ConstId(it.id),
+        }
+    }
+}
+
+impl From<AssocItemId> for AssocItem {
+    fn from(def: AssocItemId) -> Self {
+        match def {
+            AssocItemId::FunctionId(it) => AssocItem::Function(it.into()),
+            AssocItemId::TypeAliasId(it) => AssocItem::TypeAlias(it.into()),
+            AssocItemId::ConstId(it) => AssocItem::Const(it.into()),
         }
     }
 }

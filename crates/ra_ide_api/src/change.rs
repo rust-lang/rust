@@ -271,7 +271,6 @@ impl RootDatabase {
         self.query(hir::db::AstIdMapQuery).sweep(sweep);
 
         self.query(hir::db::RawItemsWithSourceMapQuery).sweep(sweep);
-        self.query(hir::db::ImplsInModuleWithSourceMapQuery).sweep(sweep);
         self.query(hir::db::BodyWithSourceMapQuery).sweep(sweep);
 
         self.query(hir::db::ExprScopesQuery).sweep(sweep);
@@ -314,8 +313,6 @@ impl RootDatabase {
             hir::db::RawItemsWithSourceMapQuery
             hir::db::RawItemsQuery
             hir::db::CrateDefMapQuery
-            hir::db::ImplsInModuleWithSourceMapQuery
-            hir::db::ImplsInModuleQuery
             hir::db::GenericParamsQuery
             hir::db::FnDataQuery
             hir::db::TypeAliasDataQuery
@@ -340,6 +337,7 @@ impl RootDatabase {
             hir::db::TraitDatumQuery
             hir::db::StructDatumQuery
             hir::db::ImplDatumQuery
+            hir::db::ImplDataQuery
             hir::db::TraitSolveQuery
         ];
         acc.sort_by_key(|it| std::cmp::Reverse(it.1));

@@ -83,6 +83,7 @@ pub enum SyntaxErrorKind {
     InvalidMatchInnerAttr,
     InvalidTupleIndexFormat,
     VisibilityNotAllowed,
+    InclusiveRangeMissingEnd,
 }
 
 impl fmt::Display for SyntaxErrorKind {
@@ -102,6 +103,9 @@ impl fmt::Display for SyntaxErrorKind {
             EscapeError(err) => write!(f, "{}", err),
             VisibilityNotAllowed => {
                 write!(f, "unnecessary visibility qualifier")
+            }
+            InclusiveRangeMissingEnd => {
+                write!(f, "An inclusive range must have an end expression")
             }
         }
     }

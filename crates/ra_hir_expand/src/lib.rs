@@ -18,8 +18,9 @@ use std::sync::Arc;
 
 use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{
+    algo,
     ast::{self, AstNode},
-    SyntaxNode, TextRange, TextUnit,
+    SyntaxNode, SyntaxToken, TextRange, TextUnit,
 };
 
 use crate::ast_id_map::FileAstId;
@@ -83,14 +84,21 @@ impl HirFileId {
                     loc.def.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
 
                 let macro_def = db.macro_def(loc.def)?;
-                let shift = macro_def.0.shift();
-                let exp_map = db.parse_macro(macro_file)?.1;
+                let (parse, exp_map) = db.parse_macro(macro_file)?;
+                let expanded = Source::new(self, parse.syntax_node());
                 let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
                 let arg_start = (loc.ast_id.file_id, arg_start);
                 let def_start = (loc.def.ast_id.file_id, def_start);
 
-                Some(ExpansionInfo { arg_start, def_start, macro_arg, macro_def, exp_map, shift })
+                Some(ExpansionInfo {
+                    expanded,
+                    arg_start,
+                    def_start,
+                    macro_arg,
+                    macro_def,
+                    exp_map,
+                })
             }
         }
     }
@@ -147,26 +155,42 @@ impl MacroCallId {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpansionInfo {
-    pub(crate) arg_start: (HirFileId, TextUnit),
-    pub(crate) def_start: (HirFileId, TextUnit),
-    pub(crate) shift: u32,
+    expanded: Source<SyntaxNode>,
+    arg_start: (HirFileId, TextUnit),
+    def_start: (HirFileId, TextUnit),
 
-    pub(crate) macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
-    pub(crate) macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
-    pub(crate) exp_map: Arc<mbe::RevTokenMap>,
+    macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
+    macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
+    exp_map: Arc<mbe::RevTokenMap>,
 }
 
 impl ExpansionInfo {
+    pub fn map_token_down(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
+        assert_eq!(token.file_id, self.arg_start.0);
+        let range = token.ast.text_range().checked_sub(self.arg_start.1)?;
+        let token_id = self.macro_arg.1.token_by_range(range)?;
+        let token_id = self.macro_def.0.map_id_down(token_id);
+
+        let range = self.exp_map.range_by_token(token_id)?;
+
+        let token = algo::find_covering_element(&self.expanded.ast, range).into_token()?;
+
+        Some(self.expanded.with_ast(token))
+    }
+
+    // FIXME: a more correct signature would be
+    // `pub fn map_token_up(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>>`
     pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
         let token_id = look_in_rev_map(&self.exp_map, from)?;
 
-        let (token_map, (file_id, start_offset), token_id) = if token_id.0 >= self.shift {
-            (&self.macro_arg.1, self.arg_start, tt::TokenId(token_id.0 - self.shift).into())
-        } else {
-            (&self.macro_def.1, self.def_start, token_id)
+        let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
+
+        let (token_map, (file_id, start_offset)) = match origin {
+            mbe::Origin::Call => (&self.macro_arg.1, self.arg_start),
+            mbe::Origin::Def => (&self.macro_def.1, self.def_start),
         };
 
         let range = token_map.relative_range_of(token_id)?;
@@ -223,18 +247,30 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
+/// FIXME: https://github.com/matklad/with ?
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Source<T> {
     pub file_id: HirFileId,
+    // FIXME: this stores all kind of things, not only `ast`.
+    // There should be a better name...
     pub ast: T,
 }
 
 impl<T> Source<T> {
+    pub fn new(file_id: HirFileId, ast: T) -> Source<T> {
+        Source { file_id, ast }
+    }
+
+    // Similarly, naming here is stupid...
+    pub fn with_ast<U>(&self, ast: U) -> Source<U> {
+        Source::new(self.file_id, ast)
+    }
+
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
-        Source { file_id: self.file_id, ast: f(self.ast) }
+        Source::new(self.file_id, f(self.ast))
     }
     pub fn as_ref(&self) -> Source<&T> {
-        Source { file_id: self.file_id, ast: &self.ast }
+        self.with_ast(&self.ast)
     }
     pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")

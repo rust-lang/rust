@@ -290,6 +290,22 @@ fn expr_bp(p: &mut Parser, r: Restrictions, bp: u8) -> (Option<CompletedMarker>,
         let m = lhs.precede(p);
         p.bump(op);
 
+        if is_range {
+            // test postfix_range
+            // fn foo() {
+            //     let x = 1..;
+            //     match 1.. { _ => () };
+            //     match a.b()..S { _ => () };
+            // }
+            let has_trailing_expression =
+                p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{']));
+            if !has_trailing_expression {
+                // no RHS
+                lhs = m.complete(p, RANGE_EXPR);
+                break;
+            }
+        }
+
         expr_bp(p, r, op_bp + 1);
         lhs = m.complete(p, if is_range { RANGE_EXPR } else { BIN_EXPR });
     }
@@ -330,7 +346,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
                 if p.at(op) {
                     m = p.start();
                     p.bump(op);
-                    if p.at_ts(EXPR_FIRST) {
+                    if p.at_ts(EXPR_FIRST) && !(r.forbid_structs && p.at(T!['{'])) {
                         expr_bp(p, r, 2);
                     }
                     return Some((m.complete(p, RANGE_EXPR), BlockLike::NotBlock));
@@ -344,13 +360,7 @@ fn lhs(p: &mut Parser, r: Restrictions) -> Option<(CompletedMarker, BlockLike)> 
             // }
             //
             let (lhs, blocklike) = atom::atom_expr(p, r)?;
-            return Some(postfix_expr(
-                p,
-                lhs,
-                blocklike,
-                !(r.prefer_stmt && blocklike.is_block()),
-                r.forbid_structs,
-            ));
+            return Some(postfix_expr(p, lhs, blocklike, !(r.prefer_stmt && blocklike.is_block())));
         }
     };
     // parse the interior of the unary expression
@@ -366,7 +376,6 @@ fn postfix_expr(
     // `while true {break}; ();`
     mut block_like: BlockLike,
     mut allow_calls: bool,
-    forbid_structs: bool,
 ) -> (CompletedMarker, BlockLike) {
     loop {
         lhs = match p.current() {
@@ -380,7 +389,7 @@ fn postfix_expr(
             // }
             T!['('] if allow_calls => call_expr(p, lhs),
             T!['['] if allow_calls => index_expr(p, lhs),
-            T![.] => match postfix_dot_expr(p, lhs, forbid_structs) {
+            T![.] => match postfix_dot_expr(p, lhs) {
                 Ok(it) => it,
                 Err(it) => {
                     lhs = it;
@@ -398,7 +407,6 @@ fn postfix_expr(
     fn postfix_dot_expr(
         p: &mut Parser,
         lhs: CompletedMarker,
-        forbid_structs: bool,
     ) -> Result<CompletedMarker, CompletedMarker> {
         assert!(p.at(T![.]));
         if p.nth(1) == IDENT && (p.nth(2) == T!['('] || p.nth_at(2, T![::])) {
@@ -418,25 +426,8 @@ fn postfix_expr(
             return Ok(m.complete(p, AWAIT_EXPR));
         }
 
-        // test postfix_range
-        // fn foo() {
-        //     let x = 1..;
-        //     match 1.. { _ => () };
-        //     match a.b()..S { _ => () };
-        // }
-        for &(op, la) in &[(T![..=], 3), (T![..], 2)] {
-            if p.at(op) {
-                let next_token = p.nth(la);
-                let has_trailing_expression =
-                    !(forbid_structs && next_token == T!['{']) && EXPR_FIRST.contains(next_token);
-                return if has_trailing_expression {
-                    Err(lhs)
-                } else {
-                    let m = lhs.precede(p);
-                    p.bump(op);
-                    Ok(m.complete(p, RANGE_EXPR))
-                };
-            }
+        if p.at(T![..=]) || p.at(T![..]) {
+            return Err(lhs);
         }
 
         Ok(field_expr(p, lhs))

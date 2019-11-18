@@ -11,13 +11,12 @@ use hir_def::{
     expr::{ExprId, PatId},
     path::known,
 };
-use hir_expand::{name::AsName, Source};
-use ra_db::FileId;
+use hir_expand::{name::AsName, AstId, MacroCallId, MacroCallLoc, MacroFileKind, Source};
 use ra_syntax::{
     ast::{self, AstNode},
     match_ast, AstPtr,
     SyntaxKind::*,
-    SyntaxNode, SyntaxNodePtr, TextRange, TextUnit,
+    SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextUnit,
 };
 
 use crate::{
@@ -30,52 +29,45 @@ use crate::{
     HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
 };
 
-fn try_get_resolver_for_node(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    node: &SyntaxNode,
-) -> Option<Resolver> {
+fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
     match_ast! {
-        match node {
+        match (node.ast) {
             ast::Module(it) => {
-                let src = crate::Source { file_id: file_id.into(), ast: it };
+                let src = node.with_ast(it);
                 Some(crate::Module::from_declaration(db, src)?.resolver(db))
             },
              ast::SourceFile(it) => {
-                let src =
-                    crate::Source { file_id: file_id.into(), ast: crate::ModuleSource::SourceFile(it) };
+                let src = node.with_ast(crate::ModuleSource::SourceFile(it));
                 Some(crate::Module::from_definition(db, src)?.resolver(db))
             },
             ast::StructDef(it) => {
-                let src = crate::Source { file_id: file_id.into(), ast: it };
+                let src = node.with_ast(it);
                 Some(Struct::from_source(db, src)?.resolver(db))
             },
             ast::EnumDef(it) => {
-                let src = crate::Source { file_id: file_id.into(), ast: it };
+                let src = node.with_ast(it);
                 Some(Enum::from_source(db, src)?.resolver(db))
             },
-            _ => {
-                if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
-                    Some(def_with_body_from_child_node(db, file_id, node)?.resolver(db))
-                } else {
-                    // FIXME add missing cases
-                    None
+            _ => match node.ast.kind() {
+                FN_DEF | CONST_DEF | STATIC_DEF => {
+                    Some(def_with_body_from_child_node(db, node)?.resolver(db))
                 }
-            },
+                // FIXME add missing cases
+                _ => None
+            }
         }
     }
 }
 
 fn def_with_body_from_child_node(
     db: &impl HirDatabase,
-    file_id: FileId,
-    node: &SyntaxNode,
+    child: Source<&SyntaxNode>,
 ) -> Option<DefWithBody> {
-    let src = crate::ModuleSource::from_child_node(db, file_id, node);
-    let module = Module::from_definition(db, crate::Source { file_id: file_id.into(), ast: src })?;
-    let ctx = LocationCtx::new(db, module.id, file_id.into());
+    let module_source = crate::ModuleSource::from_child_node(db, child);
+    let module = Module::from_definition(db, Source::new(child.file_id, module_source))?;
+    let ctx = LocationCtx::new(db, module.id, child.file_id);
 
-    node.ancestors().find_map(|node| {
+    child.ast.ancestors().find_map(|node| {
         match_ast! {
             match node {
                 ast::FnDef(def)  => { Some(Function {id: ctx.to_def(&def) }.into()) },
@@ -91,8 +83,7 @@ fn def_with_body_from_child_node(
 /// original source files. It should not be used inside the HIR itself.
 #[derive(Debug)]
 pub struct SourceAnalyzer {
-    // FIXME: this doesn't handle macros at all
-    file_id: FileId,
+    file_id: HirFileId,
     resolver: Resolver,
     body_owner: Option<DefWithBody>,
     body_source_map: Option<Arc<BodySourceMap>>,
@@ -135,20 +126,38 @@ pub struct ReferenceDescriptor {
     pub name: String,
 }
 
+pub struct Expansion {
+    macro_call_id: MacroCallId,
+}
+
+impl Expansion {
+    pub fn map_token_down(
+        &self,
+        db: &impl HirDatabase,
+        token: Source<&SyntaxToken>,
+    ) -> Option<Source<SyntaxToken>> {
+        let exp_info = self.file_id().expansion_info(db)?;
+        exp_info.map_token_down(token)
+    }
+
+    fn file_id(&self) -> HirFileId {
+        self.macro_call_id.as_file(MacroFileKind::Items)
+    }
+}
+
 impl SourceAnalyzer {
     pub fn new(
         db: &impl HirDatabase,
-        file_id: FileId,
-        node: &SyntaxNode,
+        node: Source<&SyntaxNode>,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
-        let def_with_body = def_with_body_from_child_node(db, file_id, node);
+        let def_with_body = def_with_body_from_child_node(db, node);
         if let Some(def) = def_with_body {
             let source_map = def.body_source_map(db);
             let scopes = def.expr_scopes(db);
             let scope = match offset {
-                None => scope_for(&scopes, &source_map, file_id.into(), &node),
-                Some(offset) => scope_for_offset(&scopes, &source_map, file_id.into(), offset),
+                None => scope_for(&scopes, &source_map, node),
+                Some(offset) => scope_for_offset(&scopes, &source_map, node.with_ast(offset)),
             };
             let resolver = expr::resolver_for_scope(db, def, scope);
             SourceAnalyzer {
@@ -157,30 +166,31 @@ impl SourceAnalyzer {
                 body_source_map: Some(source_map),
                 infer: Some(def.infer(db)),
                 scopes: Some(scopes),
-                file_id,
+                file_id: node.file_id,
             }
         } else {
             SourceAnalyzer {
                 resolver: node
+                    .ast
                     .ancestors()
-                    .find_map(|node| try_get_resolver_for_node(db, file_id, &node))
+                    .find_map(|it| try_get_resolver_for_node(db, node.with_ast(&it)))
                     .unwrap_or_default(),
                 body_owner: None,
                 body_source_map: None,
                 infer: None,
                 scopes: None,
-                file_id,
+                file_id: node.file_id,
             }
         }
     }
 
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
-        let src = Source { file_id: self.file_id.into(), ast: expr };
+        let src = Source { file_id: self.file_id, ast: expr };
         self.body_source_map.as_ref()?.node_expr(src)
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
-        let src = Source { file_id: self.file_id.into(), ast: pat };
+        let src = Source { file_id: self.file_id, ast: pat };
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
@@ -288,7 +298,7 @@ impl SourceAnalyzer {
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
-        let scope = scope_for(scopes, source_map, self.file_id.into(), name_ref.syntax())?;
+        let scope = scope_for(scopes, source_map, Source::new(self.file_id, name_ref.syntax()))?;
         let entry = scopes.resolve_name_in_scope(scope, &name)?;
         Some(ScopeEntryWithSyntax {
             name: entry.name().clone(),
@@ -395,6 +405,13 @@ impl SourceAnalyzer {
         implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
     }
 
+    pub fn expand(&self, db: &impl HirDatabase, macro_call: &ast::MacroCall) -> Option<Expansion> {
+        let def = self.resolve_macro_call(db, macro_call)?.id;
+        let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(macro_call));
+        let macro_call_loc = MacroCallLoc { def, ast_id };
+        Some(Expansion { macro_call_id: db.intern_macro(macro_call_loc) })
+    }
+
     #[cfg(test)]
     pub(crate) fn body_source_map(&self) -> Arc<BodySourceMap> {
         self.body_source_map.clone().unwrap()
@@ -409,20 +426,19 @@ impl SourceAnalyzer {
 fn scope_for(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    file_id: HirFileId,
-    node: &SyntaxNode,
+    node: Source<&SyntaxNode>,
 ) -> Option<ScopeId> {
-    node.ancestors()
+    node.ast
+        .ancestors()
         .filter_map(ast::Expr::cast)
-        .filter_map(|it| source_map.node_expr(Source { file_id, ast: &it }))
+        .filter_map(|it| source_map.node_expr(Source::new(node.file_id, &it)))
         .find_map(|it| scopes.scope_for(it))
 }
 
 fn scope_for_offset(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    file_id: HirFileId,
-    offset: TextUnit,
+    offset: Source<TextUnit>,
 ) -> Option<ScopeId> {
     scopes
         .scope_by_expr()
@@ -430,7 +446,7 @@ fn scope_for_offset(
         .filter_map(|(id, scope)| {
             let source = source_map.expr_syntax(*id)?;
             // FIXME: correctly handle macro expansion
-            if source.file_id != file_id {
+            if source.file_id != offset.file_id {
                 return None;
             }
             let syntax_node_ptr =
@@ -439,9 +455,14 @@ fn scope_for_offset(
         })
         // find containing scope
         .min_by_key(|(ptr, _scope)| {
-            (!(ptr.range().start() <= offset && offset <= ptr.range().end()), ptr.range().len())
+            (
+                !(ptr.range().start() <= offset.ast && offset.ast <= ptr.range().end()),
+                ptr.range().len(),
+            )
         })
-        .map(|(ptr, scope)| adjust(scopes, source_map, ptr, file_id, offset).unwrap_or(*scope))
+        .map(|(ptr, scope)| {
+            adjust(scopes, source_map, ptr, offset.file_id, offset.ast).unwrap_or(*scope)
+        })
 }
 
 // XXX: during completion, cursor might be outside of any particular

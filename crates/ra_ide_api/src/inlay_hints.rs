@@ -32,6 +32,7 @@ fn get_inlay_hints(
     file_id: FileId,
     node: &SyntaxNode,
 ) -> Option<Vec<InlayHint>> {
+    let analyzer = SourceAnalyzer::new(db, hir::Source::new(file_id.into(), node), None);
     match_ast! {
         match node {
             ast::LetStmt(it) => {
@@ -39,11 +40,9 @@ fn get_inlay_hints(
                     return None;
                 }
                 let pat = it.pat()?;
-                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
                 Some(get_pat_type_hints(db, &analyzer, pat, false))
             },
             ast::LambdaExpr(it) => {
-                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
                 it.param_list().map(|param_list| {
                     param_list
                         .params()
@@ -56,21 +55,17 @@ fn get_inlay_hints(
             },
             ast::ForExpr(it) => {
                 let pat = it.pat()?;
-                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
                 Some(get_pat_type_hints(db, &analyzer, pat, false))
             },
             ast::IfExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
                 Some(get_pat_type_hints(db, &analyzer, pat, true))
             },
             ast::WhileExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
                 Some(get_pat_type_hints(db, &analyzer, pat, true))
             },
             ast::MatchArmList(it) => {
-                let analyzer = SourceAnalyzer::new(db, file_id, it.syntax(), None);
                 Some(
                     it
                         .arms()

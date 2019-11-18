@@ -1,9 +1,9 @@
 use hir::db::HirDatabase;
 use ra_syntax::{
+    ast, AstToken,
     SyntaxKind::{RAW_STRING, STRING},
-    TextRange, TextUnit,
+    TextUnit,
 };
-use rustc_lexer;
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -23,32 +23,16 @@ use crate::{Assist, AssistCtx, AssistId};
 // }
 // ```
 pub(crate) fn make_raw_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let token = ctx.find_token_at_offset(STRING)?;
-    let text = token.text().as_str();
-    let usual_string_range = find_usual_string_range(text)?;
-    let start_of_inside = usual_string_range.start().to_usize() + 1;
-    let end_of_inside = usual_string_range.end().to_usize();
-    let inside_str = &text[start_of_inside..end_of_inside];
-    let mut unescaped = String::with_capacity(inside_str.len());
-    let mut error = Ok(());
-    rustc_lexer::unescape::unescape_str(
-        inside_str,
-        &mut |_, unescaped_char| match unescaped_char {
-            Ok(c) => unescaped.push(c),
-            Err(_) => error = Err(()),
-        },
-    );
-    if error.is_err() {
-        return None;
-    }
+    let token = ctx.find_token_at_offset(STRING).and_then(ast::String::cast)?;
+    let value = token.value()?;
     ctx.add_assist(AssistId("make_raw_string"), "make raw string", |edit| {
-        edit.target(token.text_range());
-        let max_hash_streak = count_hashes(&unescaped);
+        edit.target(token.syntax().text_range());
+        let max_hash_streak = count_hashes(&value);
         let mut hashes = String::with_capacity(max_hash_streak + 1);
         for _ in 0..hashes.capacity() {
             hashes.push('#');
         }
-        edit.replace(token.text_range(), format!("r{}\"{}\"{}", hashes, unescaped, hashes));
+        edit.replace(token.syntax().text_range(), format!("r{}\"{}\"{}", hashes, value, hashes));
     })
 }
 
@@ -68,17 +52,13 @@ pub(crate) fn make_raw_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
 // }
 // ```
 pub(crate) fn make_usual_string(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
-    let token = ctx.find_token_at_offset(RAW_STRING)?;
-    let text = token.text().as_str();
-    let usual_string_range = find_usual_string_range(text)?;
+    let token = ctx.find_token_at_offset(RAW_STRING).and_then(ast::RawString::cast)?;
+    let value = token.value()?;
     ctx.add_assist(AssistId("make_usual_string"), "make usual string", |edit| {
-        edit.target(token.text_range());
+        edit.target(token.syntax().text_range());
         // parse inside string to escape `"`
-        let start_of_inside = usual_string_range.start().to_usize() + 1;
-        let end_of_inside = usual_string_range.end().to_usize();
-        let inside_str = &text[start_of_inside..end_of_inside];
-        let escaped = inside_str.escape_default().to_string();
-        edit.replace(token.text_range(), format!("\"{}\"", escaped));
+        let escaped = value.escape_default().to_string();
+        edit.replace(token.syntax().text_range(), format!("\"{}\"", escaped));
     })
 }
 
@@ -132,6 +112,7 @@ pub(crate) fn remove_hash(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         edit.target(token.text_range());
         let result = &text[2..text.len() - 1];
         let result = if result.starts_with('\"') {
+            // FIXME: this logic is wrong, not only the last has has to handled specially
             // no more hash, escape
             let internal_str = &result[1..result.len() - 1];
             format!("\"{}\"", internal_str.escape_default().to_string())
@@ -152,20 +133,6 @@ fn count_hashes(s: &str) -> usize {
         }
     }
     max_hash_streak
-}
-
-fn find_usual_string_range(s: &str) -> Option<TextRange> {
-    let left_quote = s.find('"')?;
-    let right_quote = s.rfind('"')?;
-    if left_quote == right_quote {
-        // `s` only contains one quote
-        None
-    } else {
-        Some(TextRange::from_to(
-            TextUnit::from(left_quote as u32),
-            TextUnit::from(right_quote as u32),
-        ))
-    }
 }
 
 #[cfg(test)]

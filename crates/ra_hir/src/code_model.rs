@@ -11,7 +11,7 @@ use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     type_ref::{Mutability, TypeRef},
-    CrateModuleId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
+    CrateModuleId, ImplId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -29,7 +29,6 @@ use crate::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
         TypeAliasId,
     },
-    impl_block::ImplBlock,
     resolve::{Resolver, Scope, TypeNs},
     traits::TraitData,
     ty::{InferenceResult, Namespace, TraitRef},
@@ -243,12 +242,8 @@ impl Module {
     }
 
     pub fn impl_blocks(self, db: &impl DefDatabase) -> Vec<ImplBlock> {
-        let module_impl_blocks = db.impls_in_module(self);
-        module_impl_blocks
-            .impls
-            .iter()
-            .map(|(impl_id, _)| ImplBlock::from_id(self, impl_id))
-            .collect()
+        let def_map = db.crate_def_map(self.id.krate);
+        def_map[self.id.module_id].impls.iter().copied().map(ImplBlock::from).collect()
     }
 
     fn with_module_id(self, module_id: CrateModuleId) -> Module {
@@ -693,8 +688,7 @@ impl Function {
 
     /// The containing impl block, if this is a method.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        let module_impls = db.impls_in_module(self.module(db));
-        ImplBlock::containing(module_impls, self.into())
+        ImplBlock::containing(db, self.into())
     }
 
     /// The containing trait, if this is a trait method definition.
@@ -759,8 +753,7 @@ impl Const {
 
     /// The containing impl block, if this is a method.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        let module_impls = db.impls_in_module(self.module(db));
-        ImplBlock::containing(module_impls, self.into())
+        ImplBlock::containing(db, self.into())
     }
 
     pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
@@ -973,8 +966,7 @@ impl TypeAlias {
 
     /// The containing impl block, if this is a method.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        let module_impls = db.impls_in_module(self.module(db));
-        ImplBlock::containing(module_impls, self.into())
+        ImplBlock::containing(db, self.into())
     }
 
     /// The containing trait, if this is a trait method definition.
@@ -1136,4 +1128,9 @@ impl Local {
 pub struct GenericParam {
     pub(crate) parent: GenericDef,
     pub(crate) idx: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ImplBlock {
+    pub(crate) id: ImplId,
 }

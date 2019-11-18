@@ -8,7 +8,7 @@ use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
-use crate::{db::HirDatabase, expr::ExprId, Crate, DefWithBody, ImplBlock, Trait};
+use crate::{db::HirDatabase, expr::ExprId, Crate, DefWithBody, ImplBlock, Trait, TypeAlias};
 
 use self::chalk::{from_chalk, ToChalk};
 
@@ -17,7 +17,7 @@ pub(crate) mod chalk;
 #[derive(Debug, Clone)]
 pub struct TraitSolver {
     krate: Crate,
-    inner: Arc<Mutex<chalk_solve::Solver>>,
+    inner: Arc<Mutex<chalk_solve::Solver<ChalkIr>>>,
 }
 
 /// We need eq for salsa
@@ -34,7 +34,7 @@ impl TraitSolver {
         &self,
         db: &impl HirDatabase,
         goal: &chalk_ir::UCanonical<chalk_ir::InEnvironment<chalk_ir::Goal<ChalkIr>>>,
-    ) -> Option<chalk_solve::Solution> {
+    ) -> Option<chalk_solve::Solution<ChalkIr>> {
         let context = ChalkContext { db, krate: self.krate };
         debug!("solve goal: {:?}", goal);
         let mut solver = match self.inner.lock() {
@@ -165,9 +165,9 @@ impl TypeWalk for ProjectionPredicate {
         self.ty.walk(f);
     }
 
-    fn walk_mut(&mut self, f: &mut impl FnMut(&mut Ty)) {
-        self.projection_ty.walk_mut(f);
-        self.ty.walk_mut(f);
+    fn walk_mut_binders(&mut self, f: &mut impl FnMut(&mut Ty, usize), binders: usize) {
+        self.projection_ty.walk_mut_binders(f, binders);
+        self.ty.walk_mut_binders(f, binders);
     }
 }
 
@@ -188,6 +188,7 @@ pub(crate) fn trait_solve_query(
     }
 
     let canonical = goal.to_chalk(db).cast();
+
     // We currently don't deal with universes (I think / hope they're not yet
     // relevant for our use cases?)
     let u_canonical = chalk_ir::UCanonical { canonical, universes: 1 };
@@ -195,7 +196,10 @@ pub(crate) fn trait_solve_query(
     solution.map(|solution| solution_from_chalk(db, solution))
 }
 
-fn solution_from_chalk(db: &impl HirDatabase, solution: chalk_solve::Solution) -> Solution {
+fn solution_from_chalk(
+    db: &impl HirDatabase,
+    solution: chalk_solve::Solution<ChalkIr>,
+) -> Solution {
     let convert_subst = |subst: chalk_ir::Canonical<chalk_ir::Substitution<ChalkIr>>| {
         let value = subst
             .value
@@ -299,4 +303,15 @@ pub enum Impl {
     ImplBlock(ImplBlock),
     /// Closure types implement the Fn traits synthetically.
     ClosureFnTraitImpl(ClosureFnTraitImplData),
+}
+
+/// An associated type value. Usually this comes from a `type` declaration
+/// inside an impl block, but for built-in impls we have to synthesize it.
+/// (We only need this because Chalk wants a unique ID for each of these.)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum AssocTyValue {
+    /// A normal assoc type value from an impl block.
+    TypeAlias(TypeAlias),
+    /// The output type of the Fn trait implementation.
+    ClosureFnTraitImplOutput(ClosureFnTraitImplData),
 }

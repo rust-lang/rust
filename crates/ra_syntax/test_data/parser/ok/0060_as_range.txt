@@ -1,0 +1,56 @@
+SOURCE_FILE@[0; 56)
+  FN_DEF@[0; 55)
+    FN_KW@[0; 2) "fn"
+    WHITESPACE@[2; 3) " "
+    NAME@[3; 7)
+      IDENT@[3; 7) "main"
+    PARAM_LIST@[7; 9)
+      L_PAREN@[7; 8) "("
+      R_PAREN@[8; 9) ")"
+    WHITESPACE@[9; 10) " "
+    BLOCK_EXPR@[10; 55)
+      BLOCK@[10; 55)
+        L_CURLY@[10; 11) "{"
+        WHITESPACE@[11; 16) "\n    "
+        EXPR_STMT@[16; 30)
+          RANGE_EXPR@[16; 29)
+            CAST_EXPR@[16; 26)
+              LITERAL@[16; 17)
+                INT_NUMBER@[16; 17) "0"
+              WHITESPACE@[17; 18) " "
+              AS_KW@[18; 20) "as"
+              WHITESPACE@[20; 21) " "
+              PATH_TYPE@[21; 26)
+                PATH@[21; 26)
+                  PATH_SEGMENT@[21; 26)
+                    NAME_REF@[21; 26)
+                      IDENT@[21; 26) "usize"
+            WHITESPACE@[26; 27) " "
+            DOTDOT@[27; 29) ".."
+          SEMI@[29; 30) ";"
+        WHITESPACE@[30; 35) "\n    "
+        EXPR_STMT@[35; 53)
+          RANGE_EXPR@[35; 52)
+            BIN_EXPR@[35; 49)
+              LITERAL@[35; 36)
+                INT_NUMBER@[35; 36) "1"
+              WHITESPACE@[36; 37) " "
+              PLUS@[37; 38) "+"
+              WHITESPACE@[38; 39) " "
+              CAST_EXPR@[39; 49)
+                LITERAL@[39; 40)
+                  INT_NUMBER@[39; 40) "2"
+                WHITESPACE@[40; 41) " "
+                AS_KW@[41; 43) "as"
+                WHITESPACE@[43; 44) " "
+                PATH_TYPE@[44; 49)
+                  PATH@[44; 49)
+                    PATH_SEGMENT@[44; 49)
+                      NAME_REF@[44; 49)
+                        IDENT@[44; 49) "usize"
+            WHITESPACE@[49; 50) " "
+            DOTDOT@[50; 52) ".."
+          SEMI@[52; 53) ";"
+        WHITESPACE@[53; 54) "\n"
+        R_CURLY@[54; 55) "}"
+  WHITESPACE@[55; 56) "\n"

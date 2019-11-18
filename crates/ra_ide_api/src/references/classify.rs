@@ -21,7 +21,6 @@ pub(crate) fn classify_name(
     let parent = name.syntax().parent()?;
     let file_id = file_id.into();
 
-    // FIXME: add ast::MacroCall(it)
     match_ast! {
         match parent {
             ast::BindPat(it) => {
@@ -104,6 +103,19 @@ pub(crate) fn classify_name(
                     Some(from_module_def(db, def.into(), None))
                 }
             },
+            ast::MacroCall(it) => {
+                let src = hir::Source { file_id, ast: it};
+                let def = hir::MacroDef::from_source(db, src.clone())?;
+
+                let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
+                let module = Module::from_definition(db, Source::new(file_id, module_src))?;
+
+                Some(NameDefinition {
+                    visibility: None,
+                    container: module,
+                    kind: NameKind::Macro(def),
+                })
+            },
             _ => None,
         }
     }
@@ -111,15 +123,12 @@ pub(crate) fn classify_name(
 
 pub(crate) fn classify_name_ref(
     db: &RootDatabase,
-    file_id: FileId,
-    name_ref: &ast::NameRef,
+    name_ref: Source<&ast::NameRef>,
 ) -> Option<NameDefinition> {
-    use PathResolution::*;
-
     let _p = profile("classify_name_ref");
 
-    let parent = name_ref.syntax().parent()?;
-    let analyzer = SourceAnalyzer::new(db, file_id, name_ref.syntax(), None);
+    let parent = name_ref.ast.syntax().parent()?;
+    let analyzer = SourceAnalyzer::new(db, name_ref.map(|it| it.syntax()), None);
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
         tested_by!(goto_definition_works_for_methods);
@@ -139,17 +148,16 @@ pub(crate) fn classify_name_ref(
         tested_by!(goto_definition_works_for_record_fields);
         if let Some(record_lit) = record_field.syntax().ancestors().find_map(ast::RecordLit::cast) {
             let variant_def = analyzer.resolve_record_literal(&record_lit)?;
-            let hir_path = Path::from_name_ref(name_ref);
+            let hir_path = Path::from_name_ref(name_ref.ast);
             let hir_name = hir_path.as_ident()?;
             let field = variant_def.field(db, hir_name)?;
             return Some(from_struct_field(db, field));
         }
     }
 
-    let ast = ModuleSource::from_child_node(db, file_id, &parent);
-    let file_id = file_id.into();
+    let ast = ModuleSource::from_child_node(db, name_ref.with_ast(&parent));
     // FIXME: find correct container and visibility for each case
-    let container = Module::from_definition(db, Source { file_id, ast })?;
+    let container = Module::from_definition(db, name_ref.with_ast(ast))?;
     let visibility = None;
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
@@ -160,29 +168,29 @@ pub(crate) fn classify_name_ref(
         }
     }
 
-    let path = name_ref.syntax().ancestors().find_map(ast::Path::cast)?;
+    let path = name_ref.ast.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = analyzer.resolve_path(db, &path)?;
     match resolved {
-        Def(def) => Some(from_module_def(db, def, Some(container))),
-        AssocItem(item) => Some(from_assoc_item(db, item)),
-        Local(local) => {
+        PathResolution::Def(def) => Some(from_module_def(db, def, Some(container))),
+        PathResolution::AssocItem(item) => Some(from_assoc_item(db, item)),
+        PathResolution::Local(local) => {
             let container = local.module(db);
             let kind = NameKind::Local(local);
             Some(NameDefinition { kind, container, visibility: None })
         }
-        GenericParam(par) => {
+        PathResolution::GenericParam(par) => {
             // FIXME: get generic param def
             let kind = NameKind::GenericParam(par);
             Some(NameDefinition { kind, container, visibility })
         }
-        Macro(def) => {
+        PathResolution::Macro(def) => {
             let kind = NameKind::Macro(def);
             Some(NameDefinition { kind, container, visibility })
         }
-        SelfType(impl_block) => {
+        PathResolution::SelfType(impl_block) => {
             let ty = impl_block.target_ty(db);
             let kind = NameKind::SelfType(ty);
-            let container = impl_block.module();
+            let container = impl_block.module(db);
             Some(NameDefinition { kind, container, visibility })
         }
     }

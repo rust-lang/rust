@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use hir_def::{ModuleId, StructId, StructOrUnionId, UnionId};
-use hir_expand::name::AsName;
+use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     match_ast,
@@ -11,8 +11,8 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
     Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource, ImplBlock,
-    Local, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias, Union,
-    VariantDef,
+    Local, MacroDef, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias,
+    Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -77,19 +77,28 @@ impl FromSource for TypeAlias {
         Some(TypeAlias { id })
     }
 }
-// FIXME: add impl FromSource for MacroDef
+
+impl FromSource for MacroDef {
+    type Ast = ast::MacroCall;
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+        let kind = MacroDefKind::Declarative;
+
+        let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
+        let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
+        let krate = module.krate().crate_id();
+
+        let ast_id = AstId::new(src.file_id, db.ast_id_map(src.file_id).ast_id(&src.ast));
+
+        let id: MacroDefId = MacroDefId { krate, ast_id, kind };
+        Some(MacroDef { id })
+    }
+}
 
 impl FromSource for ImplBlock {
     type Ast = ast::ImplBlock;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let module_src = crate::ModuleSource::from_child_node(
-            db,
-            src.file_id.original_file(db),
-            &src.ast.syntax(),
-        );
-        let module = Module::from_definition(db, Source { file_id: src.file_id, ast: module_src })?;
-        let impls = module.impl_blocks(db);
-        impls.into_iter().find(|b| b.source(db) == src)
+        let id = from_source(db, src)?;
+        Some(ImplBlock { id })
     }
 }
 
@@ -202,9 +211,8 @@ where
     N: AstNode,
     DEF: AstItemDef<N>,
 {
-    let module_src =
-        crate::ModuleSource::from_child_node(db, src.file_id.original_file(db), &src.ast.syntax());
-    let module = Module::from_definition(db, Source { file_id: src.file_id, ast: module_src })?;
+    let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
+    let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
     let ctx = LocationCtx::new(db, module.id, src.file_id);
     Some(DEF::from_ast(ctx, &src.ast))
 }

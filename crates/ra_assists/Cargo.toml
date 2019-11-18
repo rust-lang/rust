@@ -4,11 +4,13 @@ name = "ra_assists"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 format-buf = "1.0.0"
 join_to_string = "0.1.3"
 itertools = "0.8.0"
-rustc_lexer = "0.1.0"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_text_edit = { path = "../ra_text_edit" }

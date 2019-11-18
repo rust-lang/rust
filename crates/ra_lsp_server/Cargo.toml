@@ -4,6 +4,9 @@ name = "ra_lsp_server"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 threadpool = "1.7.1"
 relative-path = "1.0.0"

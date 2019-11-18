@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, HasSource, HirDisplay};
+use hir::{Adt, HasSource, HirDisplay, Source};
 use ra_db::SourceDatabase;
 use ra_syntax::{
     algo::{ancestors_at_offset, find_covering_element, find_node_at_offset},
@@ -171,7 +171,8 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
         find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)
     {
         let mut no_fallback = false;
-        if let Some(name_kind) = classify_name_ref(db, position.file_id, &name_ref).map(|d| d.kind)
+        if let Some(name_kind) =
+            classify_name_ref(db, Source::new(position.file_id.into(), &name_ref)).map(|d| d.kind)
         {
             res.extend(hover_text_from_name_kind(db, name_kind, &mut no_fallback))
         }
@@ -230,7 +231,8 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
         .ancestors()
         .take_while(|it| it.text_range() == leaf_node.text_range())
         .find(|it| ast::Expr::cast(it.clone()).is_some() || ast::Pat::cast(it.clone()).is_some())?;
-    let analyzer = hir::SourceAnalyzer::new(db, frange.file_id, &node, None);
+    let analyzer =
+        hir::SourceAnalyzer::new(db, hir::Source::new(frange.file_id.into(), &node), None);
     let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
     {
         ty

@@ -10,22 +10,23 @@ use crate::{
     debug::HirDebugDatabase,
     generics::{GenericDef, GenericParams},
     ids,
-    impl_block::{ImplBlock, ImplSourceMap, ModuleImplBlocks},
     lang_item::{LangItemTarget, LangItems},
     traits::TraitData,
     ty::{
-        method_resolution::CrateImplBlocks, traits::Impl, CallableDef, FnSig, GenericPredicate,
-        InferenceResult, Namespace, Substs, Ty, TypableDef, TypeCtor,
+        method_resolution::CrateImplBlocks,
+        traits::{AssocTyValue, Impl},
+        CallableDef, FnSig, GenericPredicate, InferenceResult, Namespace, Substs, Ty, TypableDef,
+        TypeCtor,
     },
     type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, FnData, Function, Module, Static, StructField, Trait,
-    TypeAlias,
+    Const, ConstData, Crate, DefWithBody, FnData, Function, ImplBlock, Module, Static, StructField,
+    Trait, TypeAlias,
 };
 
 pub use hir_def::db::{
     BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
-    EnumDataQuery, ExprScopesQuery, InternDatabase, InternDatabaseStorage, RawItemsQuery,
-    RawItemsWithSourceMapQuery, StructDataQuery,
+    EnumDataQuery, ExprScopesQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
+    RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -41,15 +42,6 @@ pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
 
     #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
     fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
-
-    #[salsa::invoke(ModuleImplBlocks::impls_in_module_with_source_map_query)]
-    fn impls_in_module_with_source_map(
-        &self,
-        module: Module,
-    ) -> (Arc<ModuleImplBlocks>, Arc<ImplSourceMap>);
-
-    #[salsa::invoke(ModuleImplBlocks::impls_in_module_query)]
-    fn impls_in_module(&self, module: Module) -> Arc<ModuleImplBlocks>;
 
     #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
@@ -128,27 +120,43 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
     #[salsa::interned]
     fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
     #[salsa::interned]
-    fn intern_impl(&self, impl_: Impl) -> ids::GlobalImplId;
+    fn intern_chalk_impl(&self, impl_: Impl) -> ids::GlobalImplId;
+    #[salsa::interned]
+    fn intern_assoc_ty_value(&self, assoc_ty_value: AssocTyValue) -> ids::AssocTyValueId;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
-    fn associated_ty_data(&self, id: chalk_ir::TypeId) -> Arc<chalk_rust_ir::AssociatedTyDatum>;
+    fn associated_ty_data(
+        &self,
+        id: chalk_ir::TypeId,
+    ) -> Arc<chalk_rust_ir::AssociatedTyDatum<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::chalk::trait_datum_query)]
     fn trait_datum(
         &self,
         krate: Crate,
         trait_id: chalk_ir::TraitId,
-    ) -> Arc<chalk_rust_ir::TraitDatum>;
+    ) -> Arc<chalk_rust_ir::TraitDatum<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::chalk::struct_datum_query)]
     fn struct_datum(
         &self,
         krate: Crate,
         struct_id: chalk_ir::StructId,
-    ) -> Arc<chalk_rust_ir::StructDatum>;
+    ) -> Arc<chalk_rust_ir::StructDatum<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::chalk::impl_datum_query)]
-    fn impl_datum(&self, krate: Crate, impl_id: chalk_ir::ImplId) -> Arc<chalk_rust_ir::ImplDatum>;
+    fn impl_datum(
+        &self,
+        krate: Crate,
+        impl_id: chalk_ir::ImplId,
+    ) -> Arc<chalk_rust_ir::ImplDatum<chalk_ir::family::ChalkIr>>;
+
+    #[salsa::invoke(crate::ty::traits::chalk::associated_ty_value_query)]
+    fn associated_ty_value(
+        &self,
+        krate: Crate,
+        id: chalk_rust_ir::AssociatedTyValueId,
+    ) -> Arc<chalk_rust_ir::AssociatedTyValue<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::trait_solve_query)]
     fn trait_solve(

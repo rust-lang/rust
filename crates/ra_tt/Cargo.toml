@@ -4,6 +4,9 @@ name = "ra_tt"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 # ideally, `serde` should be enabled by `ra_lsp_server`, but we enable it here
 # to reduce number of compilations

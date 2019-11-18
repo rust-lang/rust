@@ -4,6 +4,9 @@ name = "ra_hir"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
+[lib]
+doctest = false
+
 [dependencies]
 arrayvec = "0.5.1"
 log = "0.4.5"
@@ -23,9 +26,9 @@ hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 test_utils = { path = "../test_utils" }
 ra_prof = { path = "../ra_prof" }
 
-chalk-solve = { git = "https://github.com/rust-lang/chalk.git", rev = "50f9f636123bd88d0cc1b958749981d6702e4d05" }
-chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "50f9f636123bd88d0cc1b958749981d6702e4d05" }
-chalk-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "50f9f636123bd88d0cc1b958749981d6702e4d05" }
+chalk-solve = { git = "https://github.com/rust-lang/chalk.git", rev = "a88cad7f0a69e05ba8f40b74c58a1c229c1b2478" }
+chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "a88cad7f0a69e05ba8f40b74c58a1c229c1b2478" }
+chalk-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "a88cad7f0a69e05ba8f40b74c58a1c229c1b2478" }
 lalrpop-intern = "0.15.1"
 
 [dev-dependencies]

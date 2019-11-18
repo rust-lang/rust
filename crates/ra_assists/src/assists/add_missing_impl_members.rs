@@ -100,8 +100,7 @@ fn add_missing_impl_members_inner(
     let impl_item_list = impl_node.item_list()?;
 
     let trait_def = {
-        let file_id = ctx.frange.file_id;
-        let analyzer = hir::SourceAnalyzer::new(ctx.db, file_id, impl_node.syntax(), None);
+        let analyzer = ctx.source_analyzer(impl_node.syntax(), None);
 
         resolve_target_trait_def(ctx.db, &analyzer, &impl_node)?
     };

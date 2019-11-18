@@ -32,10 +32,17 @@ impl TokenExpander {
         }
     }
 
-    pub fn shift(&self) -> u32 {
+    pub fn map_id_down(&self, id: tt::TokenId) -> tt::TokenId {
         match self {
-            TokenExpander::MacroRules(it) => it.shift(),
-            TokenExpander::Builtin(_) => 0,
+            TokenExpander::MacroRules(it) => it.map_id_down(id),
+            TokenExpander::Builtin(..) => id,
+        }
+    }
+
+    pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
+        match self {
+            TokenExpander::MacroRules(it) => it.map_id_up(id),
+            TokenExpander::Builtin(..) => (id, mbe::Origin::Def),
         }
     }
 }

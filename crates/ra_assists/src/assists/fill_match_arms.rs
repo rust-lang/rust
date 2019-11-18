@@ -47,8 +47,7 @@ pub(crate) fn fill_match_arms(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist
 
     let expr = match_expr.expr()?;
     let enum_def = {
-        let file_id = ctx.frange.file_id;
-        let analyzer = hir::SourceAnalyzer::new(ctx.db, file_id, expr.syntax(), None);
+        let analyzer = ctx.source_analyzer(expr.syntax(), None);
         resolve_enum_def(ctx.db, &analyzer, &expr)?
     };
     let variant_list = enum_def.variant_list()?;
