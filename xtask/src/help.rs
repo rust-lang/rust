@@ -10,7 +10,7 @@ FLAGS:
 
 SUBCOMMANDS:
     format
-    format-hook
+    install-pre-commit-hook
     fuzz-tests
     codegen
     install
