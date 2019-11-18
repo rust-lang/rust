@@ -6,7 +6,7 @@ use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
     SyntaxKind::{self, BIND_PAT},
-    SyntaxNode, TextRange,
+    TextRange,
 };
 
 use crate::{db::RootDatabase, expand::original_range, FileSymbol};
@@ -86,7 +86,7 @@ impl NavigationTarget {
                 name,
                 None,
                 frange.range,
-                src.ast.syntax(),
+                src.ast.syntax().kind(),
                 src.ast.doc_comment_text(),
                 src.ast.short_label(),
             );
@@ -141,23 +141,22 @@ impl NavigationTarget {
     /// Allows `NavigationTarget` to be created from a `NameOwner`
     pub(crate) fn from_named(
         db: &RootDatabase,
-        file_id: hir::HirFileId,
-        node: &impl ast::NameOwner,
+        node: Source<&dyn ast::NameOwner>,
         docs: Option<String>,
         description: Option<String>,
     ) -> NavigationTarget {
         //FIXME: use `_` instead of empty string
-        let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
+        let name = node.ast.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range =
-            node.name().map(|it| original_range(db, Source::new(file_id, it.syntax())).range);
-        let frange = original_range(db, Source::new(file_id, node.syntax()));
+            node.ast.name().map(|it| original_range(db, node.with_ast(it.syntax())).range);
+        let frange = original_range(db, node.map(|it| it.syntax()));
 
         NavigationTarget::from_syntax(
             frange.file_id,
             name,
             focus_range,
             frange.range,
-            node.syntax(),
+            node.ast.syntax().kind(),
             docs,
             description,
         )
@@ -168,14 +167,14 @@ impl NavigationTarget {
         name: SmolStr,
         focus_range: Option<TextRange>,
         full_range: TextRange,
-        node: &SyntaxNode,
+        kind: SyntaxKind,
         docs: Option<String>,
         description: Option<String>,
     ) -> NavigationTarget {
         NavigationTarget {
             file_id,
             name,
-            kind: node.kind(),
+            kind,
             full_range,
             focus_range,
             container_name: None,
@@ -220,8 +219,7 @@ where
         let src = self.source(db);
         NavigationTarget::from_named(
             db,
-            src.file_id,
-            &src.ast,
+            src.as_ref().map(|it| it as &dyn ast::NameOwner),
             src.ast.doc_comment_text(),
             src.ast.short_label(),
         )
@@ -241,7 +239,7 @@ impl ToNav for hir::Module {
                     name,
                     None,
                     frange.range,
-                    node.syntax(),
+                    node.syntax().kind(),
                     None,
                     None,
                 )
@@ -254,7 +252,7 @@ impl ToNav for hir::Module {
                     name,
                     None,
                     frange.range,
-                    node.syntax(),
+                    node.syntax().kind(),
                     node.doc_comment_text(),
                     node.short_label(),
                 )
@@ -273,7 +271,7 @@ impl ToNav for hir::ImplBlock {
             "impl".into(),
             None,
             frange.range,
-            src.ast.syntax(),
+            src.ast.syntax().kind(),
             None,
             None,
         )
@@ -287,8 +285,7 @@ impl ToNav for hir::StructField {
         match &src.ast {
             FieldSource::Named(it) => NavigationTarget::from_named(
                 db,
-                src.file_id,
-                it,
+                src.with_ast(it),
                 it.doc_comment_text(),
                 it.short_label(),
             ),
@@ -299,7 +296,7 @@ impl ToNav for hir::StructField {
                     "".into(),
                     None,
                     frange.range,
-                    it.syntax(),
+                    it.syntax().kind(),
                     None,
                     None,
                 )
@@ -312,7 +309,12 @@ impl ToNav for hir::MacroDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
         log::debug!("nav target {:#?}", src.ast.syntax());
-        NavigationTarget::from_named(db, src.file_id, &src.ast, src.ast.doc_comment_text(), None)
+        NavigationTarget::from_named(
+            db,
+            src.as_ref().map(|it| it as &dyn ast::NameOwner),
+            src.ast.doc_comment_text(),
+            None,
+        )
     }
 }
 
