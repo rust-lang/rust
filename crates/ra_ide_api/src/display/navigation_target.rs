@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{AssocItem, Either, FieldSource, HasSource, ModuleSource};
+use hir::{AssocItem, Either, FieldSource, HasSource, ModuleSource, Source};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
@@ -9,8 +9,9 @@ use ra_syntax::{
     SyntaxNode, TextRange,
 };
 
+use crate::{db::RootDatabase, expand::original_range, FileSymbol};
+
 use super::short_label::ShortLabel;
-use crate::{db::RootDatabase, FileSymbol};
 
 /// `NavigationTarget` represents and element in the editor's UI which you can
 /// click on to navigate to a particular piece of code.
@@ -79,12 +80,12 @@ impl NavigationTarget {
     pub(crate) fn from_module_to_decl(db: &RootDatabase, module: hir::Module) -> NavigationTarget {
         let name = module.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         if let Some(src) = module.declaration_source(db) {
-            let (file_id, text_range) = find_range_from_node(db, src.file_id, src.ast.syntax());
+            let frange = original_range(db, src.as_ref().map(|it| it.syntax()));
             return NavigationTarget::from_syntax(
-                file_id,
+                frange.file_id,
                 name,
                 None,
-                text_range,
+                frange.range,
                 src.ast.syntax(),
                 src.ast.doc_comment_text(),
                 src.ast.short_label(),
@@ -147,14 +148,15 @@ impl NavigationTarget {
     ) -> NavigationTarget {
         //FIXME: use `_` instead of empty string
         let name = node.name().map(|it| it.text().clone()).unwrap_or_default();
-        let focus_range = node.name().map(|it| find_range_from_node(db, file_id, it.syntax()).1);
-        let (file_id, full_range) = find_range_from_node(db, file_id, node.syntax());
+        let focus_range =
+            node.name().map(|it| original_range(db, Source::new(file_id, it.syntax())).range);
+        let frange = original_range(db, Source::new(file_id, node.syntax()));
 
         NavigationTarget::from_syntax(
-            file_id,
+            frange.file_id,
             name,
             focus_range,
-            full_range,
+            frange.range,
             node.syntax(),
             docs,
             description,
@@ -230,28 +232,28 @@ impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.definition_source(db);
         let name = self.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-        match src.ast {
+        match &src.ast {
             ModuleSource::SourceFile(node) => {
-                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
+                let frange = original_range(db, src.with_ast(node.syntax()));
 
                 NavigationTarget::from_syntax(
-                    file_id,
+                    frange.file_id,
                     name,
                     None,
-                    text_range,
+                    frange.range,
                     node.syntax(),
                     None,
                     None,
                 )
             }
             ModuleSource::Module(node) => {
-                let (file_id, text_range) = find_range_from_node(db, src.file_id, node.syntax());
+                let frange = original_range(db, src.with_ast(node.syntax()));
 
                 NavigationTarget::from_syntax(
-                    file_id,
+                    frange.file_id,
                     name,
                     None,
-                    text_range,
+                    frange.range,
                     node.syntax(),
                     node.doc_comment_text(),
                     node.short_label(),
@@ -264,13 +266,13 @@ impl ToNav for hir::Module {
 impl ToNav for hir::ImplBlock {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let (file_id, text_range) = find_range_from_node(db, src.file_id, src.ast.syntax());
+        let frange = original_range(db, src.as_ref().map(|it| it.syntax()));
 
         NavigationTarget::from_syntax(
-            file_id,
+            frange.file_id,
             "impl".into(),
             None,
-            text_range,
+            frange.range,
             src.ast.syntax(),
             None,
             None,
@@ -282,21 +284,21 @@ impl ToNav for hir::StructField {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
 
-        match src.ast {
+        match &src.ast {
             FieldSource::Named(it) => NavigationTarget::from_named(
                 db,
                 src.file_id,
-                &it,
+                it,
                 it.doc_comment_text(),
                 it.short_label(),
             ),
             FieldSource::Pos(it) => {
-                let (file_id, text_range) = find_range_from_node(db, src.file_id, it.syntax());
+                let frange = original_range(db, src.with_ast(it.syntax()));
                 NavigationTarget::from_syntax(
-                    file_id,
+                    frange.file_id,
                     "".into(),
                     None,
-                    text_range,
+                    frange.range,
                     it.syntax(),
                     None,
                     None,
@@ -358,21 +360,6 @@ impl ToNav for hir::Local {
             docs: None,
         }
     }
-}
-
-fn find_range_from_node(
-    db: &RootDatabase,
-    src: hir::HirFileId,
-    node: &SyntaxNode,
-) -> (FileId, TextRange) {
-    let text_range = node.text_range();
-    let (file_id, text_range) = src
-        .expansion_info(db)
-        .and_then(|expansion_info| expansion_info.find_range(text_range))
-        .unwrap_or((src, text_range));
-
-    // FIXME: handle recursive macro generated macro
-    (file_id.original_file(db), text_range)
 }
 
 pub(crate) fn docs_from_symbol(db: &RootDatabase, symbol: &FileSymbol) -> Option<String> {
