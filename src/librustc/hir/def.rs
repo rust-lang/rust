@@ -127,6 +127,34 @@ impl DefKind {
             _ => "a",
         }
     }
+
+    pub fn matches_ns(&self, ns: Namespace) -> bool {
+        match self {
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::OpaqueTy
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::AssocOpaqueTy
+            | DefKind::TyParam => ns == Namespace::TypeNS,
+
+            DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static
+            | DefKind::Ctor(..)
+            | DefKind::Method
+            | DefKind::AssocConst => ns == Namespace::ValueNS,
+
+            DefKind::Macro(..) => ns == Namespace::MacroNS,
+        }
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
@@ -425,6 +453,16 @@ impl<Id> Res<Id> {
             Res::Def(DefKind::Macro(kind), _) => Some(kind),
             Res::NonMacroAttr(..) => Some(MacroKind::Attr),
             _ => None,
+        }
+    }
+
+    pub fn matches_ns(&self, ns: Namespace) -> bool {
+        match self {
+            Res::Def(kind, ..) => kind.matches_ns(ns),
+            Res::PrimTy(..) | Res::SelfTy(..) | Res::ToolMod => ns == Namespace::TypeNS,
+            Res::SelfCtor(..) | Res::Local(..) => ns == Namespace::ValueNS,
+            Res::NonMacroAttr(..) => ns == Namespace::MacroNS,
+            Res::Err => true,
         }
     }
 }
