@@ -1365,14 +1365,15 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(&expr, parser::PREC_JUMP);
                 }
             }
-            hir::ExprKind::InlineAsm(ref a, ref outputs, ref inputs) => {
+            hir::ExprKind::InlineAsm(ref a) => {
+                let i = &a.inner;
                 self.s.word("asm!");
                 self.popen();
-                self.print_string(&a.asm.as_str(), a.asm_str_style);
+                self.print_string(&i.asm.as_str(), i.asm_str_style);
                 self.word_space(":");
 
                 let mut out_idx = 0;
-                self.commasep(Inconsistent, &a.outputs, |s, out| {
+                self.commasep(Inconsistent, &i.outputs, |s, out| {
                     let constraint = out.constraint.as_str();
                     let mut ch = constraint.chars();
                     match ch.next() {
@@ -1383,7 +1384,7 @@ impl<'a> State<'a> {
                         _ => s.print_string(&constraint, ast::StrStyle::Cooked),
                     }
                     s.popen();
-                    s.print_expr(&outputs[out_idx]);
+                    s.print_expr(&a.outputs_exprs[out_idx]);
                     s.pclose();
                     out_idx += 1;
                 });
@@ -1391,28 +1392,28 @@ impl<'a> State<'a> {
                 self.word_space(":");
 
                 let mut in_idx = 0;
-                self.commasep(Inconsistent, &a.inputs, |s, co| {
+                self.commasep(Inconsistent, &i.inputs, |s, co| {
                     s.print_string(&co.as_str(), ast::StrStyle::Cooked);
                     s.popen();
-                    s.print_expr(&inputs[in_idx]);
+                    s.print_expr(&a.inputs_exprs[in_idx]);
                     s.pclose();
                     in_idx += 1;
                 });
                 self.s.space();
                 self.word_space(":");
 
-                self.commasep(Inconsistent, &a.clobbers, |s, co| {
+                self.commasep(Inconsistent, &i.clobbers, |s, co| {
                     s.print_string(&co.as_str(), ast::StrStyle::Cooked);
                 });
 
                 let mut options = vec![];
-                if a.volatile {
+                if i.volatile {
                     options.push("volatile");
                 }
-                if a.alignstack {
+                if i.alignstack {
                     options.push("alignstack");
                 }
-                if a.dialect == ast::AsmDialect::Intel {
+                if i.dialect == ast::AsmDialect::Intel {
                     options.push("intel");
                 }
 

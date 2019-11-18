@@ -1086,10 +1086,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprKind::Ret(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);
         }
-        ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
-            for expr in outputs.iter().chain(inputs.iter()) {
-                visitor.visit_expr(expr)
-            }
+        ExprKind::InlineAsm(ref asm) => {
+            walk_list!(visitor, visit_expr, &asm.outputs_exprs);
+            walk_list!(visitor, visit_expr, &asm.inputs_exprs);
         }
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
