@@ -173,12 +173,10 @@ impl<'a> AstValidator<'a> {
 
     fn check_trait_fn_not_async(&self, span: Span, asyncness: IsAsync) {
         if asyncness.is_async() {
-            struct_span_err!(self.session, span, E0706,
-                             "trait fns cannot be declared `async`")
-                .note("Due to technical restrictions rust does not currently support `async` \
-                       trait fns.")
-                .note("Consider using the `async-trait` crate in the meantime until further \
-                       notice.")
+            struct_span_err!(self.session, span, E0706, "trait fns cannot be declared `async`")
+                .note("`async` trait functions are not currently supported")
+                .note("consider using the `async-trait` crate: \
+                       https://crates.io/crates/async-trait")
                 .emit();
         }
     }
