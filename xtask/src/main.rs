@@ -16,7 +16,8 @@ use pico_args::Arguments;
 use std::{env, path::PathBuf};
 use xtask::{
     codegen::{self, Mode},
-    install_format_hook, run, run_clippy, run_fuzzer, run_rustfmt, run_with_output, Cmd, Result,
+    install_pre_commit_hook, reformat_staged_files, run, run_clippy, run_fuzzer, run_rustfmt,
+    run_with_output, Cmd, Result,
 };
 
 // Latest stable, feel free to send a PR if this lags behind.
@@ -36,6 +37,10 @@ struct ServerOpt {
 }
 
 fn main() -> Result<()> {
+    if std::env::args().next().map(|it| it.contains("pre-commit")) == Some(true) {
+        return reformat_staged_files();
+    }
+
     let subcommand = match std::env::args_os().nth(1) {
         None => {
             eprintln!("{}", help::GLOBAL_HELP);
@@ -81,12 +86,12 @@ fn main() -> Result<()> {
             }
             run_rustfmt(Mode::Overwrite)?
         }
-        "format-hook" => {
+        "install-pre-commit-hook" => {
             if matches.contains(["-h", "--help"]) {
                 help::print_no_param_subcommand_help(&subcommand);
                 return Ok(());
             }
-            install_format_hook()?
+            install_pre_commit_hook()?
         }
         "lint" => {
             if matches.contains(["-h", "--help"]) {

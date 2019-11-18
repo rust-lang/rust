@@ -20,7 +20,7 @@ use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
-    SyntaxNode, SyntaxToken, TextRange, TextUnit,
+    SyntaxNode, SyntaxToken, TextUnit,
 };
 
 use crate::ast_id_map::FileAstId;
@@ -79,22 +79,17 @@ impl HirFileId {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
 
-                let arg_start = loc.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
-                let def_start =
-                    loc.def.ast_id.to_node(db).token_tree()?.syntax().text_range().start();
+                let arg_tt = loc.ast_id.to_node(db).token_tree()?;
+                let def_tt = loc.def.ast_id.to_node(db).token_tree()?;
 
                 let macro_def = db.macro_def(loc.def)?;
                 let (parse, exp_map) = db.parse_macro(macro_file)?;
-                let expanded = Source::new(self, parse.syntax_node());
                 let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
-                let arg_start = (loc.ast_id.file_id, arg_start);
-                let def_start = (loc.def.ast_id.file_id, def_start);
-
                 Some(ExpansionInfo {
-                    expanded,
-                    arg_start,
-                    def_start,
+                    expanded: Source::new(self, parse.syntax_node()),
+                    arg: Source::new(loc.ast_id.file_id, arg_tt),
+                    def: Source::new(loc.ast_id.file_id, def_tt),
                     macro_arg,
                     macro_def,
                     exp_map,
@@ -159,18 +154,19 @@ impl MacroCallId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpansionInfo {
     expanded: Source<SyntaxNode>,
-    arg_start: (HirFileId, TextUnit),
-    def_start: (HirFileId, TextUnit),
+    arg: Source<ast::TokenTree>,
+    def: Source<ast::TokenTree>,
 
     macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
-    exp_map: Arc<mbe::RevTokenMap>,
+    exp_map: Arc<mbe::TokenMap>,
 }
 
 impl ExpansionInfo {
     pub fn map_token_down(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
-        assert_eq!(token.file_id, self.arg_start.0);
-        let range = token.ast.text_range().checked_sub(self.arg_start.1)?;
+        assert_eq!(token.file_id, self.arg.file_id);
+        let range =
+            token.ast.text_range().checked_sub(self.arg.ast.syntax().text_range().start())?;
         let token_id = self.macro_arg.1.token_by_range(range)?;
         let token_id = self.macro_def.0.map_id_down(token_id);
 
@@ -181,25 +177,22 @@ impl ExpansionInfo {
         Some(self.expanded.with_ast(token))
     }
 
-    // FIXME: a more correct signature would be
-    // `pub fn map_token_up(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>>`
-    pub fn find_range(&self, from: TextRange) -> Option<(HirFileId, TextRange)> {
-        let token_id = look_in_rev_map(&self.exp_map, from)?;
+    pub fn map_token_up(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
+        let token_id = self.exp_map.token_by_range(token.ast.text_range())?;
 
         let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
-
-        let (token_map, (file_id, start_offset)) = match origin {
-            mbe::Origin::Call => (&self.macro_arg.1, self.arg_start),
-            mbe::Origin::Def => (&self.macro_def.1, self.def_start),
+        let (token_map, tt) = match origin {
+            mbe::Origin::Call => (&self.macro_arg.1, &self.arg),
+            mbe::Origin::Def => (&self.macro_def.1, &self.def),
         };
 
-        let range = token_map.relative_range_of(token_id)?;
-
-        return Some((file_id, range + start_offset));
-
-        fn look_in_rev_map(exp_map: &mbe::RevTokenMap, from: TextRange) -> Option<tt::TokenId> {
-            exp_map.ranges.iter().find(|&it| it.0.is_subrange(&from)).map(|it| it.1)
-        }
+        let range = token_map.range_by_token(token_id)?;
+        let token = algo::find_covering_element(
+            tt.ast.syntax(),
+            range + tt.ast.syntax().text_range().start(),
+        )
+        .into_token()?;
+        Some(tt.with_ast(token))
     }
 }
 
