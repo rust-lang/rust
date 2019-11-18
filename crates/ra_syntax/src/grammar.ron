@@ -401,7 +401,8 @@ Grammar(
             traits: ["AttrsOwner"]
         ),
         "ImplItem": (
-            enum: ["FnDef", "TypeAliasDef", "ConstDef"]
+            enum: ["FnDef", "TypeAliasDef", "ConstDef"],
+            traits: ["AttrsOwner"]
         ),
 
         "TupleExpr": (

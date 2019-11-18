@@ -1298,6 +1298,7 @@ impl AstNode for ImplItem {
         }
     }
 }
+impl ast::AttrsOwner for ImplItem {}
 impl ImplItem {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ImplTraitType {
