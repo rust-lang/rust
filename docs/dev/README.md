@@ -55,7 +55,7 @@ We use Travis for CI. Most of the things, including formatting, are checked by
 be green as well. We use bors-ng to enforce the [not rocket
 science](https://graydon2.dreamwidth.org/1597.html) rule.
 
-You can run `cargo format-hook` to install git-hook to run rustfmt on commit.
+You can run `cargo xtask install-pre-commit-hook` to install git-hook to run rustfmt on commit.
 
 # Code organization
 

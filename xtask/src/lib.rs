@@ -83,19 +83,12 @@ pub fn install_rustfmt() -> Result<()> {
     run(&format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN), ".")
 }
 
-pub fn install_format_hook() -> Result<()> {
-    let result_path = Path::new(if cfg!(windows) {
-        "./.git/hooks/pre-commit.exe"
-    } else {
-        "./.git/hooks/pre-commit"
-    });
+pub fn install_pre_commit_hook() -> Result<()> {
+    let result_path =
+        PathBuf::from(format!("./.git/hooks/pre-commit{}", std::env::consts::EXE_SUFFIX));
     if !result_path.exists() {
-        run("cargo build --package xtask --bin pre-commit", ".")?;
-        if cfg!(windows) {
-            fs::copy("./target/debug/pre-commit.exe", result_path)?;
-        } else {
-            fs::copy("./target/debug/pre-commit", result_path)?;
-        }
+        let me = std::env::current_exe()?;
+        fs::copy(me, result_path)?;
     } else {
         Err(IoError::new(ErrorKind::AlreadyExists, "Git hook already created"))?;
     }
@@ -148,6 +141,27 @@ pub fn run_fuzzer() -> Result<()> {
     };
 
     run("rustup run nightly -- cargo fuzz run parser", "./crates/ra_syntax")
+}
+
+pub fn reformat_staged_files() -> Result<()> {
+    let root = project_root();
+    let output = Command::new("git")
+        .arg("diff")
+        .arg("--diff-filter=MAR")
+        .arg("--name-only")
+        .arg("--cached")
+        .current_dir(&root)
+        .output()?;
+    if !output.status.success() {
+        anyhow::bail!(
+            "`git diff --diff-filter=MAR --name-only --cached` exited with {}",
+            output.status
+        );
+    }
+    for line in String::from_utf8(output.stdout)?.lines() {
+        run(&format!("git update-index --add {}", root.join(line).to_string_lossy()), ".")?;
+    }
+    Ok(())
 }
 
 fn do_run<F>(cmdline: &str, dir: &str, mut f: F) -> Result<Output>
