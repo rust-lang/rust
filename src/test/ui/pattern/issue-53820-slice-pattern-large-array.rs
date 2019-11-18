@@ -1,4 +1,7 @@
 // check-pass
+
+// This used to cause a stack overflow in the compiler.
+
 #![feature(slice_patterns)]
 
 fn main() {
