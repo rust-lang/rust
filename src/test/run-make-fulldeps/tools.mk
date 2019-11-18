@@ -15,7 +15,7 @@ RUSTC := $(RUSTC) -Clinker=$(RUSTC_LINKER)
 RUSTDOC := $(RUSTDOC) -Clinker=$(RUSTC_LINKER)
 endif
 #CC := $(CC) -L $(TMPDIR)
-HTMLDOCCK := $(PYTHON) $(S)/src/etc/htmldocck.py
+HTMLDOCCK := '$(PYTHON)' '$(S)/src/etc/htmldocck.py'
 CGREP := "$(S)/src/etc/cat-and-grep.sh"
 
 # This is the name of the binary we will generate and run; use this

@@ -252,13 +252,13 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
                                                          program, rather than alphabetically")
         }),
-        unstable("themes", |o| {
-            o.optmulti("", "themes",
+        stable("theme", |o| {
+            o.optmulti("", "theme",
                        "additional themes which will be added to the generated docs",
                        "FILES")
         }),
-        unstable("theme-checker", |o| {
-            o.optmulti("", "theme-checker",
+        stable("check-theme", |o| {
+            o.optmulti("", "check-theme",
                        "check if given theme is valid",
                        "FILES")
         }),
