@@ -1,8 +1,6 @@
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
 
-// ignore-tidy-undocumented-unsafe
-
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
 /// # Initialization invariant
@@ -292,6 +290,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_uninit_array", issue = "0")]
     #[inline(always)]
     pub fn uninit_array<const LEN: usize>() -> [Self; LEN] {
+        // SAFETY: see type-level documentation
         unsafe {
             MaybeUninit::<[MaybeUninit<T>; LEN]>::uninit().assume_init()
         }
@@ -341,6 +340,7 @@ impl<T> MaybeUninit<T> {
     #[inline]
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninit();
+        // SAFETY: depends on T, see above comment
         unsafe {
             u.as_mut_ptr().write_bytes(0u8, 1);
         }
@@ -354,6 +354,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_extra", issue = "63567")]
     #[inline(always)]
     pub fn write(&mut self, val: T) -> &mut T {
+        // SAFETY: initializes field, and returns reference to the value
         unsafe {
             self.value = ManuallyDrop::new(val);
             self.get_mut()
@@ -394,6 +395,7 @@ impl<T> MaybeUninit<T> {
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
+        // SAFETY: unsafe if uninitialized
         unsafe { &*self.value as *const T }
     }
 
@@ -431,6 +433,7 @@ impl<T> MaybeUninit<T> {
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut T {
+        // SAFETY: unsafe if uninitialized
         unsafe { &mut *self.value as *mut T }
     }
 

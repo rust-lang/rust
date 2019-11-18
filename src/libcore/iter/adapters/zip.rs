@@ -1,5 +1,3 @@
-// ignore-tidy-undocumented-unsafe
-
 use crate::cmp;
 
 use super::super::{Iterator, DoubleEndedIterator, ExactSizeIterator, FusedIterator, TrustedLen};
@@ -165,11 +163,13 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         if self.index < self.len {
             let i = self.index;
             self.index += 1;
+            // SAFETY: checked that i < min(a.len(), b.len())
             unsafe {
                 Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
             }
         } else if A::may_have_side_effect() && self.index < self.a.len() {
             // match the base implementation's potential side effects
+            // SAFETY: checked that index < a.len()
             unsafe {
                 self.a.get_unchecked(self.index);
             }
@@ -194,9 +194,11 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
             let i = self.index;
             self.index += 1;
             if A::may_have_side_effect() {
+                // SAFETY: i < end < self.len
                 unsafe { self.a.get_unchecked(i); }
             }
             if B::may_have_side_effect() {
+                // SAFETY: i < end < self.len
                 unsafe { self.b.get_unchecked(i); }
             }
         }
@@ -229,6 +231,7 @@ impl<A, B> ZipImpl<A, B> for Zip<A, B>
         if self.index < self.len {
             self.len -= 1;
             let i = self.len;
+            // SAFETY: i < min(a.len(), b.len())
             unsafe {
                 Some((self.a.get_unchecked(i), self.b.get_unchecked(i)))
             }
