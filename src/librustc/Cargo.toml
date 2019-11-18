@@ -18,8 +18,8 @@ jobserver = "0.1"
 num_cpus = "1.0"
 scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
-rustc-rayon = "0.3.0"
-rustc-rayon-core = "0.3.0"
+rustc-rayon = { git = "https://github.com/spastorino/rustc-rayon", branch = "latch-target-thread-rustc", package = "rustc-rayon" }
+rustc-rayon-core = { git = "https://github.com/spastorino/rustc-rayon", branch = "latch-target-thread-rustc", package = "rustc-rayon-core" }
 polonius-engine  = "0.10.0"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_feature = { path = "../librustc_feature" }
