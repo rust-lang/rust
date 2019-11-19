@@ -471,3 +471,107 @@ bench_in_place![
     bench_in_place_u128_i1_0100,   u128,    100, 1;
     bench_in_place_u128_i1_1000,   u128,   1000, 1
 ];
+
+#[bench]
+fn bench_chain_collect(b: &mut test::Bencher) {
+    let data = black_box([0; LEN]);
+    b.iter(|| data.iter().cloned().chain([1].iter().cloned()).collect::<Vec<_>>());
+}
+
+#[bench]
+fn bench_chain_chain_collect(b: &mut test::Bencher) {
+    let data = black_box([0; LEN]);
+    b.iter(|| {
+        data.iter()
+            .cloned()
+            .chain([1].iter().cloned())
+            .chain([2].iter().cloned())
+            .collect::<Vec<_>>()
+    });
+}
+
+#[bench]
+fn bench_nest_chain_chain_collect(b: &mut test::Bencher) {
+    let data = black_box([0; LEN]);
+    b.iter(|| {
+        data.iter().cloned().chain([1].iter().chain([2].iter()).cloned()).collect::<Vec<_>>()
+    });
+}
+
+pub fn example_plain_slow(l: &[u32]) -> Vec<u32> {
+    let mut result = Vec::with_capacity(l.len());
+    result.extend(l.iter().rev());
+    result
+}
+
+pub fn map_fast(l: &[(u32, u32)]) -> Vec<u32> {
+    let mut result = Vec::with_capacity(l.len());
+    for i in 0..l.len() {
+        unsafe {
+            *result.get_unchecked_mut(i) = l[i].0;
+            result.set_len(i);
+        }
+    }
+    result
+}
+
+const LEN: usize = 16384;
+
+#[bench]
+fn bench_range_map_collect(b: &mut test::Bencher) {
+    b.iter(|| (0..LEN).map(|_| u32::default()).collect::<Vec<_>>());
+}
+
+#[bench]
+fn bench_chain_extend_ref(b: &mut test::Bencher) {
+    let data = black_box([0; LEN]);
+    b.iter(|| {
+        let mut v = Vec::<u32>::with_capacity(data.len() + 1);
+        v.extend(data.iter().chain([1].iter()));
+        v
+    });
+}
+
+#[bench]
+fn bench_chain_extend_value(b: &mut test::Bencher) {
+    let data = black_box([0; LEN]);
+    b.iter(|| {
+        let mut v = Vec::<u32>::with_capacity(data.len() + 1);
+        v.extend(data.iter().cloned().chain(Some(1)));
+        v
+    });
+}
+
+#[bench]
+fn bench_rev_1(b: &mut test::Bencher) {
+    let data = black_box([0; LEN]);
+    b.iter(|| {
+        let mut v = Vec::<u32>::new();
+        v.extend(data.iter().rev());
+        v
+    });
+}
+
+#[bench]
+fn bench_rev_2(b: &mut test::Bencher) {
+    let data = black_box([0; LEN]);
+    b.iter(|| {
+        example_plain_slow(&data);
+    });
+}
+
+#[bench]
+fn bench_map_regular(b: &mut test::Bencher) {
+    let data = black_box([(0, 0); LEN]);
+    b.iter(|| {
+        let mut v = Vec::<u32>::new();
+        v.extend(data.iter().map(|t| t.1));
+        v
+    });
+}
+
+#[bench]
+fn bench_map_fast(b: &mut test::Bencher) {
+    let data = black_box([(0, 0); LEN]);
+    b.iter(|| map_fast(&data));
+}
