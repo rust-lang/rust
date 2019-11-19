@@ -3,7 +3,7 @@ import * as lc from 'vscode-languageclient';
 
 import * as commands from './commands';
 import { CargoWatchProvider } from './commands/cargo_watch';
-import { ExpandMacroHoverProvider } from './commands/expand_macro';
+import { ExpandMacroContentProvider } from './commands/expand_macro';
 import { HintsUpdater } from './commands/inlay_hints';
 import {
     interactivelyStartCargoWatch,
@@ -98,6 +98,7 @@ export function activate(context: vscode.ExtensionContext) {
         ]
     ];
     const syntaxTreeContentProvider = new SyntaxTreeContentProvider();
+    const expandMacroContentProvider = new ExpandMacroContentProvider();
 
     // The events below are plain old javascript events, triggered and handled by vscode
     vscode.window.onDidChangeActiveTextEditor(
@@ -110,25 +111,26 @@ export function activate(context: vscode.ExtensionContext) {
             syntaxTreeContentProvider
         )
     );
+    disposeOnDeactivation(
+        vscode.workspace.registerTextDocumentContentProvider(
+            'rust-analyzer',
+            expandMacroContentProvider
+        )
+    );
 
     registerCommand(
         'rust-analyzer.syntaxTree',
         commands.syntaxTree.createHandle(syntaxTreeContentProvider)
+    );
+    registerCommand(
+        'rust-analyzer.expandMacro',
+        commands.expandMacro.createHandle(expandMacroContentProvider)
     );
 
     vscode.workspace.onDidChangeTextDocument(
         events.changeTextDocument.createHandler(syntaxTreeContentProvider),
         null,
         context.subscriptions
-    );
-
-    const expandMacroContentProvider = new ExpandMacroHoverProvider();
-
-    disposeOnDeactivation(
-        vscode.languages.registerHoverProvider(
-            'rust',
-            expandMacroContentProvider
-        )
     );
 
     const startServer = () => Server.start(allNotifications);
