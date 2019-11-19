@@ -648,8 +648,21 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn should_const_prop(&self) -> bool {
-        self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2
+    fn should_const_prop(&mut self, op: OpTy<'tcx>) -> bool {
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+            return true;
+        } else if self.tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
+            return false;
+        }
+
+        match *op {
+            interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Scalar(s))) =>
+                s.is_bits(),
+            interpret::Operand::Immediate(Immediate::ScalarPair(ScalarMaybeUndef::Scalar(l),
+                                                                ScalarMaybeUndef::Scalar(r))) =>
+                l.is_bits() && r.is_bits(),
+            _ => false
+        }
     }
 }
 
@@ -749,15 +762,15 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         if self.can_const_prop[local] {
                             trace!("propagated into {:?}", local);
 
-                            if self.should_const_prop() {
-                                let value =
-                                    self.get_const(local).expect("local was dead/uninitialized");
-                                trace!("replacing {:?} with {:?}", rval, value);
-                                self.replace_with_const(
-                                    rval,
-                                    value,
-                                    statement.source_info,
-                                );
+                            if let Some(value) = self.get_const(local) {
+                                if self.should_const_prop(value) {
+                                    trace!("replacing {:?} with {:?}", rval, value);
+                                    self.replace_with_const(
+                                        rval,
+                                        value,
+                                        statement.source_info,
+                                    );
+                                }
                             }
                         } else {
                             trace!("can't propagate into {:?}", local);
@@ -859,7 +872,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             &msg,
                         );
                     } else {
-                        if self.should_const_prop() {
+                        if self.should_const_prop(value) {
                             if let ScalarMaybeUndef::Scalar(scalar) = value_const {
                                 *cond = self.operand_from_scalar(
                                     scalar,
@@ -872,8 +885,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 }
             },
             TerminatorKind::SwitchInt { ref mut discr, switch_ty, .. } => {
-                if self.should_const_prop() {
-                    if let Some(value) = self.eval_operand(&discr, source_info) {
+                if let Some(value) = self.eval_operand(&discr, source_info) {
+                    if self.should_const_prop(value) {
                         if let ScalarMaybeUndef::Scalar(scalar) =
                                 self.ecx.read_scalar(value).unwrap() {
                             *discr = self.operand_from_scalar(scalar, switch_ty, source_info.span);

@@ -48,7 +48,7 @@ pub fn change_loop_condition() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_loop_condition() {
     let mut _x = 0;
@@ -191,7 +191,7 @@ pub fn change_continue_label() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody, mir_built, optimized_mir")]
+#[rustc_clean(cfg="cfail2", except="HirBody, mir_built")]
 #[rustc_clean(cfg="cfail3")]
 pub fn change_continue_label() {
     let mut _x = 0;
