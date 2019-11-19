@@ -81,6 +81,10 @@ Join selected lines into one, smartly fixing up whitespace and trailing commas.
 Shows the parse tree of the current file. It exists mostly for debugging
 rust-analyzer itself.
 
+#### Expand Macro Recursively
+
+Shows the full macro expansion of the macro at current cursor.
+
 #### Status
 
 Shows internal statistic about memory usage of rust-analyzer
