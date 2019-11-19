@@ -47,6 +47,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         trace!("miri_start_panic: {:?}", this.frame().span);
 
+        // Get the raw pointer stored in arg[0] (the panic payload).
         let scalar = this.read_immediate(args[0])?;
         assert!(this.machine.panic_payload.is_none(), "the panic runtime should avoid double-panics");
         this.machine.panic_payload = Some(scalar);
