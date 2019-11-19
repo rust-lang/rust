@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/equality2.rs:25:18
    |
 LL |     let _: u32 = hide(0_u32);
-   |                  ^^^^^^^^^^^ expected `u32`, found opaque type
+   |            ---   ^^^^^^^^^^^ expected `u32`, found opaque type
+   |            |
+   |            expected due to this
    |
    = note:     expected type `u32`
            found opaque type `impl Foo`
@@ -11,7 +13,9 @@ error[E0308]: mismatched types
   --> $DIR/equality2.rs:31:18
    |
 LL |     let _: i32 = Leak::leak(hide(0_i32));
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found associated type
+   |            ---   ^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found associated type
+   |            |
+   |            expected due to this
    |
    = note:         expected type `i32`
            found associated type `<impl Foo as Leak>::T`

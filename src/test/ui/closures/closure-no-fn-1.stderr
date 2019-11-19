@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/closure-no-fn-1.rs:6:29
    |
 LL |     let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
-   |                             ^^^^^^^^^^^^^^^^^^^^^ expected fn pointer, found closure
+   |              ------------   ^^^^^^^^^^^^^^^^^^^^^ expected fn pointer, found closure
+   |              |
+   |              expected due to this
    |
    = note: expected fn pointer `fn(u8) -> u8`
                  found closure `[closure@$DIR/closure-no-fn-1.rs:6:29: 6:50 a:_]`

@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:14:17
    |
 LL |     let y: &S = x;
-   |                 ^ expected `&S`, found *-ptr
+   |            --   ^ expected `&S`, found *-ptr
+   |            |
+   |            expected due to this
    |
    = note: expected reference `&S`
             found raw pointer `*const S`
@@ -11,10 +13,11 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:15:21
    |
 LL |     let y: &dyn T = x;
-   |                     ^
-   |                     |
-   |                     expected `&dyn T`, found *-ptr
-   |                     help: consider borrowing here: `&x`
+   |            ------   ^
+   |            |        |
+   |            |        expected `&dyn T`, found *-ptr
+   |            |        help: consider borrowing here: `&x`
+   |            expected due to this
    |
    = note: expected reference `&dyn T`
             found raw pointer `*const S`
@@ -23,7 +26,9 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:19:17
    |
 LL |     let y: &S = x;
-   |                 ^ expected `&S`, found *-ptr
+   |            --   ^ expected `&S`, found *-ptr
+   |            |
+   |            expected due to this
    |
    = note: expected reference `&S`
             found raw pointer `*mut S`
@@ -32,10 +37,11 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:20:21
    |
 LL |     let y: &dyn T = x;
-   |                     ^
-   |                     |
-   |                     expected `&dyn T`, found *-ptr
-   |                     help: consider borrowing here: `&x`
+   |            ------   ^
+   |            |        |
+   |            |        expected `&dyn T`, found *-ptr
+   |            |        help: consider borrowing here: `&x`
+   |            expected due to this
    |
    = note: expected reference `&dyn T`
             found raw pointer `*mut S`
@@ -44,7 +50,9 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:23:25
    |
 LL |     let x: &mut dyn T = &S;
-   |                         ^^ types differ in mutability
+   |            ----------   ^^ types differ in mutability
+   |            |
+   |            expected due to this
    |
    = note: expected mutable reference `&mut dyn T`
                       found reference `&S`
@@ -53,7 +61,9 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:24:25
    |
 LL |     let x: *mut dyn T = &S;
-   |                         ^^ types differ in mutability
+   |            ----------   ^^ types differ in mutability
+   |            |
+   |            expected due to this
    |
    = note: expected raw pointer `*mut dyn T`
                 found reference `&S`
@@ -62,7 +72,9 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coercions.rs:25:21
    |
 LL |     let x: *mut S = &S;
-   |                     ^^ types differ in mutability
+   |            ------   ^^ types differ in mutability
+   |            |
+   |            expected due to this
    |
    = note: expected raw pointer `*mut S`
                 found reference `&S`

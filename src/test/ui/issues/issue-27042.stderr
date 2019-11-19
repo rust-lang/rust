@@ -20,6 +20,8 @@ LL |         loop { break };
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:8:9
    |
+LL |       let _: i32 =
+   |              --- expected due to this
 LL | /         'b:
 LL | |
 LL | |         while true { break }; // but here we cite the whole loop
@@ -35,6 +37,8 @@ LL | |         for _ in None { break }; // but here we cite the whole loop
 error[E0308]: mismatched types
   --> $DIR/issue-27042.rs:15:9
    |
+LL |       let _: i32 =
+   |              --- expected due to this
 LL | /         'd:
 LL | |         while let Some(_) = None { break };
    | |__________________________________________^ expected `i32`, found `()`
