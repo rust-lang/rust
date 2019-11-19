@@ -47,13 +47,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         trace!("miri_start_panic: {:?}", this.frame().span);
 
-        if this.tcx.tcx.sess.panic_strategy() == PanicStrategy::Abort  {
-            // FIXME: Add a better way of indicating 'abnormal' termination,
-            // since this is not really an 'unsupported' behavior
-            throw_unsup_format!("the evaluated program panicked");
-        }
-
-        // Get the raw pointer stored in arg[0] (the panic payload).
         let scalar = this.read_immediate(args[0])?;
         assert!(this.machine.panic_payload.is_none(), "the panic runtime should avoid double-panics");
         this.machine.panic_payload = Some(scalar);
