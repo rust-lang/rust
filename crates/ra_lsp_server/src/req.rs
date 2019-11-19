@@ -45,6 +45,28 @@ pub struct SyntaxTreeParams {
     pub range: Option<Range>,
 }
 
+#[derive(Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpandedMacro {
+    pub name: String,
+    pub expansion: String,
+}
+
+pub enum ExpandMacro {}
+
+impl Request for ExpandMacro {
+    type Params = ExpandMacroParams;
+    type Result = Option<ExpandedMacro>;
+    const METHOD: &'static str = "rust-analyzer/expandMacro";
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ExpandMacroParams {
+    pub text_document: TextDocumentIdentifier,
+    pub position: Option<Position>,
+}
+
 pub enum SelectionRangeRequest {}
 
 impl Request for SelectionRangeRequest {

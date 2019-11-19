@@ -42,6 +42,7 @@ mod display;
 mod inlay_hints;
 mod wasm_shims;
 mod expand;
+mod expand_macro;
 
 #[cfg(test)]
 mod marks;
@@ -65,6 +66,7 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
+    expand_macro::ExpandedMacro,
     feature_flags::FeatureFlags,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
@@ -294,6 +296,10 @@ impl Analysis {
         text_range: Option<TextRange>,
     ) -> Cancelable<String> {
         self.with_db(|db| syntax_tree::syntax_tree(&db, file_id, text_range))
+    }
+
+    pub fn expand_macro(&self, position: FilePosition) -> Cancelable<Option<ExpandedMacro>> {
+        self.with_db(|db| expand_macro::expand_macro(db, position))
     }
 
     /// Returns an edit to remove all newlines in the range, cleaning up minor
