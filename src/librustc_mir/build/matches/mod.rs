@@ -17,6 +17,7 @@ use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use smallvec::{SmallVec, smallvec};
 use syntax::ast::Name;
 use syntax_pos::Span;
 
@@ -166,7 +167,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         |(pattern, pre_binding_block)| {
                             Candidate {
                                 span: pattern.span,
-                                match_pairs: vec![
+                                match_pairs: smallvec![
                                     MatchPair::new(scrutinee_place.clone(), pattern),
                                 ],
                                 bindings: vec![],
@@ -421,7 +422,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // create a dummy candidate
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
-            match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
+            match_pairs: smallvec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
             ascriptions: vec![],
 
@@ -671,7 +672,7 @@ pub struct Candidate<'pat, 'tcx> {
     span: Span,
 
     // all of these must be satisfied...
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    match_pairs: SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
 
     // ...these bindings established...
     bindings: Vec<Binding<'tcx>>,

@@ -2,6 +2,7 @@ use crate::build::Builder;
 use crate::build::matches::MatchPair;
 use crate::hair::*;
 use rustc::mir::*;
+use smallvec::SmallVec;
 use std::u32;
 use std::convert::TryInto;
 
@@ -25,7 +26,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     pub fn prefix_slice_suffix<'pat>(&mut self,
-                                     match_pairs: &mut Vec<MatchPair<'pat, 'tcx>>,
+                                     match_pairs: &mut SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
                                      place: &Place<'tcx>,
                                      prefix: &'pat [Pat<'tcx>],
                                      opt_slice: Option<&'pat Pat<'tcx>>,
