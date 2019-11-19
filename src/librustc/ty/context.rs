@@ -826,18 +826,11 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for CanonicalUserTypeAnnotation<'a> {
-        type Lifted = CanonicalUserTypeAnnotation<'tcx>;
-        user_ty, span, inferred_ty
-    }
 }
 
 /// Canonicalized user type annotation.
@@ -892,21 +885,14 @@ impl CanonicalUserType<'tcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
     TypeOf(DefId, UserSubsts<'tcx>),
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for UserType<'a> {
-        type Lifted = UserType<'tcx>;
-        (UserType::Ty)(ty),
-        (UserType::TypeOf)(def, substs),
-    }
 }
 
 impl<'tcx> CommonTypes<'tcx> {

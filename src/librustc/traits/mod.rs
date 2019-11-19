@@ -334,7 +334,7 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 /// are used for representing the trait system in the form of
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum WhereClause<'tcx> {
     Implemented(ty::TraitPredicate<'tcx>),
     ProjectionEq(ty::ProjectionPredicate<'tcx>),
@@ -342,19 +342,19 @@ pub enum WhereClause<'tcx> {
     TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum WellFormed<'tcx> {
     Trait(ty::TraitPredicate<'tcx>),
     Ty(Ty<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum FromEnv<'tcx> {
     Trait(ty::TraitPredicate<'tcx>),
     Ty(Ty<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum DomainGoal<'tcx> {
     Holds(WhereClause<'tcx>),
     WellFormed(WellFormed<'tcx>),
@@ -370,7 +370,7 @@ pub enum QuantifierKind {
     Existential,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum GoalKind<'tcx> {
     Implies(Clauses<'tcx>, Goal<'tcx>),
     And(Goal<'tcx>, Goal<'tcx>),

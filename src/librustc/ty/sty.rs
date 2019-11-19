@@ -30,7 +30,7 @@ use self::InferTy::*;
 use self::TyKind::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-#[derive(HashStable, TypeFoldable)]
+#[derive(HashStable, TypeFoldable, Lift)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: hir::Mutability,

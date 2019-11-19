@@ -4,7 +4,7 @@ use crate::hir::def_id::DefId;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 use crate::ty::subst::UserSubsts;
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeFoldable)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeFoldable, Lift)]
 pub struct AscribeUserType<'tcx> {
     pub mir_ty: Ty<'tcx>,
     pub def_id: DefId,
@@ -36,13 +36,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for AscribeUserType<'tcx> {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
         tcx.type_op_ascribe_user_type(canonicalized)
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for AscribeUserType<'a> {
-        type Lifted = AscribeUserType<'tcx>;
-        mir_ty, def_id, user_substs
     }
 }
 

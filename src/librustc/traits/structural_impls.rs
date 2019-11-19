@@ -650,55 +650,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
     }
 }
 
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for traits::WhereClause<'a> {
-        type Lifted = traits::WhereClause<'tcx>;
-        (traits::WhereClause::Implemented)(trait_ref),
-        (traits::WhereClause::ProjectionEq)(projection),
-        (traits::WhereClause::TypeOutlives)(ty_outlives),
-        (traits::WhereClause::RegionOutlives)(region_outlives),
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for traits::WellFormed<'a> {
-        type Lifted = traits::WellFormed<'tcx>;
-        (traits::WellFormed::Trait)(trait_ref),
-        (traits::WellFormed::Ty)(ty),
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for traits::FromEnv<'a> {
-        type Lifted = traits::FromEnv<'tcx>;
-        (traits::FromEnv::Trait)(trait_ref),
-        (traits::FromEnv::Ty)(ty),
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for traits::DomainGoal<'a> {
-        type Lifted = traits::DomainGoal<'tcx>;
-        (traits::DomainGoal::Holds)(wc),
-        (traits::DomainGoal::WellFormed)(wf),
-        (traits::DomainGoal::FromEnv)(from_env),
-        (traits::DomainGoal::Normalize)(projection),
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for traits::GoalKind<'a> {
-        type Lifted = traits::GoalKind<'tcx>;
-        (traits::GoalKind::Implies)(hypotheses, goal),
-        (traits::GoalKind::And)(goal1, goal2),
-        (traits::GoalKind::Not)(goal),
-        (traits::GoalKind::DomainGoal)(domain_goal),
-        (traits::GoalKind::Quantified)(kind, goal),
-        (traits::GoalKind::Subtype)(a, b),
-        (traits::GoalKind::CannotProve),
-    }
-}
-
 impl<'a, 'tcx> Lift<'tcx> for traits::Environment<'a> {
     type Lifted = traits::Environment<'tcx>;
     fn lift_to_tcx(&self, tcx: TyCtxt<'tcx>) -> Option<Self::Lifted> {

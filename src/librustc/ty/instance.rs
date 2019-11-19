@@ -12,7 +12,8 @@ use rustc_macros::HashStable;
 use std::fmt;
 use std::iter;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, Lift)]
 pub struct Instance<'tcx> {
     pub def: InstanceDef<'tcx>,
     pub substs: SubstsRef<'tcx>,

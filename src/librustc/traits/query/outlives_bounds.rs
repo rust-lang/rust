@@ -4,7 +4,7 @@ use crate::hir;
 use syntax::source_map::Span;
 use crate::traits::{FulfillmentContext, ObligationCause, TraitEngine, TraitEngineExt};
 use crate::traits::query::NoSolution;
-use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::{self, Ty};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -17,20 +17,11 @@ use std::mem;
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Clone, Debug, TypeFoldable)]
+#[derive(Clone, Debug, TypeFoldable, Lift)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
     RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for self::OutlivesBound<'a> {
-        type Lifted = self::OutlivesBound<'tcx>;
-        (self::OutlivesBound::RegionSubRegion)(a, b),
-        (self::OutlivesBound::RegionSubParam)(a, b),
-        (self::OutlivesBound::RegionSubProjection)(a, b),
-    }
 }
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {

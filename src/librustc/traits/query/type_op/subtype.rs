@@ -2,7 +2,7 @@ use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeFoldable)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeFoldable, Lift)]
 pub struct Subtype<'tcx> {
     pub sub: Ty<'tcx>,
     pub sup: Ty<'tcx>,
@@ -33,14 +33,6 @@ impl<'tcx> super::QueryTypeOp<'tcx> for Subtype<'tcx> {
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
         tcx.type_op_subtype(canonicalized)
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for Subtype<'a> {
-        type Lifted = Subtype<'tcx>;
-        sub,
-        sup,
     }
 }
 

@@ -151,7 +151,7 @@ impl Constraint<'_> {
 /// ```
 /// R0 member of [O1..On]
 /// ```
-#[derive(Debug, Clone, HashStable, TypeFoldable)]
+#[derive(Debug, Clone, HashStable, TypeFoldable, Lift)]
 pub struct MemberConstraint<'tcx> {
     /// The `DefId` of the opaque type causing this constraint: used for error reporting.
     pub opaque_type_def_id: DefId,
@@ -167,13 +167,6 @@ pub struct MemberConstraint<'tcx> {
 
     /// The options `O1..On`.
     pub choice_regions: Lrc<Vec<Region<'tcx>>>,
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for MemberConstraint<'a> {
-        type Lifted = MemberConstraint<'tcx>;
-        opaque_type_def_id, definition_span, hidden_ty, member_region, choice_regions
-    }
 }
 
 /// `VerifyGenericBound(T, _, R, RS)`: the parameter type `T` (or
