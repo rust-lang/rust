@@ -351,6 +351,7 @@ E0635: include_str!("./error_codes/E0635.md"),
 E0636: include_str!("./error_codes/E0636.md"),
 E0638: include_str!("./error_codes/E0638.md"),
 E0639: include_str!("./error_codes/E0639.md"),
+E0641: include_str!("./error_codes/E0641.md"),
 E0642: include_str!("./error_codes/E0642.md"),
 E0643: include_str!("./error_codes/E0643.md"),
 E0644: include_str!("./error_codes/E0644.md"),
@@ -584,7 +585,6 @@ E0744: include_str!("./error_codes/E0744.md"),
     E0634, // type has conflicting packed representaton hints
     E0637, // "'_" is not a valid lifetime bound
     E0640, // infer outlives requirements
-    E0641, // cannot cast to/from a pointer with an unknown kind
 //  E0645, // trait aliases not finished
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0667, // `impl Trait` in projections
