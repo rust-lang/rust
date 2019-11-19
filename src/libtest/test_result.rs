@@ -42,29 +42,25 @@ pub fn calc_result<'a>(
                 .map(|e| &**e)
                 .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e));
 
-            if maybe_panic_str
-                .map(|e| e.contains(msg))
-                .unwrap_or(false)
-            {
+            if maybe_panic_str.map(|e| e.contains(msg)).unwrap_or(false) {
                 TestResult::TrOk
-            } else {
-                if desc.allow_fail {
-                    TestResult::TrAllowedFail
-                } else {
-                    if let Some(panic_str) = maybe_panic_str{
-                        TestResult::TrFailedMsg(
-                            format!(r#"panic did not contain expected string
+            } else if desc.allow_fail {
+                TestResult::TrAllowedFail
+            } else if let Some(panic_str) = maybe_panic_str {
+                TestResult::TrFailedMsg(format!(
+                    r#"panic did not contain expected string
       panic message: `{:?}`,
- expected substring: `{:?}`"#, panic_str, &*msg)
-                        )
-                    } else {
-                        TestResult::TrFailedMsg(
-                            format!(r#"expected panic with string value,
+ expected substring: `{:?}`"#,
+                    panic_str, msg
+                ))
+            } else {
+                TestResult::TrFailedMsg(format!(
+                    r#"expected panic with string value,
  found non-string value: `{:?}`
-     expected substring: `{:?}`"#, (**err).type_id(), &*msg)
-                        )
-                    }
-                }
+     expected substring: `{:?}`"#,
+                    (**err).type_id(),
+                    msg
+                ))
             }
         }
         (&ShouldPanic::Yes, Ok(())) => {
