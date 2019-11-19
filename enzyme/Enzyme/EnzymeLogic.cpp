@@ -445,6 +445,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
 
 
   gutils->forceContexts();
+  gutils->forceActiveDetection();
   gutils->forceAugmentedReturns();
   
   //! Explicitly handle all returns first to ensure that all instructions know whether or not they are used
@@ -805,7 +806,7 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
         } else if(auto op = dyn_cast<StoreInst>(inst)) {
           if (gutils->isConstantInstruction(inst)) continue;
 
-          if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && !isIntASecretFloat(op->getValueOperand()) ) ) {
+          if ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && isIntASecretFloat(op->getValueOperand()) == IntType::Pointer ) ) {
             IRBuilder <> storeBuilder(op);
             
             Value* valueop = nullptr;
@@ -1360,8 +1361,14 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   }
 
   if (called && called->getName()=="free") {
+    if( gutils->invertedPointers.count(op) ) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+        if (I != E && placeholder == &*I) I++;
+        gutils->invertedPointers.erase(op);
+        gutils->erase(placeholder);
+    }
+    
     llvm::Value* val = op->getArgOperand(0);
-
     while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
     
     if (auto dc = dyn_cast<CallInst>(val)) {
@@ -1384,8 +1391,16 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   }
 
   if (called && (called->getName()=="_ZdlPv" || called->getName()=="_ZdlPvm")) {
+    if( gutils->invertedPointers.count(op) ) {
+        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
+        if (I != E && placeholder == &*I) I++;
+        gutils->invertedPointers.erase(op);
+        gutils->erase(placeholder);
+    }
+    
     llvm::Value* val = op->getArgOperand(0);
     while(auto cast = dyn_cast<CastInst>(val)) val = cast->getOperand(0);
+
     if (auto dc = dyn_cast<CallInst>(val)) {
       if (dc->getCalledFunction()->getName() == "_Znwm") {
         gutils->erase(op);
@@ -1714,22 +1729,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         gutils->erase(cast<Instruction>(tape));
         tape = UndefValue::get(tt);
       }
-
-      if( gutils->invertedPointers.count(op) ) {
-      //if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
-        auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        if (I != E && placeholder == &*I) I++;
-        
-        //if( !gutils->isConstantValue(op) ) {
-        if( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op) ) {
-            auto newip = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {2}));
-            placeholder->replaceAllUsesWith(newip);
-            gutils->invertedPointers[op] = newip;
-        } else {
-            gutils->invertedPointers.erase(op);
-        }
-        gutils->erase(placeholder);
-      }
     } else {
       tape = gutils->addMalloc(BuilderZ, tape);
 
@@ -1737,19 +1736,41 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
         cachereplace = gutils->addMalloc(BuilderZ, cachereplace);
       }
+    }
 
-      if( gutils->invertedPointers.count(op) ) {
+    llvm::errs() << "considering augmenting: " << *op << "\n";
+    if( gutils->invertedPointers.count(op) ) {
+
         auto placeholder = cast<PHINode>(gutils->invertedPointers[op]);
-        gutils->invertedPointers.erase(op);
+        llvm::errs() << " +  considering placeholder: " << *placeholder << "\n";
         if (I != E && placeholder == &*I) I++;
-        llvm::errs() << "subdifferentalreturn: " << subdifferentialreturn << " " << " isconstval:" << gutils->isConstantValue(op) << " subretused: " << subretused << "\n";
-        if( subretused && (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && subdifferentialreturn ) {
-            auto newip = gutils->addMalloc(BuilderZ, placeholder);
+
+        bool subcheck = topLevel ? 
+            ( subdifferentialreturn && (op->getType()->isPointerTy() || (op->getType()->isIntegerTy() && isIntASecretFloat(op, IntType::Pointer) == IntType::Pointer ) ) )
+            :
+            ( subdifferentialreturn && (op->getType()->isPointerTy() || (op->getType()->isIntegerTy()) ) );
+        
+        if( subcheck ) {
+            Value* newip = nullptr;
+            if (topLevel) {
+                newip = BuilderZ.CreateExtractValue(augmentcall, {2});
+                placeholder->replaceAllUsesWith(newip);
+            } else {
+                newip = gutils->addMalloc(BuilderZ, placeholder);
+            }
+
             gutils->invertedPointers[op] = newip;
+
+            if (topLevel) {
+                gutils->erase(placeholder);
+            } else {
+                /* don't need to erase if not toplevel since that is handled by addMalloc */
+            }
         } else {
+            gutils->invertedPointers.erase(op);
             gutils->erase(placeholder);
         }
-      }
+        
     }
 
 
@@ -2058,6 +2079,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   gutils->can_modref_map = &can_modref_map;
 
   gutils->forceContexts();
+  gutils->forceActiveDetection();
   gutils->forceAugmentedReturns();
 
   Argument* additionalValue = nullptr;
@@ -2616,11 +2638,19 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       }
 
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
+      llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
       if (gutils->isConstantInstruction(inst)) continue;
 
       //TODO const
        //TODO IF OP IS POINTER
-      if (! ( op->getValueOperand()->getType()->isPointerTy() || (op->getValueOperand()->getType()->isIntegerTy() && !gutils->isConstantValue(op->getValueOperand()) && !isIntASecretFloat(op->getValueOperand()) ) ) ) {
+      Value* tostore = op->getValueOperand();
+      Type* tostoreType = tostore->getType();
+      bool constantValue = gutils->isConstantValue(tostore);
+      llvm::errs() << "considering store " << *op << " constantvalue " << constantValue << "\n";
+      if (constantValue && tostoreType->isIntegerTy()) {
+        //llvm::errs() << "secretfloat is " << isIntASecretFloat(tostore) << "\n";
+      }
+      if (! ( tostoreType->isPointerTy() || (tostoreType->isIntegerTy() && !constantValue && isIntASecretFloat(tostore) == IntType::Pointer ) ) ) {
           StoreInst* ts;
           if (!gutils->isConstantValue(op->getValueOperand())) {
             auto dif1 = Builder2.CreateLoad(invertPointer(op->getPointerOperand()));

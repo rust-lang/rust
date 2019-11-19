@@ -29,7 +29,14 @@
 
 extern llvm::cl::opt<bool> printconst;
 
-bool isIntASecretFloat(llvm::Value* val);
+enum class IntType {
+    Integer,
+    Float,
+    Pointer,
+    Unknown
+};
+
+IntType isIntASecretFloat(llvm::Value* val, IntType defaultType=IntType::Unknown);
 
 //! return the secret float type if found, otherwise nullptr
 llvm::Type* isIntPointerASecretFloat(llvm::Value* val);

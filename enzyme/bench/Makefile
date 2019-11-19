@@ -11,7 +11,8 @@ OPT=../../build/bin/opt
 	#$(CLANG) -fno-unroll-loops $^ -O2 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
 
 %-unopt.ll: %.cpp
-	$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include #-ggdb 
+	$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O0 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include #-ggdb 
+	#$(CLANG)++ -fno-exceptions -fno-use-cxa-atexit -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include #-ggdb 
 	#$(CLANG)++ -fno-exceptions -fno-unroll-loops $^ -O3 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o $@ -ffast-math -Wno-error=non-pod-varargs -DEIGEN_UNROLLING_LIMIT=0 -I/home/wmoses/autodiff/adept-2.0.5/include -ggdb 
 
 %-preopt.ll: %-unopt.ll
@@ -34,8 +35,7 @@ OPT=../../build/bin/opt
 	$(OPT) $^ -indvars $(LOADSO) -enzyme -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3 -print-before-all -print-after-all
 
 %-lowerq.ll: %-unopt.ll
-	$(OPT) $^ -indvars $(LOADSO) -enzyme -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -o moobar.ll
-	../build/bin/opt moobar.ll -S -o $@ -O1 -print-before-all -print-after-all
+	$(OPT) $^ -S -indvars $(LOADSO) -enzyme -enzyme_inline=1 -verify -mem2reg -enzyme_print=0 -enzyme_nonmarkedglobals_inactive=1 -enzyme_emptyfnconst=1 -enzyme_printconst=1 -o $@ #| $(OPT) - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine #-inline -O3
 
 %-lower.ll: %-unopt.ll
 	$(OPT) $^ -indvars $(LOADSO) -enzyme -enzyme_inline=1 -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - -enzyme_print=0 -enzyme_nonmarkedglobals_inactive=1 -enzyme_emptyfnconst=1 | $(OPT) - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine #-inline -O3

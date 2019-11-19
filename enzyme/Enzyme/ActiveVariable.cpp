@@ -81,16 +81,23 @@ Type* isKnownFloatTBAA(Instruction* inst) {
   return nullptr;
 }
 
-void trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<unsigned> indices = {}) {
-    if (seen.find(et) != seen.end()) return;
+cl::opt<bool> fast_tracking(
+            "enzyme_fast_tracking", cl::init(true), cl::Hidden,
+            cl::desc("Enable fast tracking (e.g. don't verify if inconsistent state)"));
+
+// returns whether it found something
+bool trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<int> indices = {}) {
+    if (seen.find(et) != seen.end()) return false;
     seen.insert(et);
     
-    //llvm::errs() << "  tract type of saw " << *et << "\n";
-    //llvm::errs() << "       indices = [";
-    //for(auto a: indices) {
-    //    llvm::errs() << a << ",";
-    //}
-    //llvm::errs() << "] of:" << onlyFirst << "\n";
+    /*
+    llvm::errs() << "  tract type of saw " << *et << "\n";
+    llvm::errs() << "       indices = [";
+    for(auto a: indices) {
+        llvm::errs() << a << ",";
+    }
+    llvm::errs() << "] of:" << onlyFirst << "\n";
+    */
     
     if (et->isFloatingPointTy()) {
         if (floatingUse == nullptr) {
@@ -99,164 +106,439 @@ void trackType(Type* et, SmallPtrSet<Type*, 4>& seen, Type*& floatingUse, bool& 
         } else {
             assert(floatingUse == et);
         }
+        if (fast_tracking) return true;
     } else if (et->isPointerTy()) {
         //llvm::errs() << "  tract type saw(p) " << *et << "\n";
         pointerUse = true;
+        if (fast_tracking) return true;
     }
 
     if (auto st = dyn_cast<SequentialType>(et)) {
-        trackType(st->getElementType(), seen, floatingUse, pointerUse, onlyFirst, indices);
+        if (trackType(st->getElementType(), seen, floatingUse, pointerUse, onlyFirst, indices)) {
+            if (fast_tracking) return true;
+        }
     } 
     
     if (auto st = dyn_cast<StructType>(et)) {
-        unsigned index = 0;
+        int index = -1;
         auto nindices = indices;
         if (indices.size() > 0) {
             index = indices[0];
             nindices.erase(nindices.begin());
         }
-        if (onlyFirst && st->getNumElements() > index) {
-            trackType(st->getElementType(index), seen, floatingUse, pointerUse, onlyFirst, indices);
+        if (onlyFirst) {
+            if (index >= 0) {
+                if(trackType(st->getElementType(index), seen, floatingUse, pointerUse, onlyFirst, nindices)) {
+                    if (fast_tracking) return true;
+                }
+            } else {
+                for (auto innerType : st->elements()) {
+                    if (trackType(innerType, seen, floatingUse, pointerUse, onlyFirst, nindices)) {
+                        if (fast_tracking) return true;
+                    }
+                }
+            }
         } else {
             for (auto innerType : st->elements()) {
-                trackType(innerType, seen, floatingUse, pointerUse, false, {});
+                if (trackType(innerType, seen, floatingUse, pointerUse, false, {})) {
+                    if (fast_tracking) return true;
+                }
             }
         }
     }
+
+    return false;
 }
         
-void trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<unsigned> indices = {}) {
-    if (seen.find(v) != seen.end()) return;
+bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool onlyFirst, std::vector<int> indices = {}) {
+    if (seen.find(v) != seen.end()) return false;
     seen.insert(v);
 
     assert(v->getType()->isPointerTy());
     
     Type* et = cast<PointerType>(v->getType())->getElementType();
-    //llvm::errs() << "  tract pointer of saw " << *v << " et:" << *et << "\n";
-    //llvm::errs() << "       indices = [";
-    //for(auto a: indices) {
-    //    llvm::errs() << a << ",";
-    //}
-    //llvm::errs() << "]\n";
-    trackType(et, typeseen, floatingUse, pointerUse, onlyFirst, indices);
+
+    /*
+    llvm::errs() << "  tract pointer of saw " << *v << " et:" << *et << "\n";
+    llvm::errs() << "       indices = [";
+    for(auto a: indices) {
+        llvm::errs() << a << ",";
+    }
+    llvm::errs() << "]\n";
+    */
+
+    if (trackType(et, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
+        if (fast_tracking) return true;
+    }
             
     if (auto phi = dyn_cast<PHINode>(v)) {
         for(auto &a : phi->incoming_values()) {
-            trackPointer(a.get(), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices);
+            if (trackPointer(a.get(), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
+                if (fast_tracking) return true;
+            }
         }
     }
     if (auto ci = dyn_cast<CastInst>(v)) {
         if (ci->getSrcTy()->isPointerTy())
-            trackPointer(ci->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices);
+            if (trackPointer(ci->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
+                if (fast_tracking) return true;
+            }
     } 
     if (auto gep = dyn_cast<GetElementPtrInst>(v)) {
-        std::vector<unsigned> idz(indices);
+        bool first = true;
+        
+        std::vector<int> idnext;
+
         for(auto& a : gep->indices()) {
+            if (first) { first = false; continue; }
             if (auto ci = dyn_cast<ConstantInt>(a)) {
-                idz.push_back((unsigned)ci->getLimitedValue());
-            } else break;
+                idnext.push_back((int)ci->getLimitedValue());
+            } else {
+                idnext.push_back(-1);
+            }
         }
-        if (idz.size() > 0) idz.erase(idz.begin());
-        trackPointer(gep->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, idz);
+        idnext.insert(idnext.end(), indices.begin(), indices.end());
+        if (trackPointer(gep->getOperand(0), seen, typeseen, floatingUse, pointerUse, onlyFirst, idnext)) {
+            if (fast_tracking) return true;
+        }
     }
     if (auto inst = dyn_cast<Instruction>(v)) {
         for(User* use: inst->users()) {
             if (auto ci = dyn_cast<CastInst>(use)) {
                 if (ci->getDestTy()->isPointerTy()) {
-                    trackPointer(ci, seen, typeseen, floatingUse, pointerUse, onlyFirst, indices);
+                    if (trackPointer(ci, seen, typeseen, floatingUse, pointerUse, onlyFirst, indices)) {
+                        if (fast_tracking) return true;
+                    }
                 }
             }
         }
     }
+    return false;
 }
 
-bool isIntASecretFloat(Value* val) {
+bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse) {
+    if (intseen.find(v) != intseen.end()) {
+        if (intseen[v] == IntType::Integer) {
+            intUse = true;
+        }
+        return false;
+    }
+    intseen[v] = IntType::Unknown;
+    
+    assert(v->getType()->isIntegerTy());
+
+    if (isa<UndefValue>(v)) {
+        intUse = true;
+        intseen[v] = IntType::Integer;
+        return true;
+    }
+      
+    if (isa<ConstantInt>(v)) {
+        intUse = true;
+        intseen[v] = IntType::Integer;
+        return true;
+    }
+
+    //consider booleans to be integers
+    if (cast<IntegerType>(v->getType())->getBitWidth() == 1) {
+        intUse = true;
+        intseen[v] = IntType::Integer;
+        return true;
+    }
+    bool oldunknownUse = unknownUse;
+    unknownUse = false;
+    for(User* use: v->users()) {
+        if (auto ci = dyn_cast<CastInst>(use)) {
+            if (ci->getDestTy()->isPointerTy()) {
+                //llvm::errs() << "saw(p use) of " << *v << " use " << *ci << "\n";
+                pointerUse = true;
+                if (fast_tracking) return true;
+                continue;
+            }
+            if (ci->getDestTy()->isFloatingPointTy()) {
+                if (isa<BitCastInst>(ci)) {
+                    if (floatingUse == nullptr) {
+                        floatingUse = ci->getDestTy();
+                    } else {
+                        assert(floatingUse == ci->getDestTy());
+                    }
+                    if (fast_tracking) return true;
+                }
+                continue;
+            }
+            if (ci->getDestTy()->isIntegerTy()) {
+              if (trackInt(ci, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+                if (fast_tracking) return true;
+              }
+              continue;
+            } else {
+              assert(0 && "illegal use of cast");
+            }
+        }
+
+        if (auto bi = dyn_cast<BinaryOperator>(use)) {
+            if (trackInt(bi, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+                if (fast_tracking) return true;
+            }
+            continue;
+        }
+        
+        if (auto seli = dyn_cast<SelectInst>(use)) {
+            if (trackInt(seli, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+                if (fast_tracking) return true;
+            }
+            continue;
+        }
+
+        if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
+            if (gep->getPointerOperand() != v) {
+                intUse = true;
+                intseen[v] = IntType::Integer;
+                continue;
+            }
+        }
+        
+        if (auto call = dyn_cast<CallInst>(use)) {
+            if (Function* ci = call->getCalledFunction()) {
+                if (ci->getName() == "malloc") {
+                    intUse = true;
+                    intseen[v] = IntType::Integer;
+                    continue;
+                }
+                if (ci->getIntrinsicID() == Intrinsic::memset) {
+                    if (call->getArgOperand(0) != v) {
+                        intUse = true;
+                        intseen[v] = IntType::Integer;
+                        continue;
+                    }
+                }
+                if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
+                    if (call->getArgOperand(0) != v && call->getArgOperand(1) != v) {
+                        intUse = true;
+                        intseen[v] = IntType::Integer;
+                        continue;
+                    }
+                }
+                if (!ci->empty()) {
+                    auto a = ci->arg_begin();
+                    for(size_t i=0; i<call->getNumArgOperands(); i++) {
+                        if (call->getArgOperand(i) == v) {
+                            if(trackInt(a, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+                                if (fast_tracking) return true;
+                            }
+                        }
+                        a++;
+                    }
+                    continue;
+                }
+            }
+        }
+
+        if (isa<AllocaInst>(use)) {
+            intUse = true;
+            intseen[v] = IntType::Integer;
+            if (fast_tracking) return true;
+            continue;
+        }
+        if (isa<ExtractValueInst>(use) || isa<InsertValueInst>(use)) {
+            intUse = true;
+            intseen[v] = IntType::Integer;
+            if (fast_tracking) return true;
+            continue;
+        }
+        
+        if (isa<IntToPtrInst>(use)) {
+            //llvm::errs() << "saw(p use) of " << *v << " use " << *use << "\n";
+            pointerUse = true;
+            if (fast_tracking) return true;
+            continue;
+        }
+        
+        if (auto si = dyn_cast<StoreInst>(use)) {
+            assert(v == si->getValueOperand());
+            if (isKnownIntegerTBAA(si)) {
+                intUse = true;  
+                intseen[v] = IntType::Integer;
+                if (fast_tracking) return true;
+            }
+            if (Type* t = isKnownFloatTBAA(si)) floatingUse = t;
+            if (trackPointer(si->getPointerOperand(), ptrseen, typeseen, floatingUse, pointerUse, true, {})) {
+                if (fast_tracking) return true;
+            }
+
+            if (auto ai = dyn_cast<AllocaInst>(si->getPointerOperand())) {
+                bool baduse = false;
+                for(auto user : ai->users()) {
+                    if (auto si = dyn_cast<StoreInst>(user)) {
+                        if (si->getValueOperand() == ai) {
+                            baduse = true;
+                            break;
+                        }
+                    } else if (auto li = dyn_cast<LoadInst>(user)) {
+                        if (trackInt(li, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+                            if (fast_tracking) return true;
+                        } 
+                    } else baduse = true;
+                }
+                if (!baduse) continue;
+            }
+        }
+
+        if (isa<CmpInst>(use)) continue;
+
+        unknownUse = true;
+        continue;
+    }
+
+    if (unknownUse == false) {
+        intUse = true;
+        intseen[v] = IntType::Integer;
+        if (fast_tracking) return true;
+    }
+    unknownUse |= oldunknownUse;
+
+    if (auto li = dyn_cast<LoadInst>(v)) {
+        if (isKnownIntegerTBAA(li)) {
+            intUse = true;
+            intseen[v] = IntType::Integer;
+            if (fast_tracking) return true;
+        }
+        if (Type* t = isKnownFloatTBAA(li)) floatingUse = t;
+        if (trackPointer(li->getOperand(0), ptrseen, typeseen, floatingUse, pointerUse, true, {})) {
+            if (fast_tracking) return true;
+        }
+    }
+
+    if (auto ci = dyn_cast<BitCastInst>(v)) {
+        if (ci->getSrcTy()->isPointerTy()) {
+            //llvm::errs() << "saw(p) " << *ci << "\n";
+            pointerUse = true;
+            //llvm::errs() << "saw(p use) of " << *v << " use " << *ci << "\n";
+            if (fast_tracking) return true;
+        }
+        if (ci->getSrcTy()->isFloatingPointTy()) {
+            //llvm::errs() << "saw(p) " << *ci << "\n";
+            floatingUse = ci->getSrcTy();
+            if (fast_tracking) return true;
+        }
+        if (ci->getSrcTy()->isIntegerTy()) {
+          bool fakeunknownuse = false;
+          if (trackInt(ci->getOperand(0), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
+            if (fast_tracking) return true;
+          }
+        }
+    }
+    
+    if (auto seli = dyn_cast<SelectInst>(v)) {
+          bool fakeunknownuse = false;
+          if (trackInt(seli->getOperand(1), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
+            if (fast_tracking) return true;
+          }
+          if (trackInt(seli->getOperand(2), intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse)) {
+            if (fast_tracking) return true;
+          }
+    }
+    
+    if (auto bi = dyn_cast<BinaryOperator>(v)) {
+
+        bool intUse0 = false, intUse1 = false;
+        std::map<Value*, IntType> intseen0(intseen.begin(), intseen.end());
+        SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
+        SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
+        bool fakeunknownuse0 = false;
+        
+        if (trackInt(bi->getOperand(0), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0) && (floatingUse || pointerUse) ) {
+            if (fast_tracking) return true;
+        }
+
+        if (intUse0) {
+            if (trackInt(bi->getOperand(1), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse1, fakeunknownuse0) && (floatingUse || pointerUse)) {
+                if (fast_tracking) return true;
+            }
+        }
+        
+        if (intUse0 && intUse1) {
+            intUse = true;
+            intseen[v] = IntType::Integer;
+            /*
+            if (floatingUse0) {
+                if (floatingUse != nullptr) assert(floatingUse == floatingUse0);
+                floatingUse = floatingUse0;
+            }
+            pointerUse |= pointer
+                */
+            intseen.insert(intseen0.begin(), intseen0.end());
+            
+            ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
+            
+            typeseen.insert(typeseen0.begin(), typeseen0.end());
+            if (fast_tracking) return true;
+        }
+    }
+    
+    if (isa<PtrToIntInst>(v)) {
+        //llvm::errs() << "saw(p) " << *v << "\n";
+        pointerUse = true;
+        if (fast_tracking) return true;
+    }
+    
+    return false;
+}
+
+IntType isIntASecretFloat(Value* val, IntType defaultType) {
     //llvm::errs() << "starting isint a secretfloat for " << *val << "\n";
 
     assert(val->getType()->isIntegerTy());
 
-    if (isa<UndefValue>(val)) return true;
+    if (isa<UndefValue>(val)) {
+        if (defaultType != IntType::Unknown) return defaultType;
+        return IntType::Integer;
+    }
       
-    if (auto cint = dyn_cast<ConstantInt>(val)) {
-		if (!cint->isZero()) return false;
-        return false;
+    if (isa<ConstantInt>(val)) {
+        if (defaultType != IntType::Unknown) return defaultType;
+        return IntType::Integer;
+
+		//if (!cint->isZero()) return false;
+        //return false;
         //llvm::errs() << *val << "\n";
         //assert(0 && "unsure if constant or not because constantint");
 		 //if (cint->isOne()) return cint;
 	}
 
-    if (auto inst = dyn_cast<Instruction>(val)) {
+
         Type* floatingUse = nullptr;
         bool pointerUse = false;
         bool intUse = false;
-        SmallPtrSet<Value*, 4> seen;
+        std::map<Value*, IntType> intseen;
+        SmallPtrSet<Value*, 4> ptrseen;
         
         SmallPtrSet<Type*, 4> typeseen;
 
-        for(User* use: inst->users()) {
-            if (auto ci = dyn_cast<BitCastInst>(use)) {
-                if (ci->getDestTy()->isPointerTy()) {
-                    //llvm::errs() << "saw(p) " << *ci << "\n";
-                    pointerUse = true;
-                    continue;
-                }
-                if (ci->getDestTy()->isFloatingPointTy()) {
-                    //llvm::errs() << "saw(f) " << *ci << "\n";
-                    floatingUse = ci->getDestTy();
-                    continue;
-                }
-            }
-                
-            
-            if (isa<IntToPtrInst>(use)) {
-                //llvm::errs() << "saw(p) " << *use << "\n";
-                pointerUse = true;
-                continue;
-            }
-            
-            if (auto si = dyn_cast<StoreInst>(use)) {
-                assert(inst == si->getValueOperand());
-				if (isKnownIntegerTBAA(si)) intUse = true;
-				if (Type* t = isKnownFloatTBAA(si)) floatingUse = t;
-                trackPointer(si->getPointerOperand(), seen, typeseen, floatingUse, pointerUse, true, {});
-            }
-        }
-
-        if (auto li = dyn_cast<LoadInst>(inst)) {
-			if (isKnownIntegerTBAA(li)) intUse = true;
-			if (Type* t = isKnownFloatTBAA(li)) floatingUse = t;
-            trackPointer(li->getOperand(0), seen, typeseen, floatingUse, pointerUse, true, {});
-        }
-
-        if (auto ci = dyn_cast<BitCastInst>(inst)) {
-            if (ci->getSrcTy()->isPointerTy()) {
-                //llvm::errs() << "saw(p) " << *ci << "\n";
-                pointerUse = true;
-            }
-            if (ci->getSrcTy()->isFloatingPointTy()) {
-                //llvm::errs() << "saw(p) " << *ci << "\n";
-                floatingUse = ci->getSrcTy();
-            }
-        }
+        bool fakeunknownuse = false;
+        trackInt(val, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse);
         
-        if (isa<PtrToIntInst>(inst)) {
-            //llvm::errs() << "saw(p) " << *inst << "\n";
-            pointerUse = true;
-        }
+        /*
+        if (floatingUse)
+        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
+        else
+        llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
+        */
 
-        if (intUse  && !pointerUse && !floatingUse) return false; 
-        if (!intUse && pointerUse && !floatingUse) return false; 
-        if (!intUse && !pointerUse && floatingUse) return true;
+        if (!intUse && pointerUse && !floatingUse) { return IntType::Pointer; }
+        if (!intUse && !pointerUse && floatingUse) { return IntType::Float; }
+        if (intUse && !pointerUse && !floatingUse) { return IntType::Integer; }
+
+        if (defaultType != IntType::Unknown) return defaultType;
+
+        if(auto inst = dyn_cast<Instruction>(val))
         llvm::errs() << *inst->getParent()->getParent() << "\n";
+
         if (floatingUse)
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
         else
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << floatingUse << " int:" << intUse << "\n";
         assert(0 && "ambiguous unsure if constant or not");
-    }
-
-    llvm::errs() << *val << "\n";
-    assert(0 && "unsure if constant or not");
 }
 
 //! return the secret float type if found, otherwise nullptr
@@ -516,6 +798,15 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
         return false;
     }
 
+    //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
+    if (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Integer) {
+        //! The instruction itself is constant if it does not modify memory (otherwise causing active memory to flow)
+        if (!inst->mayReadOrWriteMemory()) {
+            constants.insert(inst);
+            return true;
+        }
+    }
+
 	if (auto op = dyn_cast<CallInst>(inst)) {
 		if(auto called = op->getCalledFunction()) {
 			if (called->getName() == "printf" || called->getName() == "puts") {
@@ -533,7 +824,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 				constants.insert(inst);
 				return true;
 			}
-            if (called->empty() && !hasMetadata(called, "enzyme_gradient") && emptyfnconst) {
+            if (!isCertainPrintMallocOrFree(called) && called->empty() && !hasMetadata(called, "enzyme_gradient") && emptyfnconst) {
 				constants.insert(inst);
 				return true;
             }
@@ -612,10 +903,10 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 
     if (printconst)
 	  llvm::errs() << "checking if is constant[" << (int)directions << "] " << *inst << "\n";
-
+    
 	SmallPtrSet<Value*, 20> constants_tmp;
 
-    if (inst->getType()->isPointerTy()) {
+    if (inst->getType()->isPointerTy() || (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer) == IntType::Pointer) ) {
 		//Proceed assuming this is constant, can we prove this should be constant otherwise
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());
@@ -679,12 +970,20 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
               }
               */
               continue;
+          } else if (auto ci = dyn_cast<CallInst>(a)) {
+			if (!isconstantM(ci, constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+				if (directions == 3)
+				  nonconstant.insert(inst);
+    			if (printconst)
+				  llvm::errs() << "memory(" << (int)directions << ") erase 5: " << *inst << " op " << *a << "\n";
+				return false;
+			}
           } else {
 			if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
 				if (directions == 3)
 				  nonconstant.insert(inst);
     			if (printconst)
-				  llvm::errs() << "memory(" << (int)directions << ") erase 3: " << *inst << " op " << *a << "\n";
+				  llvm::errs() << "memory(" << (int)directions << ") erase 4: " << *inst << " op " << *a << "\n";
 				return false;
 			}
 		  }
@@ -696,8 +995,102 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		
         constants_tmp.insert(constants2.begin(), constants2.end());
 	}
+    
+    {
+	SmallPtrSet<Value*, 20> constants2;
+	constants2.insert(constants.begin(), constants.end());
+	SmallPtrSet<Value*, 20> nonconstant2;
+	nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+	SmallPtrSet<Value*, 20> retvals2;
+	retvals2.insert(retvals.begin(), retvals.end());
+	constants2.insert(inst);
+		
+	if (directions & UP) {
+        if (printconst)
+		    llvm::errs() << " < UPSEARCH" << (int)directions << ">" << *inst << "\n";
 
-	if (!inst->getType()->isPointerTy() && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) { 
+        if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
+            if (isconstantValueM(gep->getPointerOperand(), constants2, nonconstant2, retvals2, originalInstructions, UP)) {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ") up-gep " << *inst << "\n";
+                return true;
+            }
+
+        } else if (auto ci = dyn_cast<CallInst>(inst)) {
+            bool seenuse = false;
+             
+            if (!seenuse) {
+            for(auto& a: ci->arg_operands()) {
+                if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, UP)) {
+                    seenuse = true;
+                    if (printconst)
+                      llvm::errs() << "nonconstant(" << (int)directions << ")  up-call " << *inst << " op " << *a << "\n";
+                    break;
+                    /*
+                    if (directions == 3)
+                      nonconstant.insert(inst);
+                    if (printconst)
+                      llvm::errs() << "nonconstant(" << (int)directions << ")  call " << *inst << " op " << *a << "\n";
+                    //return false;
+                    break;
+                    */
+                }
+            }
+            }
+
+            
+            //! TODO consider calling interprocedural here
+            //! TODO: Really need an attribute that determines whether a function can access a global (not even necessarily read)
+            //if (ci->hasFnAttr(Attribute::ReadNone) || ci->hasFnAttr(Attribute::ArgMemOnly)) 
+            if (!seenuse) {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+                //constants.insert(constants_tmp.begin(), constants_tmp.end());
+                //if (directions == 3)
+                //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ")  up-call:" << *inst << "\n";
+                return true;
+            }
+        } else {
+            bool seenuse = false;
+
+            for(auto& a: inst->operands()) {
+                if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, UP)) {
+                    //if (directions == 3)
+                    //  nonconstant.insert(inst);
+                    if (printconst)
+                      llvm::errs() << "nonconstant(" << (int)directions << ")  up-inst " << *inst << " op " << *a << "\n";
+                    seenuse = true;
+                    break;
+                    //return false;
+                }
+            }
+
+            if (!seenuse) {
+            //if (!isa<StoreInst>(inst) && !inst->getType()->isPointerTy()) {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+                //constants.insert(constants_tmp.begin(), constants_tmp.end());
+                //if (directions == 3)
+                //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ")  up-inst:" << *inst << "\n";
+                return true;
+            //}
+            }
+        }
+        if (printconst)
+		    llvm::errs() << " </UPSEARCH" << (int)directions << ">" << *inst << "\n";
+	}
+    }
+
+	if (!(inst->getType()->isPointerTy() || (inst->getType()->isIntegerTy() && isIntASecretFloat(inst, /*default*/IntType::Pointer)==IntType::Pointer) ) && ( !inst->mayWriteToMemory() || isa<BinaryOperator>(inst) ) && (directions & DOWN) && (retvals.find(inst) == retvals.end()) ) { 
 		//Proceed assuming this is constant, can we prove this should be constant otherwise
 		SmallPtrSet<Value*, 20> constants2;
 		constants2.insert(constants.begin(), constants.end());
@@ -726,13 +1119,20 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 
 			if (auto call = dyn_cast<CallInst>(a)) {
                 if (isFunctionArgumentConstant(call, inst, constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {
+                    if (printconst)
+			          llvm::errs() << "found constant(" << (int)directions << ")  callinst use:" << *inst << " user " << *a << "\n";
                     continue;
+                } else {
+                    if (printconst)
+			          llvm::errs() << "found seminonconstant(" << (int)directions << ")  callinst use:" << *inst << " user " << *a << "\n";
+                    //seenuse = true;
+                    //break;
                 }
 			}
 
 		  	if (!isconstantM(cast<Instruction>(a), constants2, nonconstant2, retvals2, originalInstructions, DOWN)) {
     			if (printconst)
-			      llvm::errs() << "nonconstant(" << (int)directions << ") inst (uses):" << *inst << " user " << *a << "\n";
+			      llvm::errs() << "nonconstant(" << (int)directions << ") inst (uses):" << *inst << " user " << *a << " " << &seenuse << "\n";
 				seenuse = true;
 				break;
 			} else {
@@ -748,7 +1148,7 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 			// not here since if had full updown might not have been nonconstant
 			//nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
     		if (printconst)
-			  llvm::errs() << "constant(" << (int)directions << ") inst (uses):" << *inst << "\n";
+			  llvm::errs() << "constant(" << (int)directions << ") inst (uses):" << *inst << "   seenuse:" << &seenuse << "\n";
 			return true;
 		}
 		
@@ -756,85 +1156,6 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 			llvm::errs() << " </USESEARCH" << (int)directions << ">" << *inst << "\n";
         constants_tmp.insert(constants2.begin(), constants2.end());
 	}
-
-	SmallPtrSet<Value*, 20> constants2;
-	constants2.insert(constants.begin(), constants.end());
-	SmallPtrSet<Value*, 20> nonconstant2;
-	nonconstant2.insert(nonconstant.begin(), nonconstant.end());
-	SmallPtrSet<Value*, 20> retvals2;
-	retvals2.insert(retvals.begin(), retvals.end());
-	constants2.insert(inst);
-		
-	if (directions & UP) {
-        if (printconst)
-		    llvm::errs() << " < UPSEARCH" << (int)directions << ">" << *inst << "\n";
-        if (auto gep = dyn_cast<GetElementPtrInst>(inst)) {
-            // Handled uses above
-            if (!isconstantValueM(gep->getPointerOperand(), constants2, nonconstant2, retvals2, originalInstructions, UP)) {
-                if (directions == 3)
-                  nonconstant.insert(inst);
-                if (printconst)
-                  llvm::errs() << "nonconstant(" << (int)directions << ") gep " << *inst << " op " << *gep->getPointerOperand() << "\n";
-                return false;
-            }
-            constants.insert(inst);
-            constants.insert(constants2.begin(), constants2.end());
-            constants.insert(constants_tmp.begin(), constants_tmp.end());
-            //if (directions == 3)
-            //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
-            if (printconst)
-              llvm::errs() << "constant(" << (int)directions << ") gep:" << *inst << "\n";
-            return true;
-        } else if (auto ci = dyn_cast<CallInst>(inst)) {
-            for(auto& a: ci->arg_operands()) {
-                if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, UP)) {
-                    if (directions == 3)
-                      nonconstant.insert(inst);
-                    if (printconst)
-                      llvm::errs() << "nonconstant(" << (int)directions << ")  call " << *inst << " op " << *a << "\n";
-                    return false;
-                }
-            }
-            
-            //! TODO consider calling interprocedural here
-            //! TODO: Really need an attribute that determines whether a function can access a global (not even necessarily read)
-            //if (ci->hasFnAttr(Attribute::ReadNone) || ci->hasFnAttr(Attribute::ArgMemOnly)) 
-            {
-                constants.insert(inst);
-                constants.insert(constants2.begin(), constants2.end());
-                constants.insert(constants_tmp.begin(), constants_tmp.end());
-                //if (directions == 3)
-                //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
-                if (printconst)
-                  llvm::errs() << "constant(" << (int)directions << ")  call:" << *inst << "\n";
-                return true;
-            }
-        } else {
-            for(auto& a: inst->operands()) {
-                if (!isconstantValueM(a, constants2, nonconstant2, retvals2, originalInstructions, UP)) {
-                    if (directions == 3)
-                      nonconstant.insert(inst);
-                    if (printconst)
-                      llvm::errs() << "nonconstant(" << (int)directions << ")  inst " << *inst << " op " << *a << "\n";
-                    return false;
-                }
-            }
-
-            //if (!isa<StoreInst>(inst) && !inst->getType()->isPointerTy()) {
-                constants.insert(inst);
-                constants.insert(constants2.begin(), constants2.end());
-                constants.insert(constants_tmp.begin(), constants_tmp.end());
-                //if (directions == 3)
-                //  nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
-                if (printconst)
-                  llvm::errs() << "constant(" << (int)directions << ")  inst:" << *inst << "\n";
-                return true;
-            //}
-        }
-        if (printconst)
-		    llvm::errs() << " </UPSEARCH" << (int)directions << ">" << *inst << "\n";
-	}
-
 
     if (directions == 3)
 	  nonconstant.insert(inst);
@@ -909,8 +1230,13 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     if (auto inst = dyn_cast<Instruction>(val)) {
         if (isconstantM(inst, constants, nonconstant, retvals, originalInstructions, directions)) return true;
     }
+    
+    //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
+    if (val->getType()->isIntegerTy() && isIntASecretFloat(val, /*default*/IntType::Pointer)==IntType::Integer) {
+        return true;
+    }
    
-    if (!val->getType()->isPointerTy() && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
+    if (!(val->getType()->isPointerTy() || val->getType()->isIntegerTy()) && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
 		auto &constants2 = constants;
 		auto &nonconstant2 = nonconstant;
 		auto &retvals2 = retvals;

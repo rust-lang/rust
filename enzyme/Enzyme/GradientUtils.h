@@ -679,6 +679,15 @@ public:
       }
   }
 
+  void forceActiveDetection() {
+      for(BasicBlock* BB: this->originalBlocks) {
+          for(Instruction &I : *BB) {
+              isConstantInstruction(&I);
+              isConstantValue(&I);
+          }
+      }
+  }
+
   void forceAugmentedReturns() {
       for(BasicBlock* BB: this->originalBlocks) {
         LoopContext loopContext;
