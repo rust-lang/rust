@@ -37,6 +37,7 @@ pub use crate::shims::time::{EvalContextExt as TimeEvalContextExt};
 pub use crate::shims::dlsym::{Dlsym, EvalContextExt as DlsymEvalContextExt};
 pub use crate::shims::env::{EnvVars, EvalContextExt as EnvEvalContextExt};
 pub use crate::shims::fs::{FileHandler, EvalContextExt as FileEvalContextExt};
+pub use crate::shims::panic::{CatchUnwindData, EvalContextExt as PanicEvalContextExt};
 pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
 pub use crate::range_map::RangeMap;
 pub use crate::helpers::{EvalContextExt as HelpersEvalContextExt};
