@@ -11,7 +11,12 @@ use ra_syntax::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent,
 };
 
-pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<(String, String)> {
+pub struct ExpandedMacro {
+    pub name: String,
+    pub expansion: String,
+}
+
+pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let parse = db.parse(position.file_id);
     let file = parse.tree();
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)?;
@@ -23,8 +28,8 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     // FIXME:
     // macro expansion may lose all white space information
     // But we hope someday we can use ra_fmt for that
-    let res = insert_whitespaces(expanded);
-    Some((name_ref.text().to_string(), res))
+    let expansion = insert_whitespaces(expanded);
+    Some(ExpandedMacro { name: name_ref.text().to_string(), expansion })
 }
 
 fn expand_macro_recur(
@@ -87,7 +92,8 @@ mod tests {
         let (analysis, pos) = analysis_and_position(fixture);
 
         let result = analysis.expand_macro(pos).unwrap().unwrap();
-        assert_eq!(result, (expected.0.to_string(), expected.1.to_string()));
+        assert_eq!(result.name, expected.0.to_string());
+        assert_eq!(result.expansion, expected.1.to_string());
     }
 
     #[test]

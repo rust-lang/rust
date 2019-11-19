@@ -66,6 +66,7 @@ pub use crate::{
     completion::{CompletionItem, CompletionItemKind, InsertTextFormat},
     diagnostics::Severity,
     display::{file_structure, FunctionSignature, NavigationTarget, StructureNode},
+    expand_macro::ExpandedMacro,
     feature_flags::FeatureFlags,
     folding_ranges::{Fold, FoldKind},
     hover::HoverResult,
@@ -297,7 +298,7 @@ impl Analysis {
         self.with_db(|db| syntax_tree::syntax_tree(&db, file_id, text_range))
     }
 
-    pub fn expand_macro(&self, position: FilePosition) -> Cancelable<Option<(String, String)>> {
+    pub fn expand_macro(&self, position: FilePosition) -> Cancelable<Option<ExpandedMacro>> {
         self.with_db(|db| expand_macro::expand_macro(db, position))
     }
 

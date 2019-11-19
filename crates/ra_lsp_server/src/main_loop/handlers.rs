@@ -50,7 +50,7 @@ pub fn handle_syntax_tree(world: WorldSnapshot, params: req::SyntaxTreeParams) -
 pub fn handle_expand_macro(
     world: WorldSnapshot,
     params: req::ExpandMacroParams,
-) -> Result<Option<(String, String)>> {
+) -> Result<Option<req::ExpandedMacro>> {
     let _p = profile("handle_expand_macro");
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id)?;
@@ -58,7 +58,10 @@ pub fn handle_expand_macro(
 
     match offset {
         None => Ok(None),
-        Some(offset) => Ok(world.analysis().expand_macro(FilePosition { file_id, offset })?),
+        Some(offset) => {
+            let res = world.analysis().expand_macro(FilePosition { file_id, offset })?;
+            Ok(res.map(|it| req::ExpandedMacro { name: it.name, expansion: it.expansion }))
+        }
     }
 }
 

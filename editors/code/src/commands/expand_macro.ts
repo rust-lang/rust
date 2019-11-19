@@ -2,13 +2,16 @@ import * as vscode from 'vscode';
 import { Position, TextDocumentIdentifier } from 'vscode-languageclient';
 import { Server } from '../server';
 
-type ExpandMacroResult = [string, string];
+interface ExpandedMacro {
+    name: string,
+    expansion: string,
+}
 
-function code_format([name, text]: [string, string]): vscode.MarkdownString {
+function code_format(expanded: ExpandedMacro): vscode.MarkdownString {
     const markdown = new vscode.MarkdownString(
-        `#### Recursive expansion of ${name}! macro`
+        `#### Recursive expansion of ${expanded.name}! macro`
     );
-    markdown.appendCodeblock(text, 'rust');
+    markdown.appendCodeblock(expanded.expansion, 'rust');
     return markdown;
 }
 
@@ -23,7 +26,7 @@ export class ExpandMacroHoverProvider implements vscode.HoverProvider {
                 textDocument: { uri: document.uri.toString() },
                 position
             };
-            const result = await Server.client.sendRequest<ExpandMacroResult>(
+            const result = await Server.client.sendRequest<ExpandedMacro>(
                 'rust-analyzer/expandMacro',
                 request
             );
