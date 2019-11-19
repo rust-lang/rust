@@ -2,13 +2,13 @@ error: malformed `repr` attribute input
   --> $DIR/issue-43988.rs:24:5
    |
 LL |     #[repr]
-   |     ^^^^^^^ help: must be of the form: `#[repr(C, packed, ...)]`
+   |     ^^^^^^^ help: must be of the form: `#[repr(C)]`
 
 error: malformed `repr` attribute input
   --> $DIR/issue-43988.rs:35:14
    |
 LL |     let _z = #[repr] 1;
-   |              ^^^^^^^ help: must be of the form: `#[repr(C, packed, ...)]`
+   |              ^^^^^^^ help: must be of the form: `#[repr(C)]`
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43988.rs:5:5

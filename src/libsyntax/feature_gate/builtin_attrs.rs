@@ -231,7 +231,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     ungated!(link_name, Whitelisted, template!(NameValueStr: "name")),
     ungated!(no_link, Normal, template!(Word)),
-    ungated!(repr, Normal, template!(List: "C, packed, ...")),
+    ungated!(repr, Normal, template!(List: "C")),
     ungated!(export_name, Whitelisted, template!(NameValueStr: "name")),
     ungated!(link_section, Whitelisted, template!(NameValueStr: "name")),
     ungated!(no_mangle, Whitelisted, template!(Word)),

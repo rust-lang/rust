@@ -2,19 +2,19 @@ error: malformed `repr` attribute input
   --> $DIR/repr.rs:1:1
    |
 LL | #[repr]
-   | ^^^^^^^ help: must be of the form: `#[repr(C, packed, ...)]`
+   | ^^^^^^^ help: must be of the form: `#[repr(C)]`
 
 error: malformed `repr` attribute input
   --> $DIR/repr.rs:4:1
    |
 LL | #[repr = "B"]
-   | ^^^^^^^^^^^^^ help: must be of the form: `#[repr(C, packed, ...)]`
+   | ^^^^^^^^^^^^^ help: must be of the form: `#[repr(C)]`
 
 error: malformed `repr` attribute input
   --> $DIR/repr.rs:7:1
    |
 LL | #[repr = "C"]
-   | ^^^^^^^^^^^^^ help: must be of the form: `#[repr(C, packed, ...)]`
+   | ^^^^^^^^^^^^^ help: must be of the form: `#[repr(C)]`
 
 error: aborting due to 3 previous errors
 
