@@ -514,4 +514,41 @@ fn main() {
         "###
         );
     }
+
+    #[test]
+    fn hint_truncation() {
+        let (analysis, file_id) = single_file(
+            r#"
+struct Smol<T>(T);
+
+struct VeryLongOuterName<T>(T);
+
+fn main() {
+    let a = Smol(0u32);
+    let b = VeryLongOuterName(0usize);
+    let c = Smol(Smol(0u32))
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8)).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [74; 75),
+                kind: TypeHint,
+                label: "Smol<u32>",
+            },
+            InlayHint {
+                range: [98; 99),
+                kind: TypeHint,
+                label: "VeryLongOuterName<…>",
+            },
+            InlayHint {
+                range: [137; 138),
+                kind: TypeHint,
+                label: "Smol<Smol<…>>",
+            },
+        ]
+        "###
+        );
+    }
 }
