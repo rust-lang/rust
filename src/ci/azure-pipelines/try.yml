@@ -72,7 +72,6 @@ jobs:
 #         DEPLOY: 1
 #
 #       dist-x86_64-msvc-alt:
-#         MSYS_BITS: 64
 #         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
 #         SCRIPT: python x.py dist
 #         DEPLOY_ALT: 1
