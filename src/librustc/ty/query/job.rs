@@ -22,16 +22,6 @@ use {
     std::iter::FromIterator,
 };
 
-/// Indicates the state of a query for a given key in a query map.
-pub(super) enum QueryResult<'tcx> {
-    /// An already executing query. The query job can be used to await for its completion.
-    Started(Lrc<QueryJob<'tcx>>),
-
-    /// The query panicked. Queries trying to wait on this will raise a fatal error or
-    /// silently panic.
-    Poisoned,
-}
-
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
 pub struct QueryInfo<'tcx> {

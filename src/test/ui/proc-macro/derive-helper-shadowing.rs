@@ -19,11 +19,11 @@ macro_rules! gen_helper_use {
 #[empty_helper] //~ ERROR `empty_helper` is ambiguous
 #[derive(Empty)]
 struct S {
-    #[empty_helper] //~ ERROR `empty_helper` is ambiguous
+    #[empty_helper] // OK, no ambiguity, derive helpers have highest priority
     field: [u8; {
         use empty_helper; //~ ERROR `empty_helper` is ambiguous
 
-        #[empty_helper] //~ ERROR `empty_helper` is ambiguous
+        #[empty_helper] // OK, no ambiguity, derive helpers have highest priority
         struct U;
 
         mod inner {
