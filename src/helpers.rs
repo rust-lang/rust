@@ -53,6 +53,7 @@ fn resolve_did<'mir, 'tcx>(tcx: TyCtxt<'tcx>, path: &[&str]) -> InterpResult<'tc
 
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
 
+    /// Gets an instance for a path.
     fn resolve_path(&self, path: &[&str]) -> InterpResult<'tcx, ty::Instance<'tcx>> {
         Ok(ty::Instance::mono(self.eval_context_ref().tcx.tcx, resolve_did(self.eval_context_ref().tcx.tcx, path)?))
     }

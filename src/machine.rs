@@ -25,10 +25,11 @@ pub const NUM_CPUS: u64 = 1;
 pub struct FrameData<'tcx> {
     /// Extra data for Stacked Borrows.
     pub call_id: stacked_borrows::CallId,
-    /// If this is Some(), then this is a special 'catch unwind'
-    /// frame. When this frame is popped during unwinding a panic,
-    /// we stop unwinding, and use the `CatchUnwindData` to
-    /// store the panic payload and continue execution in the parent frame.
+
+    /// If this is Some(), then this is a special "catch unwind" frame (the frame of the closure
+    /// called by `__rustc_maybe_catch_panic`). When this frame is popped during unwinding a panic,
+    /// we stop unwinding, use the `CatchUnwindData` to
+    /// store the panic payload, and continue execution in the parent frame.
     pub catch_panic: Option<CatchUnwindData<'tcx>>,
 }
 

@@ -130,27 +130,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // First: functions that diverge.
         match link_name {
-            // Note that this matches calls to the *foreign* item "__rust_start_panic" -
-            // that is, calls `extern "Rust" { fn __rust_start_panic(...) }`
-            // We forward this to the underlying *implementation* in "libpanic_unwind"
+            // Note that this matches calls to the *foreign* item `__rust_start_panic* -
+            // that is, calls to `extern "Rust" { fn __rust_start_panic(...) }`.
+            // We forward this to the underlying *implementation* in "libpanic_unwind".
             "__rust_start_panic" => {
                 let start_panic_instance = this.resolve_path(&["panic_unwind", "__rust_start_panic"])?;
                 return Ok(Some(this.load_mir(start_panic_instance.def, None)?));
             }
-
-            // During a normal (non-Miri) compilation,
-            // this gets resolved to the '#[panic_handler]` function at link time,
-            // which corresponds to the function with the `#[panic_handler]` attribute.
-            //
-            // Since we're interpreting mir, we forward it to the implementation of `panic_impl`
-            //
-            // This is used by libcore to forward panics to the actual
-            // panic impl
+            // Similarly, we forward calls to the `panic_impl` foreign item to its implementation.
+            // The implementation is provided by the function with the `#[panic_handler]` attribute.
             "panic_impl" => {
                 let panic_impl_id = this.tcx.lang_items().panic_impl().unwrap();
                 let panic_impl_instance = ty::Instance::mono(*this.tcx, panic_impl_id);
                 return Ok(Some(this.load_mir(panic_impl_instance.def, None)?));
             }
+
             "exit" | "ExitProcess" => {
                 // it's really u32 for ExitProcess, but we have to put it into the `Exit` error variant anyway
                 let code = this.read_scalar(args[0])?.to_i32()?;

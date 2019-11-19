@@ -45,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Handle non-diverging intrinsics
         // The intrinsic itself cannot diverge (otherwise, we would have handled it above),
-        // so if we got here without a return place... (can happen e.g., for transmute returning `!`)
+        // so if we got here without a return place that's UB (can happen e.g., for transmute returning `!`).
         let dest = match dest {
             Some(dest) => dest,
             None => throw_ub!(Unreachable)
