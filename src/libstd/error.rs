@@ -791,7 +791,7 @@ impl dyn Error {
 ///
 /// [`Error`]: trait.Error.html
 #[unstable(feature = "error_iter", issue = "58520")]
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct Chain<'a> {
     current: Option<&'a (dyn Error + 'static)>,
 }
