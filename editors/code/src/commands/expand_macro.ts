@@ -75,7 +75,7 @@ interface ExpandedMacro {
 
 function code_format(expanded: ExpandedMacro): string {
     let result = `// Recursive expansion of ${expanded.name}! macro\n`;
-    result += '='.repeat(result.length);
+    result += '// ' + '='.repeat(result.length - 3);
     result += '\n\n';
     result += expanded.expansion;
 
