@@ -10,7 +10,7 @@
 // fallback implementation to use as well.
 //
 // Due to rust-lang/rust#18804, make sure this is not generic!
-#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "hermit", target_os = "redox",
+#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox",
           target_os = "emscripten"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
     use crate::mem;
