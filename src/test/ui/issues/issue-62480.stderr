@@ -1,0 +1,8 @@
+error: `break` to unknown label
+  --> $DIR/issue-62480.rs:8:12
+   |
+LL |         || break 'a
+   |            ^^^^^^^^
+
+error: aborting due to previous error
+
