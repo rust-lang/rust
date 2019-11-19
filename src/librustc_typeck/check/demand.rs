@@ -102,12 +102,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // N.B., this code relies on `self.diverges` to be accurate. In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
-    pub fn demand_coerce_diag(&self,
-                              expr: &hir::Expr,
-                              checked_ty: Ty<'tcx>,
-                              expected: Ty<'tcx>,
-                              allow_two_phase: AllowTwoPhase)
-                              -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
+    pub fn demand_coerce_diag(
+        &self,
+        expr: &hir::Expr,
+        checked_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
@@ -126,12 +127,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return (expected, None)
         }
 
+        self.annotate_expected_due_to_let_ty(&mut err, expr);
         self.suggest_compatible_variants(&mut err, expr, expected, expr_ty);
         self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
         self.suggest_boxing_when_appropriate(&mut err, expr, expected, expr_ty);
         self.suggest_missing_await(&mut err, expr, expected, expr_ty);
 
         (expected, Some(err))
+    }
+
+    fn annotate_expected_due_to_let_ty(&self, err: &mut DiagnosticBuilder<'_>, expr: &hir::Expr) {
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        if let Some(hir::Node::Local(hir::Local {
+            ty: Some(ty),
+            init: Some(init),
+            ..
+        })) = self.tcx.hir().find(parent) {
+            if init.hir_id == expr.hir_id {
+                // Point at `let` assignment type.
+                err.span_label(ty.span, "expected due to this");
+            }
+        }
     }
 
     /// Returns whether the expected type is `bool` and the expression is `x = y`.

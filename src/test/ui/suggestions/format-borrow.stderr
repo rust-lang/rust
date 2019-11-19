@@ -2,10 +2,11 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:2:21
    |
 LL |     let a: String = &String::from("a");
-   |                     ^^^^^^^^^^^^^^^^^^
-   |                     |
-   |                     expected struct `std::string::String`, found reference
-   |                     help: consider removing the borrow: `String::from("a")`
+   |            ------   ^^^^^^^^^^^^^^^^^^
+   |            |        |
+   |            |        expected struct `std::string::String`, found reference
+   |            |        help: consider removing the borrow: `String::from("a")`
+   |            expected due to this
    |
    = note: expected type `std::string::String`
               found type `&std::string::String`
@@ -14,10 +15,11 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:4:21
    |
 LL |     let b: String = &format!("b");
-   |                     ^^^^^^^^^^^^^
-   |                     |
-   |                     expected struct `std::string::String`, found reference
-   |                     help: consider removing the borrow: `format!("b")`
+   |            ------   ^^^^^^^^^^^^^
+   |            |        |
+   |            |        expected struct `std::string::String`, found reference
+   |            |        help: consider removing the borrow: `format!("b")`
+   |            expected due to this
    |
    = note: expected type `std::string::String`
               found type `&std::string::String`
