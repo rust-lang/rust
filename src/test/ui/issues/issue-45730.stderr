@@ -30,3 +30,4 @@ LL |     let x = 0 as *const i32 as *const _ as *mut _;
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0641`.
