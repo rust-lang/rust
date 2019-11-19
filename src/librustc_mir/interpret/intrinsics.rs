@@ -302,10 +302,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.copy_op_transmute(args[0], dest)?;
             }
             "simd_insert" => {
-                let index = self.read_scalar(args[1])?.to_u32()? as u64;
-                let scalar = args[2];
+                let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
+                let elem = args[2];
                 let input = args[0];
-                let (len, e_ty) = self.read_vector_ty(input);
+                let (len, e_ty) = input.layout.ty.simd_size_and_type(self.tcx.tcx);
                 assert!(
                     index < len,
                     "Index `{}` must be in bounds of vector type `{}`: `[0, {})`",
@@ -317,15 +317,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     dest.layout.ty, input.layout.ty
                 );
                 assert_eq!(
-                    scalar.layout.ty, e_ty,
-                    "Scalar type `{}` must match vector element type `{}`",
-                    scalar.layout.ty, e_ty
+                    elem.layout.ty, e_ty,
+                    "Scalar element type `{}` must match vector element type `{}`",
+                    elem.layout.ty, e_ty
                 );
 
                 for i in 0..len {
                     let place = self.place_field(dest, i)?;
                     let value = if i == index {
-                        scalar
+                        elem
                     } else {
                         self.operand_field(input, i)?
                     };
@@ -333,8 +333,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 }
             }
             "simd_extract" => {
-                let index = self.read_scalar(args[1])?.to_u32()? as _;
-                let (len, e_ty) = self.read_vector_ty(args[0]);
+                let index = u64::from(self.read_scalar(args[1])?.to_u32()?);
+                let (len, e_ty) = args[0].layout.ty.simd_size_and_type(self.tcx.tcx);
                 assert!(
                     index < len,
                     "index `{}` is out-of-bounds of vector type `{}` with length `{}`",

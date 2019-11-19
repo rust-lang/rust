@@ -264,6 +264,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
+                assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
+
                 let old_stack = self.cur_frame();
                 let old_bb = self.frame().block;
                 M::call_intrinsic(self, span, instance, args, dest, ret, unwind)?;

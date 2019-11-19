@@ -697,7 +697,7 @@ impl<'tcx> LayoutCx<'tcx, TyCtxt<'tcx>> {
             // SIMD vector types.
             ty::Adt(def, ..) if def.repr.simd() => {
                 let element = self.layout_of(ty.simd_type(tcx))?;
-                let count = ty.simd_size(tcx) as u64;
+                let count = ty.simd_size(tcx);
                 assert!(count > 0);
                 let scalar = match element.abi {
                     Abi::Scalar(ref scalar) => scalar.clone(),

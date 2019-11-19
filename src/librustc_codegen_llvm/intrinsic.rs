@@ -1105,8 +1105,8 @@ fn generic_simd_intrinsic(
         let m_len = match in_ty.kind {
             // Note that this `.unwrap()` crashes for isize/usize, that's sort
             // of intentional as there's not currently a use case for that.
-            ty::Int(i) => i.bit_width().unwrap(),
-            ty::Uint(i) => i.bit_width().unwrap(),
+            ty::Int(i) => i.bit_width().unwrap() as u64,
+            ty::Uint(i) => i.bit_width().unwrap() as u64,
             _ => return_error!("`{}` is not an integral type", in_ty),
         };
         require_simd!(arg_tys[1], "argument");
@@ -1116,7 +1116,7 @@ fn generic_simd_intrinsic(
                  m_len, v_len
         );
         let i1 = bx.type_i1();
-        let i1xn = bx.type_vector(i1, m_len as u64);
+        let i1xn = bx.type_vector(i1, m_len);
         let m_i1s = bx.bitcast(args[0].immediate(), i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
@@ -1160,7 +1160,7 @@ fn generic_simd_intrinsic(
     }
 
     if name.starts_with("simd_shuffle") {
-        let n: usize = name["simd_shuffle".len()..].parse().unwrap_or_else(|_|
+        let n: u64 = name["simd_shuffle".len()..].parse().unwrap_or_else(|_|
             span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?"));
 
         require_simd!(ret_ty, "return");
@@ -1175,7 +1175,7 @@ fn generic_simd_intrinsic(
                  in_elem, in_ty,
                  ret_ty, ret_ty.simd_type(tcx));
 
-        let total_len = in_len as u128 * 2;
+        let total_len = u128::from(in_len) * 2;
 
         let vector = args[2].immediate();
 
@@ -1251,7 +1251,7 @@ fn generic_simd_intrinsic(
         // trailing bits.
         let expected_int_bits = in_len.max(8);
         match ret_ty.kind {
-           ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
+           ty::Uint(i) if i.bit_width() == Some(expected_int_bits as usize) => (),
             _ => return_error!(
                 "bitmask `{}`, expected `u{}`",
                 ret_ty, expected_int_bits
@@ -1276,7 +1276,8 @@ fn generic_simd_intrinsic(
 
         // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
         let shift_indices = vec![
-            bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _); in_len
+            bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _);
+            in_len as _
         ];
         let i_xn_msb = bx.lshr(i_xn, bx.const_vector(shift_indices.as_slice()));
         // Truncate vector to an <i1 x N>
@@ -1291,7 +1292,7 @@ fn generic_simd_intrinsic(
         name: &str,
         in_elem: &::rustc::ty::TyS<'_>,
         in_ty: &::rustc::ty::TyS<'_>,
-        in_len: usize,
+        in_len: u64,
         bx: &mut Builder<'a, 'll, 'tcx>,
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
@@ -1400,7 +1401,7 @@ fn generic_simd_intrinsic(
     // FIXME: use:
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: usize, no_pointers: usize) -> String {
+    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: u64, no_pointers: usize) -> String {
         let p0s: String = "p0".repeat(no_pointers);
         match elem_ty.kind {
             ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
@@ -1410,7 +1411,7 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: usize,
+    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64,
                       mut no_pointers: usize) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match elem_ty.kind {
@@ -1423,7 +1424,7 @@ fn generic_simd_intrinsic(
             elem_ty = cx.type_ptr_to(elem_ty);
             no_pointers -= 1;
         }
-        cx.type_vector(elem_ty, vec_len as u64)
+        cx.type_vector(elem_ty, vec_len)
     }
 
 
@@ -1506,7 +1507,7 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = bx.type_i1();
-            let i1xn = bx.type_vector(i1, in_len as u64);
+            let i1xn = bx.type_vector(i1, in_len);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
@@ -1606,7 +1607,7 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = bx.type_i1();
-            let i1xn = bx.type_vector(i1, in_len as u64);
+            let i1xn = bx.type_vector(i1, in_len);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
