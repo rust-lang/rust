@@ -1,5 +1,6 @@
 // run-rustfix
 // rustfix-only-machine-applicable
+
 use std::ffi::OsString;
 use std::path::Path;
 
