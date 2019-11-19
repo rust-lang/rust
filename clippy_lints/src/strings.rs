@@ -154,7 +154,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                     if let LitKind::Str(ref lit_content, style) = lit.node {
                         let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
                         let expanded = if let StrStyle::Raw(n) = style {
-                            let term = "#".repeat(n as usize);
+                            let term = "#".repeat(usize::from(n));
                             format!("r{0}\"{1}\"{0}", term, lit_content.as_str())
                         } else {
                             format!("\"{}\"", lit_content.as_str())
