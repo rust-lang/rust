@@ -26,7 +26,7 @@ fn foo() {
     let _ = &a + &b; //~ ERROR binary operation
     let _ = &a + b; //~ ERROR binary operation
     let _ = a + &b; // ok
-    let _ = a + b; //~ ERROR mismatched types
+    let _ = a + b; //~ ERROR E0277
     let _ = e + b; //~ ERROR binary operation
     let _ = e + &b; //~ ERROR binary operation
     let _ = e + d; //~ ERROR binary operation
