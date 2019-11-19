@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ra_syntax::{
     algo::{find_node_at_offset, replace_descendants},
     ast::{self},
-    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent,
+    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent, T,
 };
 
 pub struct ExpandedMacro {
@@ -55,9 +55,12 @@ fn expand_macro_recur(
     Some(replace_descendants(&expanded, &replaces))
 }
 
+// FIXME: It would also be cool to share logic here and in the mbe tests,
+// which are pretty unreadable at the moment.
 fn insert_whitespaces(syn: SyntaxNode) -> String {
-    let mut res = String::new();
+    use SyntaxKind::*;
 
+    let mut res = String::new();
     let mut token_iter = syn
         .preorder_with_tokens()
         .filter_map(|event| {
@@ -69,16 +72,44 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
         })
         .peekable();
 
+    let mut indent = 0;
+    let mut last: Option<SyntaxKind> = None;
+
     while let Some(token) = token_iter.next() {
-        res += &token.text().to_string();
-        if token.kind().is_keyword()
-            || token.kind().is_literal()
-            || token.kind() == SyntaxKind::IDENT
-        {
-            if !token_iter.peek().map(|it| it.kind().is_punct()).unwrap_or(false) {
-                res += " ";
+        let mut is_next = |f: fn(SyntaxKind) -> bool, default| -> bool {
+            token_iter.peek().map(|it| f(it.kind())).unwrap_or(default)
+        };
+        let is_last = |f: fn(SyntaxKind) -> bool, default| -> bool {
+            last.map(|it| f(it)).unwrap_or(default)
+        };
+
+        res += &match token.kind() {
+            k @ _
+                if (k.is_keyword() || k.is_literal() || k == IDENT)
+                    && is_next(|it| !it.is_punct(), true) =>
+            {
+                token.text().to_string() + " "
             }
-        }
+            L_CURLY if is_next(|it| it != R_CURLY, true) => {
+                indent += 1;
+                format!(" {{\n{}", "  ".repeat(indent))
+            }
+            R_CURLY if is_last(|it| it != L_CURLY, true) => {
+                indent = indent.checked_sub(1).unwrap_or(0);
+                format!("\n}}{}", "  ".repeat(indent))
+            }
+            R_CURLY => {
+                indent = indent.checked_sub(1).unwrap_or(0);
+                format!("}}\n{}", "  ".repeat(indent))
+            }
+            T![;] => format!(";\n{}", "  ".repeat(indent)),
+            T![->] => " -> ".to_string(),
+            T![=] => " = ".to_string(),
+            T![=>] => " => ".to_string(),
+            _ => token.text().to_string(),
+        };
+
+        last = Some(token.kind());
     }
 
     res
@@ -86,19 +117,18 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::mock_analysis::analysis_and_position;
+    use insta::assert_snapshot;
 
-    fn check_expand_macro(fixture: &str, expected: (&str, &str)) {
+    fn check_expand_macro(fixture: &str) -> ExpandedMacro {
         let (analysis, pos) = analysis_and_position(fixture);
-
-        let result = analysis.expand_macro(pos).unwrap().unwrap();
-        assert_eq!(result.name, expected.0.to_string());
-        assert_eq!(result.expansion, expected.1.to_string());
+        analysis.expand_macro(pos).unwrap().unwrap()
     }
 
     #[test]
     fn macro_expand_recursive_expansion() {
-        check_expand_macro(
+        let res = check_expand_macro(
             r#"
         //- /lib.rs
         macro_rules! bar {
@@ -112,7 +142,37 @@ mod tests {
         }        
         f<|>oo!();
         "#,
-            ("foo", "fn b(){}"),
         );
+
+        assert_eq!(res.name, "foo");
+        assert_snapshot!(res.expansion, @r###"
+fn b(){}
+"###);
+    }
+
+    #[test]
+    fn macro_expand_multiple_lines() {
+        let res = check_expand_macro(
+            r#"
+        //- /lib.rs
+        macro_rules! foo {
+            () => { 
+                fn some_thing() -> u32 {
+                    let a = 0;
+                    a + 10
+                }
+            }
+        }
+        f<|>oo!();
+        "#,
+        );
+
+        assert_eq!(res.name, "foo");
+        assert_snapshot!(res.expansion, @r###"
+fn some_thing() -> u32 {
+  let a = 0;
+  a+10
+}        
+"###);
     }
 }
