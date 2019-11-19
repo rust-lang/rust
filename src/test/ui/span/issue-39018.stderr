@@ -185,5 +185,5 @@ LL |     let _ = c.to_owned() + d;
 
 error: aborting due to 14 previous errors
 
-Some errors have detailed explanations: E0308, E0369.
-For more information about an error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0277, E0369.
+For more information about an error, try `rustc --explain E0277`.
