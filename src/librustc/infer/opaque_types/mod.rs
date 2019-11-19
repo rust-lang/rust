@@ -24,6 +24,10 @@ pub type OpaqueTypeMap<'tcx> = DefIdMap<OpaqueTypeDecl<'tcx>>;
 /// appear in the return type).
 #[derive(Copy, Clone, Debug)]
 pub struct OpaqueTypeDecl<'tcx> {
+
+    /// The opaque type (`ty::Opaque`) for this declaration.
+    pub opaque_type: Ty<'tcx>,
+
     /// The substitutions that we apply to the opaque type that this
     /// `impl Trait` desugars to. e.g., if:
     ///
@@ -1150,6 +1154,7 @@ impl<'a, 'tcx> Instantiator<'a, 'tcx> {
         self.opaque_types.insert(
             def_id,
             OpaqueTypeDecl {
+                opaque_type: ty,
                 substs,
                 definition_span,
                 concrete_ty: ty_var,
