@@ -11,6 +11,45 @@ use ra_syntax::{
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, WalkEvent,
 };
 
+pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<(String, String)> {
+    let parse = db.parse(position.file_id);
+    let file = parse.tree();
+    let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)?;
+    let mac = name_ref.syntax().ancestors().find_map(ast::MacroCall::cast)?;
+
+    let source = hir::Source::new(position.file_id.into(), mac.syntax());
+    let expanded = expand_macro_recur(db, source, &mac)?;
+
+    // FIXME:
+    // macro expansion may lose all white space information
+    // But we hope someday we can use ra_fmt for that
+    let res = insert_whitespaces(expanded);
+    Some((name_ref.text().to_string(), res))
+}
+
+fn expand_macro_recur(
+    db: &RootDatabase,
+    source: hir::Source<&SyntaxNode>,
+    macro_call: &ast::MacroCall,
+) -> Option<SyntaxNode> {
+    let analyzer = hir::SourceAnalyzer::new(db, source, None);
+    let expansion = analyzer.expand(db, &macro_call)?;
+    let macro_file_id = expansion.file_id();
+    let expanded: SyntaxNode = db.parse_or_expand(macro_file_id)?;
+
+    let children = expanded.descendants().filter_map(ast::MacroCall::cast);
+    let mut replaces = FxHashMap::default();
+
+    for child in children.into_iter() {
+        let source = hir::Source::new(macro_file_id, source.ast);
+        let new_node = expand_macro_recur(db, source, &child)?;
+
+        replaces.insert(child.syntax().clone().into(), new_node.into());
+    }
+
+    Some(replace_descendants(&expanded, &replaces))
+}
+
 fn insert_whitespaces(syn: SyntaxNode) -> String {
     let mut res = String::new();
 
@@ -38,46 +77,6 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
     }
 
     res
-}
-
-fn expand_macro_recur(
-    db: &RootDatabase,
-    source: hir::Source<&SyntaxNode>,
-    macro_call: &ast::MacroCall,
-) -> Option<SyntaxNode> {
-    let analyzer = hir::SourceAnalyzer::new(db, source, None);
-    let expansion = analyzer.expand(db, &macro_call)?;
-    let new_source = expansion.source(db);
-    let expanded: SyntaxNode = db.parse_or_expand(new_source.file_id)?;
-
-    let children = expanded.descendants().filter_map(ast::MacroCall::cast);
-    let mut replaces = FxHashMap::default();
-
-    for child in children.into_iter() {
-        let source = new_source.with_ast(source.ast);
-        let new_node = expand_macro_recur(db, source, &child)?;
-
-        replaces.insert(child.syntax().clone().into(), new_node.into());
-    }
-
-    Some(replace_descendants(&expanded, &replaces))
-}
-
-pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<(String, String)> {
-    let parse = db.parse(position.file_id);
-    let file = parse.tree();
-    let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)?;
-    let mac = name_ref.syntax().ancestors().find_map(ast::MacroCall::cast)?;
-
-    let source = hir::Source::new(position.file_id.into(), mac.syntax());
-
-    let expanded = expand_macro_recur(db, source, &mac)?;
-
-    // FIXME:
-    // macro expansion may lose all white space information
-    // But we hope someday we can use ra_fmt for that
-    let res = insert_whitespaces(expanded);
-    Some((name_ref.text().to_string(), res))
 }
 
 #[cfg(test)]

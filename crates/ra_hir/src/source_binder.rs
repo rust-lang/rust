@@ -140,12 +140,7 @@ impl Expansion {
         exp_info.map_token_down(token)
     }
 
-    pub fn source(&self, db: &impl HirDatabase) -> Source<AstId<ast::MacroCall>> {
-        let loc = db.lookup_intern_macro(self.macro_call_id);
-        Source::new(self.file_id(), loc.ast_id)
-    }
-
-    fn file_id(&self) -> HirFileId {
+    pub fn file_id(&self) -> HirFileId {
         self.macro_call_id.as_file(MacroFileKind::Items)
     }
 }
