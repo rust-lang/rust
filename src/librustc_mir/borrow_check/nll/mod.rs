@@ -209,6 +209,36 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
             .universal_region
             .extend(universal_regions.universal_regions());
         populate_polonius_move_facts(all_facts, move_data, location_table, &body);
+
+        // Emit universal regions facts, and their relations, for Polonius.
+        //
+        // 1: universal regions are modeled in Polonius as a pair:
+        // - the universal region vid itself.
+        // - a "placeholder loan" associated to this universal region. Since they don't exist in
+        //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
+        //   added to the existing number of loans, as if they succeeded them in the set.
+        //
+        let borrow_count = borrow_set.borrows.len();
+        debug!(
+            "compute_regions: polonius placeholders, num_universals={}, borrow_count={}",
+            universal_regions.len(),
+            borrow_count
+        );
+
+        for universal_region in universal_regions.universal_regions() {
+            let universal_region_idx = universal_region.index();
+            let placeholder_loan_idx = borrow_count + universal_region_idx;
+            all_facts.placeholder.push((universal_region, placeholder_loan_idx.into()));
+        }
+
+        // 2: the universal region relations `outlives` constraints are emitted as
+        //  `known_subset` facts.
+        for (fr1, fr2) in universal_region_relations.known_outlives() {
+            if fr1 != fr2 {
+                debug!("compute_regions: emitting polonius `known_subset` fr1={:?}, fr2={:?}", fr1, fr2);
+                all_facts.known_subset.push((*fr1, *fr2));
+            }
+        }
     }
 
     // Create the region inference context, taking ownership of the

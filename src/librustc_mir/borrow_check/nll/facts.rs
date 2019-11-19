@@ -66,6 +66,7 @@ impl AllFactsExt for AllFacts {
             wr.write_facts_to_path(self.[
                 borrow_region,
                 universal_region,
+                placeholder,
                 cfg_edge,
                 killed,
                 outlives,
@@ -80,6 +81,7 @@ impl AllFactsExt for AllFacts {
                 initialized_at,
                 moved_out_at,
                 path_accessed_at,
+                known_subset,
             ])
         }
         Ok(())
