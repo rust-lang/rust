@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! This modules implements "expand macro" functionality in the IDE
 
 use crate::{db::RootDatabase, FilePosition};
 use hir::db::AstDatabase;
