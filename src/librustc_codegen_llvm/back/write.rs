@@ -363,26 +363,7 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 }
             }
 
-            if let Some(sanitizer) = &config.sanitizer {
-                let recover = config.sanitizer_recover.contains(sanitizer);
-                match sanitizer {
-                    Sanitizer::Address => {
-                        extra_passes.push(llvm::LLVMRustCreateAddressSanitizerFunctionPass(
-                                recover));
-                        extra_passes.push(llvm::LLVMRustCreateModuleAddressSanitizerPass(
-                                recover));
-                    }
-                    Sanitizer::Memory => {
-                        let track_origins = config.sanitizer_memory_track_origins as c_int;
-                        extra_passes.push(llvm::LLVMRustCreateMemorySanitizerPass(
-                                track_origins, recover));
-                    }
-                    Sanitizer::Thread => {
-                        extra_passes.push(llvm::LLVMRustCreateThreadSanitizerPass());
-                    }
-                    _ => {}
-                }
-            }
+            add_sanitizer_passes(config, &mut extra_passes);
 
             for pass_name in &cgcx.plugin_passes {
                 if let Some(pass) = find_pass(pass_name) {
@@ -467,6 +448,31 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
         llvm::LLVMDisposePassManager(mpm);
     }
     Ok(())
+}
+
+unsafe fn add_sanitizer_passes(config: &ModuleConfig,
+                               passes: &mut Vec<&'static mut llvm::Pass>) {
+
+    let sanitizer = match &config.sanitizer {
+        None => return,
+        Some(s) => s,
+    };
+
+    let recover = config.sanitizer_recover.contains(sanitizer);
+    match sanitizer {
+        Sanitizer::Address => {
+            passes.push(llvm::LLVMRustCreateAddressSanitizerFunctionPass(recover));
+            passes.push(llvm::LLVMRustCreateModuleAddressSanitizerPass(recover));
+        }
+        Sanitizer::Memory => {
+            let track_origins = config.sanitizer_memory_track_origins as c_int;
+            passes.push(llvm::LLVMRustCreateMemorySanitizerPass(track_origins, recover));
+        }
+        Sanitizer::Thread => {
+            passes.push(llvm::LLVMRustCreateThreadSanitizerPass());
+        }
+        Sanitizer::Leak => {}
+    }
 }
 
 pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
