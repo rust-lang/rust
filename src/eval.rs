@@ -11,7 +11,7 @@ use syntax::source_map::DUMMY_SP;
 use crate::{
     EnvVars, Evaluator, FnVal, HelpersEvalContextExt, InterpCx, InterpError,
     InterpResult, MemoryExtra, MiriMemoryKind, Pointer, Scalar, StackPopCleanup, Tag,
-    TlsEvalContextExt,
+    TlsEvalContextExt, MPlaceTy
 };
 
 /// Configuration needed to spawn a Miri instance.
@@ -34,7 +34,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     main_id: DefId,
     config: MiriConfig,
-) -> InterpResult<'tcx, InterpCx<'mir, 'tcx, Evaluator<'tcx>>> {
+) -> InterpResult<'tcx, (InterpCx<'mir, 'tcx, Evaluator<'tcx>>, MPlaceTy<'tcx, Tag>)> {
     let mut ecx = InterpCx::new(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
@@ -170,12 +170,12 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
     ecx.machine.last_error = Some(errno_place);
 
-    Ok(ecx)
+    Ok((ecx, ret_ptr))
 }
 
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
-    let mut ecx = match create_ecx(tcx, main_id, config) {
-        Ok(ecx) => ecx,
+    let (mut ecx, ret_ptr) = match create_ecx(tcx, main_id, config) {
+        Ok(v) => v,
         Err(mut err) => {
             err.print_backtrace();
             panic!("Miri initialziation error: {}", err.kind)
@@ -183,14 +183,18 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
     };
 
     // Perform the main execution.
-    let res: InterpResult<'_> = (|| {
+    let res: InterpResult<'_, i64> = (|| {
         ecx.run()?;
-        ecx.run_tls_dtors()
+        // Read the return code pointer *before* we run TLS destructors, to assert
+        // that it was written to by the time that `start` lang item returned.
+        let return_code = ecx.read_scalar(ret_ptr.into())?.not_undef()?.to_machine_isize(&ecx)?;
+        ecx.run_tls_dtors()?;
+        Ok(return_code)
     })();
 
     // Process the result.
     match res {
-        Ok(()) => {
+        Ok(return_code) => {
             let leaks = ecx.memory.leak_report();
             // Disable the leak test on some platforms where we do not
             // correctly implement TLS destructors.
@@ -199,6 +203,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
             if !ignore_leaks && leaks != 0 {
                 tcx.sess.err("the evaluated program leaked memory");
             }
+            std::process::exit(return_code as i32);
         }
         Err(mut e) => {
             // Special treatment for some error kinds
