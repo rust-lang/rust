@@ -1226,7 +1226,7 @@ mod impls {
     }
 
     #[stable(feature = "partial_ord_mut_ref", since = "1.40.0")]
-    impl<A: ?Sized, B: ?Sized> PartialOrd<&mut  B> for &mut A where A: PartialOrd<B> {
+    impl<A: ?Sized, B: ?Sized> PartialOrd<&mut  B> for &A where A: PartialOrd<B> {
         #[inline]
         fn partial_cmp(&self, other: &&mut B) -> Option<Ordering> {
             PartialOrd::partial_cmp(*self, *other)
