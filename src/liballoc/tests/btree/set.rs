@@ -306,6 +306,43 @@ fn test_is_subset() {
 }
 
 #[test]
+fn test_drain() {
+    let mut x: BTreeSet<_> = [1].iter().copied().collect();
+    let mut y: BTreeSet<_> = [1].iter().copied().collect();
+
+    let v: Vec<_> = x.drain().collect();
+    y.drain();
+    assert_eq!(v, [1]);
+    assert!(x.is_empty());
+    assert!(y.is_empty());
+    x.drain();
+    y.drain();
+    assert!(x.is_empty());
+    assert!(y.is_empty());
+}
+
+#[test]
+fn test_retain() {
+    let mut x: BTreeSet<_> = [1].iter().copied().collect();
+    let mut y: BTreeSet<_> = [1].iter().copied().collect();
+
+    x.retain(|_| false);
+    y.retain(|_| true);
+    assert!(x.is_empty());
+    assert_eq!(y.iter().copied().collect::<Vec<_>>(), vec![1]);
+}
+
+#[test]
+fn test_clear() {
+    let mut x: BTreeSet<_> = [1].iter().copied().collect();
+
+    x.clear();
+    assert!(x.is_empty());
+    x.clear();
+    assert!(x.is_empty());
+}
+
+#[test]
 fn test_zip() {
     let mut x = BTreeSet::new();
     x.insert(5);

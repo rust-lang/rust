@@ -496,6 +496,50 @@ impl<K: Debug + Ord, V: Debug> Debug for OccupiedEntry<'_, K, V> {
     }
 }
 
+macro_rules! tree_hopper {
+    (unsafe fn $name:ident : $next_kv:ident $next_edge:ident $initial_leaf_edge:ident) => {
+        /// Position the given leaf edge handle on the next leaf edge, and return the KV in between.
+        /// Caller must ensure that there is another leaf edge in the given direction.
+        /// It would be more elegant to pass in the handle by value and to return an optional tuple,
+        /// but either of those causes a 10% performance loss.
+        unsafe fn $name<BorrowType, K, V>
+            (leaf_edge: &mut Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::Edge>)
+                -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
+            let mut cur_handle = match ptr::read(leaf_edge).$next_kv() {
+                Ok(leaf_kv) => {
+                    *leaf_edge = ptr::read(&leaf_kv).$next_edge();
+                    return leaf_kv.forget_node_type();
+                }
+                Err(last_edge) => {
+                    match last_edge.into_node().ascend() {
+                        Ok(next_level) => next_level,
+                        Err(_) => unreachable!(),
+                    }
+                }
+            };
+
+            loop {
+                cur_handle = match ptr::read(&cur_handle).$next_kv() {
+                    Ok(internal_kv) => {
+                        let next_internal_edge = ptr::read(&internal_kv).$next_edge();
+                        *leaf_edge = $initial_leaf_edge(next_internal_edge.descend());
+                        return internal_kv.forget_node_type();
+                    }
+                    Err(last_edge) => {
+                        match last_edge.into_node().ascend() {
+                            Ok(next_level) => next_level,
+                            Err(_) => unreachable!(),
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+tree_hopper! {unsafe fn leftward_next_unchecked : left_kv left_edge last_leaf_edge}
+tree_hopper! {unsafe fn rightward_next_unchecked : right_kv right_edge first_leaf_edge}
+
 // An iterator for merging two sorted sequences into one
 struct MergeIter<K, V, I: Iterator<Item = (K, V)>> {
     left: Peekable<I>,
@@ -525,7 +569,39 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// Clears the map, removing all values.
+    /// Clears the map, returning all key-value pairs as an iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_drain_retain)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut a = BTreeMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    ///
+    /// for (k, v) in a.drain().take(1) {
+    ///     assert!(k == 1 || k == 2);
+    ///     assert!(v == "a" || v == "b");
+    /// }
+    ///
+    /// assert!(a.is_empty());
+    /// ```
+    #[unstable(feature = "btree_drain_retain", issue = "42849")]
+    pub fn drain(&mut self) -> IntoIter<K, V> {
+        let length = mem::replace(&mut self.length, 0);
+        let root = mem::replace(&mut self.root, node::Root::shared_empty_root());
+        let root1 = unsafe { ptr::read(&root).into_ref() };
+        let root2 = unsafe { ptr::read(&root).into_ref() };
+        let front = first_leaf_edge(root1);
+        let back = last_leaf_edge(root2);
+        IntoIter { front, back, length }
+    }
+
+    /// Clears the map, removing all key-value pairs.
     ///
     /// # Examples
     ///
@@ -839,6 +915,51 @@ impl<K: Ord, V> BTreeMap<K, V> {
                      .remove())
             }
             GoDown(_) => None,
+        }
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_drain_retain)]
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map: BTreeMap<i32, i32> = (0..8).map(|x|(x, x)).collect();
+    /// map.retain(|&k, _| k % 2 == 0);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    #[unstable(feature = "btree_drain_retain", issue = "42849")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(&K, &mut V) -> bool,
+    {
+        let mut cur_leaf_edge = first_leaf_edge(self.root.as_mut());
+        let mut n_retained = 0;
+        while n_retained < self.length {
+            let kv = unsafe { rightward_next_unchecked(&mut cur_leaf_edge) };
+            // Doing the descend (or perhaps another move) invalidates the references
+            // returned by `into_kv_mut`, so we have to do this last.
+            let (k, v) = unsafe { ptr::read(&kv).into_kv_mut() };
+            let retain = f(k, v);
+            if retain {
+                n_retained += 1;
+            } else {
+                self.length -= 1;
+                let (k, _v, hole) = OccupiedEntry::remove_kv_by_handle(kv);
+                // cur_leaf_edge may now be invalid
+                cur_leaf_edge = match hole {
+                    Some(next_leaf_edge) => next_leaf_edge,
+                    None => {
+                        let root1 = self.root.as_mut();
+                        let root2 = unsafe { ptr::read(&root1) };
+                        let (front, _back) = range_search(root1, root2, k..);
+                        front
+                    }
+                }
+            }
         }
     }
 
@@ -1449,33 +1570,10 @@ impl<K, V> Iterator for IntoIter<K, V> {
             self.length -= 1;
         }
 
-        let handle = unsafe { ptr::read(&self.front) };
-
-        let mut cur_handle = match handle.right_kv() {
-            Ok(kv) => {
-                let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
-                let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
-                self.front = kv.right_edge();
-                return Some((k, v));
-            }
-            Err(last_edge) => unsafe {
-                unwrap_unchecked(last_edge.into_node().deallocate_and_ascend())
-            },
-        };
-
-        loop {
-            match cur_handle.right_kv() {
-                Ok(kv) => {
-                    let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
-                    let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
-                    self.front = first_leaf_edge(kv.right_edge().descend());
-                    return Some((k, v));
-                }
-                Err(last_edge) => unsafe {
-                    cur_handle = unwrap_unchecked(last_edge.into_node().deallocate_and_ascend());
-                },
-            }
-        }
+        let kv = unsafe { rightward_next_unchecked(&mut self.front) };
+        let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
+        let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
+        Some((k, v))
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -1492,33 +1590,10 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
             self.length -= 1;
         }
 
-        let handle = unsafe { ptr::read(&self.back) };
-
-        let mut cur_handle = match handle.left_kv() {
-            Ok(kv) => {
-                let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
-                let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
-                self.back = kv.left_edge();
-                return Some((k, v));
-            }
-            Err(last_edge) => unsafe {
-                unwrap_unchecked(last_edge.into_node().deallocate_and_ascend())
-            },
-        };
-
-        loop {
-            match cur_handle.left_kv() {
-                Ok(kv) => {
-                    let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
-                    let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
-                    self.back = last_leaf_edge(kv.left_edge().descend());
-                    return Some((k, v));
-                }
-                Err(last_edge) => unsafe {
-                    cur_handle = unwrap_unchecked(last_edge.into_node().deallocate_and_ascend());
-                },
-            }
-        }
+        let kv = unsafe { leftward_next_unchecked(&mut self.back) };
+        let k = unsafe { ptr::read(kv.reborrow().into_kv().0) };
+        let v = unsafe { ptr::read(kv.reborrow().into_kv().1) };
+        Some((k, v))
     }
 }
 
@@ -1667,33 +1742,8 @@ impl<K, V> FusedIterator for ValuesMut<'_, K, V> {}
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a V) {
-        let handle = self.front;
-
-        let mut cur_handle = match handle.right_kv() {
-            Ok(kv) => {
-                let ret = kv.into_kv();
-                self.front = kv.right_edge();
-                return ret;
-            }
-            Err(last_edge) => {
-                let next_level = last_edge.into_node().ascend().ok();
-                unwrap_unchecked(next_level)
-            }
-        };
-
-        loop {
-            match cur_handle.right_kv() {
-                Ok(kv) => {
-                    let ret = kv.into_kv();
-                    self.front = first_leaf_edge(kv.right_edge().descend());
-                    return ret;
-                }
-                Err(last_edge) => {
-                    let next_level = last_edge.into_node().ascend().ok();
-                    cur_handle = unwrap_unchecked(next_level);
-                }
-            }
-        }
+        let kv = rightward_next_unchecked(&mut self.front);
+        kv.into_kv()
     }
 }
 
@@ -1710,33 +1760,8 @@ impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
 
 impl<'a, K, V> Range<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a V) {
-        let handle = self.back;
-
-        let mut cur_handle = match handle.left_kv() {
-            Ok(kv) => {
-                let ret = kv.into_kv();
-                self.back = kv.left_edge();
-                return ret;
-            }
-            Err(last_edge) => {
-                let next_level = last_edge.into_node().ascend().ok();
-                unwrap_unchecked(next_level)
-            }
-        };
-
-        loop {
-            match cur_handle.left_kv() {
-                Ok(kv) => {
-                    let ret = kv.into_kv();
-                    self.back = last_leaf_edge(kv.left_edge().descend());
-                    return ret;
-                }
-                Err(last_edge) => {
-                    let next_level = last_edge.into_node().ascend().ok();
-                    cur_handle = unwrap_unchecked(next_level);
-                }
-            }
-        }
+        let kv = leftward_next_unchecked(&mut self.back);
+        kv.into_kv()
     }
 }
 
@@ -1772,37 +1797,11 @@ impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let handle = ptr::read(&self.front);
-
-        let mut cur_handle = match handle.right_kv() {
-            Ok(kv) => {
-                self.front = ptr::read(&kv).right_edge();
-                // Doing the descend invalidates the references returned by `into_kv_mut`,
-                // so we have to do this last.
-                let (k, v) = kv.into_kv_mut();
-                return (k, v); // coerce k from `&mut K` to `&K`
-            }
-            Err(last_edge) => {
-                let next_level = last_edge.into_node().ascend().ok();
-                unwrap_unchecked(next_level)
-            }
-        };
-
-        loop {
-            match cur_handle.right_kv() {
-                Ok(kv) => {
-                    self.front = first_leaf_edge(ptr::read(&kv).right_edge().descend());
-                    // Doing the descend invalidates the references returned by `into_kv_mut`,
-                    // so we have to do this last.
-                    let (k, v) = kv.into_kv_mut();
-                    return (k, v); // coerce k from `&mut K` to `&K`
-                }
-                Err(last_edge) => {
-                    let next_level = last_edge.into_node().ascend().ok();
-                    cur_handle = unwrap_unchecked(next_level);
-                }
-            }
-        }
+        let kv = rightward_next_unchecked(&mut self.front);
+        // Doing the descend (or perhaps another move) invalidates the references
+        // returned by `into_kv_mut`, so we have to do this last.
+        let (k, v) = kv.into_kv_mut();
+        (k, v) // coerce k from `&mut K` to `&K`
     }
 }
 
@@ -1822,37 +1821,11 @@ impl<K, V> FusedIterator for RangeMut<'_, K, V> {}
 
 impl<'a, K, V> RangeMut<'a, K, V> {
     unsafe fn next_back_unchecked(&mut self) -> (&'a K, &'a mut V) {
-        let handle = ptr::read(&self.back);
-
-        let mut cur_handle = match handle.left_kv() {
-            Ok(kv) => {
-                self.back = ptr::read(&kv).left_edge();
-                // Doing the descend invalidates the references returned by `into_kv_mut`,
-                // so we have to do this last.
-                let (k, v) = kv.into_kv_mut();
-                return (k, v); // coerce k from `&mut K` to `&K`
-            }
-            Err(last_edge) => {
-                let next_level = last_edge.into_node().ascend().ok();
-                unwrap_unchecked(next_level)
-            }
-        };
-
-        loop {
-            match cur_handle.left_kv() {
-                Ok(kv) => {
-                    self.back = last_leaf_edge(ptr::read(&kv).left_edge().descend());
-                    // Doing the descend invalidates the references returned by `into_kv_mut`,
-                    // so we have to do this last.
-                    let (k, v) = kv.into_kv_mut();
-                    return (k, v); // coerce k from `&mut K` to `&K`
-                }
-                Err(last_edge) => {
-                    let next_level = last_edge.into_node().ascend().ok();
-                    cur_handle = unwrap_unchecked(next_level);
-                }
-            }
-        }
+        let kv = leftward_next_unchecked(&mut self.back);
+        // Doing the descend (or perhaps another move) invalidates the references
+        // returned by `into_kv_mut`, so we have to do this last.
+        let (k, v) = kv.into_kv_mut();
+        (k, v) // coerce k from `&mut K` to `&K`
     }
 }
 
@@ -2354,7 +2327,6 @@ impl<'a, K: Ord, V: Default> Entry<'a, K, V> {
             Vacant(entry) => entry.insert(Default::default()),
         }
     }
-
 }
 
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
@@ -2618,9 +2590,21 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     fn remove_kv(self) -> (K, V) {
         *self.length -= 1;
 
-        let (small_leaf, old_key, old_val) = match self.handle.force() {
+        let (k, v, _) = OccupiedEntry::remove_kv_by_handle(self.handle);
+        (k, v)
+    }
+
+    // Removes and returns a key/value-pair, and optionally (if cheap), returns the resulting edge
+    // corresponding to the former left and right edges of the entry.
+    fn remove_kv_by_handle(
+            handle: Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, marker::KV>)
+            -> (K, V, Option<Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>>) {
+        let (small_leaf, old_key, old_val) = match handle.force() {
             Leaf(leaf) => {
                 let (hole, old_key, old_val) = leaf.remove();
+                if hole.reborrow().into_node().len() >= node::MIN_LEN {
+                    return (old_key, old_val, Some(hole));
+                }
                 (hole.into_node(), old_key, old_val)
             }
             Internal(mut internal) => {
@@ -2641,7 +2625,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
         // Handle underflow
         let mut cur_node = small_leaf.forget_type();
-        while cur_node.len() < node::CAPACITY / 2 {
+        while cur_node.len() < node::MIN_LEN {
             match handle_underfull_node(cur_node) {
                 AtRoot => break,
                 EmptyParent(_) => unreachable!(),
@@ -2658,7 +2642,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
             }
         }
 
-        (old_key, old_val)
+        (old_key, old_val, None)
     }
 }
 

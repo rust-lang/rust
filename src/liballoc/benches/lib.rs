@@ -1,3 +1,4 @@
+#![feature(btree_drain_retain)]
 #![feature(map_first_last)]
 #![feature(repr_simd)]
 #![feature(test)]

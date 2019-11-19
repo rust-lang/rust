@@ -363,6 +363,282 @@ fn test_range_mut() {
     }
 }
 
+const DEPTH_1_CAPACITY: usize = 11; // node::CAPACITY
+const DEPTH_2_MIN_SIZE: usize = 11 + 1; // just bigger than node::CAPACITY
+#[cfg(not(miri))] // Miri is too slow
+const DEPTH_3_MIN_SIZE: usize = 11 + (12 * 11) + 1;
+
+#[test]
+fn test_drain_empty() {
+    let mut map: BTreeMap<i32, i32> = BTreeMap::new();
+    {
+        let mut iter = map.drain();
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+        assert_eq!(iter.next(), None);
+        assert_eq!(iter.size_hint(), (0, Some(0)));
+    }
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_drain_underfull_consuming_none() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    {
+        let iter = map.drain();
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+    }
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_drain_underfull_consuming_some() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    {
+        let mut iter = map.drain();
+        assert_eq!(iter.size_hint(), (3, Some(3)));
+        assert_eq!(iter.next(), Some((0, 0)));
+        assert_eq!(iter.size_hint(), (2, Some(2)));
+        assert_eq!(iter.next(), Some((1, 1)));
+        assert_eq!(iter.size_hint(), (1, Some(1)));
+    }
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_drain_underfull_consuming_all() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.clone().collect();
+    assert_eq!(map.drain().collect::<Vec<_>>(), pairs.collect::<Vec<_>>());
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_drain_depth_2_consuming_none() {
+    let pairs = (0..DEPTH_2_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.drain();
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_drain_depth_2_consuming_all() {
+    let pairs = (0..DEPTH_2_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.clone().collect();
+    assert_eq!(map.drain().collect::<Vec<_>>(), pairs.collect::<Vec<_>>());
+    assert!(map.is_empty());
+}
+
+#[cfg(not(miri))] // Miri is too slow
+#[test]
+fn test_drain_depth_3_consuming_none() {
+    let pairs = (0..DEPTH_3_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.drain();
+    assert!(map.is_empty());
+}
+
+#[cfg(not(miri))] // Miri is too slow
+#[test]
+fn test_drain_depth_3_consuming_all() {
+    let pairs = (0..DEPTH_3_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.clone().collect();
+    assert_eq!(map.drain().collect::<Vec<_>>(), pairs.collect::<Vec<_>>());
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_retain_empty() {
+    let mut map: BTreeMap<i32, i32> = BTreeMap::new();
+    map.retain(|_, _| unreachable!("there's nothing to retain"));
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_retain_underfull_removing_none() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|_, _| true);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![0, 1, 2]);
+}
+
+#[test]
+fn test_retain_underfull_removing_first() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i != 0);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![1, 2]);
+}
+
+#[test]
+fn test_retain_underfull_removing_middle() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i != 1);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![0, 2]);
+}
+
+#[test]
+fn test_retain_underfull_removing_last() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i != 2);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![0, 1]);
+}
+
+#[test]
+fn test_retain_underfull_retaining_first() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i == 0);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![0]);
+}
+
+#[test]
+fn test_retain_underfull_retaining_middle() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i == 1);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![1]);
+}
+
+#[test]
+fn test_retain_underfull_retaining_last() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i == 2);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![2]);
+}
+
+#[test]
+fn test_retain_underfull_removing_all() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.clone().collect();
+    map.retain(|_, _| false);
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_retain_depth_1_removing_none() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|_, _| true);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), (0..DEPTH_1_CAPACITY).collect::<Vec<_>>());
+}
+
+#[test]
+fn test_retain_depth_1_muting_only() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|_, v| { *v += 1; true });
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), (0..DEPTH_1_CAPACITY).collect::<Vec<_>>());
+    assert_eq!(map.values().copied().collect::<Vec<_>>(),
+               (1..=DEPTH_1_CAPACITY).collect::<Vec<_>>());
+}
+
+#[test]
+fn test_retain_depth_1_removing_first() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i > 0);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(),
+               (1..DEPTH_1_CAPACITY).collect::<Vec<_>>());
+}
+
+#[test]
+fn test_retain_depth_1_removing_middle() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i != DEPTH_1_CAPACITY / 2);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(),
+               (0..DEPTH_1_CAPACITY).filter(|i| *i != DEPTH_1_CAPACITY / 2).collect::<Vec<_>>());
+}
+
+#[test]
+fn test_retain_depth_1_removing_last() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i < DEPTH_1_CAPACITY - 1);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(),
+               (0..(DEPTH_1_CAPACITY-1)).collect::<Vec<_>>());
+}
+
+#[test]
+fn test_retain_depth_1_retaining_first() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i == 0);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![0]);
+}
+
+#[test]
+fn test_retain_depth_1_retaining_middle() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i == DEPTH_1_CAPACITY / 2);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![DEPTH_1_CAPACITY / 2]);
+}
+
+#[test]
+fn test_retain_depth_1_retaining_last() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|i, _| *i == DEPTH_1_CAPACITY - 1);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![DEPTH_1_CAPACITY - 1]);
+}
+
+#[test]
+fn test_retain_depth_1_removing_all() {
+    let pairs = (0..DEPTH_1_CAPACITY).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.clone().collect();
+    map.retain(|_, _| false);
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_retain_depth_2_removing_none() {
+    let pairs = (0..DEPTH_2_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|_, _| true);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), (0..DEPTH_2_MIN_SIZE).collect::<Vec<_>>());
+}
+
+#[test]
+fn test_retain_depth_2_removing_all() {
+    let pairs = (0..DEPTH_2_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.clone().collect();
+    map.retain(|_, _| false);
+    assert!(map.is_empty());
+}
+
+#[cfg(not(miri))] // Miri is too slow
+#[test]
+fn test_retain_depth_3_removing_none() {
+    let pairs = (0..DEPTH_3_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|_, _| true);
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), (0..DEPTH_3_MIN_SIZE).collect::<Vec<_>>());
+}
+
+#[cfg(not(miri))] // Miri is too slow
+#[test]
+fn test_retain_depth_3_removing_all() {
+    let pairs = (0..DEPTH_3_MIN_SIZE).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.clone().collect();
+    map.retain(|_, _| false);
+    assert!(map.is_empty());
+}
+
+#[test]
+fn test_retain_mutating_only() {
+    let pairs = (0..3).map(|i| (i, i));
+    let mut map: BTreeMap<_, _> = pairs.collect();
+    map.retain(|_, v| { *v += 1; true });
+    assert_eq!(map.keys().copied().collect::<Vec<_>>(), vec![0, 1, 2]);
+    assert_eq!(map.values().copied().collect::<Vec<_>>(), vec![1, 2, 3]);
+}
+
 #[test]
 fn test_borrow() {
     // make sure these compile -- using the Borrow trait

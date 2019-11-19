@@ -515,6 +515,31 @@ impl<T: Ord> BTreeSet<T> {
         Union(MergeIterInner::new(self.iter(), other.iter()))
     }
 
+    /// Clears the set, returning all values as an iterator.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(btree_drain_retain)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut a = BTreeSet::new();
+    /// a.insert(1);
+    /// a.insert(2);
+    ///
+    /// for k in a.drain().take(1) {
+    ///     assert!(k == 1 || k == 2);
+    /// }
+    ///
+    /// assert!(a.is_empty());
+    /// ```
+    #[unstable(feature = "btree_drain_retain", issue = "42849")]
+    pub fn drain(&mut self) -> IntoIter<T> {
+        IntoIter { iter: self.map.drain() }
+    }
+
     /// Clears the set, removing all values.
     ///
     /// # Examples
@@ -882,6 +907,27 @@ impl<T: Ord> BTreeSet<T> {
               Q: Ord
     {
         Recover::take(&mut self.map, value)
+    }
+
+    /// Retains only the value specified by the predicate.
+    ///
+    /// In other words, remove all value `v` such that `f(&v)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(btree_drain_retain)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let mut set: BTreeSet<i32> = (0..8).collect();
+    /// set.retain(|&v| v % 2 == 0);
+    /// assert_eq!(set.len(), 4);
+    /// ```
+    #[unstable(feature = "btree_drain_retain", issue = "42849")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> bool,
+    {
+        self.map.retain(|k, _| f(k));
     }
 
     /// Moves all elements from `other` into `Self`, leaving `other` empty.

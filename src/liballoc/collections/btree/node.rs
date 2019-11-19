@@ -1245,8 +1245,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::KV> 
         }
     }
 
-    /// Removes the key/value pair pointed to by this handle, returning the edge between the
-    /// now adjacent key/value pairs to the left and right of this handle.
+    /// Removes the key/value pair pointed to by this handle and returns it, along with the edge
+    /// between the now adjacent key/value pairs (if any) to the left and right of this handle.
     pub fn remove(mut self)
             -> (Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>, K, V) {
         debug_assert!(!self.node.is_shared_root());
@@ -1405,7 +1405,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         }
     }
 
-    /// This removes a key/value pair from the left child and replaces it with the key/value pair
+    /// This removes a key/value pair from the left child and places it in the key/value storage
     /// pointed to by this handle while pushing the old key/value pair of this handle into the right
     /// child.
     pub fn steal_left(&mut self) {
@@ -1422,7 +1422,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
         }
     }
 
-    /// This removes a key/value pair from the right child and replaces it with the key/value pair
+    /// This removes a key/value pair from the right child and places it in the key/value storage
     /// pointed to by this handle while pushing the old key/value pair of this handle into the left
     /// child.
     pub fn steal_right(&mut self) {
@@ -1587,6 +1587,22 @@ unsafe fn move_edges<K, V>(
                              dest_ptr.add(dest_offset),
                              count);
     dest.correct_childrens_parent_links(dest_offset, dest_offset + count);
+}
+
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Leaf>, marker::KV> {
+    #[unstable(feature = "btree_drain_retain", issue = "42849")]
+    pub fn forget_node_type(self)
+        -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
+        Handle::new_kv(self.node.forget_type(), self.idx)
+    }
+}
+
+impl<BorrowType, K, V> Handle<NodeRef<BorrowType, K, V, marker::Internal>, marker::KV> {
+    #[unstable(feature = "btree_drain_retain", issue = "42849")]
+    pub fn forget_node_type(self)
+        -> Handle<NodeRef<BorrowType, K, V, marker::LeafOrInternal>, marker::KV> {
+        Handle::new_kv(self.node.forget_type(), self.idx)
+    }
 }
 
 impl<BorrowType, K, V, HandleType>
