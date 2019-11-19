@@ -3541,7 +3541,6 @@ dependencies = [
  "rustc_metadata",
  "rustc_mir",
  "rustc_parse",
- "rustc_plugin",
  "rustc_plugin_impl",
  "rustc_resolve",
  "rustc_save_analysis",
@@ -3768,13 +3767,6 @@ dependencies = [
  "rustc_target",
  "syntax",
  "syntax_pos",
-]
-
-[[package]]
-name = "rustc_plugin"
-version = "0.0.0"
-dependencies = [
- "rustc_plugin_impl",
 ]
 
 [[package]]
