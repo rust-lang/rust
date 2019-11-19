@@ -17,8 +17,7 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             linker: Some("rust-lld".to_string()),
             cpu: "generic-rv32".to_string(),
-            // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=86005
-            max_atomic_width: None, //Some(32),
+            max_atomic_width: Some(0),
             atomic_cas: false,
             features: "+m,+c".to_string(),
             executables: true,
