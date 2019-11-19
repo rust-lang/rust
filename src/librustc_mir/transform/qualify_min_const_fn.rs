@@ -266,9 +266,10 @@ fn check_place(
     while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Downcast(..) => {
-                return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
-            }
+            ProjectionElem::Downcast(..) if !tcx.features().const_if_match
+                => return Err((span, "`match` or `if let` in `const fn` is unstable".into())),
+            ProjectionElem::Downcast(_symbol, _variant_index) => {}
+
             ProjectionElem::Field(..) => {
                 let base_ty = Place::ty_from(&place.base, &proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
