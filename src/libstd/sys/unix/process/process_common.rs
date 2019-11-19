@@ -135,8 +135,8 @@ impl Command {
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
+            args: vec![program.clone()],
             program,
-            args: Vec::new(),
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -149,11 +149,19 @@ impl Command {
         }
     }
 
+    pub fn set_arg_0(&mut self, arg: &OsStr) {
+        // Set a new arg0
+        let arg = os2c(arg, &mut self.saw_nul);
+        debug_assert!(self.argv.0.len() > 1);
+        self.argv.0[0] = arg.as_ptr();
+        self.args[0] = arg;
+    }
+
     pub fn arg(&mut self, arg: &OsStr) {
         // Overwrite the trailing NULL pointer in `argv` and then add a new null
         // pointer.
         let arg = os2c(arg, &mut self.saw_nul);
-        self.argv.0[self.args.len() + 1] = arg.as_ptr();
+        self.argv.0[self.args.len()] = arg.as_ptr();
         self.argv.0.push(ptr::null());
 
         // Also make sure we keep track of the owned value to schedule a
@@ -176,6 +184,10 @@ impl Command {
     }
     pub fn get_argv(&self) -> &Vec<*const c_char> {
         &self.argv.0
+    }
+
+    pub fn get_program(&self) -> &CStr {
+        &*self.program
     }
 
     #[allow(dead_code)]
