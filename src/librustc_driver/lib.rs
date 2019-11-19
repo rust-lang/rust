@@ -84,13 +84,6 @@ const ICE_REPORT_COMPILER_FLAGS_EXCLUDE: &[&str] = &["metadata", "extra-filename
 
 const ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE: &[&str] = &["incremental"];
 
-pub fn source_name(input: &Input) -> FileName {
-    match *input {
-        Input::File(ref ifile) => ifile.clone().into(),
-        Input::Str { ref name, .. } => name.clone(),
-    }
-}
-
 pub fn abort_on_err<T>(result: Result<T, ErrorReported>, sess: &Session) -> T {
     match result {
         Err(..) => {

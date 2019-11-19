@@ -24,10 +24,6 @@ pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use crate::abort_on_err;
 
-use crate::source_name;
-
-
-
 // This slightly awkward construction is to allow for each PpMode to
 // choose whether it needs to do analyses (which can consume the
 // Session) and then pass through the session (now attached to the
@@ -391,7 +387,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
 }
 
 fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
-    let src_name = source_name(input);
+    let src_name = input.source_name();
     let src = String::clone(&sess.source_map()
         .get_source_file(&src_name)
         .unwrap()
