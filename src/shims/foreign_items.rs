@@ -132,7 +132,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         match link_name {
             // Note that this matches calls to the *foreign* item `__rust_start_panic* -
             // that is, calls to `extern "Rust" { fn __rust_start_panic(...) }`.
-            // We forward this to the underlying *implementation* in "libpanic_unwind".
+            // We forward this to the underlying *implementation* in the panic runtime crate.
+            // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
+            // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
             "__rust_start_panic" => {
                 let panic_runtime = tcx.crate_name(tcx.injected_panic_runtime().expect("No panic runtime found!"));
                 let start_panic_instance = this.resolve_path(&[&*panic_runtime.as_str(), "__rust_start_panic"])?;
