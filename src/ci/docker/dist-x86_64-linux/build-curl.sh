@@ -5,6 +5,9 @@ source shared.sh
 
 VERSION=7.66.0
 
+# This needs to be downloaded directly from S3, it can't go through the CDN.
+# That's because the CDN is backed by CloudFront, which requires SNI and TLSv1
+# (without paying an absurd amount of money).
 curl https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc/curl-$VERSION.tar.xz \
   | xz --decompress \
   | tar xf -
