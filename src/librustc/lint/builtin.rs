@@ -427,6 +427,12 @@ pub mod parser {
         Deny,
         "trailing content in included file"
     }
+
+    declare_lint! {
+        pub NON_PRINTABLE_ASCII,
+        Warn,
+        "non-printable ASCII character in a literal"
+    }
 }
 
 declare_lint! {
@@ -522,6 +528,7 @@ declare_lint_pass! {
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         parser::ILL_FORMED_ATTRIBUTE_INPUT,
         parser::META_VARIABLE_MISUSE,
+        parser::NON_PRINTABLE_ASCII,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
         MUTABLE_BORROW_RESERVATION_CONFLICT,

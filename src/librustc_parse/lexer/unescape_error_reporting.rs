@@ -6,7 +6,8 @@ use std::iter::once;
 use rustc_lexer::unescape::{EscapeError, Mode};
 use syntax_pos::{Span, BytePos};
 
-use syntax::errors::{Handler, Applicability};
+use syntax::{errors::{Handler, Applicability}, sess::ParseSess,
+            early_buffered_lints::BufferedEarlyLintId, ast};
 
 pub(crate) fn emit_unescape_error(
     handler: &Handler,
@@ -199,6 +200,39 @@ pub(crate) fn emit_unescape_error(
             handler.span_err(span, "invalid trailing slash in literal")
         }
     }
+}
+
+pub(crate) fn lint_unescaped_char(
+    sess: &ParseSess,
+    // full span of the literal, including quotes
+    span_with_quotes: Span,
+    // interior part of the literal, without quotes
+    character: char,
+    range: Range<usize>,
+) {
+    if range.len() != 1 {
+        return;
+    }
+    let allowed_chars = ['\t', '\n'];
+    if !allowed_chars.contains(&character) && character.is_ascii_control() {
+        sess.buffer_lint(
+            BufferedEarlyLintId::NonPrintableAscii,
+            span_with_quotes,
+            ast::CRATE_NODE_ID,
+            "non-printable ASCII character in literal"
+        )
+    }
+}
+
+pub(crate) fn lint_unescaped_byte(
+    sess: &ParseSess,
+    // full span of the literal, including quotes
+    span_with_quotes: Span,
+    // interior part of the literal, without quotes
+    byte: u8,
+    range: Range<usize>,
+) {
+    lint_unescaped_char(sess, span_with_quotes, char::from(byte), range);
 }
 
 /// Pushes a character to a message string for error reporting

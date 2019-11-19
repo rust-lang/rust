@@ -16,7 +16,8 @@ use log::debug;
 mod tokentrees;
 mod unicode_chars;
 mod unescape_error_reporting;
-use unescape_error_reporting::{emit_unescape_error, push_escaped_char};
+use unescape_error_reporting::{emit_unescape_error, push_escaped_char,
+                            lint_unescaped_char, lint_unescaped_byte};
 
 #[derive(Clone, Debug)]
 pub struct UnmatchedBrace {
@@ -532,92 +533,134 @@ impl<'a> StringReader<'a> {
 
     fn validate_char_escape(&self, content_start: BytePos, content_end: BytePos) {
         let lit = self.str_from_to(content_start, content_end);
-        if let Err((off, err)) = unescape::unescape_char(lit) {
-            emit_unescape_error(
+        let span = self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
+        match unescape::unescape_char(lit) {
+            Ok(c) => lint_unescaped_char(
+                &self.sess,
+                span,
+                c,
+                0..lit.len(),
+            ),
+            Err((off, err)) => emit_unescape_error(
                 &self.sess.span_diagnostic,
                 lit,
-                self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
+                span,
                 unescape::Mode::Char,
                 0..off,
                 err,
-            )
+            ),
         }
     }
 
     fn validate_byte_escape(&self, content_start: BytePos, content_end: BytePos) {
         let lit = self.str_from_to(content_start, content_end);
-        if let Err((off, err)) = unescape::unescape_byte(lit) {
-            emit_unescape_error(
+        let span = self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
+        match unescape::unescape_byte(lit) {
+            Ok(c) => lint_unescaped_byte(
+                &self.sess,
+                span,
+                c,
+                0..lit.len(),
+            ),
+            Err((off, err)) => emit_unescape_error(
                 &self.sess.span_diagnostic,
                 lit,
-                self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
+                span,
                 unescape::Mode::Byte,
                 0..off,
                 err,
-            )
+            ),
         }
     }
 
     fn validate_str_escape(&self, content_start: BytePos, content_end: BytePos) {
         let lit = self.str_from_to(content_start, content_end);
+        let span = self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
         unescape::unescape_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
+            match c {
+                Ok(c) => lint_unescaped_char(
+                    &self.sess,
+                    span,
+                    c,
+                    range,
+                ),
+                Err(err) => emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
+                    span,
                     unescape::Mode::Str,
                     range,
                     err,
-                )
+                ),
             }
         })
     }
 
     fn validate_raw_str_escape(&self, content_start: BytePos, content_end: BytePos) {
         let lit = self.str_from_to(content_start, content_end);
+        let span = self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
         unescape::unescape_raw_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
+            match c {
+                Ok(c) => lint_unescaped_char(
+                    &self.sess,
+                    span,
+                    c,
+                    range,
+                ),
+                Err(err) => emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
+                    span,
                     unescape::Mode::Str,
                     range,
                     err,
-                )
+                ),
             }
         })
     }
 
     fn validate_raw_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
         let lit = self.str_from_to(content_start, content_end);
+        let span = self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
         unescape::unescape_raw_byte_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
+            match c {
+                Ok(c) => lint_unescaped_byte(
+                    &self.sess,
+                    span,
+                    c,
+                    range,
+                ),
+                Err(err) => emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
+                    span,
                     unescape::Mode::ByteStr,
                     range,
                     err,
-                )
+                ),
             }
         })
     }
 
     fn validate_byte_str_escape(&self, content_start: BytePos, content_end: BytePos) {
         let lit = self.str_from_to(content_start, content_end);
+        let span = self.mk_sp(content_start - BytePos(1), content_end + BytePos(1));
         unescape::unescape_byte_str(lit, &mut |range, c| {
-            if let Err(err) = c {
-                emit_unescape_error(
+            match c {
+                Ok(c) => lint_unescaped_byte(
+                    &self.sess,
+                    span,
+                    c,
+                    range,
+                ),
+                Err(err) => emit_unescape_error(
                     &self.sess.span_diagnostic,
                     lit,
-                    self.mk_sp(content_start - BytePos(1), content_end + BytePos(1)),
+                    span,
                     unescape::Mode::ByteStr,
                     range,
                     err,
-                )
+                ),
             }
         })
     }

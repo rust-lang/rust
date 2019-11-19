@@ -27,8 +27,8 @@ use crate::hir::def_id::{CrateNum, LOCAL_CRATE};
 use crate::hir::intravisit;
 use crate::hir;
 use crate::lint::builtin::BuiltinLintDiagnostics;
-use crate::lint::builtin::parser::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE};
-use crate::lint::builtin::parser::INCOMPLETE_INCLUDE;
+use crate::lint::builtin::parser::{ILL_FORMED_ATTRIBUTE_INPUT, META_VARIABLE_MISUSE,
+                            INCOMPLETE_INCLUDE, NON_PRINTABLE_ASCII};
 use crate::session::{Session, DiagnosticMessageId};
 use crate::ty::TyCtxt;
 use crate::ty::query::Providers;
@@ -111,6 +111,7 @@ impl Lint {
             BufferedEarlyLintId::IllFormedAttributeInput => ILL_FORMED_ATTRIBUTE_INPUT,
             BufferedEarlyLintId::MetaVariableMisuse => META_VARIABLE_MISUSE,
             BufferedEarlyLintId::IncompleteInclude => INCOMPLETE_INCLUDE,
+            BufferedEarlyLintId::NonPrintableAscii => NON_PRINTABLE_ASCII,
         }
     }
 
