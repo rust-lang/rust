@@ -7,7 +7,7 @@ use crate::ty::tls;
 use crate::ty::{self, TyCtxt};
 use crate::ty::query::Query;
 use crate::ty::query::config::{QueryConfig, QueryDescription};
-use crate::ty::query::job::{QueryJob, QueryResult, QueryInfo};
+use crate::ty::query::job::{QueryJob, QueryInfo};
 
 use errors::DiagnosticBuilder;
 use errors::Level;
@@ -50,6 +50,16 @@ impl<T> QueryValue<T> {
             index: dep_node_index,
         }
     }
+}
+
+/// Indicates the state of a query for a given key in a query map.
+pub(super) enum QueryResult<'tcx> {
+    /// An already executing query. The query job can be used to await for its completion.
+    Started(Lrc<QueryJob<'tcx>>),
+
+    /// The query panicked. Queries trying to wait on this will raise a fatal error or
+    /// silently panic.
+    Poisoned,
 }
 
 impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
@@ -676,8 +686,6 @@ macro_rules! define_queries_inner {
         [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use std::mem;
-        #[cfg(parallel_compiler)]
-        use ty::query::job::QueryResult;
         use rustc_data_structures::sharded::Sharded;
         use crate::{
             rustc_data_structures::stable_hasher::HashStable,
