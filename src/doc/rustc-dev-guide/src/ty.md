@@ -60,8 +60,8 @@ defining all of the different kinds of types in the compiler.
 
 > N.B. inspecting the `sty` field on types during type inference can be
 > risky, as there may be inference variables and other things to
-> consider, or sometimes types are not yet known that will become
-> known later.).
+> consider, or sometimes types are not yet known and will become
+> known later.
 
 To allocate a new type, you can use the various `mk_` methods defined
 on the `tcx`. These have names that correspond mostly to the various kinds
