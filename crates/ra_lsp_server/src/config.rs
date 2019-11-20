@@ -29,6 +29,8 @@ pub struct ServerConfig {
 
     pub lru_capacity: Option<usize>,
 
+    pub max_inlay_hint_length: Option<usize>,
+
     /// For internal usage to make integrated tests faster.
     #[serde(deserialize_with = "nullable_bool_true")]
     pub with_sysroot: bool,
@@ -44,6 +46,7 @@ impl Default for ServerConfig {
             exclude_globs: Vec::new(),
             use_client_watching: false,
             lru_capacity: None,
+            max_inlay_hint_length: None,
             with_sysroot: true,
             feature_flags: FxHashMap::default(),
         }

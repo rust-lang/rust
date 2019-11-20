@@ -19,10 +19,15 @@ pub struct InlayHint {
     pub label: SmolStr,
 }
 
-pub(crate) fn inlay_hints(db: &RootDatabase, file_id: FileId, file: &SourceFile) -> Vec<InlayHint> {
+pub(crate) fn inlay_hints(
+    db: &RootDatabase,
+    file_id: FileId,
+    file: &SourceFile,
+    max_inlay_hint_length: Option<usize>,
+) -> Vec<InlayHint> {
     file.syntax()
         .descendants()
-        .map(|node| get_inlay_hints(db, file_id, &node).unwrap_or_default())
+        .map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length).unwrap_or_default())
         .flatten()
         .collect()
 }
@@ -31,6 +36,7 @@ fn get_inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
     node: &SyntaxNode,
+    max_inlay_hint_length: Option<usize>,
 ) -> Option<Vec<InlayHint>> {
     let analyzer = SourceAnalyzer::new(db, hir::Source::new(file_id.into(), node), None);
     match_ast! {
@@ -40,7 +46,7 @@ fn get_inlay_hints(
                     return None;
                 }
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false))
+                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
             },
             ast::LambdaExpr(it) => {
                 it.param_list().map(|param_list| {
@@ -48,22 +54,22 @@ fn get_inlay_hints(
                         .params()
                         .filter(|closure_param| closure_param.ascribed_type().is_none())
                         .filter_map(|closure_param| closure_param.pat())
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false))
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false, max_inlay_hint_length))
                         .flatten()
                         .collect()
                 })
             },
             ast::ForExpr(it) => {
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false))
+                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
             },
             ast::IfExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true))
+                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
             },
             ast::WhileExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true))
+                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
             },
             ast::MatchArmList(it) => {
                 Some(
@@ -71,7 +77,7 @@ fn get_inlay_hints(
                         .arms()
                         .map(|match_arm| match_arm.pats())
                         .flatten()
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true))
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true, max_inlay_hint_length))
                         .flatten()
                         .collect(),
                 )
@@ -86,6 +92,7 @@ fn get_pat_type_hints(
     analyzer: &SourceAnalyzer,
     root_pat: ast::Pat,
     skip_root_pat_hint: bool,
+    max_inlay_hint_length: Option<usize>,
 ) -> Vec<InlayHint> {
     let original_pat = &root_pat.clone();
 
@@ -99,7 +106,7 @@ fn get_pat_type_hints(
         .map(|(range, pat_type)| InlayHint {
             range,
             kind: InlayKind::TypeHint,
-            label: pat_type.display(db).to_string().into(),
+            label: pat_type.display_truncated(db, max_inlay_hint_length).to_string().into(),
         })
         .collect()
 }
@@ -209,7 +216,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [193; 197),
@@ -278,7 +285,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -307,7 +314,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -355,7 +362,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [166; 170),
@@ -418,7 +425,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [166; 170),
@@ -481,7 +488,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
         [
             InlayHint {
                 range: [311; 315),
@@ -502,6 +509,43 @@ fn main() {
                 range: [484; 485),
                 kind: TypeHint,
                 label: "u32",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn hint_truncation() {
+        let (analysis, file_id) = single_file(
+            r#"
+struct Smol<T>(T);
+
+struct VeryLongOuterName<T>(T);
+
+fn main() {
+    let a = Smol(0u32);
+    let b = VeryLongOuterName(0usize);
+    let c = Smol(Smol(0u32))
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8)).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [74; 75),
+                kind: TypeHint,
+                label: "Smol<u32>",
+            },
+            InlayHint {
+                range: [98; 99),
+                kind: TypeHint,
+                label: "VeryLongOuterName<…>",
+            },
+            InlayHint {
+                range: [137; 138),
+                kind: TypeHint,
+                label: "Smol<Smol<…>>",
             },
         ]
         "###

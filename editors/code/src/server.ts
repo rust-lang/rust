@@ -43,6 +43,7 @@ export class Server {
             initializationOptions: {
                 publishDecorations: true,
                 lruCapacity: Server.config.lruCapacity,
+                maxInlayHintLength: Server.config.maxInlayHintLength,
                 excludeGlobs: Server.config.excludeGlobs,
                 useClientWatching: Server.config.useClientWatching,
                 featureFlags: Server.config.featureFlags
