@@ -110,9 +110,9 @@ tutorial above):
 
 - The `--emit llvm-ir` option emits a `<filename>.ll` file with LLVM IR in textual format
     - The `--emit llvm-bc` option emits in bytecode format (`<filename>.bc`)
-- Passing `-Cllvm-arg=<foo>` allows passing pretty much all the
+- Passing `-Cllvm-args=<foo>` allows passing pretty much all the
   options that tools like llc and opt would accept;
-  e.g. `-Cllvm-arg=-print-before-all` to print IR before every LLVM
+  e.g. `-Cllvm-args=-print-before-all` to print IR before every LLVM
   pass.
 - The `-Cno-prepopulate-passes` will avoid pre-populate the LLVM pass
   manager with a list of passes.  This will allow you to view the LLVM
