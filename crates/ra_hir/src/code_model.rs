@@ -23,7 +23,6 @@ use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     generics::{GenericDef, HasGenericParams},
@@ -322,9 +321,11 @@ impl Struct {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
+    }
+
+    fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
+        db.struct_data(self.id.into()).variant_data.clone()
     }
 }
 
@@ -352,9 +353,7 @@ impl Union {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 }
 
@@ -402,8 +401,7 @@ impl Enum {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
+        let r = r.push_generic_params_scope(db, self.into());
         r.push_scope(Scope::AdtScope(self.into()))
     }
 }
@@ -483,6 +481,43 @@ impl Adt {
             Adt::Struct(it) => it.resolver(db),
             Adt::Union(it) => it.resolver(db),
             Adt::Enum(it) => it.resolver(db),
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum VariantDef {
+    Struct(Struct),
+    EnumVariant(EnumVariant),
+}
+impl_froms!(VariantDef: Struct, EnumVariant);
+
+impl VariantDef {
+    pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
+        match self {
+            VariantDef::Struct(it) => it.fields(db),
+            VariantDef::EnumVariant(it) => it.fields(db),
+        }
+    }
+
+    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+        match self {
+            VariantDef::Struct(it) => it.field(db, name),
+            VariantDef::EnumVariant(it) => it.field(db, name),
+        }
+    }
+
+    pub fn module(self, db: &impl HirDatabase) -> Module {
+        match self {
+            VariantDef::Struct(it) => it.module(db),
+            VariantDef::EnumVariant(it) => it.module(db),
+        }
+    }
+
+    pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
+        match self {
+            VariantDef::Struct(it) => it.variant_data(db),
+            VariantDef::EnumVariant(it) => it.variant_data(db),
         }
     }
 }
@@ -709,9 +744,7 @@ impl Function {
         // take the outer scope...
         let r = self.container(db).map_or_else(|| self.module(db).resolver(db), |c| c.resolver(db));
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
@@ -946,9 +979,7 @@ impl Trait {
     pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
         let r = self.module(db).resolver(db);
         // add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 }
 
@@ -1010,9 +1041,7 @@ impl TypeAlias {
             .map(|ib| ib.resolver(db))
             .unwrap_or_else(|| self.module(db).resolver(db));
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 }
 

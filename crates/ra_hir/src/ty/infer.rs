@@ -37,14 +37,13 @@ use super::{
     TypeCtor, TypeWalk, Uncertain,
 };
 use crate::{
-    adt::VariantDef,
     code_model::TypeAlias,
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     resolve::{Resolver, TypeNs},
     ty::infer::diagnostics::InferenceDiagnostic,
     Adt, AssocItem, ConstData, DefWithBody, FloatTy, FnData, Function, HasBody, IntTy, Path,
-    StructField,
+    StructField, VariantDef,
 };
 
 macro_rules! ty_app {

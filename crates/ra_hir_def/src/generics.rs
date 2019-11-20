@@ -25,7 +25,6 @@ pub struct GenericParam {
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParams {
-    pub def: GenericDefId,
     pub parent_params: Option<Arc<GenericParams>>,
     pub params: Vec<GenericParam>,
     pub where_predicates: Vec<WherePredicate>,
@@ -56,7 +55,7 @@ impl GenericParams {
         parent_params: Option<Arc<GenericParams>>,
     ) -> GenericParams {
         let mut generics =
-            GenericParams { def, params: Vec::new(), parent_params, where_predicates: Vec::new() };
+            GenericParams { params: Vec::new(), parent_params, where_predicates: Vec::new() };
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
