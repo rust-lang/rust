@@ -1,21 +1,17 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
-use crate::cstore::{self, CStore, MetadataBlob};
-use crate::locator::{self, CratePaths};
-use crate::rmeta::{CrateRoot, CrateDep};
-use rustc_data_structures::sync::{Lock, Once, AtomicCell};
+use crate::cstore::CStore;
+use crate::locator::{CrateLocator, CratePaths};
+use crate::rmeta::{CrateMetadata, CrateNumMap, CrateRoot, CrateDep, MetadataBlob};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
-use rustc::dep_graph::DepNodeIndex;
 use rustc::middle::cstore::DepKind;
-use rustc::mir::interpret::AllocDecodingState;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
-use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -50,9 +46,9 @@ pub struct CrateLoader<'a> {
 
 fn dump_crates(cstore: &CStore) {
     info!("resolved crates:");
-    cstore.iter_crate_data(|_, data| {
+    cstore.iter_crate_data(|cnum, data| {
         info!("  name: {}", data.root.name);
-        info!("  cnum: {}", data.cnum);
+        info!("  cnum: {}", cnum);
         info!("  hash: {}", data.root.hash);
         info!("  reqd: {:?}", *data.dep_kind.lock());
         let CrateSource { dylib, rlib, rmeta } = data.source.clone();
@@ -68,13 +64,13 @@ enum LoadResult {
 }
 
 enum LoadError<'a> {
-    LocatorError(locator::Context<'a>),
+    LocatorError(CrateLocator<'a>),
 }
 
 impl<'a> LoadError<'a> {
     fn report(self) -> ! {
         match self {
-            LoadError::LocatorError(locate_ctxt) => locate_ctxt.report_errs(),
+            LoadError::LocatorError(locator) => locator.report_errs(),
         }
     }
 }
@@ -145,7 +141,7 @@ impl<'a> CrateLoader<'a> {
             let prev_kind = source.dylib.as_ref().or(source.rlib.as_ref())
                                   .or(source.rmeta.as_ref())
                                   .expect("No sources for crate").1;
-            if ret.is_none() && (prev_kind == kind || prev_kind == PathKind::All) {
+            if kind.matches(prev_kind) {
                 ret = Some(cnum);
             }
         });
@@ -211,15 +207,13 @@ impl<'a> CrateLoader<'a> {
         let root = if let Some(root) = root {
             root
         } else {
-            crate_paths = CratePaths { name: crate_root.name, source: source.clone() };
+            crate_paths = CratePaths::new(crate_root.name, source.clone());
             &crate_paths
         };
 
         let cnum_map = self.resolve_crate_deps(root, &crate_root, &metadata, cnum, span, dep_kind);
 
-        let dependencies: Vec<CrateNum> = cnum_map.iter().cloned().collect();
-
-        let raw_proc_macros =  crate_root.proc_macro_data.map(|_| {
+        let raw_proc_macros = if crate_root.is_proc_macro_crate() {
             let temp_root;
             let (dlsym_source, dlsym_root) = match &host_lib {
                 Some(host_lib) =>
@@ -227,55 +221,38 @@ impl<'a> CrateLoader<'a> {
                 None => (&source, &crate_root),
             };
             let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span)
-        });
+            Some(self.dlsym_proc_macros(&dlsym_dylib.0, dlsym_root.disambiguator, span))
+        } else {
+            None
+        };
 
-        let interpret_alloc_index: Vec<u32> = crate_root.interpret_alloc_index
-                                                        .decode(&metadata)
-                                                        .collect();
-        let trait_impls = crate_root
-            .impls
-            .decode((&metadata, self.sess))
-            .map(|trait_impls| (trait_impls.trait_id, trait_impls.impls))
-            .collect();
-
-        let def_path_table = record_time(&self.sess.perf_stats.decode_def_path_tables_time, || {
-            crate_root.def_path_table.decode((&metadata, self.sess))
-        });
-
-        self.cstore.set_crate_data(cnum, cstore::CrateMetadata {
-            extern_crate: Lock::new(None),
-            def_path_table,
-            trait_impls,
-            root: crate_root,
-            host_hash,
-            blob: metadata,
-            cnum_map,
+        self.cstore.set_crate_data(cnum, CrateMetadata::new(
+            self.sess,
+            metadata,
+            crate_root,
+            raw_proc_macros,
             cnum,
-            dependencies: Lock::new(dependencies),
-            source_map_import_info: Once::new(),
-            alloc_decoding_state: AllocDecodingState::new(interpret_alloc_index),
-            dep_kind: Lock::new(dep_kind),
+            cnum_map,
+            dep_kind,
             source,
             private_dep,
-            raw_proc_macros,
-            dep_node_index: AtomicCell::new(DepNodeIndex::INVALID),
-        });
+            host_hash,
+        ));
 
         cnum
     }
 
     fn load_proc_macro<'b>(
         &self,
-        locate_ctxt: &mut locator::Context<'b>,
+        locator: &mut CrateLocator<'b>,
         path_kind: PathKind,
     ) -> Option<(LoadResult, Option<Library>)>
     where
         'a: 'b,
     {
-        // Use a new locator Context so trying to load a proc macro doesn't affect the error
+        // Use a new crate locator so trying to load a proc macro doesn't affect the error
         // message we emit
-        let mut proc_macro_locator = locate_ctxt.clone();
+        let mut proc_macro_locator = locator.clone();
 
         // Try to load a proc macro
         proc_macro_locator.is_proc_macro = Some(true);
@@ -287,10 +264,10 @@ impl<'a> CrateLoader<'a> {
                 LoadResult::Previous(cnum) => return Some((LoadResult::Previous(cnum), None)),
                 LoadResult::Loaded(library) => Some(LoadResult::Loaded(library))
             };
-            locate_ctxt.hash = locate_ctxt.host_hash;
-            // Use the locate_ctxt when looking for the host proc macro crate, as that is required
+            locator.hash = locator.host_hash;
+            // Use the locator when looking for the host proc macro crate, as that is required
             // so we want it to affect the error message
-            (locate_ctxt, result)
+            (locator, result)
         } else {
             (&mut proc_macro_locator, None)
         };
@@ -350,37 +327,30 @@ impl<'a> CrateLoader<'a> {
             (LoadResult::Previous(cnum), None)
         } else {
             info!("falling back to a load");
-            let mut locate_ctxt = locator::Context {
-                sess: self.sess,
-                span,
-                crate_name: name,
+            let mut locator = CrateLocator::new(
+                self.sess,
+                self.metadata_loader,
+                name,
                 hash,
                 host_hash,
                 extra_filename,
-                filesearch: self.sess.target_filesearch(path_kind),
-                target: &self.sess.target.target,
-                triple: self.sess.opts.target_triple.clone(),
+                false, // is_host
+                path_kind,
+                span,
                 root,
-                rejected_via_hash: vec![],
-                rejected_via_triple: vec![],
-                rejected_via_kind: vec![],
-                rejected_via_version: vec![],
-                rejected_via_filename: vec![],
-                should_match_name: true,
-                is_proc_macro: Some(false),
-                metadata_loader: self.metadata_loader,
-            };
+                Some(false), // is_proc_macro
+            );
 
-            self.load(&mut locate_ctxt).map(|r| (r, None)).or_else(|| {
+            self.load(&mut locator).map(|r| (r, None)).or_else(|| {
                 dep_kind = DepKind::UnexportedMacrosOnly;
-                self.load_proc_macro(&mut locate_ctxt, path_kind)
-            }).ok_or_else(move || LoadError::LocatorError(locate_ctxt))?
+                self.load_proc_macro(&mut locator, path_kind)
+            }).ok_or_else(move || LoadError::LocatorError(locator))?
         };
 
         match result {
             (LoadResult::Previous(cnum), None) => {
                 let data = self.cstore.get_crate_data(cnum);
-                if data.root.proc_macro_data.is_some() {
+                if data.root.is_proc_macro_crate() {
                     dep_kind = DepKind::UnexportedMacrosOnly;
                 }
                 data.dep_kind.with_lock(|data_dep_kind| {
@@ -395,8 +365,8 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn load(&self, locate_ctxt: &mut locator::Context<'_>) -> Option<LoadResult> {
-        let library = locate_ctxt.maybe_load_library_crate()?;
+    fn load(&self, locator: &mut CrateLocator<'_>) -> Option<LoadResult> {
+        let library = locator.maybe_load_library_crate()?;
 
         // In the case that we're loading a crate, but not matching
         // against a hash, we could load a crate which has the same hash
@@ -407,11 +377,11 @@ impl<'a> CrateLoader<'a> {
         // don't want to match a host crate against an equivalent target one
         // already loaded.
         let root = library.metadata.get_root();
-        if locate_ctxt.triple == self.sess.opts.target_triple {
+        if locator.triple == self.sess.opts.target_triple {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
                 if data.root.name == root.name && root.hash == data.root.hash {
-                    assert!(locate_ctxt.hash.is_none());
+                    assert!(locator.hash.is_none());
                     info!("load success, going to previous cnum: {}", cnum);
                     result = LoadResult::Previous(cnum);
                 }
@@ -471,16 +441,16 @@ impl<'a> CrateLoader<'a> {
                           krate: CrateNum,
                           span: Span,
                           dep_kind: DepKind)
-                          -> cstore::CrateNumMap {
+                          -> CrateNumMap {
         debug!("resolving deps of external crate");
-        if crate_root.proc_macro_data.is_some() {
-            return cstore::CrateNumMap::new();
+        if crate_root.is_proc_macro_crate() {
+            return CrateNumMap::new();
         }
 
         // The map from crate numbers in the crate we're resolving to local crate numbers.
         // We map 0 and all other holes in the map to our parent crate. The "additional"
         // self-dependencies should be harmless.
-        std::iter::once(krate).chain(crate_root.crate_deps.decode(metadata).map(|dep| {
+        std::iter::once(krate).chain(crate_root.decode_crate_deps(metadata).map(|dep| {
             info!("resolving dep crate {} hash: `{}` extra filename: `{}`", dep.name, dep.hash,
                   dep.extra_filename);
             if dep.kind == DepKind::UnexportedMacrosOnly {
@@ -824,7 +794,7 @@ impl<'a> CrateLoader<'a> {
     fn inject_dependency_if(&self,
                             krate: CrateNum,
                             what: &str,
-                            needs_dep: &dyn Fn(&cstore::CrateMetadata) -> bool) {
+                            needs_dep: &dyn Fn(&CrateMetadata) -> bool) {
         // don't perform this validation if the session has errors, as one of
         // those errors may indicate a circular dependency which could cause
         // this to stack overflow.

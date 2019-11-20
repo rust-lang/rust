@@ -212,9 +212,8 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::locator or metadata::creader for all the juicy details!
 
-use crate::cstore::MetadataBlob;
 use crate::creader::Library;
-use crate::rmeta::{METADATA_HEADER, rustc_version};
+use crate::rmeta::{METADATA_HEADER, rustc_version, MetadataBlob};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::svh::Svh;
@@ -249,37 +248,47 @@ use log::{debug, info, warn};
 use rustc_error_codes::*;
 
 #[derive(Clone)]
-crate struct CrateMismatch {
+struct CrateMismatch {
     path: PathBuf,
     got: String,
 }
 
 #[derive(Clone)]
-crate struct Context<'a> {
-    pub sess: &'a Session,
-    pub span: Span,
-    pub crate_name: Symbol,
+crate struct CrateLocator<'a> {
+    // Immutable per-session configuration.
+    sess: &'a Session,
+    metadata_loader: &'a dyn MetadataLoader,
+
+    // Immutable per-search configuration.
+    crate_name: Symbol,
+    exact_paths: Vec<PathBuf>,
     pub hash: Option<&'a Svh>,
     pub host_hash: Option<&'a Svh>,
-    pub extra_filename: Option<&'a str>,
-    // points to either self.sess.target.target or self.sess.host, must match triple
+    extra_filename: Option<&'a str>,
     pub target: &'a Target,
     pub triple: TargetTriple,
     pub filesearch: FileSearch<'a>,
-    pub root: Option<&'a CratePaths>,
-    pub rejected_via_hash: Vec<CrateMismatch>,
-    pub rejected_via_triple: Vec<CrateMismatch>,
-    pub rejected_via_kind: Vec<CrateMismatch>,
-    pub rejected_via_version: Vec<CrateMismatch>,
-    pub rejected_via_filename: Vec<CrateMismatch>,
-    pub should_match_name: bool,
+    span: Span,
+    root: Option<&'a CratePaths>,
     pub is_proc_macro: Option<bool>,
-    pub metadata_loader: &'a dyn MetadataLoader,
+
+    // Mutable in-progress state or output.
+    rejected_via_hash: Vec<CrateMismatch>,
+    rejected_via_triple: Vec<CrateMismatch>,
+    rejected_via_kind: Vec<CrateMismatch>,
+    rejected_via_version: Vec<CrateMismatch>,
+    rejected_via_filename: Vec<CrateMismatch>,
 }
 
 crate struct CratePaths {
-    pub name: Symbol,
-    pub source: CrateSource,
+    name: Symbol,
+    source: CrateSource,
+}
+
+impl CratePaths {
+    crate fn new(name: Symbol, source: CrateSource) -> CratePaths {
+        CratePaths { name, source }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -299,7 +308,58 @@ impl fmt::Display for CrateFlavor {
     }
 }
 
-impl<'a> Context<'a> {
+impl<'a> CrateLocator<'a> {
+    crate fn new(
+        sess: &'a Session,
+        metadata_loader: &'a dyn MetadataLoader,
+        crate_name: Symbol,
+        hash: Option<&'a Svh>,
+        host_hash: Option<&'a Svh>,
+        extra_filename: Option<&'a str>,
+        is_host: bool,
+        path_kind: PathKind,
+        span: Span,
+        root: Option<&'a CratePaths>,
+        is_proc_macro: Option<bool>,
+    ) -> CrateLocator<'a> {
+        CrateLocator {
+            sess,
+            metadata_loader,
+            crate_name,
+            exact_paths: if hash.is_none() {
+                sess.opts.externs.get(&crate_name.as_str()).into_iter()
+                    .flat_map(|entry| entry.locations.iter())
+                    .filter_map(|location| location.clone().map(PathBuf::from)).collect()
+            } else {
+                // SVH being specified means this is a transitive dependency,
+                // so `--extern` options do not apply.
+                Vec::new()
+            },
+            hash,
+            host_hash,
+            extra_filename,
+            target: if is_host { &sess.host } else { &sess.target.target },
+            triple: if is_host {
+                TargetTriple::from_triple(config::host_triple())
+            } else {
+                sess.opts.target_triple.clone()
+            },
+            filesearch: if is_host {
+                sess.host_filesearch(path_kind)
+            } else {
+                sess.target_filesearch(path_kind)
+            },
+            span,
+            root,
+            is_proc_macro,
+            rejected_via_hash: Vec::new(),
+            rejected_via_triple: Vec::new(),
+            rejected_via_kind: Vec::new(),
+            rejected_via_version: Vec::new(),
+            rejected_via_filename: Vec::new(),
+        }
+    }
+
     crate fn reset(&mut self) {
         self.rejected_via_hash.clear();
         self.rejected_via_triple.clear();
@@ -309,6 +369,9 @@ impl<'a> Context<'a> {
     }
 
     crate fn maybe_load_library_crate(&mut self) -> Option<Library> {
+        if !self.exact_paths.is_empty() {
+            return self.find_commandline_library();
+        }
         let mut seen_paths = FxHashSet::default();
         match self.extra_filename {
             Some(s) => self.find_library_crate(s, &mut seen_paths)
@@ -434,21 +497,6 @@ impl<'a> Context<'a> {
                           extra_prefix: &str,
                           seen_paths: &mut FxHashSet<PathBuf>)
                           -> Option<Library> {
-        // If an SVH is specified, then this is a transitive dependency that
-        // must be loaded via -L plus some filtering.
-        if self.hash.is_none() {
-            self.should_match_name = false;
-            if let Some(entry) = self.sess.opts.externs.get(&self.crate_name.as_str()) {
-                // Only use `--extern crate_name=path` here, not `--extern crate_name`.
-                if entry.locations.iter().any(|l| l.is_some()) {
-                    return self.find_commandline_library(
-                        entry.locations.iter().filter_map(|l| l.as_ref()),
-                    );
-                }
-            }
-            self.should_match_name = true;
-        }
-
         let dypair = self.dylibname();
         let staticpair = self.staticlibname();
 
@@ -716,15 +764,16 @@ impl<'a> Context<'a> {
         }
 
         let root = metadata.get_root();
-        if let Some(is_proc_macro) = self.is_proc_macro {
-            if root.proc_macro_data.is_some() != is_proc_macro {
+        if let Some(expected_is_proc_macro) = self.is_proc_macro {
+            let is_proc_macro = root.is_proc_macro_crate();
+            if is_proc_macro != expected_is_proc_macro {
                 info!("Rejecting via proc macro: expected {} got {}",
-                      is_proc_macro, root.proc_macro_data.is_some());
+                      expected_is_proc_macro, is_proc_macro);
                 return None;
             }
         }
 
-        if self.should_match_name {
+        if self.exact_paths.is_empty() {
             if self.crate_name != root.name {
                 info!("Rejecting via crate name");
                 return None;
@@ -771,9 +820,7 @@ impl<'a> Context<'a> {
         (t.options.staticlib_prefix.clone(), t.options.staticlib_suffix.clone())
     }
 
-    fn find_commandline_library<'b, LOCS>(&mut self, locs: LOCS) -> Option<Library>
-        where LOCS: Iterator<Item = &'b String>
-    {
+    fn find_commandline_library(&mut self) -> Option<Library> {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
@@ -783,10 +830,12 @@ impl<'a> Context<'a> {
         let mut rmetas = FxHashMap::default();
         let mut dylibs = FxHashMap::default();
         {
-            let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
+                let crate_name = self.crate_name;
+                let rejected_via_filename = &mut self.rejected_via_filename;
+                let locs = self.exact_paths.iter().filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
-                                      self.crate_name,
+                                      crate_name,
                                       loc.display()));
                     return false;
                 }
@@ -794,7 +843,7 @@ impl<'a> Context<'a> {
                     Some(file) => file,
                     None => {
                         sess.err(&format!("extern location for {} is not a file: {}",
-                                          self.crate_name,
+                                          crate_name,
                                           loc.display()));
                         return false;
                     }
@@ -809,8 +858,8 @@ impl<'a> Context<'a> {
                     }
                 }
 
-                self.rejected_via_filename.push(CrateMismatch {
-                    path: loc.clone(),
+                rejected_via_filename.push(CrateMismatch {
+                    path: (*loc).clone(),
                     got: String::new(),
                 });
 
@@ -907,7 +956,7 @@ fn get_metadata_section_imp(target: &Target,
             rustc_erase_owner!(OwningRef::new(StableDerefMmap(mmap)).map_owner_box())
         }
     };
-    let blob = MetadataBlob(raw_bytes);
+    let blob = MetadataBlob::new(raw_bytes);
     if blob.is_compatible() {
         Ok(blob)
     } else {
@@ -927,28 +976,21 @@ pub fn find_plugin_registrar(
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let is_cross = target_triple != host_triple;
     let mut target_only = false;
-    let mut locate_ctxt = Context {
+    let mut locator = CrateLocator::new(
         sess,
-        span,
-        crate_name: name,
-        hash: None,
-        host_hash: None,
-        extra_filename: None,
-        filesearch: sess.host_filesearch(PathKind::Crate),
-        target: &sess.host,
-        triple: host_triple,
-        root: None,
-        rejected_via_hash: vec![],
-        rejected_via_triple: vec![],
-        rejected_via_kind: vec![],
-        rejected_via_version: vec![],
-        rejected_via_filename: vec![],
-        should_match_name: true,
-        is_proc_macro: None,
         metadata_loader,
-    };
+        name,
+        None, // hash
+        None, // host_hash
+        None, // extra_filename
+        true, // is_host
+        PathKind::Crate,
+        span,
+        None, // root
+        None, // is_proc_macro
+    );
 
-    let library = locate_ctxt.maybe_load_library_crate().or_else(|| {
+    let library = locator.maybe_load_library_crate().or_else(|| {
         if !is_cross {
             return None
         }
@@ -956,15 +998,15 @@ pub fn find_plugin_registrar(
         // try to load a plugin registrar function,
         target_only = true;
 
-        locate_ctxt.target = &sess.target.target;
-        locate_ctxt.triple = target_triple;
-        locate_ctxt.filesearch = sess.target_filesearch(PathKind::Crate);
+        locator.target = &sess.target.target;
+        locator.triple = target_triple;
+        locator.filesearch = sess.target_filesearch(PathKind::Crate);
 
-        locate_ctxt.maybe_load_library_crate()
+        locator.maybe_load_library_crate()
     });
     let library = match library {
         Some(l) => l,
-        None => locate_ctxt.report_errs(),
+        None => locator.report_errs(),
     };
 
     if target_only {
