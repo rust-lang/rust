@@ -55,6 +55,20 @@ fn check_cow_add_str() {
 }
 
 #[test]
+fn check_cow_add_char() {
+    let test_char = '👋';
+
+    let borrowed = Cow::Borrowed("Hello, World! ");
+
+    let owned: Cow<'_, str> = Cow::Owned(String::from("Hi, World! "));
+
+    assert_eq!("Hello, World! 👋", borrowed.clone() + '👋');
+
+    assert_eq!("Hi, World! 👋", owned.clone() + '👋');
+}
+
+
+#[test]
 fn check_cow_add_assign_cow() {
     let mut borrowed1 = Cow::Borrowed("Hello, ");
     let borrowed2 = Cow::Borrowed("World!");
@@ -138,4 +152,19 @@ fn check_cow_clone_from() {
     let c2: Cow<'_, str> = Cow::Owned(s);
     c1.clone_from(&c2);
     assert!(c1.into_owned().capacity() >= 25);
+}
+
+#[test]
+fn check_cow_add_assign_char() {
+    let test_char = '👋';
+
+    let mut borrowed = Cow::Borrowed("Hello, World! ");
+
+    let mut owned: Cow<'_, str> = Cow::Owned(String::from("Hi, World! "));
+
+    owned += test_char;
+    borrowed += test_char;
+
+    assert_eq!(format!("Hi, World! {}", test_char), owned);
+    assert_eq!(format!("Hello, World! {}", test_char), borrowed);
 }

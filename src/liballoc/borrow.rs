@@ -2,7 +2,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::cmp::Ordering;
+use core::cmp::{Ordering, max};
 use core::hash::{Hash, Hasher};
 use core::ops::{Add, AddAssign, Deref};
 
@@ -444,6 +444,17 @@ impl<'a> Add<Cow<'a, str>> for Cow<'a, str> {
     }
 }
 
+#[stable(feature = "cow_str_add_char", since = "1.41.0")]
+impl<'a> Add<char> for Cow<'a, str> {
+    type Output = Cow<'a, str>;
+
+    #[inline]
+    fn add(mut self, rhs: char) -> Self::Output {
+        self += rhs;
+        self
+    }
+}
+
 #[stable(feature = "cow_add", since = "1.14.0")]
 impl<'a> AddAssign<&'a str> for Cow<'a, str> {
     fn add_assign(&mut self, rhs: &'a str) {
@@ -480,17 +491,17 @@ impl<'a> AddAssign<Cow<'a, str>> for Cow<'a, str> {
     }
 }
 
-impl<'a> AddAssign<char> for Cow<'a, str> {
+#[stable(feature = "cow_str_add_assign_char", since = "1.41.0")]
+impl AddAssign<char> for Cow<'_, str> {
     fn add_assign(&mut self, rhs: char) {
-        if self.is_empty() {
-            *self = rhs.to_string()
-        } else {
-            if let Cow::Borrowed(lhs) = *self {
-                let mut s = String::with_capacity(lhs.len() + rhs.len_utf8());
-                s.push_str(lhs);
-                *self = Cow::Owned(s);
-            }
-            self.to_mut().push(rhs);
+        if let Cow::Borrowed(lhs) = *self {
+            let base_capacity = lhs.len() + rhs.len_utf8();
+            //Attempt amortized memory allocation
+            let new_optimal_size = max(base_capacity * 2, base_capacity);
+            let mut s = String::with_capacity(new_optimal_size);
+            s.push_str(lhs);
+            *self = Cow::Owned(s);
         }
+        self.to_mut().push(rhs);
     }
 }
