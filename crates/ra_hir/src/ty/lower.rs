@@ -22,7 +22,7 @@ use crate::{
     db::HirDatabase,
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
-    resolve::{Resolver, TypeNs},
+    resolve::{HasResolver, Resolver, TypeNs},
     ty::{
         primitive::{FloatTy, IntTy, Uncertain},
         Adt,

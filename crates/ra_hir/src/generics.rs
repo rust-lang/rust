@@ -2,8 +2,8 @@
 use std::sync::Arc;
 
 use crate::{
-    db::{DefDatabase, HirDatabase},
-    Adt, Const, Container, Enum, EnumVariant, Function, ImplBlock, Struct, Trait, TypeAlias, Union,
+    db::DefDatabase, Adt, Const, Container, Enum, EnumVariant, Function, ImplBlock, Struct, Trait,
+    TypeAlias, Union,
 };
 
 pub use hir_def::generics::{GenericParam, GenericParams, WherePredicate};
@@ -30,20 +30,6 @@ impl_froms!(
     EnumVariant,
     Const
 );
-
-impl GenericDef {
-    pub(crate) fn resolver(&self, db: &impl HirDatabase) -> crate::Resolver {
-        match self {
-            GenericDef::Function(inner) => inner.resolver(db),
-            GenericDef::Adt(adt) => adt.resolver(db),
-            GenericDef::Trait(inner) => inner.resolver(db),
-            GenericDef::TypeAlias(inner) => inner.resolver(db),
-            GenericDef::ImplBlock(inner) => inner.resolver(db),
-            GenericDef::EnumVariant(inner) => inner.parent_enum(db).resolver(db),
-            GenericDef::Const(inner) => inner.resolver(db),
-        }
-    }
-}
 
 impl From<Container> for GenericDef {
     fn from(c: Container) -> Self {

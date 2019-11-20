@@ -11,6 +11,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::HirDatabase,
     diagnostics::{MissingFields, MissingOkInTailExpr},
+    resolve::HasResolver,
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
     Adt, DefWithBody, Function, HasBody, Name, Path, Resolver,
 };

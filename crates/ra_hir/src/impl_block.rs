@@ -5,7 +5,7 @@ use ra_syntax::ast::{self};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    resolve::Resolver,
+    resolve::HasResolver,
     ty::Ty,
     AssocItem, Crate, HasSource, ImplBlock, Module, Source, TraitRef,
 };
@@ -49,13 +49,5 @@ impl ImplBlock {
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {
         Crate { crate_id: self.module(db).id.krate }
-    }
-
-    pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        let r = self.module(db).resolver(db);
-        // add generic params, if present
-        let r = r.push_generic_params_scope(db, self.into());
-        let r = r.push_impl_block_scope(self);
-        r
     }
 }
