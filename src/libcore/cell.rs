@@ -897,7 +897,7 @@ impl<T: ?Sized> RefCell<T> {
     #[inline]
     pub fn try_borrow_mut(&self) -> Result<RefMut<'_, T>, BorrowMutError> {
         match BorrowRefMut::new(&self.borrow) {
-            // SAFETY: `BorrowRef` gurantees unique access
+            // SAFETY: `BorrowRef` guarantees unique access
             Some(b) => Ok(RefMut { value: unsafe { &mut *self.value.get() }, borrow: b }),
             None => Err(BorrowMutError { _private: () }),
         }
