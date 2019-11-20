@@ -6,6 +6,7 @@ use crate::spec::Target;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_macros::HashStable_Generic;
 use syntax_pos::Span;
 
 pub mod call;
@@ -242,6 +243,7 @@ pub enum Endian {
 
 /// Size of a type in bytes.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub struct Size {
     raw: u64
 }
@@ -365,6 +367,7 @@ impl AddAssign for Size {
 
 /// Alignment of a type in bytes (always a power of two).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub struct Align {
     pow2: u8,
 }
@@ -423,6 +426,7 @@ impl Align {
 
 /// A pair of aligments, ABI-mandated and preferred.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub struct AbiAndPrefAlign {
     pub abi: Align,
     pub pref: Align,
@@ -452,7 +456,7 @@ impl AbiAndPrefAlign {
 }
 
 /// Integers, also used for enum discriminants.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, HashStable_Generic)]
 pub enum Integer {
     I8,
     I16,
@@ -533,7 +537,7 @@ impl Integer {
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
     ///
@@ -588,6 +592,7 @@ impl Primitive {
 
 /// Information about one scalar component of a Rust type.
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(HashStable_Generic)]
 pub struct Scalar {
     pub value: Primitive,
 
@@ -636,7 +641,7 @@ impl Scalar {
 }
 
 /// Describes how the fields of a type are located in memory.
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum FieldPlacement {
     /// All fields start at no offset. The `usize` is the field count.
     ///
@@ -752,7 +757,7 @@ impl FieldPlacement {
 
 /// Describes how values of the type are passed by target ABIs,
 /// in terms of categories of C types there are ABI rules for.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Abi {
     Uninhabited,
     Scalar(Scalar),
@@ -800,10 +805,12 @@ impl Abi {
 }
 
 rustc_index::newtype_index! {
-    pub struct VariantIdx { .. }
+    pub struct VariantIdx {
+        derive [HashStable_Generic]
+    }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single {
@@ -821,7 +828,7 @@ pub enum Variants {
     },
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum DiscriminantKind {
     /// Integer tag holding the discriminant value itself.
     Tag,
@@ -842,7 +849,7 @@ pub enum DiscriminantKind {
     },
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct Niche {
     pub offset: Size,
     pub scalar: Scalar,
@@ -906,7 +913,7 @@ impl Niche {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Debug)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct LayoutDetails {
     pub variants: Variants,
     pub fields: FieldPlacement,
