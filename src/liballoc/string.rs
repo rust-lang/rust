@@ -1983,6 +1983,7 @@ impl Add<&str> for String {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 /// Implements the `+` operator for concatenating a string and a char together.
 ///
 /// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
@@ -2028,6 +2029,8 @@ impl Add<char> for String {
     }
 }
 
+=======
+>>>>>>> parent of 342277f3a38... Ammended further to accomodate `AddAssign<char>` for `String` and `Cow<str>`.
 =======
 >>>>>>> parent of 342277f3a38... Ammended further to accomodate `AddAssign<char>` for `String` and `Cow<str>`.
 /// Implements the `+=` operator for appending to a `String`.
