@@ -12,8 +12,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
 
-use syntax;
-use syntax::ast;
+use syntax::ast::CrateConfig;
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::symbol::{sym, Symbol};
@@ -1535,7 +1534,7 @@ pub const fn default_lib_output() -> CrateType {
     CrateType::Rlib
 }
 
-pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
+pub fn default_configuration(sess: &Session) -> CrateConfig {
     let end = &sess.target.target.target_endian;
     let arch = &sess.target.target.arch;
     let wordsz = &sess.target.target.target_pointer_width;
@@ -1607,13 +1606,13 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
 /// Converts the crate `cfg!` configuration from `String` to `Symbol`.
 /// `rustc_interface::interface::Config` accepts this in the compiler configuration,
 /// but the symbol interner is not yet set up then, so we must convert it later.
-pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> ast::CrateConfig {
+pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig {
     cfg.into_iter()
        .map(|(a, b)| (Symbol::intern(&a), b.map(|b| Symbol::intern(&b))))
        .collect()
 }
 
-pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> ast::CrateConfig {
+pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
     let default_cfg = default_configuration(sess);
