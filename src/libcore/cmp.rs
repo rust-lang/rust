@@ -135,10 +135,15 @@ use self::Ordering::*;
 /// By changing `impl PartialEq for Book` to `impl PartialEq<BookFormat> for Book`,
 /// we allow `BookFormat`s to be compared with `Book`s.
 ///
-/// You can also combine these implementations to let the `==` operator work with
-/// two different types:
+/// A comparison like the one above, which ignores some fields of the struct,
+/// can be dangerous. It can easily lead to an unintended violation of the
+/// requirements for a partial equivalence relation. For example, if we kept
+/// the above implementation of `PartialEq<Book>` for `BookFormat` and added an
+/// implementation of `PartialEq<Book>` for `Book` (either via a `#[derive]` or
+/// via the manual implementation from the first example) then the result would
+/// violate transitivity:
 ///
-/// ```
+/// ```should_panic
 /// #[derive(PartialEq)]
 /// enum BookFormat {
 ///     Paperback,
@@ -146,6 +151,7 @@ use self::Ordering::*;
 ///     Ebook,
 /// }
 ///
+/// #[derive(PartialEq)]
 /// struct Book {
 ///     isbn: i32,
 ///     format: BookFormat,
@@ -163,18 +169,16 @@ use self::Ordering::*;
 ///     }
 /// }
 ///
-/// impl PartialEq for Book {
-///     fn eq(&self, other: &Book) -> bool {
-///         self.isbn == other.isbn
-///     }
+/// fn main() {
+///     let b1 = Book { isbn: 1, format: BookFormat::Paperback };
+///     let b2 = Book { isbn: 2, format: BookFormat::Paperback };
+///
+///     assert!(b1 == BookFormat::Paperback);
+///     assert!(BookFormat::Paperback == b2);
+///
+///     // The following should hold by transitivity but doesn't.
+///     assert!(b1 == b2); // <-- PANICS
 /// }
-///
-/// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
-/// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
-///
-/// assert!(b1 == BookFormat::Paperback);
-/// assert!(BookFormat::Ebook != b1);
-/// assert!(b1 == b2);
 /// ```
 ///
 /// # Examples
