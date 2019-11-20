@@ -32,7 +32,7 @@ pub struct MiriConfig {
 /// Returns a freshly created `InterpCx`, along with an `MPlaceTy` representing
 /// the location where the return value of the `start` lang item will be
 /// written to.
-/// Used by `priroda` and `miri
+/// Public because this is also used by `priroda`.
 pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     main_id: DefId,
@@ -178,7 +178,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
 /// Evaluates the main function specified by `main_id`.
 /// Returns `Some(return_code)` if program executed completed.
-/// Returns `None` if an evaluation error occured
+/// Returns `None` if an evaluation error occured.
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
     let (mut ecx, ret_ptr) = match create_ecx(tcx, main_id, config) {
         Ok(v) => v,
@@ -209,7 +209,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
             if !ignore_leaks && leaks != 0 {
                 tcx.sess.err("the evaluated program leaked memory");
                 // Ignore the provided return code - let the reported error
-                // determine the return code
+                // determine the return code.
                 return None;
             }
             return Some(return_code)
@@ -260,7 +260,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     trace!("    local {}: {:?}", i, local.value);
                 }
             }
-            // Let the reported error determine the return code
+            // Let the reported error determine the return code.
             return None;
         }
     }
