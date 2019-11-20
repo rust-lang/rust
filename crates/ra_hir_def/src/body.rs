@@ -155,6 +155,7 @@ impl Body {
                 (src.file_id, f.module(db), src.value.body().map(ast::Expr::from))
             }
             DefWithBodyId::ConstId(c) => {
+                let c = c.lookup(db);
                 let src = c.source(db);
                 (src.file_id, c.module(db), src.value.body())
             }

@@ -3,14 +3,15 @@
 
 mod autoderef;
 pub(crate) mod primitive;
-#[cfg(test)]
-mod tests;
 pub(crate) mod traits;
 pub(crate) mod method_resolution;
 mod op;
 mod lower;
 mod infer;
 pub(crate) mod display;
+
+#[cfg(test)]
+mod tests;
 
 use std::ops::Deref;
 use std::sync::Arc;

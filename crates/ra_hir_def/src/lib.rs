@@ -201,7 +201,7 @@ impl_intern_key!(FunctionId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionLoc {
-    pub container: FunctionContainerId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::FnDef>,
 }
 
@@ -217,13 +217,6 @@ impl Lookup for FunctionId {
     fn lookup(&self, db: &impl db::DefDatabase2) -> FunctionLoc {
         db.lookup_intern_function(*self)
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FunctionContainerId {
-    ModuleId(ModuleId),
-    ImplId(ImplId),
-    TraitId(TraitId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -296,12 +289,23 @@ impl_arena_id!(LocalStructFieldId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
 impl_intern_key!(ConstId);
-impl AstItemDef<ast::ConstDef> for ConstId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::ConstDef>) -> Self {
-        db.intern_const(loc)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstLoc {
+    pub container: ContainerId,
+    pub ast_id: AstId<ast::ConstDef>,
+}
+
+impl Intern for ConstLoc {
+    type ID = ConstId;
+    fn intern(self, db: &impl db::DefDatabase2) -> ConstId {
+        db.intern_const(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::ConstDef> {
-        db.lookup_intern_const(self)
+}
+
+impl Lookup for ConstId {
+    type Data = ConstLoc;
+    fn lookup(&self, db: &impl db::DefDatabase2) -> ConstLoc {
+        db.lookup_intern_const(*self)
     }
 }
 
@@ -332,12 +336,24 @@ impl AstItemDef<ast::TraitDef> for TraitId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
 impl_intern_key!(TypeAliasId);
-impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::TypeAliasDef>) -> Self {
-        db.intern_type_alias(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeAliasLoc {
+    pub container: ContainerId,
+    pub ast_id: AstId<ast::TypeAliasDef>,
+}
+
+impl Intern for TypeAliasLoc {
+    type ID = TypeAliasId;
+    fn intern(self, db: &impl db::DefDatabase2) -> TypeAliasId {
+        db.intern_type_alias(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::TypeAliasDef> {
-        db.lookup_intern_type_alias(self)
+}
+
+impl Lookup for TypeAliasId {
+    type Data = TypeAliasLoc;
+    fn lookup(&self, db: &impl db::DefDatabase2) -> TypeAliasLoc {
+        db.lookup_intern_type_alias(*self)
     }
 }
 
@@ -370,6 +386,13 @@ macro_rules! impl_froms {
             )*)?
         )*
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ContainerId {
+    ModuleId(ModuleId),
+    ImplId(ImplId),
+    TraitId(TraitId),
 }
 
 /// A Data Type
@@ -469,9 +492,29 @@ pub trait HasModule {
 impl HasModule for FunctionLoc {
     fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
         match self.container {
-            FunctionContainerId::ModuleId(it) => it,
-            FunctionContainerId::ImplId(it) => it.module(db),
-            FunctionContainerId::TraitId(it) => it.module(db),
+            ContainerId::ModuleId(it) => it,
+            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.module(db),
+        }
+    }
+}
+
+impl HasModule for TypeAliasLoc {
+    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+        match self.container {
+            ContainerId::ModuleId(it) => it,
+            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.module(db),
+        }
+    }
+}
+
+impl HasModule for ConstLoc {
+    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+        match self.container {
+            ContainerId::ModuleId(it) => it,
+            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.module(db),
         }
     }
 }
@@ -485,6 +528,24 @@ impl HasSource for FunctionLoc {
     type Value = ast::FnDef;
 
     fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::FnDef> {
+        let node = self.ast_id.to_node(db);
+        Source::new(self.ast_id.file_id(), node)
+    }
+}
+
+impl HasSource for TypeAliasLoc {
+    type Value = ast::TypeAliasDef;
+
+    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::TypeAliasDef> {
+        let node = self.ast_id.to_node(db);
+        Source::new(self.ast_id.file_id(), node)
+    }
+}
+
+impl HasSource for ConstLoc {
+    type Value = ast::ConstDef;
+
+    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::ConstDef> {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }

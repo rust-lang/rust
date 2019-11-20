@@ -9,8 +9,8 @@ use hir_expand::AstId;
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstId, FunctionContainerId,
-    FunctionLoc, ImplId, Intern, LocationCtx, TypeAliasId,
+    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstLoc, ContainerId,
+    FunctionLoc, ImplId, Intern, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,23 +31,32 @@ impl ImplData {
         let negative = src.value.is_negative();
 
         let items = if let Some(item_list) = src.value.item_list() {
-            let ctx = LocationCtx::new(db, id.module(db), src.file_id);
             item_list
                 .impl_items()
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => {
-                        let func_id = FunctionLoc {
-                            container: FunctionContainerId::ImplId(id),
+                        let def = FunctionLoc {
+                            container: ContainerId::ImplId(id),
                             ast_id: AstId::new(src.file_id, items.ast_id(&it)),
                         }
                         .intern(db);
-                        func_id.into()
+                        def.into()
                     }
                     ast::ImplItem::ConstDef(it) => {
-                        ConstId::from_ast_id(ctx, items.ast_id(&it)).into()
+                        let def = ConstLoc {
+                            container: ContainerId::ImplId(id),
+                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
+                        }
+                        .intern(db);
+                        def.into()
                     }
                     ast::ImplItem::TypeAliasDef(it) => {
-                        TypeAliasId::from_ast_id(ctx, items.ast_id(&it)).into()
+                        let def = TypeAliasLoc {
+                            container: ContainerId::ImplId(id),
+                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
+                        }
+                        .intern(db);
+                        def.into()
                     }
                 })
                 .collect()

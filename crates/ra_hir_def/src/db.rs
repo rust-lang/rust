@@ -13,26 +13,26 @@ use crate::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    traits::{TraitData, TraitItemsIndex},
-    DefWithBodyId, EnumId, FunctionLoc, ImplId, ItemLoc, ModuleId, StructOrUnionId, TraitId,
+    traits::TraitData,
+    DefWithBodyId, EnumId, ImplId, ItemLoc, StructOrUnionId, TraitId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
-    fn intern_function(&self, loc: FunctionLoc) -> crate::FunctionId;
+    fn intern_function(&self, loc: crate::FunctionLoc) -> crate::FunctionId;
     #[salsa::interned]
     fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> crate::StructOrUnionId;
     #[salsa::interned]
     fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> crate::EnumId;
     #[salsa::interned]
-    fn intern_const(&self, loc: ItemLoc<ast::ConstDef>) -> crate::ConstId;
+    fn intern_const(&self, loc: crate::ConstLoc) -> crate::ConstId;
     #[salsa::interned]
     fn intern_static(&self, loc: ItemLoc<ast::StaticDef>) -> crate::StaticId;
     #[salsa::interned]
     fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> crate::TraitId;
     #[salsa::interned]
-    fn intern_type_alias(&self, loc: ItemLoc<ast::TypeAliasDef>) -> crate::TypeAliasId;
+    fn intern_type_alias(&self, loc: crate::TypeAliasLoc) -> crate::TypeAliasId;
     #[salsa::interned]
     fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> crate::ImplId;
 }
@@ -62,9 +62,6 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
-
-    #[salsa::invoke(TraitItemsIndex::trait_items_index)]
-    fn trait_items_index(&self, module: ModuleId) -> TraitItemsIndex;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);

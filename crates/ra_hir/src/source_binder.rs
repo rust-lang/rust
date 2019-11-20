@@ -71,7 +71,7 @@ fn def_with_body_from_child_node(
         match_ast! {
             match node {
                 ast::FnDef(def)  => { return Function::from_source(db, child.with_value(def)).map(DefWithBody::from); },
-                ast::ConstDef(def) => { Some(Const { id: ctx.to_def(&def) }.into()) },
+                ast::ConstDef(def) => { return Const::from_source(db, child.with_value(def)).map(DefWithBody::from); },
                 ast::StaticDef(def) => { Some(Static { id: ctx.to_def(&def) }.into()) },
                 _ => { None },
             }
@@ -427,6 +427,11 @@ impl SourceAnalyzer {
     #[cfg(test)]
     pub(crate) fn inference_result(&self) -> Arc<crate::ty::InferenceResult> {
         self.infer.clone().unwrap()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn analyzed_declaration(&self) -> Option<DefWithBody> {
+        self.body_owner
     }
 }
 
