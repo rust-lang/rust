@@ -195,10 +195,8 @@ fn test_add_assign() {
     assert_eq!(s.as_str(), "");
     s += "abc";
     assert_eq!(s.as_str(), "abc");
-    s += "ประเทศไทย中华Việt Nam ";
-    assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam ");
-    s += '👋';
-    assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam 👋")
+    s += "ประเทศไทย中华Việt Nam";
+    assert_eq!(s.as_str(), "abcประเทศไทย中华Việt Nam");
 }
 
 #[test]
@@ -306,10 +304,9 @@ fn test_str_clear() {
 fn test_str_add() {
     let a = String::from("12345");
     let b = a + "2";
-    let b = b + "2 ";
-    let b = b + '👋';
-    assert_eq!(b.len(), 12);
-    assert_eq!(b, "1234522 👋");
+    let b = b + "2";
+    assert_eq!(b.len(), 7);
+    assert_eq!(b, "1234522");
 }
 
 #[test]

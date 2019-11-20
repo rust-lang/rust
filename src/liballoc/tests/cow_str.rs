@@ -139,33 +139,3 @@ fn check_cow_clone_from() {
     c1.clone_from(&c2);
     assert!(c1.into_owned().capacity() >= 25);
 }
-
-#[test]
-fn check_cow_add_assign_char() {
-    let test_char = '👋';
-
-    let mut borrowed = Cow::Borrowed("Hello, World! ");
-    let borrow_empty = Cow::Borrowed("");
-
-    let mut owned: Cow<'_, str> = Cow::Owned(String::from("Hi, World! "));
-    let owned_empty: Cow<'_, str> = Cow::Owned(String::new());
-
-    let mut s = borrow_empty.clone();
-    s += test_char;
-    assert_eq!(test_char.to_string(), s);
-    if let Cow::Owned(_) = s {
-        panic!("Adding empty strings to a borrow should note allocate");
-    }
-    let mut s = owned_empty.clone();
-    s += test_char;
-    assert_eq!(test_char.to_string(), s);
-    if let Cow::Owned(_) = s {
-        panic!("Adding empty strings to a borrow should note allocate");
-    }
-
-    owned += test_char;
-    borrowed += test_char;
-
-    assert_eq!(format!("Hi, World! {}", test_char), owned);
-    assert_eq!(format!("Hello, World! {}", test_char), borrowed);
-}
