@@ -375,6 +375,8 @@ pub struct TestProps {
     // If true, `rustfix` will only apply `MachineApplicable` suggestions.
     pub rustfix_only_machine_applicable: bool,
     pub assembly_output: Option<String>,
+    // If true, the test is expected to ICE
+    pub should_ice: bool,
 }
 
 impl TestProps {
@@ -413,6 +415,7 @@ impl TestProps {
             run_rustfix: false,
             rustfix_only_machine_applicable: false,
             assembly_output: None,
+            should_ice: false,
         }
     }
 
@@ -461,6 +464,10 @@ impl TestProps {
 
             if self.pp_exact.is_none() {
                 self.pp_exact = config.parse_pp_exact(ln, testfile);
+            }
+
+            if !self.should_ice {
+                self.should_ice = config.parse_should_ice(ln);
             }
 
             if !self.build_aux_docs {
@@ -577,6 +584,9 @@ impl TestProps {
                 _ => 1,
             };
         }
+        if self.should_ice {
+            self.failure_status = 101;
+        }
 
         for key in &["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
             if let Ok(val) = env::var(key) {
@@ -687,6 +697,9 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
 }
 
 impl Config {
+    fn parse_should_ice(&self, line: &str) -> bool {
+        self.parse_name_directive(line, "should-ice")
+    }
     fn parse_error_pattern(&self, line: &str) -> Option<String> {
         self.parse_name_value_directive(line, "error-pattern")
     }

@@ -10,7 +10,7 @@ note: lint level defined here
 LL | #![warn(unused_extern_crates)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: compilation successful
+error: fatal error triggered by #[rustc_error]
   --> $DIR/no-macro-use-attr.rs:10:1
    |
 LL | fn main() {}

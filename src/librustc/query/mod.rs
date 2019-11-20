@@ -30,6 +30,12 @@ use syntax_pos::symbol::Symbol;
 // as they will raise an fatal error on query cycles instead.
 rustc_queries! {
     Other {
+        query trigger_delay_span_bug(key: DefId) -> () {
+            desc { "trigger a delay span bug" }
+        }
+    }
+
+    Other {
         /// Records the type of every item.
         query type_of(key: DefId) -> Ty<'tcx> {
             cache_on_disk_if { key.is_local() }

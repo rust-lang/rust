@@ -57,4 +57,4 @@ fn transmute<'a,'b>(x: Type<'a>, y: Type<'b>) -> (Type<'a>, Type<'b>) {
 
 #[rustc_error]
 fn main() { }
-//[ok]~^ ERROR compilation successful
+//[ok]~^ ERROR fatal error triggered by #[rustc_error]

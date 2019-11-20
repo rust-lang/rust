@@ -68,4 +68,4 @@ fn ok3<T>() where for<'a> Parameterized<'a>: Foo<Item=&'a i32> {
 }
 
 #[rustc_error]
-fn main() { } //[ok]~ ERROR compilation successful
+fn main() { } //[ok]~ ERROR fatal error triggered by #[rustc_error]

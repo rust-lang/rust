@@ -21,7 +21,7 @@ fn foo<U, T>(_t: T)
 {}
 
 #[rustc_error]
-fn main() { //[good]~ ERROR compilation successful
+fn main() { //[good]~ ERROR fatal error triggered by #[rustc_error]
     foo(());
     //[bad]~^ ERROR type mismatch
 }

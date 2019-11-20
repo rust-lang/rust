@@ -236,6 +236,7 @@ symbols! {
         default_lib_allocator,
         default_type_parameter_fallback,
         default_type_params,
+        delay_span_bug_from_inside_query,
         deny,
         deprecated,
         deref,

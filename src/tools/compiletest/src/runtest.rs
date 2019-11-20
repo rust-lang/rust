@@ -298,6 +298,12 @@ impl<'test> TestCx<'test> {
     /// Code executed for each revision in turn (or, if there are no
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
+        if self.props.should_ice {
+            if self.config.mode != CompileFail &&
+                self.config.mode != Incremental {
+                self.fatal("cannot use should-ice in a test that is not cfail");
+            }
+        }
         match self.config.mode {
             CompileFail => self.run_cfail_test(),
             RunFail => self.run_rfail_test(),
@@ -383,7 +389,7 @@ impl<'test> TestCx<'test> {
     fn run_cfail_test(&self) {
         let proc_res = self.compile_test();
         self.check_if_test_should_compile(&proc_res);
-        self.check_no_compiler_crash(&proc_res);
+        self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
         let output_to_check = self.get_output(&proc_res);
         let expected_errors = errors::load_errors(&self.testpaths.file, self.revision);
@@ -394,6 +400,12 @@ impl<'test> TestCx<'test> {
             self.check_expected_errors(expected_errors, &proc_res);
         } else {
             self.check_error_patterns(&output_to_check, &proc_res);
+        }
+        if self.props.should_ice {
+            match proc_res.status.code() {
+                Some(101) => (),
+                _ => self.fatal("expected ICE"),
+            }
         }
 
         self.check_forbid_output(&output_to_check, &proc_res);
@@ -1402,9 +1414,11 @@ impl<'test> TestCx<'test> {
         }
     }
 
-    fn check_no_compiler_crash(&self, proc_res: &ProcRes) {
+    fn check_no_compiler_crash(&self, proc_res: &ProcRes, should_ice: bool) {
         match proc_res.status.code() {
-            Some(101) => self.fatal_proc_rec("compiler encountered internal error", proc_res),
+            Some(101) if !should_ice => {
+                self.fatal_proc_rec("compiler encountered internal error", proc_res)
+            }
             None => self.fatal_proc_rec("compiler terminated by signal", proc_res),
             _ => (),
         }
@@ -2518,7 +2532,7 @@ impl<'test> TestCx<'test> {
             self.fatal_proc_rec("compilation failed!", &proc_res);
         }
 
-        self.check_no_compiler_crash(&proc_res);
+        self.check_no_compiler_crash(&proc_res, self.props.should_ice);
 
         const PREFIX: &'static str = "MONO_ITEM ";
         const CGU_MARKER: &'static str = "@@";
@@ -2774,8 +2788,14 @@ impl<'test> TestCx<'test> {
         }
 
         if revision.starts_with("rpass") {
+            if revision_cx.props.should_ice {
+                revision_cx.fatal("can only use should-ice in cfail tests");
+            }
             revision_cx.run_rpass_test();
         } else if revision.starts_with("rfail") {
+            if revision_cx.props.should_ice {
+                revision_cx.fatal("can only use should-ice in cfail tests");
+            }
             revision_cx.run_rfail_test();
         } else if revision.starts_with("cfail") {
             revision_cx.run_cfail_test();
