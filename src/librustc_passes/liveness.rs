@@ -987,8 +987,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         opt_expr.map_or(succ, |expr| self.propagate_through_expr(expr, succ))
     }
 
-    fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
-                              -> LiveNode {
+    fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode) -> LiveNode {
         debug!("propagate_through_expr: {}", self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id));
 
         match expr.kind {
@@ -1074,7 +1073,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 match target {
                     Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
-                    None => span_bug!(expr.span, "break to unknown label")
+                    None => {
+                        // FIXME: This should have been checked earlier. Once this is fixed,
+                        // replace with `delay_span_bug`. (#62480)
+                        self.ir.tcx.sess.struct_span_err(
+                            expr.span,
+                            "`break` to unknown label",
+                        ).emit();
+                        errors::FatalError.raise()
+                    }
                 }
             }
 
