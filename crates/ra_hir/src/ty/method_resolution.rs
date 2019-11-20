@@ -232,8 +232,8 @@ fn iterate_trait_method_candidates<T>(
         // trait, but if we find out it doesn't, we'll skip the rest of the
         // iteration
         let mut known_implemented = false;
-        for &item in data.items() {
-            if !is_valid_candidate(db, name, mode, item) {
+        for &item in data.items.iter() {
+            if !is_valid_candidate(db, name, mode, item.into()) {
                 continue;
             }
             if !known_implemented {
@@ -243,7 +243,7 @@ fn iterate_trait_method_candidates<T>(
                 }
             }
             known_implemented = true;
-            if let Some(result) = callback(&ty.value, item) {
+            if let Some(result) = callback(&ty.value, item.into()) {
                 return Some(result);
             }
         }

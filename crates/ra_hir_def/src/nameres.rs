@@ -165,6 +165,14 @@ impl ModuleScope {
         self.items.iter().chain(BUILTIN_SCOPE.iter())
     }
 
+    pub fn declarations(&self) -> impl Iterator<Item = ModuleDefId> + '_ {
+        self.entries()
+            .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
+            .flat_map(|per_ns| {
+                per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
+            })
+    }
+
     /// Iterate over all module scoped macros
     pub fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.items

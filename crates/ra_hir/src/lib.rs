@@ -33,7 +33,6 @@ pub mod source_binder;
 
 mod ids;
 mod adt;
-mod traits;
 mod type_alias;
 mod ty;
 mod impl_block;
