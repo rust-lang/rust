@@ -382,7 +382,7 @@ fn orphan_check_trait_ref<'tcx>(
         ty: Ty<'tcx>,
         in_crate: InCrate,
     ) -> Vec<Ty<'tcx>> {
-        if fundamental_ty(ty) && ty_is_non_local(tcx, ty, in_crate).is_some() {
+        if fundamental_ty(ty) && ty_is_non_local(ty, in_crate).is_some() {
             ty.walk_shallow().flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate)).collect()
         } else {
             vec![ty]
@@ -396,7 +396,7 @@ fn orphan_check_trait_ref<'tcx>(
         .enumerate()
     {
         debug!("orphan_check_trait_ref: check ty `{:?}`", input_ty);
-        let non_local_tys = ty_is_non_local(tcx, input_ty, in_crate);
+        let non_local_tys = ty_is_non_local(input_ty, in_crate);
         if non_local_tys.is_none() {
             debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
             return Ok(());
@@ -405,7 +405,7 @@ fn orphan_check_trait_ref<'tcx>(
             let local_type = trait_ref
                 .input_types()
                 .flat_map(|ty| uncover_fundamental_ty(tcx, ty, in_crate))
-                .filter(|ty| ty_is_non_local_constructor(tcx, ty, in_crate).is_none())
+                .filter(|ty| ty_is_non_local_constructor(ty, in_crate).is_none())
                 .next();
 
             debug!("orphan_check_trait_ref: uncovered ty local_type: `{:?}`", local_type);
@@ -423,13 +423,13 @@ fn orphan_check_trait_ref<'tcx>(
     Err(OrphanCheckErr::NonLocalInputType(non_local_spans))
 }
 
-fn ty_is_non_local<'t>(tcx: TyCtxt<'t>, ty: Ty<'t>, in_crate: InCrate) -> Option<Vec<Ty<'t>>> {
-    match ty_is_non_local_constructor(tcx, ty, in_crate) {
+fn ty_is_non_local<'t>(ty: Ty<'t>, in_crate: InCrate) -> Option<Vec<Ty<'t>>> {
+    match ty_is_non_local_constructor(ty, in_crate) {
         Some(ty) => if !fundamental_ty(ty) {
             Some(vec![ty])
         } else {
             let tys: Vec<_> = ty.walk_shallow()
-                .filter_map(|t| ty_is_non_local(tcx, t, in_crate))
+                .filter_map(|t| ty_is_non_local(t, in_crate))
                 .flat_map(|i| i)
                 .collect();
             if tys.is_empty() {
@@ -460,7 +460,6 @@ fn def_id_is_local(def_id: DefId, in_crate: InCrate) -> bool {
 }
 
 fn ty_is_non_local_constructor<'tcx>(
-    tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     in_crate: InCrate,
 ) -> Option<Ty<'tcx>> {
@@ -503,14 +502,33 @@ fn ty_is_non_local_constructor<'tcx>(
         } else {
             Some(ty)
         },
-        ty::Opaque(did, _) => {
-            // Check the underlying type that this opaque
-            // type resolves to.
-            // This recursion will eventually terminate,
-            // since we've already managed to successfully
-            // resolve all opaque types by this point
-            let real_ty = tcx.type_of(did);
-            ty_is_non_local_constructor(tcx, real_ty, in_crate)
+        ty::Opaque(..) => {
+            // This merits some explanation.
+            // Normally, opaque types are not involed when performing
+            // coherence checking, since it is illegal to directly
+            // implement a trait on an opaque type. However, we might
+            // end up looking at an opaque type during coherence checking
+            // if an opaque type gets used within another type (e.g. as
+            // a type parameter). This requires us to decide whether or
+            // not an opaque type should be considered 'local' or not.
+            //
+            // We choose to treat all opaque types as non-local, even
+            // those that appear within the same crate. This seems
+            // somewhat suprising at first, but makes sense when
+            // you consider that opaque types are supposed to hide
+            // the underlying type *within the same crate*. When an
+            // opaque type is used from outside the module
+            // where it is declared, it should be impossible to observe
+            // anyything about it other than the traits that it implements.
+            //
+            // The alternative would be to look at the underlying type
+            // to determine whether or not the opaque type itself should
+            // be considered local. However, this could make it a breaking change
+            // to switch the underlying ('defining') type from a local type
+            // to a remote type. This would violate the rule that opaque
+            // types should be completely opaque apart from the traits
+            // that they implement, so we don't use this behavior.
+            Some(ty)
         }
 
         ty::Dynamic(ref tt, ..) => {
