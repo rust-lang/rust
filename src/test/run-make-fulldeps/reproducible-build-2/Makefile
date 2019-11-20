@@ -2,6 +2,7 @@
 
 # ignore-musl
 # ignore-windows
+# ignore-macos (rust-lang/rust#66568)
 # Objects are reproducible but their path is not.
 
 all:  \
