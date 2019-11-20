@@ -141,7 +141,7 @@ fn find_struct_impl(
     })?;
 
     let struct_ty = {
-        let src = hir::Source { file_id: ctx.frange.file_id.into(), ast: strukt.clone() };
+        let src = hir::Source { file_id: ctx.frange.file_id.into(), value: strukt.clone() };
         hir::Struct::from_source(db, src).unwrap().ty(db)
     };
 
@@ -152,7 +152,7 @@ fn find_struct_impl(
             return false;
         }
 
-        let src = hir::Source { file_id: ctx.frange.file_id.into(), ast: impl_blk.clone() };
+        let src = hir::Source { file_id: ctx.frange.file_id.into(), value: impl_blk.clone() };
         let blk = hir::ImplBlock::from_source(db, src).unwrap();
 
         let same_ty = blk.target_ty(db) == struct_ty;

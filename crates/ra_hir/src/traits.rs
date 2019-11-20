@@ -26,11 +26,11 @@ impl TraitData {
         tr: Trait,
     ) -> Arc<TraitData> {
         let src = tr.source(db);
-        let name = src.ast.name().map(|n| n.as_name());
+        let name = src.value.name().map(|n| n.as_name());
         let module = tr.module(db);
         let ctx = LocationCtx::new(db, module.id, src.file_id);
-        let auto = src.ast.is_auto();
-        let items = if let Some(item_list) = src.ast.item_list() {
+        let auto = src.value.is_auto();
+        let items = if let Some(item_list) = src.value.item_list() {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node {

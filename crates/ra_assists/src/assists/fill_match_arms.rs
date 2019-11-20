@@ -84,7 +84,7 @@ fn resolve_enum_def(
     let expr_ty = analyzer.type_of(db, &expr)?;
 
     analyzer.autoderef(db, expr_ty).find_map(|ty| match ty.as_adt() {
-        Some((Adt::Enum(e), _)) => Some(e.source(db).ast),
+        Some((Adt::Enum(e), _)) => Some(e.source(db).value),
         _ => None,
     })
 }

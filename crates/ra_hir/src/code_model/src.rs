@@ -25,9 +25,9 @@ impl Module {
         let def_map = db.crate_def_map(self.id.krate);
         let decl_id = def_map[self.id.module_id].declaration;
         let file_id = def_map[self.id.module_id].definition;
-        let ast = ModuleSource::new(db, file_id, decl_id);
+        let value = ModuleSource::new(db, file_id, decl_id);
         let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id());
-        Source { file_id, ast }
+        Source { file_id, value }
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
@@ -38,8 +38,8 @@ impl Module {
     ) -> Option<Source<ast::Module>> {
         let def_map = db.crate_def_map(self.id.krate);
         let decl = def_map[self.id.module_id].declaration?;
-        let ast = decl.to_node(db);
-        Some(Source { file_id: decl.file_id(), ast })
+        let value = decl.to_node(db);
+        Some(Source { file_id: decl.file_id(), value })
     }
 }
 
@@ -53,11 +53,11 @@ impl HasSource for StructField {
         let (file_id, struct_kind) = match self.parent {
             VariantDef::Struct(s) => {
                 ss = s.source(db);
-                (ss.file_id, ss.ast.kind())
+                (ss.file_id, ss.value.kind())
             }
             VariantDef::EnumVariant(e) => {
                 es = e.source(db);
-                (es.file_id, es.ast.kind())
+                (es.file_id, es.value.kind())
             }
         };
 
@@ -66,13 +66,13 @@ impl HasSource for StructField {
             ast::StructKind::Named(fl) => fl.fields().map(|it| FieldSource::Named(it)).collect(),
             ast::StructKind::Unit => Vec::new(),
         };
-        let ast = field_sources
+        let value = field_sources
             .into_iter()
             .zip(fields.iter())
             .find(|(_syntax, (id, _))| *id == self.id)
             .unwrap()
             .0;
-        Source { file_id, ast }
+        Source { file_id, value }
     }
 }
 impl HasSource for Struct {
@@ -98,8 +98,8 @@ impl HasSource for EnumVariant {
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::EnumVariant> {
         let enum_data = db.enum_data(self.parent.id);
         let src = self.parent.id.source(db);
-        let ast = src
-            .ast
+        let value = src
+            .value
             .variant_list()
             .into_iter()
             .flat_map(|it| it.variants())
@@ -107,7 +107,7 @@ impl HasSource for EnumVariant {
             .find(|(_syntax, (id, _))| *id == self.id)
             .unwrap()
             .0;
-        Source { file_id: src.file_id, ast }
+        Source { file_id: src.file_id, value }
     }
 }
 impl HasSource for Function {
@@ -143,7 +143,7 @@ impl HasSource for TypeAlias {
 impl HasSource for MacroDef {
     type Ast = ast::MacroCall;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::MacroCall> {
-        Source { file_id: self.id.ast_id.file_id(), ast: self.id.ast_id.to_node(db) }
+        Source { file_id: self.id.ast_id.file_id(), value: self.id.ast_id.to_node(db) }
     }
 }
 

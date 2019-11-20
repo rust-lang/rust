@@ -13,7 +13,7 @@ use crate::db::RootDatabase;
 
 pub(crate) fn classify_name(db: &RootDatabase, name: Source<&ast::Name>) -> Option<NameDefinition> {
     let _p = profile("classify_name");
-    let parent = name.ast.syntax().parent()?;
+    let parent = name.value.syntax().parent()?;
 
     match_ast! {
         match parent {
@@ -121,7 +121,7 @@ pub(crate) fn classify_name_ref(
 ) -> Option<NameDefinition> {
     let _p = profile("classify_name_ref");
 
-    let parent = name_ref.ast.syntax().parent()?;
+    let parent = name_ref.value.syntax().parent()?;
     let analyzer = SourceAnalyzer::new(db, name_ref.map(|it| it.syntax()), None);
 
     if let Some(method_call) = ast::MethodCallExpr::cast(parent.clone()) {
@@ -142,7 +142,7 @@ pub(crate) fn classify_name_ref(
         tested_by!(goto_definition_works_for_record_fields);
         if let Some(record_lit) = record_field.syntax().ancestors().find_map(ast::RecordLit::cast) {
             let variant_def = analyzer.resolve_record_literal(&record_lit)?;
-            let hir_path = Path::from_name_ref(name_ref.ast);
+            let hir_path = Path::from_name_ref(name_ref.value);
             let hir_name = hir_path.as_ident()?;
             let field = variant_def.field(db, hir_name)?;
             return Some(from_struct_field(db, field));
@@ -162,7 +162,7 @@ pub(crate) fn classify_name_ref(
         }
     }
 
-    let path = name_ref.ast.syntax().ancestors().find_map(ast::Path::cast)?;
+    let path = name_ref.value.syntax().ancestors().find_map(ast::Path::cast)?;
     let resolved = analyzer.resolve_path(db, &path)?;
     match resolved {
         PathResolution::Def(def) => Some(from_module_def(db, def, Some(container))),

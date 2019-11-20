@@ -139,7 +139,7 @@ impl Module {
     ) -> Either<ast::UseTree, ast::ExternCrateItem> {
         let src = self.definition_source(db);
         let (_, source_map) = db.raw_items_with_source_map(src.file_id);
-        source_map.get(&src.ast, import)
+        source_map.get(&src.value, import)
     }
 
     /// Returns the crate this module is part of.
@@ -206,7 +206,7 @@ impl Module {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
                 crate::ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
-                    if let ModuleSource::Module(_) = m.definition_source(db).ast {
+                    if let ModuleSource::Module(_) = m.definition_source(db).value {
                         m.diagnostics(db, sink)
                     }
                 }
@@ -598,10 +598,10 @@ impl FnData {
         func: Function,
     ) -> Arc<FnData> {
         let src = func.source(db);
-        let name = src.ast.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
+        let name = src.value.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
         let mut has_self_param = false;
-        if let Some(param_list) = src.ast.param_list() {
+        if let Some(param_list) = src.value.param_list() {
             if let Some(self_param) = param_list.self_param() {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
@@ -625,7 +625,7 @@ impl FnData {
                 params.push(type_ref);
             }
         }
-        let ret_type = if let Some(type_ref) = src.ast.ret_type().and_then(|rt| rt.type_ref()) {
+        let ret_type = if let Some(type_ref) = src.value.ret_type().and_then(|rt| rt.type_ref()) {
             TypeRef::from_ast(type_ref)
         } else {
             TypeRef::unit()
@@ -801,7 +801,7 @@ impl ConstData {
         db: &(impl DefDatabase + AstDatabase),
         konst: Const,
     ) -> Arc<ConstData> {
-        let node = konst.source(db).ast;
+        let node = konst.source(db).value;
         const_data_for(&node)
     }
 
@@ -809,7 +809,7 @@ impl ConstData {
         db: &(impl DefDatabase + AstDatabase),
         konst: Static,
     ) -> Arc<ConstData> {
-        let node = konst.source(db).ast;
+        let node = konst.source(db).value;
         const_data_for(&node)
     }
 }

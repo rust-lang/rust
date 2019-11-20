@@ -20,7 +20,7 @@ impl Diagnostic for UnresolvedModule {
         "unresolved module".to_string()
     }
     fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, ast: self.decl.into() }
+        Source { file_id: self.file, value: self.decl.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self

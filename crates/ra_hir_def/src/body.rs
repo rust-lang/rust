@@ -73,8 +73,8 @@ impl Expander {
         std::mem::forget(mark);
     }
 
-    fn to_source<T>(&self, ast: T) -> Source<T> {
-        Source { file_id: self.current_file_id, ast }
+    fn to_source<T>(&self, value: T) -> Source<T> {
+        Source { file_id: self.current_file_id, value }
     }
 
     fn parse_path(&mut self, path: ast::Path) -> Option<Path> {
@@ -150,16 +150,16 @@ impl Body {
         let (file_id, module, body) = match def {
             DefWithBodyId::FunctionId(f) => {
                 let src = f.source(db);
-                params = src.ast.param_list();
-                (src.file_id, f.module(db), src.ast.body().map(ast::Expr::from))
+                params = src.value.param_list();
+                (src.file_id, f.module(db), src.value.body().map(ast::Expr::from))
             }
             DefWithBodyId::ConstId(c) => {
                 let src = c.source(db);
-                (src.file_id, c.module(db), src.ast.body())
+                (src.file_id, c.module(db), src.value.body())
             }
             DefWithBodyId::StaticId(s) => {
                 let src = s.source(db);
-                (src.file_id, s.module(db), src.ast.body())
+                (src.file_id, s.module(db), src.value.body())
             }
         };
         let expander = Expander::new(db, file_id, module);

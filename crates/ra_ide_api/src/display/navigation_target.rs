@@ -86,9 +86,9 @@ impl NavigationTarget {
                 name,
                 None,
                 frange.range,
-                src.ast.syntax().kind(),
-                src.ast.doc_comment_text(),
-                src.ast.short_label(),
+                src.value.syntax().kind(),
+                src.value.doc_comment_text(),
+                src.value.short_label(),
             );
         }
         module.to_nav(db)
@@ -146,9 +146,9 @@ impl NavigationTarget {
         description: Option<String>,
     ) -> NavigationTarget {
         //FIXME: use `_` instead of empty string
-        let name = node.ast.name().map(|it| it.text().clone()).unwrap_or_default();
+        let name = node.value.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range =
-            node.ast.name().map(|it| original_range(db, node.with_ast(it.syntax())).range);
+            node.value.name().map(|it| original_range(db, node.with_ast(it.syntax())).range);
         let frange = original_range(db, node.map(|it| it.syntax()));
 
         NavigationTarget::from_syntax(
@@ -156,7 +156,7 @@ impl NavigationTarget {
             name,
             focus_range,
             frange.range,
-            node.ast.syntax().kind(),
+            node.value.syntax().kind(),
             docs,
             description,
         )
@@ -220,8 +220,8 @@ where
         NavigationTarget::from_named(
             db,
             src.as_ref().map(|it| it as &dyn ast::NameOwner),
-            src.ast.doc_comment_text(),
-            src.ast.short_label(),
+            src.value.doc_comment_text(),
+            src.value.short_label(),
         )
     }
 }
@@ -230,7 +230,7 @@ impl ToNav for hir::Module {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.definition_source(db);
         let name = self.name(db).map(|it| it.to_string().into()).unwrap_or_default();
-        match &src.ast {
+        match &src.value {
             ModuleSource::SourceFile(node) => {
                 let frange = original_range(db, src.with_ast(node.syntax()));
 
@@ -271,7 +271,7 @@ impl ToNav for hir::ImplBlock {
             "impl".into(),
             None,
             frange.range,
-            src.ast.syntax().kind(),
+            src.value.syntax().kind(),
             None,
             None,
         )
@@ -282,7 +282,7 @@ impl ToNav for hir::StructField {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
 
-        match &src.ast {
+        match &src.value {
             FieldSource::Named(it) => NavigationTarget::from_named(
                 db,
                 src.with_ast(it),
@@ -308,11 +308,11 @@ impl ToNav for hir::StructField {
 impl ToNav for hir::MacroDef {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        log::debug!("nav target {:#?}", src.ast.syntax());
+        log::debug!("nav target {:#?}", src.value.syntax());
         NavigationTarget::from_named(
             db,
             src.as_ref().map(|it| it as &dyn ast::NameOwner),
-            src.ast.doc_comment_text(),
+            src.value.doc_comment_text(),
             None,
         )
     }
@@ -341,7 +341,7 @@ impl ToNav for hir::AssocItem {
 impl ToNav for hir::Local {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
-        let (full_range, focus_range) = match src.ast {
+        let (full_range, focus_range) = match src.value {
             Either::A(it) => {
                 (it.syntax().text_range(), it.name().map(|it| it.syntax().text_range()))
             }

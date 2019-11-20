@@ -46,7 +46,7 @@ fn expand_macro_recur(
     let mut replaces = FxHashMap::default();
 
     for child in children.into_iter() {
-        let source = hir::Source::new(macro_file_id, source.ast);
+        let source = hir::Source::new(macro_file_id, source.value);
         let new_node = expand_macro_recur(db, source, &child)?;
 
         replaces.insert(child.syntax().clone().into(), new_node.into());
@@ -139,7 +139,7 @@ mod tests {
         }
         macro_rules! baz {
             () => { foo!(); }
-        }        
+        }
         f<|>oo!();
         "#,
         );
@@ -156,7 +156,7 @@ fn b(){}
             r#"
         //- /lib.rs
         macro_rules! foo {
-            () => { 
+            () => {
                 fn some_thing() -> u32 {
                     let a = 0;
                     a + 10
@@ -172,7 +172,7 @@ fn b(){}
 fn some_thing() -> u32 {
   let a = 0;
   a+10
-}        
+}
 "###);
     }
 }

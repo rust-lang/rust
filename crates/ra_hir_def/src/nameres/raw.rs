@@ -327,7 +327,7 @@ impl RawItemsCollector {
 
         let mut buf = Vec::new();
         Path::expand_use_item(
-            Source { ast: use_item, file_id: self.file_id },
+            Source { value: use_item, file_id: self.file_id },
             &self.hygiene,
             |path, use_tree, is_glob, alias| {
                 let import_data = ImportData {

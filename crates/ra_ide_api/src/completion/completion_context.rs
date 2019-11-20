@@ -54,7 +54,7 @@ impl<'a> CompletionContext<'a> {
         let src = hir::ModuleSource::from_position(db, position);
         let module = hir::Module::from_definition(
             db,
-            hir::Source { file_id: position.file_id.into(), ast: src },
+            hir::Source { file_id: position.file_id.into(), value: src },
         );
         let token =
             original_parse.tree().syntax().token_at_offset(position.offset).left_biased()?;

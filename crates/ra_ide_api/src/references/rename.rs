@@ -55,11 +55,11 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    let module_src = hir::Source { file_id: position.file_id.into(), ast: ast_module.clone() };
+    let module_src = hir::Source { file_id: position.file_id.into(), value: ast_module.clone() };
     if let Some(module) = hir::Module::from_declaration(db, module_src) {
         let src = module.definition_source(db);
         let file_id = src.file_id.original_file(db);
-        match src.ast {
+        match src.value {
             ModuleSource::SourceFile(..) => {
                 let mod_path: RelativePathBuf = db.file_relative_path(file_id);
                 // mod is defined in path/to/dir/mod.rs

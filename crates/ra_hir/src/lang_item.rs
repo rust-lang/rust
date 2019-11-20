@@ -97,7 +97,7 @@ impl LangItems {
         // Look for impl targets
         for impl_block in module.impl_blocks(db) {
             let src = impl_block.source(db);
-            if let Some(lang_item_name) = lang_item_name(&src.ast) {
+            if let Some(lang_item_name) = lang_item_name(&src.value) {
                 self.items
                     .entry(lang_item_name)
                     .or_insert_with(|| LangItemTarget::ImplBlock(impl_block));
@@ -144,7 +144,7 @@ impl LangItems {
         T: Copy + HasSource<Ast = N>,
         N: AttrsOwner,
     {
-        let node = item.source(db).ast;
+        let node = item.source(db).value;
         if let Some(lang_item_name) = lang_item_name(&node) {
             self.items.entry(lang_item_name).or_insert_with(|| constructor(item));
         }

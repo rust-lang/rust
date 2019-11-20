@@ -4694,14 +4694,16 @@ fn infer(content: &str) -> String {
         }
 
         // sort ranges for consistency
-        types.sort_by_key(|(src_ptr, _)| (src_ptr.ast.range().start(), src_ptr.ast.range().end()));
+        types.sort_by_key(|(src_ptr, _)| {
+            (src_ptr.value.range().start(), src_ptr.value.range().end())
+        });
         for (src_ptr, ty) in &types {
-            let node = src_ptr.ast.to_node(&src_ptr.file_syntax(&db));
+            let node = src_ptr.value.to_node(&src_ptr.file_syntax(&db));
 
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.clone()) {
                 (self_param.self_kw_token().text_range(), "self".to_string())
             } else {
-                (src_ptr.ast.range(), node.text().to_string().replace("\n", " "))
+                (src_ptr.value.range(), node.text().to_string().replace("\n", " "))
             };
             let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
             write!(

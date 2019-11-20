@@ -98,7 +98,7 @@ pub fn run(
             let src = f.source(db);
             let original_file = src.file_id.original_file(db);
             let path = db.file_relative_path(original_file);
-            let syntax_range = src.ast.syntax().text_range();
+            let syntax_range = src.value.syntax().text_range();
             write!(msg, " ({:?} {})", path, syntax_range).unwrap();
         }
         bar.set_message(&msg);
@@ -135,7 +135,7 @@ pub fn run(
                         let path = db.file_relative_path(original_file);
                         let line_index = host.analysis().file_line_index(original_file).unwrap();
                         let text_range = src
-                            .ast
+                            .value
                             .either(|it| it.syntax().text_range(), |it| it.syntax().text_range());
                         let (start, end) = (
                             line_index.line_col(text_range.start()),

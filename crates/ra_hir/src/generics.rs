@@ -91,10 +91,10 @@ impl GenericParams {
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
-            GenericDef::Function(it) => generics.fill(&it.source(db).ast, start),
-            GenericDef::Adt(Adt::Struct(it)) => generics.fill(&it.source(db).ast, start),
-            GenericDef::Adt(Adt::Union(it)) => generics.fill(&it.source(db).ast, start),
-            GenericDef::Adt(Adt::Enum(it)) => generics.fill(&it.source(db).ast, start),
+            GenericDef::Function(it) => generics.fill(&it.source(db).value, start),
+            GenericDef::Adt(Adt::Struct(it)) => generics.fill(&it.source(db).value, start),
+            GenericDef::Adt(Adt::Union(it)) => generics.fill(&it.source(db).value, start),
+            GenericDef::Adt(Adt::Enum(it)) => generics.fill(&it.source(db).value, start),
             GenericDef::Trait(it) => {
                 // traits get the Self type as an implicit first type parameter
                 generics.params.push(GenericParam {
@@ -102,17 +102,17 @@ impl GenericParams {
                     name: name::SELF_TYPE,
                     default: None,
                 });
-                generics.fill(&it.source(db).ast, start + 1);
+                generics.fill(&it.source(db).value, start + 1);
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name::SELF_TYPE.into());
-                generics.fill_bounds(&it.source(db).ast, self_param);
+                generics.fill_bounds(&it.source(db).value, self_param);
             }
-            GenericDef::TypeAlias(it) => generics.fill(&it.source(db).ast, start),
+            GenericDef::TypeAlias(it) => generics.fill(&it.source(db).value, start),
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
             // type-parameter, but rather is a type-alias for impl's target
             // type, so this is handled by the resolver.
-            GenericDef::ImplBlock(it) => generics.fill(&it.source(db).ast, start),
+            GenericDef::ImplBlock(it) => generics.fill(&it.source(db).value, start),
             GenericDef::EnumVariant(_) | GenericDef::Const(_) => {}
         }
 
