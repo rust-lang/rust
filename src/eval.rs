@@ -29,7 +29,10 @@ pub struct MiriConfig {
     pub seed: Option<u64>,
 }
 
-// Used by priroda.
+/// Returns a freshly created `InterpCx`, along with an `MPlaceTy` representing
+/// the location where the return value of the `start` lang item will be
+/// written to.
+/// Used by `priroda` and `miri
 pub fn create_ecx<'mir, 'tcx: 'mir>(
     tcx: TyCtxt<'tcx>,
     main_id: DefId,
@@ -173,7 +176,10 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     Ok((ecx, ret_ptr))
 }
 
-pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
+/// Evaluates the main function specified by `main_id`.
+/// Returns `Some(return_code)` if program executed completed.
+/// Returns `None` if an evaluation error occured
+pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
     let (mut ecx, ret_ptr) = match create_ecx(tcx, main_id, config) {
         Ok(v) => v,
         Err(mut err) => {
@@ -202,13 +208,16 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
             let ignore_leaks = target_os == "windows" || target_os == "macos";
             if !ignore_leaks && leaks != 0 {
                 tcx.sess.err("the evaluated program leaked memory");
+                // Ignore the provided return code - let the reported error
+                // determine the return code
+                return None;
             }
-            std::process::exit(return_code as i32);
+            return Some(return_code)
         }
         Err(mut e) => {
             // Special treatment for some error kinds
             let msg = match e.kind {
-                InterpError::Exit(code) => std::process::exit(code),
+                InterpError::Exit(code) => return Some(code.into()),
                 err_unsup!(NoMirFor(..)) =>
                     format!("{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.", e),
                 _ => e.to_string()
@@ -251,6 +260,8 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) {
                     trace!("    local {}: {:?}", i, local.value);
                 }
             }
+            // Let the reported error determine the return code
+            return None;
         }
     }
 }

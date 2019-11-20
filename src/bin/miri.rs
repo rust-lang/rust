@@ -15,6 +15,7 @@ extern crate rustc_interface;
 extern crate syntax;
 
 use std::str::FromStr;
+use std::convert::TryFrom;
 use std::env;
 
 use hex::FromHexError;
@@ -39,7 +40,9 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
             // Add filename to `miri` arguments.
             config.args.insert(0, compiler.input().filestem().to_string());
 
-            miri::eval_main(tcx, entry_def_id, config);
+            if let Some(return_code) = miri::eval_main(tcx, entry_def_id, config) {
+                std::process::exit(i32::try_from(return_code).expect("Return value was too large!"));
+            }
         });
 
         compiler.session().abort_if_errors();
