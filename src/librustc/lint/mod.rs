@@ -543,17 +543,10 @@ impl LintId {
 }
 
 /// Setting for how to handle a lint.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, HashStable)]
 pub enum Level {
     Allow, Warn, Deny, Forbid,
 }
-
-impl_stable_hash_for!(enum self::Level {
-    Allow,
-    Warn,
-    Deny,
-    Forbid
-});
 
 impl Level {
     /// Converts a level to a lower-case string.
@@ -590,7 +583,7 @@ impl Level {
 }
 
 /// How a lint level was set.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, HashStable)]
 pub enum LintSource {
     /// Lint is at the default level as declared
     /// in rustc or a plugin.
@@ -602,12 +595,6 @@ pub enum LintSource {
     /// Lint level was set by a command-line flag.
     CommandLine(Symbol),
 }
-
-impl_stable_hash_for!(enum self::LintSource {
-    Default,
-    Node(name, span, reason),
-    CommandLine(text)
-});
 
 pub type LevelSource = (Level, LintSource);
 

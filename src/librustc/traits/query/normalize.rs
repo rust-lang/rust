@@ -66,7 +66,7 @@ impl<'cx, 'tcx> At<'cx, 'tcx> {
 }
 
 /// Result from the `normalize_projection_ty` query.
-#[derive(Clone, Debug, TypeFoldable, Lift)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct NormalizationResult<'tcx> {
     /// Result of normalization.
     pub normalized_ty: Ty<'tcx>,
@@ -193,7 +193,3 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
         constant.eval(self.infcx.tcx, self.param_env)
     }
 }
-
-impl_stable_hash_for!(struct NormalizationResult<'tcx> {
-    normalized_ty
-});

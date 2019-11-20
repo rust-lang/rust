@@ -2,7 +2,7 @@ use rustc_data_structures::sync::Lrc;
 use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::Ty;
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct CandidateStep<'tcx> {
     pub self_ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
     pub autoderefs: usize,
@@ -15,7 +15,7 @@ pub struct CandidateStep<'tcx> {
     pub unsize: bool,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, HashStable)]
 pub struct MethodAutoderefStepsResult<'tcx> {
     /// The valid autoderef steps that could be find.
     pub steps: Lrc<Vec<CandidateStep<'tcx>>>,
@@ -26,20 +26,8 @@ pub struct MethodAutoderefStepsResult<'tcx> {
     pub reached_recursion_limit: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct MethodAutoderefBadTy<'tcx> {
     pub reached_raw_pointer: bool,
     pub ty: Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>,
 }
-
-impl_stable_hash_for!(struct MethodAutoderefBadTy<'tcx> {
-    reached_raw_pointer, ty
-});
-
-impl_stable_hash_for!(struct MethodAutoderefStepsResult<'tcx> {
-    reached_recursion_limit, steps, opt_bad_ty
-});
-
-impl_stable_hash_for!(struct CandidateStep<'tcx> {
-    self_ty, autoderefs, from_unsafe_deref, unsize
-});

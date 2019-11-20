@@ -1204,6 +1204,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
+    #[derive(HashStable)]
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
@@ -1379,20 +1380,19 @@ rustc_index::newtype_index! {
     pub struct BoundVar { .. }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct BoundTy {
     pub var: BoundVar,
     pub kind: BoundTyKind,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub enum BoundTyKind {
     Anon,
     Param(Symbol),
 }
-
-impl_stable_hash_for!(struct BoundTy { var, kind });
-impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
 impl From<BoundVar> for BoundTy {
     fn from(var: BoundVar) -> Self {
@@ -1517,8 +1517,6 @@ impl DebruijnIndex {
         self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
 }
-
-impl_stable_hash_for!(struct DebruijnIndex { private });
 
 /// Region utilities
 impl RegionKind {

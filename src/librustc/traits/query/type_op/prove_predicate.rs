@@ -2,7 +2,7 @@ use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Predicate, TyCtxt};
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, TypeFoldable, Lift)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
 pub struct ProvePredicate<'tcx> {
     pub predicate: Predicate<'tcx>,
 }
@@ -43,8 +43,4 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
         tcx.type_op_prove_predicate(canonicalized)
     }
-}
-
-impl_stable_hash_for! {
-    struct ProvePredicate<'tcx> { predicate }
 }
