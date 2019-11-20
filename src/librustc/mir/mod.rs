@@ -41,7 +41,7 @@ pub use crate::mir::interpret::AssertMessage;
 pub use crate::mir::cache::{BodyCache, ReadOnlyBodyCache};
 pub use crate::read_only;
 
-pub mod cache;
+mod cache;
 pub mod interpret;
 pub mod mono;
 pub mod tcx;
