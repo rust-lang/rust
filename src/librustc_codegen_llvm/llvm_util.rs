@@ -62,6 +62,9 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.opts.debugging_opts.disable_instrumentation_preinliner {
             add("-disable-preinline");
         }
+        if sess.opts.debugging_opts.generate_arange_section {
+            add("-generate-arange-section");
+        }
         if get_major_version() >= 8 {
             match sess.opts.debugging_opts.merge_functions
                   .unwrap_or(sess.target.target.options.merge_functions) {
