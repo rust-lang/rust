@@ -49,9 +49,9 @@ pub(crate) fn attributes_query(
         AttrDef::Module(it) => {
             let src = it.declaration_source(db)?;
             let hygiene = Hygiene::new(db, src.file_id);
-            Attr::from_attrs_owner(&src.ast, &hygiene)
+            Attr::from_attrs_owner(&src.value, &hygiene)
         }
-        AttrDef::StructField(it) => match it.source(db).ast {
+        AttrDef::StructField(it) => match it.source(db).value {
             FieldSource::Named(named) => {
                 let src = it.source(db);
                 let hygiene = Hygiene::new(db, src.file_id);
@@ -82,7 +82,7 @@ where
 {
     let src = node.source(db);
     let hygiene = Hygiene::new(db, src.file_id);
-    Attr::from_attrs_owner(&src.ast, &hygiene)
+    Attr::from_attrs_owner(&src.value, &hygiene)
 }
 
 impl<T: Into<AttrDef> + Copy> Attrs for T {

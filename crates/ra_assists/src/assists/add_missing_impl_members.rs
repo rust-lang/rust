@@ -174,7 +174,7 @@ fn resolve_target_trait_def(
         .path()?;
 
     match analyzer.resolve_path(db, &ast_path) {
-        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).ast),
+        Some(hir::PathResolution::Def(hir::ModuleDef::Trait(def))) => Some(def.source(db).value),
         _ => None,
     }
 }

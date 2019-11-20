@@ -16,7 +16,7 @@ pub(crate) fn goto_type_definition(
     let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
     let token = descend_into_macros(db, position.file_id, token);
 
-    let node = token.ast.ancestors().find_map(|token| {
+    let node = token.value.ancestors().find_map(|token| {
         token
             .ancestors()
             .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())

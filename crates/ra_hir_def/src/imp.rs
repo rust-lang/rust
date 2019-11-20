@@ -25,11 +25,11 @@ impl ImplData {
         let src = id.source(db);
         let items = db.ast_id_map(src.file_id);
 
-        let target_trait = src.ast.target_trait().map(TypeRef::from_ast);
-        let target_type = TypeRef::from_ast_opt(src.ast.target_type());
-        let negative = src.ast.is_negative();
+        let target_trait = src.value.target_trait().map(TypeRef::from_ast);
+        let target_type = TypeRef::from_ast_opt(src.value.target_type());
+        let negative = src.value.is_negative();
 
-        let items = if let Some(item_list) = src.ast.item_list() {
+        let items = if let Some(item_list) = src.value.item_list() {
             let ctx = LocationCtx::new(db, id.module(db), src.file_id);
             item_list
                 .impl_items()

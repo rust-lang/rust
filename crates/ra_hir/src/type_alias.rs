@@ -23,7 +23,7 @@ impl TypeAliasData {
         db: &(impl DefDatabase + AstDatabase),
         typ: TypeAlias,
     ) -> Arc<TypeAliasData> {
-        let node = typ.source(db).ast;
+        let node = typ.source(db).value;
         let name = node.name().map_or_else(Name::missing, |n| n.as_name());
         let type_ref = node.type_ref().map(TypeRef::from_ast);
         Arc::new(TypeAliasData { name, type_ref })

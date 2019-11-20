@@ -31,7 +31,7 @@ use crate::{
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
     match_ast! {
-        match (node.ast) {
+        match (node.value) {
             ast::Module(it) => {
                 let src = node.with_ast(it);
                 Some(crate::Module::from_declaration(db, src)?.resolver(db))
@@ -48,7 +48,7 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -
                 let src = node.with_ast(it);
                 Some(Enum::from_source(db, src)?.resolver(db))
             },
-            _ => match node.ast.kind() {
+            _ => match node.value.kind() {
                 FN_DEF | CONST_DEF | STATIC_DEF => {
                     Some(def_with_body_from_child_node(db, node)?.resolver(db))
                 }
@@ -67,7 +67,7 @@ fn def_with_body_from_child_node(
     let module = Module::from_definition(db, Source::new(child.file_id, module_source))?;
     let ctx = LocationCtx::new(db, module.id, child.file_id);
 
-    child.ast.ancestors().find_map(|node| {
+    child.value.ancestors().find_map(|node| {
         match_ast! {
             match node {
                 ast::FnDef(def)  => { Some(Function {id: ctx.to_def(&def) }.into()) },
@@ -171,7 +171,7 @@ impl SourceAnalyzer {
         } else {
             SourceAnalyzer {
                 resolver: node
-                    .ast
+                    .value
                     .ancestors()
                     .find_map(|it| try_get_resolver_for_node(db, node.with_ast(&it)))
                     .unwrap_or_default(),
@@ -185,12 +185,12 @@ impl SourceAnalyzer {
     }
 
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
-        let src = Source { file_id: self.file_id, ast: expr };
+        let src = Source { file_id: self.file_id, value: expr };
         self.body_source_map.as_ref()?.node_expr(src)
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
-        let src = Source { file_id: self.file_id, ast: pat };
+        let src = Source { file_id: self.file_id, value: pat };
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
@@ -302,7 +302,7 @@ impl SourceAnalyzer {
         let entry = scopes.resolve_name_in_scope(scope, &name)?;
         Some(ScopeEntryWithSyntax {
             name: entry.name().clone(),
-            ptr: source_map.pat_syntax(entry.pat())?.ast,
+            ptr: source_map.pat_syntax(entry.pat())?.value,
         })
     }
 
@@ -428,7 +428,7 @@ fn scope_for(
     source_map: &BodySourceMap,
     node: Source<&SyntaxNode>,
 ) -> Option<ScopeId> {
-    node.ast
+    node.value
         .ancestors()
         .filter_map(ast::Expr::cast)
         .filter_map(|it| source_map.node_expr(Source::new(node.file_id, &it)))
@@ -450,18 +450,18 @@ fn scope_for_offset(
                 return None;
             }
             let syntax_node_ptr =
-                source.ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+                source.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
             Some((syntax_node_ptr, scope))
         })
         // find containing scope
         .min_by_key(|(ptr, _scope)| {
             (
-                !(ptr.range().start() <= offset.ast && offset.ast <= ptr.range().end()),
+                !(ptr.range().start() <= offset.value && offset.value <= ptr.range().end()),
                 ptr.range().len(),
             )
         })
         .map(|(ptr, scope)| {
-            adjust(scopes, source_map, ptr, offset.file_id, offset.ast).unwrap_or(*scope)
+            adjust(scopes, source_map, ptr, offset.file_id, offset.value).unwrap_or(*scope)
         })
 }
 
@@ -485,7 +485,7 @@ fn adjust(
                 return None;
             }
             let syntax_node_ptr =
-                source.ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+                source.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
             Some((syntax_node_ptr, scope))
         })
         .map(|(ptr, scope)| (ptr.range(), scope))

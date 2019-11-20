@@ -23,7 +23,7 @@ pub(crate) fn goto_definition(
     let token = descend_into_macros(db, position.file_id, token);
 
     let res = match_ast! {
-        match (token.ast.parent()) {
+        match (token.value.parent()) {
             ast::NameRef(name_ref) => {
                 let navs = reference_definition(db, token.with_ast(&name_ref)).to_vec();
                 RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec())
@@ -84,7 +84,7 @@ pub(crate) fn reference_definition(
     };
 
     // Fallback index based approach:
-    let navs = crate::symbol_index::index_resolve(db, name_ref.ast)
+    let navs = crate::symbol_index::index_resolve(db, name_ref.value)
         .into_iter()
         .map(|s| s.to_nav(db))
         .collect();
@@ -95,7 +95,7 @@ pub(crate) fn name_definition(
     db: &RootDatabase,
     name: Source<&ast::Name>,
 ) -> Option<Vec<NavigationTarget>> {
-    let parent = name.ast.syntax().parent()?;
+    let parent = name.value.syntax().parent()?;
 
     if let Some(module) = ast::Module::cast(parent.clone()) {
         if module.has_semi() {
@@ -116,7 +116,7 @@ pub(crate) fn name_definition(
 
 fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<NavigationTarget> {
     match_ast! {
-        match (node.ast) {
+        match (node.value) {
             ast::StructDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,

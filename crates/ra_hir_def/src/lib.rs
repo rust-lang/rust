@@ -80,7 +80,7 @@ impl ModuleSource {
 
     pub fn from_child_node(db: &impl db::DefDatabase2, child: Source<&SyntaxNode>) -> ModuleSource {
         if let Some(m) =
-            child.ast.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
+            child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
         {
             ModuleSource::Module(m)
         } else {
@@ -184,8 +184,8 @@ pub trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
     }
     fn source(self, db: &(impl AstDatabase + InternDatabase)) -> Source<N> {
         let loc = self.lookup_intern(db);
-        let ast = loc.ast_id.to_node(db);
-        Source { file_id: loc.ast_id.file_id(), ast }
+        let value = loc.ast_id.to_node(db);
+        Source { file_id: loc.ast_id.file_id(), value }
     }
     fn module(self, db: &impl InternDatabase) -> ModuleId {
         let loc = self.lookup_intern(db);

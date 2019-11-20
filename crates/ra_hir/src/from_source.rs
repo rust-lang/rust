@@ -87,7 +87,7 @@ impl FromSource for MacroDef {
         let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
         let krate = module.krate().crate_id();
 
-        let ast_id = AstId::new(src.file_id, db.ast_id_map(src.file_id).ast_id(&src.ast));
+        let ast_id = AstId::new(src.file_id, db.ast_id_map(src.file_id).ast_id(&src.value));
 
         let id: MacroDefId = MacroDefId { krate, ast_id, kind };
         Some(MacroDef { id })
@@ -105,8 +105,8 @@ impl FromSource for ImplBlock {
 impl FromSource for EnumVariant {
     type Ast = ast::EnumVariant;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let parent_enum = src.ast.parent_enum();
-        let src_enum = Source { file_id: src.file_id, ast: parent_enum };
+        let parent_enum = src.value.parent_enum();
+        let src_enum = Source { file_id: src.file_id, value: parent_enum };
         let variants = Enum::from_source(db, src_enum)?.variants(db);
         variants.into_iter().find(|v| v.source(db) == src)
     }
@@ -115,16 +115,16 @@ impl FromSource for EnumVariant {
 impl FromSource for StructField {
     type Ast = FieldSource;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let variant_def: VariantDef = match src.ast {
+        let variant_def: VariantDef = match src.value {
             FieldSource::Named(ref field) => {
-                let ast = field.syntax().ancestors().find_map(ast::StructDef::cast)?;
-                let src = Source { file_id: src.file_id, ast };
+                let value = field.syntax().ancestors().find_map(ast::StructDef::cast)?;
+                let src = Source { file_id: src.file_id, value };
                 let def = Struct::from_source(db, src)?;
                 VariantDef::from(def)
             }
             FieldSource::Pos(ref field) => {
-                let ast = field.syntax().ancestors().find_map(ast::EnumVariant::cast)?;
-                let src = Source { file_id: src.file_id, ast };
+                let value = field.syntax().ancestors().find_map(ast::EnumVariant::cast)?;
+                let src = Source { file_id: src.file_id, value };
                 let def = EnumVariant::from_source(db, src)?;
                 VariantDef::from(def)
             }
@@ -142,12 +142,12 @@ impl FromSource for StructField {
 impl Local {
     pub fn from_source(db: &impl HirDatabase, src: Source<ast::BindPat>) -> Option<Self> {
         let file_id = src.file_id;
-        let parent: DefWithBody = src.ast.syntax().ancestors().find_map(|it| {
+        let parent: DefWithBody = src.value.syntax().ancestors().find_map(|it| {
             let res = match_ast! {
                 match it {
-                    ast::ConstDef(ast) => { Const::from_source(db, Source { ast, file_id})?.into() },
-                    ast::StaticDef(ast) => { Static::from_source(db, Source { ast, file_id})?.into() },
-                    ast::FnDef(ast) => { Function::from_source(db, Source { ast, file_id})?.into() },
+                    ast::ConstDef(value) => { Const::from_source(db, Source { value, file_id})?.into() },
+                    ast::StaticDef(value) => { Static::from_source(db, Source { value, file_id})?.into() },
+                    ast::FnDef(value) => { Function::from_source(db, Source { value, file_id})?.into() },
                     _ => return None,
                 }
             };
@@ -162,33 +162,33 @@ impl Local {
 
 impl Module {
     pub fn from_declaration(db: &impl DefDatabase, src: Source<ast::Module>) -> Option<Self> {
-        let parent_declaration = src.ast.syntax().ancestors().skip(1).find_map(ast::Module::cast);
+        let parent_declaration = src.value.syntax().ancestors().skip(1).find_map(ast::Module::cast);
 
         let parent_module = match parent_declaration {
             Some(parent_declaration) => {
-                let src_parent = Source { file_id: src.file_id, ast: parent_declaration };
+                let src_parent = Source { file_id: src.file_id, value: parent_declaration };
                 Module::from_declaration(db, src_parent)
             }
             _ => {
                 let src_parent = Source {
                     file_id: src.file_id,
-                    ast: ModuleSource::new(db, Some(src.file_id.original_file(db)), None),
+                    value: ModuleSource::new(db, Some(src.file_id.original_file(db)), None),
                 };
                 Module::from_definition(db, src_parent)
             }
         }?;
 
-        let child_name = src.ast.name()?;
+        let child_name = src.value.name()?;
         parent_module.child(db, &child_name.as_name())
     }
 
     pub fn from_definition(db: &impl DefDatabase, src: Source<ModuleSource>) -> Option<Self> {
-        match src.ast {
+        match src.value {
             ModuleSource::Module(ref module) => {
                 assert!(!module.has_semi());
                 return Module::from_declaration(
                     db,
-                    Source { file_id: src.file_id, ast: module.clone() },
+                    Source { file_id: src.file_id, value: module.clone() },
                 );
             }
             ModuleSource::SourceFile(_) => (),
@@ -214,5 +214,5 @@ where
     let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
     let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
     let ctx = LocationCtx::new(db, module.id, src.file_id);
-    Some(DEF::from_ast(ctx, &src.ast))
+    Some(DEF::from_ast(ctx, &src.value))
 }

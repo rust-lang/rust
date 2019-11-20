@@ -116,7 +116,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         let source_map = self.func.body_source_map(db);
 
         if let Some(source_ptr) = source_map.expr_syntax(id) {
-            if let Some(expr) = source_ptr.ast.a() {
+            if let Some(expr) = source_ptr.value.a() {
                 let root = source_ptr.file_syntax(db);
                 if let ast::Expr::RecordLit(record_lit) = expr.to_node(&root) {
                     if let Some(field_list) = record_lit.record_field_list() {
@@ -161,7 +161,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             let source_map = self.func.body_source_map(db);
 
             if let Some(source_ptr) = source_map.expr_syntax(id) {
-                if let Some(expr) = source_ptr.ast.a() {
+                if let Some(expr) = source_ptr.value.a() {
                     self.sink.push(MissingOkInTailExpr { file: source_ptr.file_id, expr });
                 }
             }
