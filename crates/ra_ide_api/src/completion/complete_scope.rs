@@ -305,6 +305,13 @@ mod tests {
             @r###"
         [
             CompletionItem {
+                label: "Self",
+                source_range: [54; 54),
+                delete: [54; 54),
+                insert: "Self",
+                kind: TypeParam,
+            },
+            CompletionItem {
                 label: "T",
                 source_range: [54; 54),
                 delete: [54; 54),

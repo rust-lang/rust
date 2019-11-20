@@ -23,7 +23,7 @@ use crate::{
     db::HirDatabase,
     expr::{self, BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
-    resolve::{ScopeDef, TypeNs, ValueNs},
+    resolve::{HasResolver, ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
     AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, GenericParam, HasBody,
     HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,

@@ -15,8 +15,8 @@ use crate::{
     db::{DefDatabase, HirDatabase},
     expr::{ExprScopes, PatId, ScopeId},
     generics::{GenericParams, HasGenericParams},
-    Adt, Const, DefWithBody, Enum, EnumVariant, Function, GenericDef, ImplBlock, Local, MacroDef,
-    ModuleDef, PerNs, Static, Struct, Trait, TypeAlias,
+    Adt, Const, Container, DefWithBody, Enum, EnumVariant, Function, GenericDef, ImplBlock, Local,
+    MacroDef, Module, ModuleDef, PerNs, Static, Struct, Trait, TypeAlias, Union,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -484,5 +484,132 @@ impl Scope {
                 });
             }
         }
+    }
+}
+
+pub(crate) trait HasResolver {
+    /// Builds a resolver for type references inside this def.
+    fn resolver(self, db: &impl DefDatabase) -> Resolver;
+}
+
+impl HasResolver for Module {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        let def_map = db.crate_def_map(self.id.krate);
+        Resolver::default().push_module_scope(def_map, self.id.module_id)
+    }
+}
+
+impl HasResolver for Trait {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.module(db).resolver(db).push_generic_params_scope(db, self.into())
+    }
+}
+
+impl HasResolver for Struct {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.module(db)
+            .resolver(db)
+            .push_generic_params_scope(db, self.into())
+            .push_scope(Scope::AdtScope(self.into()))
+    }
+}
+
+impl HasResolver for Union {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.module(db)
+            .resolver(db)
+            .push_generic_params_scope(db, self.into())
+            .push_scope(Scope::AdtScope(self.into()))
+    }
+}
+
+impl HasResolver for Enum {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.module(db)
+            .resolver(db)
+            .push_generic_params_scope(db, self.into())
+            .push_scope(Scope::AdtScope(self.into()))
+    }
+}
+
+impl HasResolver for Adt {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        match self {
+            Adt::Struct(it) => it.resolver(db),
+            Adt::Union(it) => it.resolver(db),
+            Adt::Enum(it) => it.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for Function {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.container(db)
+            .map(|c| c.resolver(db))
+            .unwrap_or_else(|| self.module(db).resolver(db))
+            .push_generic_params_scope(db, self.into())
+    }
+}
+
+impl HasResolver for DefWithBody {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        match self {
+            DefWithBody::Const(c) => c.resolver(db),
+            DefWithBody::Function(f) => f.resolver(db),
+            DefWithBody::Static(s) => s.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for Const {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.container(db).map(|c| c.resolver(db)).unwrap_or_else(|| self.module(db).resolver(db))
+    }
+}
+
+impl HasResolver for Static {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.module(db).resolver(db)
+    }
+}
+
+impl HasResolver for TypeAlias {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.container(db)
+            .map(|ib| ib.resolver(db))
+            .unwrap_or_else(|| self.module(db).resolver(db))
+            .push_generic_params_scope(db, self.into())
+    }
+}
+
+impl HasResolver for Container {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        match self {
+            Container::Trait(trait_) => trait_.resolver(db),
+            Container::ImplBlock(impl_block) => impl_block.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for GenericDef {
+    fn resolver(self, db: &impl DefDatabase) -> crate::Resolver {
+        match self {
+            GenericDef::Function(inner) => inner.resolver(db),
+            GenericDef::Adt(adt) => adt.resolver(db),
+            GenericDef::Trait(inner) => inner.resolver(db),
+            GenericDef::TypeAlias(inner) => inner.resolver(db),
+            GenericDef::ImplBlock(inner) => inner.resolver(db),
+            GenericDef::EnumVariant(inner) => inner.parent_enum(db).resolver(db),
+            GenericDef::Const(inner) => inner.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for ImplBlock {
+    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+        self.module(db)
+            .resolver(db)
+            .push_generic_params_scope(db, self.into())
+            .push_impl_block_scope(self)
     }
 }
