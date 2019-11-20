@@ -210,11 +210,12 @@ pub(crate) fn lint_unescaped_char(
     character: char,
     range: Range<usize>,
 ) {
+    const ALLOWED_ASCII_CONTROL_CHARS: [char; 2] = ['\t', '\n'];
+
     if range.len() != 1 {
         return;
     }
-    let allowed_chars = ['\t', '\n'];
-    if !allowed_chars.contains(&character) && character.is_ascii_control() {
+    if !ALLOWED_ASCII_CONTROL_CHARS.contains(&character) && character.is_ascii_control() {
         sess.buffer_lint(
             BufferedEarlyLintId::NonPrintableAscii,
             span_with_quotes,
