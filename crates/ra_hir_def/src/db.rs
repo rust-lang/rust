@@ -8,13 +8,14 @@ use ra_syntax::ast;
 use crate::{
     adt::{EnumData, StructData},
     body::{scope::ExprScopes, Body, BodySourceMap},
+    generics::GenericParams,
     impls::ImplData,
     nameres::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
     traits::TraitData,
-    DefWithBodyId, EnumId, ImplId, ItemLoc, StructOrUnionId, TraitId,
+    DefWithBodyId, EnumId, GenericDefId, ImplId, ItemLoc, StructOrUnionId, TraitId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -71,4 +72,7 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(ExprScopes::expr_scopes_query)]
     fn expr_scopes(&self, def: DefWithBodyId) -> Arc<ExprScopes>;
+
+    #[salsa::invoke(GenericParams::generic_params_query)]
+    fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
 }
