@@ -289,12 +289,23 @@ impl_arena_id!(LocalStructFieldId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ConstId(salsa::InternId);
 impl_intern_key!(ConstId);
-impl AstItemDef<ast::ConstDef> for ConstId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::ConstDef>) -> Self {
-        db.intern_const(loc)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ConstLoc {
+    pub container: ContainerId,
+    pub ast_id: AstId<ast::ConstDef>,
+}
+
+impl Intern for ConstLoc {
+    type ID = ConstId;
+    fn intern(self, db: &impl db::DefDatabase2) -> ConstId {
+        db.intern_const(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::ConstDef> {
-        db.lookup_intern_const(self)
+}
+
+impl Lookup for ConstId {
+    type Data = ConstLoc;
+    fn lookup(&self, db: &impl db::DefDatabase2) -> ConstLoc {
+        db.lookup_intern_const(*self)
     }
 }
 
@@ -498,6 +509,16 @@ impl HasModule for TypeAliasLoc {
     }
 }
 
+impl HasModule for ConstLoc {
+    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+        match self.container {
+            ContainerId::ModuleId(it) => it,
+            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.module(db),
+        }
+    }
+}
+
 pub trait HasSource {
     type Value;
     fn source(&self, db: &impl db::DefDatabase2) -> Source<Self::Value>;
@@ -516,6 +537,15 @@ impl HasSource for TypeAliasLoc {
     type Value = ast::TypeAliasDef;
 
     fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::TypeAliasDef> {
+        let node = self.ast_id.to_node(db);
+        Source::new(self.ast_id.file_id(), node)
+    }
+}
+
+impl HasSource for ConstLoc {
+    type Value = ast::ConstDef;
+
+    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::ConstDef> {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }

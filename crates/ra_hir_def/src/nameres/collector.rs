@@ -19,7 +19,7 @@ use crate::{
         per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
-    AdtId, AstId, AstItemDef, ConstId, ContainerId, CrateModuleId, EnumId, EnumVariantId,
+    AdtId, AstId, AstItemDef, ConstLoc, ContainerId, CrateModuleId, EnumId, EnumVariantId,
     FunctionLoc, ImplId, Intern, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
     StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
 };
@@ -692,7 +692,15 @@ where
                 PerNs::both(u, u)
             }
             raw::DefKind::Enum(ast_id) => PerNs::types(EnumId::from_ast_id(ctx, ast_id).into()),
-            raw::DefKind::Const(ast_id) => PerNs::values(ConstId::from_ast_id(ctx, ast_id).into()),
+            raw::DefKind::Const(ast_id) => {
+                let def = ConstLoc {
+                    container: ContainerId::ModuleId(module),
+                    ast_id: AstId::new(self.file_id, ast_id),
+                }
+                .intern(self.def_collector.db);
+
+                PerNs::values(def.into())
+            }
             raw::DefKind::Static(ast_id) => {
                 PerNs::values(StaticId::from_ast_id(ctx, ast_id).into())
             }

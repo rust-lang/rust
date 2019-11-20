@@ -26,7 +26,6 @@ pub use hir_def::db::{
     BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
     EnumDataQuery, ExprScopesQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
     RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery, TraitDataQuery,
-    TraitItemsIndexQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,

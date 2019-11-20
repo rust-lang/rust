@@ -404,9 +404,7 @@ mod tests {
         check_hover_result(
             r#"
             //- /main.rs
-            fn main() {
-                const foo<|>: u32 = 0;
-            }
+            const foo<|>: u32 = 0;
         "#,
             &["const foo: u32"],
         );
@@ -414,9 +412,7 @@ mod tests {
         check_hover_result(
             r#"
             //- /main.rs
-            fn main() {
-                static foo<|>: u32 = 0;
-            }
+            static foo<|>: u32 = 0;
         "#,
             &["static foo: u32"],
         );

@@ -13,8 +13,8 @@ use crate::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    traits::{TraitData, TraitItemsIndex},
-    DefWithBodyId, EnumId, ImplId, ItemLoc, ModuleId, StructOrUnionId, TraitId,
+    traits::TraitData,
+    DefWithBodyId, EnumId, ImplId, ItemLoc, StructOrUnionId, TraitId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -26,7 +26,7 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> crate::EnumId;
     #[salsa::interned]
-    fn intern_const(&self, loc: ItemLoc<ast::ConstDef>) -> crate::ConstId;
+    fn intern_const(&self, loc: crate::ConstLoc) -> crate::ConstId;
     #[salsa::interned]
     fn intern_static(&self, loc: ItemLoc<ast::StaticDef>) -> crate::StaticId;
     #[salsa::interned]
@@ -62,9 +62,6 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
-
-    #[salsa::invoke(TraitItemsIndex::trait_items_index)]
-    fn trait_items_index(&self, module: ModuleId) -> TraitItemsIndex;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);

@@ -11,6 +11,7 @@ use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::*,
 };
+use rustc_hash::FxHashSet;
 use test_utils::covers;
 
 use crate::{
@@ -2518,7 +2519,6 @@ fn test() {
     [167; 179) 'GLOBAL_CONST': u32
     [189; 191) 'id': u32
     [194; 210) 'Foo::A..._CONST': u32
-    [126; 128) '99': u32
     "###
     );
 }
@@ -4742,10 +4742,13 @@ fn infer(content: &str) -> String {
         }
     };
 
+    let mut analyzed = FxHashSet::default();
     for node in source_file.syntax().descendants() {
         if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
             let analyzer = SourceAnalyzer::new(&db, Source::new(file_id.into(), &node), None);
-            infer_def(analyzer.inference_result(), analyzer.body_source_map());
+            if analyzed.insert(analyzer.analyzed_declaration()) {
+                infer_def(analyzer.inference_result(), analyzer.body_source_map());
+            }
         }
     }
 

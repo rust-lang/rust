@@ -79,8 +79,27 @@ impl FromSource for Function {
 impl FromSource for Const {
     type Ast = ast::ConstDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Const { id })
+        let items = match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
+            Container::Trait(it) => it.items(db),
+            Container::ImplBlock(it) => it.items(db),
+            Container::Module(m) => {
+                return m
+                    .declarations(db)
+                    .into_iter()
+                    .filter_map(|it| match it {
+                        ModuleDef::Const(it) => Some(it),
+                        _ => None,
+                    })
+                    .find(|it| same_source(&it.source(db), &src))
+            }
+        };
+        items
+            .into_iter()
+            .filter_map(|it| match it {
+                AssocItem::Const(it) => Some(it),
+                _ => None,
+            })
+            .find(|it| same_source(&it.source(db), &src))
     }
 }
 impl FromSource for Static {
@@ -292,7 +311,7 @@ impl Container {
 /// equal if they point to exactly the same object.
 ///
 /// In general, we do not guarantee that we have exactly one instance of a
-/// syntax tree for each file. We probably should add such guanratree, but, for
+/// syntax tree for each file. We probably should add such guarantee, but, for
 /// the time being, we will use identity-less AstPtr comparison.
 fn same_source<N: AstNode>(s1: &Source<N>, s2: &Source<N>) -> bool {
     s1.as_ref().map(AstPtr::new) == s2.as_ref().map(AstPtr::new)

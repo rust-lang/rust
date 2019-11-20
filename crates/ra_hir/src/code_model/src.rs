@@ -120,7 +120,7 @@ impl HasSource for Function {
 impl HasSource for Const {
     type Ast = ast::ConstDef;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::ConstDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for Static {
