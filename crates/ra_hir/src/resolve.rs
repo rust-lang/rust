@@ -369,7 +369,7 @@ impl Resolver {
 
     pub(crate) fn generic_def(&self) -> Option<crate::generics::GenericDef> {
         self.scopes.iter().find_map(|scope| match scope {
-            Scope::GenericParams(params) => Some(params.def),
+            Scope::GenericParams(params) => Some(params.def.into()),
             _ => None,
         })
     }

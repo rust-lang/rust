@@ -17,6 +17,7 @@ pub mod imp;
 pub mod diagnostics;
 pub mod expr;
 pub mod body;
+pub mod generics;
 
 #[cfg(test)]
 mod test_db;
@@ -408,3 +409,26 @@ pub enum AssocItemId {
 // require not implementing From, and instead having some checked way of
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_froms!(AssocItemId: FunctionId, ConstId, TypeAliasId);
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum GenericDefId {
+    FunctionId(FunctionId),
+    AdtId(AdtId),
+    TraitId(TraitId),
+    TypeAliasId(TypeAliasId),
+    ImplId(ImplId),
+    // enum variants cannot have generics themselves, but their parent enums
+    // can, and this makes some code easier to write
+    EnumVariantId(EnumVariantId),
+    // consts can have type parameters from their parents (i.e. associated consts of traits)
+    ConstId(ConstId),
+}
+impl_froms!(
+    GenericDefId: FunctionId,
+    AdtId(StructId, EnumId, UnionId),
+    TraitId,
+    TypeAliasId,
+    ImplId,
+    EnumVariantId,
+    ConstId
+);

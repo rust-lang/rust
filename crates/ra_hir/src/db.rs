@@ -43,7 +43,7 @@ pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
     #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
     fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
 
-    #[salsa::invoke(crate::generics::GenericParams::generic_params_query)]
+    #[salsa::invoke(crate::generics::generic_params_query)]
     fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
 
     #[salsa::invoke(FnData::fn_data_query)]
