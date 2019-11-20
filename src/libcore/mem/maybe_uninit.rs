@@ -482,6 +482,7 @@ impl<T> MaybeUninit<T> {
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[inline(always)]
     #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "assume_init")]
+    #[rustc_const_unstable(feature = "const_assume_init")]
     pub const unsafe fn assume_init(self) -> T {
         intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)
