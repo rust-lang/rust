@@ -483,7 +483,7 @@ impl<T> MaybeUninit<T> {
     #[inline(always)]
     #[cfg_attr(all(not(bootstrap)), rustc_diagnostic_item = "assume_init")]
     pub const unsafe fn assume_init(self) -> T {
-        crate::intrinsics::panic_if_uninhabited::<T>();
+        intrinsics::panic_if_uninhabited::<T>();
         ManuallyDrop::into_inner(self.value)
     }
 
