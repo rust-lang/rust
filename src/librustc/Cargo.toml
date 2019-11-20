@@ -17,7 +17,7 @@ scoped-tls = "1.0"
 log = { version = "0.4", features = ["release_max_level_info", "std"] }
 rustc-rayon = "0.3.0"
 rustc-rayon-core = "0.3.0"
-polonius-engine = "0.11.0"
+polonius-engine = "0.12.0"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_attr = { path = "../librustc_attr" }
 rustc_feature = { path = "../librustc_feature" }
