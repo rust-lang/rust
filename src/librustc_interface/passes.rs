@@ -388,7 +388,7 @@ fn configure_and_expand_inner<'a>(
     // If we're actually rustdoc then there's no need to actually compile
     // anything, so switch everything to just looping
     let mut should_loop = sess.opts.actually_rustdoc;
-    if let Some((PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops), _)) = sess.opts.pretty {
+    if let Some(PpMode::PpmSource(PpSourceMode::PpmEveryBodyLoops)) = sess.opts.pretty {
         should_loop |= true;
     }
     if should_loop {
