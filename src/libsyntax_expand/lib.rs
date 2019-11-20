@@ -33,7 +33,7 @@ pub use mbe::macro_rules::compile_declarative_macro;
 pub mod base;
 pub mod build;
 pub mod expand;
-#[macro_use] pub mod config;
+pub use rustc_parse::config;
 pub mod proc_macro;
 
 crate mod mbe;

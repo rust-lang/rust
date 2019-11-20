@@ -25,6 +25,8 @@ pub mod parser;
 use parser::{Parser, emit_unclosed_delims, make_unclosed_delims_error};
 pub mod lexer;
 pub mod validate_attr;
+#[macro_use]
+pub mod config;
 
 #[derive(Clone)]
 pub struct Directory<'a> {

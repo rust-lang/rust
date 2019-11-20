@@ -4,7 +4,7 @@ use crate::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::config::StripUnconfigured;
-use crate::configure;
+use rustc_parse::configure;
 
 use rustc_parse::DirectoryOwnership;
 use rustc_parse::parser::Parser;
