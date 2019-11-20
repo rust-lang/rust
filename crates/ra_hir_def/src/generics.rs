@@ -11,7 +11,7 @@ use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 use crate::{
     db::DefDatabase2,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, GenericDefId,
+    AdtId, AstItemDef, GenericDefId, HasSource, Lookup,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -53,7 +53,7 @@ impl GenericParams {
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
-            GenericDefId::FunctionId(it) => generics.fill(&it.source(db).value, start),
+            GenericDefId::FunctionId(it) => generics.fill(&it.lookup(db).source(db).value, start),
             GenericDefId::AdtId(AdtId::StructId(it)) => {
                 generics.fill(&it.0.source(db).value, start)
             }

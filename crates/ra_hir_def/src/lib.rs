@@ -199,13 +199,31 @@ pub trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
 pub struct FunctionId(salsa::InternId);
 impl_intern_key!(FunctionId);
 
-impl AstItemDef<ast::FnDef> for FunctionId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::FnDef>) -> Self {
-        db.intern_function(loc)
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct FunctionLoc {
+    pub container: FunctionContainerId,
+    pub ast_id: AstId<ast::FnDef>,
+}
+
+impl Intern for FunctionLoc {
+    type ID = FunctionId;
+    fn intern(self, db: &impl db::DefDatabase2) -> FunctionId {
+        db.intern_function(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::FnDef> {
-        db.lookup_intern_function(self)
+}
+
+impl Lookup for FunctionId {
+    type Data = FunctionLoc;
+    fn lookup(&self, db: &impl db::DefDatabase2) -> FunctionLoc {
+        db.lookup_intern_function(*self)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FunctionContainerId {
+    ModuleId(ModuleId),
+    ImplId(ImplId),
+    TraitId(TraitId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -433,3 +451,41 @@ impl_froms!(
     EnumVariantId,
     ConstId
 );
+
+trait Intern {
+    type ID;
+    fn intern(self, db: &impl db::DefDatabase2) -> Self::ID;
+}
+
+pub trait Lookup {
+    type Data;
+    fn lookup(&self, db: &impl db::DefDatabase2) -> Self::Data;
+}
+
+pub trait HasModule {
+    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId;
+}
+
+impl HasModule for FunctionLoc {
+    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+        match self.container {
+            FunctionContainerId::ModuleId(it) => it,
+            FunctionContainerId::ImplId(it) => it.module(db),
+            FunctionContainerId::TraitId(it) => it.module(db),
+        }
+    }
+}
+
+pub trait HasSource {
+    type Value;
+    fn source(&self, db: &impl db::DefDatabase2) -> Source<Self::Value>;
+}
+
+impl HasSource for FunctionLoc {
+    type Value = ast::FnDef;
+
+    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::FnDef> {
+        let node = self.ast_id.to_node(db);
+        Source::new(self.ast_id.file_id(), node)
+    }
+}

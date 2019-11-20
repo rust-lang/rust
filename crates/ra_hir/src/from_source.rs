@@ -4,15 +4,15 @@ use hir_def::{ModuleId, StructId, StructOrUnionId, UnionId};
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
-    match_ast,
+    match_ast, AstPtr,
 };
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::{AstItemDef, LocationCtx},
-    Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource, ImplBlock,
-    Local, MacroDef, Module, ModuleSource, Source, Static, Struct, StructField, Trait, TypeAlias,
-    Union, VariantDef,
+    AssocItem, Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource,
+    ImplBlock, Local, MacroDef, Module, ModuleDef, ModuleSource, Source, Static, Struct,
+    StructField, Trait, TypeAlias, Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -52,10 +52,51 @@ impl FromSource for Trait {
 impl FromSource for Function {
     type Ast = ast::FnDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Function { id })
+        // FIXME: this doesn't try to handle nested declarations
+        for container in src.value.syntax().ancestors() {
+            let res = match_ast! {
+                match container {
+                    ast::TraitDef(it) => {
+                        let c = Trait::from_source(db, src.with_value(it))?;
+                        c.items(db)
+                            .into_iter()
+                            .filter_map(|it| match it {
+                                AssocItem::Function(it) => Some(it),
+                                _ => None
+                            })
+                            .find(|it| same_source(&it.source(db), &src))?
+                    },
+                    ast::ImplBlock(it) => {
+                        let c = ImplBlock::from_source(db, src.with_value(it))?;
+                        c.items(db)
+                            .into_iter()
+                            .filter_map(|it| match it {
+                                AssocItem::Function(it) => Some(it),
+                                _ => None
+                            })
+                            .find(|it| same_source(&it.source(db), &src))?
+
+                     },
+                    _ => { continue },
+                }
+            };
+            return Some(res);
+        }
+
+        let module_source = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
+        let c = Module::from_definition(db, src.with_value(module_source))?;
+        let res = c
+            .declarations(db)
+            .into_iter()
+            .filter_map(|it| match it {
+                ModuleDef::Function(it) => Some(it),
+                _ => None,
+            })
+            .find(|it| same_source(&it.source(db), &src));
+        res
     }
 }
+
 impl FromSource for Const {
     type Ast = ast::ConstDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
@@ -108,7 +149,7 @@ impl FromSource for EnumVariant {
         let parent_enum = src.value.parent_enum();
         let src_enum = Source { file_id: src.file_id, value: parent_enum };
         let variants = Enum::from_source(db, src_enum)?.variants(db);
-        variants.into_iter().find(|v| v.source(db) == src)
+        variants.into_iter().find(|v| same_source(&v.source(db), &src))
     }
 }
 
@@ -215,4 +256,14 @@ where
     let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
     let ctx = LocationCtx::new(db, module.id, src.file_id);
     Some(DEF::from_ast(ctx, &src.value))
+}
+
+/// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
+/// equal if they point to exactly the same object.
+///
+/// In general, we do not guarantee that we have exactly one instance of a
+/// syntax tree for each file. We probably should add such guanratree, but, for
+/// the time being, we will use identity-less AstPtr comparison.
+fn same_source<N: AstNode>(s1: &Source<N>, s2: &Source<N>) -> bool {
+    s1.as_ref().map(AstPtr::new) == s2.as_ref().map(AstPtr::new)
 }
