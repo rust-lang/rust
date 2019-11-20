@@ -25,11 +25,11 @@ pub(crate) fn goto_definition(
     let res = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                let navs = reference_definition(db, token.with_ast(&name_ref)).to_vec();
+                let navs = reference_definition(db, token.with_value(&name_ref)).to_vec();
                 RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec())
             },
             ast::Name(name) => {
-                let navs = name_definition(db, token.with_ast(&name))?;
+                let navs = name_definition(db, token.with_value(&name))?;
                 RangeInfo::new(name.syntax().text_range(), navs)
 
             },
@@ -99,7 +99,7 @@ pub(crate) fn name_definition(
 
     if let Some(module) = ast::Module::cast(parent.clone()) {
         if module.has_semi() {
-            let src = name.with_ast(module);
+            let src = name.with_value(module);
             if let Some(child_module) = hir::Module::from_declaration(db, src) {
                 let nav = child_module.to_nav(db);
                 return Some(vec![nav]);
@@ -107,7 +107,7 @@ pub(crate) fn name_definition(
         }
     }
 
-    if let Some(nav) = named_target(db, name.with_ast(&parent)) {
+    if let Some(nav) = named_target(db, name.with_value(&parent)) {
         return Some(vec![nav]);
     }
 
@@ -120,7 +120,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::StructDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -128,7 +128,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::EnumDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -136,7 +136,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::EnumVariant(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -144,7 +144,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::FnDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -152,7 +152,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::TypeAliasDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -160,7 +160,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::ConstDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -168,7 +168,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::StaticDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -176,7 +176,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::TraitDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -184,7 +184,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::RecordFieldDef(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -192,7 +192,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::Module(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     it.short_label(),
                 ))
@@ -200,7 +200,7 @@ fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<Navigati
             ast::MacroCall(it) => {
                 Some(NavigationTarget::from_named(
                     db,
-                    node.with_ast(&it),
+                    node.with_value(&it),
                     it.doc_comment_text(),
                     None,
                 ))

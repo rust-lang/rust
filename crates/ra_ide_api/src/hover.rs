@@ -174,7 +174,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
             ast::NameRef(name_ref) => {
                 let mut no_fallback = false;
                 if let Some(name_kind) =
-                    classify_name_ref(db, token.with_ast(&name_ref)).map(|d| d.kind)
+                    classify_name_ref(db, token.with_value(&name_ref)).map(|d| d.kind)
                 {
                     res.extend(hover_text_from_name_kind(db, name_kind, &mut no_fallback))
                 }
@@ -196,7 +196,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 }
             },
             ast::Name(name) => {
-                if let Some(name_kind) = classify_name(db, token.with_ast(&name)).map(|d| d.kind) {
+                if let Some(name_kind) = classify_name(db, token.with_value(&name)).map(|d| d.kind) {
                     res.extend(hover_text_from_name_kind(db, name_kind, &mut true));
                 }
 

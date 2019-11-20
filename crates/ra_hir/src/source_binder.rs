@@ -33,19 +33,19 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -
     match_ast! {
         match (node.value) {
             ast::Module(it) => {
-                let src = node.with_ast(it);
+                let src = node.with_value(it);
                 Some(crate::Module::from_declaration(db, src)?.resolver(db))
             },
              ast::SourceFile(it) => {
-                let src = node.with_ast(crate::ModuleSource::SourceFile(it));
+                let src = node.with_value(crate::ModuleSource::SourceFile(it));
                 Some(crate::Module::from_definition(db, src)?.resolver(db))
             },
             ast::StructDef(it) => {
-                let src = node.with_ast(it);
+                let src = node.with_value(it);
                 Some(Struct::from_source(db, src)?.resolver(db))
             },
             ast::EnumDef(it) => {
-                let src = node.with_ast(it);
+                let src = node.with_value(it);
                 Some(Enum::from_source(db, src)?.resolver(db))
             },
             _ => match node.value.kind() {
@@ -157,7 +157,7 @@ impl SourceAnalyzer {
             let scopes = def.expr_scopes(db);
             let scope = match offset {
                 None => scope_for(&scopes, &source_map, node),
-                Some(offset) => scope_for_offset(&scopes, &source_map, node.with_ast(offset)),
+                Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
             };
             let resolver = expr::resolver_for_scope(db, def, scope);
             SourceAnalyzer {
@@ -173,7 +173,7 @@ impl SourceAnalyzer {
                 resolver: node
                     .value
                     .ancestors()
-                    .find_map(|it| try_get_resolver_for_node(db, node.with_ast(&it)))
+                    .find_map(|it| try_get_resolver_for_node(db, node.with_value(&it)))
                     .unwrap_or_default(),
                 body_owner: None,
                 body_source_map: None,
