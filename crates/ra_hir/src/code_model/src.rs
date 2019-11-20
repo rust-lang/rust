@@ -4,11 +4,10 @@ use hir_def::{HasSource as _, Lookup};
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{
-    adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::AstItemDef,
     Const, Either, Enum, EnumVariant, FieldSource, Function, HasBody, HirFileId, MacroDef, Module,
-    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
 };
 
 pub use hir_expand::Source;

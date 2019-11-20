@@ -19,7 +19,6 @@ use super::{
     TypeWalk,
 };
 use crate::{
-    adt::VariantDef,
     db::HirDatabase,
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
@@ -30,7 +29,7 @@ use crate::{
     },
     util::make_mut_slice,
     Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField, Trait,
-    TypeAlias, Union,
+    TypeAlias, Union, VariantDef,
 };
 
 // FIXME: this is only really used in `type_for_def`, which contains a bunch of
