@@ -482,6 +482,26 @@ bench_in_place![
 ];
 
 #[bench]
+fn bench_in_place_recycle(b: &mut test::Bencher) {
+    let mut data = vec![0; 1000];
+
+    b.iter(|| {
+        let tmp = std::mem::replace(&mut data, Vec::new());
+        std::mem::replace(
+            &mut data,
+            black_box(
+                tmp.into_iter()
+                    .enumerate()
+                    .map(|(idx, e)| idx.wrapping_add(e))
+                    .fuse()
+                    .peekable()
+                    .collect::<Vec<usize>>(),
+            ),
+        );
+    });
+}
+
+#[bench]
 fn bench_chain_collect(b: &mut test::Bencher) {
     let data = black_box([0; LEN]);
     b.iter(|| data.iter().cloned().chain([1].iter().cloned()).collect::<Vec<_>>());
