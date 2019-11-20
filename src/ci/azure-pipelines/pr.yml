@@ -18,10 +18,7 @@ jobs:
     - template: steps/run.yml
   strategy:
     matrix:
-      x86_64-gnu-llvm-6.0:
-        IMAGE: x86_64-gnu-llvm-6.0
-      mingw-check:
-        IMAGE: mingw-check
+      x86_64-gnu-llvm-6.0: {}
+      mingw-check: {}
       x86_64-gnu-tools:
-        IMAGE: x86_64-gnu-tools
         CI_ONLY_WHEN_SUBMODULES_CHANGED: 1

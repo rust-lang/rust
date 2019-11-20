@@ -23,9 +23,7 @@ fi
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"
 
-branch_name=$(getCIBranch)
-
-if [ ! isCI ] || [ "$branch_name" = "auto" ] || [ "$branch_name" = "try" ]; then
+if [ ! isCI ] || isCiBranch auto || isCiBranch beta; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
 
