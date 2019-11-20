@@ -81,6 +81,7 @@
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(intrinsics)]
+#![feature(core_intrinsics)]
 #![feature(is_sorted)]
 #![feature(iter_once_with)]
 #![feature(lang_items)]
