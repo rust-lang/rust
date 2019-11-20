@@ -697,10 +697,12 @@ themePicker.onblur = handleThemeButtonsBlur;
           static_files::source_serif_pro::ITALIC)?;
     write(cx.dst.join("SourceSerifPro-LICENSE.md"),
           static_files::source_serif_pro::LICENSE)?;
-    write(cx.dst.join("SourceCodePro-Regular.woff"),
+    write(cx.dst.join("SourceCodePro-Regular.ttf.woff"),
           static_files::source_code_pro::REGULAR)?;
-    write(cx.dst.join("SourceCodePro-Semibold.woff"),
+    write(cx.dst.join("SourceCodePro-Semibold.ttf.woff"),
           static_files::source_code_pro::SEMIBOLD)?;
+    write(cx.dst.join("SourceCodePro-It.ttf.woff"),
+          static_files::source_code_pro::ITALIC)?;
     write(cx.dst.join("SourceCodePro-LICENSE.txt"),
           static_files::source_code_pro::LICENSE)?;
     write(cx.dst.join("LICENSE-MIT.txt"),
