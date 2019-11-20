@@ -23,7 +23,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let mac = name_ref.syntax().ancestors().find_map(ast::MacroCall::cast)?;
 
     let source = hir::Source::new(position.file_id.into(), mac.syntax());
-    let expanded = expand_macro_recur(db, source, &mac)?;
+    let expanded = expand_macro_recur(db, source, source.with_value(&mac))?;
 
     // FIXME:
     // macro expansion may lose all white space information
@@ -35,10 +35,10 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 fn expand_macro_recur(
     db: &RootDatabase,
     source: hir::Source<&SyntaxNode>,
-    macro_call: &ast::MacroCall,
+    macro_call: hir::Source<&ast::MacroCall>,
 ) -> Option<SyntaxNode> {
     let analyzer = hir::SourceAnalyzer::new(db, source, None);
-    let expansion = analyzer.expand(db, &macro_call)?;
+    let expansion = analyzer.expand(db, macro_call)?;
     let macro_file_id = expansion.file_id();
     let expanded: SyntaxNode = db.parse_or_expand(macro_file_id)?;
 
@@ -46,8 +46,8 @@ fn expand_macro_recur(
     let mut replaces = FxHashMap::default();
 
     for child in children.into_iter() {
-        let source = hir::Source::new(macro_file_id, source.value);
-        let new_node = expand_macro_recur(db, source, &child)?;
+        let node = hir::Source::new(macro_file_id, &child);
+        let new_node = expand_macro_recur(db, source, node)?;
 
         replaces.insert(child.syntax().clone().into(), new_node.into());
     }
