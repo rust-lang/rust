@@ -1980,6 +1980,30 @@ fn test() {
 }
 
 #[test]
+fn infer_associated_method_generics_with_default_tuple_param() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct Gen<T=()> {
+    val: T
+}
+
+impl<T> Gen<T> {
+    pub fn make() -> Gen<T> {
+        loop { }
+    }
+}
+
+fn test() {
+    let a = Gen::make();
+    a.val<|>;
+}
+"#,
+    );
+    assert_eq!(t, "()");
+}
+
+#[test]
 fn infer_associated_method_generics_without_args() {
     assert_snapshot!(
         infer(r#"

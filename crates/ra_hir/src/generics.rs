@@ -5,12 +5,9 @@
 
 use std::sync::Arc;
 
-use hir_def::{
-    path::Path,
-    type_ref::{TypeBound, TypeRef},
-};
+use hir_def::type_ref::{TypeBound, TypeRef};
 use hir_expand::name::{self, AsName};
-use ra_syntax::ast::{self, DefaultTypeParamOwner, NameOwner, TypeBoundsOwner, TypeParamsOwner};
+use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
@@ -24,7 +21,7 @@ pub struct GenericParam {
     // FIXME: give generic params proper IDs
     pub idx: u32,
     pub name: Name,
-    pub default: Option<Path>,
+    pub default: Option<TypeRef>,
 }
 
 /// Data about the generic parameters of a function, struct, impl, etc.
@@ -140,7 +137,7 @@ impl GenericParams {
         for (idx, type_param) in params.type_params().enumerate() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
-            let default = type_param.default_type().and_then(|t| t.path()).and_then(Path::from_ast);
+            let default = type_param.default_type().map(TypeRef::from_ast);
 
             let param = GenericParam { idx: idx as u32 + start, name: name.clone(), default };
             self.params.push(param);

@@ -611,9 +611,7 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> 
     let defaults = generic_params
         .params_including_parent()
         .into_iter()
-        .map(|p| {
-            p.default.as_ref().map_or(Ty::Unknown, |path| Ty::from_hir_path(db, &resolver, path))
-        })
+        .map(|p| p.default.as_ref().map_or(Ty::Unknown, |t| Ty::from_hir(db, &resolver, t)))
         .collect();
 
     Substs(defaults)
