@@ -28,9 +28,8 @@ use syntax_pos::{MultiSpan, Span};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
-use rustc_data_structures::jobserver;
+use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use ::jobserver::Client;
 
 use std;
 use std::cell::{self, RefCell};
