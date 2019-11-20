@@ -284,10 +284,20 @@ class RustStdVecPrinter(object):
                 ("(len: %i, cap: %i)" % (length, cap)))
 
     def children(self):
+        saw_inaccessible = False
         (length, data_ptr, cap) = rustpp.extract_length_ptr_and_cap_from_std_vec(self.__val)
         gdb_ptr = data_ptr.get_wrapped_value()
         for index in xrange(0, length):
-            yield (str(index), (gdb_ptr + index).dereference())
+            if saw_inaccessible:
+                return
+            try:
+                # rust-lang/rust#64343: passing deref expr to `str` allows
+                # catching exception on garbage pointer
+                str((gdb_ptr + index).dereference())
+                yield (str(index), (gdb_ptr + index).dereference())
+            except RuntimeError:
+                saw_inaccessible = True
+                yield (str(index), "inaccessible")
 
 
 class RustStdVecDequePrinter(object):
