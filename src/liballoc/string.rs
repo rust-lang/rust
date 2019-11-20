@@ -1982,6 +1982,7 @@ impl Add<&str> for String {
     }
 }
 
+<<<<<<< HEAD
 /// Implements the `+` operator for concatenating a string and a char together.
 ///
 /// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
@@ -2027,6 +2028,8 @@ impl Add<char> for String {
     }
 }
 
+=======
+>>>>>>> parent of 342277f3a38... Ammended further to accomodate `AddAssign<char>` for `String` and `Cow<str>`.
 /// Implements the `+=` operator for appending to a `String`.
 ///
 /// This has the same behavior as the [`push_str`][String::push_str] method.
@@ -2035,17 +2038,6 @@ impl AddAssign<&str> for String {
     #[inline]
     fn add_assign(&mut self, other: &str) {
         self.push_str(other);
-    }
-}
-
-/// Implements the `+=` operator for appending a `char` to a `String`.
-///
-/// This has the same behavior as the [`push`][String::push] method.
-#[stable(feature = "stringaddassign_char", since = "1.41.0")]
-impl AddAssign<char> for String {
-    #[inline]
-    fn add_assign(&mut self, other: char) {
-        self.push(other);
     }
 }
 
