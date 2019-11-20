@@ -436,6 +436,7 @@ fn on_request(
         })?
         .on::<req::AnalyzerStatus>(handlers::handle_analyzer_status)?
         .on::<req::SyntaxTree>(handlers::handle_syntax_tree)?
+        .on::<req::ExpandMacro>(handlers::handle_expand_macro)?
         .on::<req::OnTypeFormatting>(handlers::handle_on_type_formatting)?
         .on::<req::DocumentSymbolRequest>(handlers::handle_document_symbol)?
         .on::<req::WorkspaceSymbol>(handlers::handle_workspace_symbol)?

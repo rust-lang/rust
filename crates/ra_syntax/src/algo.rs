@@ -134,23 +134,19 @@ pub fn insert_children(
         to_green_element(element)
     });
 
-    let old_children = parent.green().children();
+    let mut old_children = parent.green().children().map(|it| match it {
+        NodeOrToken::Token(it) => NodeOrToken::Token(it.clone()),
+        NodeOrToken::Node(it) => NodeOrToken::Node(it.clone()),
+    });
 
     let new_children = match &position {
-        InsertPosition::First => {
-            to_insert.chain(old_children.iter().cloned()).collect::<Box<[_]>>()
-        }
-        InsertPosition::Last => old_children.iter().cloned().chain(to_insert).collect::<Box<[_]>>(),
+        InsertPosition::First => to_insert.chain(old_children).collect::<Box<[_]>>(),
+        InsertPosition::Last => old_children.chain(to_insert).collect::<Box<[_]>>(),
         InsertPosition::Before(anchor) | InsertPosition::After(anchor) => {
             let take_anchor = if let InsertPosition::After(_) = position { 1 } else { 0 };
             let split_at = position_of_child(parent, anchor.clone()) + take_anchor;
-            let (before, after) = old_children.split_at(split_at);
-            before
-                .iter()
-                .cloned()
-                .chain(to_insert)
-                .chain(after.iter().cloned())
-                .collect::<Box<[_]>>()
+            let before = old_children.by_ref().take(split_at).collect::<Vec<_>>();
+            before.into_iter().chain(to_insert).chain(old_children).collect::<Box<[_]>>()
         }
     };
 
@@ -168,13 +164,16 @@ pub fn replace_children(
 ) -> SyntaxNode {
     let start = position_of_child(parent, to_delete.start().clone());
     let end = position_of_child(parent, to_delete.end().clone());
-    let old_children = parent.green().children();
+    let mut old_children = parent.green().children().map(|it| match it {
+        NodeOrToken::Token(it) => NodeOrToken::Token(it.clone()),
+        NodeOrToken::Node(it) => NodeOrToken::Node(it.clone()),
+    });
 
-    let new_children = old_children[..start]
-        .iter()
-        .cloned()
+    let before = old_children.by_ref().take(start).collect::<Vec<_>>();
+    let new_children = before
+        .into_iter()
         .chain(to_insert.map(to_green_element))
-        .chain(old_children[end + 1..].iter().cloned())
+        .chain(old_children.skip(end + 1 - start))
         .collect::<Box<[_]>>();
     with_children(parent, new_children)
 }

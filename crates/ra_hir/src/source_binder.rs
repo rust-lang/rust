@@ -140,7 +140,7 @@ impl Expansion {
         exp_info.map_token_down(token)
     }
 
-    fn file_id(&self) -> HirFileId {
+    pub fn file_id(&self) -> HirFileId {
         self.macro_call_id.as_file(MacroFileKind::Items)
     }
 }

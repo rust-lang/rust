@@ -5,6 +5,7 @@ on:
     branches:
       - master
       - staging
+      - trying
 
 jobs:
   rust:

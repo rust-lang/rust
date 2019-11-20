@@ -92,6 +92,11 @@
                 "category": "Rust Analyzer"
             },
             {
+                "command": "rust-analyzer.expandMacro",
+                "title": "Expand macro recursively",
+                "category": "Rust Analyzer"
+            },
+            {
                 "command": "rust-analyzer.matchingBrace",
                 "title": "Find matching brace",
                 "category": "Rust Analyzer"

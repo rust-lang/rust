@@ -32,7 +32,7 @@ impl ast::NameRef {
 }
 
 fn text_of_first_token(node: &SyntaxNode) -> &SmolStr {
-    node.green().children().first().and_then(|it| it.as_token()).unwrap().text()
+    node.green().children().next().and_then(|it| it.into_token()).unwrap().text()
 }
 
 impl ast::Attr {

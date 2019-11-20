@@ -172,12 +172,12 @@ impl_to_to_tokentrees! {
     u32 => self { tt::Literal{text: self.to_string().into()} };
     usize => self { tt::Literal{text: self.to_string().into()}};
     i32 => self { tt::Literal{text: self.to_string().into()}};
-    &str => self { tt::Literal{text: self.to_string().into()}};
-    String => self { tt::Literal{text: self.into()}};
     tt::Leaf => self { self };
     tt::Literal => self { self };
     tt::Ident => self { self };
-    tt::Punct => self { self }
+    tt::Punct => self { self };
+    &str => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into()}};
+    String => self { tt::Literal{text: format!("{:?}", self.escape_default().to_string()).into()}}
 }
 
 #[cfg(test)]
@@ -200,7 +200,7 @@ mod tests {
         let a = 20;
         assert_eq!(quote!(#a).to_string(), "20");
         let s: String = "hello".into();
-        assert_eq!(quote!(#s).to_string(), "hello");
+        assert_eq!(quote!(#s).to_string(), "\"hello\"");
     }
 
     fn mk_ident(name: &str) -> tt::Ident {

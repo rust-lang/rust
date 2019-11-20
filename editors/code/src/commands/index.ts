@@ -1,5 +1,6 @@
 import * as analyzerStatus from './analyzer_status';
 import * as applySourceChange from './apply_source_change';
+import * as expandMacro from './expand_macro';
 import * as inlayHints from './inlay_hints';
 import * as joinLines from './join_lines';
 import * as matchingBrace from './matching_brace';
@@ -11,6 +12,7 @@ import * as syntaxTree from './syntaxTree';
 export {
     analyzerStatus,
     applySourceChange,
+    expandMacro,
     joinLines,
     matchingBrace,
     parentModule,
