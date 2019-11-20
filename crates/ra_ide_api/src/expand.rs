@@ -28,7 +28,7 @@ pub(crate) fn original_range(db: &RootDatabase, node: Source<&SyntaxNode>) -> Fi
         .value
         .descendants_with_tokens()
         .filter_map(|it| it.into_token())
-        .find_map(|it| expansion.map_token_up(node.with_ast(&it)));
+        .find_map(|it| expansion.map_token_up(node.with_value(&it)));
 
     match token {
         Some(it) => {
@@ -54,7 +54,7 @@ pub(crate) fn descend_into_macros(
             return None;
         }
         let source_analyzer =
-            hir::SourceAnalyzer::new(db, token.with_ast(token.value.parent()).as_ref(), None);
+            hir::SourceAnalyzer::new(db, token.with_value(token.value.parent()).as_ref(), None);
         let exp = source_analyzer.expand(db, &macro_call)?;
         exp.map_token_down(db, token.as_ref())
     })

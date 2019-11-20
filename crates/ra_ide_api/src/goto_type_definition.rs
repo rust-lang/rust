@@ -22,7 +22,7 @@ pub(crate) fn goto_type_definition(
             .find(|n| ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some())
     })?;
 
-    let analyzer = hir::SourceAnalyzer::new(db, token.with_ast(&node), None);
+    let analyzer = hir::SourceAnalyzer::new(db, token.with_value(&node), None);
 
     let ty: hir::Ty = if let Some(ty) =
         ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))

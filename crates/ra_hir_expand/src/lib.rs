@@ -174,7 +174,7 @@ impl ExpansionInfo {
 
         let token = algo::find_covering_element(&self.expanded.value, range).into_token()?;
 
-        Some(self.expanded.with_ast(token))
+        Some(self.expanded.with_value(token))
     }
 
     pub fn map_token_up(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
@@ -192,7 +192,7 @@ impl ExpansionInfo {
             range + tt.value.syntax().text_range().start(),
         )
         .into_token()?;
-        Some(tt.with_ast(token))
+        Some(tt.with_value(token))
     }
 }
 
@@ -259,7 +259,7 @@ impl<T> Source<T> {
     }
 
     // Similarly, naming here is stupid...
-    pub fn with_ast<U>(&self, value: U) -> Source<U> {
+    pub fn with_value<U>(&self, value: U) -> Source<U> {
         Source::new(self.file_id, value)
     }
 
@@ -267,7 +267,7 @@ impl<T> Source<T> {
         Source::new(self.file_id, f(self.value))
     }
     pub fn as_ref(&self) -> Source<&T> {
-        self.with_ast(&self.value)
+        self.with_value(&self.value)
     }
     pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")

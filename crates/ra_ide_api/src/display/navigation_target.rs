@@ -148,7 +148,7 @@ impl NavigationTarget {
         //FIXME: use `_` instead of empty string
         let name = node.value.name().map(|it| it.text().clone()).unwrap_or_default();
         let focus_range =
-            node.value.name().map(|it| original_range(db, node.with_ast(it.syntax())).range);
+            node.value.name().map(|it| original_range(db, node.with_value(it.syntax())).range);
         let frange = original_range(db, node.map(|it| it.syntax()));
 
         NavigationTarget::from_syntax(
@@ -232,7 +232,7 @@ impl ToNav for hir::Module {
         let name = self.name(db).map(|it| it.to_string().into()).unwrap_or_default();
         match &src.value {
             ModuleSource::SourceFile(node) => {
-                let frange = original_range(db, src.with_ast(node.syntax()));
+                let frange = original_range(db, src.with_value(node.syntax()));
 
                 NavigationTarget::from_syntax(
                     frange.file_id,
@@ -245,7 +245,7 @@ impl ToNav for hir::Module {
                 )
             }
             ModuleSource::Module(node) => {
-                let frange = original_range(db, src.with_ast(node.syntax()));
+                let frange = original_range(db, src.with_value(node.syntax()));
 
                 NavigationTarget::from_syntax(
                     frange.file_id,
@@ -285,12 +285,12 @@ impl ToNav for hir::StructField {
         match &src.value {
             FieldSource::Named(it) => NavigationTarget::from_named(
                 db,
-                src.with_ast(it),
+                src.with_value(it),
                 it.doc_comment_text(),
                 it.short_label(),
             ),
             FieldSource::Pos(it) => {
-                let frange = original_range(db, src.with_ast(it.syntax()));
+                let frange = original_range(db, src.with_value(it.syntax()));
                 NavigationTarget::from_syntax(
                     frange.file_id,
                     "".into(),
