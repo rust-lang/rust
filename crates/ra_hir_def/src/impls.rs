@@ -5,11 +5,12 @@
 
 use std::sync::Arc;
 
+use hir_expand::AstId;
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstId, FunctionId, ImplId,
-    LocationCtx, TypeAliasId,
+    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstId, FunctionContainerId,
+    FunctionLoc, ImplId, Intern, LocationCtx, TypeAliasId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,7 +36,12 @@ impl ImplData {
                 .impl_items()
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => {
-                        FunctionId::from_ast_id(ctx, items.ast_id(&it)).into()
+                        let func_id = FunctionLoc {
+                            container: FunctionContainerId::ImplId(id),
+                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
+                        }
+                        .intern(db);
+                        func_id.into()
                     }
                     ast::ImplItem::ConstDef(it) => {
                         ConstId::from_ast_id(ctx, items.ast_id(&it)).into()

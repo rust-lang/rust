@@ -2,14 +2,17 @@
 
 use std::sync::Arc;
 
-use hir_expand::name::{AsName, Name};
+use hir_expand::{
+    name::{AsName, Name},
+    AstId,
+};
 
 use ra_syntax::ast::{self, NameOwner};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    db::DefDatabase2, AssocItemId, AstItemDef, ConstId, FunctionId, LocationCtx, ModuleDefId,
-    ModuleId, TraitId, TypeAliasId,
+    db::DefDatabase2, AssocItemId, AstItemDef, ConstId, FunctionContainerId, FunctionLoc, Intern,
+    LocationCtx, ModuleDefId, ModuleId, TraitId, TypeAliasId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,11 +29,17 @@ impl TraitData {
         let module = tr.module(db);
         let ctx = LocationCtx::new(db, module, src.file_id);
         let auto = src.value.is_auto();
+        let ast_id_map = db.ast_id_map(src.file_id);
         let items = if let Some(item_list) = src.value.item_list() {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node {
-                    ast::ImplItem::FnDef(it) => FunctionId::from_ast(ctx, &it).into(),
+                    ast::ImplItem::FnDef(it) => FunctionLoc {
+                        container: FunctionContainerId::TraitId(tr),
+                        ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                    }
+                    .intern(db)
+                    .into(),
                     ast::ImplItem::ConstDef(it) => ConstId::from_ast(ctx, &it).into(),
                     ast::ImplItem::TypeAliasDef(it) => TypeAliasId::from_ast(ctx, &it).into(),
                 })
@@ -54,7 +63,13 @@ impl TraitItemsIndex {
         for decl in crate_def_map[module.module_id].scope.declarations() {
             if let ModuleDefId::TraitId(tr) = decl {
                 for item in db.trait_data(tr).items.iter() {
-                    index.traits_by_def.insert(*item, tr);
+                    match item {
+                        AssocItemId::FunctionId(_) => (),
+                        _ => {
+                            let prev = index.traits_by_def.insert(*item, tr);
+                            assert!(prev.is_none());
+                        }
+                    }
                 }
             }
         }

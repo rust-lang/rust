@@ -12,7 +12,8 @@ use hir_def::{
     builtin_type::BuiltinType,
     traits::TraitData,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, CrateModuleId, ImplId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
+    AssocItemId, CrateModuleId, FunctionContainerId, HasModule, ImplId, LocalEnumVariantId,
+    LocalStructFieldId, Lookup, ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -647,7 +648,7 @@ impl FnData {
 
 impl Function {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        self.id.lookup(db).module(db).into()
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -680,21 +681,25 @@ impl Function {
 
     /// The containing impl block, if this is a method.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        ImplBlock::containing(db, self.into())
+        match self.container(db) {
+            Some(Container::ImplBlock(it)) => Some(it),
+            _ => None,
+        }
     }
 
     /// The containing trait, if this is a trait method definition.
     pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db).id).get_parent_trait(self.id.into()).map(Trait::from)
+        match self.container(db) {
+            Some(Container::Trait(it)) => Some(it),
+            _ => None,
+        }
     }
 
     pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        if let Some(impl_block) = self.impl_block(db) {
-            Some(impl_block.into())
-        } else if let Some(trait_) = self.parent_trait(db) {
-            Some(trait_.into())
-        } else {
-            None
+        match self.id.lookup(db).container {
+            FunctionContainerId::TraitId(it) => Some(Container::Trait(it.into())),
+            FunctionContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
+            FunctionContainerId::ModuleId(_) => None,
         }
     }
 

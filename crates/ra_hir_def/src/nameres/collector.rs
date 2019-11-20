@@ -19,9 +19,9 @@ use crate::{
         per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
-    AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionId, ImplId,
-    LocationCtx, ModuleDefId, ModuleId, StaticId, StructId, StructOrUnionId, TraitId, TypeAliasId,
-    UnionId,
+    AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionContainerId,
+    FunctionLoc, ImplId, Intern, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
+    StructOrUnionId, TraitId, TypeAliasId, UnionId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -673,7 +673,12 @@ where
         let name = def.name.clone();
         let def: PerNs = match def.kind {
             raw::DefKind::Function(ast_id) => {
-                let f = FunctionId::from_ast_id(ctx, ast_id);
+                let f = FunctionLoc {
+                    container: FunctionContainerId::ModuleId(module),
+                    ast_id: AstId::new(self.file_id, ast_id),
+                }
+                .intern(self.def_collector.db);
+
                 PerNs::values(f.into())
             }
             raw::DefKind::Struct(ast_id) => {

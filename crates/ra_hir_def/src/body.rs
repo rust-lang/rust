@@ -17,7 +17,7 @@ use crate::{
     expr::{Expr, ExprId, Pat, PatId},
     nameres::CrateDefMap,
     path::Path,
-    AstItemDef, DefWithBodyId, ModuleId,
+    AstItemDef, DefWithBodyId, HasModule, HasSource, Lookup, ModuleId,
 };
 
 pub struct Expander {
@@ -149,6 +149,7 @@ impl Body {
 
         let (file_id, module, body) = match def {
             DefWithBodyId::FunctionId(f) => {
+                let f = f.lookup(db);
                 let src = f.source(db);
                 params = src.value.param_list();
                 (src.file_id, f.module(db), src.value.body().map(ast::Expr::from))

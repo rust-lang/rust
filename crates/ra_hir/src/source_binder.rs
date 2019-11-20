@@ -70,7 +70,7 @@ fn def_with_body_from_child_node(
     child.value.ancestors().find_map(|node| {
         match_ast! {
             match node {
-                ast::FnDef(def)  => { Some(Function {id: ctx.to_def(&def) }.into()) },
+                ast::FnDef(def)  => { return Function::from_source(db, child.with_value(def)).map(DefWithBody::from); },
                 ast::ConstDef(def) => { Some(Const { id: ctx.to_def(&def) }.into()) },
                 ast::StaticDef(def) => { Some(Static { id: ctx.to_def(&def) }.into()) },
                 _ => { None },

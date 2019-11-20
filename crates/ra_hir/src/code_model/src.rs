@@ -1,5 +1,6 @@
 //! FIXME: write short doc here
 
+use hir_def::{HasSource as _, Lookup};
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{
@@ -113,7 +114,7 @@ impl HasSource for EnumVariant {
 impl HasSource for Function {
     type Ast = ast::FnDef;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::FnDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for Const {

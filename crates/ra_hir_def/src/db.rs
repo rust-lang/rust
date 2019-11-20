@@ -14,13 +14,13 @@ use crate::{
         CrateDefMap,
     },
     traits::{TraitData, TraitItemsIndex},
-    DefWithBodyId, EnumId, ImplId, ItemLoc, ModuleId, StructOrUnionId, TraitId,
+    DefWithBodyId, EnumId, FunctionLoc, ImplId, ItemLoc, ModuleId, StructOrUnionId, TraitId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
-    fn intern_function(&self, loc: ItemLoc<ast::FnDef>) -> crate::FunctionId;
+    fn intern_function(&self, loc: FunctionLoc) -> crate::FunctionId;
     #[salsa::interned]
     fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> crate::StructOrUnionId;
     #[salsa::interned]
