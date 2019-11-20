@@ -11,8 +11,8 @@ use ra_syntax::ast::{self, NameOwner};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    db::DefDatabase2, AssocItemId, AstItemDef, ConstId, FunctionContainerId, FunctionLoc, Intern,
-    LocationCtx, ModuleDefId, ModuleId, TraitId, TypeAliasContainerId, TypeAliasLoc,
+    db::DefDatabase2, AssocItemId, AstItemDef, ConstId, ContainerId, FunctionLoc, Intern,
+    LocationCtx, ModuleDefId, ModuleId, TraitId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -35,14 +35,14 @@ impl TraitData {
                 .impl_items()
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => FunctionLoc {
-                        container: FunctionContainerId::TraitId(tr),
+                        container: ContainerId::TraitId(tr),
                         ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
                     }
                     .intern(db)
                     .into(),
                     ast::ImplItem::ConstDef(it) => ConstId::from_ast(ctx, &it).into(),
                     ast::ImplItem::TypeAliasDef(it) => TypeAliasLoc {
-                        container: TypeAliasContainerId::TraitId(tr),
+                        container: ContainerId::TraitId(tr),
                         ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
                     }
                     .intern(db)

@@ -12,8 +12,8 @@ use hir_def::{
     builtin_type::BuiltinType,
     traits::TraitData,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, CrateModuleId, FunctionContainerId, HasModule, ImplId, LocalEnumVariantId,
-    LocalStructFieldId, Lookup, ModuleId, TypeAliasContainerId, UnionId,
+    AssocItemId, ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId,
+    LocalStructFieldId, Lookup, ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -697,9 +697,9 @@ impl Function {
 
     pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
         match self.id.lookup(db).container {
-            FunctionContainerId::TraitId(it) => Some(Container::Trait(it.into())),
-            FunctionContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
-            FunctionContainerId::ModuleId(_) => None,
+            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
+            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
+            ContainerId::ModuleId(_) => None,
         }
     }
 
@@ -979,9 +979,9 @@ impl TypeAlias {
 
     pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
         match self.id.lookup(db).container {
-            TypeAliasContainerId::TraitId(it) => Some(Container::Trait(it.into())),
-            TypeAliasContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
-            TypeAliasContainerId::ModuleId(_) => None,
+            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
+            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
+            ContainerId::ModuleId(_) => None,
         }
     }
 

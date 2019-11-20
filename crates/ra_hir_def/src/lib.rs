@@ -201,7 +201,7 @@ impl_intern_key!(FunctionId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionLoc {
-    pub container: FunctionContainerId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::FnDef>,
 }
 
@@ -217,13 +217,6 @@ impl Lookup for FunctionId {
     fn lookup(&self, db: &impl db::DefDatabase2) -> FunctionLoc {
         db.lookup_intern_function(*self)
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum FunctionContainerId {
-    ModuleId(ModuleId),
-    ImplId(ImplId),
-    TraitId(TraitId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -335,7 +328,7 @@ impl_intern_key!(TypeAliasId);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeAliasLoc {
-    pub container: TypeAliasContainerId,
+    pub container: ContainerId,
     pub ast_id: AstId<ast::TypeAliasDef>,
 }
 
@@ -351,13 +344,6 @@ impl Lookup for TypeAliasId {
     fn lookup(&self, db: &impl db::DefDatabase2) -> TypeAliasLoc {
         db.lookup_intern_type_alias(*self)
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TypeAliasContainerId {
-    ModuleId(ModuleId),
-    ImplId(ImplId),
-    TraitId(TraitId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -389,6 +375,13 @@ macro_rules! impl_froms {
             )*)?
         )*
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ContainerId {
+    ModuleId(ModuleId),
+    ImplId(ImplId),
+    TraitId(TraitId),
 }
 
 /// A Data Type
@@ -488,9 +481,9 @@ pub trait HasModule {
 impl HasModule for FunctionLoc {
     fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
         match self.container {
-            FunctionContainerId::ModuleId(it) => it,
-            FunctionContainerId::ImplId(it) => it.module(db),
-            FunctionContainerId::TraitId(it) => it.module(db),
+            ContainerId::ModuleId(it) => it,
+            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.module(db),
         }
     }
 }
@@ -498,9 +491,9 @@ impl HasModule for FunctionLoc {
 impl HasModule for TypeAliasLoc {
     fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
         match self.container {
-            TypeAliasContainerId::ModuleId(it) => it,
-            TypeAliasContainerId::ImplId(it) => it.module(db),
-            TypeAliasContainerId::TraitId(it) => it.module(db),
+            ContainerId::ModuleId(it) => it,
+            ContainerId::ImplId(it) => it.module(db),
+            ContainerId::TraitId(it) => it.module(db),
         }
     }
 }

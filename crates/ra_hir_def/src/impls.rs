@@ -9,8 +9,8 @@ use hir_expand::AstId;
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstId, FunctionContainerId,
-    FunctionLoc, ImplId, Intern, LocationCtx, TypeAliasContainerId, TypeAliasLoc,
+    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstId, ContainerId,
+    FunctionLoc, ImplId, Intern, LocationCtx, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,7 +37,7 @@ impl ImplData {
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => {
                         let def = FunctionLoc {
-                            container: FunctionContainerId::ImplId(id),
+                            container: ContainerId::ImplId(id),
                             ast_id: AstId::new(src.file_id, items.ast_id(&it)),
                         }
                         .intern(db);
@@ -48,7 +48,7 @@ impl ImplData {
                     }
                     ast::ImplItem::TypeAliasDef(it) => {
                         let def = TypeAliasLoc {
-                            container: TypeAliasContainerId::ImplId(id),
+                            container: ContainerId::ImplId(id),
                             ast_id: AstId::new(src.file_id, items.ast_id(&it)),
                         }
                         .intern(db);

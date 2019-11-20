@@ -19,9 +19,9 @@ use crate::{
         per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
-    AdtId, AstId, AstItemDef, ConstId, CrateModuleId, EnumId, EnumVariantId, FunctionContainerId,
+    AdtId, AstId, AstItemDef, ConstId, ContainerId, CrateModuleId, EnumId, EnumVariantId,
     FunctionLoc, ImplId, Intern, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
-    StructOrUnionId, TraitId, TypeAliasContainerId, TypeAliasLoc, UnionId,
+    StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -674,7 +674,7 @@ where
         let def: PerNs = match def.kind {
             raw::DefKind::Function(ast_id) => {
                 let def = FunctionLoc {
-                    container: FunctionContainerId::ModuleId(module),
+                    container: ContainerId::ModuleId(module),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);
@@ -699,7 +699,7 @@ where
             raw::DefKind::Trait(ast_id) => PerNs::types(TraitId::from_ast_id(ctx, ast_id).into()),
             raw::DefKind::TypeAlias(ast_id) => {
                 let def = TypeAliasLoc {
-                    container: TypeAliasContainerId::ModuleId(module),
+                    container: ContainerId::ModuleId(module),
                     ast_id: AstId::new(self.file_id, ast_id),
                 }
                 .intern(self.def_collector.db);
