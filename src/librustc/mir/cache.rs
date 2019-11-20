@@ -78,13 +78,11 @@ impl Cache {
         }
     }
 
-    #[inline]
     pub fn invalidate_predecessors(&mut self) {
         // FIXME: consider being more fine-grained
         self.predecessors = None;
     }
 
-    #[inline]
     pub fn ensure_predecessors(&mut self, body: &Body<'_>) {
         if self.predecessors.is_none() {
             let mut result = IndexVec::from_elem(vec![], body.basic_blocks());
@@ -100,29 +98,24 @@ impl Cache {
         }
     }
 
-    #[inline]
     /// This will recompute the predecessors cache if it is not available
     fn predecessors(&mut self, body: &Body<'_>) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         self.ensure_predecessors(body);
         self.predecessors.as_ref().unwrap()
     }
 
-    #[inline]
     fn predecessors_for(&mut self, bb: BasicBlock, body: &Body<'_>) -> &[BasicBlock] {
         &self.predecessors(body)[bb]
     }
 
-    #[inline]
     fn unwrap_predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
         &self.predecessors.as_ref().unwrap()[bb]
     }
 
-    #[inline]
     impl_predecessor_locations!((pub) predecessor_locations mut);
 
     impl_predecessor_locations!(() unwrap_predecessor_locations);
 
-    #[inline]
     pub fn basic_blocks_mut<'a, 'tcx>(
         &mut self,
         body: &'a mut Body<'tcx>
@@ -195,7 +188,6 @@ impl BodyCache<'tcx> {
 impl<'tcx> Index<BasicBlock> for BodyCache<'tcx> {
     type Output = BasicBlockData<'tcx>;
 
-    #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.body[index]
     }
@@ -238,32 +230,26 @@ impl ReadOnlyBodyCache<'a, 'tcx> {
         }
     }
 
-    #[inline]
     pub fn predecessors(&self) -> &IndexVec<BasicBlock, Vec<BasicBlock>> {
         self.cache.predecessors.as_ref().unwrap()
     }
 
-    #[inline]
     pub fn predecessors_for(&self, bb: BasicBlock) -> &[BasicBlock] {
         self.cache.unwrap_predecessors_for(bb)
     }
 
-    #[inline]
     pub fn predecessor_locations(&self, loc: Location) -> impl Iterator<Item = Location> + '_ {
         self.cache.unwrap_predecessor_locations(loc, self.body)
     }
 
-    #[inline]
     pub fn body(&self) -> &'a Body<'tcx> {
         self.body
     }
 
-    #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.body.basic_blocks
     }
 
-    #[inline]
     pub fn dominators(&self) -> Dominators<BasicBlock> {
         dominators(self)
     }
@@ -325,7 +311,6 @@ impl Deref for ReadOnlyBodyCache<'a, 'tcx> {
 impl Index<BasicBlock> for ReadOnlyBodyCache<'a, 'tcx> {
     type Output = BasicBlockData<'tcx>;
 
-    #[inline]
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
         &self.body[index]
     }
