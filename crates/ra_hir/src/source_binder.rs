@@ -405,9 +405,16 @@ impl SourceAnalyzer {
         implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
     }
 
-    pub fn expand(&self, db: &impl HirDatabase, macro_call: &ast::MacroCall) -> Option<Expansion> {
-        let def = self.resolve_macro_call(db, macro_call)?.id;
-        let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(macro_call));
+    pub fn expand(
+        &self,
+        db: &impl HirDatabase,
+        macro_call: Source<&ast::MacroCall>,
+    ) -> Option<Expansion> {
+        let def = self.resolve_macro_call(db, macro_call.value)?.id;
+        let ast_id = AstId::new(
+            macro_call.file_id,
+            db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
+        );
         let macro_call_loc = MacroCallLoc { def, ast_id };
         Some(Expansion { macro_call_id: db.intern_macro(macro_call_loc) })
     }

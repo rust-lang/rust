@@ -55,7 +55,7 @@ pub(crate) fn descend_into_macros(
         }
         let source_analyzer =
             hir::SourceAnalyzer::new(db, token.with_value(token.value.parent()).as_ref(), None);
-        let exp = source_analyzer.expand(db, &macro_call)?;
+        let exp = source_analyzer.expand(db, token.with_value(&macro_call))?;
         exp.map_token_down(db, token.as_ref())
     })
     .last()
