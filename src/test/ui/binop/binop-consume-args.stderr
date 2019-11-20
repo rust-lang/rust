@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
    |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |        help: consider further restricting this bound: `A: Copy +`
 LL |     lhs + rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -16,7 +16,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn add<A: Add<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                              |
-   |                              help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                              help: consider restricting this bound: `B: Copy`
 LL |     lhs + rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -29,7 +29,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
    |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |        help: consider further restricting this bound: `A: Copy +`
 LL |     lhs - rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -41,7 +41,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn sub<A: Sub<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                              |
-   |                              help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                              help: consider restricting this bound: `B: Copy`
 LL |     lhs - rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -54,7 +54,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
    |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |        help: consider further restricting this bound: `A: Copy +`
 LL |     lhs * rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -66,7 +66,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn mul<A: Mul<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                              |
-   |                              help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                              help: consider restricting this bound: `B: Copy`
 LL |     lhs * rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -79,7 +79,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
    |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |        help: consider further restricting this bound: `A: Copy +`
 LL |     lhs / rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -91,7 +91,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn div<A: Div<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                              |
-   |                              help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                              help: consider restricting this bound: `B: Copy`
 LL |     lhs / rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -104,7 +104,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
    |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |        help: consider further restricting this bound: `A: Copy +`
 LL |     lhs % rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -116,7 +116,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn rem<A: Rem<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                              |
-   |                              help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                              help: consider restricting this bound: `B: Copy`
 LL |     lhs % rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -129,7 +129,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
    |           --                          --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |           |
-   |           help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |           help: consider further restricting this bound: `A: Copy +`
 LL |     lhs & rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -141,7 +141,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn bitand<A: BitAnd<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                    -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                                    |
-   |                                    help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                                    help: consider restricting this bound: `B: Copy`
 LL |     lhs & rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -154,7 +154,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
    |          --                         --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |          |
-   |          help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |          help: consider further restricting this bound: `A: Copy +`
 LL |     lhs | rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -166,7 +166,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn bitor<A: BitOr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                  -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                                  |
-   |                                  help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                                  help: consider restricting this bound: `B: Copy`
 LL |     lhs | rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -179,7 +179,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
    |           --                          --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |           |
-   |           help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |           help: consider further restricting this bound: `A: Copy +`
 LL |     lhs ^ rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -191,7 +191,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn bitxor<A: BitXor<B, Output=()>, B>(lhs: A, rhs: B) {
    |                                    -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                                    |
-   |                                    help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                                    help: consider restricting this bound: `B: Copy`
 LL |     lhs ^ rhs;
    |           --- value moved here
 LL |     drop(lhs);
@@ -204,7 +204,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
    |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |        help: consider further restricting this bound: `A: Copy +`
 LL |     lhs << rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -216,7 +216,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn shl<A: Shl<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                              |
-   |                              help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                              help: consider restricting this bound: `B: Copy`
 LL |     lhs << rhs;
    |            --- value moved here
 LL |     drop(lhs);
@@ -229,7 +229,7 @@ error[E0382]: use of moved value: `lhs`
 LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
    |        --                       --- move occurs because `lhs` has type `A`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `A: Copy +`
+   |        help: consider further restricting this bound: `A: Copy +`
 LL |     lhs >> rhs;
    |     --- value moved here
 LL |     drop(lhs);
@@ -241,7 +241,7 @@ error[E0382]: use of moved value: `rhs`
 LL | fn shr<A: Shr<B, Output=()>, B>(lhs: A, rhs: B) {
    |                              -          --- move occurs because `rhs` has type `B`, which does not implement the `Copy` trait
    |                              |
-   |                              help: consider adding a `Copy` constraint to this type argument: `B: Copy`
+   |                              help: consider restricting this bound: `B: Copy`
 LL |     lhs >> rhs;
    |            --- value moved here
 LL |     drop(lhs);

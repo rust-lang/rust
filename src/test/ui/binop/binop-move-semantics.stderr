@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `x`
 LL | fn double_move<T: Add<Output=()>>(x: T) {
    |                --                 - move occurs because `x` has type `T`, which does not implement the `Copy` trait
    |                |
-   |                help: consider adding a `Copy` constraint to this type argument: `T: Copy +`
+   |                help: consider further restricting this bound: `T: Copy +`
 LL |     x
    |     - value moved here
 LL |     +
@@ -17,7 +17,7 @@ error[E0382]: borrow of moved value: `x`
 LL | fn move_then_borrow<T: Add<Output=()> + Clone>(x: T) {
    |                     --                         - move occurs because `x` has type `T`, which does not implement the `Copy` trait
    |                     |
-   |                     help: consider adding a `Copy` constraint to this type argument: `T: Copy +`
+   |                     help: consider further restricting this bound: `T: Copy +`
 LL |     x
    |     - value moved here
 LL |     +

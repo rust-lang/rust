@@ -4,7 +4,7 @@ error[E0382]: use of moved value: `blk`
 LL | fn foo<F:FnOnce()>(blk: F) {
    |        --          --- move occurs because `blk` has type `F`, which does not implement the `Copy` trait
    |        |
-   |        help: consider adding a `Copy` constraint to this type argument: `F: Copy +`
+   |        help: consider further restricting this bound: `F: Copy +`
 LL |     blk();
    |     --- value moved here
 LL |     blk();

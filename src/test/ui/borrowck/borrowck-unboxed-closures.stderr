@@ -22,7 +22,7 @@ error[E0382]: use of moved value: `f`
 LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
    |      --                               - move occurs because `f` has type `F`, which does not implement the `Copy` trait
    |      |
-   |      help: consider adding a `Copy` constraint to this type argument: `F: Copy +`
+   |      help: consider further restricting this bound: `F: Copy +`
 LL |     f(1, 2);
    |     - value moved here
 LL |     f(1, 2);
