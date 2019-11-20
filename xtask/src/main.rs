@@ -9,11 +9,10 @@
 //! `.cargo/config`.
 mod help;
 
+use std::{env, fmt::Write, path::PathBuf, str};
+
 use anyhow::Context;
-use core::fmt::Write;
-use core::str;
 use pico_args::Arguments;
-use std::{env, path::PathBuf};
 use xtask::{
     codegen::{self, Mode},
     install_pre_commit_hook, reformat_staged_files, run, run_clippy, run_fuzzer, run_rustfmt,
@@ -37,7 +36,7 @@ struct ServerOpt {
 }
 
 fn main() -> Result<()> {
-    if std::env::args().next().map(|it| it.contains("pre-commit")) == Some(true) {
+    if env::args().next().map(|it| it.contains("pre-commit")) == Some(true) {
         return reformat_staged_files();
     }
 
