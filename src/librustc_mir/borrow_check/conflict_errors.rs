@@ -231,12 +231,64 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let ty::Param(param_ty) = ty.kind {
                     let tcx = self.infcx.tcx;
                     let generics = tcx.generics_of(self.mir_def_id);
-                    let def_id = generics.type_param(&param_ty, tcx).def_id;
-                    if let Some(sp) = tcx.hir().span_if_local(def_id) {
-                        err.span_label(
-                            sp,
-                            "consider adding a `Copy` constraint to this type argument",
-                        );
+                    let param = generics.type_param(&param_ty, tcx);
+                    let generics = tcx.hir().get_generics(self.mir_def_id).unwrap();
+                    let msg = "consider adding a `Copy` constraint to this type argument";
+                    for param in generics.params.iter().filter(|p| {
+                        p.name.ident().as_str() == param.name.as_str()
+                    }) {
+                        let param_name = param.name.ident().as_str();
+                        if param_name.starts_with("impl ") {
+                            // `impl Trait` in argument:
+                            // `fn foo(x: impl Trait) {}` → `fn foo(t: impl Trait + Trait2) {}`
+                            err.span_suggestion(
+                                param.span,
+                                msg,
+                                // `impl CurrentTrait + MissingTrait`
+                                format!("{} + Copy", param_name),
+                                Applicability::MachineApplicable,
+                            );
+                        } else if generics.where_clause.predicates.is_empty() &&
+                            param.bounds.is_empty()
+                        {
+                            // If there are no bounds whatsoever, suggest adding a constraint
+                            // to the type parameter:
+                            // `fn foo<T>(t: T) {}` → `fn foo<T: Trait>(t: T) {}`
+                            err.span_suggestion(
+                                param.span,
+                                msg,
+                                format!("{}: Copy", param_name),
+                                Applicability::MachineApplicable,
+                            );
+                        } else if !generics.where_clause.predicates.is_empty() {
+                            // There is a `where` clause, so suggest expanding it:
+                            // `fn foo<T>(t: T) where T: Debug {}` →
+                            // `fn foo<T>(t: T) where T: Debug, T: Trait {}`
+                            err.span_suggestion(
+                                generics.where_clause.span().unwrap().shrink_to_hi(),
+                                msg,
+                                format!(", {}: Copy", param_name),
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            // If there is no `where` clause lean towards constraining to the
+                            // type parameter:
+                            // `fn foo<X: Bar, T>(t: T, x: X) {}` → `fn foo<T: Trait>(t: T) {}`
+                            // `fn foo<T: Bar>(t: T) {}` → `fn foo<T: Bar + Trait>(t: T) {}`
+                            let sp = param.span.with_hi(span.hi());
+                            let span = tcx.sess.source_map()
+                                .span_through_char(sp, ':');
+                            if sp != param.span && sp != span {
+                                // Only suggest if we have high certainty that the span
+                                // covers the colon in `foo<T: Trait>`.
+                                err.span_suggestion(span, msg, format!(
+                                    "{}: Copy +",
+                                    param_name,
+                                ), Applicability::MachineApplicable);
+                            } else {
+                                err.span_label(param.span, msg);
+                            }
+                        }
                     }
                 }
                 let span = if let Some(local) = place.as_local() {

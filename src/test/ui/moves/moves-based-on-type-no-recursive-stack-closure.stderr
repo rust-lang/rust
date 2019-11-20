@@ -11,9 +11,9 @@ error[E0382]: borrow of moved value: `f`
   --> $DIR/moves-based-on-type-no-recursive-stack-closure.rs:32:5
    |
 LL | fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
-   |                -  ----- move occurs because `f` has type `F`, which does not implement the `Copy` trait
-   |                |
-   |                consider adding a `Copy` constraint to this type argument
+   |                   -----                                 - help: consider further restricting type parameter `F`: `, F: Copy`
+   |                   |
+   |                   move occurs because `f` has type `F`, which does not implement the `Copy` trait
 LL |     let mut r = R {c: Box::new(f)};
    |                                - value moved here
 LL |     f(&mut r, false)
