@@ -1,5 +1,3 @@
-use crate::config::process_configure_mod;
-
 use rustc_data_structures::sync::Lrc;
 use rustc_parse::lexer::StringReader;
 use syntax::token::{self, Token, TokenKind};
@@ -27,7 +25,6 @@ fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
     ParseSess::with_span_handler(
         Handler::with_emitter(true, None, Box::new(emitter)),
         sm,
-        process_configure_mod,
     )
 }
 

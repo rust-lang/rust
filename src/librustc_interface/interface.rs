@@ -21,7 +21,6 @@ use syntax::ast::{self, MetaItemKind};
 use syntax::token;
 use syntax::source_map::{FileName, FileLoader, SourceMap};
 use syntax::sess::ParseSess;
-use syntax_expand::config::process_configure_mod;
 use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
@@ -69,7 +68,7 @@ impl Compiler {
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     syntax::with_default_globals(move || {
         let cfg = cfgspecs.into_iter().map(|s| {
-            let sess = ParseSess::with_silent_emitter(process_configure_mod);
+            let sess = ParseSess::with_silent_emitter();
             let filename = FileName::cfg_spec_source_code(&s);
             let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
