@@ -882,7 +882,9 @@ themePicker.onblur = handleThemeButtonsBlur;
         v.push_str(&minify_replacer(
             &format!("{}\n{}", variables.join(""), all_indexes.join("\n")),
             options.enable_minification));
-        v.push_str("initSearch(searchIndex);addSearchOptions(searchIndex);");
+        // "addSearchOptions" has to be called first so the crate filtering can be set before the
+        // search might start (if it's set into the URL for example).
+        v.push_str("addSearchOptions(searchIndex);initSearch(searchIndex);");
         cx.shared.fs.write(&dst, &v)?;
     }
     if options.enable_index_page {
