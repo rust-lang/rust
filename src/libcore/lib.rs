@@ -70,6 +70,7 @@
 #![feature(asm)]
 #![feature(bound_cloned)]
 #![feature(cfg_target_has_atomic)]
+#![feature(const_fn)]
 #![feature(concat_idents)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
@@ -126,7 +127,6 @@
 #![feature(maybe_uninit_slice)]
 #![feature(external_doc)]
 #![feature(associated_type_bounds)]
-#![feature(const_fn)]
 
 #[prelude_import]
 #[allow(unused)]
