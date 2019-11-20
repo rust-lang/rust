@@ -300,7 +300,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
         if infcx.tcx.sess.opts.debugging_opts.polonius {
             let algorithm = env::var("POLONIUS_ALGORITHM")
-                .unwrap_or_else(|_| String::from("Hybrid"));
+                .unwrap_or_else(|_| String::from("Naive"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             Some(Rc::new(Output::compute(
@@ -315,7 +315,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let closure_region_requirements =
-        regioncx.solve(infcx, &body, local_names, upvars, def_id, errors_buffer);
+        regioncx.solve(infcx, &body, local_names, upvars, def_id, errors_buffer, polonius_output.clone());
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
