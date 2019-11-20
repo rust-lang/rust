@@ -12,7 +12,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::DefDatabase2, AssocItemId, AstItemDef, ConstId, FunctionContainerId, FunctionLoc, Intern,
-    LocationCtx, ModuleDefId, ModuleId, TraitId, TypeAliasId,
+    LocationCtx, ModuleDefId, ModuleId, TraitId, TypeAliasContainerId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,7 +41,12 @@ impl TraitData {
                     .intern(db)
                     .into(),
                     ast::ImplItem::ConstDef(it) => ConstId::from_ast(ctx, &it).into(),
-                    ast::ImplItem::TypeAliasDef(it) => TypeAliasId::from_ast(ctx, &it).into(),
+                    ast::ImplItem::TypeAliasDef(it) => TypeAliasLoc {
+                        container: TypeAliasContainerId::TraitId(tr),
+                        ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                    }
+                    .intern(db)
+                    .into(),
                 })
                 .collect()
         } else {
@@ -65,6 +70,7 @@ impl TraitItemsIndex {
                 for item in db.trait_data(tr).items.iter() {
                     match item {
                         AssocItemId::FunctionId(_) => (),
+                        AssocItemId::TypeAliasId(_) => (),
                         _ => {
                             let prev = index.traits_by_def.insert(*item, tr);
                             assert!(prev.is_none());

@@ -10,7 +10,7 @@ use ra_syntax::ast;
 
 use crate::{
     db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstId, FunctionContainerId,
-    FunctionLoc, ImplId, Intern, LocationCtx, TypeAliasId,
+    FunctionLoc, ImplId, Intern, LocationCtx, TypeAliasContainerId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,18 +36,23 @@ impl ImplData {
                 .impl_items()
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => {
-                        let func_id = FunctionLoc {
+                        let def = FunctionLoc {
                             container: FunctionContainerId::ImplId(id),
                             ast_id: AstId::new(src.file_id, items.ast_id(&it)),
                         }
                         .intern(db);
-                        func_id.into()
+                        def.into()
                     }
                     ast::ImplItem::ConstDef(it) => {
                         ConstId::from_ast_id(ctx, items.ast_id(&it)).into()
                     }
                     ast::ImplItem::TypeAliasDef(it) => {
-                        TypeAliasId::from_ast_id(ctx, items.ast_id(&it)).into()
+                        let def = TypeAliasLoc {
+                            container: TypeAliasContainerId::ImplId(id),
+                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
+                        }
+                        .intern(db);
+                        def.into()
                     }
                 })
                 .collect()

@@ -72,7 +72,7 @@ impl GenericParams {
                 let self_param = TypeRef::Path(name::SELF_TYPE.into());
                 generics.fill_bounds(&it.source(db).value, self_param);
             }
-            GenericDefId::TypeAliasId(it) => generics.fill(&it.source(db).value, start),
+            GenericDefId::TypeAliasId(it) => generics.fill(&it.lookup(db).source(db).value, start),
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
             // type-parameter, but rather is a type-alias for impl's target
             // type, so this is handled by the resolver.

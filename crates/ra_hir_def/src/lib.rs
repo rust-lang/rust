@@ -332,13 +332,32 @@ impl AstItemDef<ast::TraitDef> for TraitId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeAliasId(salsa::InternId);
 impl_intern_key!(TypeAliasId);
-impl AstItemDef<ast::TypeAliasDef> for TypeAliasId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::TypeAliasDef>) -> Self {
-        db.intern_type_alias(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TypeAliasLoc {
+    pub container: TypeAliasContainerId,
+    pub ast_id: AstId<ast::TypeAliasDef>,
+}
+
+impl Intern for TypeAliasLoc {
+    type ID = TypeAliasId;
+    fn intern(self, db: &impl db::DefDatabase2) -> TypeAliasId {
+        db.intern_type_alias(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::TypeAliasDef> {
-        db.lookup_intern_type_alias(self)
+}
+
+impl Lookup for TypeAliasId {
+    type Data = TypeAliasLoc;
+    fn lookup(&self, db: &impl db::DefDatabase2) -> TypeAliasLoc {
+        db.lookup_intern_type_alias(*self)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TypeAliasContainerId {
+    ModuleId(ModuleId),
+    ImplId(ImplId),
+    TraitId(TraitId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -476,6 +495,16 @@ impl HasModule for FunctionLoc {
     }
 }
 
+impl HasModule for TypeAliasLoc {
+    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+        match self.container {
+            TypeAliasContainerId::ModuleId(it) => it,
+            TypeAliasContainerId::ImplId(it) => it.module(db),
+            TypeAliasContainerId::TraitId(it) => it.module(db),
+        }
+    }
+}
+
 pub trait HasSource {
     type Value;
     fn source(&self, db: &impl db::DefDatabase2) -> Source<Self::Value>;
@@ -485,6 +514,15 @@ impl HasSource for FunctionLoc {
     type Value = ast::FnDef;
 
     fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::FnDef> {
+        let node = self.ast_id.to_node(db);
+        Source::new(self.ast_id.file_id(), node)
+    }
+}
+
+impl HasSource for TypeAliasLoc {
+    type Value = ast::TypeAliasDef;
+
+    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::TypeAliasDef> {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }

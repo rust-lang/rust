@@ -138,7 +138,7 @@ impl HasSource for Trait {
 impl HasSource for TypeAlias {
     type Ast = ast::TypeAliasDef;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::TypeAliasDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for MacroDef {
