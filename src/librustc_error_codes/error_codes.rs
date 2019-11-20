@@ -383,6 +383,7 @@ E0700: include_str!("./error_codes/E0700.md"),
 E0701: include_str!("./error_codes/E0701.md"),
 E0704: include_str!("./error_codes/E0704.md"),
 E0705: include_str!("./error_codes/E0705.md"),
+E0706: include_str!("./error_codes/E0706.md"),
 E0712: include_str!("./error_codes/E0712.md"),
 E0713: include_str!("./error_codes/E0713.md"),
 E0714: include_str!("./error_codes/E0714.md"),
@@ -595,7 +596,6 @@ E0744: include_str!("./error_codes/E0744.md"),
     E0696, // `continue` pointing to a labeled block
 //  E0702, // replaced with a generic attribute input check
     E0703, // invalid ABI
-    E0706, // `async fn` in trait
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with parameters are not currently
            // supported
