@@ -55,13 +55,17 @@ impl Command {
 
             let c_envp = envp.as_ref().map(|c| c.as_ptr())
                 .unwrap_or_else(|| *sys::os::environ() as *const _);
-            
+            let stack_size = thread::min_stack();
+
+            // ensure that access to the environment is synchronized
+            let _lock = sys::os::env_lock();
+
             let ret = libc::rtpSpawn(
                 self.get_argv()[0],                   // executing program
                 self.get_argv().as_ptr() as *mut *const c_char, // argv
                 c_envp as *mut *const c_char,
                 100 as c_int,                         // initial priority
-                thread::min_stack(),                  // initial stack size.
+                stack_size,                           // initial stack size.
                 0,                                    // options
                 0                                     // task options
             );
