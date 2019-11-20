@@ -62,9 +62,9 @@ fn check_cow_add_char() {
 
     let owned: Cow<'_, str> = Cow::Owned(String::from("Hi, World! "));
 
-    assert_eq!("Hello, World! 👋", borrowed.clone() + '👋');
+    assert_eq!("Hello, World! 👋", borrowed.clone() + test_char);
 
-    assert_eq!("Hi, World! 👋", owned.clone() + '👋');
+    assert_eq!("Hi, World! 👋", owned.clone() + test_char);
 }
 
 
