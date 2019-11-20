@@ -5,7 +5,6 @@ use ra_syntax::ast::{self};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    generics::HasGenericParams,
     resolve::Resolver,
     ty::Ty,
     AssocItem, Crate, HasSource, ImplBlock, Module, Source, TraitRef,
@@ -52,12 +51,11 @@ impl ImplBlock {
         Crate { crate_id: self.module(db).id.krate }
     }
 
-    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
+    pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
         let r = self.module(db).resolver(db);
         // add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        let r = r.push_impl_block_scope(self.clone());
+        let r = r.push_generic_params_scope(db, self.into());
+        let r = r.push_impl_block_scope(self);
         r
     }
 }

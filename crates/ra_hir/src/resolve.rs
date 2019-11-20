@@ -14,9 +14,9 @@ use crate::{
     code_model::Crate,
     db::{DefDatabase, HirDatabase},
     expr::{ExprScopes, PatId, ScopeId},
-    generics::GenericParams,
-    Adt, Const, DefWithBody, Enum, EnumVariant, Function, ImplBlock, Local, MacroDef, ModuleDef,
-    PerNs, Static, Struct, Trait, TypeAlias,
+    generics::{GenericParams, HasGenericParams},
+    Adt, Const, DefWithBody, Enum, EnumVariant, Function, GenericDef, ImplBlock, Local, MacroDef,
+    ModuleDef, PerNs, Static, Struct, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -43,7 +43,7 @@ pub(crate) enum Scope {
     /// All the items and imported names of a module
     ModuleScope(ModuleItemMap),
     /// Brings the generic parameters of an item into scope
-    GenericParams(Arc<GenericParams>),
+    GenericParams { def: GenericDef, params: Arc<GenericParams> },
     /// Brings `Self` in `impl` block into scope
     ImplBlockScope(ImplBlock),
     /// Brings `Self` in enum, struct and union definitions into scope
@@ -141,9 +141,9 @@ impl Resolver {
         for scope in self.scopes.iter().rev() {
             match scope {
                 Scope::ExprScope(_) => continue,
-                Scope::GenericParams(_) | Scope::ImplBlockScope(_) if skip_to_mod => continue,
+                Scope::GenericParams { .. } | Scope::ImplBlockScope(_) if skip_to_mod => continue,
 
-                Scope::GenericParams(params) => {
+                Scope::GenericParams { params, .. } => {
                     if let Some(param) = params.find_by_name(first_name) {
                         let idx = if path.segments.len() == 1 { None } else { Some(1) };
                         return Some((TypeNs::GenericParam(param.idx), idx));
@@ -212,7 +212,7 @@ impl Resolver {
             match scope {
                 Scope::AdtScope(_)
                 | Scope::ExprScope(_)
-                | Scope::GenericParams(_)
+                | Scope::GenericParams { .. }
                 | Scope::ImplBlockScope(_)
                     if skip_to_mod =>
                 {
@@ -232,13 +232,13 @@ impl Resolver {
                 }
                 Scope::ExprScope(_) => continue,
 
-                Scope::GenericParams(params) if n_segments > 1 => {
+                Scope::GenericParams { params, .. } if n_segments > 1 => {
                     if let Some(param) = params.find_by_name(first_name) {
                         let ty = TypeNs::GenericParam(param.idx);
                         return Some(ResolveValueResult::Partial(ty, 1));
                     }
                 }
-                Scope::GenericParams(_) => continue,
+                Scope::GenericParams { .. } => continue,
 
                 Scope::ImplBlockScope(impl_) if n_segments > 1 => {
                     if first_name == &name::SELF_TYPE {
@@ -361,7 +361,7 @@ impl Resolver {
         self.scopes
             .iter()
             .filter_map(|scope| match scope {
-                Scope::GenericParams(params) => Some(params),
+                Scope::GenericParams { params, .. } => Some(params),
                 _ => None,
             })
             .flat_map(|params| params.where_predicates.iter())
@@ -369,7 +369,7 @@ impl Resolver {
 
     pub(crate) fn generic_def(&self) -> Option<crate::generics::GenericDef> {
         self.scopes.iter().find_map(|scope| match scope {
-            Scope::GenericParams(params) => Some(params.def.into()),
+            Scope::GenericParams { def, .. } => Some(*def),
             _ => None,
         })
     }
@@ -381,8 +381,17 @@ impl Resolver {
         self
     }
 
-    pub(crate) fn push_generic_params_scope(self, params: Arc<GenericParams>) -> Resolver {
-        self.push_scope(Scope::GenericParams(params))
+    pub(crate) fn push_generic_params_scope(
+        self,
+        db: &impl DefDatabase,
+        def: GenericDef,
+    ) -> Resolver {
+        let params = def.generic_params(db);
+        if params.params.is_empty() {
+            self
+        } else {
+            self.push_scope(Scope::GenericParams { def, params })
+        }
     }
 
     pub(crate) fn push_impl_block_scope(self, impl_block: ImplBlock) -> Resolver {
@@ -457,8 +466,8 @@ impl Scope {
                     });
                 }
             }
-            Scope::GenericParams(gp) => {
-                for param in &gp.params {
+            Scope::GenericParams { params, .. } => {
+                for param in params.params.iter() {
                     f(param.name.clone(), ScopeDef::GenericParam(param.idx))
                 }
             }

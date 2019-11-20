@@ -322,9 +322,7 @@ impl Struct {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 }
 
@@ -352,9 +350,7 @@ impl Union {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 }
 
@@ -402,8 +398,7 @@ impl Enum {
         // take the outer scope...
         let r = self.module(db).resolver(db);
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
+        let r = r.push_generic_params_scope(db, self.into());
         r.push_scope(Scope::AdtScope(self.into()))
     }
 }
@@ -709,9 +704,7 @@ impl Function {
         // take the outer scope...
         let r = self.container(db).map_or_else(|| self.module(db).resolver(db), |c| c.resolver(db));
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
@@ -946,9 +939,7 @@ impl Trait {
     pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
         let r = self.module(db).resolver(db);
         // add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 }
 
@@ -1010,9 +1001,7 @@ impl TypeAlias {
             .map(|ib| ib.resolver(db))
             .unwrap_or_else(|| self.module(db).resolver(db));
         // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        r.push_generic_params_scope(db, self.into())
     }
 }
 
