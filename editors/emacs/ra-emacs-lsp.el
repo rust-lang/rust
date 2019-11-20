@@ -16,6 +16,7 @@
 ;;  - implements joinLines (you need to bind rust-analyzer-join-lines to a key)
 ;;  - implements selectionRanges (either bind lsp-extend-selection to a key, or use expand-region)
 ;;  - provides rust-analyzer-inlay-hints-mode for inline type hints
+;;  - provides rust-analyzer-expand-macro to expand macros
 
 ;; What's missing:
 ;;  - file system changes in apply-source-change
@@ -245,6 +246,33 @@
     (remove-overlays (point-min) (point-max) 'rust-analyzer--inlay-hint t)
     (remove-hook 'lsp-after-initialize-hook #'rust-analyzer--inlay-hints-change-handler t)
     (remove-hook 'after-change-functions #'rust-analyzer--inlay-hints-change-handler t))))
+
+
+
+;; expand macros
+(defun rust-analyzer-expand-macro ()
+  "Expands the macro call at point recursively."
+  (interactive)
+  (when (eq 'rust-mode major-mode)
+    (let* ((workspace (lsp-find-workspace 'rust-analyzer (buffer-file-name)))
+           (params (list :textDocument (lsp--text-document-identifier)
+                         :position (lsp--cur-position))))
+      (when workspace
+        (let* ((response (with-lsp-workspace workspace
+                           (lsp-send-request (lsp-make-request
+                                              "rust-analyzer/expandMacro"
+                                              params))))
+               (result (when response (ht-get response "expansion"))))
+          (if result
+            (let ((buf (get-buffer-create (concat "*rust-analyzer macro expansion " (with-lsp-workspace workspace (lsp-workspace-root)) "*"))))
+              (with-current-buffer buf
+                (let ((inhibit-read-only t))
+                  (erase-buffer)
+                  (insert result)
+                  (setq buffer-read-only t)
+                  (special-mode)))
+              (pop-to-buffer buf))
+            (message "No macro found at point, or it could not be expanded")))))))
 
 
 (provide 'ra-emacs-lsp)

@@ -127,7 +127,7 @@ Installation:
 [ra-emacs-lsp.el](https://github.com/rust-analyzer/rust-analyzer/blob/69ee5c9c5ef212f7911028c9ddf581559e6565c3/editors/emacs/ra-emacs-lsp.el)
 to load path and require it in `init.el`
 * run `lsp` in a rust buffer
-* (Optionally) bind commands like `rust-analyzer-join-lines` or `rust-analyzer-extend-selection` to keys, and enable `rust-analyzer-inlay-hints-mode` to get inline type hints
+* (Optionally) bind commands like `rust-analyzer-join-lines`, `rust-analyzer-extend-selection` and `rust-analyzer-expand-macro` to keys, and enable `rust-analyzer-inlay-hints-mode` to get inline type hints
 
 
 ## Vim and NeoVim
