@@ -39,7 +39,7 @@ implemented in its own submodule of the [`rustc_mir::transform`][trans] module.
 [trans]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/index.html 
 
 Some examples of passes are:
-- `CleanupNonCodegenStatements`: remove some of the info that is only need for
+- `CleanupNonCodegenStatements`: remove some of the info that is only needed for
   analyses, rather than codegen.
 - `ConstProp`: Does [constant propagation][constprop]
 
