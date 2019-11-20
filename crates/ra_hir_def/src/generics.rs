@@ -5,13 +5,12 @@
 use std::sync::Arc;
 
 use hir_expand::name::{self, AsName, Name};
-
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::DefDatabase2,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, GenericDefId, HasSource, Lookup,
+    AdtId, AstItemDef, ContainerId, GenericDefId, HasSource, Lookup,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -43,7 +42,15 @@ pub struct WherePredicate {
 }
 
 impl GenericParams {
-    pub fn new(
+    pub(crate) fn generic_params_query(
+        db: &impl DefDatabase2,
+        def: GenericDefId,
+    ) -> Arc<GenericParams> {
+        let parent_generics = parent_generic_def(db, def).map(|it| db.generic_params(it));
+        Arc::new(GenericParams::new(db, def.into(), parent_generics))
+    }
+
+    fn new(
         db: &impl DefDatabase2,
         def: GenericDefId,
         parent_params: Option<Arc<GenericParams>>,
@@ -159,5 +166,21 @@ impl GenericParams {
         let mut vec = Vec::with_capacity(self.count_params_including_parent());
         self.for_each_param(&mut |p| vec.push(p));
         vec
+    }
+}
+
+fn parent_generic_def(db: &impl DefDatabase2, def: GenericDefId) -> Option<GenericDefId> {
+    let container = match def {
+        GenericDefId::FunctionId(it) => it.lookup(db).container,
+        GenericDefId::TypeAliasId(it) => it.lookup(db).container,
+        GenericDefId::ConstId(it) => it.lookup(db).container,
+        GenericDefId::EnumVariantId(it) => return Some(it.parent.into()),
+        GenericDefId::AdtId(_) | GenericDefId::TraitId(_) | GenericDefId::ImplId(_) => return None,
+    };
+
+    match container {
+        ContainerId::ImplId(it) => Some(it.into()),
+        ContainerId::TraitId(it) => Some(it.into()),
+        ContainerId::ModuleId(_) => None,
     }
 }

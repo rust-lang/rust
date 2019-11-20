@@ -8,7 +8,7 @@ use ra_syntax::SmolStr;
 
 use crate::{
     debug::HirDebugDatabase,
-    generics::{GenericDef, GenericParams},
+    generics::GenericDef,
     ids,
     lang_item::{LangItemTarget, LangItems},
     ty::{
@@ -24,8 +24,9 @@ use crate::{
 
 pub use hir_def::db::{
     BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
-    EnumDataQuery, ExprScopesQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
-    RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery, TraitDataQuery,
+    EnumDataQuery, ExprScopesQuery, GenericParamsQuery, ImplDataQuery, InternDatabase,
+    InternDatabaseStorage, RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
+    TraitDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -36,9 +37,6 @@ pub use hir_expand::db::{
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
 pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
-    #[salsa::invoke(crate::generics::generic_params_query)]
-    fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
-
     #[salsa::invoke(FnData::fn_data_query)]
     fn fn_data(&self, func: Function) -> Arc<FnData>;
 

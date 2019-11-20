@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 use crate::{
-    db::{AstDatabase, DefDatabase, HirDatabase},
+    db::{DefDatabase, HirDatabase},
     Adt, Const, Container, Enum, EnumVariant, Function, ImplBlock, Struct, Trait, TypeAlias, Union,
 };
 
@@ -30,21 +30,6 @@ impl_froms!(
     EnumVariant,
     Const
 );
-
-pub(crate) fn generic_params_query(
-    db: &(impl DefDatabase + AstDatabase),
-    def: GenericDef,
-) -> Arc<GenericParams> {
-    let parent = match def {
-        GenericDef::Function(it) => it.container(db).map(GenericDef::from),
-        GenericDef::TypeAlias(it) => it.container(db).map(GenericDef::from),
-        GenericDef::Const(it) => it.container(db).map(GenericDef::from),
-        GenericDef::EnumVariant(it) => Some(it.parent_enum(db).into()),
-        GenericDef::Adt(_) | GenericDef::Trait(_) => None,
-        GenericDef::ImplBlock(_) => None,
-    };
-    Arc::new(GenericParams::new(db, def.into(), parent.map(|it| db.generic_params(it))))
-}
 
 impl GenericDef {
     pub(crate) fn resolver(&self, db: &impl HirDatabase) -> crate::Resolver {
@@ -78,6 +63,6 @@ where
     T: Into<GenericDef> + Copy,
 {
     fn generic_params(self, db: &impl DefDatabase) -> Arc<GenericParams> {
-        db.generic_params(self.into())
+        db.generic_params(self.into().into())
     }
 }
