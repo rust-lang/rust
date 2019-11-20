@@ -80,7 +80,7 @@ trait GenericRadix {
             }
         }
         let buf = &buf[curr..];
-        // SAFETY: only chars in `buf` are created by `Self::digit` which are asuumed to be
+        // SAFETY: only chars in `buf` are created by `Self::digit` which are assumed to be
         // valid UTF-8
         let buf = unsafe { str::from_utf8_unchecked(slice::from_raw_parts(
             MaybeUninit::first_ptr(buf),
@@ -190,7 +190,7 @@ static DEC_DIGITS_LUT: &[u8; 200] =
 macro_rules! impl_Display {
     ($($t:ident),* as $u:ident via $conv_fn:ident named $name:ident) => {
         fn $name(mut n: $u, is_nonnegative: bool, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            // 2^128 is is about 3*10^38, so 39 gives an extra byte of space
+            // 2^128 is about 3*10^38, so 39 gives an extra byte of space
             let mut buf = [MaybeUninit::<u8>::uninit(); 39];
             let mut curr = buf.len() as isize;
             let buf_ptr = MaybeUninit::first_ptr_mut(&mut buf);
