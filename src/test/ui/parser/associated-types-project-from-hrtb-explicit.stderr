@@ -3,11 +3,6 @@ error: expected identifier, found keyword `for`
    |
 LL | fn foo2<I>(x: <I as for<'x> Foo<&'x isize>>::A)
    |                     ^^^ expected identifier, found keyword
-   |
-help: you can escape reserved keywords to use them as identifiers
-   |
-LL | fn foo2<I>(x: <I as r#for<'x> Foo<&'x isize>>::A)
-   |                     ^^^^^
 
 error: expected one of `::` or `>`, found `Foo`
   --> $DIR/associated-types-project-from-hrtb-explicit.rs:10:29

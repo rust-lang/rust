@@ -1,0 +1,36 @@
+error: expected identifier, found keyword `break`
+  --> $DIR/raw-name-use-suggestion.rs:3:12
+   |
+LL |     pub fn break() {}
+   |            ^^^^^ expected identifier, found keyword
+   |
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     pub fn r#break() {}
+   |            ^^^^^^^
+
+error: expected identifier, found keyword `let`
+  --> $DIR/raw-name-use-suggestion.rs:7:10
+   |
+LL |     foo::let();
+   |          ^^^ expected identifier, found keyword
+   |
+help: you can escape reserved keywords to use them as identifiers
+   |
+LL |     foo::r#let();
+   |          ^^^^^
+
+error[E0425]: cannot find function `break` in this scope
+  --> $DIR/raw-name-use-suggestion.rs:8:5
+   |
+LL |     r#break();
+   |     ^^^^^^^ not found in this scope
+   |
+help: possible candidate is found in another module, you can import it into scope
+   |
+LL | use foo::r#break;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

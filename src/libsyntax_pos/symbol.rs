@@ -1013,7 +1013,15 @@ pub mod sym {
 }
 
 impl Symbol {
-    fn is_used_keyword_2018(self) -> bool {
+    pub fn is_used_keyword(self) -> bool {
+        self.is_used_keyword_2015() || self.is_used_keyword_2018()
+    }
+
+    pub fn is_used_keyword_2015(self) -> bool {
+        self >= kw::As && self <= kw::While
+    }
+
+    pub fn is_used_keyword_2018(self) -> bool {
         self >= kw::Async && self <= kw::Dyn
     }
 
@@ -1057,7 +1065,7 @@ impl Ident {
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
-        self.name >= kw::As && self.name <= kw::While ||
+        self.name.is_used_keyword_2015() ||
         self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
