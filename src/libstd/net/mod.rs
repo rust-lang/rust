@@ -15,8 +15,24 @@
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
 //!
+//! # Stability guarantees for IETF-defined behavior
+//!
+//! [`IpAddr`], [`Ipv4Addr`] and [`Ipv6Addr`] offer helper methods that provide information about
+//! an address, for instance whether it is globally routable (see [`IpAddr::is_global()`]), or if
+//! it is a multicast address (see [`IpAddr::is_multicast()`]). These methods are compliant with
+//! the [IETF RFCs]. As erratas and new RFCs are published, these methods behavior may be subject
+//! to changes.
+//!
+//! For instance, the `240/4` IPv4 block is currently reserved for "future use". If it is made
+//! globally routable by an RFC, then in a future release [`Ipv4Addr::is_reserved()`] will return
+//! `false` for such addresses, while [`Ipv4Addr::is_global`] will return true.
+//!
 //! [`IpAddr`]: ../../std/net/enum.IpAddr.html
 //! [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+//! [`IpAddr::is_global()`]: ../../std/net/enum.IpAddr.html#method.is_global
+//! [`IpAddr::is_multicast()`]: ../../std/net/enum.IpAddr.html#method.is_multicast
+//! [`Ipv4Addr::is_reserved()`]: ../../std/net/struct.Ipv4Addr.html#method.is_reserved
+//! [`Ipv4Addr::is_global()`]: ../../std/net/struct.Ipv4Addr.html#method.is_global
 //! [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
 //! [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
 //! [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
@@ -25,6 +41,7 @@
 //! [`TcpStream`]: ../../std/net/struct.TcpStream.html
 //! [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
 //! [`UdpSocket`]: ../../std/net/struct.UdpSocket.html
+//! [IETF RFCs]: https://tools.ietf.org/rfc/index
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
