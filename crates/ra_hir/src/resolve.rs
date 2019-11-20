@@ -16,7 +16,7 @@ use crate::{
     expr::{ExprScopes, PatId, ScopeId},
     generics::{GenericParams, HasGenericParams},
     Adt, Const, Container, DefWithBody, Enum, EnumVariant, Function, GenericDef, ImplBlock, Local,
-    MacroDef, Module, ModuleDef, PerNs, Static, Struct, Trait, TypeAlias, Union,
+    MacroDef, Module, ModuleDef, PerNs, Static, Struct, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -505,40 +505,13 @@ impl HasResolver for Trait {
     }
 }
 
-impl HasResolver for Struct {
+impl<T: Into<Adt>> HasResolver for T {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db)
+        let def = self.into();
+        def.module(db)
             .resolver(db)
-            .push_generic_params_scope(db, self.into())
-            .push_scope(Scope::AdtScope(self.into()))
-    }
-}
-
-impl HasResolver for Union {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db)
-            .resolver(db)
-            .push_generic_params_scope(db, self.into())
-            .push_scope(Scope::AdtScope(self.into()))
-    }
-}
-
-impl HasResolver for Enum {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db)
-            .resolver(db)
-            .push_generic_params_scope(db, self.into())
-            .push_scope(Scope::AdtScope(self.into()))
-    }
-}
-
-impl HasResolver for Adt {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        match self {
-            Adt::Struct(it) => it.resolver(db),
-            Adt::Union(it) => it.resolver(db),
-            Adt::Enum(it) => it.resolver(db),
-        }
+            .push_generic_params_scope(db, def.into())
+            .push_scope(Scope::AdtScope(def))
     }
 }
 

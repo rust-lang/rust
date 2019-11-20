@@ -432,15 +432,16 @@ impl Adt {
         }
     }
 
+    pub fn module(self, db: &impl DefDatabase) -> Module {
+        match self {
+            Adt::Struct(s) => s.module(db),
+            Adt::Union(s) => s.module(db),
+            Adt::Enum(e) => e.module(db),
+        }
+    }
+
     pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
-        Some(
-            match self {
-                Adt::Struct(s) => s.module(db),
-                Adt::Union(s) => s.module(db),
-                Adt::Enum(e) => e.module(db),
-            }
-            .krate(),
-        )
+        Some(self.module(db).krate())
     }
 }
 
