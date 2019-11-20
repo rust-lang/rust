@@ -177,6 +177,10 @@ a.test-arrow {
 	border-color: #008dfd;
 }
 
+.search-focus:disabled {
+	background-color: #c5c4c4;
+}
+
 #crate-search + .search-input:focus {
 	box-shadow: 0 0 8px 4px #078dd8;
 }

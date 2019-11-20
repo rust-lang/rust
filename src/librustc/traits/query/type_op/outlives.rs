@@ -3,7 +3,7 @@ use crate::traits::query::dropck_outlives::{DropckOutlivesResult, trivial_dropck
 use crate::traits::query::Fallible;
 use crate::ty::{ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Copy, Clone, Debug, TypeFoldable, Lift)]
+#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, Lift)]
 pub struct DropckOutlives<'tcx> {
     dropped_ty: Ty<'tcx>,
 }
@@ -52,8 +52,4 @@ impl super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
 
         tcx.dropck_outlives(canonicalized)
     }
-}
-
-impl_stable_hash_for! {
-    struct DropckOutlives<'tcx> { dropped_ty }
 }

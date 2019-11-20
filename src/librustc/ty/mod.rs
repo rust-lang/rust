@@ -1590,11 +1590,10 @@ rustc_index::newtype_index! {
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
     pub struct UniverseIndex {
+        derive [HashStable]
         DEBUG_FORMAT = "U{}",
     }
 }
-
-impl_stable_hash_for!(struct UniverseIndex { private });
 
 impl UniverseIndex {
     pub const ROOT: UniverseIndex = UniverseIndex::from_u32_const(0);
@@ -1839,7 +1838,7 @@ bitflags! {
 }
 
 /// Definition of a variant -- a struct's fields or a enum variant.
-#[derive(Debug)]
+#[derive(Debug, HashStable)]
 pub struct VariantDef {
     /// `DefId` that identifies the variant itself.
     /// If this variant belongs to a struct or union, then this is a copy of its `DefId`.
@@ -1848,6 +1847,7 @@ pub struct VariantDef {
     /// If this variant is a struct variant, then this is `None`.
     pub ctor_def_id: Option<DefId>,
     /// Variant or struct name.
+    #[stable_hasher(project(name))]
     pub ident: Ident,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
@@ -1926,17 +1926,6 @@ impl<'tcx> VariantDef {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
     }
 }
-
-impl_stable_hash_for!(struct VariantDef {
-    def_id,
-    ctor_def_id,
-    ident -> (ident.name),
-    discr,
-    fields,
-    ctor_kind,
-    flags,
-    recovered
-});
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub enum VariantDiscr {
@@ -2061,7 +2050,7 @@ impl Into<DataTypeKind> for AdtKind {
 }
 
 bitflags! {
-    #[derive(RustcEncodable, RustcDecodable, Default)]
+    #[derive(RustcEncodable, RustcDecodable, Default, HashStable)]
     pub struct ReprFlags: u8 {
         const IS_C               = 1 << 0;
         const IS_SIMD            = 1 << 1;
@@ -2076,25 +2065,15 @@ bitflags! {
     }
 }
 
-impl_stable_hash_for!(struct ReprFlags {
-    bits
-});
-
 /// Represents the repr options provided by the user,
-#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable,
+         Default, HashStable)]
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
     pub align: Option<Align>,
     pub pack: Option<Align>,
     pub flags: ReprFlags,
 }
-
-impl_stable_hash_for!(struct ReprOptions {
-    align,
-    pack,
-    int,
-    flags
-});
 
 impl ReprOptions {
     pub fn new(tcx: TyCtxt<'_>, did: DefId) -> ReprOptions {
@@ -3439,16 +3418,12 @@ pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
 pub struct SymbolName {
     // FIXME: we don't rely on interning or equality here - better have
     // this be a `&'tcx str`.
     pub name: Symbol
 }
-
-impl_stable_hash_for!(struct self::SymbolName {
-    name
-});
 
 impl SymbolName {
     pub fn new(name: &str) -> SymbolName {

@@ -18,6 +18,7 @@ use rustc::mir::interpret::{
     InterpResult, truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
+use rustc_macros::HashStable;
 
 use super::{
     Immediate, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
@@ -93,7 +94,7 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     pub stmt: usize,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)] // Miri debug-prints these
+#[derive(Clone, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
@@ -109,15 +110,16 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, HashStable)]
 pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
     pub value: LocalValue<Tag, Id>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
+    #[stable_hasher(ignore)]
     pub layout: Cell<Option<TyLayout<'tcx>>>,
 }
 
 /// Current value of a local variable
-#[derive(Clone, PartialEq, Eq, Debug)] // Miri debug-prints these
+#[derive(Clone, PartialEq, Eq, Debug, HashStable)] // Miri debug-prints these
 pub enum LocalValue<Tag=(), Id=AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,

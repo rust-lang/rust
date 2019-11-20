@@ -367,7 +367,6 @@ enum BuiltinImplConditions<'tcx> {
     Ambiguous,
 }
 
-#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq)]
 /// The result of trait evaluation. The order is important
 /// here as the evaluation of a list is the maximum of the
 /// evaluations.
@@ -380,6 +379,7 @@ enum BuiltinImplConditions<'tcx> {
 ///     all the "potential success" candidates can potentially succeed,
 ///     so they are noops when unioned with a definite error, and within
 ///     the categories it's easy to see that the unions are correct.
+#[derive(Copy, Clone, Debug, PartialOrd, Ord, PartialEq, Eq, HashStable)]
 pub enum EvaluationResult {
     /// Evaluation successful
     EvaluatedToOk,
@@ -478,20 +478,9 @@ impl EvaluationResult {
     }
 }
 
-impl_stable_hash_for!(enum self::EvaluationResult {
-    EvaluatedToOk,
-    EvaluatedToOkModuloRegions,
-    EvaluatedToAmbig,
-    EvaluatedToUnknown,
-    EvaluatedToRecur,
-    EvaluatedToErr
-});
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 /// Indicates that trait evaluation caused overflow.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable)]
 pub struct OverflowError;
-
-impl_stable_hash_for!(struct OverflowError {});
 
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(OverflowError: OverflowError) -> SelectionError<'tcx> {

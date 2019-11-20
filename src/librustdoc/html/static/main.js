@@ -142,10 +142,6 @@ function getSearchElement() {
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
     var TY_KEYWORD = itemTypes.indexOf("keyword");
 
-    onEachLazy(document.getElementsByClassName("js-only"), function(e) {
-        removeClass(e, "js-only");
-    });
-
     function getQueryStringParams() {
         var params = {};
         window.location.search.substring(1).split("&").
@@ -524,21 +520,6 @@ function getSearchElement() {
         var INPUTS_DATA = 0;
         var OUTPUT_DATA = 1;
         var params = getQueryStringParams();
-
-        // Set the crate filter from saved storage, if the current page has the saved crate filter.
-        //
-        // If not, ignore the crate filter -- we want to support filtering for crates on sites like
-        // doc.rust-lang.org where the crates may differ from page to page while on the same domain.
-        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
-        if (savedCrate !== null) {
-            onEachLazy(document.getElementById("crate-search").getElementsByTagName("option"),
-                       function(e) {
-                if (e.value === savedCrate) {
-                    document.getElementById("crate-search").value = e.value;
-                    return true;
-                }
-            });
-        }
 
         // Populate search bar with query string search term when provided,
         // but only if the input bar is empty. This avoid the obnoxious issue
@@ -2633,12 +2614,26 @@ function getSearchElement() {
             }
             return 0;
         });
+        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
         for (var i = 0; i < crates_text.length; ++i) {
             var option = document.createElement("option");
             option.value = crates_text[i];
             option.innerText = crates_text[i];
             elem.appendChild(option);
+            // Set the crate filter from saved storage, if the current page has the saved crate
+            // filter.
+            //
+            // If not, ignore the crate filter -- we want to support filtering for crates on sites
+            // like doc.rust-lang.org where the crates may differ from page to page while on the
+            // same domain.
+            if (crates_text[i] === savedCrate) {
+                elem.value = savedCrate;
+            }
         }
+
+        if (search_input) {
+            search_input.removeAttribute('disabled');
+        };
     }
 
     window.addSearchOptions = addSearchOptions;

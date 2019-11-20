@@ -52,7 +52,7 @@ macro_rules! provide {
                 assert!(!$def_id.is_local());
 
                 let $cdata = $tcx.crate_data_as_any($def_id.krate);
-                let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
+                let $cdata = $cdata.downcast_ref::<rmeta::CrateMetadata>()
                     .expect("CrateStore created data is not a CrateMetadata");
 
                 if $tcx.dep_graph.is_fully_enabled() {
@@ -410,7 +410,7 @@ impl cstore::CStore {
         let _prof_timer = sess.prof.generic_activity("metadata_load_macro");
 
         let data = self.get_crate_data(id.krate);
-        if data.is_proc_macro_crate() {
+        if data.root.is_proc_macro_crate() {
             return LoadedMacro::ProcMacro(data.load_proc_macro(id.index, sess));
         }
 

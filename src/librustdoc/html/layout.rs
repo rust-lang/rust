@@ -87,10 +87,11 @@ pub fn render<T: Print, S: Print>(
     </div>\
     <script src=\"{static_root_path}theme{suffix}.js\"></script>\
     <nav class=\"sub\">\
-        <form class=\"search-form js-only\">\
+        <form class=\"search-form\">\
             <div class=\"search-container\">\
                 <div>{filter_crates}\
                     <input class=\"search-input\" name=\"search\" \
+                           disabled \
                            autocomplete=\"off\" \
                            spellcheck=\"false\" \
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \

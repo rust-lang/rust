@@ -14,6 +14,7 @@ use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::MetadataRef;
 use rustc_serialize::Encodable;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
@@ -24,6 +25,7 @@ use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
 pub use decoder::{provide, provide_extern};
+crate use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
 
 mod decoder;
 mod encoder;
@@ -49,7 +51,7 @@ crate const METADATA_HEADER: &[u8; 8] =
 
 /// Additional metadata for a `Lazy<T>` where `T` may not be `Sized`,
 /// e.g. for `Lazy<[T]>`, this is the length (count of `T` values).
-crate trait LazyMeta {
+trait LazyMeta {
     type Meta: Copy + 'static;
 
     /// Returns the minimum encoded size.
@@ -103,7 +105,7 @@ impl<T: Encodable> LazyMeta for [T] {
 #[must_use]
 // FIXME(#59875) the `Meta` parameter only exists to dodge
 // invariance wrt `T` (coming from the `meta: T::Meta` field).
-crate struct Lazy<T, Meta = <T as LazyMeta>::Meta>
+struct Lazy<T, Meta = <T as LazyMeta>::Meta>
     where T: ?Sized + LazyMeta<Meta = Meta>,
           Meta: 'static + Copy,
 {
@@ -186,7 +188,7 @@ crate struct CrateRoot<'tcx> {
     proc_macro_decls_static: Option<DefIndex>,
     proc_macro_stability: Option<attr::Stability>,
 
-    pub crate_deps: Lazy<[CrateDep]>,
+    crate_deps: Lazy<[CrateDep]>,
     dylib_dependency_formats: Lazy<[Option<LinkagePreference>]>,
     lib_features: Lazy<[(Symbol, Option<Symbol>)]>,
     lang_items: Lazy<[(DefIndex, usize)]>,
@@ -195,16 +197,15 @@ crate struct CrateRoot<'tcx> {
     native_libraries: Lazy<[NativeLibrary]>,
     foreign_modules: Lazy<[ForeignModule]>,
     source_map: Lazy<[syntax_pos::SourceFile]>,
-    pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
-    pub impls: Lazy<[TraitImpls]>,
+    def_path_table: Lazy<hir::map::definitions::DefPathTable>,
+    impls: Lazy<[TraitImpls]>,
     exported_symbols: Lazy!([(ExportedSymbol<'tcx>, SymbolExportLevel)]),
-    pub interpret_alloc_index: Lazy<[u32]>,
+    interpret_alloc_index: Lazy<[u32]>,
 
     per_def: LazyPerDefTables<'tcx>,
 
-    /// The DefIndex's of any proc macros delcared by
-    /// this crate
-    pub proc_macro_data: Option<Lazy<[DefIndex]>>,
+    /// The DefIndex's of any proc macros delcared by this crate.
+    proc_macro_data: Option<Lazy<[DefIndex]>>,
 
     compiler_builtins: bool,
     pub needs_allocator: bool,
@@ -227,8 +228,8 @@ crate struct CrateDep {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct TraitImpls {
-    pub trait_id: (u32, DefIndex),
-    pub impls: Lazy<[DefIndex]>,
+    trait_id: (u32, DefIndex),
+    impls: Lazy<[DefIndex]>,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

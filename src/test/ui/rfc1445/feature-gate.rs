@@ -18,7 +18,7 @@ struct Foo {
 const FOO: Foo = Foo { x: 0 };
 
 #[rustc_error]
-fn main() { //[with_gate]~ ERROR compilation successful
+fn main() { //[with_gate]~ ERROR fatal error triggered by #[rustc_error]
     let y = Foo { x: 1 };
     match y {
         FOO => { }
