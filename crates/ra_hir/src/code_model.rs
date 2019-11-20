@@ -10,8 +10,9 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
+    traits::TraitData,
     type_ref::{Mutability, TypeRef},
-    CrateModuleId, ImplId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
+    AssocItemId, CrateModuleId, ImplId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -30,7 +31,6 @@ use crate::{
         TypeAliasId,
     },
     resolve::{Resolver, Scope, TypeNs},
-    traits::TraitData,
     ty::{InferenceResult, Namespace, TraitRef},
     Either, HasSource, ImportId, Name, ScopeDef, Source, Ty,
 };
@@ -230,15 +230,7 @@ impl Module {
 
     pub fn declarations(self, db: &impl DefDatabase) -> Vec<ModuleDef> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.module_id]
-            .scope
-            .entries()
-            .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
-            .flat_map(|per_ns| {
-                per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
-            })
-            .map(ModuleDef::from)
-            .collect()
+        def_map[self.id.module_id].scope.declarations().map(ModuleDef::from).collect()
     }
 
     pub fn impl_blocks(self, db: &impl DefDatabase) -> Vec<ImplBlock> {
@@ -693,7 +685,7 @@ impl Function {
 
     /// The containing trait, if this is a trait method definition.
     pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
+        db.trait_items_index(self.module(db).id).get_parent_trait(self.id.into()).map(Trait::from)
     }
 
     pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
@@ -757,7 +749,7 @@ impl Const {
     }
 
     pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
+        db.trait_items_index(self.module(db).id).get_parent_trait(self.id.into()).map(Trait::from)
     }
 
     pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
@@ -861,11 +853,11 @@ impl Trait {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        self.trait_data(db).name().clone()
+        self.trait_data(db).name.clone()
     }
 
     pub fn items(self, db: &impl DefDatabase) -> Vec<AssocItem> {
-        self.trait_data(db).items().to_vec()
+        self.trait_data(db).items.iter().map(|it| (*it).into()).collect()
     }
 
     fn direct_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
@@ -912,10 +904,10 @@ impl Trait {
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
         let trait_data = self.trait_data(db);
         trait_data
-            .items()
+            .items
             .iter()
             .filter_map(|item| match item {
-                AssocItem::TypeAlias(t) => Some(*t),
+                AssocItemId::TypeAliasId(t) => Some(TypeAlias::from(*t)),
                 _ => None,
             })
             .find(|t| &t.name(db) == name)
@@ -930,7 +922,7 @@ impl Trait {
     }
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
-        db.trait_data(self)
+        db.trait_data(self.id)
     }
 
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
@@ -938,7 +930,7 @@ impl Trait {
     }
 
     pub fn is_auto(self, db: &impl DefDatabase) -> bool {
-        self.trait_data(db).is_auto()
+        self.trait_data(db).auto
     }
 
     pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
@@ -971,7 +963,7 @@ impl TypeAlias {
 
     /// The containing trait, if this is a trait method definition.
     pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
+        db.trait_items_index(self.module(db).id).get_parent_trait(self.id.into()).map(Trait::from)
     }
 
     pub fn container(self, db: &impl DefDatabase) -> Option<Container> {

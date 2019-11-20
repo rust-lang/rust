@@ -13,11 +13,12 @@ pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
 pub mod adt;
-pub mod imp;
+pub mod impls;
 pub mod diagnostics;
 pub mod expr;
 pub mod body;
 pub mod generics;
+pub mod traits;
 
 #[cfg(test)]
 mod test_db;

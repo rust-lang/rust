@@ -11,7 +11,6 @@ use crate::{
     generics::{GenericDef, GenericParams},
     ids,
     lang_item::{LangItemTarget, LangItems},
-    traits::TraitData,
     ty::{
         method_resolution::CrateImplBlocks,
         traits::{AssocTyValue, Impl},
@@ -26,7 +25,8 @@ use crate::{
 pub use hir_def::db::{
     BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
     EnumDataQuery, ExprScopesQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
-    RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
+    RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery, TraitDataQuery,
+    TraitItemsIndexQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -37,12 +37,6 @@ pub use hir_expand::db::{
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
 pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
-    #[salsa::invoke(crate::traits::TraitData::trait_data_query)]
-    fn trait_data(&self, t: Trait) -> Arc<TraitData>;
-
-    #[salsa::invoke(crate::traits::TraitItemsIndex::trait_items_index)]
-    fn trait_items_index(&self, module: Module) -> crate::traits::TraitItemsIndex;
-
     #[salsa::invoke(crate::generics::generic_params_query)]
     fn generic_params(&self, def: GenericDef) -> Arc<GenericParams>;
 
