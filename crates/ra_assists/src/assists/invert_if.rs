@@ -2,8 +2,8 @@ use hir::db::HirDatabase;
 use ra_syntax::ast::{self, AstNode};
 use ra_syntax::{TextRange, TextUnit};
 
-use crate::{Assist, AssistCtx, AssistId};
 use super::apply_demorgan::undo_negation;
+use crate::{Assist, AssistCtx, AssistId};
 
 // Assist: invert_if
 //
@@ -23,7 +23,6 @@ use super::apply_demorgan::undo_negation;
 //     if y {B} else {A}
 // }
 // ```
-
 
 pub(crate) fn invert_if(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let expr = ctx.find_node_at_offset::<ast::IfExpr>()?;
@@ -49,12 +48,9 @@ pub(crate) fn invert_if(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
             edit.replace(else_range, then_node.text());
             edit.replace(then_range, else_node.text());
         })
-
     } else {
         None
     }
-
-
 }
 
 #[cfg(test)]
@@ -65,12 +61,20 @@ mod tests {
 
     #[test]
     fn invert_if_remove_inequality() {
-        check_assist(invert_if, "fn f() { i<|>f x != 3 {1} else {3 + 2} }", "fn f() { i<|>f x == 3 {3 + 2} else {1} }")
+        check_assist(
+            invert_if,
+            "fn f() { i<|>f x != 3 {1} else {3 + 2} }",
+            "fn f() { i<|>f x == 3 {3 + 2} else {1} }",
+        )
     }
 
     #[test]
     fn invert_if_remove_not() {
-        check_assist(invert_if, "fn f() { <|>if !cond {3 * 2} else {1} }", "fn f() { <|>if cond {1} else {3 * 2} }")
+        check_assist(
+            invert_if,
+            "fn f() { <|>if !cond {3 * 2} else {1} }",
+            "fn f() { <|>if cond {1} else {3 * 2} }",
+        )
     }
 
     #[test]
