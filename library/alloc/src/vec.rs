@@ -2299,6 +2299,20 @@ where
     }
 }
 
+impl<'a, T: 'a> SpecFrom<&'a T, slice::Iter<'a, T>> for Vec<T>
+where
+    T: Copy,
+{
+    // reuses the extend specialization for T: Copy
+    fn from_iter(iterator: slice::Iter<'a, T>) -> Self {
+        let mut vec = Vec::new();
+        // must delegate to spec_extend() since extend() itself delegates
+        // to spec_from for empty Vecs
+        vec.spec_extend(iterator);
+        vec
+    }
+}
+
 // Specialization trait used for Vec::extend
 trait SpecExtend<T, I> {
     fn spec_extend(&mut self, iter: I);
