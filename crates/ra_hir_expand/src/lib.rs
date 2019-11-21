@@ -109,6 +109,7 @@ pub struct MacroFile {
 pub enum MacroFileKind {
     Items,
     Expr,
+    Statements,
 }
 
 /// `MacroCallId` identifies a particular macro invocation, like

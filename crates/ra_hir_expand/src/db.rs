@@ -151,6 +151,7 @@ pub(crate) fn parse_macro(
     let fragment_kind = match macro_file.macro_file_kind {
         MacroFileKind::Items => FragmentKind::Items,
         MacroFileKind::Expr => FragmentKind::Expr,
+        MacroFileKind::Statements => FragmentKind::Statements,
     };
     let (parse, rev_token_map) = mbe::token_tree_to_syntax_node(&tt, fragment_kind).ok()?;
     Some((parse, Arc::new(rev_token_map)))
