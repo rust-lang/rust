@@ -93,6 +93,10 @@ pub enum StmtKind<'tcx> {
     },
 }
 
+// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(Expr<'_>, 168);
+
 /// The Hair trait implementor lowers their expressions (`&'tcx H::Expr`)
 /// into instances of this `Expr` enum. This lowering can be done
 /// basically as lazily or as eagerly as desired: every recursive
@@ -264,7 +268,7 @@ pub enum ExprKind<'tcx> {
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
     InlineAsm {
-        asm: &'tcx hir::InlineAsm,
+        asm: &'tcx hir::InlineAsmInner,
         outputs: Vec<ExprRef<'tcx>>,
         inputs: Vec<ExprRef<'tcx>>
     },
