@@ -19,7 +19,7 @@ use crate::{
     code_model::Crate,
     db::HirDatabase,
     expr::{ExprScopes, PatId, ScopeId},
-    Adt, DefWithBody, GenericDef, ImplBlock, Local, MacroDef, ModuleDef, PerNs,
+    DefWithBody, GenericDef, Local, MacroDef, PerNs, ScopeDef,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -417,29 +417,6 @@ impl Resolver {
         scope_id: ScopeId,
     ) -> Resolver {
         self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
-    }
-}
-
-/// For IDE only
-pub enum ScopeDef {
-    ModuleDef(ModuleDef),
-    MacroDef(MacroDef),
-    GenericParam(u32),
-    ImplSelfType(ImplBlock),
-    AdtSelfType(Adt),
-    Local(Local),
-    Unknown,
-}
-
-impl From<PerNs> for ScopeDef {
-    fn from(def: PerNs) -> Self {
-        def.take_types()
-            .or_else(|| def.take_values())
-            .map(|module_def_id| ScopeDef::ModuleDef(module_def_id.into()))
-            .or_else(|| {
-                def.get_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
-            })
-            .unwrap_or(ScopeDef::Unknown)
     }
 }
 

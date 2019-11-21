@@ -23,11 +23,11 @@ use crate::{
     db::HirDatabase,
     expr::{BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
-    resolve::{resolver_for_scope, HasResolver, ScopeDef, TypeNs, ValueNs},
+    resolve::{resolver_for_scope, HasResolver, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
-    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static,
-    Struct, Trait, Ty, TypeAlias,
+    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, Resolver, ScopeDef,
+    Static, Struct, Trait, Ty, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {

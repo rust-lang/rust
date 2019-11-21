@@ -10,6 +10,7 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
+    nameres::per_ns::PerNs,
     traits::TraitData,
     type_ref::{Mutability, TypeRef},
     ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
@@ -32,7 +33,7 @@ use crate::{
     },
     resolve::{HasResolver, TypeNs},
     ty::{InferenceResult, Namespace, TraitRef},
-    Either, HasSource, ImportId, Name, ScopeDef, Source, Ty,
+    Either, HasSource, ImportId, Name, Source, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -1063,4 +1064,27 @@ pub struct GenericParam {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     pub(crate) id: ImplId,
+}
+
+/// For IDE only
+pub enum ScopeDef {
+    ModuleDef(ModuleDef),
+    MacroDef(MacroDef),
+    GenericParam(u32),
+    ImplSelfType(ImplBlock),
+    AdtSelfType(Adt),
+    Local(Local),
+    Unknown,
+}
+
+impl From<PerNs> for ScopeDef {
+    fn from(def: PerNs) -> Self {
+        def.take_types()
+            .or_else(|| def.take_values())
+            .map(|module_def_id| ScopeDef::ModuleDef(module_def_id.into()))
+            .or_else(|| {
+                def.get_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
+            })
+            .unwrap_or(ScopeDef::Unknown)
+    }
 }
