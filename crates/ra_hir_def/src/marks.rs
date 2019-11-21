@@ -11,4 +11,5 @@ test_utils::marks!(
     prelude_is_macro_use
     macro_dollar_crate_self
     macro_dollar_crate_other
+    infer_resolve_while_let
 );

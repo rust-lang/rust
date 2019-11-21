@@ -11,7 +11,7 @@ use ra_syntax::ast::{self, NameOwner};
 
 use crate::{
     db::DefDatabase2, AssocItemId, AstItemDef, ConstLoc, ContainerId, FunctionLoc, Intern, TraitId,
-    TypeAliasLoc,
+    TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,5 +55,12 @@ impl TraitData {
             Vec::new()
         };
         Arc::new(TraitData { name, items, auto })
+    }
+
+    pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {
+        self.items.iter().filter_map(|item| match item {
+            AssocItemId::TypeAliasId(t) => Some(*t),
+            _ => None,
+        })
     }
 }

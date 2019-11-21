@@ -5,11 +5,12 @@
 
 use std::iter::successors;
 
+use hir_def::resolver::Resolver;
 use hir_expand::name;
 use log::{info, warn};
 
 use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
-use crate::{db::HirDatabase, generics::HasGenericParams, Resolver};
+use crate::{db::HirDatabase, generics::HasGenericParams};
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
@@ -39,7 +40,7 @@ fn deref_by_trait(
     ty: &Canonical<Ty>,
 ) -> Option<Canonical<Ty>> {
     let krate = resolver.krate()?;
-    let deref_trait = match db.lang_item(krate, "deref".into())? {
+    let deref_trait = match db.lang_item(krate.into(), "deref".into())? {
         crate::lang_item::LangItemTarget::Trait(t) => t,
         _ => return None,
     };
@@ -71,7 +72,7 @@ fn deref_by_trait(
 
     let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: in_env };
 
-    let solution = db.trait_solve(krate, canonical)?;
+    let solution = db.trait_solve(krate.into(), canonical)?;
 
     match &solution {
         Solution::Unique(vars) => {

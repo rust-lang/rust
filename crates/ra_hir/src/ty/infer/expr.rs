@@ -6,13 +6,13 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::Signedness,
     path::{GenericArg, GenericArgs},
+    resolver::resolver_for_expr,
 };
 use hir_expand::name;
 
-use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 use crate::{
     db::HirDatabase,
-    expr::{self, Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
+    expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
     ty::{
         autoderef, method_resolution, op, CallableDef, InferTy, IntTy, Mutability, Namespace,
@@ -21,6 +21,8 @@ use crate::{
     },
     Adt, Name,
 };
+
+use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -186,7 +188,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
-                let resolver = expr::resolver_for_expr(self.db, self.owner, tgt_expr);
+                let resolver = resolver_for_expr(self.db, self.owner.into(), tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),

@@ -5,11 +5,11 @@
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
+use hir_def::resolver::Resolver;
 use rustc_hash::FxHashMap;
 
 use crate::{
     db::HirDatabase,
-    resolve::Resolver,
     ty::primitive::{FloatBitness, Uncertain},
     ty::{Ty, TypeCtor},
     AssocItem, Crate, Function, ImplBlock, Module, Mutability, Name, Trait,
@@ -172,9 +172,14 @@ pub(crate) fn iterate_method_candidates<T>(
             // rustc does an autoderef and then autoref again).
 
             for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
-                if let Some(result) =
-                    iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
-                {
+                if let Some(result) = iterate_inherent_methods(
+                    &derefed_ty,
+                    db,
+                    name,
+                    mode,
+                    krate.into(),
+                    &mut callback,
+                ) {
                     return Some(result);
                 }
                 if let Some(result) = iterate_trait_method_candidates(
@@ -192,7 +197,7 @@ pub(crate) fn iterate_method_candidates<T>(
         LookupMode::Path => {
             // No autoderef for path lookups
             if let Some(result) =
-                iterate_inherent_methods(&ty, db, name, mode, krate, &mut callback)
+                iterate_inherent_methods(&ty, db, name, mode, krate.into(), &mut callback)
             {
                 return Some(result);
             }
@@ -224,7 +229,9 @@ fn iterate_trait_method_candidates<T>(
         .trait_predicates_for_self_ty(&ty.value)
         .map(|tr| tr.trait_)
         .flat_map(|t| t.all_super_traits(db));
-    let traits = inherent_trait.chain(traits_from_env).chain(resolver.traits_in_scope(db));
+    let traits = inherent_trait
+        .chain(traits_from_env)
+        .chain(resolver.traits_in_scope(db).into_iter().map(Trait::from));
     'traits: for t in traits {
         let data = t.trait_data(db);
 
@@ -238,7 +245,7 @@ fn iterate_trait_method_candidates<T>(
             }
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
-                if db.trait_solve(krate, goal).is_none() {
+                if db.trait_solve(krate.into(), goal).is_none() {
                     continue 'traits;
                 }
             }

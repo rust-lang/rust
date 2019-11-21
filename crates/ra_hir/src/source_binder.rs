@@ -10,6 +10,8 @@ use std::sync::Arc;
 use hir_def::{
     expr::{ExprId, PatId},
     path::known,
+    resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
+    DefWithBodyId,
 };
 use hir_expand::{name::AsName, AstId, MacroCallId, MacroCallLoc, MacroFileKind, Source};
 use ra_syntax::{
@@ -21,12 +23,12 @@ use ra_syntax::{
 
 use crate::{
     db::HirDatabase,
-    expr::{self, BodySourceMap, ExprScopes, ScopeId},
+    expr::{BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
-    resolve::{HasResolver, ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
-    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, GenericParam, HasBody,
-    HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
+    Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
+    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, ScopeDef, Static,
+    Struct, Trait, Ty, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
@@ -34,23 +36,25 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -
         match (node.value) {
             ast::Module(it) => {
                 let src = node.with_value(it);
-                Some(crate::Module::from_declaration(db, src)?.resolver(db))
+                Some(crate::Module::from_declaration(db, src)?.id.resolver(db))
             },
              ast::SourceFile(it) => {
                 let src = node.with_value(crate::ModuleSource::SourceFile(it));
-                Some(crate::Module::from_definition(db, src)?.resolver(db))
+                Some(crate::Module::from_definition(db, src)?.id.resolver(db))
             },
             ast::StructDef(it) => {
                 let src = node.with_value(it);
-                Some(Struct::from_source(db, src)?.resolver(db))
+                Some(Struct::from_source(db, src)?.id.resolver(db))
             },
             ast::EnumDef(it) => {
                 let src = node.with_value(it);
-                Some(Enum::from_source(db, src)?.resolver(db))
+                Some(Enum::from_source(db, src)?.id.resolver(db))
             },
             _ => match node.value.kind() {
                 FN_DEF | CONST_DEF | STATIC_DEF => {
-                    Some(def_with_body_from_child_node(db, node)?.resolver(db))
+                    let def = def_with_body_from_child_node(db, node)?;
+                    let def = DefWithBodyId::from(def);
+                    Some(def.resolver(db))
                 }
                 // FIXME add missing cases
                 _ => None
@@ -159,7 +163,7 @@ impl SourceAnalyzer {
                 None => scope_for(&scopes, &source_map, node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
             };
-            let resolver = expr::resolver_for_scope(db, def, scope);
+            let resolver = resolver_for_scope(db, def.into(), scope);
             SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
@@ -231,7 +235,7 @@ impl SourceAnalyzer {
     ) -> Option<MacroDef> {
         // This must be a normal source file rather than macro file.
         let path = macro_call.path().and_then(Path::from_ast)?;
-        self.resolver.resolve_path_as_macro(db, &path)
+        self.resolver.resolve_path_as_macro(db, &path).map(|it| it.into())
     }
 
     pub fn resolve_hir_path(
@@ -240,16 +244,18 @@ impl SourceAnalyzer {
         path: &crate::Path,
     ) -> Option<PathResolution> {
         let types = self.resolver.resolve_path_in_type_ns_fully(db, &path).map(|ty| match ty {
-            TypeNs::SelfType(it) => PathResolution::SelfType(it),
+            TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(idx) => PathResolution::GenericParam(GenericParam {
-                parent: self.resolver.generic_def().unwrap(),
+                parent: self.resolver.generic_def().unwrap().into(),
                 idx,
             }),
-            TypeNs::AdtSelfType(it) | TypeNs::Adt(it) => PathResolution::Def(it.into()),
-            TypeNs::EnumVariant(it) => PathResolution::Def(it.into()),
-            TypeNs::TypeAlias(it) => PathResolution::Def(it.into()),
+            TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
+                PathResolution::Def(Adt::from(it).into())
+            }
+            TypeNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
+            TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
-            TypeNs::Trait(it) => PathResolution::Def(it.into()),
+            TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
         });
         let values = self.resolver.resolve_path_in_value_ns_fully(db, &path).and_then(|val| {
             let res = match val {
@@ -257,11 +263,11 @@ impl SourceAnalyzer {
                     let var = Local { parent: self.body_owner?, pat_id };
                     PathResolution::Local(var)
                 }
-                ValueNs::Function(it) => PathResolution::Def(it.into()),
-                ValueNs::Const(it) => PathResolution::Def(it.into()),
-                ValueNs::Static(it) => PathResolution::Def(it.into()),
-                ValueNs::Struct(it) => PathResolution::Def(it.into()),
-                ValueNs::EnumVariant(it) => PathResolution::Def(it.into()),
+                ValueNs::FunctionId(it) => PathResolution::Def(Function::from(it).into()),
+                ValueNs::ConstId(it) => PathResolution::Def(Const::from(it).into()),
+                ValueNs::StaticId(it) => PathResolution::Def(Static::from(it).into()),
+                ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
+                ValueNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
             };
             Some(res)
         });
@@ -272,7 +278,9 @@ impl SourceAnalyzer {
             .take_types()
             .map(|it| PathResolution::Def(it.into()));
         types.or(values).or(items).or_else(|| {
-            self.resolver.resolve_path_as_macro(db, &path).map(|def| PathResolution::Macro(def))
+            self.resolver
+                .resolve_path_as_macro(db, &path)
+                .map(|def| PathResolution::Macro(def.into()))
         })
     }
 
@@ -307,7 +315,22 @@ impl SourceAnalyzer {
     }
 
     pub fn process_all_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
-        self.resolver.process_all_names(db, f)
+        self.resolver.process_all_names(db, &mut |name, def| {
+            let def = match def {
+                resolver::ScopeDef::PerNs(it) => it.into(),
+                resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
+                resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
+                resolver::ScopeDef::GenericParam(idx) => {
+                    let parent = self.resolver.generic_def().unwrap().into();
+                    ScopeDef::GenericParam(GenericParam { parent, idx })
+                }
+                resolver::ScopeDef::Local(pat_id) => {
+                    let parent = self.resolver.body_owner().unwrap().into();
+                    ScopeDef::Local(Local { parent, pat_id })
+                }
+            };
+            f(name, def)
+        })
     }
 
     // FIXME: we only use this in `inline_local_variable` assist, ideally, we
@@ -392,7 +415,7 @@ impl SourceAnalyzer {
         let std_future_path = known::std_future_future();
 
         let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
-            Some(it) => it,
+            Some(it) => it.into(),
             _ => return false,
         };
 
@@ -402,7 +425,7 @@ impl SourceAnalyzer {
         };
 
         let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
-        implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
+        implements_trait(&canonical_ty, db, &self.resolver, krate.into(), std_future_trait)
     }
 
     pub fn expand(

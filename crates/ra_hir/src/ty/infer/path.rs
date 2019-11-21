@@ -1,15 +1,18 @@
 //! Path expression resolution.
 
-use hir_def::path::PathSegment;
+use hir_def::{
+    path::PathSegment,
+    resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
+};
 
-use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
     generics::HasGenericParams,
-    resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     ty::{method_resolution, Namespace, Substs, Ty, TypableDef, TypeWalk},
-    AssocItem, Container, Name, Path,
+    AssocItem, Container, Function, Name, Path,
 };
+
+use super::{ExprOrPatId, InferenceContext, TraitRef};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_path(
@@ -60,11 +63,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let ty = self.resolve_ty_as_possible(&mut vec![], ty);
                 return Some(ty);
             }
-            ValueNs::Function(it) => it.into(),
-            ValueNs::Const(it) => it.into(),
-            ValueNs::Static(it) => it.into(),
-            ValueNs::Struct(it) => it.into(),
-            ValueNs::EnumVariant(it) => it.into(),
+            ValueNs::FunctionId(it) => it.into(),
+            ValueNs::ConstId(it) => it.into(),
+            ValueNs::StaticId(it) => it.into(),
+            ValueNs::StructId(it) => it.into(),
+            ValueNs::EnumVariantId(it) => it.into(),
         };
 
         let mut ty = self.db.type_for_def(typable, Namespace::Values);
@@ -94,13 +97,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let is_before_last = remaining_segments.len() == 1;
 
         match (def, is_before_last) {
-            (TypeNs::Trait(trait_), true) => {
+            (TypeNs::TraitId(trait_), true) => {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
                 let trait_ref = TraitRef::from_resolved_path(
                     self.db,
                     &self.resolver,
-                    trait_,
+                    trait_.into(),
                     resolved_segment,
                     None,
                 );
@@ -160,8 +163,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             AssocItem::TypeAlias(_) => None,
         })?;
         let def = match item {
-            AssocItem::Function(f) => ValueNs::Function(f),
-            AssocItem::Const(c) => ValueNs::Const(c),
+            AssocItem::Function(f) => ValueNs::FunctionId(f.id),
+            AssocItem::Const(c) => ValueNs::ConstId(c.id),
             AssocItem::TypeAlias(_) => unreachable!(),
         };
         let substs = Substs::build_for_def(self.db, item)
@@ -193,8 +196,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             method_resolution::LookupMode::Path,
             move |_ty, item| {
                 let def = match item {
-                    AssocItem::Function(f) => ValueNs::Function(f),
-                    AssocItem::Const(c) => ValueNs::Const(c),
+                    AssocItem::Function(f) => ValueNs::FunctionId(f.id),
+                    AssocItem::Const(c) => ValueNs::ConstId(c.id),
                     AssocItem::TypeAlias(_) => unreachable!(),
                 };
                 let substs = match item.container(self.db) {
@@ -224,7 +227,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn find_self_types(&self, def: &ValueNs, actual_def_ty: Ty) -> Option<Substs> {
-        if let ValueNs::Function(func) = def {
+        if let ValueNs::FunctionId(func) = def {
+            let func = Function::from(*func);
             // We only do the infer if parent has generic params
             let gen = func.generic_params(self.db);
             if gen.count_parent_params() == 0 {
