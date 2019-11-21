@@ -384,7 +384,7 @@ mod tests {
     }
 
     #[test]
-    fn infer_resolve_while_let() {
+    fn while_let_desugaring() {
         covers!(infer_resolve_while_let);
         do_check_local_name(
             r#"
