@@ -11,7 +11,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
     /// an anonymous region, emit an descriptive diagnostic error.
     pub(super) fn try_report_named_anon_conflict(&self) -> Option<DiagnosticBuilder<'a>> {
-        let (span, sub, sup) = self.get_regions();
+        let (span, sub, sup) = self.regions();
 
         debug!(
             "try_report_named_anon_conflict(sub={:?}, sup={:?}, error={:?})",

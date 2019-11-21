@@ -715,10 +715,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         if let (Some(f), Some(ty::RegionKind::ReStatic)) =
             (self.to_error_region(fr), self.to_error_region(outlived_fr))
         {
-            if let Some(ty::TyS {
+            if let Some((ty::TyS {
                 kind: ty::Opaque(did, substs),
                 ..
-            }) = infcx
+            }, _)) = infcx
                 .tcx
                 .is_suitable_region(f)
                 .map(|r| r.def_id)
