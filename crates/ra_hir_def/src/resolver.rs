@@ -369,47 +369,6 @@ impl Resolver {
     }
 }
 
-impl Resolver {
-    pub(crate) fn push_scope(mut self, scope: Scope) -> Resolver {
-        self.scopes.push(scope);
-        self
-    }
-
-    pub(crate) fn push_generic_params_scope(
-        self,
-        db: &impl DefDatabase2,
-        def: GenericDefId,
-    ) -> Resolver {
-        let params = db.generic_params(def);
-        if params.params.is_empty() {
-            self
-        } else {
-            self.push_scope(Scope::GenericParams { def, params })
-        }
-    }
-
-    pub(crate) fn push_impl_block_scope(self, impl_block: ImplId) -> Resolver {
-        self.push_scope(Scope::ImplBlockScope(impl_block))
-    }
-
-    pub(crate) fn push_module_scope(
-        self,
-        crate_def_map: Arc<CrateDefMap>,
-        module_id: CrateModuleId,
-    ) -> Resolver {
-        self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
-    }
-
-    pub(crate) fn push_expr_scope(
-        self,
-        owner: DefWithBodyId,
-        expr_scopes: Arc<ExprScopes>,
-        scope_id: ScopeId,
-    ) -> Resolver {
-        self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
-    }
-}
-
 pub enum ScopeDef {
     PerNs(PerNs),
     ImplSelfType(ImplId),
@@ -487,6 +446,43 @@ pub fn resolver_for_scope(
         r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
     }
     r
+}
+
+impl Resolver {
+    fn push_scope(mut self, scope: Scope) -> Resolver {
+        self.scopes.push(scope);
+        self
+    }
+
+    fn push_generic_params_scope(self, db: &impl DefDatabase2, def: GenericDefId) -> Resolver {
+        let params = db.generic_params(def);
+        if params.params.is_empty() {
+            self
+        } else {
+            self.push_scope(Scope::GenericParams { def, params })
+        }
+    }
+
+    fn push_impl_block_scope(self, impl_block: ImplId) -> Resolver {
+        self.push_scope(Scope::ImplBlockScope(impl_block))
+    }
+
+    fn push_module_scope(
+        self,
+        crate_def_map: Arc<CrateDefMap>,
+        module_id: CrateModuleId,
+    ) -> Resolver {
+        self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
+    }
+
+    fn push_expr_scope(
+        self,
+        owner: DefWithBodyId,
+        expr_scopes: Arc<ExprScopes>,
+        scope_id: ScopeId,
+    ) -> Resolver {
+        self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
+    }
 }
 
 pub trait HasResolver {
