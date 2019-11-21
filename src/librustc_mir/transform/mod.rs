@@ -205,7 +205,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     }
 
     let item = check_consts::Item {
-        body,
+        body: body.unwrap_read_only(),
         tcx,
         def_id,
         const_kind,

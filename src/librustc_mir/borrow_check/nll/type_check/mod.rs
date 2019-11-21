@@ -220,7 +220,7 @@ fn type_check_internal<'a, 'tcx, R>(
 
     if !errors_reported {
         // if verifier failed, don't do further checks to avoid ICEs
-        checker.typeck_mir(&body);
+        checker.typeck_mir(body);
     }
 
     extra(&mut checker)
@@ -588,7 +588,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if !self.errors_reported {
             // if verifier failed, don't do further checks to avoid ICEs
-            self.cx.typeck_mir(&promoted_body);
+            self.cx.typeck_mir(promoted_body);
         }
 
         self.body = parent_body;
@@ -1374,7 +1374,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
+    fn check_stmt(&mut self, body: ReadOnlyBodyCache<'_, 'tcx>, stmt: &Statement<'tcx>, location: Location) {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
@@ -1406,9 +1406,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     _ => ConstraintCategory::Assignment,
                 };
 
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(body.body(), tcx).ty;
                 let place_ty = self.normalize(place_ty, location);
-                let rv_ty = rv.ty(body, tcx);
+                let rv_ty = rv.ty(body.body(), tcx);
                 let rv_ty = self.normalize(rv_ty, location);
                 if let Err(terr) =
                     self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
@@ -1460,7 +1460,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ref place,
                 variant_index,
             } => {
-                let place_type = place.ty(body, tcx).ty;
+                let place_type = place.ty(body.body(), tcx).ty;
                 let adt = match place_type.kind {
                     ty::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
@@ -1482,7 +1482,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
             }
             StatementKind::AscribeUserType(box(ref place, ref projection), variance) => {
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(body.body(), tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
                     variance,
@@ -1985,12 +1985,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn check_rvalue(&mut self, body: ReadOnlyBodyCache<'_, 'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
 
         match rvalue {
             Rvalue::Aggregate(ak, ops) => {
-                self.check_aggregate_rvalue(body, rvalue, ak, ops, location)
+                self.check_aggregate_rvalue(&body, rvalue, ak, ops, location)
             }
 
             Rvalue::Repeat(operand, len) => if *len > 1 {
@@ -1998,7 +1998,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // While this is located in `nll::typeck` this error is not an NLL error, it's
                     // a required check to make sure that repeated elements implement `Copy`.
                     let span = body.source_info(location).span;
-                    let ty = operand.ty(body, tcx);
+                    let ty = operand.ty(body.body(), tcx);
                     if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
                         // To determine if `const_in_array_repeat_expressions` feature gate should
                         // be mentioned, need to check if the rvalue is promotable.
@@ -2052,7 +2052,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Cast(cast_kind, op, ty) => {
                 match cast_kind {
                     CastKind::Pointer(PointerCast::ReifyFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(body.body(), tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2081,7 +2081,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
-                        let sig = match op.ty(body, tcx).kind {
+                        let sig = match op.ty(body.body(), tcx).kind {
                             ty::Closure(def_id, substs) => {
                                 substs.as_closure().sig_ty(def_id, tcx).fn_sig(tcx)
                             }
@@ -2107,7 +2107,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(body.body(), tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2139,7 +2139,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef {
                             def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
-                            substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
+                            substs: tcx.mk_substs_trait(op.ty(body.body(), tcx), &[ty.into()]),
                         };
 
                         self.prove_trait_ref(
@@ -2150,7 +2150,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::MutToConstPointer) => {
-                        let ty_from = match op.ty(body, tcx).kind {
+                        let ty_from = match op.ty(body.body(), tcx).kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
                                 mutbl: hir::Mutability::Mutable,
@@ -2198,7 +2198,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ArrayToPointer)  => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(body.body(), tcx);
 
                         let opt_ty_elem = match ty_from.kind {
                             ty::RawPtr(
@@ -2260,7 +2260,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Misc => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(body.body(), tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2318,7 +2318,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(body, location, region, borrowed_place);
+                self.add_reborrow_constraint(&body, location, region, borrowed_place);
             }
 
             Rvalue::BinaryOp(BinOp::Eq, left, right)
@@ -2327,9 +2327,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(BinOp::Le, left, right)
             | Rvalue::BinaryOp(BinOp::Gt, left, right)
             | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
-                let ty_left = left.ty(body, tcx);
+                let ty_left = left.ty(body.body(), tcx);
                 if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.kind {
-                    let ty_right = right.ty(body, tcx);
+                    let ty_right = right.ty(body.body(), tcx);
                     let common_ty = self.infcx.next_ty_var(
                         TypeVariableOrigin {
                             kind: TypeVariableOriginKind::MiscVariable,
@@ -2754,12 +2754,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self, body: &Body<'tcx>) {
+    fn typeck_mir(&mut self, body: ReadOnlyBodyCache<'_, 'tcx>) {
         self.last_span = body.span;
         debug!("run_on_mir: {:?}", body.span);
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
-            self.check_local(body, local, local_decl);
+            self.check_local(&body, local, local_decl);
         }
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
@@ -2775,8 +2775,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 location.statement_index += 1;
             }
 
-            self.check_terminator(body, block_data.terminator(), location);
-            self.check_iscleanup(body, block_data);
+            self.check_terminator(&body, block_data.terminator(), location);
+            self.check_iscleanup(&body, block_data);
         }
     }
 

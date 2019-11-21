@@ -114,7 +114,7 @@ impl Cache {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, TypeFoldable)]
 pub struct BodyCache<'tcx> {
     cache: Cache,
     body: Body<'tcx>,
@@ -302,10 +302,3 @@ impl_stable_hash_for!(struct BodyCache<'tcx> {
     cache,
     body,
 });
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for BodyCache<'tcx> {
-        cache,
-        body
-    }
-}
