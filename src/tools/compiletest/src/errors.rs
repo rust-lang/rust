@@ -142,7 +142,8 @@ fn parse_expected(
     };
 
     // Get the part of the comment after the sigil (e.g. `~^^` or ~|).
-    let (_, mut msg) = line.split_at(captures.get(0).unwrap().end());
+    let whole_match = captures.get(0).unwrap();
+    let (_, mut msg) = line.split_at(whole_match.end());
 
     let first_word = msg
         .split_whitespace()
@@ -176,7 +177,7 @@ fn parse_expected(
 
     debug!(
         "line={} tag={:?} which={:?} kind={:?} msg={:?}",
-        line_num, &captures[0], which, kind, msg
+        line_num, whole_match.as_str(), which, kind, msg
     );
     Some((
         which,
