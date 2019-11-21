@@ -172,9 +172,14 @@ pub(crate) fn iterate_method_candidates<T>(
             // rustc does an autoderef and then autoref again).
 
             for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
-                if let Some(result) =
-                    iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
-                {
+                if let Some(result) = iterate_inherent_methods(
+                    &derefed_ty,
+                    db,
+                    name,
+                    mode,
+                    krate.into(),
+                    &mut callback,
+                ) {
                     return Some(result);
                 }
                 if let Some(result) = iterate_trait_method_candidates(
@@ -192,7 +197,7 @@ pub(crate) fn iterate_method_candidates<T>(
         LookupMode::Path => {
             // No autoderef for path lookups
             if let Some(result) =
-                iterate_inherent_methods(&ty, db, name, mode, krate, &mut callback)
+                iterate_inherent_methods(&ty, db, name, mode, krate.into(), &mut callback)
             {
                 return Some(result);
             }
@@ -240,7 +245,7 @@ fn iterate_trait_method_candidates<T>(
             }
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, ty.clone());
-                if db.trait_solve(krate, goal).is_none() {
+                if db.trait_solve(krate.into(), goal).is_none() {
                     continue 'traits;
                 }
             }

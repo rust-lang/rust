@@ -39,7 +39,7 @@ fn deref_by_trait(
     ty: &Canonical<Ty>,
 ) -> Option<Canonical<Ty>> {
     let krate = resolver.krate()?;
-    let deref_trait = match db.lang_item(krate, "deref".into())? {
+    let deref_trait = match db.lang_item(krate.into(), "deref".into())? {
         crate::lang_item::LangItemTarget::Trait(t) => t,
         _ => return None,
     };
@@ -71,7 +71,7 @@ fn deref_by_trait(
 
     let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: in_env };
 
-    let solution = db.trait_solve(krate, canonical)?;
+    let solution = db.trait_solve(krate.into(), canonical)?;
 
     match &solution {
         Solution::Unique(vars) => {

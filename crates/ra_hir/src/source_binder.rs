@@ -10,6 +10,7 @@ use std::sync::Arc;
 use hir_def::{
     expr::{ExprId, PatId},
     path::known,
+    DefWithBodyId,
 };
 use hir_expand::{name::AsName, AstId, MacroCallId, MacroCallLoc, MacroFileKind, Source};
 use ra_syntax::{
@@ -51,7 +52,9 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -
             },
             _ => match node.value.kind() {
                 FN_DEF | CONST_DEF | STATIC_DEF => {
-                    Some(def_with_body_from_child_node(db, node)?.resolver(db))
+                    let def = def_with_body_from_child_node(db, node)?;
+                    let def = DefWithBodyId::from(def);
+                    Some(def.resolver(db))
                 }
                 // FIXME add missing cases
                 _ => None
@@ -232,7 +235,7 @@ impl SourceAnalyzer {
     ) -> Option<MacroDef> {
         // This must be a normal source file rather than macro file.
         let path = macro_call.path().and_then(Path::from_ast)?;
-        self.resolver.resolve_path_as_macro(db, &path)
+        self.resolver.resolve_path_as_macro(db, &path).map(|it| it.into())
     }
 
     pub fn resolve_hir_path(
@@ -275,7 +278,9 @@ impl SourceAnalyzer {
             .take_types()
             .map(|it| PathResolution::Def(it.into()));
         types.or(values).or(items).or_else(|| {
-            self.resolver.resolve_path_as_macro(db, &path).map(|def| PathResolution::Macro(def))
+            self.resolver
+                .resolve_path_as_macro(db, &path)
+                .map(|def| PathResolution::Macro(def.into()))
         })
     }
 
@@ -420,7 +425,7 @@ impl SourceAnalyzer {
         };
 
         let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
-        implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
+        implements_trait(&canonical_ty, db, &self.resolver, krate.into(), std_future_trait)
     }
 
     pub fn expand(

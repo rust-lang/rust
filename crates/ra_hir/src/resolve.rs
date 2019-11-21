@@ -2,25 +2,23 @@
 use std::sync::Arc;
 
 use hir_def::{
+    body::scope::{ExprScopes, ScopeId},
     builtin_type::BuiltinType,
     db::DefDatabase2,
-    expr::ExprId,
+    expr::{ExprId, PatId},
     generics::GenericParams,
-    nameres::CrateDefMap,
+    nameres::{per_ns::PerNs, CrateDefMap},
     path::{Path, PathKind},
     AdtId, AstItemDef, ConstId, ContainerId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId,
     FunctionId, GenericDefId, ImplId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
     TypeAliasId, UnionId,
 };
-use hir_expand::name::{self, Name};
-use rustc_hash::FxHashSet;
-
-use crate::{
-    code_model::Crate,
-    db::HirDatabase,
-    expr::{ExprScopes, PatId, ScopeId},
-    DefWithBody, GenericDef, MacroDef, PerNs,
+use hir_expand::{
+    name::{self, Name},
+    MacroDefId,
 };
+use ra_db::CrateId;
+use rustc_hash::FxHashSet;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Resolver {
@@ -318,9 +316,9 @@ impl Resolver {
         &self,
         db: &impl DefDatabase2,
         path: &Path,
-    ) -> Option<MacroDef> {
+    ) -> Option<MacroDefId> {
         let (item_map, module) = self.module()?;
-        item_map.resolve_path(db, module, path).0.get_macros().map(MacroDef::from)
+        item_map.resolve_path(db, module, path).0.get_macros()
     }
 
     pub(crate) fn process_all_names(
@@ -355,8 +353,8 @@ impl Resolver {
         })
     }
 
-    pub(crate) fn krate(&self) -> Option<Crate> {
-        self.module().map(|t| Crate { crate_id: t.0.krate() })
+    pub(crate) fn krate(&self) -> Option<CrateId> {
+        self.module().map(|t| t.0.krate())
     }
 
     pub(crate) fn where_predicates_in_scope<'a>(
@@ -484,7 +482,7 @@ impl Scope {
 
 // needs arbitrary_self_types to be a method... or maybe move to the def?
 pub(crate) fn resolver_for_expr(
-    db: &impl HirDatabase,
+    db: &impl DefDatabase2,
     owner: DefWithBodyId,
     expr_id: ExprId,
 ) -> Resolver {
@@ -493,7 +491,7 @@ pub(crate) fn resolver_for_expr(
 }
 
 pub(crate) fn resolver_for_scope(
-    db: &impl HirDatabase,
+    db: &impl DefDatabase2,
     owner: DefWithBodyId,
     scope_id: Option<ScopeId>,
 ) -> Resolver {
@@ -621,17 +619,5 @@ impl HasResolver for ImplId {
             .resolver(db)
             .push_generic_params_scope(db, self.into())
             .push_impl_block_scope(self)
-    }
-}
-
-impl HasResolver for GenericDef {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        GenericDefId::from(self).resolver(db)
-    }
-}
-
-impl HasResolver for DefWithBody {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        DefWithBodyId::from(self).resolver(db)
     }
 }

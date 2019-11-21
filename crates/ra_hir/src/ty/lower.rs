@@ -12,6 +12,7 @@ use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType},
     path::{GenericArg, PathSegment},
     type_ref::{TypeBound, TypeRef},
+    GenericDefId,
 };
 
 use super::{
@@ -574,7 +575,7 @@ pub(crate) fn generic_predicates_for_param_query(
     def: GenericDef,
     param_idx: u32,
 ) -> Arc<[GenericPredicate]> {
-    let resolver = def.resolver(db);
+    let resolver = GenericDefId::from(def).resolver(db);
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
@@ -600,7 +601,7 @@ pub(crate) fn generic_predicates_query(
     db: &impl HirDatabase,
     def: GenericDef,
 ) -> Arc<[GenericPredicate]> {
-    let resolver = def.resolver(db);
+    let resolver = GenericDefId::from(def).resolver(db);
     resolver
         .where_predicates_in_scope()
         .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
@@ -609,7 +610,7 @@ pub(crate) fn generic_predicates_query(
 
 /// Resolve the default type params from generics
 pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> Substs {
-    let resolver = def.resolver(db);
+    let resolver = GenericDefId::from(def).resolver(db);
     let generic_params = def.generic_params(db);
 
     let defaults = generic_params

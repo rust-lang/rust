@@ -9,9 +9,15 @@ use hir_def::{
 };
 
 use crate::{
-    ty::TypableDef, Adt, AssocItem, Const, DefWithBody, EnumVariant, Function, GenericDef,
+    ty::TypableDef, Adt, AssocItem, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef,
     ModuleDef, Static, TypeAlias,
 };
+
+impl From<ra_db::CrateId> for Crate {
+    fn from(crate_id: ra_db::CrateId) -> Self {
+        Crate { crate_id }
+    }
+}
 
 macro_rules! from_id {
     ($(($id:path, $ty:path)),*) => {$(

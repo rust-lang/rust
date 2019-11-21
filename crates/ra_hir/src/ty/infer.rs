@@ -24,7 +24,7 @@ use rustc_hash::FxHashMap;
 use hir_def::{
     path::known,
     type_ref::{Mutability, TypeRef},
-    AdtId,
+    AdtId, DefWithBodyId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name};
 use ra_arena::map::ArenaMap;
@@ -65,7 +65,7 @@ mod coerce;
 /// The entry point of type inference.
 pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
     let _p = profile("infer_query");
-    let resolver = def.resolver(db);
+    let resolver = DefWithBodyId::from(def).resolver(db);
     let mut ctx = InferenceContext::new(db, def, resolver);
 
     match def {
@@ -378,8 +378,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         for obligation in obligations {
             let in_env = InEnvironment::new(self.trait_env.clone(), obligation.clone());
             let canonicalized = self.canonicalizer().canonicalize_obligation(in_env);
-            let solution =
-                self.db.trait_solve(self.resolver.krate().unwrap(), canonicalized.value.clone());
+            let solution = self
+                .db
+                .trait_solve(self.resolver.krate().unwrap().into(), canonicalized.value.clone());
 
             match solution {
                 Some(Solution::Unique(substs)) => {
