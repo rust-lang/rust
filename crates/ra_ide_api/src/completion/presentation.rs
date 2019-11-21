@@ -169,7 +169,7 @@ impl Completions {
             None => return,
         };
 
-        let ast_node = macro_.source(ctx.db).ast;
+        let ast_node = macro_.source(ctx.db).value;
         let detail = macro_label(&ast_node);
 
         let docs = macro_.docs(ctx.db);
@@ -201,7 +201,7 @@ impl Completions {
     ) {
         let data = func.data(ctx.db);
         let name = name.unwrap_or_else(|| data.name().to_string());
-        let ast_node = func.source(ctx.db).ast;
+        let ast_node = func.source(ctx.db).value;
         let detail = function_label(&ast_node);
 
         let mut builder =
@@ -234,7 +234,7 @@ impl Completions {
     }
 
     pub(crate) fn add_const(&mut self, ctx: &CompletionContext, constant: hir::Const) {
-        let ast_node = constant.source(ctx.db).ast;
+        let ast_node = constant.source(ctx.db).value;
         let name = match ast_node.name() {
             Some(name) => name,
             _ => return,
@@ -250,7 +250,7 @@ impl Completions {
     }
 
     pub(crate) fn add_type_alias(&mut self, ctx: &CompletionContext, type_alias: hir::TypeAlias) {
-        let type_def = type_alias.source(ctx.db).ast;
+        let type_def = type_alias.source(ctx.db).value;
         let name = match type_def.name() {
             Some(name) => name,
             _ => return,

@@ -11,6 +11,7 @@ use ra_syntax::{
     ast::{self, AstNode},
     SyntaxKind::*,
 };
+use rustc_hash::FxHashSet;
 use test_utils::covers;
 
 use crate::{
@@ -1980,6 +1981,30 @@ fn test() {
 }
 
 #[test]
+fn infer_associated_method_generics_with_default_tuple_param() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct Gen<T=()> {
+    val: T
+}
+
+impl<T> Gen<T> {
+    pub fn make() -> Gen<T> {
+        loop { }
+    }
+}
+
+fn test() {
+    let a = Gen::make();
+    a.val<|>;
+}
+"#,
+    );
+    assert_eq!(t, "()");
+}
+
+#[test]
 fn infer_associated_method_generics_without_args() {
     assert_snapshot!(
         infer(r#"
@@ -2494,7 +2519,6 @@ fn test() {
     [167; 179) 'GLOBAL_CONST': u32
     [189; 191) 'id': u32
     [194; 210) 'Foo::A..._CONST': u32
-    [126; 128) '99': u32
     "###
     );
 }
@@ -4694,14 +4718,16 @@ fn infer(content: &str) -> String {
         }
 
         // sort ranges for consistency
-        types.sort_by_key(|(src_ptr, _)| (src_ptr.ast.range().start(), src_ptr.ast.range().end()));
+        types.sort_by_key(|(src_ptr, _)| {
+            (src_ptr.value.range().start(), src_ptr.value.range().end())
+        });
         for (src_ptr, ty) in &types {
-            let node = src_ptr.ast.to_node(&src_ptr.file_syntax(&db));
+            let node = src_ptr.value.to_node(&src_ptr.file_syntax(&db));
 
             let (range, text) = if let Some(self_param) = ast::SelfParam::cast(node.clone()) {
                 (self_param.self_kw_token().text_range(), "self".to_string())
             } else {
-                (src_ptr.ast.range(), node.text().to_string().replace("\n", " "))
+                (src_ptr.value.range(), node.text().to_string().replace("\n", " "))
             };
             let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
             write!(
@@ -4716,10 +4742,13 @@ fn infer(content: &str) -> String {
         }
     };
 
+    let mut analyzed = FxHashSet::default();
     for node in source_file.syntax().descendants() {
         if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
             let analyzer = SourceAnalyzer::new(&db, Source::new(file_id.into(), &node), None);
-            infer_def(analyzer.inference_result(), analyzer.body_source_map());
+            if analyzed.insert(analyzer.analyzed_declaration()) {
+                infer_def(analyzer.inference_result(), analyzer.body_source_map());
+            }
         }
     }
 

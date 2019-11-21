@@ -244,6 +244,34 @@ fn foo(e: Result<U, V>) {
     }
 
     #[test]
+    fn join_lines_multiline_in_block() {
+        check_join_lines(
+            r"
+fn foo() {
+    match ty {
+        <|> Some(ty) => {
+            match ty {
+                _ => false,
+            }
+        }
+        _ => true,
+    }
+}
+",
+            r"
+fn foo() {
+    match ty {
+        <|> Some(ty) => match ty {
+                _ => false,
+            },
+        _ => true,
+    }
+}
+",
+        );
+    }
+
+    #[test]
     fn join_lines_keeps_comma_for_block_in_match_arm() {
         // We already have a comma
         check_join_lines(

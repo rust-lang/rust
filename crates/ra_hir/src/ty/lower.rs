@@ -19,18 +19,17 @@ use super::{
     TypeWalk,
 };
 use crate::{
-    adt::VariantDef,
     db::HirDatabase,
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
-    resolve::{Resolver, TypeNs},
+    resolve::{HasResolver, Resolver, TypeNs},
     ty::{
         primitive::{FloatTy, IntTy, Uncertain},
         Adt,
     },
     util::make_mut_slice,
     Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField, Trait,
-    TypeAlias, Union,
+    TypeAlias, Union, VariantDef,
 };
 
 // FIXME: this is only really used in `type_for_def`, which contains a bunch of
@@ -611,9 +610,7 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> 
     let defaults = generic_params
         .params_including_parent()
         .into_iter()
-        .map(|p| {
-            p.default.as_ref().map_or(Ty::Unknown, |path| Ty::from_hir_path(db, &resolver, path))
-        })
+        .map(|p| p.default.as_ref().map_or(Ty::Unknown, |t| Ty::from_hir(db, &resolver, t)))
         .collect();
 
     Substs(defaults)

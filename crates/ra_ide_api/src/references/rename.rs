@@ -55,11 +55,11 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    let module_src = hir::Source { file_id: position.file_id.into(), ast: ast_module.clone() };
+    let module_src = hir::Source { file_id: position.file_id.into(), value: ast_module.clone() };
     if let Some(module) = hir::Module::from_declaration(db, module_src) {
         let src = module.definition_source(db);
         let file_id = src.file_id.original_file(db);
-        match src.ast {
+        match src.value {
             ModuleSource::SourceFile(..) => {
                 let mod_path: RelativePathBuf = db.file_relative_path(file_id);
                 // mod is defined in path/to/dir/mod.rs
@@ -121,139 +121,7 @@ mod tests {
 
     use crate::{
         mock_analysis::analysis_and_position, mock_analysis::single_file_with_position, FileId,
-        ReferenceSearchResult,
     };
-
-    #[test]
-    fn test_find_all_refs_for_local() {
-        let code = r#"
-    fn main() {
-        let mut i = 1;
-        let j = 1;
-        i = i<|> + j;
-
-        {
-            i = 0;
-        }
-
-        i = 5;
-    }"#;
-
-        let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 5);
-    }
-
-    #[test]
-    fn test_find_all_refs_for_param_inside() {
-        let code = r#"
-    fn foo(i : u32) -> u32 {
-        i<|>
-    }"#;
-
-        let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 2);
-    }
-
-    #[test]
-    fn test_find_all_refs_for_fn_param() {
-        let code = r#"
-    fn foo(i<|> : u32) -> u32 {
-        i
-    }"#;
-
-        let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 2);
-    }
-
-    #[test]
-    fn test_find_all_refs_field_name() {
-        let code = r#"
-            //- /lib.rs
-            struct Foo {
-                pub spam<|>: u32,
-            }
-
-            fn main(s: Foo) {
-                let f = s.spam;
-            }
-        "#;
-
-        let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 2);
-    }
-
-    #[test]
-    fn test_find_all_refs_impl_item_name() {
-        let code = r#"
-            //- /lib.rs
-            struct Foo;
-            impl Foo {
-                fn f<|>(&self) {  }
-            }
-        "#;
-
-        let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 1);
-    }
-
-    #[test]
-    fn test_find_all_refs_enum_var_name() {
-        let code = r#"
-            //- /lib.rs
-            enum Foo {
-                A,
-                B<|>,
-                C,
-            }
-        "#;
-
-        let refs = get_all_refs(code);
-        assert_eq!(refs.len(), 1);
-    }
-
-    #[test]
-    fn test_find_all_refs_modules() {
-        let code = r#"
-            //- /lib.rs
-            pub mod foo;
-            pub mod bar;
-
-            fn f() {
-                let i = foo::Foo { n: 5 };
-            }
-
-            //- /foo.rs
-            use crate::bar;
-
-            pub struct Foo {
-                pub n: u32,
-            }
-
-            fn f() {
-                let i = bar::Bar { n: 5 };
-            }
-
-            //- /bar.rs
-            use crate::foo;
-
-            pub struct Bar {
-                pub n: u32,
-            }
-
-            fn f() {
-                let i = foo::Foo<|> { n: 5 };
-            }
-        "#;
-
-        let (analysis, pos) = analysis_and_position(code);
-        let refs = analysis.find_all_refs(pos, None).unwrap().unwrap();
-        assert_eq!(refs.len(), 3);
-    }
-
-    fn get_all_refs(text: &str) -> ReferenceSearchResult {
-        let (analysis, position) = single_file_with_position(text);
-        analysis.find_all_refs(position, None).unwrap().unwrap()
-    }
 
     #[test]
     fn test_rename_for_local() {

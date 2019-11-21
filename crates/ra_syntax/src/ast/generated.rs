@@ -3625,8 +3625,11 @@ impl AstNode for TypeParam {
 impl ast::NameOwner for TypeParam {}
 impl ast::AttrsOwner for TypeParam {}
 impl ast::TypeBoundsOwner for TypeParam {}
-impl ast::DefaultTypeParamOwner for TypeParam {}
-impl TypeParam {}
+impl TypeParam {
+    pub fn default_type(&self) -> Option<TypeRef> {
+        AstChildren::new(&self.syntax).next()
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParamList {
     pub(crate) syntax: SyntaxNode,

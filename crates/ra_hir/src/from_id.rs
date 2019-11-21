@@ -3,9 +3,9 @@
 //! It's unclear if we need this long-term, but it's definitelly useful while we
 //! are splitting the hir.
 
-use hir_def::{AdtId, AssocItemId, DefWithBodyId, EnumVariantId, ModuleDefId};
+use hir_def::{AdtId, AssocItemId, DefWithBodyId, EnumVariantId, GenericDefId, ModuleDefId};
 
-use crate::{Adt, AssocItem, DefWithBody, EnumVariant, ModuleDef};
+use crate::{Adt, AssocItem, DefWithBody, EnumVariant, GenericDef, ModuleDef};
 
 macro_rules! from_id {
     ($(($id:path, $ty:path)),*) => {$(
@@ -37,6 +37,16 @@ impl From<AdtId> for Adt {
             AdtId::StructId(it) => Adt::Struct(it.into()),
             AdtId::UnionId(it) => Adt::Union(it.into()),
             AdtId::EnumId(it) => Adt::Enum(it.into()),
+        }
+    }
+}
+
+impl From<Adt> for AdtId {
+    fn from(id: Adt) -> Self {
+        match id {
+            Adt::Struct(it) => AdtId::StructId(it.id),
+            Adt::Union(it) => AdtId::UnionId(it.id),
+            Adt::Enum(it) => AdtId::EnumId(it.id),
         }
     }
 }
@@ -79,6 +89,36 @@ impl From<AssocItemId> for AssocItem {
             AssocItemId::FunctionId(it) => AssocItem::Function(it.into()),
             AssocItemId::TypeAliasId(it) => AssocItem::TypeAlias(it.into()),
             AssocItemId::ConstId(it) => AssocItem::Const(it.into()),
+        }
+    }
+}
+
+impl From<GenericDef> for GenericDefId {
+    fn from(def: GenericDef) -> Self {
+        match def {
+            GenericDef::Function(it) => GenericDefId::FunctionId(it.id),
+            GenericDef::Adt(it) => GenericDefId::AdtId(it.into()),
+            GenericDef::Trait(it) => GenericDefId::TraitId(it.id),
+            GenericDef::TypeAlias(it) => GenericDefId::TypeAliasId(it.id),
+            GenericDef::ImplBlock(it) => GenericDefId::ImplId(it.id),
+            GenericDef::EnumVariant(it) => {
+                GenericDefId::EnumVariantId(EnumVariantId { parent: it.parent.id, local_id: it.id })
+            }
+            GenericDef::Const(it) => GenericDefId::ConstId(it.id),
+        }
+    }
+}
+
+impl From<GenericDefId> for GenericDef {
+    fn from(def: GenericDefId) -> Self {
+        match def {
+            GenericDefId::FunctionId(it) => GenericDef::Function(it.into()),
+            GenericDefId::AdtId(it) => GenericDef::Adt(it.into()),
+            GenericDefId::TraitId(it) => GenericDef::Trait(it.into()),
+            GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
+            GenericDefId::ImplId(it) => GenericDef::ImplBlock(it.into()),
+            GenericDefId::EnumVariantId(it) => GenericDef::EnumVariant(it.into()),
+            GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
         }
     }
 }

@@ -5,11 +5,12 @@
 
 use std::sync::Arc;
 
+use hir_expand::AstId;
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstId, FunctionId, ImplId,
-    LocationCtx, TypeAliasId,
+    db::DefDatabase2, type_ref::TypeRef, AssocItemId, AstItemDef, ConstLoc, ContainerId,
+    FunctionLoc, ImplId, Intern, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,23 +26,37 @@ impl ImplData {
         let src = id.source(db);
         let items = db.ast_id_map(src.file_id);
 
-        let target_trait = src.ast.target_trait().map(TypeRef::from_ast);
-        let target_type = TypeRef::from_ast_opt(src.ast.target_type());
-        let negative = src.ast.is_negative();
+        let target_trait = src.value.target_trait().map(TypeRef::from_ast);
+        let target_type = TypeRef::from_ast_opt(src.value.target_type());
+        let negative = src.value.is_negative();
 
-        let items = if let Some(item_list) = src.ast.item_list() {
-            let ctx = LocationCtx::new(db, id.module(db), src.file_id);
+        let items = if let Some(item_list) = src.value.item_list() {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => {
-                        FunctionId::from_ast_id(ctx, items.ast_id(&it)).into()
+                        let def = FunctionLoc {
+                            container: ContainerId::ImplId(id),
+                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
+                        }
+                        .intern(db);
+                        def.into()
                     }
                     ast::ImplItem::ConstDef(it) => {
-                        ConstId::from_ast_id(ctx, items.ast_id(&it)).into()
+                        let def = ConstLoc {
+                            container: ContainerId::ImplId(id),
+                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
+                        }
+                        .intern(db);
+                        def.into()
                     }
                     ast::ImplItem::TypeAliasDef(it) => {
-                        TypeAliasId::from_ast_id(ctx, items.ast_id(&it)).into()
+                        let def = TypeAliasLoc {
+                            container: ContainerId::ImplId(id),
+                            ast_id: AstId::new(src.file_id, items.ast_id(&it)),
+                        }
+                        .intern(db);
+                        def.into()
                     }
                 })
                 .collect()

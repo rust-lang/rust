@@ -210,8 +210,9 @@ mod tests {
         let scopes = db.expr_scopes(function.into());
         let (_body, source_map) = db.body_with_source_map(function.into());
 
-        let expr_id =
-            source_map.node_expr(Source { file_id: file_id.into(), ast: &marker.into() }).unwrap();
+        let expr_id = source_map
+            .node_expr(Source { file_id: file_id.into(), value: &marker.into() })
+            .unwrap();
         let scope = scopes.scope_for(expr_id);
 
         let actual = scopes
@@ -317,14 +318,14 @@ mod tests {
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
             let expr_id =
-                source_map.node_expr(Source { file_id: file_id.into(), ast: &expr_ast }).unwrap();
+                source_map.node_expr(Source { file_id: file_id.into(), value: &expr_ast }).unwrap();
             scopes.scope_for(expr_id).unwrap()
         };
 
         let resolved = scopes.resolve_name_in_scope(expr_scope, &name_ref.as_name()).unwrap();
         let pat_src = source_map.pat_syntax(resolved.pat()).unwrap();
 
-        let local_name = pat_src.ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+        let local_name = pat_src.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
         assert_eq!(local_name.range(), expected_name.syntax().text_range());
     }
 

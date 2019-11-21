@@ -73,9 +73,9 @@ impl NameDefinition {
 
         if let NameKind::Local(var) = self.kind {
             let range = match var.parent(db) {
-                DefWithBody::Function(f) => f.source(db).ast.syntax().text_range(),
-                DefWithBody::Const(c) => c.source(db).ast.syntax().text_range(),
-                DefWithBody::Static(s) => s.source(db).ast.syntax().text_range(),
+                DefWithBody::Function(f) => f.source(db).value.syntax().text_range(),
+                DefWithBody::Const(c) => c.source(db).value.syntax().text_range(),
+                DefWithBody::Static(s) => s.source(db).value.syntax().text_range(),
             };
             let mut res = FxHashMap::default();
             res.insert(file_id, Some(range));
@@ -91,7 +91,7 @@ impl NameDefinition {
                 let parent_src = parent_module.definition_source(db);
                 let file_id = parent_src.file_id.original_file(db);
 
-                match parent_src.ast {
+                match parent_src.value {
                     ModuleSource::Module(m) => {
                         let range = Some(m.syntax().text_range());
                         res.insert(file_id, range);
@@ -135,7 +135,7 @@ impl NameDefinition {
         }
 
         let mut res = FxHashMap::default();
-        let range = match module_src.ast {
+        let range = match module_src.value {
             ModuleSource::Module(m) => Some(m.syntax().text_range()),
             ModuleSource::SourceFile(_) => None,
         };

@@ -71,7 +71,7 @@ impl Path {
         hygiene: &Hygiene,
         mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
     ) {
-        if let Some(tree) = item_src.ast.use_tree() {
+        if let Some(tree) = item_src.value.use_tree() {
             expand_use_tree(None, tree, hygiene, &mut cb);
         }
     }

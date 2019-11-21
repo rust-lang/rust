@@ -43,7 +43,7 @@ impl SyntaxNodePtr {
 }
 
 /// Like `SyntaxNodePtr`, but remembers the type of node
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Hash)]
 pub struct AstPtr<N: AstNode> {
     raw: SyntaxNodePtr,
     _ty: PhantomData<fn() -> N>,
@@ -53,6 +53,14 @@ impl<N: AstNode> Copy for AstPtr<N> {}
 impl<N: AstNode> Clone for AstPtr<N> {
     fn clone(&self) -> AstPtr<N> {
         *self
+    }
+}
+
+impl<N: AstNode> Eq for AstPtr<N> {}
+
+impl<N: AstNode> PartialEq for AstPtr<N> {
+    fn eq(&self, other: &AstPtr<N>) -> bool {
+        self.raw == other.raw
     }
 }
 

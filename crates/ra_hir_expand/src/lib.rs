@@ -166,19 +166,19 @@ impl ExpansionInfo {
     pub fn map_token_down(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
         assert_eq!(token.file_id, self.arg.file_id);
         let range =
-            token.ast.text_range().checked_sub(self.arg.ast.syntax().text_range().start())?;
+            token.value.text_range().checked_sub(self.arg.value.syntax().text_range().start())?;
         let token_id = self.macro_arg.1.token_by_range(range)?;
         let token_id = self.macro_def.0.map_id_down(token_id);
 
         let range = self.exp_map.range_by_token(token_id)?;
 
-        let token = algo::find_covering_element(&self.expanded.ast, range).into_token()?;
+        let token = algo::find_covering_element(&self.expanded.value, range).into_token()?;
 
-        Some(self.expanded.with_ast(token))
+        Some(self.expanded.with_value(token))
     }
 
     pub fn map_token_up(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
-        let token_id = self.exp_map.token_by_range(token.ast.text_range())?;
+        let token_id = self.exp_map.token_by_range(token.value.text_range())?;
 
         let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
         let (token_map, tt) = match origin {
@@ -188,11 +188,11 @@ impl ExpansionInfo {
 
         let range = token_map.range_by_token(token_id)?;
         let token = algo::find_covering_element(
-            tt.ast.syntax(),
-            range + tt.ast.syntax().text_range().start(),
+            tt.value.syntax(),
+            range + tt.value.syntax().text_range().start(),
         )
         .into_token()?;
-        Some(tt.with_ast(token))
+        Some(tt.with_value(token))
     }
 }
 
@@ -240,30 +240,34 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
-/// FIXME: https://github.com/matklad/with ?
+/// `Source<T>` stores a value of `T` inside a particular file/syntax tree.
+///
+/// Typical usages are:
+///
+/// * `Source<SyntaxNode>` -- syntax node in a file
+/// * `Source<ast::FnDef>` -- ast node in a file
+/// * `Source<TextUnit>` -- offset in a file
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub struct Source<T> {
     pub file_id: HirFileId,
-    // FIXME: this stores all kind of things, not only `ast`.
-    // There should be a better name...
-    pub ast: T,
+    pub value: T,
 }
 
 impl<T> Source<T> {
-    pub fn new(file_id: HirFileId, ast: T) -> Source<T> {
-        Source { file_id, ast }
+    pub fn new(file_id: HirFileId, value: T) -> Source<T> {
+        Source { file_id, value }
     }
 
     // Similarly, naming here is stupid...
-    pub fn with_ast<U>(&self, ast: U) -> Source<U> {
-        Source::new(self.file_id, ast)
+    pub fn with_value<U>(&self, value: U) -> Source<U> {
+        Source::new(self.file_id, value)
     }
 
     pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
-        Source::new(self.file_id, f(self.ast))
+        Source::new(self.file_id, f(self.value))
     }
     pub fn as_ref(&self) -> Source<&T> {
-        self.with_ast(&self.ast)
+        self.with_value(&self.value)
     }
     pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")

@@ -10,8 +10,10 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
+    traits::TraitData,
     type_ref::{Mutability, TypeRef},
-    CrateModuleId, ImplId, LocalEnumVariantId, LocalStructFieldId, ModuleId, UnionId,
+    AssocItemId, ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId,
+    LocalStructFieldId, Lookup, ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -21,7 +23,6 @@ use ra_db::{CrateId, Edition};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    adt::VariantDef,
     db::{AstDatabase, DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     generics::{GenericDef, HasGenericParams},
@@ -29,8 +30,7 @@ use crate::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
         TypeAliasId,
     },
-    resolve::{Resolver, Scope, TypeNs},
-    traits::TraitData,
+    resolve::{HasResolver, TypeNs},
     ty::{InferenceResult, Namespace, TraitRef},
     Either, HasSource, ImportId, Name, ScopeDef, Source, Ty,
 };
@@ -139,7 +139,7 @@ impl Module {
     ) -> Either<ast::UseTree, ast::ExternCrateItem> {
         let src = self.definition_source(db);
         let (_, source_map) = db.raw_items_with_source_map(src.file_id);
-        source_map.get(&src.ast, import)
+        source_map.get(&src.value, import)
     }
 
     /// Returns the crate this module is part of.
@@ -206,7 +206,7 @@ impl Module {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
                 crate::ModuleDef::Module(m) => {
                     // Only add diagnostics from inline modules
-                    if let ModuleSource::Module(_) = m.definition_source(db).ast {
+                    if let ModuleSource::Module(_) = m.definition_source(db).value {
                         m.diagnostics(db, sink)
                     }
                 }
@@ -223,22 +223,9 @@ impl Module {
         }
     }
 
-    pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        let def_map = db.crate_def_map(self.id.krate);
-        Resolver::default().push_module_scope(def_map, self.id.module_id)
-    }
-
     pub fn declarations(self, db: &impl DefDatabase) -> Vec<ModuleDef> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.module_id]
-            .scope
-            .entries()
-            .filter_map(|(_name, res)| if res.import.is_none() { Some(res.def) } else { None })
-            .flat_map(|per_ns| {
-                per_ns.take_types().into_iter().chain(per_ns.take_values().into_iter())
-            })
-            .map(ModuleDef::from)
-            .collect()
+        def_map[self.id.module_id].scope.declarations().map(ModuleDef::from).collect()
     }
 
     pub fn impl_blocks(self, db: &impl DefDatabase) -> Vec<ImplBlock> {
@@ -323,15 +310,8 @@ impl Struct {
         db.type_for_def(self.into(), Namespace::Values)
     }
 
-    // FIXME move to a more general type
-    /// Builds a resolver for type references inside this struct.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        // take the outer scope...
-        let r = self.module(db).resolver(db);
-        // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+    fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
+        db.struct_data(self.id.into()).variant_data.clone()
     }
 }
 
@@ -345,23 +325,12 @@ impl Union {
         db.struct_data(self.id.into()).name.clone()
     }
 
-    pub fn module(self, db: &impl HirDatabase) -> Module {
+    pub fn module(self, db: &impl DefDatabase) -> Module {
         Module { id: self.id.0.module(db) }
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
         db.type_for_def(self.into(), Namespace::Types)
-    }
-
-    // FIXME move to a more general type
-    /// Builds a resolver for type references inside this union.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        // take the outer scope...
-        let r = self.module(db).resolver(db);
-        // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
     }
 }
 
@@ -401,17 +370,6 @@ impl Enum {
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
         db.type_for_def(self.into(), Namespace::Types)
-    }
-
-    // FIXME: move to a more general type
-    /// Builds a resolver for type references inside this struct.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        // take the outer scope...
-        let r = self.module(db).resolver(db);
-        // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r.push_scope(Scope::AdtScope(self.into()))
     }
 }
 
@@ -474,22 +432,52 @@ impl Adt {
         }
     }
 
-    pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
-        Some(
-            match self {
-                Adt::Struct(s) => s.module(db),
-                Adt::Union(s) => s.module(db),
-                Adt::Enum(e) => e.module(db),
-            }
-            .krate(),
-        )
+    pub fn module(self, db: &impl DefDatabase) -> Module {
+        match self {
+            Adt::Struct(s) => s.module(db),
+            Adt::Union(s) => s.module(db),
+            Adt::Enum(e) => e.module(db),
+        }
     }
 
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
+    pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+        Some(self.module(db).krate())
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum VariantDef {
+    Struct(Struct),
+    EnumVariant(EnumVariant),
+}
+impl_froms!(VariantDef: Struct, EnumVariant);
+
+impl VariantDef {
+    pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
         match self {
-            Adt::Struct(it) => it.resolver(db),
-            Adt::Union(it) => it.resolver(db),
-            Adt::Enum(it) => it.resolver(db),
+            VariantDef::Struct(it) => it.fields(db),
+            VariantDef::EnumVariant(it) => it.fields(db),
+        }
+    }
+
+    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+        match self {
+            VariantDef::Struct(it) => it.field(db, name),
+            VariantDef::EnumVariant(it) => it.field(db, name),
+        }
+    }
+
+    pub fn module(self, db: &impl HirDatabase) -> Module {
+        match self {
+            VariantDef::Struct(it) => it.module(db),
+            VariantDef::EnumVariant(it) => it.module(db),
+        }
+    }
+
+    pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
+        match self {
+            VariantDef::Struct(it) => it.variant_data(db),
+            VariantDef::EnumVariant(it) => it.variant_data(db),
         }
     }
 }
@@ -505,15 +493,6 @@ pub enum DefWithBody {
 impl_froms!(DefWithBody: Function, Const, Static);
 
 impl DefWithBody {
-    /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        match self {
-            DefWithBody::Const(c) => c.resolver(db),
-            DefWithBody::Function(f) => f.resolver(db),
-            DefWithBody::Static(s) => s.resolver(db),
-        }
-    }
-
     pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
         match self {
             DefWithBody::Const(c) => c.krate(db),
@@ -598,10 +577,10 @@ impl FnData {
         func: Function,
     ) -> Arc<FnData> {
         let src = func.source(db);
-        let name = src.ast.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
+        let name = src.value.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
         let mut has_self_param = false;
-        if let Some(param_list) = src.ast.param_list() {
+        if let Some(param_list) = src.value.param_list() {
             if let Some(self_param) = param_list.self_param() {
                 let self_type = if let Some(type_ref) = self_param.ascribed_type() {
                     TypeRef::from_ast(type_ref)
@@ -625,7 +604,7 @@ impl FnData {
                 params.push(type_ref);
             }
         }
-        let ret_type = if let Some(type_ref) = src.ast.ret_type().and_then(|rt| rt.type_ref()) {
+        let ret_type = if let Some(type_ref) = src.value.ret_type().and_then(|rt| rt.type_ref()) {
             TypeRef::from_ast(type_ref)
         } else {
             TypeRef::unit()
@@ -655,7 +634,7 @@ impl FnData {
 
 impl Function {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        self.id.lookup(db).module(db).into()
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -688,33 +667,26 @@ impl Function {
 
     /// The containing impl block, if this is a method.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        ImplBlock::containing(db, self.into())
+        match self.container(db) {
+            Some(Container::ImplBlock(it)) => Some(it),
+            _ => None,
+        }
     }
 
     /// The containing trait, if this is a trait method definition.
     pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        if let Some(impl_block) = self.impl_block(db) {
-            Some(impl_block.into())
-        } else if let Some(trait_) = self.parent_trait(db) {
-            Some(trait_.into())
-        } else {
-            None
+        match self.container(db) {
+            Some(Container::Trait(it)) => Some(it),
+            _ => None,
         }
     }
 
-    // FIXME: move to a more general type for 'body-having' items
-    /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        // take the outer scope...
-        let r = self.container(db).map_or_else(|| self.module(db).resolver(db), |c| c.resolver(db));
-        // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
+        match self.id.lookup(db).container {
+            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
+            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
+            ContainerId::ModuleId(_) => None,
+        }
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
@@ -732,7 +704,7 @@ pub struct Const {
 
 impl Const {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -751,34 +723,28 @@ impl Const {
         db.infer(self.into())
     }
 
-    /// The containing impl block, if this is a method.
+    /// The containing impl block, if this is a type alias.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        ImplBlock::containing(db, self.into())
-    }
-
-    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        if let Some(impl_block) = self.impl_block(db) {
-            Some(impl_block.into())
-        } else if let Some(trait_) = self.parent_trait(db) {
-            Some(trait_.into())
-        } else {
-            None
+        match self.container(db) {
+            Some(Container::ImplBlock(it)) => Some(it),
+            _ => None,
         }
     }
 
-    // FIXME: move to a more general type for 'body-having' items
-    /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        // take the outer scope...
-        let r = self
-            .impl_block(db)
-            .map(|ib| ib.resolver(db))
-            .unwrap_or_else(|| self.module(db).resolver(db));
-        r
+    /// The containing trait, if this is a trait type alias definition.
+    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
+        match self.container(db) {
+            Some(Container::Trait(it)) => Some(it),
+            _ => None,
+        }
+    }
+
+    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
+        match self.id.lookup(db).container {
+            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
+            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
+            ContainerId::ModuleId(_) => None,
+        }
     }
 }
 
@@ -801,7 +767,7 @@ impl ConstData {
         db: &(impl DefDatabase + AstDatabase),
         konst: Const,
     ) -> Arc<ConstData> {
-        let node = konst.source(db).ast;
+        let node = konst.source(db).value;
         const_data_for(&node)
     }
 
@@ -809,7 +775,7 @@ impl ConstData {
         db: &(impl DefDatabase + AstDatabase),
         konst: Static,
     ) -> Arc<ConstData> {
-        let node = konst.source(db).ast;
+        let node = konst.source(db).value;
         const_data_for(&node)
     }
 }
@@ -839,12 +805,6 @@ impl Static {
         db.static_data(self)
     }
 
-    /// Builds a resolver for code inside this item.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        // take the outer scope...
-        self.module(db).resolver(db)
-    }
-
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
         db.infer(self.into())
     }
@@ -861,11 +821,11 @@ impl Trait {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        self.trait_data(db).name().clone()
+        self.trait_data(db).name.clone()
     }
 
     pub fn items(self, db: &impl DefDatabase) -> Vec<AssocItem> {
-        self.trait_data(db).items().to_vec()
+        self.trait_data(db).items.iter().map(|it| (*it).into()).collect()
     }
 
     fn direct_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
@@ -912,10 +872,10 @@ impl Trait {
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
         let trait_data = self.trait_data(db);
         trait_data
-            .items()
+            .items
             .iter()
             .filter_map(|item| match item {
-                AssocItem::TypeAlias(t) => Some(*t),
+                AssocItemId::TypeAliasId(t) => Some(TypeAlias::from(*t)),
                 _ => None,
             })
             .find(|t| &t.name(db) == name)
@@ -930,7 +890,7 @@ impl Trait {
     }
 
     pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
-        db.trait_data(self)
+        db.trait_data(self.id)
     }
 
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
@@ -938,15 +898,7 @@ impl Trait {
     }
 
     pub fn is_auto(self, db: &impl DefDatabase) -> bool {
-        self.trait_data(db).is_auto()
-    }
-
-    pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        let r = self.module(db).resolver(db);
-        // add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
+        self.trait_data(db).auto
     }
 }
 
@@ -957,30 +909,34 @@ pub struct TypeAlias {
 
 impl TypeAlias {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
         Some(self.module(db).krate())
     }
 
-    /// The containing impl block, if this is a method.
+    /// The containing impl block, if this is a type alias.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        ImplBlock::containing(db, self.into())
+        match self.container(db) {
+            Some(Container::ImplBlock(it)) => Some(it),
+            _ => None,
+        }
     }
 
-    /// The containing trait, if this is a trait method definition.
+    /// The containing trait, if this is a trait type alias definition.
     pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        db.trait_items_index(self.module(db)).get_parent_trait(self.into())
+        match self.container(db) {
+            Some(Container::Trait(it)) => Some(it),
+            _ => None,
+        }
     }
 
     pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        if let Some(impl_block) = self.impl_block(db) {
-            Some(impl_block.into())
-        } else if let Some(trait_) = self.parent_trait(db) {
-            Some(trait_.into())
-        } else {
-            None
+        match self.id.lookup(db).container {
+            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
+            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
+            ContainerId::ModuleId(_) => None,
         }
     }
 
@@ -994,19 +950,6 @@ impl TypeAlias {
 
     pub fn name(self, db: &impl DefDatabase) -> Name {
         db.type_alias_data(self).name.clone()
-    }
-
-    /// Builds a resolver for the type references in this type alias.
-    pub(crate) fn resolver(self, db: &impl HirDatabase) -> Resolver {
-        // take the outer scope...
-        let r = self
-            .impl_block(db)
-            .map(|ib| ib.resolver(db))
-            .unwrap_or_else(|| self.module(db).resolver(db));
-        // ...and add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        r
     }
 }
 
@@ -1022,15 +965,6 @@ pub enum Container {
     ImplBlock(ImplBlock),
 }
 impl_froms!(Container: Trait, ImplBlock);
-
-impl Container {
-    pub(crate) fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        match self {
-            Container::Trait(trait_) => trait_.resolver(db),
-            Container::ImplBlock(impl_block) => impl_block.resolver(db),
-        }
-    }
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum AssocItem {

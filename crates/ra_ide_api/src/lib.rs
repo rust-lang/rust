@@ -344,8 +344,14 @@ impl Analysis {
     }
 
     /// Returns a list of the places in the file where type hints can be displayed.
-    pub fn inlay_hints(&self, file_id: FileId) -> Cancelable<Vec<InlayHint>> {
-        self.with_db(|db| inlay_hints::inlay_hints(db, file_id, &db.parse(file_id).tree()))
+    pub fn inlay_hints(
+        &self,
+        file_id: FileId,
+        max_inlay_hint_length: Option<usize>,
+    ) -> Cancelable<Vec<InlayHint>> {
+        self.with_db(|db| {
+            inlay_hints::inlay_hints(db, file_id, &db.parse(file_id).tree(), max_inlay_hint_length)
+        })
     }
 
     /// Returns the set of folding ranges.

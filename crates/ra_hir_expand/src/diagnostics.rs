@@ -24,7 +24,7 @@ pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
     fn source(&self) -> Source<SyntaxNodePtr>;
     fn highlight_range(&self) -> TextRange {
-        self.source().ast.range()
+        self.source().value.range()
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static);
 }
@@ -37,7 +37,7 @@ pub trait AstDiagnostic {
 impl dyn Diagnostic {
     pub fn syntax_node(&self, db: &impl AstDatabase) -> SyntaxNode {
         let node = db.parse_or_expand(self.source().file_id).unwrap();
-        self.source().ast.to_node(&node)
+        self.source().value.to_node(&node)
     }
 
     pub fn downcast_ref<D: Diagnostic>(&self) -> Option<&D> {

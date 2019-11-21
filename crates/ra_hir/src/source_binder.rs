@@ -23,7 +23,7 @@ use crate::{
     db::HirDatabase,
     expr::{self, BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
-    resolve::{ScopeDef, TypeNs, ValueNs},
+    resolve::{HasResolver, ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
     AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, GenericParam, HasBody,
     HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
@@ -31,24 +31,24 @@ use crate::{
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
     match_ast! {
-        match (node.ast) {
+        match (node.value) {
             ast::Module(it) => {
-                let src = node.with_ast(it);
+                let src = node.with_value(it);
                 Some(crate::Module::from_declaration(db, src)?.resolver(db))
             },
              ast::SourceFile(it) => {
-                let src = node.with_ast(crate::ModuleSource::SourceFile(it));
+                let src = node.with_value(crate::ModuleSource::SourceFile(it));
                 Some(crate::Module::from_definition(db, src)?.resolver(db))
             },
             ast::StructDef(it) => {
-                let src = node.with_ast(it);
+                let src = node.with_value(it);
                 Some(Struct::from_source(db, src)?.resolver(db))
             },
             ast::EnumDef(it) => {
-                let src = node.with_ast(it);
+                let src = node.with_value(it);
                 Some(Enum::from_source(db, src)?.resolver(db))
             },
-            _ => match node.ast.kind() {
+            _ => match node.value.kind() {
                 FN_DEF | CONST_DEF | STATIC_DEF => {
                     Some(def_with_body_from_child_node(db, node)?.resolver(db))
                 }
@@ -67,11 +67,11 @@ fn def_with_body_from_child_node(
     let module = Module::from_definition(db, Source::new(child.file_id, module_source))?;
     let ctx = LocationCtx::new(db, module.id, child.file_id);
 
-    child.ast.ancestors().find_map(|node| {
+    child.value.ancestors().find_map(|node| {
         match_ast! {
             match node {
-                ast::FnDef(def)  => { Some(Function {id: ctx.to_def(&def) }.into()) },
-                ast::ConstDef(def) => { Some(Const { id: ctx.to_def(&def) }.into()) },
+                ast::FnDef(def)  => { return Function::from_source(db, child.with_value(def)).map(DefWithBody::from); },
+                ast::ConstDef(def) => { return Const::from_source(db, child.with_value(def)).map(DefWithBody::from); },
                 ast::StaticDef(def) => { Some(Static { id: ctx.to_def(&def) }.into()) },
                 _ => { None },
             }
@@ -157,7 +157,7 @@ impl SourceAnalyzer {
             let scopes = def.expr_scopes(db);
             let scope = match offset {
                 None => scope_for(&scopes, &source_map, node),
-                Some(offset) => scope_for_offset(&scopes, &source_map, node.with_ast(offset)),
+                Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
             };
             let resolver = expr::resolver_for_scope(db, def, scope);
             SourceAnalyzer {
@@ -171,9 +171,9 @@ impl SourceAnalyzer {
         } else {
             SourceAnalyzer {
                 resolver: node
-                    .ast
+                    .value
                     .ancestors()
-                    .find_map(|it| try_get_resolver_for_node(db, node.with_ast(&it)))
+                    .find_map(|it| try_get_resolver_for_node(db, node.with_value(&it)))
                     .unwrap_or_default(),
                 body_owner: None,
                 body_source_map: None,
@@ -185,12 +185,12 @@ impl SourceAnalyzer {
     }
 
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
-        let src = Source { file_id: self.file_id, ast: expr };
+        let src = Source { file_id: self.file_id, value: expr };
         self.body_source_map.as_ref()?.node_expr(src)
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
-        let src = Source { file_id: self.file_id, ast: pat };
+        let src = Source { file_id: self.file_id, value: pat };
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
@@ -302,7 +302,7 @@ impl SourceAnalyzer {
         let entry = scopes.resolve_name_in_scope(scope, &name)?;
         Some(ScopeEntryWithSyntax {
             name: entry.name().clone(),
-            ptr: source_map.pat_syntax(entry.pat())?.ast,
+            ptr: source_map.pat_syntax(entry.pat())?.value,
         })
     }
 
@@ -405,9 +405,16 @@ impl SourceAnalyzer {
         implements_trait(&canonical_ty, db, &self.resolver, krate, std_future_trait)
     }
 
-    pub fn expand(&self, db: &impl HirDatabase, macro_call: &ast::MacroCall) -> Option<Expansion> {
-        let def = self.resolve_macro_call(db, macro_call)?.id;
-        let ast_id = AstId::new(self.file_id, db.ast_id_map(self.file_id).ast_id(macro_call));
+    pub fn expand(
+        &self,
+        db: &impl HirDatabase,
+        macro_call: Source<&ast::MacroCall>,
+    ) -> Option<Expansion> {
+        let def = self.resolve_macro_call(db, macro_call.value)?.id;
+        let ast_id = AstId::new(
+            macro_call.file_id,
+            db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
+        );
         let macro_call_loc = MacroCallLoc { def, ast_id };
         Some(Expansion { macro_call_id: db.intern_macro(macro_call_loc) })
     }
@@ -421,6 +428,11 @@ impl SourceAnalyzer {
     pub(crate) fn inference_result(&self) -> Arc<crate::ty::InferenceResult> {
         self.infer.clone().unwrap()
     }
+
+    #[cfg(test)]
+    pub(crate) fn analyzed_declaration(&self) -> Option<DefWithBody> {
+        self.body_owner
+    }
 }
 
 fn scope_for(
@@ -428,7 +440,7 @@ fn scope_for(
     source_map: &BodySourceMap,
     node: Source<&SyntaxNode>,
 ) -> Option<ScopeId> {
-    node.ast
+    node.value
         .ancestors()
         .filter_map(ast::Expr::cast)
         .filter_map(|it| source_map.node_expr(Source::new(node.file_id, &it)))
@@ -450,18 +462,18 @@ fn scope_for_offset(
                 return None;
             }
             let syntax_node_ptr =
-                source.ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+                source.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
             Some((syntax_node_ptr, scope))
         })
         // find containing scope
         .min_by_key(|(ptr, _scope)| {
             (
-                !(ptr.range().start() <= offset.ast && offset.ast <= ptr.range().end()),
+                !(ptr.range().start() <= offset.value && offset.value <= ptr.range().end()),
                 ptr.range().len(),
             )
         })
         .map(|(ptr, scope)| {
-            adjust(scopes, source_map, ptr, offset.file_id, offset.ast).unwrap_or(*scope)
+            adjust(scopes, source_map, ptr, offset.file_id, offset.value).unwrap_or(*scope)
         })
 }
 
@@ -485,7 +497,7 @@ fn adjust(
                 return None;
             }
             let syntax_node_ptr =
-                source.ast.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
+                source.value.either(|it| it.syntax_node_ptr(), |it| it.syntax_node_ptr());
             Some((syntax_node_ptr, scope))
         })
         .map(|(ptr, scope)| (ptr.range(), scope))

@@ -54,8 +54,8 @@ impl StructData {
         id: StructOrUnionId,
     ) -> Arc<StructData> {
         let src = id.source(db);
-        let name = src.ast.name().map(|n| n.as_name());
-        let variant_data = VariantData::new(src.ast.kind());
+        let name = src.value.name().map(|n| n.as_name());
+        let variant_data = VariantData::new(src.value.kind());
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
     }
@@ -64,9 +64,9 @@ impl StructData {
 impl EnumData {
     pub(crate) fn enum_data_query(db: &impl DefDatabase2, e: EnumId) -> Arc<EnumData> {
         let src = e.source(db);
-        let name = src.ast.name().map(|n| n.as_name());
+        let name = src.value.name().map(|n| n.as_name());
         let variants = src
-            .ast
+            .value
             .variant_list()
             .into_iter()
             .flat_map(|it| it.variants())

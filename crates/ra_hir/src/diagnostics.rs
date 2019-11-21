@@ -21,7 +21,7 @@ impl Diagnostic for NoSuchField {
     }
 
     fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, ast: self.field.into() }
+        Source { file_id: self.file, value: self.field.into() }
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -41,7 +41,7 @@ impl Diagnostic for MissingFields {
         "fill structure fields".to_string()
     }
     fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, ast: self.field_list.into() }
+        Source { file_id: self.file, value: self.field_list.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -53,7 +53,7 @@ impl AstDiagnostic for MissingFields {
 
     fn ast(&self, db: &impl AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.source().file_id).unwrap();
-        let node = self.source().ast.to_node(&root);
+        let node = self.source().value.to_node(&root);
         ast::RecordFieldList::cast(node).unwrap()
     }
 }
@@ -69,7 +69,7 @@ impl Diagnostic for MissingOkInTailExpr {
         "wrap return expression in Ok".to_string()
     }
     fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, ast: self.expr.into() }
+        Source { file_id: self.file, value: self.expr.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -81,7 +81,7 @@ impl AstDiagnostic for MissingOkInTailExpr {
 
     fn ast(&self, db: &impl AstDatabase) -> Self::AST {
         let root = db.parse_or_expand(self.file).unwrap();
-        let node = self.source().ast.to_node(&root);
+        let node = self.source().value.to_node(&root);
         ast::Expr::cast(node).unwrap()
     }
 }

@@ -66,8 +66,8 @@ fn build_match_expr(
 
 fn format_arm(block: &ast::BlockExpr) -> String {
     match extract_trivial_expression(block) {
-        None => block.syntax().text().to_string(),
-        Some(e) => format!("{},", e.syntax().text()),
+        Some(e) if !e.syntax().text().contains_char('\n') => format!("{},", e.syntax().text()),
+        _ => block.syntax().text().to_string(),
     }
 }
 
@@ -97,6 +97,34 @@ impl VariantData {
             VariantData::Struct(..) => true,
             _ => false,
         }
+    }
+}           ",
+        )
+    }
+
+    #[test]
+    fn test_replace_if_let_with_match_doesnt_unwrap_multiline_expressions() {
+        check_assist(
+            replace_if_let_with_match,
+            "
+fn foo() {
+    if <|>let VariantData::Struct(..) = a {
+        bar(
+            123
+        )
+    } else {
+        false
+    }
+}           ",
+            "
+fn foo() {
+    <|>match a {
+        VariantData::Struct(..) => {
+            bar(
+                123
+            )
+        }
+        _ => false,
     }
 }           ",
         )

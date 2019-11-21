@@ -101,11 +101,11 @@ fn hover_text_from_name_kind(
     return match name_kind {
         Macro(it) => {
             let src = it.source(db);
-            hover_text(src.ast.doc_comment_text(), Some(macro_label(&src.ast)))
+            hover_text(src.value.doc_comment_text(), Some(macro_label(&src.value)))
         }
         Field(it) => {
             let src = it.source(db);
-            match src.ast {
+            match src.value {
                 hir::FieldSource::Named(it) => hover_text(it.doc_comment_text(), it.short_label()),
                 _ => None,
             }
@@ -116,7 +116,7 @@ fn hover_text_from_name_kind(
             hir::AssocItem::TypeAlias(it) => from_def_source(db, it),
         },
         Def(it) => match it {
-            hir::ModuleDef::Module(it) => match it.definition_source(db).ast {
+            hir::ModuleDef::Module(it) => match it.definition_source(db).value {
                 hir::ModuleSource::Module(it) => {
                     hover_text(it.doc_comment_text(), it.short_label())
                 }
@@ -158,7 +158,7 @@ fn hover_text_from_name_kind(
         A: ast::DocCommentsOwner + ast::NameOwner + ShortLabel,
     {
         let src = def.source(db);
-        hover_text(src.ast.doc_comment_text(), src.ast.short_label())
+        hover_text(src.value.doc_comment_text(), src.value.short_label())
     }
 }
 
@@ -170,11 +170,11 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     let mut res = HoverResult::new();
 
     let mut range = match_ast! {
-        match (token.ast.parent()) {
+        match (token.value.parent()) {
             ast::NameRef(name_ref) => {
                 let mut no_fallback = false;
                 if let Some(name_kind) =
-                    classify_name_ref(db, token.with_ast(&name_ref)).map(|d| d.kind)
+                    classify_name_ref(db, token.with_value(&name_ref)).map(|d| d.kind)
                 {
                     res.extend(hover_text_from_name_kind(db, name_kind, &mut no_fallback))
                 }
@@ -196,7 +196,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
                 }
             },
             ast::Name(name) => {
-                if let Some(name_kind) = classify_name(db, token.with_ast(&name)).map(|d| d.kind) {
+                if let Some(name_kind) = classify_name(db, token.with_value(&name)).map(|d| d.kind) {
                     res.extend(hover_text_from_name_kind(db, name_kind, &mut true));
                 }
 
@@ -211,7 +211,7 @@ pub(crate) fn hover(db: &RootDatabase, position: FilePosition) -> Option<RangeIn
     };
 
     if range.is_none() {
-        let node = token.ast.ancestors().find(|n| {
+        let node = token.value.ancestors().find(|n| {
             ast::Expr::cast(n.clone()).is_some() || ast::Pat::cast(n.clone()).is_some()
         })?;
         let frange = FileRange { file_id: position.file_id, range: node.text_range() };
@@ -404,9 +404,7 @@ mod tests {
         check_hover_result(
             r#"
             //- /main.rs
-            fn main() {
-                const foo<|>: u32 = 0;
-            }
+            const foo<|>: u32 = 0;
         "#,
             &["const foo: u32"],
         );
@@ -414,9 +412,7 @@ mod tests {
         check_hover_result(
             r#"
             //- /main.rs
-            fn main() {
-                static foo<|>: u32 = 0;
-            }
+            static foo<|>: u32 = 0;
         "#,
             &["static foo: u32"],
         );

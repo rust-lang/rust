@@ -309,7 +309,6 @@ impl RootDatabase {
             hir::db::StructDataQuery
             hir::db::EnumDataQuery
             hir::db::TraitDataQuery
-            hir::db::TraitItemsIndexQuery
             hir::db::RawItemsWithSourceMapQuery
             hir::db::RawItemsQuery
             hir::db::CrateDefMapQuery

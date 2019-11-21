@@ -5,8 +5,7 @@ use ra_syntax::ast::{self};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    generics::HasGenericParams,
-    resolve::Resolver,
+    resolve::HasResolver,
     ty::Ty,
     AssocItem, Crate, HasSource, ImplBlock, Module, Source, TraitRef,
 };
@@ -19,14 +18,6 @@ impl HasSource for ImplBlock {
 }
 
 impl ImplBlock {
-    pub(crate) fn containing(db: &impl DefDatabase, item: AssocItem) -> Option<ImplBlock> {
-        let module = item.module(db);
-        let crate_def_map = db.crate_def_map(module.id.krate);
-        crate_def_map[module.id.module_id].impls.iter().copied().map(ImplBlock::from).find(|it| {
-            db.impl_data(it.id).items().iter().copied().map(AssocItem::from).any(|it| it == item)
-        })
-    }
-
     pub fn target_trait(&self, db: &impl DefDatabase) -> Option<TypeRef> {
         db.impl_data(self.id).target_trait().cloned()
     }
@@ -58,14 +49,5 @@ impl ImplBlock {
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {
         Crate { crate_id: self.module(db).id.krate }
-    }
-
-    pub(crate) fn resolver(&self, db: &impl DefDatabase) -> Resolver {
-        let r = self.module(db).resolver(db);
-        // add generic params, if present
-        let p = self.generic_params(db);
-        let r = if !p.params.is_empty() { r.push_generic_params_scope(p) } else { r };
-        let r = r.push_impl_block_scope(self.clone());
-        r
     }
 }
