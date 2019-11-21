@@ -175,4 +175,47 @@ fn some_thing() -> u32 {
 }
 "###);
     }
+
+    #[test]
+    fn macro_expand_match_ast() {
+        let res = check_expand_macro(
+            r#"
+        //- /lib.rs
+        macro_rules! match_ast {
+            (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };
+        
+            (match ($node:expr) {
+                $( ast::$ast:ident($it:ident) => $res:block, )*
+                _ => $catch_all:expr $(,)?
+            }) => {{
+                $( if let Some($it) = ast::$ast::cast($node.clone()) $res else )*
+                { $catch_all }
+            }};
+        }        
+
+        fn main() {
+            mat<|>ch_ast! {
+                match container {
+                    ast::TraitDef(it) => {},
+                    ast::ImplBlock(it) => {},
+                    _ => { continue },
+                }
+            }
+        }
+        "#,
+        );
+
+        assert_eq!(res.name, "match_ast");
+        assert_snapshot!(res.expansion, @r###"
+{
+  if let Some(it) = ast::TraitDef::cast(container.clone()){}
+  else if let Some(it) = ast::ImplBlock::cast(container.clone()){}
+  else {
+    {
+      continue
+    }
+  }
+}
+"###);
+    }
 }
