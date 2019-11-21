@@ -383,9 +383,11 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
 
     // Emit compressed bitcode files for the crate if we're emitting an rlib.
     // Whenever an rlib is created, the bitcode is inserted into the archive in
-    // order to allow LTO against it.
+    // order to allow LTO against it (unless --no-rlib-bitcode is specified).
     if need_crate_bitcode_for_rlib(sess) {
-        modules_config.emit_bc_compressed = true;
+        if !sess.opts.cg.no_rlib_bitcode {
+            modules_config.emit_bc_compressed = true;
+        }
         allocator_config.emit_bc_compressed = true;
     }
 

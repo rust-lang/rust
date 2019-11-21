@@ -1222,6 +1222,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "compile the program with profiling instrumentation"),
     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
+    no_rlib_bitcode: bool = (false, parse_bool, [TRACKED],
+        "don't put LLVM bitcode in rlib files"),
 }
 
 options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
