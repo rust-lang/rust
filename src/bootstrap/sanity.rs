@@ -132,8 +132,6 @@ pub fn check(build: &mut Build) {
         .python
         .take()
         .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("python2.7"))
-        .or_else(|| cmd_finder.maybe_have("python2"))
         .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
         .or_else(|| Some(cmd_finder.must_have("python")));
 

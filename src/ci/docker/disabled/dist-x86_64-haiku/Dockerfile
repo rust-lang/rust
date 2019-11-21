@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   make \
   nasm \
   pkg-config \
-  python2.7 \
+  python3 \
   sudo \
   texinfo \
   wget \
@@ -46,4 +46,4 @@ ENV RUST_CONFIGURE_ARGS --disable-jemalloc \
   --set=$TARGET.cc=x86_64-unknown-haiku-gcc \
   --set=$TARGET.cxx=x86_64-unknown-haiku-g++ \
   --set=$TARGET.llvm-config=/bin/llvm-config-haiku
-ENV SCRIPT python2.7 ../x.py dist --host=$HOST --target=$HOST
+ENV SCRIPT python3 ../x.py dist --host=$HOST --target=$HOST

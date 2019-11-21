@@ -11,7 +11,7 @@ apt-get install -y --no-install-recommends \
   libssl-dev \
   make \
   pkg-config \
-  python2.7 \
+  python3 \
   sudo \
   unzip \
   xz-utils

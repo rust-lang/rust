@@ -27,7 +27,7 @@ or reading the [rustc dev guide][rustcguidebuild].
 1. Make sure you have installed the dependencies:
 
    * `g++` 5.1 or later or `clang++` 3.5 or later
-   * `python` 2.7 (but not 3.x)
+   * `python` 3 or 2.7
    * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
    * `curl`
@@ -113,7 +113,7 @@ build.
                make \
                diffutils \
                tar \
-               mingw-w64-x86_64-python2 \
+               mingw-w64-x86_64-python \
                mingw-w64-x86_64-cmake \
                mingw-w64-x86_64-gcc
    ```

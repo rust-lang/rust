@@ -57,6 +57,13 @@ REPOS = {
     'rustc-dev-guide': 'https://github.com/rust-lang/rustc-dev-guide',
 }
 
+def load_json_from_response(resp):
+    content = resp.read()
+    if isinstance(content, bytes):
+        content = content.decode('utf-8')
+    else:
+        print("Refusing to decode " + str(type(content)) + " to str")
+    return json.loads(content)
 
 def validate_maintainers(repo, github_token):
     '''Ensure all maintainers are assignable on a GitHub repo'''
@@ -71,7 +78,7 @@ def validate_maintainers(repo, github_token):
             # Properly load nested teams.
             'Accept': 'application/vnd.github.hellcat-preview+json',
         }))
-        assignable.extend(user['login'] for user in json.load(response))
+        assignable.extend(user['login'] for user in load_json_from_response(response))
         # Load the next page if available
         url = None
         link_header = response.headers.get('Link')
@@ -176,7 +183,7 @@ def update_latest(
 ):
     '''Updates `_data/latest.json` to match build result of the given commit.
     '''
-    with open('_data/latest.json', 'rb+') as f:
+    with open('_data/latest.json', 'r+') as f:
         latest = json.load(f, object_pairs_hook=collections.OrderedDict)
 
         current_status = {
