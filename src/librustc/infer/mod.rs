@@ -1292,7 +1292,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {
-        self.resolve_vars_if_possible(t).to_string()
+        self.resolve_vars_if_possible(t).print_only_trait_path().to_string()
     }
 
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the

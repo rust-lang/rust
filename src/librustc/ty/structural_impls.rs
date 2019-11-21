@@ -223,10 +223,7 @@ impl fmt::Debug for ty::FloatVarValue {
 
 impl fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(#59188) this is used across the compiler to print
-        // a `TraitRef` qualified (with the Self type explicit),
-        // instead of having a different way to make that choice.
-        write!(f, "<{} as {}>", self.self_ty(), self)
+        fmt::Display::fmt(self, f)
     }
 }
 

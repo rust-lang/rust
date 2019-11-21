@@ -146,7 +146,7 @@ impl<'tcx> Children {
                 let self_ty = trait_ref.self_ty();
                 OverlapError {
                     with_impl: possible_sibling,
-                    trait_desc: trait_ref.to_string(),
+                    trait_desc: trait_ref.print_only_trait_path().to_string(),
                     // Only report the `Self` type if it has at least
                     // some outer concrete shell; otherwise, it's
                     // not adding much information.

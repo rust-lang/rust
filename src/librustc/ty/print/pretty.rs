@@ -449,7 +449,7 @@ pub trait PrettyPrinter<'tcx>:
 
             p!(print(self_ty));
             if let Some(trait_ref) = trait_ref {
-                p!(write(" as "), print(trait_ref));
+                p!(write(" as "), print(trait_ref.print_only_trait_path()));
             }
             Ok(cx)
         })
@@ -468,7 +468,7 @@ pub trait PrettyPrinter<'tcx>:
 
             p!(write("impl "));
             if let Some(trait_ref) = trait_ref {
-                p!(print(trait_ref), write(" for "));
+                p!(print(trait_ref.print_only_trait_path()), write(" for "));
             }
             p!(print(self_ty));
 
@@ -619,7 +619,7 @@ pub trait PrettyPrinter<'tcx>:
 
                             p!(
                                     write("{}", if first { " " } else { "+" }),
-                                    print(trait_ref));
+                                    print(trait_ref.print_only_trait_path()));
                             first = false;
                         }
                     }
@@ -1696,6 +1696,30 @@ impl fmt::Display for ty::RegionKind {
     }
 }
 
+/// Wrapper type for `ty::TraitRef` which opts-in to pretty printing only
+/// the trait path. That is, it will print `Trait<U>` instead of
+/// `<T as Trait<U>>`.
+#[derive(Copy, Clone, TypeFoldable, Lift)]
+pub struct TraitRefPrintOnlyTraitPath<'tcx>(ty::TraitRef<'tcx>);
+
+impl fmt::Debug for TraitRefPrintOnlyTraitPath<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl ty::TraitRef<'tcx> {
+    pub fn print_only_trait_path(self) -> TraitRefPrintOnlyTraitPath<'tcx> {
+        TraitRefPrintOnlyTraitPath(self)
+    }
+}
+
+impl ty::Binder<ty::TraitRef<'tcx>> {
+    pub fn print_only_trait_path(self) -> ty::Binder<TraitRefPrintOnlyTraitPath<'tcx>> {
+        self.map_bound(|tr| tr.print_only_trait_path())
+    }
+}
+
 forward_display_to_print! {
     Ty<'tcx>,
     &'tcx ty::List<ty::ExistentialPredicate<'tcx>>,
@@ -1705,6 +1729,7 @@ forward_display_to_print! {
     // because `for<'tcx>` isn't possible yet.
     ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>,
     ty::Binder<ty::TraitRef<'tcx>>,
+    ty::Binder<TraitRefPrintOnlyTraitPath<'tcx>>,
     ty::Binder<ty::FnSig<'tcx>>,
     ty::Binder<ty::TraitPredicate<'tcx>>,
     ty::Binder<ty::SubtypePredicate<'tcx>>,
@@ -1739,7 +1764,7 @@ define_print_and_forward_display! {
         // Use a type that can't appear in defaults of type parameters.
         let dummy_self = cx.tcx().mk_ty_infer(ty::FreshTy(0));
         let trait_ref = self.with_self_ty(cx.tcx(), dummy_self);
-        p!(print(trait_ref))
+        p!(print(trait_ref.print_only_trait_path()))
     }
 
     ty::ExistentialProjection<'tcx> {
@@ -1783,7 +1808,11 @@ define_print_and_forward_display! {
     }
 
     ty::TraitRef<'tcx> {
-        p!(print_def_path(self.def_id, self.substs));
+        p!(write("<{} as {}>", self.self_ty(), self.print_only_trait_path()))
+    }
+
+    TraitRefPrintOnlyTraitPath<'tcx> {
+        p!(print_def_path(self.0.def_id, self.0.substs));
     }
 
     ty::ParamTy {
@@ -1799,7 +1828,8 @@ define_print_and_forward_display! {
     }
 
     ty::TraitPredicate<'tcx> {
-        p!(print(self.trait_ref.self_ty()), write(": "), print(self.trait_ref))
+        p!(print(self.trait_ref.self_ty()), write(": "),
+           print(self.trait_ref.print_only_trait_path()))
     }
 
     ty::ProjectionPredicate<'tcx> {

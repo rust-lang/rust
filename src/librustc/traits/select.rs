@@ -1044,7 +1044,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                         let self_ty = trait_ref.self_ty();
                         let cause = IntercrateAmbiguityCause::DownstreamCrate {
-                            trait_desc: trait_ref.to_string(),
+                            trait_desc: trait_ref.print_only_trait_path().to_string(),
                             self_desc: if self_ty.has_concrete_skeleton() {
                                 Some(self_ty.to_string())
                             } else {
@@ -1386,7 +1386,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     if !candidate_set.ambiguous && no_candidates_apply {
                         let trait_ref = stack.obligation.predicate.skip_binder().trait_ref;
                         let self_ty = trait_ref.self_ty();
-                        let trait_desc = trait_ref.to_string();
+                        let trait_desc = trait_ref.print_only_trait_path().to_string();
                         let self_desc = if self_ty.has_concrete_skeleton() {
                             Some(self_ty.to_string())
                         } else {
