@@ -140,7 +140,7 @@
 //! In order for link-time optimization to work properly, LLVM needs a unique
 //! type identifier that tells it across compilation units which types are the
 //! same as others. This type identifier is created by
-//! TypeMap::get_unique_type_id_of_type() using the following algorithm:
+//! `TypeMap::get_unique_type_id_of_type()` using the following algorithm:
 //!
 //! (1) Primitive types have their name as ID
 //! (2) Structs, enums and traits have a multipart identifier

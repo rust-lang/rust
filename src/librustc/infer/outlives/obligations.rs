@@ -221,7 +221,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 }
 
 /// The `TypeOutlives` struct has the job of "lowering" a `T: 'a`
-/// obligation into a series of `'a: 'b` constraints and "verifys", as
+/// obligation into a series of `'a: 'b` constraints and "verify"s, as
 /// described on the module comment. The final constraints are emitted
 /// via a "delegate" of type `D` -- this is usually the `infcx`, which
 /// accrues them into the `region_obligations` code, but for NLL we

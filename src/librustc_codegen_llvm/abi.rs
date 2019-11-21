@@ -1,16 +1,15 @@
-use crate::llvm::{self, AttributePlace};
 use crate::builder::Builder;
 use crate::context::CodegenCx;
+use crate::llvm::{self, AttributePlace};
 use crate::type_::Type;
+use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
-use crate::type_of::{LayoutLlvmExt};
+
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
-use rustc_target::abi::call::ArgAbi;
-
 use rustc_codegen_ssa::traits::*;
-
+use rustc_target::abi::call::ArgAbi;
 use rustc_target::abi::{HasDataLayout, LayoutOf};
 use rustc::ty::{Ty};
 use rustc::ty::layout::{self};
@@ -202,7 +201,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
         if self.is_sized_indirect() {
             OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
         } else if self.is_unsized_indirect() {
-            bug!("unsized ArgAbi must be handled through store_fn_arg");
+            bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
         } else if let PassMode::Cast(cast) = self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
@@ -232,10 +231,10 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
                 let llscratch = bx.alloca(cast.llvm_type(bx), scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
 
-                // ...where we first store the value...
+                // ... where we first store the value...
                 bx.store(val, llscratch, scratch_align);
 
-                // ...and then memcpy it to the intended destination.
+                // ... and then memcpy it to the intended destination.
                 bx.memcpy(
                     dst.llval,
                     self.layout.align.abi,

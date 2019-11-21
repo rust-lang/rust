@@ -1923,17 +1923,17 @@ pub struct FieldDef {
 ///
 /// These are all interned (by `intern_adt_def`) into the `adt_defs` table.
 ///
-/// The initialism *"Adt"* stands for an [*algebraic data type (ADT)*][adt].
+/// The initialism *ADT* stands for an [*algebraic data type (ADT)*][adt].
 /// This is slightly wrong because `union`s are not ADTs.
 /// Moreover, Rust only allows recursive data types through indirection.
 ///
 /// [adt]: https://en.wikipedia.org/wiki/Algebraic_data_type
 pub struct AdtDef {
-    /// `DefId` of the struct, enum or union item.
+    /// The `DefId` of the struct, enum or union item.
     pub did: DefId,
     /// Variants of the ADT. If this is a struct or union, then there will be a single variant.
     pub variants: IndexVec<self::layout::VariantIdx, VariantDef>,
-    /// Flags of the ADT (e.g. is this a struct? is this non-exhaustive?)
+    /// Flags of the ADT (e.g., is this a struct? is this non-exhaustive?).
     flags: AdtFlags,
     /// Repr options provided by the user.
     pub repr: ReprOptions,
@@ -1954,7 +1954,7 @@ impl Ord for AdtDef {
 }
 
 impl PartialEq for AdtDef {
-    // AdtDef are always interned and this is part of TyS equality
+    // `AdtDef`s are always interned, and this is part of `TyS` equality.
     #[inline]
     fn eq(&self, other: &Self) -> bool { ptr::eq(self, other) }
 }
@@ -1975,7 +1975,6 @@ impl<'tcx> rustc_serialize::UseSpecializedEncodable for &'tcx AdtDef {
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx AdtDef {}
-
 
 impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

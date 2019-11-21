@@ -224,7 +224,7 @@ impl Diagnostic {
             }));
         msg.push((format!("`{}", found_extra), Style::NoStyle));
 
-        // For now, just attach these as notes
+        // For now, just attach these as notes.
         self.highlighted_note(msg);
         self
     }

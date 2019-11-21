@@ -281,7 +281,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
         a: &ty::TraitRef<'tcx>,
         b: &ty::TraitRef<'tcx>,
     ) -> RelateResult<'tcx, ty::TraitRef<'tcx>> {
-        // Different traits cannot be related
+        // Different traits cannot be related.
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {
@@ -297,7 +297,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
         a: &ty::ExistentialTraitRef<'tcx>,
         b: &ty::ExistentialTraitRef<'tcx>,
     ) -> RelateResult<'tcx, ty::ExistentialTraitRef<'tcx>> {
-        // Different traits cannot be related
+        // Different traits cannot be related.
         if a.def_id != b.def_id {
             Err(TypeError::Traits(expected_found(relation, &a.def_id, &b.def_id)))
         } else {

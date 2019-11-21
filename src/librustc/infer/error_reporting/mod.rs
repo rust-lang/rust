@@ -48,22 +48,24 @@
 use super::lexical_region_resolve::RegionResolutionError;
 use super::region_constraints::GenericKind;
 use super::{InferCtxt, RegionVariableOrigin, SubregionOrigin, TypeTrace, ValuePairs};
-use crate::infer::{self, SuppressRegionErrors};
 
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::hir::Node;
+use crate::infer::{self, SuppressRegionErrors};
 use crate::infer::opaque_types;
 use crate::middle::region;
-use crate::traits::{IfExpressionCause, MatchExpressionArmCause, ObligationCause};
-use crate::traits::{ObligationCauseCode};
+use crate::traits::{
+    IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+};
 use crate::ty::error::TypeError;
 use crate::ty::{self, subst::{Subst, SubstsRef}, Region, Ty, TyCtxt, TypeFoldable};
+
 use errors::{Applicability, DiagnosticBuilder, DiagnosticStyledString};
-use std::{cmp, fmt};
+use rustc_error_codes::*;
 use syntax_pos::{Pos, Span};
 
-use rustc_error_codes::*;
+use std::{cmp, fmt};
 
 mod note;
 
@@ -1270,7 +1272,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     /// When encountering a case where `.as_ref()` on a `Result` or `Option` would be appropriate,
-    /// suggest it.
+    /// suggests it.
     fn suggest_as_ref_where_appropriate(
         &self,
         span: Span,

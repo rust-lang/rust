@@ -333,14 +333,14 @@ impl<'tcx> TyCtxt<'tcx> {
         ty
     }
 
-    /// Same as applying struct_tail on `source` and `target`, but only
+    /// Same as applying `struct_tail` on `source` and `target`, but only
     /// keeps going as long as the two types are instances of the same
     /// structure definitions.
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
     ///
     /// Should only be called if the types have no inference variables and do
-    /// not need their lifetimes preserved (e.g. as part of codegen); otherwise
+    /// not need their lifetimes preserved (e.g., as part of codegen); otherwise,
     /// normalization attempt may cause compiler bugs.
     pub fn struct_lockstep_tails_erasing_lifetimes(self,
                                                    source: Ty<'tcx>,
@@ -353,7 +353,7 @@ impl<'tcx> TyCtxt<'tcx> {
             source, target, |ty| tcx.normalize_erasing_regions(param_env, ty))
     }
 
-    /// Same as applying struct_tail on `source` and `target`, but only
+    /// Same as applying `struct_tail` on `source` and `target`, but only
     /// keeps going as long as the two types are instances of the same
     /// structure definitions.
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,

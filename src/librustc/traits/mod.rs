@@ -191,23 +191,23 @@ pub enum ObligationCauseCode<'tcx> {
     /// Obligation incurred due to a coercion.
     Coercion { source: Ty<'tcx>, target: Ty<'tcx> },
 
-    // Various cases where expressions must be sized/copy/etc:
-    /// L = X implies that L is Sized
+    /// Various cases where expressions must be `Sized` / `Copy` / etc.
+    /// `L = X` implies that `L` is `Sized`.
     AssignmentLhsSized,
-    /// (x1, .., xn) must be Sized
+    /// `(x1, .., xn)` must be `Sized`.
     TupleInitializerSized,
-    /// S { ... } must be Sized
+    /// `S { ... }` must be `Sized`.
     StructInitializerSized,
-    /// Type of each variable must be Sized
+    /// Type of each variable must be `Sized`.
     VariableType(hir::HirId),
-    /// Argument type must be Sized
+    /// Argument type must be `Sized`.
     SizedArgumentType,
-    /// Return type must be Sized
+    /// Return type must be `Sized`.
     SizedReturnType,
-    /// Yield type must be Sized
+    /// Yield type must be `Sized`.
     SizedYieldType,
-    /// [T,..n] --> T must be Copy. If `true`, suggest `const_in_array_repeat_expressions` feature
-    /// flag.
+    /// `[T, ..n]` implies that `T` must be `Copy`.
+    /// If `true`, suggest `const_in_array_repeat_expressions` feature flag.
     RepeatVec(bool),
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
@@ -216,7 +216,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Constant expressions must be sized.
     ConstSized,
 
-    /// Static items must have `Sync` type
+    /// `static` items must have `Sync` type.
     SharedStatic,
 
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
@@ -602,7 +602,7 @@ pub enum Vtable<'tcx, N> {
 /// the impl's type parameters.
 ///
 /// The type parameter `N` indicates the type used for "nested
-/// obligations" that are required by the impl. During type check, this
+/// obligations" that are required by the impl. During type-check, this
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
@@ -1046,8 +1046,7 @@ fn vtable_methods<'tcx>(
                     return None;
                 }
 
-                // the method may have some early-bound lifetimes, add
-                // regions for those
+                // The method may have some early-bound lifetimes; add regions for those.
                 let substs = trait_ref.map_bound(|trait_ref|
                     InternalSubsts::for_item(tcx, def_id, |param, _|
                         match param.kind {
@@ -1060,15 +1059,15 @@ fn vtable_methods<'tcx>(
                     )
                 );
 
-                // the trait type may have higher-ranked lifetimes in it;
-                // so erase them if they appear, so that we get the type
-                // at some particular call site
+                // The trait type may have higher-ranked lifetimes in it;
+                // erase them if they appear, so that we get the type
+                // at some particular call site.
                 let substs = tcx.normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
                     &substs
                 );
 
-                // It's possible that the method relies on where clauses that
+                // It's possible that the method relies on where-clauses that
                 // do not hold for this particular set of type parameters.
                 // Note that this method could then never be called, so we
                 // do not want to try and codegen it, in that case (see #23435).

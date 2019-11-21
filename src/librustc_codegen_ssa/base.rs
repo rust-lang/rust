@@ -1,21 +1,32 @@
 //! Codegen the completed AST to the LLVM IR.
 //!
-//! Some functions here, such as codegen_block and codegen_expr, return a value --
-//! the result of the codegen to LLVM -- while others, such as codegen_fn
-//! and mono_item, are called only for the side effect of adding a
+//! Some functions here, such as `codegen_block` and `codegen_expr`, return a value --
+//! the result of the codegen to LLVM -- while others, such as `codegen_fn`
+//! and `mono_item`, are called only for the side effect of adding a
 //! particular definition to the LLVM IR output we're producing.
 //!
 //! Hopefully useful general knowledge about codegen:
 //!
-//! * There's no way to find out the `Ty` type of a Value. Doing so
+//! * There's no way to find out the `Ty` type of a `Value`. Doing so
 //!   would be "trying to get the eggs out of an omelette" (credit:
 //!   pcwalton). You can, instead, find out its `llvm::Type` by calling `val_ty`,
 //!   but one `llvm::Type` corresponds to many `Ty`s; for instance, `tup(int, int,
 //!   int)` and `rec(x=int, y=int, z=int)` will have the same `llvm::Type`.
 
-use crate::{ModuleCodegen, ModuleKind, CachedModuleCodegen};
+use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
+use crate::back::write::{
+    OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
+    submit_post_lto_module_to_llvm,
+};
+use crate::common::{RealPredicate, TypeKind, IntPredicate};
+use crate::meth;
+use crate::mir;
+use crate::mir::operand::OperandValue;
+use crate::mir::place::PlaceRef;
+use crate::traits::*;
 
 use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
+use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::lang_items::StartFnLangItem;
@@ -23,6 +34,7 @@ use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{CodegenUnitNameBuilder, CodegenUnit, MonoItem};
 use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
+use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry, set_time_depth, time_depth};
@@ -31,25 +43,12 @@ use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use rustc_index::vec::Idx;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
-use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
-use crate::mir::place::PlaceRef;
-use crate::back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
-    submit_post_lto_module_to_llvm};
-use crate::{MemFlags, CrateInfo};
-use crate::common::{RealPredicate, TypeKind, IntPredicate};
-use crate::meth;
-use crate::mir;
-
-use crate::traits::*;
+use syntax::attr;
+use syntax_pos::Span;
 
 use std::cmp;
 use std::ops::{Deref, DerefMut};
 use std::time::{Instant, Duration};
-use syntax_pos::Span;
-use syntax::attr;
-use rustc::hir;
-
-use crate::mir::operand::OperandValue;
 
 pub fn bin_op_to_icmp_predicate(op: hir::BinOpKind,
                                 signed: bool)
@@ -116,9 +115,8 @@ pub fn compare_simd_types<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// Retrieves the information we are losing (making dynamic) in an unsizing
 /// adjustment.
 ///
-/// The `old_info` argument is a bit funny. It is intended for use
-/// in an upcast, where the new vtable for an object will be derived
-/// from the old one.
+/// The `old_info` argument is a bit odd. It is intended for use in an upcast,
+/// where the new vtable for an object will be derived from the old one.
 pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     source: Ty<'tcx>,
@@ -140,16 +138,19 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
         (_, &ty::Dynamic(ref data, ..)) => {
             let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
                 .field(cx, FAT_PTR_EXTRA);
-            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()),
-                            cx.backend_type(vtable_ptr))
+            cx.const_ptrcast(
+                meth::get_vtable(cx, source, data.principal()),
+                cx.backend_type(vtable_ptr),
+            )
         }
-        _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
-                  source,
-                  target),
+        _ => bug!(
+            "unsized_info: invalid unsizing {:?} -> {:?}",
+            source, target
+        ),
     }
 }
 
-/// Coerce `src` to `dst_ty`. `src_ty` must be a thin pointer.
+/// Coerces `src` to `dst_ty`. `src_ty` must be a thin pointer.
 pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: Bx::Value,
@@ -199,8 +200,8 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-/// Coerce `src`, which is a reference to a value of type `src_ty`,
-/// to a value of type `dst_ty` and store the result in `dst`
+/// Coerces `src`, which is a reference to a value of type `src_ty`,
+/// to a value of type `dst_ty`, and stores the result in `dst`.
 pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     src: PlaceRef<'tcx, Bx::Value>,
@@ -244,15 +245,17 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
                 if src_f.layout.ty == dst_f.layout.ty {
                     memcpy_ty(bx, dst_f.llval, dst_f.align, src_f.llval, src_f.align,
-                              src_f.layout, MemFlags::empty());
+                        src_f.layout, MemFlags::empty());
                 } else {
                     coerce_unsized_into(bx, src_f, dst_f);
                 }
             }
         }
-        _ => bug!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
-                  src_ty,
-                  dst_ty),
+        _ => bug!(
+            "coerce_unsized_into: invalid coercion {:?} -> {:?}",
+            src_ty,
+            dst_ty,
+        ),
     }
 }
 

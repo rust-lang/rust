@@ -1,16 +1,17 @@
-use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
-use rustc::ty::Ty;
-
 use super::write::WriteBackendMethods;
 use super::CodegenObject;
+
+use rustc::ty::layout::{HasTyCtxt, LayoutOf, TyLayout};
+use rustc::ty::Ty;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::{Session, config};
 use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use std::sync::Arc;
-use std::sync::mpsc;
 use syntax::expand::allocator::AllocatorKind;
 use syntax_pos::symbol::Symbol;
+
+use std::sync::Arc;
+use std::sync::mpsc;
 
 pub trait BackendTypes {
     type Value: CodegenObject;

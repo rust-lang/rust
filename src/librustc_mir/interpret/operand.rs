@@ -136,7 +136,7 @@ impl<Tag> Operand<Tag> {
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct OpTy<'tcx, Tag=()> {
-    op: Operand<Tag>, // Keep this private, it helps enforce invariants
+    op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyLayout<'tcx>,
 }
 
@@ -203,7 +203,7 @@ pub(super) fn from_known_layout<'tcx>(
             if cfg!(debug_assertions) {
                 let layout2 = compute()?;
                 assert_eq!(layout.details, layout2.details,
-                    "Mismatch in layout of supposedly equal-layout types {:?} and {:?}",
+                    "mismatch in layout of supposedly equal-layout types {:?} and {:?}",
                     layout.ty, layout2.ty);
             }
             Ok(layout)
