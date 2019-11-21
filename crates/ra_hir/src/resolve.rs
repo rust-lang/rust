@@ -4,6 +4,7 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::BuiltinType,
     db::DefDatabase2,
+    expr::ExprId,
     generics::GenericParams,
     nameres::CrateDefMap,
     path::{Path, PathKind},
@@ -15,10 +16,10 @@ use rustc_hash::FxHashSet;
 
 use crate::{
     code_model::Crate,
-    db::DefDatabase,
+    db::{DefDatabase, HirDatabase},
     expr::{ExprScopes, PatId, ScopeId},
-    Adt, Const, Container, DefWithBody, EnumVariant, Function, GenericDef, ImplBlock, Local,
-    MacroDef, Module, ModuleDef, PerNs, Static, Struct, Trait, TypeAlias,
+    Adt, Const, Container, DefWithBody, EnumVariant, Function, GenericDef, HasBody, ImplBlock,
+    Local, MacroDef, Module, ModuleDef, PerNs, Static, Struct, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -490,6 +491,30 @@ impl Scope {
             }
         }
     }
+}
+
+// needs arbitrary_self_types to be a method... or maybe move to the def?
+pub(crate) fn resolver_for_expr(
+    db: &impl HirDatabase,
+    owner: DefWithBody,
+    expr_id: ExprId,
+) -> Resolver {
+    let scopes = owner.expr_scopes(db);
+    resolver_for_scope(db, owner, scopes.scope_for(expr_id))
+}
+
+pub(crate) fn resolver_for_scope(
+    db: &impl HirDatabase,
+    owner: DefWithBody,
+    scope_id: Option<ScopeId>,
+) -> Resolver {
+    let mut r = owner.resolver(db);
+    let scopes = owner.expr_scopes(db);
+    let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
+    for scope in scope_chain.into_iter().rev() {
+        r = r.push_expr_scope(owner.into(), Arc::clone(&scopes), scope);
+    }
+    r
 }
 
 pub(crate) trait HasResolver {

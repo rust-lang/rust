@@ -12,8 +12,9 @@ use hir_expand::name;
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 use crate::{
     db::HirDatabase,
-    expr::{self, Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
+    expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
+    resolve::resolver_for_expr,
     ty::{
         autoderef, method_resolution, op, CallableDef, InferTy, IntTy, Mutability, Namespace,
         Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
@@ -186,7 +187,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
-                let resolver = expr::resolver_for_expr(self.db, self.owner, tgt_expr);
+                let resolver = resolver_for_expr(self.db, self.owner, tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),

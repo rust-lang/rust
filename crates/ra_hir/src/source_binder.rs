@@ -21,9 +21,9 @@ use ra_syntax::{
 
 use crate::{
     db::HirDatabase,
-    expr::{self, BodySourceMap, ExprScopes, ScopeId},
+    expr::{BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
-    resolve::{HasResolver, ScopeDef, TypeNs, ValueNs},
+    resolve::{resolver_for_scope, HasResolver, ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
     GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static,
@@ -160,7 +160,7 @@ impl SourceAnalyzer {
                 None => scope_for(&scopes, &source_map, node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
             };
-            let resolver = expr::resolver_for_scope(db, def, scope);
+            let resolver = resolver_for_scope(db, def, scope);
             SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
