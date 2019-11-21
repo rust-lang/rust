@@ -131,6 +131,7 @@ pub struct ReferenceDescriptor {
 }
 
 pub struct Expansion {
+    macro_file_kind: MacroFileKind,
     macro_call_id: MacroCallId,
 }
 
@@ -145,7 +146,7 @@ impl Expansion {
     }
 
     pub fn file_id(&self) -> HirFileId {
-        self.macro_call_id.as_file(MacroFileKind::Items)
+        self.macro_call_id.as_file(self.macro_file_kind)
     }
 }
 
@@ -439,7 +440,10 @@ impl SourceAnalyzer {
             db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
         );
         let macro_call_loc = MacroCallLoc { def, ast_id };
-        Some(Expansion { macro_call_id: db.intern_macro(macro_call_loc) })
+        Some(Expansion {
+            macro_call_id: db.intern_macro(macro_call_loc),
+            macro_file_kind: to_macro_file_kind(macro_call.value),
+        })
     }
 
     #[cfg(test)]
@@ -537,4 +541,36 @@ fn adjust(
             }
         })
         .map(|(_ptr, scope)| *scope)
+}
+
+/// Given a `ast::MacroCall`, return what `MacroKindFile` it belongs to.
+/// FIXME: Not completed  
+fn to_macro_file_kind(macro_call: &ast::MacroCall) -> MacroFileKind {
+    let syn = macro_call.syntax();
+    let parent = match syn.parent() {
+        Some(it) => it,
+        None => {
+            // FIXME:
+            // If it is root, which means the parent HirFile
+            // MacroKindFile must be non-items
+            // return expr now.
+            return MacroFileKind::Expr;
+        }
+    };
+
+    match parent.kind() {
+        MACRO_ITEMS | SOURCE_FILE => MacroFileKind::Items,
+        LET_STMT => {
+            // FIXME: Handle Pattern
+            MacroFileKind::Expr
+        }
+        EXPR_STMT => MacroFileKind::Statements,
+        BLOCK => MacroFileKind::Statements,
+        ARG_LIST => MacroFileKind::Expr,
+        TRY_EXPR => MacroFileKind::Expr,
+        _ => {
+            // Unknown , Just guess it is `Items`
+            MacroFileKind::Items
+        }
+    }
 }
