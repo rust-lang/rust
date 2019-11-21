@@ -2,7 +2,7 @@
 // This test checks that calling `mem::{uninitialized,zeroed}` with certain types results
 // in a lint.
 
-#![feature(never_type, rustc_attrs)]
+#![feature(rustc_attrs)]
 #![allow(deprecated)]
 #![deny(invalid_value)]
 

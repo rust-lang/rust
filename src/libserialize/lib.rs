@@ -11,7 +11,7 @@ Core encoding and decoding interfaces.
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
 #![feature(specialization)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![feature(associated_type_bounds)]
 #![cfg_attr(test, feature(test))]

@@ -1,7 +1,5 @@
 // check that the `for<T> T: From<!>` impl is reserved
 
-#![feature(never_type)]
-
 pub struct MyFoo;
 pub trait MyTrait {}
 

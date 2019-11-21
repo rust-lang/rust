@@ -1,5 +1,5 @@
 warning: unreachable statement
-  --> $DIR/never-assign-dead-code.rs:10:5
+  --> $DIR/never-assign-dead-code.rs:9:5
    |
 LL |     let x: ! = panic!("aah");
    |                ------------- any code following this expression is unreachable
@@ -7,7 +7,7 @@ LL |     drop(x);
    |     ^^^^^^^^ unreachable statement
    |
 note: lint level defined here
-  --> $DIR/never-assign-dead-code.rs:6:9
+  --> $DIR/never-assign-dead-code.rs:5:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^
@@ -15,7 +15,7 @@ LL | #![warn(unused)]
    = note: this warning originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 warning: unreachable call
-  --> $DIR/never-assign-dead-code.rs:10:5
+  --> $DIR/never-assign-dead-code.rs:9:5
    |
 LL |     drop(x);
    |     ^^^^ - any code following this expression is unreachable
@@ -23,13 +23,13 @@ LL |     drop(x);
    |     unreachable call
 
 warning: unused variable: `x`
-  --> $DIR/never-assign-dead-code.rs:9:9
+  --> $DIR/never-assign-dead-code.rs:8:9
    |
 LL |     let x: ! = panic!("aah");
    |         ^ help: consider prefixing with an underscore: `_x`
    |
 note: lint level defined here
-  --> $DIR/never-assign-dead-code.rs:6:9
+  --> $DIR/never-assign-dead-code.rs:5:9
    |
 LL | #![warn(unused)]
    |         ^^^^^^
