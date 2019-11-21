@@ -244,8 +244,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Path(ref qpath) => {
                 self.check_expr_path(qpath, expr)
             }
-            ExprKind::InlineAsm(_, ref outputs, ref inputs) => {
-                for expr in outputs.iter().chain(inputs.iter()) {
+            ExprKind::InlineAsm(ref asm) => {
+                for expr in asm.outputs_exprs.iter().chain(asm.inputs_exprs.iter()) {
                     self.check_expr(expr);
                 }
                 tcx.mk_unit()
