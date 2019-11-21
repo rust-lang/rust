@@ -30,6 +30,7 @@ use crate::{Span, DUMMY_SP};
 use crate::edition::Edition;
 use crate::symbol::{kw, sym, Symbol};
 
+use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
@@ -58,7 +59,8 @@ pub struct ExpnId(u32);
 
 /// A property of a macro expansion that determines how identifiers
 /// produced by that expansion are resolved.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum Transparency {
     /// Identifier produced by a transparent expansion is always resolved at call-site.
     /// Call-site spans in procedural macros, hygiene opt-out in `macro` should use this.
@@ -683,7 +685,7 @@ impl ExpnData {
 }
 
 /// Expansion kind.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum ExpnKind {
     /// No expansion, aka root expansion. Only `ExpnId::root()` has this kind.
     Root,
@@ -707,7 +709,8 @@ impl ExpnKind {
 }
 
 /// The kind of macro invocation or definition.
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable,
+         Hash, Debug, HashStable_Generic)]
 pub enum MacroKind {
     /// A bang macro `foo!()`.
     Bang,
@@ -742,7 +745,7 @@ impl MacroKind {
 }
 
 /// The kind of AST transform.
-#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum AstPass {
     StdImports,
     TestHarness,
@@ -762,7 +765,7 @@ impl AstPass {
 }
 
 /// The kind of compiler desugaring.
-#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum DesugaringKind {
     /// We desugar `if c { i } else { e }` to `match $ExprKind::Use(c) { true => i, _ => e }`.
     /// However, we do not want to blame `c` for unreachability but rather say that `i`

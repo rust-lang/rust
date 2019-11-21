@@ -20,5 +20,6 @@ errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_index = { path = "../librustc_index" }
 rustc_lexer = { path = "../librustc_lexer" }
+rustc_macros = { path = "../librustc_macros" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc_error_codes = { path = "../librustc_error_codes" }
