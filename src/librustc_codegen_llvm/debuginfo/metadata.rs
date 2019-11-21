@@ -91,19 +91,19 @@ pub const NO_SCOPE_METADATA: Option<&DIScope> = None;
 #[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
 pub struct UniqueTypeId(ast::Name);
 
-// The `TypeMap` is where the `CrateDebugContext` holds the type metadata nodes
-// created so far. The metadata nodes are indexed by `UniqueTypeId`, and, for
-// faster lookup, also by `Ty`. The `TypeMap` is responsible for creating
-// `UniqueTypeId`s.
+/// The `TypeMap` is where the `CrateDebugContext` holds the type metadata nodes
+/// created so far. The metadata nodes are indexed by `UniqueTypeId`, and, for
+/// faster lookup, also by `Ty`. The `TypeMap` is responsible for creating
+/// `UniqueTypeId`s.
 #[derive(Default)]
 pub struct TypeMap<'ll, 'tcx> {
-    // The `UniqueTypeId`s created so far.
+    /// The `UniqueTypeId`s created so far.
     unique_id_interner: Interner,
-    // A map from `UniqueTypeId` to debuginfo metadata for that type. This is a 1:1 mapping.
+    /// A map from `UniqueTypeId` to debuginfo metadata for that type. This is a 1:1 mapping.
     unique_id_to_metadata: FxHashMap<UniqueTypeId, &'ll DIType>,
-    // A map from types to debuginfo metadata. This is an N:1 mapping.
+    /// A map from types to debuginfo metadata. This is an N:1 mapping.
     type_to_metadata: FxHashMap<Ty<'tcx>, &'ll DIType>,
-    // A map from types to `UniqueTypeId`. This is an N:1 mapping.
+    /// A map from types to `UniqueTypeId`. This is an N:1 mapping.
     type_to_unique_id: FxHashMap<Ty<'tcx>, UniqueTypeId>
 }
 
@@ -203,9 +203,9 @@ impl TypeMap<'ll, 'tcx> {
         return UniqueTypeId(key);
     }
 
-    // Get the `UniqueTypeId` for an enum variant. Enum variants are not really
-    // types of their own, so they need special handling. We still need a
-    // UniqueTypeId for them, since to debuginfo they *are* real types.
+    /// Gets the `UniqueTypeId` for an enum variant. Enum variants are not really
+    /// types of their own, so they need special handling. We still need a
+    /// `UniqueTypeId` for them, since to debuginfo they *are* real types.
     fn get_unique_type_id_of_enum_variant<'a>(&mut self,
                                               cx: &CodegenCx<'a, 'tcx>,
                                               enum_type: Ty<'tcx>,
@@ -219,9 +219,9 @@ impl TypeMap<'ll, 'tcx> {
         UniqueTypeId(interner_key)
     }
 
-    // Get the unique type ID string for an enum variant part.
-    // Variant parts are not types and shouldn't really have their own ID,
-    // but it makes `set_members_of_composite_type()` simpler.
+    /// Gets the unique type ID string for an enum variant part.
+    /// Variant parts are not types and shouldn't really have their own ID,
+    /// but it makes `set_members_of_composite_type()` simpler.
     fn get_unique_type_id_str_of_enum_variant_part(&mut self, enum_type_id: UniqueTypeId) -> &str {
         let variant_part_type_id = format!("{}_variant_part",
                                            self.get_unique_type_id_as_string(enum_type_id));
@@ -1027,7 +1027,7 @@ impl MetadataCreationResult<'ll> {
     }
 }
 
-// Description of a type member, which can either be a regular field (as in
+/// Description of a type member, which can either be a regular field (as in
 /// structs or tuples) or an enum variant.
 #[derive(Debug)]
 struct MemberDescription<'ll> {

@@ -191,7 +191,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Obligation incurred due to a coercion.
     Coercion { source: Ty<'tcx>, target: Ty<'tcx> },
 
-    // Various cases where expressions must be `Sized` / `Copy` / etc.
+    /// Various cases where expressions must be `Sized` / `Copy` / etc.
     /// `L = X` implies that `L` is `Sized`.
     AssignmentLhsSized,
     /// `(x1, .., xn)` must be `Sized`.
