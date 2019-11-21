@@ -2213,8 +2213,10 @@ where
         sink.did_panic = false;
         sink.dst
     } else {
-        // use try-fold since it vectorizes better, does not take ownership and lets us thread the
-        // write pointer through its innards
+        // use try-fold
+        // - it vectorizes better
+        // - unlike most internal iteration methods methods it only takes a &mut self
+        // - lets us thread the write pointer through its innards and get it back in the end
         iterator
             .try_fold::<_, _, Result<_, !>>(dst, move |mut dst, item| {
                 unsafe {
@@ -2232,7 +2234,7 @@ where
 
     let src = iterator.as_inner();
     // check if SourceIter and InPlaceIterable contracts were upheld.
-    // but if they weren't we may not even make it to this point
+    // caveat: if they weren't we may not even make it to this point
     debug_assert_eq!(src_buf, src.buf.as_ptr());
     debug_assert!(dst as *const _ <= src.ptr, "InPlaceIterable contract violation");
 
@@ -2276,10 +2278,9 @@ impl<T> SpecFrom<T, IntoIter<T>> for Vec<T> {
     }
 }
 
-// Further specialization potential once lattice specialization exists
-// and https://github.com/rust-lang/rust/issues/62645 has been solved:
-// This can be broadened to only require size and alignment equality between
-// input and output Item types.
+// Further specialization potential once
+// https://github.com/rust-lang/rust/issues/62645 has been solved:
+// T can be split into IN and OUT which only need to have the same size and alignment
 impl<T, I> SpecFrom<T, I> for Vec<T>
 where
     I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
@@ -2396,6 +2397,8 @@ where
 }
 
 impl<T> Vec<T> {
+    // leaf method to which various SpecFrom/SpecExtend implementations delegate when
+    // they have no further optimizations to apply
     fn extend_desugared<I: Iterator<Item = T>>(&mut self, mut iterator: I) {
         // This is the case for a general iterator.
         //
