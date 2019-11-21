@@ -27,7 +27,6 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
-    generics::{GenericDef, HasGenericParams},
     ids::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
         TypeAliasId,
@@ -835,7 +834,7 @@ impl Trait {
         // lifetime problems, but since there usually shouldn't be more than a
         // few direct traits this should be fine (we could even use some kind of
         // SmallVec if performance is a concern)
-        self.generic_params(db)
+        db.generic_params(self.id.into())
             .where_predicates
             .iter()
             .filter_map(|pred| match &pred.type_ref {
@@ -975,16 +974,6 @@ pub enum AssocItem {
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_froms!(AssocItem: Function, Const, TypeAlias);
 
-impl From<AssocItem> for crate::generics::GenericDef {
-    fn from(item: AssocItem) -> Self {
-        match item {
-            AssocItem::Function(f) => f.into(),
-            AssocItem::Const(c) => c.into(),
-            AssocItem::TypeAlias(t) => t.into(),
-        }
-    }
-}
-
 impl AssocItem {
     pub fn module(self, db: &impl DefDatabase) -> Module {
         match self {
@@ -1001,6 +990,39 @@ impl AssocItem {
             AssocItem::TypeAlias(t) => t.container(db),
         }
         .expect("AssocItem without container")
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum GenericDef {
+    Function(Function),
+    Adt(Adt),
+    Trait(Trait),
+    TypeAlias(TypeAlias),
+    ImplBlock(ImplBlock),
+    // enum variants cannot have generics themselves, but their parent enums
+    // can, and this makes some code easier to write
+    EnumVariant(EnumVariant),
+    // consts can have type parameters from their parents (i.e. associated consts of traits)
+    Const(Const),
+}
+impl_froms!(
+    GenericDef: Function,
+    Adt(Struct, Enum, Union),
+    Trait,
+    TypeAlias,
+    ImplBlock,
+    EnumVariant,
+    Const
+);
+
+impl From<AssocItem> for GenericDef {
+    fn from(item: AssocItem) -> Self {
+        match item {
+            AssocItem::Function(f) => f.into(),
+            AssocItem::Const(c) => c.into(),
+            AssocItem::TypeAlias(t) => t.into(),
+        }
     }
 }
 

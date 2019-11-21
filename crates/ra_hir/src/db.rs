@@ -8,7 +8,6 @@ use ra_syntax::SmolStr;
 
 use crate::{
     debug::HirDebugDatabase,
-    generics::GenericDef,
     ids,
     lang_item::{LangItemTarget, LangItems},
     ty::{
@@ -18,8 +17,8 @@ use crate::{
         TypeCtor,
     },
     type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, FnData, Function, ImplBlock, Module, Static, StructField,
-    Trait, TypeAlias,
+    Const, ConstData, Crate, DefWithBody, FnData, Function, GenericDef, ImplBlock, Module, Static,
+    StructField, Trait, TypeAlias,
 };
 
 pub use hir_def::db::{

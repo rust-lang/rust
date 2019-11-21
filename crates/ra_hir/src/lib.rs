@@ -37,7 +37,6 @@ mod ty;
 mod impl_block;
 mod expr;
 mod lang_item;
-pub mod generics;
 pub mod diagnostics;
 mod util;
 
@@ -60,10 +59,10 @@ pub use crate::{
         EnumVariant, FieldSource, FnData, Function, GenericParam, HasBody, ImplBlock, Local,
         MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField, Trait,
         TypeAlias, Union, VariantDef,
+        GenericDef
     },
     expr::ExprScopes,
     from_source::FromSource,
-    generics::GenericDef,
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{

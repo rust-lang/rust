@@ -7,7 +7,6 @@ use hir_def::{
 
 use crate::{
     db::HirDatabase,
-    generics::HasGenericParams,
     ty::{method_resolution, Namespace, Substs, Ty, TypableDef, TypeWalk},
     AssocItem, Container, Function, Name, Path,
 };
@@ -230,7 +229,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         if let ValueNs::FunctionId(func) = def {
             let func = Function::from(*func);
             // We only do the infer if parent has generic params
-            let gen = func.generic_params(self.db);
+            let gen = self.db.generic_params(func.id.into());
             if gen.count_parent_params() == 0 {
                 return None;
             }
