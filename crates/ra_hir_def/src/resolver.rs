@@ -18,7 +18,7 @@ use crate::{
     path::{Path, PathKind},
     AdtId, AstItemDef, ConstId, ContainerId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId,
     FunctionId, GenericDefId, ImplId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId, UnionId,
+    TypeAliasId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -507,9 +507,10 @@ impl HasResolver for TraitId {
     }
 }
 
-impl HasResolver for AdtId {
+impl<T: Into<AdtId>> HasResolver for T {
     fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        let module = match self {
+        let def = self.into();
+        let module = match def {
             AdtId::StructId(it) => it.0.module(db),
             AdtId::UnionId(it) => it.0.module(db),
             AdtId::EnumId(it) => it.module(db),
@@ -517,26 +518,8 @@ impl HasResolver for AdtId {
 
         module
             .resolver(db)
-            .push_generic_params_scope(db, self.into())
-            .push_scope(Scope::AdtScope(self.into()))
-    }
-}
-
-impl HasResolver for StructId {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        AdtId::from(self).resolver(db)
-    }
-}
-
-impl HasResolver for UnionId {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        AdtId::from(self).resolver(db)
-    }
-}
-
-impl HasResolver for EnumId {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        AdtId::from(self).resolver(db)
+            .push_generic_params_scope(db, def.into())
+            .push_scope(Scope::AdtScope(def))
     }
 }
 
