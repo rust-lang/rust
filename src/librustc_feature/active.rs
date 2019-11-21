@@ -528,7 +528,7 @@ declare_features! (
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
 
     /// Allows using `&mut` in constant functions.
-    (active, const_fn_mut_refs, "1.41.0", None, None),
+    (active, const_mut_refs, "1.41.0", Some(57349), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates

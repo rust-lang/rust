@@ -81,7 +81,7 @@ fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> Mc
     for ty in ty.walk() {
         match ty.kind {
             ty::Ref(_, _, hir::Mutability::Mutable) => {
-                if !tcx.features().const_fn_mut_refs {
+                if !tcx.features().const_mut_refs {
                     return Err((
                         span,
                         "mutable references in const fn are unstable".into(),

@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(const_fn_mut_refs)]
+#![feature(const_mut_refs)]
 
 struct Foo {
     x: i32
