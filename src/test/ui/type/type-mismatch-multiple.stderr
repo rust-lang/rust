@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch-multiple.rs:3:27
    |
 LL | fn main() { let a: bool = 1; let b: i32 = true; }
-   |                           ^ expected bool, found integer
+   |                    ----   ^ expected bool, found integer
+   |                    |
+   |                    expected due to this
    |
    = note: expected type `bool`
               found type `{integer}`
@@ -11,7 +13,9 @@ error[E0308]: mismatched types
   --> $DIR/type-mismatch-multiple.rs:3:43
    |
 LL | fn main() { let a: bool = 1; let b: i32 = true; }
-   |                                           ^^^^ expected i32, found bool
+   |                                     ---   ^^^^ expected i32, found bool
+   |                                     |
+   |                                     expected due to this
 
 error: aborting due to 2 previous errors
 
