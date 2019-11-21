@@ -72,10 +72,16 @@ mod imp {
     // acquire this mutex reentrantly!
     static LOCK: Mutex = Mutex::new();
 
-    pub unsafe fn init(argc: isize, argv: *const *const u8) {
+    unsafe fn really_init(argc: isize, argv: *const *const u8) {
         let _guard = LOCK.lock();
         ARGC = argc;
         ARGV = argv;
+    }
+
+    #[inline(always)]
+    pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+        #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+        really_init(_argc, _argv);
     }
 
     /// glibc passes argc, argv, and envp to functions in .init_array, as a non-standard extension.
@@ -94,7 +100,7 @@ mod imp {
             _envp: *const *const u8,
         ) {
             unsafe {
-                init(argc as isize, argv);
+                really_init(argc as isize, argv);
             }
         }
         init_wrapper
