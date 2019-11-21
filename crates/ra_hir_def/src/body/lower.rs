@@ -154,7 +154,6 @@ where
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
                         Some(pat) => {
-                            tested_by!(infer_resolve_while_let);
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
                             let placeholder_pat = self.missing_pat();
@@ -192,6 +191,7 @@ where
                         None => self.collect_expr_opt(condition.expr()),
                         // if let -- desugar to match
                         Some(pat) => {
+                            tested_by!(infer_resolve_while_let);
                             let pat = self.collect_pat(pat);
                             let match_expr = self.collect_expr_opt(condition.expr());
                             let placeholder_pat = self.missing_pat();
