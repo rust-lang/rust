@@ -1070,7 +1070,7 @@ pub struct ImplBlock {
 pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),
-    GenericParam(u32),
+    GenericParam(GenericParam),
     ImplSelfType(ImplBlock),
     AdtSelfType(Adt),
     Local(Local),

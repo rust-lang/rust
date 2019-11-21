@@ -19,7 +19,7 @@ use crate::{
     code_model::Crate,
     db::HirDatabase,
     expr::{ExprScopes, PatId, ScopeId},
-    DefWithBody, GenericDef, Local, MacroDef, PerNs, ScopeDef,
+    DefWithBody, GenericDef, GenericParam, Local, MacroDef, PerNs, ScopeDef,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -447,9 +447,15 @@ impl Scope {
                     });
                 }
             }
-            Scope::GenericParams { params, .. } => {
+            Scope::GenericParams { params, def } => {
                 for param in params.params.iter() {
-                    f(param.name.clone(), ScopeDef::GenericParam(param.idx))
+                    f(
+                        param.name.clone(),
+                        ScopeDef::GenericParam(GenericParam {
+                            parent: (*def).into(),
+                            idx: param.idx,
+                        }),
+                    )
                 }
             }
             Scope::ImplBlockScope(i) => {
