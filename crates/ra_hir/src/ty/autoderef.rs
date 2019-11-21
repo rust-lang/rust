@@ -10,7 +10,7 @@ use hir_expand::name;
 use log::{info, warn};
 
 use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
-use crate::{db::HirDatabase};
+use crate::db::HirDatabase;
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 

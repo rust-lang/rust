@@ -56,10 +56,9 @@ pub use crate::{
         docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource},
         Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
-        EnumVariant, FieldSource, FnData, Function, GenericParam, HasBody, ImplBlock, Local,
-        MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField, Trait,
-        TypeAlias, Union, VariantDef,
-        GenericDef
+        EnumVariant, FieldSource, FnData, Function, GenericDef, GenericParam, HasBody, ImplBlock,
+        Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField,
+        Trait, TypeAlias, Union, VariantDef,
     },
     expr::ExprScopes,
     from_source::FromSource,
