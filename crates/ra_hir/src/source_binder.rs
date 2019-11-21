@@ -25,8 +25,9 @@ use crate::{
     ids::LocationCtx,
     resolve::{HasResolver, ScopeDef, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
-    AssocItem, Const, DefWithBody, Either, Enum, FromSource, Function, GenericParam, HasBody,
-    HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static, Struct, Ty,
+    Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
+    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, Resolver, Static,
+    Struct, Trait, Ty, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
@@ -240,16 +241,18 @@ impl SourceAnalyzer {
         path: &crate::Path,
     ) -> Option<PathResolution> {
         let types = self.resolver.resolve_path_in_type_ns_fully(db, &path).map(|ty| match ty {
-            TypeNs::SelfType(it) => PathResolution::SelfType(it),
+            TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(idx) => PathResolution::GenericParam(GenericParam {
-                parent: self.resolver.generic_def().unwrap(),
+                parent: self.resolver.generic_def().unwrap().into(),
                 idx,
             }),
-            TypeNs::AdtSelfType(it) | TypeNs::Adt(it) => PathResolution::Def(it.into()),
-            TypeNs::EnumVariant(it) => PathResolution::Def(it.into()),
-            TypeNs::TypeAlias(it) => PathResolution::Def(it.into()),
+            TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
+                PathResolution::Def(Adt::from(it).into())
+            }
+            TypeNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
+            TypeNs::TypeAliasId(it) => PathResolution::Def(TypeAlias::from(it).into()),
             TypeNs::BuiltinType(it) => PathResolution::Def(it.into()),
-            TypeNs::Trait(it) => PathResolution::Def(it.into()),
+            TypeNs::TraitId(it) => PathResolution::Def(Trait::from(it).into()),
         });
         let values = self.resolver.resolve_path_in_value_ns_fully(db, &path).and_then(|val| {
             let res = match val {
@@ -392,7 +395,7 @@ impl SourceAnalyzer {
         let std_future_path = known::std_future_future();
 
         let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
-            Some(it) => it,
+            Some(it) => it.into(),
             _ => return false,
         };
 

@@ -94,13 +94,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let is_before_last = remaining_segments.len() == 1;
 
         match (def, is_before_last) {
-            (TypeNs::Trait(trait_), true) => {
+            (TypeNs::TraitId(trait_), true) => {
                 let segment =
                     remaining_segments.last().expect("there should be at least one segment here");
                 let trait_ref = TraitRef::from_resolved_path(
                     self.db,
                     &self.resolver,
-                    trait_,
+                    trait_.into(),
                     resolved_segment,
                     None,
                 );

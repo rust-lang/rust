@@ -224,7 +224,9 @@ fn iterate_trait_method_candidates<T>(
         .trait_predicates_for_self_ty(&ty.value)
         .map(|tr| tr.trait_)
         .flat_map(|t| t.all_super_traits(db));
-    let traits = inherent_trait.chain(traits_from_env).chain(resolver.traits_in_scope(db));
+    let traits = inherent_trait
+        .chain(traits_from_env)
+        .chain(resolver.traits_in_scope(db).into_iter().map(Trait::from));
     'traits: for t in traits {
         let data = t.trait_data(db);
 

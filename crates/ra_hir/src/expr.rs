@@ -46,7 +46,7 @@ pub(crate) fn resolver_for_scope(
     let scopes = owner.expr_scopes(db);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
-        r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
+        r = r.push_expr_scope(owner.into(), Arc::clone(&scopes), scope);
     }
     r
 }
@@ -152,7 +152,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        let std_result_ctor = TypeCtor::Adt(Adt::Enum(std_result_enum));
+        let std_result_ctor = TypeCtor::Adt(Adt::Enum(std_result_enum.into()));
         let params = match &mismatch.expected {
             Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &std_result_ctor => parameters,
             _ => return,

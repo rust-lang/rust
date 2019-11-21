@@ -3,9 +3,14 @@
 //! It's unclear if we need this long-term, but it's definitelly useful while we
 //! are splitting the hir.
 
-use hir_def::{AdtId, AssocItemId, DefWithBodyId, EnumVariantId, GenericDefId, ModuleDefId};
+use hir_def::{
+    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, GenericDefId, ModuleDefId, StructId,
+    TypeAliasId, UnionId,
+};
 
-use crate::{Adt, AssocItem, DefWithBody, EnumVariant, GenericDef, ModuleDef};
+use crate::{
+    ty::TypableDef, Adt, AssocItem, DefWithBody, EnumVariant, GenericDef, ModuleDef, TypeAlias,
+};
 
 macro_rules! from_id {
     ($(($id:path, $ty:path)),*) => {$(
@@ -83,6 +88,16 @@ impl From<DefWithBody> for DefWithBodyId {
     }
 }
 
+impl From<DefWithBodyId> for DefWithBody {
+    fn from(def: DefWithBodyId) -> Self {
+        match def {
+            DefWithBodyId::FunctionId(it) => DefWithBody::Function(it.into()),
+            DefWithBodyId::StaticId(it) => DefWithBody::Static(it.into()),
+            DefWithBodyId::ConstId(it) => DefWithBody::Const(it.into()),
+        }
+    }
+}
+
 impl From<AssocItemId> for AssocItem {
     fn from(def: AssocItemId) -> Self {
         match def {
@@ -119,6 +134,52 @@ impl From<GenericDefId> for GenericDef {
             GenericDefId::ImplId(it) => GenericDef::ImplBlock(it.into()),
             GenericDefId::EnumVariantId(it) => GenericDef::EnumVariant(it.into()),
             GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
+        }
+    }
+}
+
+impl From<AdtId> for TypableDef {
+    fn from(id: AdtId) -> Self {
+        Adt::from(id).into()
+    }
+}
+
+impl From<StructId> for TypableDef {
+    fn from(id: StructId) -> Self {
+        AdtId::StructId(id).into()
+    }
+}
+
+impl From<UnionId> for TypableDef {
+    fn from(id: UnionId) -> Self {
+        AdtId::UnionId(id).into()
+    }
+}
+
+impl From<EnumId> for TypableDef {
+    fn from(id: EnumId) -> Self {
+        AdtId::EnumId(id).into()
+    }
+}
+
+impl From<EnumVariantId> for TypableDef {
+    fn from(id: EnumVariantId) -> Self {
+        EnumVariant::from(id).into()
+    }
+}
+
+impl From<TypeAliasId> for TypableDef {
+    fn from(id: TypeAliasId) -> Self {
+        TypeAlias::from(id).into()
+    }
+}
+
+impl From<Adt> for GenericDefId {
+    fn from(id: Adt) -> Self {
+        match id {
+            Adt::Struct(it) => it.id.into(),
+            Adt::Union(it) => it.id.into(),
+            Adt::Enum(it) => it.id.into(),
         }
     }
 }

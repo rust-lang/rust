@@ -12,8 +12,8 @@ use hir_def::{
     builtin_type::BuiltinType,
     traits::TraitData,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId,
-    LocalStructFieldId, Lookup, ModuleId, UnionId,
+    ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
+    ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -842,9 +842,10 @@ impl Trait {
                 _ => None,
             })
             .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {
-                Some(TypeNs::Trait(t)) => Some(t),
+                Some(TypeNs::TraitId(t)) => Some(t),
                 _ => None,
             })
+            .map(Trait::from)
             .collect()
     }
 
@@ -871,14 +872,9 @@ impl Trait {
 
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
         let trait_data = self.trait_data(db);
-        trait_data
-            .items
-            .iter()
-            .filter_map(|item| match item {
-                AssocItemId::TypeAliasId(t) => Some(TypeAlias::from(*t)),
-                _ => None,
-            })
-            .find(|t| &t.name(db) == name)
+        let res =
+            trait_data.associated_types().map(TypeAlias::from).find(|t| &t.name(db) == name)?;
+        Some(res)
     }
 
     pub fn associated_type_by_name_including_super_traits(

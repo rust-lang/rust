@@ -3,19 +3,21 @@ use std::sync::Arc;
 
 use hir_def::{
     builtin_type::BuiltinType,
+    db::DefDatabase2,
+    generics::GenericParams,
     nameres::CrateDefMap,
     path::{Path, PathKind},
-    AdtId, CrateModuleId, ModuleDefId,
+    AdtId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId, GenericDefId, ImplId, ModuleDefId,
+    StructId, TraitId, TypeAliasId,
 };
 use hir_expand::name::{self, Name};
 use rustc_hash::FxHashSet;
 
 use crate::{
     code_model::Crate,
-    db::{DefDatabase, HirDatabase},
+    db::DefDatabase,
     expr::{ExprScopes, PatId, ScopeId},
-    generics::{GenericParams, HasGenericParams},
-    Adt, Const, Container, DefWithBody, Enum, EnumVariant, Function, GenericDef, ImplBlock, Local,
+    Adt, Const, Container, DefWithBody, EnumVariant, Function, GenericDef, ImplBlock, Local,
     MacroDef, Module, ModuleDef, PerNs, Static, Struct, Trait, TypeAlias,
 };
 
@@ -33,7 +35,7 @@ pub(crate) struct ModuleItemMap {
 
 #[derive(Debug, Clone)]
 pub(crate) struct ExprScope {
-    owner: DefWithBody,
+    owner: DefWithBodyId,
     expr_scopes: Arc<ExprScopes>,
     scope_id: ScopeId,
 }
@@ -43,28 +45,28 @@ pub(crate) enum Scope {
     /// All the items and imported names of a module
     ModuleScope(ModuleItemMap),
     /// Brings the generic parameters of an item into scope
-    GenericParams { def: GenericDef, params: Arc<GenericParams> },
+    GenericParams { def: GenericDefId, params: Arc<GenericParams> },
     /// Brings `Self` in `impl` block into scope
-    ImplBlockScope(ImplBlock),
+    ImplBlockScope(ImplId),
     /// Brings `Self` in enum, struct and union definitions into scope
-    AdtScope(Adt),
+    AdtScope(AdtId),
     /// Local bindings
     ExprScope(ExprScope),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum TypeNs {
-    SelfType(ImplBlock),
+    SelfType(ImplId),
     GenericParam(u32),
-    Adt(Adt),
-    AdtSelfType(Adt),
-    EnumVariant(EnumVariant),
-    TypeAlias(TypeAlias),
+    AdtId(AdtId),
+    AdtSelfType(AdtId),
+    EnumVariantId(EnumVariantId),
+    TypeAliasId(TypeAliasId),
     BuiltinType(BuiltinType),
-    Trait(Trait),
+    TraitId(TraitId),
     // Module belong to type ns, but the resolver is used when all module paths
     // are fully resolved.
-    // Module(Module)
+    // ModuleId(ModuleId)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -85,10 +87,14 @@ pub(crate) enum ValueNs {
 
 impl Resolver {
     /// Resolve known trait from std, like `std::futures::Future`
-    pub(crate) fn resolve_known_trait(&self, db: &impl HirDatabase, path: &Path) -> Option<Trait> {
+    pub(crate) fn resolve_known_trait(
+        &self,
+        db: &impl DefDatabase2,
+        path: &Path,
+    ) -> Option<TraitId> {
         let res = self.resolve_module_path(db, path).take_types()?;
         match res {
-            ModuleDefId::TraitId(it) => Some(it.into()),
+            ModuleDefId::TraitId(it) => Some(it),
             _ => None,
         }
     }
@@ -96,27 +102,27 @@ impl Resolver {
     /// Resolve known struct from std, like `std::boxed::Box`
     pub(crate) fn resolve_known_struct(
         &self,
-        db: &impl HirDatabase,
+        db: &impl DefDatabase2,
         path: &Path,
-    ) -> Option<Struct> {
+    ) -> Option<StructId> {
         let res = self.resolve_module_path(db, path).take_types()?;
         match res {
-            ModuleDefId::AdtId(AdtId::StructId(it)) => Some(it.into()),
+            ModuleDefId::AdtId(AdtId::StructId(it)) => Some(it),
             _ => None,
         }
     }
 
     /// Resolve known enum from std, like `std::result::Result`
-    pub(crate) fn resolve_known_enum(&self, db: &impl HirDatabase, path: &Path) -> Option<Enum> {
+    pub(crate) fn resolve_known_enum(&self, db: &impl DefDatabase2, path: &Path) -> Option<EnumId> {
         let res = self.resolve_module_path(db, path).take_types()?;
         match res {
-            ModuleDefId::AdtId(AdtId::EnumId(it)) => Some(it.into()),
+            ModuleDefId::AdtId(AdtId::EnumId(it)) => Some(it),
             _ => None,
         }
     }
 
     /// pub only for source-binder
-    pub(crate) fn resolve_module_path(&self, db: &impl HirDatabase, path: &Path) -> PerNs {
+    pub(crate) fn resolve_module_path(&self, db: &impl DefDatabase2, path: &Path) -> PerNs {
         let (item_map, module) = match self.module() {
             Some(it) => it,
             None => return PerNs::none(),
@@ -130,7 +136,7 @@ impl Resolver {
 
     pub(crate) fn resolve_path_in_type_ns(
         &self,
-        db: &impl HirDatabase,
+        db: &impl DefDatabase2,
         path: &Path,
     ) -> Option<(TypeNs, Option<usize>)> {
         if path.is_type_relative() {
@@ -164,13 +170,13 @@ impl Resolver {
                 Scope::ModuleScope(m) => {
                     let (module_def, idx) = m.crate_def_map.resolve_path(db, m.module_id, path);
                     let res = match module_def.take_types()? {
-                        ModuleDefId::AdtId(it) => TypeNs::Adt(it.into()),
-                        ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariant(it.into()),
+                        ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
+                        ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariantId(it),
 
-                        ModuleDefId::TypeAliasId(it) => TypeNs::TypeAlias(it.into()),
+                        ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
                         ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
 
-                        ModuleDefId::TraitId(it) => TypeNs::Trait(it.into()),
+                        ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
 
                         ModuleDefId::FunctionId(_)
                         | ModuleDefId::ConstId(_)
@@ -186,7 +192,7 @@ impl Resolver {
 
     pub(crate) fn resolve_path_in_type_ns_fully(
         &self,
-        db: &impl HirDatabase,
+        db: &impl DefDatabase2,
         path: &Path,
     ) -> Option<TypeNs> {
         let (res, unresolved) = self.resolve_path_in_type_ns(db, path)?;
@@ -198,7 +204,7 @@ impl Resolver {
 
     pub(crate) fn resolve_path_in_value_ns<'p>(
         &self,
-        db: &impl HirDatabase,
+        db: &impl DefDatabase2,
         path: &'p Path,
     ) -> Option<ResolveValueResult> {
         if path.is_type_relative() {
@@ -278,9 +284,9 @@ impl Resolver {
                         }
                         Some(idx) => {
                             let ty = match module_def.take_types()? {
-                                ModuleDefId::AdtId(it) => TypeNs::Adt(it.into()),
-                                ModuleDefId::TraitId(it) => TypeNs::Trait(it.into()),
-                                ModuleDefId::TypeAliasId(it) => TypeNs::TypeAlias(it.into()),
+                                ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
+                                ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
+                                ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
                                 ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
 
                                 ModuleDefId::ModuleId(_)
@@ -300,7 +306,7 @@ impl Resolver {
 
     pub(crate) fn resolve_path_in_value_ns_fully(
         &self,
-        db: &impl HirDatabase,
+        db: &impl DefDatabase2,
         path: &Path,
     ) -> Option<ValueNs> {
         match self.resolve_path_in_value_ns(db, path)? {
@@ -311,7 +317,7 @@ impl Resolver {
 
     pub(crate) fn resolve_path_as_macro(
         &self,
-        db: &impl DefDatabase,
+        db: &impl DefDatabase2,
         path: &Path,
     ) -> Option<MacroDef> {
         let (item_map, module) = self.module()?;
@@ -320,7 +326,7 @@ impl Resolver {
 
     pub(crate) fn process_all_names(
         &self,
-        db: &impl HirDatabase,
+        db: &impl DefDatabase2,
         f: &mut dyn FnMut(Name, ScopeDef),
     ) {
         for scope in self.scopes.iter().rev() {
@@ -328,16 +334,15 @@ impl Resolver {
         }
     }
 
-    pub(crate) fn traits_in_scope(&self, db: &impl HirDatabase) -> FxHashSet<Trait> {
+    pub(crate) fn traits_in_scope(&self, db: &impl DefDatabase2) -> FxHashSet<TraitId> {
         let mut traits = FxHashSet::default();
         for scope in &self.scopes {
             if let Scope::ModuleScope(m) = scope {
                 if let Some(prelude) = m.crate_def_map.prelude() {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
-                    traits
-                        .extend(prelude_def_map[prelude.module_id].scope.traits().map(Trait::from));
+                    traits.extend(prelude_def_map[prelude.module_id].scope.traits());
                 }
-                traits.extend(m.crate_def_map[m.module_id].scope.traits().map(Trait::from));
+                traits.extend(m.crate_def_map[m.module_id].scope.traits());
             }
         }
         traits
@@ -367,7 +372,7 @@ impl Resolver {
             .flat_map(|params| params.where_predicates.iter())
     }
 
-    pub(crate) fn generic_def(&self) -> Option<crate::generics::GenericDef> {
+    pub(crate) fn generic_def(&self) -> Option<GenericDefId> {
         self.scopes.iter().find_map(|scope| match scope {
             Scope::GenericParams { def, .. } => Some(*def),
             _ => None,
@@ -383,10 +388,10 @@ impl Resolver {
 
     pub(crate) fn push_generic_params_scope(
         self,
-        db: &impl DefDatabase,
-        def: GenericDef,
+        db: &impl DefDatabase2,
+        def: GenericDefId,
     ) -> Resolver {
-        let params = def.generic_params(db);
+        let params = db.generic_params(def);
         if params.params.is_empty() {
             self
         } else {
@@ -394,7 +399,7 @@ impl Resolver {
         }
     }
 
-    pub(crate) fn push_impl_block_scope(self, impl_block: ImplBlock) -> Resolver {
+    pub(crate) fn push_impl_block_scope(self, impl_block: ImplId) -> Resolver {
         self.push_scope(Scope::ImplBlockScope(impl_block))
     }
 
@@ -408,7 +413,7 @@ impl Resolver {
 
     pub(crate) fn push_expr_scope(
         self,
-        owner: DefWithBody,
+        owner: DefWithBodyId,
         expr_scopes: Arc<ExprScopes>,
         scope_id: ScopeId,
     ) -> Resolver {
@@ -440,7 +445,7 @@ impl From<PerNs> for ScopeDef {
 }
 
 impl Scope {
-    fn process_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
+    fn process_names(&self, db: &impl DefDatabase2, f: &mut dyn FnMut(Name, ScopeDef)) {
         match self {
             Scope::ModuleScope(m) => {
                 // FIXME: should we provide `self` here?
@@ -472,14 +477,14 @@ impl Scope {
                 }
             }
             Scope::ImplBlockScope(i) => {
-                f(name::SELF_TYPE, ScopeDef::ImplSelfType(*i));
+                f(name::SELF_TYPE, ScopeDef::ImplSelfType((*i).into()));
             }
             Scope::AdtScope(i) => {
-                f(name::SELF_TYPE, ScopeDef::AdtSelfType(*i));
+                f(name::SELF_TYPE, ScopeDef::AdtSelfType((*i).into()));
             }
             Scope::ExprScope(scope) => {
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
-                    let local = Local { parent: scope.owner, pat_id: e.pat() };
+                    let local = Local { parent: scope.owner.into(), pat_id: e.pat() };
                     f(e.name().clone(), ScopeDef::Local(local));
                 });
             }
@@ -501,7 +506,7 @@ impl HasResolver for Module {
 
 impl HasResolver for Trait {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db).resolver(db).push_generic_params_scope(db, self.into())
+        self.module(db).resolver(db).push_generic_params_scope(db, self.id.into())
     }
 }
 
@@ -511,7 +516,7 @@ impl<T: Into<Adt>> HasResolver for T {
         def.module(db)
             .resolver(db)
             .push_generic_params_scope(db, def.into())
-            .push_scope(Scope::AdtScope(def))
+            .push_scope(Scope::AdtScope(def.into()))
     }
 }
 
@@ -520,7 +525,7 @@ impl HasResolver for Function {
         self.container(db)
             .map(|c| c.resolver(db))
             .unwrap_or_else(|| self.module(db).resolver(db))
-            .push_generic_params_scope(db, self.into())
+            .push_generic_params_scope(db, self.id.into())
     }
 }
 
@@ -551,7 +556,7 @@ impl HasResolver for TypeAlias {
         self.container(db)
             .map(|ib| ib.resolver(db))
             .unwrap_or_else(|| self.module(db).resolver(db))
-            .push_generic_params_scope(db, self.into())
+            .push_generic_params_scope(db, self.id.into())
     }
 }
 
@@ -582,7 +587,7 @@ impl HasResolver for ImplBlock {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         self.module(db)
             .resolver(db)
-            .push_generic_params_scope(db, self.into())
-            .push_impl_block_scope(self)
+            .push_generic_params_scope(db, self.id.into())
+            .push_impl_block_scope(self.id)
     }
 }
