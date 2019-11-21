@@ -8,8 +8,8 @@ use hir_def::{
     generics::GenericParams,
     nameres::CrateDefMap,
     path::{Path, PathKind},
-    AdtId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId, GenericDefId, ImplId, ModuleDefId,
-    StructId, TraitId, TypeAliasId,
+    AdtId, ConstId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    ImplId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId,
 };
 use hir_expand::name::{self, Name};
 use rustc_hash::FxHashSet;
@@ -18,8 +18,8 @@ use crate::{
     code_model::Crate,
     db::{DefDatabase, HirDatabase},
     expr::{ExprScopes, PatId, ScopeId},
-    Adt, Const, Container, DefWithBody, EnumVariant, Function, GenericDef, HasBody, ImplBlock,
-    Local, MacroDef, Module, ModuleDef, PerNs, Static, Struct, Trait, TypeAlias,
+    Adt, Const, Container, DefWithBody, Function, GenericDef, ImplBlock, Local, MacroDef, Module,
+    ModuleDef, PerNs, Static, Trait, TypeAlias,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -79,11 +79,11 @@ pub(crate) enum ResolveValueResult {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) enum ValueNs {
     LocalBinding(PatId),
-    Function(Function),
-    Const(Const),
-    Static(Static),
-    Struct(Struct),
-    EnumVariant(EnumVariant),
+    FunctionId(FunctionId),
+    ConstId(ConstId),
+    StaticId(StaticId),
+    StructId(StructId),
+    EnumVariantId(EnumVariantId),
 }
 
 impl Resolver {
@@ -266,13 +266,11 @@ impl Resolver {
                     return match idx {
                         None => {
                             let value = match module_def.take_values()? {
-                                ModuleDefId::FunctionId(it) => ValueNs::Function(it.into()),
-                                ModuleDefId::AdtId(AdtId::StructId(it)) => {
-                                    ValueNs::Struct(it.into())
-                                }
-                                ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariant(it.into()),
-                                ModuleDefId::ConstId(it) => ValueNs::Const(it.into()),
-                                ModuleDefId::StaticId(it) => ValueNs::Static(it.into()),
+                                ModuleDefId::FunctionId(it) => ValueNs::FunctionId(it),
+                                ModuleDefId::AdtId(AdtId::StructId(it)) => ValueNs::StructId(it),
+                                ModuleDefId::EnumVariantId(it) => ValueNs::EnumVariantId(it),
+                                ModuleDefId::ConstId(it) => ValueNs::ConstId(it),
+                                ModuleDefId::StaticId(it) => ValueNs::StaticId(it),
 
                                 ModuleDefId::AdtId(AdtId::EnumId(_))
                                 | ModuleDefId::AdtId(AdtId::UnionId(_))
@@ -496,23 +494,23 @@ impl Scope {
 // needs arbitrary_self_types to be a method... or maybe move to the def?
 pub(crate) fn resolver_for_expr(
     db: &impl HirDatabase,
-    owner: DefWithBody,
+    owner: DefWithBodyId,
     expr_id: ExprId,
 ) -> Resolver {
-    let scopes = owner.expr_scopes(db);
+    let scopes = db.expr_scopes(owner);
     resolver_for_scope(db, owner, scopes.scope_for(expr_id))
 }
 
 pub(crate) fn resolver_for_scope(
     db: &impl HirDatabase,
-    owner: DefWithBody,
+    owner: DefWithBodyId,
     scope_id: Option<ScopeId>,
 ) -> Resolver {
-    let mut r = owner.resolver(db);
-    let scopes = owner.expr_scopes(db);
+    let mut r = DefWithBody::from(owner).resolver(db);
+    let scopes = db.expr_scopes(owner);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
-        r = r.push_expr_scope(owner.into(), Arc::clone(&scopes), scope);
+        r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
     }
     r
 }

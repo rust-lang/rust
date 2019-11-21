@@ -160,7 +160,7 @@ impl SourceAnalyzer {
                 None => scope_for(&scopes, &source_map, node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
             };
-            let resolver = resolver_for_scope(db, def, scope);
+            let resolver = resolver_for_scope(db, def.into(), scope);
             SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
@@ -260,11 +260,11 @@ impl SourceAnalyzer {
                     let var = Local { parent: self.body_owner?, pat_id };
                     PathResolution::Local(var)
                 }
-                ValueNs::Function(it) => PathResolution::Def(it.into()),
-                ValueNs::Const(it) => PathResolution::Def(it.into()),
-                ValueNs::Static(it) => PathResolution::Def(it.into()),
-                ValueNs::Struct(it) => PathResolution::Def(it.into()),
-                ValueNs::EnumVariant(it) => PathResolution::Def(it.into()),
+                ValueNs::FunctionId(it) => PathResolution::Def(Function::from(it).into()),
+                ValueNs::ConstId(it) => PathResolution::Def(Const::from(it).into()),
+                ValueNs::StaticId(it) => PathResolution::Def(Static::from(it).into()),
+                ValueNs::StructId(it) => PathResolution::Def(Struct::from(it).into()),
+                ValueNs::EnumVariantId(it) => PathResolution::Def(EnumVariant::from(it).into()),
             };
             Some(res)
         });

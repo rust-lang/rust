@@ -187,7 +187,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Path(p) => {
                 // FIXME this could be more efficient...
-                let resolver = resolver_for_expr(self.db, self.owner, tgt_expr);
+                let resolver = resolver_for_expr(self.db, self.owner.into(), tgt_expr);
                 self.infer_path(&resolver, p, tgt_expr.into()).unwrap_or(Ty::Unknown)
             }
             Expr::Continue => Ty::simple(TypeCtor::Never),

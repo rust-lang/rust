@@ -4,12 +4,13 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, DefWithBodyId, EnumId, EnumVariantId, GenericDefId, ModuleDefId, StructId,
-    TypeAliasId, UnionId,
+    AdtId, AssocItemId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
+    ModuleDefId, StaticId, StructId, TypeAliasId, UnionId,
 };
 
 use crate::{
-    ty::TypableDef, Adt, AssocItem, DefWithBody, EnumVariant, GenericDef, ModuleDef, TypeAlias,
+    ty::TypableDef, Adt, AssocItem, Const, DefWithBody, EnumVariant, Function, GenericDef,
+    ModuleDef, Static, TypeAlias,
 };
 
 macro_rules! from_id {
@@ -171,6 +172,22 @@ impl From<EnumVariantId> for TypableDef {
 impl From<TypeAliasId> for TypableDef {
     fn from(id: TypeAliasId) -> Self {
         TypeAlias::from(id).into()
+    }
+}
+
+impl From<FunctionId> for TypableDef {
+    fn from(id: FunctionId) -> Self {
+        Function::from(id).into()
+    }
+}
+impl From<ConstId> for TypableDef {
+    fn from(id: ConstId) -> Self {
+        Const::from(id).into()
+    }
+}
+impl From<StaticId> for TypableDef {
+    fn from(id: StaticId) -> Self {
+        Static::from(id).into()
     }
 }
 
