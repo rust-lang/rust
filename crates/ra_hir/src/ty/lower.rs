@@ -553,8 +553,8 @@ pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSi
 pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let parent_def = field.parent_def(db);
     let resolver = match parent_def {
-        VariantDef::Struct(it) => it.resolver(db),
-        VariantDef::EnumVariant(it) => it.parent_enum(db).resolver(db),
+        VariantDef::Struct(it) => it.id.resolver(db),
+        VariantDef::EnumVariant(it) => it.parent.id.resolver(db),
     };
     let var_data = parent_def.variant_data(db);
     let type_ref = &var_data.fields().unwrap()[field.id].type_ref;
@@ -623,7 +623,7 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> 
 
 fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
     let data = def.data(db);
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
     let params = data.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
     let ret = Ty::from_hir(db, &resolver, data.ret_type());
     FnSig::from_params_and_return(params, ret)
@@ -640,7 +640,7 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
 /// Build the declared type of a const.
 fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
     let data = def.data(db);
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
 
     Ty::from_hir(db, &resolver, data.type_ref())
 }
@@ -648,7 +648,7 @@ fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
 /// Build the declared type of a static.
 fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
     let data = def.data(db);
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
 
     Ty::from_hir(db, &resolver, data.type_ref())
 }
@@ -700,7 +700,7 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
         Some(fields) => fields,
         None => panic!("fn_sig_for_struct_constructor called on unit struct"),
     };
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
     let params = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
@@ -726,7 +726,7 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) 
         Some(fields) => fields,
         None => panic!("fn_sig_for_enum_variant_constructor called for unit variant"),
     };
-    let resolver = def.parent_enum(db).resolver(db);
+    let resolver = def.parent.id.resolver(db);
     let params = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
@@ -755,7 +755,7 @@ fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt> + HasGenericParams) -
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
     let generics = t.generic_params(db);
-    let resolver = t.resolver(db);
+    let resolver = t.id.resolver(db);
     let type_ref = t.type_ref(db);
     let substs = Substs::identity(&generics);
     let inner = Ty::from_hir(db, &resolver, &type_ref.unwrap_or(TypeRef::Error));

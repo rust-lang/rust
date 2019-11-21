@@ -8,18 +8,18 @@ use hir_def::{
     generics::GenericParams,
     nameres::CrateDefMap,
     path::{Path, PathKind},
-    AdtId, ConstId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    ImplId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId,
+    AdtId, AstItemDef, ConstId, ContainerId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId,
+    FunctionId, GenericDefId, ImplId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
+    TypeAliasId, UnionId,
 };
 use hir_expand::name::{self, Name};
 use rustc_hash::FxHashSet;
 
 use crate::{
     code_model::Crate,
-    db::{DefDatabase, HirDatabase},
+    db::HirDatabase,
     expr::{ExprScopes, PatId, ScopeId},
-    Adt, Const, Container, DefWithBody, Function, GenericDef, ImplBlock, Local, MacroDef, Module,
-    ModuleDef, PerNs, Static, Trait, TypeAlias,
+    Adt, DefWithBody, GenericDef, ImplBlock, Local, MacroDef, ModuleDef, PerNs,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -506,7 +506,7 @@ pub(crate) fn resolver_for_scope(
     owner: DefWithBodyId,
     scope_id: Option<ScopeId>,
 ) -> Resolver {
-    let mut r = DefWithBody::from(owner).resolver(db);
+    let mut r = owner.resolver(db);
     let scopes = db.expr_scopes(owner);
     let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
     for scope in scope_chain.into_iter().rev() {
@@ -517,100 +517,130 @@ pub(crate) fn resolver_for_scope(
 
 pub(crate) trait HasResolver {
     /// Builds a resolver for type references inside this def.
-    fn resolver(self, db: &impl DefDatabase) -> Resolver;
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver;
 }
 
-impl HasResolver for Module {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        let def_map = db.crate_def_map(self.id.krate);
-        Resolver::default().push_module_scope(def_map, self.id.module_id)
+impl HasResolver for ModuleId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        let def_map = db.crate_def_map(self.krate);
+        Resolver::default().push_module_scope(def_map, self.module_id)
     }
 }
 
-impl HasResolver for Trait {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db).resolver(db).push_generic_params_scope(db, self.id.into())
+impl HasResolver for TraitId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        self.module(db).resolver(db).push_generic_params_scope(db, self.into())
     }
 }
 
-impl<T: Into<Adt>> HasResolver for T {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        let def = self.into();
-        def.module(db)
+impl HasResolver for AdtId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        let module = match self {
+            AdtId::StructId(it) => it.0.module(db),
+            AdtId::UnionId(it) => it.0.module(db),
+            AdtId::EnumId(it) => it.module(db),
+        };
+
+        module
             .resolver(db)
-            .push_generic_params_scope(db, def.into())
-            .push_scope(Scope::AdtScope(def.into()))
+            .push_generic_params_scope(db, self.into())
+            .push_scope(Scope::AdtScope(self.into()))
     }
 }
 
-impl HasResolver for Function {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.container(db)
-            .map(|c| c.resolver(db))
-            .unwrap_or_else(|| self.module(db).resolver(db))
-            .push_generic_params_scope(db, self.id.into())
+impl HasResolver for StructId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        AdtId::from(self).resolver(db)
     }
 }
 
-impl HasResolver for DefWithBody {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+impl HasResolver for UnionId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        AdtId::from(self).resolver(db)
+    }
+}
+
+impl HasResolver for EnumId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        AdtId::from(self).resolver(db)
+    }
+}
+
+impl HasResolver for FunctionId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
+    }
+}
+
+impl HasResolver for DefWithBodyId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
         match self {
-            DefWithBody::Const(c) => c.resolver(db),
-            DefWithBody::Function(f) => f.resolver(db),
-            DefWithBody::Static(s) => s.resolver(db),
+            DefWithBodyId::ConstId(c) => c.resolver(db),
+            DefWithBodyId::FunctionId(f) => f.resolver(db),
+            DefWithBodyId::StaticId(s) => s.resolver(db),
         }
     }
 }
 
-impl HasResolver for Const {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.container(db).map(|c| c.resolver(db)).unwrap_or_else(|| self.module(db).resolver(db))
+impl HasResolver for ConstId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        self.lookup(db).container.resolver(db)
     }
 }
 
-impl HasResolver for Static {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+impl HasResolver for StaticId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
         self.module(db).resolver(db)
     }
 }
 
-impl HasResolver for TypeAlias {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.container(db)
-            .map(|ib| ib.resolver(db))
-            .unwrap_or_else(|| self.module(db).resolver(db))
-            .push_generic_params_scope(db, self.id.into())
+impl HasResolver for TypeAliasId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        self.lookup(db).container.resolver(db).push_generic_params_scope(db, self.into())
     }
 }
 
-impl HasResolver for Container {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
+impl HasResolver for ContainerId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
         match self {
-            Container::Trait(trait_) => trait_.resolver(db),
-            Container::ImplBlock(impl_block) => impl_block.resolver(db),
+            ContainerId::TraitId(it) => it.resolver(db),
+            ContainerId::ImplId(it) => it.resolver(db),
+            ContainerId::ModuleId(it) => it.resolver(db),
         }
+    }
+}
+
+impl HasResolver for GenericDefId {
+    fn resolver(self, db: &impl DefDatabase2) -> crate::Resolver {
+        match self {
+            GenericDefId::FunctionId(inner) => inner.resolver(db),
+            GenericDefId::AdtId(adt) => adt.resolver(db),
+            GenericDefId::TraitId(inner) => inner.resolver(db),
+            GenericDefId::TypeAliasId(inner) => inner.resolver(db),
+            GenericDefId::ImplId(inner) => inner.resolver(db),
+            GenericDefId::EnumVariantId(inner) => inner.parent.resolver(db),
+            GenericDefId::ConstId(inner) => inner.resolver(db),
+        }
+    }
+}
+
+impl HasResolver for ImplId {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        self.module(db)
+            .resolver(db)
+            .push_generic_params_scope(db, self.into())
+            .push_impl_block_scope(self)
     }
 }
 
 impl HasResolver for GenericDef {
-    fn resolver(self, db: &impl DefDatabase) -> crate::Resolver {
-        match self {
-            GenericDef::Function(inner) => inner.resolver(db),
-            GenericDef::Adt(adt) => adt.resolver(db),
-            GenericDef::Trait(inner) => inner.resolver(db),
-            GenericDef::TypeAlias(inner) => inner.resolver(db),
-            GenericDef::ImplBlock(inner) => inner.resolver(db),
-            GenericDef::EnumVariant(inner) => inner.parent_enum(db).resolver(db),
-            GenericDef::Const(inner) => inner.resolver(db),
-        }
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        GenericDefId::from(self).resolver(db)
     }
 }
 
-impl HasResolver for ImplBlock {
-    fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db)
-            .resolver(db)
-            .push_generic_params_scope(db, self.id.into())
-            .push_impl_block_scope(self.id)
+impl HasResolver for DefWithBody {
+    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
+        DefWithBodyId::from(self).resolver(db)
     }
 }

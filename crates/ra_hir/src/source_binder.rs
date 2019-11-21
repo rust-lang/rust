@@ -35,19 +35,19 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -
         match (node.value) {
             ast::Module(it) => {
                 let src = node.with_value(it);
-                Some(crate::Module::from_declaration(db, src)?.resolver(db))
+                Some(crate::Module::from_declaration(db, src)?.id.resolver(db))
             },
              ast::SourceFile(it) => {
                 let src = node.with_value(crate::ModuleSource::SourceFile(it));
-                Some(crate::Module::from_definition(db, src)?.resolver(db))
+                Some(crate::Module::from_definition(db, src)?.id.resolver(db))
             },
             ast::StructDef(it) => {
                 let src = node.with_value(it);
-                Some(Struct::from_source(db, src)?.resolver(db))
+                Some(Struct::from_source(db, src)?.id.resolver(db))
             },
             ast::EnumDef(it) => {
                 let src = node.with_value(it);
-                Some(Enum::from_source(db, src)?.resolver(db))
+                Some(Enum::from_source(db, src)?.id.resolver(db))
             },
             _ => match node.value.kind() {
                 FN_DEF | CONST_DEF | STATIC_DEF => {

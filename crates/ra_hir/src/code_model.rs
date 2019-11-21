@@ -829,7 +829,7 @@ impl Trait {
     }
 
     fn direct_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
-        let resolver = self.resolver(db);
+        let resolver = self.id.resolver(db);
         // returning the iterator directly doesn't easily work because of
         // lifetime problems, but since there usually shouldn't be more than a
         // few direct traits this should be fine (we could even use some kind of
