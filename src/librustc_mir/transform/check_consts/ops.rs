@@ -183,6 +183,10 @@ impl NonConstOp for Loop {
 #[derive(Debug)]
 pub struct MutBorrow(pub BorrowKind);
 impl NonConstOp for MutBorrow {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_mut_refs)
+    }
+
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
         let kind = self.0;
         if let BorrowKind::Mut { .. } = kind {
