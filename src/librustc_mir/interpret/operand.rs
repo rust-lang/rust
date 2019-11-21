@@ -316,17 +316,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Read vector length and element type
-    pub fn read_vector_ty(
-        &self, op: OpTy<'tcx, M::PointerTag>
-    ) -> (u64, &rustc::ty::TyS<'tcx>) {
-        if let layout::Abi::Vector { .. } = op.layout.abi {
-            (op.layout.ty.simd_size(*self.tcx) as _, op.layout.ty.simd_type(*self.tcx))
-        } else {
-            bug!("Type `{}` is not a SIMD vector type", op.layout.ty)
-        }
-    }
-
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
