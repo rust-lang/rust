@@ -291,11 +291,11 @@ Lints can be turned on in groups. These groups are declared in the
 For example,
 
 ```rust,ignore
-    add_lint_group!(sess,
-                    "nonstandard_style",
-                    NON_CAMEL_CASE_TYPES,
-                    NON_SNAKE_CASE,
-                    NON_UPPER_CASE_GLOBALS);
+add_lint_group!(sess,
+    "nonstandard_style",
+    NON_CAMEL_CASE_TYPES,
+    NON_SNAKE_CASE,
+    NON_UPPER_CASE_GLOBALS);
 ```
 
 This defines the `nonstandard_style` group which turns on the listed lints. A

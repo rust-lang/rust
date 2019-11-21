@@ -28,7 +28,7 @@ of events, though, like cache misses and so forth.
 The basic `perf` command is this:
 
 ```bash
-> perf record -F99 --call-graph dwarf XXX
+perf record -F99 --call-graph dwarf XXX
 ```
 
 The `-F99` tells perf to sample at 99 Hz, which avoids generating too
@@ -39,7 +39,7 @@ information from debuginfo, which is accurate. The `XXX` is the
 command you want to profile. So, for example, you might do:
 
 ```bash
-> perf record -F99 --call-graph dwarf cargo +<toolchain> rustc
+perf record -F99 --call-graph dwarf cargo +<toolchain> rustc
 ```
 
 to run `cargo` -- here `<toolchain>` should be the name of the toolchain
@@ -59,7 +59,7 @@ do that, the first step is to clone
 [the rustc-perf repository][rustc-perf-gh]:
 
 ```bash
-> git clone https://github.com/rust-lang-nursery/rustc-perf
+git clone https://github.com/rust-lang-nursery/rustc-perf
 ```
 
 [rustc-perf-gh]: https://github.com/rust-lang-nursery/rustc-perf
@@ -75,13 +75,13 @@ do profiling for you! You can find
 For example, to measure the clap-rs test, you might do:
 
 ```bash
-> ./target/release/collector
-    --output-repo /path/to/place/output
-    profile perf-record
-    --rustc /path/to/rustc/executable/from/your/build/directory
-    --cargo `which cargo`
-    --filter clap-rs
-    --builds Check
+./target/release/collector                                      \
+  --output-repo /path/to/place/output                           \
+  profile perf-record                                           \
+  --rustc /path/to/rustc/executable/from/your/build/directory   \
+  --cargo `which cargo`                                         \
+  --filter clap-rs                                              \
+  --builds Check                                                \
 ```
 
 You can also use that same command to use cachegrind or other profiling tools.
@@ -97,7 +97,7 @@ example:
 [dir]: https://github.com/rust-lang-nursery/rustc-perf/tree/master/collector/benchmarks
 
 ```bash
-> cd collector/benchmarks/clap-rs
+cd collector/benchmarks/clap-rs
 ```
 
 In this case, let's say we want to profile the `cargo check`
@@ -106,8 +106,8 @@ build the dependencies:
 
 ```bash
 # Setup: first clean out any old results and build the dependencies:
-> cargo +<toolchain> clean
-> CARGO_INCREMENTAL=0 cargo +<toolchain> check
+cargo +<toolchain> clean
+CARGO_INCREMENTAL=0 cargo +<toolchain> check
 ```
 
 (Again, `<toolchain>` should be replaced with the name of the
@@ -118,8 +118,8 @@ running cargo check. I tend to use `cargo rustc` for this, since it
 also allows me to add explicit flags, which we'll do later on.
 
 ```bash
-> touch src/lib.rs
-> CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib
+touch src/lib.rs
+CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib
 ```
 
 Note that final command: it's a doozy! It uses the `cargo rustc`
@@ -130,7 +130,7 @@ the `--profile check` and `--lib` options specify that we are doing a
 At this point, we can use `perf` tooling to analyze the results. For example:
 
 ```bash
-> perf report
+perf report
 ```
 
 will open up an interactive TUI program. In simple cases, that can be
@@ -149,8 +149,8 @@ If you want to profile an NLL run, you can just pass extra options to
 the `cargo rustc` command, like so:
 
 ```bash
-> touch src/lib.rs
-> CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib -- -Zborrowck=mir
+touch src/lib.rs
+CARGO_INCREMENTAL=0 perf record -F99 --call-graph dwarf cargo rustc --profile check --lib -- -Zborrowck=mir
 ```
 
 [pf]: https://github.com/nikomatsakis/perf-focus
@@ -180,7 +180,7 @@ would analyze NLL performance.
 You can install perf-focus using `cargo install`:
 
 ```bash
-> cargo install perf-focus
+cargo install perf-focus
 ```
 
 ### Example: How much time is spent in MIR borrowck?
@@ -191,7 +191,7 @@ function of the MIR borrowck is called `do_mir_borrowck`, so we can do
 this command:
 
 ```bash
-> perf focus '{do_mir_borrowck}'
+$ perf focus '{do_mir_borrowck}'
 Matcher    : {do_mir_borrowck}
 Matches    : 228
 Not Matches: 542
@@ -216,7 +216,7 @@ samples where `do_mir_borrowck` was on the stack: in this case, 29%.
   by doing:
 
 ```bash
-> perf script | c++filt | perf focus --from-stdin ...
+perf script | c++filt | perf focus --from-stdin ...
 ```
 
 This will pipe the output from `perf script` through `c++filt` and
@@ -232,7 +232,7 @@ Perhaps we'd like to know how much time MIR borrowck spends in the
 trait checker. We can ask this using a more complex regex:
 
 ```bash
-> perf focus '{do_mir_borrowck}..{^rustc::traits}'
+$ perf focus '{do_mir_borrowck}..{^rustc::traits}'
 Matcher    : {do_mir_borrowck},..{^rustc::traits}
 Matches    : 12
 Not Matches: 1311
@@ -260,7 +260,7 @@ usually also want to give `--tree-min-percent` or
 `--tree-max-depth`. The result looks like this:
 
 ```bash
-> perf focus '{do_mir_borrowck}' --tree-callees --tree-min-percent 3
+$ perf focus '{do_mir_borrowck}' --tree-callees --tree-min-percent 3
 Matcher    : {do_mir_borrowck}
 Matches    : 577
 Not Matches: 746
@@ -311,7 +311,7 @@ could get our percentages relative to the borrowck itself
 like so:
 
 ```bash
-> perf focus '{do_mir_borrowck}' --tree-callees --relative --tree-max-depth 1 --tree-min-percent 5
+$ perf focus '{do_mir_borrowck}' --tree-callees --relative --tree-max-depth 1 --tree-min-percent 5
 Matcher    : {do_mir_borrowck}
 Matches    : 577
 Not Matches: 746

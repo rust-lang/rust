@@ -15,7 +15,7 @@ You can view the HIR representation of your code by passing the
 `-Zunpretty=hir-tree` flag to rustc:
 
 ```bash
-> cargo rustc -- -Zunpretty=hir-tree
+cargo rustc -- -Zunpretty=hir-tree
 ```
 
 ### Out-of-band storage and the `Crate` type

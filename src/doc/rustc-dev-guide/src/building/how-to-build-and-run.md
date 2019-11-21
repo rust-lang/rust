@@ -145,7 +145,7 @@ Once you've created a config.toml, you are now ready to run
 probably the best "go to" command for building a local rust:
 
 ```bash
-> ./x.py build -i --stage 1 src/libstd
+./x.py build -i --stage 1 src/libstd
 ```
 
 This may *look* like it only builds libstd, but that is not the case.
@@ -190,19 +190,19 @@ build`) has quite a few more steps:
 Build only the libcore library
 
 ```bash
-> ./x.py build src/libcore
+./x.py build src/libcore
 ```
 
 Build the libcore and libproc_macro library only
 
 ```bash
-> ./x.py build src/libcore src/libproc_macro
+./x.py build src/libcore src/libproc_macro
 ```
 
 Build only libcore up to Stage 1
 
 ```bash
-> ./x.py build src/libcore --stage 1
+./x.py build src/libcore --stage 1
 ```
 
 Sometimes you might just want to test if the part you’re working on can
@@ -221,8 +221,8 @@ you will likely need to build at some point; for example, if you want
 to run the entire test suite).
 
 ```bash
-> rustup toolchain link stage1 build/<host-triple>/stage1
-> rustup toolchain link stage2 build/<host-triple>/stage2
+rustup toolchain link stage1 build/<host-triple>/stage1
+rustup toolchain link stage2 build/<host-triple>/stage2
 ```
 
 The `<host-triple>` would typically be one of the following:
@@ -236,7 +236,7 @@ should see a version number ending in `-dev`, indicating a build from
 your local environment:
 
 ```bash
-> rustc +stage1 -vV
+$ rustc +stage1 -vV
 rustc 1.25.0-dev
 binary: rustc
 commit-hash: unknown
@@ -272,6 +272,6 @@ If you need to run this then rustbuild is most likely not acting right and
 you should file a bug as to what is going wrong. If you do need to clean
 everything up then you only need to run one command!
 
-   ```bash
-   > ./x.py clean
-   ```
+```bash
+./x.py clean
+```

@@ -4,7 +4,7 @@ You can run the tests using `x.py`. The most basic command – which
 you will almost never want to use! – is as follows:
 
 ```bash
-> ./x.py test
+./x.py test
 ```
 
 This will build the full stage 2 compiler and then run the whole test
@@ -34,7 +34,7 @@ test" that can be used after modifying rustc to see if things are
 generally working correctly would be the following:
 
 ```bash
-> ./x.py test --stage 1 src/test/{ui,compile-fail}
+./x.py test --stage 1 src/test/{ui,compile-fail}
 ```
 
 This will run the `ui` and `compile-fail` test suites,
@@ -44,38 +44,38 @@ example, if you are hacking on debuginfo, you may be better off with
 the debuginfo test suite:
 
 ```bash
-> ./x.py test --stage 1 src/test/debuginfo
+./x.py test --stage 1 src/test/debuginfo
 ```
 
 If you only need to test a specific subdirectory of tests for any
 given test suite, you can pass that directory to `x.py test`:
 
 ```bash
-> ./x.py test --stage 1 src/test/ui/const-generics
+./x.py test --stage 1 src/test/ui/const-generics
 ```
 
 Likewise, you can test a single file by passing its path:
 
 ```bash
-> ./x.py test --stage 1 src/test/ui/const-generics/const-test.rs
+./x.py test --stage 1 src/test/ui/const-generics/const-test.rs
 ```
 
 ### Run only the tidy script
 
 ```bash
-> ./x.py test src/tools/tidy
+./x.py test src/tools/tidy
 ```
 
 ### Run tests on the standard library
 
 ```bash
-> ./x.py test src/libstd
+./x.py test src/libstd
 ```
 
 ### Run tests on the standard library and run the tidy script
 
 ```bash
-> ./x.py test src/libstd src/tools/tidy
+./x.py test src/libstd src/tools/tidy
 ```
 
 ### Run tests on the standard library using a stage 1 compiler
@@ -100,7 +100,7 @@ you may pass the full file path to achieve this, or alternatively one
 may invoke `x.py` with the `--test-args` option:
 
 ```bash
-> ./x.py test --stage 1 src/test/ui --test-args issue-1234
+./x.py test --stage 1 src/test/ui --test-args issue-1234
 ```
 
 Under the hood, the test runner invokes the standard rust test runner
@@ -117,7 +117,7 @@ exists in the test file. For example, you can run all the tests in
 `src/test/ui` as `check-pass`:
 
 ```bash
-> ./x.py test --stage 1 src/test/ui --pass check
+./x.py test --stage 1 src/test/ui --pass check
 ```
 
 By passing `--pass $mode`, you can reduce the testing time. For each
@@ -131,7 +131,7 @@ You can further enable the `--incremental` flag to save additional
 time in subsequent rebuilds:
 
 ```bash
-> ./x.py test --stage 1 src/test/ui --incremental --test-args issue-1234
+./x.py test --stage 1 src/test/ui --incremental --test-args issue-1234
 ```
 
 If you don't want to include the flag with every command, you can
@@ -152,7 +152,7 @@ Sometimes it's easier and faster to just run the test by hand. Most tests are
 just `rs` files, so you can do something like
 
 ```bash
-> rustc +stage1 src/test/ui/issue-1234.rs
+rustc +stage1 src/test/ui/issue-1234.rs
 ```
 
 This is much faster, but doesn't always work. For example, some tests
