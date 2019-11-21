@@ -23,7 +23,7 @@ use crate::{
     db::HirDatabase,
     expr::{BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
-    resolve::{resolver_for_scope, HasResolver, TypeNs, ValueNs},
+    resolve::{self, resolver_for_scope, HasResolver, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
     GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, Resolver, ScopeDef,
@@ -310,7 +310,22 @@ impl SourceAnalyzer {
     }
 
     pub fn process_all_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
-        self.resolver.process_all_names(db, f)
+        self.resolver.process_all_names(db, &mut |name, def| {
+            let def = match def {
+                resolve::ScopeDef::PerNs(it) => it.into(),
+                resolve::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
+                resolve::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
+                resolve::ScopeDef::GenericParam(idx) => {
+                    let parent = self.resolver.generic_def().unwrap().into();
+                    ScopeDef::GenericParam(GenericParam { parent, idx })
+                }
+                resolve::ScopeDef::Local(pat_id) => {
+                    let parent = self.resolver.body_owner().unwrap().into();
+                    ScopeDef::Local(Local { parent, pat_id })
+                }
+            };
+            f(name, def)
+        })
     }
 
     // FIXME: we only use this in `inline_local_variable` assist, ideally, we

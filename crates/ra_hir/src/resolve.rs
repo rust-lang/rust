@@ -19,7 +19,7 @@ use crate::{
     code_model::Crate,
     db::HirDatabase,
     expr::{ExprScopes, PatId, ScopeId},
-    DefWithBody, GenericDef, GenericParam, Local, MacroDef, PerNs, ScopeDef,
+    DefWithBody, GenericDef, MacroDef, PerNs,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -377,6 +377,13 @@ impl Resolver {
             _ => None,
         })
     }
+
+    pub(crate) fn body_owner(&self) -> Option<DefWithBodyId> {
+        self.scopes.iter().find_map(|scope| match scope {
+            Scope::ExprScope(it) => Some(it.owner),
+            _ => None,
+        })
+    }
 }
 
 impl Resolver {
@@ -420,6 +427,14 @@ impl Resolver {
     }
 }
 
+pub(crate) enum ScopeDef {
+    PerNs(PerNs),
+    ImplSelfType(ImplId),
+    AdtSelfType(AdtId),
+    GenericParam(u32),
+    Local(PatId),
+}
+
 impl Scope {
     fn process_names(&self, db: &impl DefDatabase2, f: &mut dyn FnMut(Name, ScopeDef)) {
         match self {
@@ -432,30 +447,24 @@ impl Scope {
                 //     }),
                 // );
                 m.crate_def_map[m.module_id].scope.entries().for_each(|(name, res)| {
-                    f(name.clone(), res.def.into());
+                    f(name.clone(), ScopeDef::PerNs(res.def));
                 });
                 m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
-                    f(name.clone(), ScopeDef::MacroDef(macro_.into()));
+                    f(name.clone(), ScopeDef::PerNs(PerNs::macros(macro_)));
                 });
                 m.crate_def_map.extern_prelude().iter().for_each(|(name, &def)| {
-                    f(name.clone(), ScopeDef::ModuleDef(def.into()));
+                    f(name.clone(), ScopeDef::PerNs(PerNs::types(def.into())));
                 });
                 if let Some(prelude) = m.crate_def_map.prelude() {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
                     prelude_def_map[prelude.module_id].scope.entries().for_each(|(name, res)| {
-                        f(name.clone(), res.def.into());
+                        f(name.clone(), ScopeDef::PerNs(res.def));
                     });
                 }
             }
-            Scope::GenericParams { params, def } => {
+            Scope::GenericParams { params, .. } => {
                 for param in params.params.iter() {
-                    f(
-                        param.name.clone(),
-                        ScopeDef::GenericParam(GenericParam {
-                            parent: (*def).into(),
-                            idx: param.idx,
-                        }),
-                    )
+                    f(param.name.clone(), ScopeDef::GenericParam(param.idx))
                 }
             }
             Scope::ImplBlockScope(i) => {
@@ -466,8 +475,7 @@ impl Scope {
             }
             Scope::ExprScope(scope) => {
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
-                    let local = Local { parent: scope.owner.into(), pat_id: e.pat() };
-                    f(e.name().clone(), ScopeDef::Local(local));
+                    f(e.name().clone(), ScopeDef::Local(e.pat()));
                 });
             }
         }
