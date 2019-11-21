@@ -6,7 +6,7 @@
 
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
-use crate::hir::{self, InlineAsm as HirInlineAsm};
+use crate::hir;
 use crate::mir::interpret::{PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
@@ -1638,7 +1638,7 @@ pub enum FakeReadCause {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct InlineAsm<'tcx> {
-    pub asm: HirInlineAsm,
+    pub asm: hir::InlineAsmInner,
     pub outputs: Box<[Place<'tcx>]>,
     pub inputs: Box<[(Span, Operand<'tcx>)]>,
 }

@@ -45,7 +45,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     ///
     /// It will later be extended to trait objects.
     pub(super) fn try_report_anon_anon_conflict(&self) -> Option<ErrorReported> {
-        let (span, sub, sup) = self.get_regions();
+        let (span, sub, sup) = self.regions();
 
         // Determine whether the sub and sup consist of both anonymous (elided) regions.
         let anon_reg_sup = self.tcx().is_suitable_region(sup)?;

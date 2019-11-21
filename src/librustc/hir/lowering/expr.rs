@@ -966,7 +966,7 @@ impl LoweringContext<'_> {
     }
 
     fn lower_expr_asm(&mut self, asm: &InlineAsm) -> hir::ExprKind {
-        let hir_asm = hir::InlineAsm {
+        let inner = hir::InlineAsmInner {
             inputs: asm.inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
             outputs: asm.outputs
                 .iter()
@@ -984,18 +984,18 @@ impl LoweringContext<'_> {
             alignstack: asm.alignstack,
             dialect: asm.dialect,
         };
-
-        let outputs = asm.outputs
-            .iter()
-            .map(|out| self.lower_expr(&out.expr))
-            .collect();
-
-        let inputs = asm.inputs
-            .iter()
-            .map(|&(_, ref input)| self.lower_expr(input))
-            .collect();
-
-        hir::ExprKind::InlineAsm(P(hir_asm), outputs, inputs)
+        let hir_asm = hir::InlineAsm {
+            inner,
+            inputs_exprs: asm.inputs
+                .iter()
+                .map(|&(_, ref input)| self.lower_expr(input))
+                .collect(),
+            outputs_exprs: asm.outputs
+                .iter()
+                .map(|out| self.lower_expr(&out.expr))
+                .collect(),
+        };
+        hir::ExprKind::InlineAsm(P(hir_asm))
     }
 
     fn lower_field(&mut self, f: &Field) -> hir::Field {

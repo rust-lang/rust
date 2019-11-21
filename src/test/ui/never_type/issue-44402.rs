@@ -1,7 +1,6 @@
 // check-pass
 
 #![allow(dead_code)]
-#![feature(never_type)]
 #![feature(exhaustive_patterns)]
 
 // Regression test for inhabitedness check. The old

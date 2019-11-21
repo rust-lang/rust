@@ -1529,14 +1529,14 @@ impl<'tcx> TyCtxt<'tcx> {
         return Some(FreeRegionInfo {
             def_id: suitable_region_binding_scope,
             boundregion: bound_region,
-            is_impl_item: is_impl_item,
+            is_impl_item,
         });
     }
 
     pub fn return_type_impl_trait(
         &self,
         scope_def_id: DefId,
-    ) -> Option<Ty<'tcx>> {
+    ) -> Option<(Ty<'tcx>, Span)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
         let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
         match self.hir().get(hir_id) {
@@ -1557,7 +1557,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 let sig = ret_ty.fn_sig(*self);
                 let output = self.erase_late_bound_regions(&sig.output());
                 if output.is_impl_trait() {
-                    Some(output)
+                    let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
+                    Some((output, fn_decl.output.span()))
                 } else {
                     None
                 }
@@ -2440,10 +2441,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type {
+        if self.features().never_type_fallback {
             self.types.never
         } else {
-            self.intern_tup(&[])
+            self.types.unit
         }
     }
 

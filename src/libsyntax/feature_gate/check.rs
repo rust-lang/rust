@@ -521,23 +521,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
                 self.check_extern(bare_fn_ty.ext);
             }
-            ast::TyKind::Never => {
-                gate_feature_post!(&self, never_type, ty.span,
-                                   "The `!` type is experimental");
-            }
             _ => {}
         }
         visit::walk_ty(self, ty)
-    }
-
-    fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
-        if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            if let ast::TyKind::Never = output_ty.kind {
-                // Do nothing.
-            } else {
-                self.visit_ty(output_ty)
-            }
-        }
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
@@ -565,10 +551,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_expr(self, e)
-    }
-
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        visit::walk_arm(self, arm)
     }
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {

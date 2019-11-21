@@ -465,7 +465,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     }
 }
 
-#[unstable(feature = "never_type", issue = "35121")]
+#[stable(feature = "never_type", since = "1.41.0")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
 }
@@ -548,13 +548,6 @@ impl Error for string::FromUtf8Error {
 impl Error for string::FromUtf16Error {
     fn description(&self) -> &str {
         "invalid utf-16"
-    }
-}
-
-#[stable(feature = "str_parse_error2", since = "1.8.0")]
-impl Error for string::ParseError {
-    fn description(&self) -> &str {
-        match *self {}
     }
 }
 

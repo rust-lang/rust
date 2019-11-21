@@ -1,6 +1,6 @@
-// We need to opt into the `!` feature in order to trigger the
-// requirement that this is testing.
-#![feature(never_type)]
+// We need to opt into the `never_type_fallback` feature
+// to trigger the requirement that this is testing.
+#![feature(never_type_fallback)]
 
 #![allow(unused)]
 

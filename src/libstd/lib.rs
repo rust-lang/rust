@@ -280,7 +280,7 @@
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(needs_panic_runtime)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(nll)]
 #![cfg_attr(bootstrap, feature(on_unimplemented))]
 #![feature(optin_builtin_traits)]

@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `(): T` is not satisfied
+  --> $DIR/feature-gate-never_type_fallback.rs:9:25
+   |
+LL | fn should_ret_unit() -> impl T {
+   |                         ^^^^^^ the trait `T` is not implemented for `()`
+   |
+   = note: the return type of a function must have a statically known size
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

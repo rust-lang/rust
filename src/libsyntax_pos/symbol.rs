@@ -444,6 +444,7 @@ symbols! {
         negate_unsigned,
         never,
         never_type,
+        never_type_fallback,
         new,
         next,
         __next,
