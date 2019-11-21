@@ -42,4 +42,15 @@ fn main() {
         (2 | 1, 4) => {} //~ ERROR unreachable pattern
         _ => {}
     }
+    match (Some(0u8),) {
+        (None | Some(1 | 2),) => {}
+        (Some(1),) => {} //~ ERROR unreachable pattern
+        (None,) => {} //~ ERROR unreachable pattern
+        (Some(_),) => {}
+    }
+    match ((0u8,),) {
+        ((1 | 2,) | (3 | 4,),) => {},
+        ((1..=4,),) => {}, //~ ERROR unreachable pattern
+        ((_,),) => {},
+    }
 }
