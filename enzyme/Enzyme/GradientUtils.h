@@ -361,6 +361,7 @@ public:
       	bool inLoop = getContext(parent, lc);
 
         if (!inLoop) {
+            if (malloc) ret->setName(malloc->getName()+"_fromtape");
         } else {
             erase(ret);
             IRBuilder<> entryBuilder(inversionAllocs);
