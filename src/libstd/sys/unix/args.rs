@@ -78,6 +78,26 @@ mod imp {
         ARGV = argv;
     }
 
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
+    #[used]
+    #[link_section = ".init_array"]
+    static ARGV_INIT_ARRAY: extern "C" fn(
+        crate::os::raw::c_int,
+        *const *const u8,
+        *const *const u8,
+    ) = {
+        extern "C" fn init_wrapper(
+            argc: crate::os::raw::c_int,
+            argv: *const *const u8,
+            _envp: *const *const u8,
+        ) {
+            unsafe {
+                init(argc as isize, argv);
+            }
+        }
+        init_wrapper
+    };
+
     pub unsafe fn cleanup() {
         let _guard = LOCK.lock();
         ARGC = 0;
