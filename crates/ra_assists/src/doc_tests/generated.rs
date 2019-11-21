@@ -342,6 +342,23 @@ fn main() {
 }
 
 #[test]
+fn doctest_invert_if() {
+    check(
+        "invert_if",
+        r#####"
+fn main() {
+    if<|> !y {A} else {B}
+}
+"#####,
+        r#####"
+fn main() {
+    if y {B} else {A}
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_make_raw_string() {
     check(
         "make_raw_string",

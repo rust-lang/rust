@@ -97,6 +97,7 @@ mod assists {
     mod add_impl;
     mod add_new;
     mod apply_demorgan;
+    mod invert_if;
     mod flip_comma;
     mod flip_binexpr;
     mod flip_trait_bound;
@@ -122,6 +123,7 @@ mod assists {
             add_impl::add_impl,
             add_new::add_new,
             apply_demorgan::apply_demorgan,
+            invert_if::invert_if,
             change_visibility::change_visibility,
             fill_match_arms::fill_match_arms,
             merge_match_arms::merge_match_arms,

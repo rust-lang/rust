@@ -57,7 +57,7 @@ fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
 }
 
 // This function tries to undo unary negation, or inequality
-fn undo_negation(node: SyntaxNode) -> Option<String> {
+pub(crate) fn undo_negation(node: SyntaxNode) -> Option<String> {
     match ast::Expr::cast(node)? {
         ast::Expr::BinExpr(bin) => match bin.op_kind()? {
             ast::BinOp::NegatedEqualityTest => {
