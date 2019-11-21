@@ -10,10 +10,11 @@ use std::sync::Arc;
 
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType},
+    generics::WherePredicate,
     path::{GenericArg, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    GenericDefId,
+    AdtId, GenericDefId,
 };
 
 use super::{
@@ -22,15 +23,13 @@ use super::{
 };
 use crate::{
     db::HirDatabase,
-    generics::HasGenericParams,
-    generics::{GenericDef, WherePredicate},
     ty::{
         primitive::{FloatTy, IntTy, Uncertain},
         Adt,
     },
     util::make_mut_slice,
-    Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, StructField,
-    Trait, TypeAlias, Union, VariantDef,
+    Const, Enum, EnumVariant, Function, GenericDef, ImplBlock, ModuleDef, Path, Static, Struct,
+    StructField, Trait, TypeAlias, Union, VariantDef,
 };
 
 // FIXME: this is only really used in `type_for_def`, which contains a bunch of
@@ -342,7 +341,7 @@ pub(super) fn substs_from_path_segment(
     add_self_param: bool,
 ) -> Substs {
     let mut substs = Vec::new();
-    let def_generics = def_generic.map(|def| def.generic_params(db));
+    let def_generics = def_generic.map(|def| db.generic_params(def.into()));
 
     let (parent_param_count, param_count) =
         def_generics.map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
@@ -443,7 +442,7 @@ impl TraitRef {
     }
 
     pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {
-        let substs = Substs::identity(&trait_.generic_params(db));
+        let substs = Substs::identity(&db.generic_params(trait_.id.into()));
         TraitRef { trait_, substs }
     }
 
@@ -611,7 +610,7 @@ pub(crate) fn generic_predicates_query(
 /// Resolve the default type params from generics
 pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> Substs {
     let resolver = GenericDefId::from(def).resolver(db);
-    let generic_params = def.generic_params(db);
+    let generic_params = db.generic_params(def.into());
 
     let defaults = generic_params
         .params_including_parent()
@@ -633,7 +632,7 @@ fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
 /// Build the declared type of a function. This should not need to look at the
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
-    let generics = def.generic_params(db);
+    let generics = db.generic_params(def.id.into());
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
@@ -716,7 +715,7 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     if struct_data.variant_data.fields().is_none() {
         return type_for_adt(db, def); // Unit struct
     }
-    let generics = def.generic_params(db);
+    let generics = db.generic_params(def.id.into());
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
@@ -732,7 +731,7 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) 
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let generics = def.parent_enum(db).generic_params(db);
+    let generics = db.generic_params(def.parent_enum(db).id.into());
     let substs = Substs::identity(&generics);
     let ret = type_for_adt(db, def.parent_enum(db)).subst(&substs);
     FnSig::from_params_and_return(params, ret)
@@ -744,18 +743,20 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     if var_data.fields().is_none() {
         return type_for_adt(db, def.parent_enum(db)); // Unit variant
     }
-    let generics = def.parent_enum(db).generic_params(db);
+    let generics = db.generic_params(def.parent_enum(db).id.into());
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
-fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt> + HasGenericParams) -> Ty {
-    let generics = adt.generic_params(db);
-    Ty::apply(TypeCtor::Adt(adt.into()), Substs::identity(&generics))
+fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt>) -> Ty {
+    let adt = adt.into();
+    let adt_id: AdtId = adt.into();
+    let generics = db.generic_params(adt_id.into());
+    Ty::apply(TypeCtor::Adt(adt), Substs::identity(&generics))
 }
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
-    let generics = t.generic_params(db);
+    let generics = db.generic_params(t.id.into());
     let resolver = t.id.resolver(db);
     let type_ref = t.type_ref(db);
     let substs = Substs::identity(&generics);

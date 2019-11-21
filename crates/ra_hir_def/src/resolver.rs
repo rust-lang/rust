@@ -18,7 +18,7 @@ use crate::{
     path::{Path, PathKind},
     AdtId, AstItemDef, ConstId, ContainerId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId,
     FunctionId, GenericDefId, ImplId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId, UnionId,
+    TypeAliasId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -369,47 +369,6 @@ impl Resolver {
     }
 }
 
-impl Resolver {
-    pub(crate) fn push_scope(mut self, scope: Scope) -> Resolver {
-        self.scopes.push(scope);
-        self
-    }
-
-    pub(crate) fn push_generic_params_scope(
-        self,
-        db: &impl DefDatabase2,
-        def: GenericDefId,
-    ) -> Resolver {
-        let params = db.generic_params(def);
-        if params.params.is_empty() {
-            self
-        } else {
-            self.push_scope(Scope::GenericParams { def, params })
-        }
-    }
-
-    pub(crate) fn push_impl_block_scope(self, impl_block: ImplId) -> Resolver {
-        self.push_scope(Scope::ImplBlockScope(impl_block))
-    }
-
-    pub(crate) fn push_module_scope(
-        self,
-        crate_def_map: Arc<CrateDefMap>,
-        module_id: CrateModuleId,
-    ) -> Resolver {
-        self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
-    }
-
-    pub(crate) fn push_expr_scope(
-        self,
-        owner: DefWithBodyId,
-        expr_scopes: Arc<ExprScopes>,
-        scope_id: ScopeId,
-    ) -> Resolver {
-        self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
-    }
-}
-
 pub enum ScopeDef {
     PerNs(PerNs),
     ImplSelfType(ImplId),
@@ -489,6 +448,43 @@ pub fn resolver_for_scope(
     r
 }
 
+impl Resolver {
+    fn push_scope(mut self, scope: Scope) -> Resolver {
+        self.scopes.push(scope);
+        self
+    }
+
+    fn push_generic_params_scope(self, db: &impl DefDatabase2, def: GenericDefId) -> Resolver {
+        let params = db.generic_params(def);
+        if params.params.is_empty() {
+            self
+        } else {
+            self.push_scope(Scope::GenericParams { def, params })
+        }
+    }
+
+    fn push_impl_block_scope(self, impl_block: ImplId) -> Resolver {
+        self.push_scope(Scope::ImplBlockScope(impl_block))
+    }
+
+    fn push_module_scope(
+        self,
+        crate_def_map: Arc<CrateDefMap>,
+        module_id: CrateModuleId,
+    ) -> Resolver {
+        self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
+    }
+
+    fn push_expr_scope(
+        self,
+        owner: DefWithBodyId,
+        expr_scopes: Arc<ExprScopes>,
+        scope_id: ScopeId,
+    ) -> Resolver {
+        self.push_scope(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }))
+    }
+}
+
 pub trait HasResolver {
     /// Builds a resolver for type references inside this def.
     fn resolver(self, db: &impl DefDatabase2) -> Resolver;
@@ -507,9 +503,10 @@ impl HasResolver for TraitId {
     }
 }
 
-impl HasResolver for AdtId {
+impl<T: Into<AdtId>> HasResolver for T {
     fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        let module = match self {
+        let def = self.into();
+        let module = match def {
             AdtId::StructId(it) => it.0.module(db),
             AdtId::UnionId(it) => it.0.module(db),
             AdtId::EnumId(it) => it.module(db),
@@ -517,26 +514,8 @@ impl HasResolver for AdtId {
 
         module
             .resolver(db)
-            .push_generic_params_scope(db, self.into())
-            .push_scope(Scope::AdtScope(self.into()))
-    }
-}
-
-impl HasResolver for StructId {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        AdtId::from(self).resolver(db)
-    }
-}
-
-impl HasResolver for UnionId {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        AdtId::from(self).resolver(db)
-    }
-}
-
-impl HasResolver for EnumId {
-    fn resolver(self, db: &impl DefDatabase2) -> Resolver {
-        AdtId::from(self).resolver(db)
+            .push_generic_params_scope(db, def.into())
+            .push_scope(Scope::AdtScope(def))
     }
 }
 

@@ -10,7 +10,7 @@ use hir_expand::name;
 use log::{info, warn};
 
 use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
-use crate::{db::HirDatabase, generics::HasGenericParams};
+use crate::db::HirDatabase;
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
@@ -46,7 +46,7 @@ fn deref_by_trait(
     };
     let target = deref_trait.associated_type_by_name(db, &name::TARGET_TYPE)?;
 
-    let generic_params = target.generic_params(db);
+    let generic_params = db.generic_params(target.id.into());
     if generic_params.count_params_including_parent() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
         // namely Deref's Self type

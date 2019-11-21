@@ -9,8 +9,9 @@ use hir_def::{
 };
 
 use crate::{
-    ty::TypableDef, Adt, AssocItem, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef,
-    ModuleDef, Static, TypeAlias,
+    ty::{CallableDef, TypableDef},
+    Adt, AssocItem, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef, ModuleDef,
+    Static, TypeAlias,
 };
 
 impl From<ra_db::CrateId> for Crate {
@@ -203,6 +204,18 @@ impl From<Adt> for GenericDefId {
             Adt::Struct(it) => it.id.into(),
             Adt::Union(it) => it.id.into(),
             Adt::Enum(it) => it.id.into(),
+        }
+    }
+}
+
+impl From<CallableDef> for GenericDefId {
+    fn from(def: CallableDef) -> Self {
+        match def {
+            CallableDef::Function(it) => it.id.into(),
+            CallableDef::Struct(it) => it.id.into(),
+            CallableDef::EnumVariant(it) => {
+                EnumVariantId { parent: it.parent.id, local_id: it.id }.into()
+            }
         }
     }
 }
