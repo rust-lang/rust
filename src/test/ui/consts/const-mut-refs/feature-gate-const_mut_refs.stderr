@@ -1,5 +1,5 @@
 error[E0723]: mutable references in const fn are unstable
-  --> $DIR/feature-gate-const_fn_mut_refs.rs:5:14
+  --> $DIR/feature-gate-const_mut_refs.rs:5:14
    |
 LL | const fn foo(x: &mut i32) -> i32 {
    |              ^
