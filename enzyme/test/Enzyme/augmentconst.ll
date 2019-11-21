@@ -36,21 +36,21 @@ attributes #1 = { noinline }
 ; CHECK: define internal {{(dso_local )?}}{} @diffecompute_sumabs(float* %a, float* %"a'", float* %b, float* %"b'", float* %ret, float* %"ret'")
 ; CHECK-NEXT: entry:
 ; CHECK-NEXT:  %al = load float, float* %a
-; CHECK-NEXT:  %0 = call { {}, float } @augmented_myabs(float %al)
-; CHECK-NEXT:  %1 = extractvalue { {}, float } %0, 1
+; CHECK-NEXT:  %[[call1:.+]] = call { {}, float } @augmented_myabs(float %al)
+; CHECK-NEXT:  %[[myabs1:.+]] = extractvalue { {}, float } %[[call1]], 1
 ; CHECK-NEXT:  %bl = load float, float* %b
-; CHECK-NEXT:  %2 = call { {}, float } @augmented_myabs(float %bl)
-; CHECK-NEXT:  %3 = extractvalue { {}, float } %2, 1
-; CHECK-NEXT:  %add = fadd float %1, %3
+; CHECK-NEXT:  %[[call2:.+]] = call { {}, float } @augmented_myabs(float %bl)
+; CHECK-NEXT:  %[[myabsret:.+]] = extractvalue { {}, float } %[[call2]], 1
+; CHECK-NEXT:  %add = fadd float %[[myabs1]], %[[myabsret]]
 ; CHECK-NEXT:  store float %add, float* %ret
-; CHECK-NEXT:  %4 = load float, float* %"ret'"
+; CHECK-NEXT:  %[[ldret:.+]] = load float, float* %"ret'"
 ; CHECK-NEXT:  store float 0.000000e+00, float* %"ret'"
-; CHECK-NEXT:  %[[dabsb:.+]] = call { float } @diffemyabs(float %bl, float %4, {} undef)
+; CHECK-NEXT:  %[[dabsb:.+]] = call { float } @diffemyabs(float %bl, float %[[ldret]], {} undef)
 ; CHECK-NEXT:  %[[extb:.+]] = extractvalue { float } %[[dabsb]], 0
 ; CHECK-NEXT:  %[[preb:.+]] = load float, float* %"b'"
 ; CHECK-NEXT:  %[[totalb:.+]] = fadd fast float %[[preb]], %[[extb]]
 ; CHECK-NEXT:  store float %[[totalb]], float* %"b'"
-; CHECK-NEXT:  %[[dabsa:.+]] = call { float } @diffemyabs(float %al, float %4, {} undef)
+; CHECK-NEXT:  %[[dabsa:.+]] = call { float } @diffemyabs(float %al, float %[[ldret]], {} undef)
 ; CHECK-NEXT:  %[[exta:.+]] = extractvalue { float } %[[dabsa]], 0
 ; CHECK-NEXT:  %[[prea:.+]] = load float, float* %"a'"
 ; CHECK-NEXT:  %[[totala:.+]] = fadd fast float %[[prea]], %[[exta]]

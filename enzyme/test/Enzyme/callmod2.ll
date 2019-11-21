@@ -68,8 +68,8 @@ attributes #4 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @diffefoo(double %x, double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { { float, double }, double } @augmented_sub(double %x)
-; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { float, double }, double } %0, 0
+; CHECK-NEXT:   %[[augsub:.+]] = call { { float, double }, double } @augmented_sub(double %x)
+; CHECK-NEXT:   %[[tape:.+]] = extractvalue { { float, double }, double } %[[augsub]], 0
 ; CHECK-NEXT:   %call1 = tail call fast double @read2()
 ; CHECK-NEXT:   %[[result:.+]] = call { double } @diffesub(double %x, double %differeturn, { float, double } %[[tape]])
 ; CHECK-NEXT:   ret { double } %[[result]]

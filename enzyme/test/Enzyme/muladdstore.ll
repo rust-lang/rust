@@ -80,8 +80,8 @@ attributes #2 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction0(double %y, double %z, double* nocapture %x, double* %"x'") 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { {} } @augmented_function(double %y, double %z, double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = call {} @diffeaddOne(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[aug_func:.+]] = call { {} } @augmented_function(double %y, double %z, double* %x, double* %"x'")
+; CHECK-NEXT:   %[[dadd1:.+]] = call {} @diffeaddOne(double* %x, double* %"x'")
 ; CHECK-NEXT:   %[[result:.+]] = call { double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", {} undef)
 ; CHECK-NEXT:   ret { double, double } %[[result]]
 ; CHECK-NEXT: }

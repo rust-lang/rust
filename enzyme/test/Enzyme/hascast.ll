@@ -87,11 +87,11 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction0(double %y, double %z, double* %x, double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { { {}, double*, double* } } @augmented_function(double %y, double %z, double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = extractvalue { { {}, double*, double* } } %0, 0
-; CHECK-NEXT:   %2 = call {} @diffeaddOne(double* %x, double* %"x'")
-; CHECK-NEXT:   %3 = call { double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { {}, double*, double* } %1)
-; CHECK-NEXT:   ret { double, double } %3
+; CHECK-NEXT:   %[[fntape:.+]] = call { { {}, double*, double* } } @augmented_function(double %y, double %z, double* %x, double* %"x'")
+; CHECK-NEXT:   %[[fnret:.+]] = extractvalue { { {}, double*, double* } } %[[fntape]], 0
+; CHECK-NEXT:   %[[dadd1:.+]] = call {} @diffeaddOne(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[ret:.+]] = call { double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { {}, double*, double* } %[[fnret]])
+; CHECK-NEXT:   ret { double, double } %[[ret]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffeaddOne(double* nocapture %x, double* %"x'")
@@ -120,19 +120,19 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ { {}, double*, double* } } @augmented_function(double %y, double %z, double* %x, double* %"x'") 
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = alloca { { {}, double*, double* } }
-; CHECK-NEXT:   %1 = getelementptr { { {}, double*, double* } }, { { {}, double*, double* } }* %0, i32 0, i32 0
+; CHECK-NEXT:   %[[alloc:.+]] = alloca { { {}, double*, double* } }
+; CHECK-NEXT:   %[[inner:.+]] = getelementptr { { {}, double*, double* } }, { { {}, double*, double* } }* %[[alloc]], i32 0, i32 0
 ; CHECK-NEXT:   %mul = fmul fast double %z, %y
-; CHECK-NEXT:   %2 = call { {}, double*, double* } @augmented_cast(double* %x, double* %"x'")
-; CHECK-NEXT:   %3 = extractvalue { {}, double*, double* } %2, 1
-; CHECK-NEXT:   %4 = getelementptr { {}, double*, double* }, { {}, double*, double* }* %1, i32 0, i32 1
-; CHECK-NEXT:   store double* %3, double** %4
-; CHECK-NEXT:   %antiptr_call = extractvalue { {}, double*, double* } %2, 2
-; CHECK-NEXT:   %5 = getelementptr { {}, double*, double* }, { {}, double*, double* }* %1, i32 0, i32 2
-; CHECK-NEXT:   store double* %antiptr_call, double** %5
-; CHECK-NEXT:   store double %mul, double* %3, align 8, !tbaa !2
-; CHECK-NEXT:   %6 = load { { {}, double*, double* } }, { { {}, double*, double* } }* %0
-; CHECK-NEXT:   ret { { {}, double*, double* } } %6
+; CHECK-NEXT:   %[[augcast:.+]] = call { {}, double*, double* } @augmented_cast(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[castret:.+]] = extractvalue { {}, double*, double* } %[[augcast]], 1
+; CHECK-NEXT:   %[[retgep:.+]] = getelementptr { {}, double*, double* }, { {}, double*, double* }* %[[inner]], i32 0, i32 1
+; CHECK-NEXT:   store double* %[[castret]], double** %[[retgep]]
+; CHECK-NEXT:   %antiptr_call = extractvalue { {}, double*, double* } %[[augcast]], 2
+; CHECK-NEXT:   %[[dretgep:.+]] = getelementptr { {}, double*, double* }, { {}, double*, double* }* %[[inner]], i32 0, i32 2
+; CHECK-NEXT:   store double* %antiptr_call, double** %[[dretgep]]
+; CHECK-NEXT:   store double %mul, double* %[[castret]], align 8, !tbaa !2
+; CHECK-NEXT:   %[[ret:.+]] = load { { {}, double*, double* } }, { { {}, double*, double* } }* %[[alloc]]
+; CHECK-NEXT:   ret { { {}, double*, double* } } %[[ret]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{ double, double } @diffefunction(double %y, double %z, double* %x, double* %"x'", { {}, double*, double* } %tapeArg)

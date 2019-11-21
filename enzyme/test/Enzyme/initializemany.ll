@@ -109,11 +109,11 @@ attributes #4 = { nounwind }
 ; CHECK-NEXT:   %2 = shl nuw nsw i64 %0, 3
 ; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull {{(align 16 )?}}%1, i8 0, i64 %2, {{(i32 16, )?}}i1 false)
 ; CHECK-NEXT:   %vla = alloca double*, i64 %0, align 16
-; CHECK-NEXT:   %3 = call { { i8** } } @augmented_allocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n)
-; CHECK-NEXT:   %4 = extractvalue { { i8** } } %3, 0
-; CHECK-NEXT:   %5 = call {} @diffeget(double** nonnull %vla, double** nonnull %"vla'ipa", i32 3, double %differeturn)
-; CHECK-NEXT:   %6 = call { double } @diffeallocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n, { i8** } %4)
-; CHECK-NEXT:   ret { double } %6
+; CHECK-NEXT:   %[[aug_aas:.+]] = call { { i8** } } @augmented_allocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n)
+; CHECK-NEXT:   %[[aas_tape:.+]] = extractvalue { { i8** } } %[[aug_aas]], 0
+; CHECK-NEXT:   %[[dget:.+]] = call {} @diffeget(double** nonnull %vla, double** nonnull %"vla'ipa", i32 3, double %differeturn)
+; CHECK-NEXT:   %[[ret:.+]] = call { double } @diffeallocateAndSet(double** nonnull %vla, double** nonnull %"vla'ipa", double %x, i32 %n, { i8** } %[[aas_tape]])
+; CHECK-NEXT:   ret { double } %[[ret]]
 ; CHECK-NEXT: }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffeget(double** nocapture readonly %x, double** %"x'", i32 %i, double %differeturn)

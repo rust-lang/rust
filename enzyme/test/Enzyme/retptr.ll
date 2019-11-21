@@ -25,12 +25,12 @@ declare float @__enzyme_autodiff(float (float**)*, ...)
 
 ; CHECK: define internal {} @diffef(float** %this, float** %"this'", float %differeturn) {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { {}, float*, float* } @augmented_sub(float** %this, float** %"this'")
-; CHECK-NEXT:   %1 = extractvalue { {}, float*, float* } %0, 2
-; CHECK-NEXT:   %2 = load float, float* %1
-; CHECK-NEXT:   %3 = fadd fast float %2, %differeturn
-; CHECK-NEXT:   store float %3, float* %1
-; CHECK-NEXT:   %4 = call {} @diffesub(float** %this, float** %"this'", {} undef)
+; CHECK-NEXT:   %[[augsub:.+]] = call { {}, float*, float* } @augmented_sub(float** %this, float** %"this'")
+; CHECK-NEXT:   %[[dsub:.+]] = extractvalue { {}, float*, float* } %[[augsub]], 2
+; CHECK-NEXT:   %[[loadsub:.+]] = load float, float* %[[dsub]]
+; CHECK-NEXT:   %[[fadd:.+]] = fadd fast float %[[loadsub]], %differeturn
+; CHECK-NEXT:   store float %[[fadd]], float* %[[dsub]]
+; CHECK-NEXT:   %[[dsub:.+]] = call {} @diffesub(float** %this, float** %"this'", {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

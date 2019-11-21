@@ -420,6 +420,10 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   cachedfunctions[tup] = std::pair<Function*,StructType*>(gutils->newFunc, nullptr);
   cachedfinished[tup] = false;
 
+  gutils->forceContexts();
+  gutils->forceActiveDetection();
+  gutils->forceAugmentedReturns();
+
   std::map<CallInst*, std::set<unsigned> > uncacheable_args_map =
       compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_args);
 
@@ -442,11 +446,6 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
         iter.second = is_needed;
       }
     }
-
-
-  gutils->forceContexts();
-  gutils->forceActiveDetection();
-  gutils->forceAugmentedReturns();
   
   //! Explicitly handle all returns first to ensure that all instructions know whether or not they are used
   SmallPtrSet<Instruction*, 4> returnuses;
@@ -709,9 +708,13 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                 
                 gutils->originalInstructions.insert(augmentcall);
                 gutils->nonconstant.insert(augmentcall);
+                augmentcall->setMetadata("enzyme_activity_inst", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), "active")}));
                 if (!gutils->isConstantValue(op)) {
                   gutils->nonconstant_values.insert(augmentcall);
                 }
+                inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
+      
+                augmentcall->setName(op->getName()+"_augmented");
 
                 Value* tp = BuilderZ.CreateExtractValue(augmentcall, {0}, "subcache");
                 if (tp->getType()->isEmptyTy()) {
@@ -726,9 +729,11 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
                   auto rv = cast<Instruction>(BuilderZ.CreateExtractValue(augmentcall, {1}));
                   gutils->originalInstructions.insert(rv);
                   gutils->nonconstant.insert(rv);
+                  rv->setMetadata("enzyme_activity_inst", MDNode::get(rv->getContext(), {MDString::get(rv->getContext(), "const")}));
                   if (!gutils->isConstantValue(op)) {
                     gutils->nonconstant_values.insert(rv);
                   }
+                  rv->setMetadata("enzyme_activity_value", MDNode::get(rv->getContext(), {MDString::get(rv->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
                   assert(op->getType() == rv->getType());
                   
                   if (shouldCache) {
@@ -886,6 +891,8 @@ std::pair<Function*,StructType*> CreateAugmentedPrimal(Function* todiff, AAResul
   if (gutils->newFunc->hasAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt)) {
     gutils->newFunc->removeAttribute(llvm::AttributeList::ReturnIndex, llvm::Attribute::ZExt);
   }
+  
+  gutils->cleanupActiveDetection();
 
   if (llvm::verifyFunction(*gutils->newFunc, &llvm::errs())) {
       llvm::errs() << *gutils->oldFunc << "\n";
@@ -1719,10 +1726,14 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
       gutils->originalInstructions.insert(augmentcall);
       gutils->nonconstant.insert(augmentcall);
+      augmentcall->setMetadata("enzyme_activity_inst", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), "active")}));
+
       if (!gutils->isConstantValue(op)) {
         gutils->nonconstant_values.insert(augmentcall);
       }
+      augmentcall->setMetadata("enzyme_activity_value", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
 
+      augmentcall->setName(op->getName()+"_augmented");
       tape = BuilderZ.CreateExtractValue(augmentcall, {0});
       if (tape->getType()->isEmptyTy()) {
         auto tt = tape->getType();
@@ -1807,7 +1818,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool retUsed = replaceFunction && subretused;
   Value* newcalled = nullptr;
 
-  bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
+  //bool subdiffereturn = (!gutils->isConstantValue(op)) && !( op->getType()->isPointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
+  bool subdiffereturn = (!gutils->isConstantValue(op)) &&op->getType()->isFPOrFPVectorTy(); //PointerTy() || op->getType()->isIntegerTy() || op->getType()->isEmptyTy() );
   bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && replaceFunction;
   //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
@@ -1850,8 +1862,13 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
   gutils->originalInstructions.insert(diffes);
   gutils->nonconstant.insert(diffes);
-  if (!gutils->isConstantValue(op))
+
+  diffes->setMetadata("enzyme_activity_inst", MDNode::get(diffes->getContext(), {MDString::get(diffes->getContext(), "active")}));
+
+  if (!gutils->isConstantValue(op)) {
     gutils->nonconstant_values.insert(diffes);
+  }
+  diffes->setMetadata("enzyme_activity_value", MDNode::get(diffes->getContext(), {MDString::get(diffes->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
 
   if (replaceFunction) {
 
@@ -1875,8 +1892,11 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       auto retval = cast<Instruction>(Builder2.CreateExtractValue(diffes, {0}));
       gutils->originalInstructions.insert(retval);
       gutils->nonconstant.insert(retval);
-      if (!gutils->isConstantValue(op))
+      retval->setMetadata("enzyme_activity_inst", MDNode::get(retval->getContext(), {MDString::get(retval->getContext(), "const")}));
+      if (!gutils->isConstantValue(op)) {
         gutils->nonconstant_values.insert(retval);
+      }
+      retval->setMetadata("enzyme_activity_value", MDNode::get(retval->getContext(), {MDString::get(retval->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
       op->replaceAllUsesWith(retval);
       mapp[op] = retval;
     }
@@ -2052,6 +2072,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   AAResults AA(TLI);
   DiffeGradientUtils *gutils = DiffeGradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, returnValue ? ( dretPtr ? ReturnType::ArgsWithTwoReturns: ReturnType::ArgsWithReturn ) : ReturnType::Args, differentialReturn, additionalArg);
   cachedfunctions[tup] = gutils->newFunc;
+  
+  gutils->forceContexts();
+  gutils->forceActiveDetection();
+  gutils->forceAugmentedReturns();
 
   std::map<CallInst*, std::set<unsigned> > uncacheable_args_map =
       compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_args);
@@ -2077,10 +2101,6 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   } 
 
   gutils->can_modref_map = &can_modref_map;
-
-  gutils->forceContexts();
-  gutils->forceActiveDetection();
-  gutils->forceAugmentedReturns();
 
   Argument* additionalValue = nullptr;
   if (additionalArg) {
@@ -2593,12 +2613,12 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         if (inst != op) {
           // Set to nullptr since op should never be used after invalidated through addMalloc.
           op = nullptr;
+          inst->setMetadata("enzyme_activity_inst", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), "const")}));
           if (!op_valconstant) { 
             gutils->nonconstant_values.insert(inst);
             gutils->nonconstant.insert(inst);
-          } else {
-            gutils->constants.insert(inst);
           }
+          inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), op_valconstant ? "const" : "active")}));
           gutils->originalInstructions.insert(inst);
 
           assert(inst->getType() == op_type);
@@ -2825,6 +2845,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       llvm::errs() << *gutils->newFunc << "\n";
       report_fatal_error("function failed verification (4)");
   }
+  
+  gutils->cleanupActiveDetection();
 
   optimizeIntermediate(gutils, topLevel, gutils->newFunc);
 

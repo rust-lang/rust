@@ -50,11 +50,11 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { { {}, {}, double } } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = extractvalue { { {}, {}, double } } %0, 0
+; CHECK-NEXT:   %[[augsubf:.+]] = call { { {}, {}, double } } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[subfret:.+]] = extractvalue { { {}, {}, double } } %[[augsubf]], 0
 ; CHECK-NEXT:   store double 2.000000e+00, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %2 = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, {}, double } %1)
+; CHECK-NEXT:   %[[df:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, {}, double } %[[subfret]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
@@ -81,10 +81,10 @@ declare dso_local double @__enzyme_autodiff(i8*, double*, double*) local_unnamed
 ; CHECK-NEXT:   store double %2, double* %3
 ; CHECK-NEXT:   %mul = fmul fast double %2, 2.000000e+00
 ; CHECK-NEXT:   store double %mul, double* %x, align 8
-; CHECK-NEXT:   %4 = call { {} } @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %5 = call { {} } @augmented_othermetasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %6 = load { { {}, {}, double } }, { { {}, {}, double } }* %0
-; CHECK-NEXT:   ret { { {}, {}, double } } %6
+; CHECK-NEXT:   %[[augmetasubf:.+]] = call { {} } @augmented_metasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[augothermetasubf:.+]] = call { {} } @augmented_othermetasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[ret:.+]] = load { { {}, {}, double } }, { { {}, {}, double } }* %0
+; CHECK-NEXT:   ret { { {}, {}, double } } %[[ret]]
 ; CHECK-NEXT: }
 
 

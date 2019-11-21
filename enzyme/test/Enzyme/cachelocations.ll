@@ -35,13 +35,13 @@ declare dso_local double @__enzyme_autodiff(i8*, i1 zeroext, double*, double*)
 
 ; CHECK: define internal {} @diffef(i1 zeroext %z, double* nocapture %x, double* %"x'") {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { { double } } @augmented_subf(i1 %z, double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = extractvalue { { double } } %0, 0
+; CHECK-NEXT:   %[[augsubf:.+]] = call { { double } } @augmented_subf(i1 %z, double* %x, double* %"x'")
+; CHECK-NEXT:   %[[subf:.+]] = extractvalue { { double } } %[[augsubf]], 0
 ; CHECK-NEXT:   %"arrayidx'ipge" = getelementptr inbounds double, double* %"x'", i64 1
 ; CHECK-NEXT:   %arrayidx = getelementptr inbounds double, double* %x, i64 1
 ; CHECK-NEXT:   store double 2.000000e+00, double* %arrayidx, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"arrayidx'ipge", align 8
-; CHECK-NEXT:   %2 = call {} @diffesubf(i1 %z, double* nonnull %x, double* %"x'", { double } %1)
+; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(i1 %z, double* nonnull %x, double* %"x'", { double } %[[subf]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

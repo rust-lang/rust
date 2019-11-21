@@ -142,8 +142,8 @@ attributes #5 = { nounwind }
 ; CHECK-NEXT:   store i64 0, i64* %1, align 8
 ; CHECK-NEXT:   %2 = bitcast double** %array.i to i8*
 ; CHECK-NEXT:   call void @llvm.lifetime.start.p0i8(i64 8, i8* nonnull %2)
-; CHECK-NEXT:   %3 = call i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
-; CHECK-NEXT:   %oldret = insertvalue { i8* } undef, i8* %3, 0
+; CHECK-NEXT:   %[[aug_aas:.+]] = call i8* @augmented_allocateAndSet(double** nonnull %array.i, double** nonnull %"array'ipa.i", double %x, i32 %n)
+; CHECK-NEXT:   %oldret = insertvalue { i8* } undef, i8* %[[aug_aas]], 0
 ; CHECK-NEXT:   %"'ipl.i" = load double*, double** %"array'ipa.i", align 8
 ; CHECK-NEXT:   call void @diffeget(double* %"'ipl.i")
 ; CHECK-NEXT:   %[[result:.+]] = call double @diffeallocateAndSet({ i8* } %oldret)

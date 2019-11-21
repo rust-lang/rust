@@ -19,6 +19,7 @@
 #ifndef ENZYME_GUTILS_H_
 #define ENZYME_GUTILS_H_
 
+#include <algorithm>
 #include <deque>
 #include <map>
 
@@ -87,8 +88,9 @@ public:
   ValueMap<BasicBlock*,BasicBlock*> reverseBlocks;
   BasicBlock* inversionAllocs;
   ValueToValueMapTy scopeMap;
-  ValueToValueMapTy lastScopeAlloc;
   std::map<AllocaInst*, std::set<CallInst*>> scopeFrees;
+  std::map<AllocaInst*, std::vector<CallInst*>> scopeAllocs;
+  std::map<AllocaInst*, std::vector<Value*>> scopeStores;
   ValueToValueMapTy originalToNewFn;
 
   std::map<Instruction*, bool>* can_modref_map;  
@@ -142,15 +144,6 @@ public:
         scopeMap[B] = scopeMap[A];
         scopeMap.erase(A);
     }
-    //if (scopeFrees.find(A) != scopeFrees.end()) {
-    //    scopeFrees[B] = scopeFrees[A];
-    //    scopeFrees.erase(A);
-    //}
-    if (lastScopeAlloc.find(A) != lastScopeAlloc.end()) {
-        lastScopeAlloc[B] = lastScopeAlloc[A];
-        lastScopeAlloc.erase(A);
-    }
-
     A->replaceAllUsesWith(B);
   }
 
@@ -161,12 +154,17 @@ public:
     nonconstant.erase(I);
     nonconstant_values.erase(I);
     originalInstructions.erase(I);
-    if (scopeMap.find(I) != scopeMap.end())
+    if (scopeMap.find(I) != scopeMap.end()) {
         scopeFrees.erase(cast<AllocaInst>(scopeMap[I]));
-    if (auto ai = dyn_cast<AllocaInst>(I))
+        scopeAllocs.erase(cast<AllocaInst>(scopeMap[I]));
+        scopeStores.erase(cast<AllocaInst>(scopeMap[I]));
+    }
+    if (auto ai = dyn_cast<AllocaInst>(I)) {
         scopeFrees.erase(ai);
+        scopeAllocs.erase(ai);
+        scopeStores.erase(ai);
+    }
     scopeMap.erase(I);
-    lastScopeAlloc.erase(I);
     SE.eraseValueFromMap(I);
     originalToNewFn.erase(I);
     eraser:
@@ -174,15 +172,6 @@ public:
         if (v.second == I) {
             originalToNewFn.erase(v.first);
             goto eraser;
-        }
-    }
-    for(auto v: lastScopeAlloc) {
-        if (v.second == I) {
-            llvm::errs() << *oldFunc << "\n";
-            llvm::errs() << *newFunc << "\n";
-            llvm::errs() << *v.first << "\n";
-            llvm::errs() << *I << "\n";
-            assert(0 && "erasing something in lastScopeAlloc map");
         }
     }
     for(auto v: scopeMap) {
@@ -203,6 +192,25 @@ public:
             llvm::errs() << *v.first << "\n";
             llvm::errs() << *I << "\n";
             assert(0 && "erasing something in scopeFrees map");
+        }
+    }
+    if (auto ci = dyn_cast<CallInst>(I))
+    for(auto v: scopeAllocs) {
+        if (std::find(v.second.begin(), v.second.end(), ci) != v.second.end()) {
+            llvm::errs() << *oldFunc << "\n";
+            llvm::errs() << *newFunc << "\n";
+            llvm::errs() << *v.first << "\n";
+            llvm::errs() << *I << "\n";
+            assert(0 && "erasing something in scopeAllocs map");
+        }
+    }
+    for(auto v: scopeStores) {
+        if (std::find(v.second.begin(), v.second.end(), I) != v.second.end()) {
+            llvm::errs() << *oldFunc << "\n";
+            llvm::errs() << *newFunc << "\n";
+            llvm::errs() << *v.first << "\n";
+            llvm::errs() << *I << "\n";
+            assert(0 && "erasing something in scopeStores map");
         }
     }
     for(auto v: invertedPointers) {
@@ -320,7 +328,17 @@ public:
         }
         assert(tapeidx < cast<StructType>(tape->getType())->getNumElements());
         Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {tapeidx}));
-        Instruction* origret = ret;
+
+        if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
+            if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
+                ret->setMetadata("enzyme_activity_value", md);
+            }
+            llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
+            ret->setMetadata("enzyme_activity_inst", MDNode::get(ret->getContext(), {MDString::get(ret->getContext(), "const")}));
+        }
+
+
+        //Instruction* origret = ret;
         tapeidx++;
 
         if (ret->getType()->isEmptyTy()) {
@@ -352,20 +370,30 @@ public:
         
             //scopeMap[inst] = cache;
             Type* innerType = ret->getType();
-
             for(const auto unused : getSubLimits(BuilderQ.GetInsertBlock()) ) {
+                if (!isa<PointerType>(innerType)) {
+                    llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent() << "\n";
+                    llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock() << "\n";
+                    llvm::errs() << "ret: " << *ret << "\n";
+                    llvm::errs() << "innerType: " << *innerType << "\n";
+                }
+                assert(isa<PointerType>(innerType));
                 innerType = cast<PointerType>(innerType)->getElementType();
             }
             if (malloc) assert(innerType == malloc->getType());
 
-            AllocaInst* cache = createCacheForScope(BuilderQ.GetInsertBlock(), innerType, "mdyncache_fromtape", true, nullptr, false);
-            llvm::errs() << "ret: " << *ret << "\n";
-            llvm::errs() << "cache: " << *cache << "\n";
+            AllocaInst* cache = createCacheForScope(BuilderQ.GetInsertBlock(), innerType, "mdyncache_fromtape", true, false);
             entryBuilder.CreateStore(ret, cache);
 
             auto v = lookupValueFromCache(BuilderQ, BuilderQ.GetInsertBlock(), cache);
             if (malloc) {
                 assert(v->getType() == malloc->getType());
+                if (auto inst = dyn_cast<Instruction>(malloc)) {
+                    if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
+                        ret->setMetadata("enzyme_activity_value", md);
+                    }
+                    ret->setMetadata("enzyme_activity_inst", MDNode::get(ret->getContext(), {MDString::get(ret->getContext(), "const")}));
+                }
             }
             scopeMap[v] = cache;
             originalInstructions.erase(ret);
@@ -387,8 +415,18 @@ public:
 			}
 
             if (scopeMap.find(malloc) != scopeMap.end()) {
-
+                // There already exists an alloaction for this, we should fully remove it
                 if (!inLoop) {
+
+                    // Remove stores into
+                    auto stores = scopeStores[cast<AllocaInst>(scopeMap[malloc])];
+                    scopeStores.erase(cast<AllocaInst>(scopeMap[malloc]));
+                    for(int i=stores.size()-1; i>=0; i--) {
+                        if (auto inst = dyn_cast<Instruction>(stores[i])) {
+                            erase(inst);
+                        }
+                    }
+
                     std::vector<User*> users;
                     for (auto u : scopeMap[malloc]->users()) {
                         users.push_back(u);
@@ -399,12 +437,11 @@ public:
                             ValueToValueMapTy empty;
                             li->replaceAllUsesWith(unwrapM(ret, lb, empty, /*lookupifable*/false));
                             erase(li);
-                        } else if (auto si = dyn_cast<StoreInst>(u)) {
-                            erase(si);
                         } else {
                             assert(0 && "illegal use for out of loop scopeMap");
                         }
                     }
+                    
 
                     {
                     Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
@@ -412,23 +449,113 @@ public:
                     erase(preerase);
                     }
                 } else {
-                    std::vector<User*> users;
-                    for( auto u : scopeMap[malloc]->users()) {
-                        users.push_back(u);
-                    }
-                    Instruction* op0 = nullptr;
-                    if (auto ci = dyn_cast<CastInst>(scopeMap[malloc])) {
-                        op0 = cast<Instruction>(ci->getOperand(0));
-                        for( auto u : op0->users()) {
-                            if (u != malloc)
-                                users.push_back(u);
+ 
+                    // Remove stores into
+                    auto stores = scopeStores[cast<AllocaInst>(scopeMap[malloc])];
+                    scopeStores.erase(cast<AllocaInst>(scopeMap[malloc]));
+                    for(int i=stores.size()-1; i>=0; i--) {
+                        if (auto inst = dyn_cast<Instruction>(stores[i])) {
+                            erase(inst);
                         }
                     }
+                    
+                    
+                    //Remove allocations for scopealloc since it is already allocated by the augmented forward pass
+                    auto allocs = scopeAllocs[cast<AllocaInst>(scopeMap[malloc])];
+                    scopeAllocs.erase(cast<AllocaInst>(scopeMap[malloc]));
+                    for(auto allocinst : allocs) {
+                        CastInst* cast = nullptr;
+                        StoreInst* store = nullptr;
+                        for(auto use : allocinst->users()) {
+                            if (auto ci = dyn_cast<CastInst>(use)) {
+                                assert(cast == nullptr);
+                                cast = ci;
+                            }
+                            if (auto si = dyn_cast<StoreInst>(use)) {
+                                if (si->getValueOperand() == allocinst) {
+                                    assert(store == nullptr);
+                                    store = si;
+                                }
+                            }
+                        }
+                        if (cast) {
+                            assert(store == nullptr);
+                            for(auto use : cast->users()) {
+                                if (auto si = dyn_cast<StoreInst>(use)) {
+                                    if (si->getValueOperand() == cast) {
+                                        assert(store == nullptr);
+                                        store = si;
+                                    }
+                                }
+                            }
+                        }
+                        if (!store) {
+                            allocinst->getParent()->getParent()->dump();
+                            allocinst->dump();
+                        }
+                        assert(store);
+
+                        erase(store);
+
+                        Instruction* storedinto = cast ? (Instruction*)cast : (Instruction*)allocinst; 
+                        for(auto use : storedinto->users()) {
+                            llvm::errs() << " found use of " << *storedinto << " of " << use << "\n";
+                            if (auto si = dyn_cast<StoreInst>(use)) erase(si);
+                        }
+
+                        if (cast) erase(cast);
+                        llvm::errs() << "considering inner loop for malloc: " << *malloc << " allocinst " << *allocinst << "\n";
+                        erase(allocinst);
+                    }
+
+                    // Remove frees
                     auto tofree = scopeFrees[cast<AllocaInst>(scopeMap[malloc])];
                     scopeFrees.erase(cast<AllocaInst>(scopeMap[malloc]));
                     for(auto freeinst : tofree) {
+                        std::deque<Value*> ops = { freeinst->getArgOperand(0) };
                         erase(freeinst);
+
+                        while(ops.size()) {
+                            auto z = dyn_cast<Instruction>(ops[0]);
+                            ops.pop_front();
+                            if (z && z->getNumUses() == 0) {
+                                for(unsigned i=0; i<z->getNumOperands(); i++) {
+                                    ops.push_back(z->getOperand(i));
+                                }
+                                erase(z);
+                            }
+                        }
                     }
+
+                    // uses of the alloc
+                    std::vector<User*> users;
+                    for (auto u : scopeMap[malloc]->users()) {
+                        users.push_back(u);
+                    }
+                    for( auto u : users) {
+                        if (auto li = dyn_cast<LoadInst>(u)) {
+                            IRBuilder<> lb(li);
+                            llvm::errs() << "fixing li: " << *li << "\n";
+                            auto replacewith = lb.CreateExtractValue(tape, {tapeidx-1});
+                            llvm::errs() << "fixing with rw: " << *replacewith << "\n";
+                            li->replaceAllUsesWith(replacewith);
+                            erase(li);
+                        } else {
+                            assert(0 && "illegal use for out of loop scopeMap");
+                        }
+                    }
+
+                    //cast<Instruction>(scopeMap[malloc])->getParent()->getParent()->dump();
+
+                    //llvm::errs() << "did erase for malloc: " << *malloc << " " << *scopeMap[malloc] << "\n";
+                    
+                    Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
+                    scopeMap.erase(malloc);
+                    erase(preerase);
+
+
+
+                    /*
 
                     for( auto u : users) {
                         if (auto li = dyn_cast<LoadInst>(u)) {
@@ -443,7 +570,7 @@ public:
                                 if (auto cali = dyn_cast<CallInst>(u2)) {
                                     auto called = cali->getCalledFunction();
                                     if (called == nullptr) continue;
-                                    if (!(called->getName() == "free" || called->getName() == "realloc")) continue;
+                                    if (!(called->getName() == "realloc")) continue;
                                     if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == cali)
                                         lastScopeAlloc.erase(malloc);
                                     erase(cali);
@@ -482,9 +609,6 @@ public:
                     }
 
                     {
-                    Instruction* preerase = cast<Instruction>(scopeMap[malloc]);
-                    scopeMap.erase(malloc);
-                    erase(preerase);
                     }
 
                     if (op0) {
@@ -492,26 +616,9 @@ public:
                             lastScopeAlloc.erase(malloc);
                         erase(op0);
                     }
+                    */
                 }
             }
-            /*
-            if (scopeFrees.find(malloc) != scopeFrees.end()) {
-                llvm::errs() << *newFunc << "\n";
-                if (scopeFrees[malloc])
-                    llvm::errs() << "scopeFrees[malloc] = " << *scopeFrees[malloc] << "\n";
-                else 
-                    llvm::errs() << "scopeFrees[malloc] = (nullptr)" << "\n";
-            }
-            assert(scopeFrees.find(malloc) == scopeFrees.end());
-            */
-            if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end()) {
-                llvm::errs() << *newFunc << "\n";
-                if (lastScopeAlloc[malloc])
-                    llvm::errs() << "lastScopeAlloc[malloc] = " << *lastScopeAlloc[malloc] << "\n";
-                else 
-                    llvm::errs() << "lastScopeAlloc[malloc] = (nullptr)" << "\n";
-            }
-            assert(lastScopeAlloc.find(malloc) == lastScopeAlloc.end());
             cast<Instruction>(malloc)->replaceAllUsesWith(ret);
             std::string n = malloc->getName().str();
             erase(cast<Instruction>(malloc));
@@ -541,8 +648,23 @@ public:
 
       ensureLookupCached(cast<Instruction>(malloc), /*shouldFree=*/reverseBlocks.size() > 0);
       assert(scopeMap[malloc]);
-      assert(lastScopeAlloc[malloc]);
-      addedMallocs.push_back(lastScopeAlloc[malloc]);
+
+      Instruction* toadd = scopeAllocs[cast<AllocaInst>(scopeMap[malloc])][0];
+      for(auto u : toadd->users()) {
+          if (auto ci = dyn_cast<CastInst>(u)) {
+             toadd = ci;
+          }
+      }
+            
+      //llvm::errs() << " malloc: " << *malloc << "\n";
+      //llvm::errs() << " toadd: " << *toadd << "\n";
+      Type* innerType = toadd->getType();
+      for(const auto unused : getSubLimits(BuilderQ.GetInsertBlock()) ) {
+        innerType = cast<PointerType>(innerType)->getElementType();
+      }
+      assert(innerType == malloc->getType());
+      
+      addedMallocs.push_back(toadd);
       return malloc;
     }
     llvm::errs() << "Fell through on addMalloc. This should never happen.\n";
@@ -613,12 +735,12 @@ public:
     return false;
   }
 
-  bool isConstantValue(Value* val) {
+  bool isConstantValueInternal(Value* val) {
 	cast<Value>(val);
     return isconstantValueM(val, constants, nonconstant, nonconstant_values, originalInstructions);
   };
 
-  bool isConstantInstruction(Instruction* val) {
+  bool isConstantInstructionInternal(Instruction* val) {
 	cast<Instruction>(val);
     return isconstantM(val, constants, nonconstant, nonconstant_values, originalInstructions);
   }
@@ -680,12 +802,91 @@ public:
   }
 
   void forceActiveDetection() {
+      for(auto a = newFunc->arg_begin(); a != newFunc->arg_end(); a++) {
+        if (constants.find(a) == constants.end() && nonconstant.find(a) == nonconstant.end()) continue;
+        bool const_value = isConstantValueInternal(a);
+        a->addAttr(llvm::Attribute::get(a->getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
+      }
+
       for(BasicBlock* BB: this->originalBlocks) {
           for(Instruction &I : *BB) {
-              isConstantInstruction(&I);
-              isConstantValue(&I);
+              bool const_inst = isConstantInstructionInternal(&I);
+              
+              I.setMetadata("enzyme_activity_inst", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_inst ? "const" : "active")));
+              //I.setMetadata(const_inst ? "enzyme_constinst" : "enzyme_activeinst", MDNode::get(I.getContext(), {}));
+
+              //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_inst", const_inst ? "const" : "active"));
+              bool const_value = isConstantValueInternal(&I);
+              //I.setMetadata(const_value ? "enzyme_constvalue" : "enzyme_activevalue", MDNode::get(I.getContext(), {}));
+              I.setMetadata("enzyme_activity_value", MDNode::get(I.getContext(), MDString::get(I.getContext(), const_value ? "const" : "active")));
+              //I.addAttr(llvm::Attribute::get(I.getContext(), "enzyme_activity_value", const_value ? "const" : "active"));
           }
       }
+  }
+  
+  void cleanupActiveDetection() {
+      //llvm::errs() << "pre cleanup: " << *newFunc << "\n";
+
+      for(auto a = newFunc->arg_begin(); a != newFunc->arg_end(); a++) {
+        a->getParent()->removeParamAttr(a->getArgNo(), "enzyme_activity_value");
+        //a->getParent()->getAttributes().removeParamAttribute(a->getContext(), a->getArgNo(), "enzyme_activity_value");
+      }
+
+      for(BasicBlock& BB: *newFunc) {
+          for(Instruction &I : BB) {
+              I.setMetadata("enzyme_activity_inst", nullptr);
+              I.setMetadata("enzyme_activity_value", nullptr);
+          }
+      }
+      //llvm::errs() << "post cleanup: " << *newFunc << "\n";
+  }
+
+  llvm::StringRef getAttribute(Argument* arg, std::string attr) {
+    return arg->getParent()->getAttributes().getParamAttr(arg->getArgNo(), attr).getValueAsString();
+  }
+  
+  bool isConstantValue(Value* val) {
+    if (auto inst = dyn_cast<Instruction>(val)) {
+        if (originalInstructions.find(inst) == originalInstructions.end()) return true;
+        if (auto md = inst->getMetadata("enzyme_activity_value")) {
+            auto res = cast<MDString>(md->getOperand(0))->getString();
+            if (res == "const") return true;
+            if (res == "active") return false;
+        }
+    }
+    
+    if (auto arg = dyn_cast<Argument>(val)) {
+        auto res = getAttribute(arg, "enzyme_activity_value");
+        if (res == "const") return true;
+        if (res == "active") return false;
+    }
+
+    if (isa<GlobalValue>(val) || isa<InlineAsm>(val)) return isConstantValueInternal(val);
+    if (isa<Constant>(val) || isa<UndefValue>(val) || isa<MetadataAsValue>(val)) return true;
+    
+    llvm::errs() << *oldFunc << "\n";
+    llvm::errs() << *newFunc << "\n";
+    llvm::errs() << *val << "\n";
+    llvm::errs() << "  unknown did status attribute\n";
+    assert(0 && "bad");
+    exit(1);
+  }
+
+  bool isConstantInstruction(Instruction* inst) {
+    if (originalInstructions.find(inst) == originalInstructions.end()) return true;
+    
+    if (MDNode* md = inst->getMetadata("enzyme_activity_inst")) {
+        auto res = cast<MDString>(md->getOperand(0))->getString();
+        if (res == "const") return true;
+        if (res == "active") return false;
+    }
+    
+    llvm::errs() << *oldFunc << "\n";
+    llvm::errs() << *newFunc << "\n";
+    llvm::errs() << *inst << "\n";
+    llvm::errs() << "  unknown did status attribute\n";
+    assert(0 && "bad");
+    exit(1);
   }
 
   void forceAugmentedReturns() {
@@ -1015,7 +1216,7 @@ endCheck:
     std::map<std::pair<Value*, int>, MDNode*> invariantGroups;
    
     //! Caching mechanism: creates a cache of type T in a scope given by ctx (where if ctx is in a loop there will be a corresponding number of slots)
-    AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, bool shouldFree, Instruction** lastScopeAllocLocation, bool allocateInternal=true) {
+    AllocaInst* createCacheForScope(BasicBlock* ctx, Type* T, StringRef name, bool shouldFree, bool allocateInternal=true) {
         assert(ctx);
         assert(T);
 
@@ -1064,9 +1265,7 @@ endCheck:
                     
                     storealloc = allocationBuilder.CreateStore(firstallocation, storeInto);
                     
-                    if (lastScopeAllocLocation && (unsigned)i == sublimits.size() - 1) {
-                        *lastScopeAllocLocation = cast<Instruction>(firstallocation);
-                    }
+                    scopeAllocs[alloc].push_back(malloccall);
 
                     //allocationBuilder.GetInsertBlock()->getInstList().push_back(cast<Instruction>(allocation));
                     //cast<Instruction>(firstallocation)->moveBefore(allocationBuilder.GetInsertBlock()->getTerminator());
@@ -1095,9 +1294,7 @@ endCheck:
 
                     Value* realloccall = nullptr;
                     allocation = build.CreatePointerCast(realloccall = build.CreateCall(realloc, idxs, name+"_realloccache"), allocation->getType());
-                    if (lastScopeAllocLocation && (unsigned)i == sublimits.size() - 1) {
-                        *lastScopeAllocLocation = cast<Instruction>(allocation);
-                    }
+                    scopeAllocs[alloc].push_back(cast<CallInst>(realloccall));
                     storealloc = build.CreateStore(allocation, storeInto);
                 }
                 
@@ -1162,7 +1359,7 @@ endCheck:
         return alloc;
     }
 
-    Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache) {
+    Value* getCachePointer(IRBuilder <>& BuilderM, BasicBlock* ctx, Value* cache, bool storeInStoresMap=false) {
         assert(ctx);
         assert(cache);
         
@@ -1174,6 +1371,8 @@ endCheck:
         assert(next->getType()->isPointerTy());
         for(int i=sublimits.size()-1; i>=0; i--) {
             next = BuilderM.CreateLoad(next);
+            if (storeInStoresMap && isa<AllocaInst>(cache)) scopeStores[cast<AllocaInst>(cache)].push_back(next);
+
             if (!next->getType()->isPointerTy()) {
                 llvm::errs() << *oldFunc << "\n";
                 llvm::errs() << *newFunc << "\n";
@@ -1228,6 +1427,7 @@ endCheck:
                   idx = BuilderM.CreateNUWAdd(idx, BuilderM.CreateNUWMul(indices[ind], limits[ind-1]));
                 }
                 next = BuilderM.CreateGEP(next, {idx});
+                if (storeInStoresMap && isa<AllocaInst>(cache)) scopeStores[cast<AllocaInst>(cache)].push_back(next);
             }
             assert(next->getType()->isPointerTy());    
         }
@@ -1251,6 +1451,12 @@ endCheck:
         if ((bsize & (bsize - 1)) == 0) {
             result->setAlignment(bsize);
         }
+        if (auto inst = dyn_cast<Instruction>(cache)) {
+            if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
+                result->setMetadata("enzyme_activity_value", md);
+            }
+            result->setMetadata("enzyme_activity_inst", MDNode::get(result->getContext(), {MDString::get(result->getContext(), "const")}));
+        }
         return result;
     }
 
@@ -1270,7 +1476,7 @@ endCheck:
                 }   
             }
         }
-        Value* loc = getCachePointer(v, ctx, cache);
+        Value* loc = getCachePointer(v, ctx, cache, /*storeinstorecache*/true);
         assert(cast<PointerType>(loc->getType())->getElementType() == val->getType());
         StoreInst* storeinst = v.CreateStore(val, loc);
         if (valueInvariantGroups.find(cache) == valueInvariantGroups.end()) {
@@ -1284,6 +1490,7 @@ endCheck:
         if ((bsize & (bsize - 1)) == 0) {
             storeinst->setAlignment(bsize);
         }
+        scopeStores[cache].push_back(storeinst);
     }
 
     void storeInstructionInCache(BasicBlock* ctx, Instruction* inst, AllocaInst* cache) {
@@ -1306,13 +1513,9 @@ endCheck:
     void ensureLookupCached(Instruction* inst, bool shouldFree=true) {
         assert(inst);
         if (scopeMap.find(inst) != scopeMap.end()) return;
-        Instruction* lastalloc = nullptr;
-        AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), shouldFree, &lastalloc);
+        AllocaInst* cache = createCacheForScope(inst->getParent(), inst->getType(), inst->getName(), shouldFree);
         assert(cache);
         scopeMap[inst] = cache;
-        if (lastalloc) {
-            lastScopeAlloc[inst] = lastalloc;
-        }
         storeInstructionInCache(inst->getParent(), inst, cache);
     }
 

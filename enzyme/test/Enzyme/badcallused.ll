@@ -43,13 +43,13 @@ attributes #1 = { noinline nounwind uwtable }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffef(double* nocapture %x, double* %"x'")
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { { {}, double }, i1 } @augmented_subf(double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = extractvalue { { {}, double }, i1 } %0, 0
-; CHECK-NEXT:   %2 = extractvalue { { {}, double }, i1 } %0, 1
-; CHECK-NEXT:   %sel = select i1 %2, double 2.000000e+00, double 3.000000e+00
+; CHECK-NEXT:   %[[augf:.+]] = call { { {}, double }, i1 } @augmented_subf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[tapef:.+]] = extractvalue { { {}, double }, i1 } %[[augf]], 0
+; CHECK-NEXT:   %[[fret:.+]] = extractvalue { { {}, double }, i1 } %[[augf]], 1
+; CHECK-NEXT:   %sel = select i1 %[[fret]], double 2.000000e+00, double 3.000000e+00
 ; CHECK-NEXT:   store double %sel, double* %x, align 8
 ; CHECK-NEXT:   store double 0.000000e+00, double* %"x'", align 8
-; CHECK-NEXT:   %3 = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, double } %1)
+; CHECK-NEXT:   %[[dsubf:.+]] = call {} @diffesubf(double* nonnull %x, double* %"x'", { {}, double } %[[tapef]])
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 
@@ -75,12 +75,12 @@ attributes #1 = { noinline nounwind uwtable }
 ; CHECK-NEXT:	store double %2, double* %3
 ; CHECK-NEXT:   %mul = fmul fast double %2, 2.000000e+00
 ; CHECK-NEXT:   store double %mul, double* %x, align 8
-; CHECK-NEXT:   %4 = call { {}, i1 } @augmented_metasubf(double* %x, double* %"x'")
-; CHECK-NEXT:   %5 = extractvalue { {}, i1 } %4, 1
+; CHECK-NEXT:   %[[augmetasubf:.+]] = call { {}, i1 } @augmented_metasubf(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[metasubf:.+]] = extractvalue { {}, i1 } %[[augmetasubf]], 1
 
 
-; CHECK-NEXT:   %6 = getelementptr { { {}, double }, i1 }, { { {}, double }, i1 }* %0, i32 0, i32 1
-; CHECK-NEXT:   store i1 %5, i1* %6
+; CHECK-NEXT:   %[[retp:.+]] = getelementptr { { {}, double }, i1 }, { { {}, double }, i1 }* %0, i32 0, i32 1
+; CHECK-NEXT:   store i1 %[[metasubf]], i1* %[[retp:.+]]
 ; CHECK-NEXT:   %[[toret:.+]] = load { { {}, double }, i1 }, { { {}, double }, i1 }* %0
 ; CHECK-NEXT:   ret { { {}, double }, i1 } %[[toret]]
 ; CHECK-NEXT: }

@@ -68,6 +68,10 @@ static inline bool hasMetadata(const llvm::GlobalObject* O, llvm::StringRef kind
     return O->getMetadata(kind) != nullptr;
 }
 
+static inline bool hasMetadata(const llvm::Instruction* O, llvm::StringRef kind) {
+    return O->getMetadata(kind) != nullptr;
+}
+
 enum class ReturnType {
     ArgsWithReturn,
     ArgsWithTwoReturns,
@@ -96,11 +100,16 @@ static inline std::string tostring(DIFFE_TYPE t) {
     }
 }
 
+#include <set>
+
 //note this doesn't handle recursive types!
-static inline DIFFE_TYPE whatType(llvm::Type* arg) {
+static inline DIFFE_TYPE whatType(llvm::Type* arg, std::set<llvm::Type*> seen = {}) {
   assert(arg);
+  if (seen.find(arg) != seen.end()) return DIFFE_TYPE::CONSTANT;
+  seen.insert(arg);
+
   if (arg->isPointerTy()) {
-    switch(whatType(llvm::cast<llvm::PointerType>(arg)->getElementType())) {
+    switch(whatType(llvm::cast<llvm::PointerType>(arg)->getElementType(), seen)) {
       case DIFFE_TYPE::OUT_DIFF:
         return DIFFE_TYPE::DUP_ARG;
       case DIFFE_TYPE::CONSTANT:
@@ -113,14 +122,14 @@ static inline DIFFE_TYPE whatType(llvm::Type* arg) {
     assert(0 && "Cannot handle type0");
     return DIFFE_TYPE::CONSTANT;
   } else if (arg->isArrayTy()) {
-    return whatType(llvm::cast<llvm::ArrayType>(arg)->getElementType());
+    return whatType(llvm::cast<llvm::ArrayType>(arg)->getElementType(), seen);
   } else if (arg->isStructTy()) {
     auto st = llvm::cast<llvm::StructType>(arg);
     if (st->getNumElements() == 0) return DIFFE_TYPE::CONSTANT;
 
     auto ty = DIFFE_TYPE::CONSTANT;
     for(unsigned i=0; i<st->getNumElements(); i++) {
-      switch(whatType(st->getElementType(i))) {
+      switch(whatType(st->getElementType(i), seen)) {
         case DIFFE_TYPE::OUT_DIFF:
               switch(ty) {
                 case DIFFE_TYPE::OUT_DIFF:

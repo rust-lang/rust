@@ -124,15 +124,15 @@ attributes #8 = { noreturn nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{ double } @differeadwriteread_helper(double* nocapture %x, double* %"x'", double %differeturn) local_unnamed_addr #2 {
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { { double }, double } @augmented_f_read(double* %x, double* %"x'")
-; CHECK-NEXT:   %1 = extractvalue { { double }, double } %0, 0
-; CHECK-NEXT:   %2 = extractvalue { { double }, double } %0, 1
-; CHECK-NEXT:   %3 = call { { double } } @augmented_g_write(double* %x, double* %"x'", double %2)
-; CHECK-NEXT:   %4 = extractvalue { { double } } %3, 0
+; CHECK-NEXT:   %[[augf:.+]] = call { { double }, double } @augmented_f_read(double* %x, double* %"x'")
+; CHECK-NEXT:   %[[tapef:.+]] = extractvalue { { double }, double } %[[augf]], 0
+; CHECK-NEXT:   %[[retf:.+]] = extractvalue { { double }, double } %[[augf]], 1
+; CHECK-NEXT:   %[[gret:.+]] = call { { double } } @augmented_g_write(double* %x, double* %"x'", double %[[retf]])
+; CHECK-NEXT:   %[[gtape:.+]] = extractvalue { { double } } %[[gret]], 0
 ; CHECK-NEXT:   %[[dhret:.+]] = call { double } @diffeh_read(double* %x, double* %"x'", double %differeturn)
-; CHECK-NEXT:   %[[dg:.+]] = call { double } @diffeg_write(double* %x, double* %"x'", double %2, { double } %4)
+; CHECK-NEXT:   %[[dg:.+]] = call { double } @diffeg_write(double* %x, double* %"x'", double %[[retf]], { double } %[[gtape]])
 ; CHECK-NEXT:   %[[dgret:.+]] = extractvalue { double } %[[dg]], 0
-; CHECK-NEXT:   %[[nil2:.+]] = call {} @diffef_read(double* %x, double* %"x'", double %[[dgret]], { double } %1)
+; CHECK-NEXT:   %[[nil2:.+]] = call {} @diffef_read(double* %x, double* %"x'", double %[[dgret]], { double } %[[tapef]])
 ; CHECK-NEXT:   ret { double } %[[dhret]]
 ; CHECK-NEXT: }
 

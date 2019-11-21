@@ -63,10 +63,10 @@ attributes #3 = { nounwind }
 
 ; CHECK: define internal {{(dso_local )?}}{} @diffememcpyaugment_ptr(double** nocapture %dst, double** %"dst'", double** nocapture readonly %src, double** %"src'", i64 %num)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %0 = call { {} } @augmented_submemcpy_ptr(double** %dst, double** %"dst'", double** %src, double** %"src'", i64 %num)
+; CHECK-NEXT:   %[[augmemcpy:.+]] = call { {} } @augmented_submemcpy_ptr(double** %dst, double** %"dst'", double** %src, double** %"src'", i64 %num)
 ; CHECK-NEXT:   store double* null, double** %"dst'"
 ; CHECK-NEXT:   store double* null, double** %dst
-; CHECK-NEXT:   %1 = call {} @diffesubmemcpy_ptr(double** %dst, double** %"dst'", double** %src, double** %"src'", i64 %num, {} undef)
+; CHECK-NEXT:   %[[dmemcpy:.+]] = call {} @diffesubmemcpy_ptr(double** %dst, double** %"dst'", double** %src, double** %"src'", i64 %num, {} undef)
 ; CHECK-NEXT:   ret {} undef
 ; CHECK-NEXT: }
 

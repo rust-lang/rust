@@ -678,7 +678,7 @@ bool getContextM(BasicBlock *BB, LoopContext &loopContext, std::map<Loop*,LoopCo
             llvm::errs() << "SE could not compute loop limit.\n";
         
             //TODO should eventually ensure this is freed
-            LimitVar = gutils.createCacheForScope(loopContexts[L].preheader, CanonicalIV->getType(), "loopLimit", /*shouldfree*/false, nullptr);
+            LimitVar = gutils.createCacheForScope(loopContexts[L].preheader, CanonicalIV->getType(), "loopLimit", /*shouldfree*/false);
 
               for(auto ExitBlock: loopContexts[L].exitBlocks) {
                   IRBuilder <> B(&ExitBlock->front());
@@ -911,7 +911,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
       assert(branch->getCondition()->getType() == T);
 
-      AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/true, /*lastAlloca*/nullptr);
+      AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/true);
       IRBuilder<> pbuilder(equivalentTerminator);
       pbuilder.setFastMathFlags(getFast());
       storeInstructionInCache(ctx, pbuilder, branch->getCondition(), cache);
@@ -950,7 +950,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
       IRBuilder<> pbuilder(equivalentTerminator);
       pbuilder.setFastMathFlags(getFast());
 
-      AllocaInst* cache = createCacheForScope(ctx, si->getCondition()->getType(), "", /*shouldFree*/true, /*lastAlloca*/nullptr);
+      AllocaInst* cache = createCacheForScope(ctx, si->getCondition()->getType(), "", /*shouldFree*/true);
       Value* condition = si->getCondition();
       storeInstructionInCache(ctx, pbuilder, condition, cache);
 
@@ -996,7 +996,7 @@ void GradientUtils::branchToCorrespondingTarget(BasicBlock* ctx, IRBuilder <>& B
 
   nofast:;
 
-  AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/true, /*lastAlloca*/nullptr);
+  AllocaInst* cache = createCacheForScope(ctx, T, "", /*shouldFree*/true);
   std::vector<BasicBlock*> targets;
   {
   size_t idx = 0;
