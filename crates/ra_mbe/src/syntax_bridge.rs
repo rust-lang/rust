@@ -5,6 +5,7 @@ use ra_syntax::{
     ast, AstNode, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxNode,
     SyntaxTreeBuilder, TextRange, TextUnit, T,
 };
+use std::iter::successors;
 use tt::buffer::{Cursor, TokenBuffer};
 
 use crate::subtree_source::SubtreeTokenSource;
@@ -160,6 +161,31 @@ impl Convertor {
 
         let first_child = tt.first_child_or_token()?;
         let last_child = tt.last_child_or_token()?;
+
+        // ignore trivial first_child and last_child
+        let first_child = successors(Some(first_child), |it| {
+            if it.kind().is_trivia() {
+                it.next_sibling_or_token()
+            } else {
+                None
+            }
+        })
+        .last()
+        .unwrap();
+        if first_child.kind().is_trivia() {
+            return Some(tt::Subtree { token_trees: vec![], delimiter: tt::Delimiter::None });
+        }
+
+        let last_child = successors(Some(last_child), |it| {
+            if it.kind().is_trivia() {
+                it.prev_sibling_or_token()
+            } else {
+                None
+            }
+        })
+        .last()
+        .unwrap();
+
         let (delimiter, skip_first) = match (first_child.kind(), last_child.kind()) {
             (T!['('], T![')']) => (tt::Delimiter::Parenthesis, true),
             (T!['{'], T!['}']) => (tt::Delimiter::Brace, true),
@@ -363,6 +389,7 @@ mod tests {
     use super::*;
     use crate::tests::{create_rules, expand};
     use ra_parser::TokenSource;
+    use ra_syntax::algo::{insert_children, InsertPosition};
 
     #[test]
     fn convert_tt_token_source() {
@@ -422,5 +449,46 @@ mod tests {
         );
         let expansion = expand(&rules, "stmts!();");
         assert!(token_tree_to_syntax_node(&expansion, FragmentKind::Expr).is_err());
+    }
+
+    #[test]
+    fn test_token_tree_last_child_is_white_space() {
+        let source_file = ast::SourceFile::parse("f!({} );").ok().unwrap();
+        let macro_call = source_file.syntax().descendants().find_map(ast::MacroCall::cast).unwrap();
+        let token_tree = macro_call.token_tree().unwrap();
+
+        // Token Tree now is :
+        // TokenTree
+        // - T!['(']
+        // - TokenTree
+        //   - T!['{']
+        //   - T!['}']
+        // - WHITE_SPACE
+        // - T![')']
+
+        let rbrace =
+            token_tree.syntax().descendants_with_tokens().find(|it| it.kind() == T!['}']).unwrap();
+        let space = token_tree
+            .syntax()
+            .descendants_with_tokens()
+            .find(|it| it.kind() == SyntaxKind::WHITESPACE)
+            .unwrap();
+
+        // reorder th white space, such that the white is inside the inner token-tree.
+        let token_tree = insert_children(
+            &rbrace.parent().unwrap(),
+            InsertPosition::Last,
+            &mut std::iter::once(space),
+        );
+
+        // Token Tree now is :
+        // TokenTree
+        // - T!['{']
+        // - T!['}']
+        // - WHITE_SPACE
+        let token_tree = ast::TokenTree::cast(token_tree).unwrap();
+        let tt = ast_to_token_tree(&token_tree).unwrap().0;
+
+        assert_eq!(tt.delimiter, tt::Delimiter::Brace);
     }
 }
