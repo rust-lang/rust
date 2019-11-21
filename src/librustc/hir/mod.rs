@@ -1457,7 +1457,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Expr, 72);
+static_assert_size!(Expr, 64);
 
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1656,7 +1656,7 @@ pub enum ExprKind {
     Ret(Option<P<Expr>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    InlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
+    InlineAsm(P<InlineAsm>),
 
     /// A struct or struct-like variant literal expression.
     ///
@@ -2063,7 +2063,7 @@ pub struct InlineAsmOutput {
 // NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
 // it needs to be `Clone` and use plain `Vec<T>` instead of `HirVec<T>`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct InlineAsm {
+pub struct InlineAsmInner {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
     pub outputs: Vec<InlineAsmOutput>,
@@ -2072,6 +2072,13 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
+}
+
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub struct InlineAsm {
+    pub inner: InlineAsmInner,
+    pub outputs_exprs: HirVec<Expr>,
+    pub inputs_exprs: HirVec<Expr>,
 }
 
 /// Represents a parameter in a function header.
