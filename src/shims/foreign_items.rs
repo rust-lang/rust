@@ -496,7 +496,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             }
 
             // math functions
-            "cbrtf" | "coshf" | "sinhf" | "tanf" => {
+            "cbrtf" | "coshf" | "sinhf" | "tanf" | "acosf" | "asinf" | "atanf" => {
                 // FIXME: Using host floats.
                 let f = f32::from_bits(this.read_scalar(args[0])?.to_u32()?);
                 let f = match link_name {
@@ -504,6 +504,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "coshf" => f.cosh(),
                     "sinhf" => f.sinh(),
                     "tanf" => f.tan(),
+                    "acosf" => f.acos(),
+                    "asinf" => f.asin(),
+                    "atanf" => f.atan(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u32(f.to_bits()), dest)?;
@@ -521,7 +524,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.write_scalar(Scalar::from_u32(n.to_bits()), dest)?;
             }
 
-            "cbrt" | "cosh" | "sinh" | "tan" => {
+            "cbrt" | "cosh" | "sinh" | "tan" | "acos" | "asin" | "atan" => {
                 // FIXME: Using host floats.
                 let f = f64::from_bits(this.read_scalar(args[0])?.to_u64()?);
                 let f = match link_name {
@@ -529,6 +532,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     "cosh" => f.cosh(),
                     "sinh" => f.sinh(),
                     "tan" => f.tan(),
+                    "acos" => f.acos(),
+                    "asin" => f.asin(),
+                    "atan" => f.atan(),
                     _ => bug!(),
                 };
                 this.write_scalar(Scalar::from_u64(f.to_bits()), dest)?;
