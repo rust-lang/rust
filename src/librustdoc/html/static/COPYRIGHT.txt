@@ -23,8 +23,7 @@ included, and carry their own copyright notices and license terms:
     Copyright (c) Nicolas Gallagher and Jonathan Neal.
     Licensed under the MIT license (see LICENSE-MIT.txt).
 
-* Source Code Pro (SourceCodePro-Regular.ttf.woff,
-    SourceCodePro-Semibold.ttf.woff, SourceCodePro-It.ttf.woff):
+* Source Code Pro (SourceCodePro-Regular.woff, SourceCodePro-Semibold.woff):
 
     Copyright 2010, 2012 Adobe Systems Incorporated (http://www.adobe.com/),
     with Reserved Font Name 'Source'. All Rights Reserved. Source is a trademark
