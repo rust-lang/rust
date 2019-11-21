@@ -2,45 +2,33 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:6:27
    |
 LL |   opt.map(|arg| takes_ref(arg));
-   |       ---                 ^^^ expected &Foo, found struct `Foo`
+   |       ---                 ^^^ expected `&Foo`, found struct `Foo`
    |       |
    |       help: consider using `as_ref` instead: `as_ref().map`
-   |
-   = note: expected type `&Foo`
-              found type `Foo`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:8:37
    |
 LL |   opt.and_then(|arg| Some(takes_ref(arg)));
-   |       --------                      ^^^ expected &Foo, found struct `Foo`
+   |       --------                      ^^^ expected `&Foo`, found struct `Foo`
    |       |
    |       help: consider using `as_ref` instead: `as_ref().and_then`
-   |
-   = note: expected type `&Foo`
-              found type `Foo`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:11:27
    |
 LL |   opt.map(|arg| takes_ref(arg));
-   |       ---                 ^^^ expected &Foo, found struct `Foo`
+   |       ---                 ^^^ expected `&Foo`, found struct `Foo`
    |       |
    |       help: consider using `as_ref` instead: `as_ref().map`
-   |
-   = note: expected type `&Foo`
-              found type `Foo`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:13:35
    |
 LL |   opt.and_then(|arg| Ok(takes_ref(arg)));
-   |       --------                    ^^^ expected &Foo, found struct `Foo`
+   |       --------                    ^^^ expected `&Foo`, found struct `Foo`
    |       |
    |       help: consider using `as_ref` instead: `as_ref().and_then`
-   |
-   = note: expected type `&Foo`
-              found type `Foo`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:16:27
@@ -51,8 +39,8 @@ LL |   let y: Option<&usize> = x;
    |                           expected enum `std::option::Option`, found reference
    |                           help: you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`: `x.as_ref()`
    |
-   = note: expected type `std::option::Option<&usize>`
-              found type `&std::option::Option<usize>`
+   = note:   expected enum `std::option::Option<&usize>`
+           found reference `&std::option::Option<usize>`
 
 error[E0308]: mismatched types
   --> $DIR/as-ref.rs:19:35
@@ -60,8 +48,8 @@ error[E0308]: mismatched types
 LL |   let y: Result<&usize, &usize> = x;
    |                                   ^ expected enum `std::result::Result`, found reference
    |
-   = note: expected type `std::result::Result<&usize, &usize>`
-              found type `&std::result::Result<usize, usize>`
+   = note:   expected enum `std::result::Result<&usize, &usize>`
+           found reference `&std::result::Result<usize, usize>`
 help: you can convert from `&Result<T, E>` to `Result<&T, &E>` using `.as_ref()`
    |
 LL |   let y: Result<&usize, &usize> = x.as_ref();
@@ -73,8 +61,8 @@ error[E0308]: mismatched types
 LL |   let y: Result<&usize, usize> = x;
    |                                  ^ expected enum `std::result::Result`, found reference
    |
-   = note: expected type `std::result::Result<&usize, usize>`
-              found type `&std::result::Result<usize, usize>`
+   = note:   expected enum `std::result::Result<&usize, usize>`
+           found reference `&std::result::Result<usize, usize>`
 
 error: aborting due to 7 previous errors
 

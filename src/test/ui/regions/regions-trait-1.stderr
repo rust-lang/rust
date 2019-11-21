@@ -4,8 +4,8 @@ error[E0308]: method not compatible with trait
 LL |     fn get_ctxt(&self) -> &'a Ctxt {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `fn(&HasCtxt<'a>) -> &Ctxt`
-              found type `fn(&HasCtxt<'a>) -> &'a Ctxt`
+   = note: expected fn pointer `fn(&HasCtxt<'a>) -> &Ctxt`
+              found fn pointer `fn(&HasCtxt<'a>) -> &'a Ctxt`
 note: the lifetime `'a` as defined on the impl at 12:6...
   --> $DIR/regions-trait-1.rs:12:6
    |

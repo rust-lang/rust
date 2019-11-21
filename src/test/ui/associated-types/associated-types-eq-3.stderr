@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let _: Bar = x.boo();
    |                  ^^^^^^^ expected struct `Bar`, found associated type
    |
-   = note: expected type `Bar`
-              found type `<I as Foo>::A`
+   = note:       expected struct `Bar`
+           found associated type `<I as Foo>::A`
    = note: consider constraining the associated type `<I as Foo>::A` to `Bar`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
@@ -16,19 +16,14 @@ LL | fn foo1<I: Foo<A=Bar>>(x: I) {
    |    ----        ----- required by this bound in `foo1`
 ...
 LL |     foo1(a);
-   |     ^^^^ expected struct `Bar`, found usize
-   |
-   = note: expected type `Bar`
-              found type `usize`
+   |     ^^^^ expected struct `Bar`, found `usize`
 
 error[E0271]: type mismatch resolving `<isize as Foo>::A == Bar`
   --> $DIR/associated-types-eq-3.rs:41:9
    |
 LL |     baz(&a);
-   |         ^^ expected struct `Bar`, found usize
+   |         ^^ expected struct `Bar`, found `usize`
    |
-   = note: expected type `Bar`
-              found type `usize`
    = note: required for the cast to the object type `dyn Foo<A = Bar>`
 
 error: aborting due to 3 previous errors

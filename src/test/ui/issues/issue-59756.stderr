@@ -7,8 +7,8 @@ LL |     foo()?
    |     |    help: try removing this `?`
    |     expected enum `std::result::Result`, found struct `A`
    |
-   = note: expected type `std::result::Result<A, B>`
-              found type `A`
+   = note: expected enum `std::result::Result<A, B>`
+            found struct `A`
 
 error: aborting due to previous error
 

@@ -4,11 +4,8 @@ error[E0308]: mismatched types
 LL |     let _tis_an_instants_play: String = "'Tis a fond Ambush—";
    |                                         ^^^^^^^^^^^^^^^^^^^^^
    |                                         |
-   |                                         expected struct `std::string::String`, found reference
+   |                                         expected struct `std::string::String`, found `&str`
    |                                         help: try using a conversion method: `"'Tis a fond Ambush—".to_string()`
-   |
-   = note: expected type `std::string::String`
-              found type `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/conversion-methods.rs:6:40
@@ -16,11 +13,8 @@ error[E0308]: mismatched types
 LL |     let _just_to_make_bliss: PathBuf = Path::new("/ern/her/own/surprise");
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                                        |
-   |                                        expected struct `std::path::PathBuf`, found reference
+   |                                        expected struct `std::path::PathBuf`, found `&std::path::Path`
    |                                        help: try using a conversion method: `Path::new("/ern/her/own/surprise").to_path_buf()`
-   |
-   = note: expected type `std::path::PathBuf`
-              found type `&std::path::Path`
 
 error[E0308]: mismatched types
   --> $DIR/conversion-methods.rs:9:40
@@ -30,9 +24,6 @@ LL |     let _but_should_the_play: String = 2; // Perhaps surprisingly, we sugge
    |                                        |
    |                                        expected struct `std::string::String`, found integer
    |                                        help: try using a conversion method: `2.to_string()`
-   |
-   = note: expected type `std::string::String`
-              found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/conversion-methods.rs:12:47
@@ -40,11 +31,11 @@ error[E0308]: mismatched types
 LL |     let _prove_piercing_earnest: Vec<usize> = &[1, 2, 3];
    |                                               ^^^^^^^^^^
    |                                               |
-   |                                               expected struct `std::vec::Vec`, found reference
+   |                                               expected struct `std::vec::Vec`, found `&[{integer}; 3]`
    |                                               help: try using a conversion method: `(&[1, 2, 3]).to_vec()`
    |
-   = note: expected type `std::vec::Vec<usize>`
-              found type `&[{integer}; 3]`
+   = note: expected struct `std::vec::Vec<usize>`
+           found reference `&[{integer}; 3]`
 
 error: aborting due to 4 previous errors
 

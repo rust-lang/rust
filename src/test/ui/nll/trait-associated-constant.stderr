@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     const AC: Option<&'c str> = None;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `std::option::Option<&'b str>`
-              found type `std::option::Option<&'c str>`
+   = note: expected enum `std::option::Option<&'b str>`
+              found enum `std::option::Option<&'c str>`
 note: the lifetime `'c` as defined on the impl at 20:18...
   --> $DIR/trait-associated-constant.rs:20:18
    |

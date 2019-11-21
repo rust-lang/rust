@@ -10,8 +10,8 @@ LL |   fn b<F:Clone,G>(&self, _x: G) -> G { panic!() }
    |        |       found type parameter
    |        expected type parameter
    |
-   = note: expected type `fn(&E, F) -> F`
-              found type `fn(&E, G) -> G`
+   = note: expected fn pointer `fn(&E, F) -> F`
+              found fn pointer `fn(&E, G) -> G`
    = note: a type parameter was expected, but a different one was found; you might be missing a type parameter or trait bound
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

@@ -6,8 +6,8 @@ LL |     match S(Either::Left(5)) {
 LL |         Either::Right(_) => {}
    |         ^^^^^^^^^^^^^^^^ expected struct `S`, found enum `Either`
    |
-   = note: expected type `S`
-              found type `Either<_, _>`
+   = note: expected struct `S`
+                found enum `Either<_, _>`
 
 error: aborting due to previous error
 

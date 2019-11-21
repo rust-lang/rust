@@ -2,12 +2,9 @@ error[E0308]: if and else have incompatible types
   --> $DIR/str-array-assignment.rs:3:37
    |
 LL |   let t = if true { s[..2] } else { s };
-   |                     ------          ^ expected str, found &str
+   |                     ------          ^ expected `str`, found `&str`
    |                     |
    |                     expected because of this
-   |
-   = note: expected type `str`
-              found type `&str`
 
 error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:5:27
@@ -15,11 +12,8 @@ error[E0308]: mismatched types
 LL |   let u: &str = if true { s[..2] } else { s };
    |                           ^^^^^^
    |                           |
-   |                           expected &str, found str
+   |                           expected `&str`, found `str`
    |                           help: consider borrowing here: `&s[..2]`
-   |
-   = note: expected type `&str`
-              found type `str`
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
   --> $DIR/str-array-assignment.rs:7:7
@@ -40,11 +34,8 @@ error[E0308]: mismatched types
 LL |   let w: &str = s[..2];
    |                 ^^^^^^
    |                 |
-   |                 expected &str, found str
+   |                 expected `&str`, found `str`
    |                 help: consider borrowing here: `&s[..2]`
-   |
-   = note: expected type `&str`
-              found type `str`
 
 error: aborting due to 4 previous errors
 

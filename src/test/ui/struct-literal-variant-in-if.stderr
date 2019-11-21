@@ -56,20 +56,14 @@ error[E0308]: mismatched types
 LL |     if x == E::V { field } {}
    |     ---------------^^^^^--- help: consider using a semicolon here
    |     |              |
-   |     |              expected (), found bool
+   |     |              expected `()`, found `bool`
    |     expected this to be `()`
-   |
-   = note: expected type `()`
-              found type `bool`
 
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:21:20
    |
 LL |     let y: usize = ();
-   |                    ^^ expected usize, found ()
-   |
-   = note: expected type `usize`
-              found type `()`
+   |                    ^^ expected `usize`, found `()`
 
 error: aborting due to 7 previous errors
 

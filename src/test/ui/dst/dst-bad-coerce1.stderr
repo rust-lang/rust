@@ -2,10 +2,10 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce1.rs:16:29
    |
 LL |     let f3: &Fat<[usize]> = f2;
-   |                             ^^ expected slice, found array of 3 elements
+   |                             ^^ expected slice `[usize]`, found array `[isize; 3]`
    |
-   = note: expected type `&Fat<[usize]>`
-              found type `&Fat<[isize; 3]>`
+   = note: expected reference `&Fat<[usize]>`
+              found reference `&Fat<[isize; 3]>`
 
 error[E0277]: the trait bound `Foo: Bar` is not satisfied
   --> $DIR/dst-bad-coerce1.rs:22:29
@@ -19,10 +19,10 @@ error[E0308]: mismatched types
   --> $DIR/dst-bad-coerce1.rs:28:27
    |
 LL |     let f3: &([usize],) = f2;
-   |                           ^^ expected slice, found array of 3 elements
+   |                           ^^ expected slice `[usize]`, found array `[isize; 3]`
    |
-   = note: expected type `&([usize],)`
-              found type `&([isize; 3],)`
+   = note: expected reference `&([usize],)`
+              found reference `&([isize; 3],)`
 
 error[E0277]: the trait bound `Foo: Bar` is not satisfied
   --> $DIR/dst-bad-coerce1.rs:34:27

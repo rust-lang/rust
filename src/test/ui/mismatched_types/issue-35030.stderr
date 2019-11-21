@@ -5,10 +5,10 @@ LL | impl<bool> Parser<bool> for bool {
    |      ---- this type parameter
 LL |     fn parse(text: &str) -> Option<bool> {
 LL |         Some(true)
-   |              ^^^^ expected type parameter `bool`, found bool
+   |              ^^^^ expected type parameter `bool`, found `bool`
    |
-   = note: expected type `bool` (type parameter `bool`)
-              found type `bool` (bool)
+   = note: expected type parameter `bool` (type parameter `bool`)
+                        found type `bool` (`bool`)
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

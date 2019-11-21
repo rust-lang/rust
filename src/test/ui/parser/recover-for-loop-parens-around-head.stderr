@@ -17,10 +17,7 @@ error[E0308]: mismatched types
   --> $DIR/recover-for-loop-parens-around-head.rs:13:38
    |
 LL |         const RECOVERY_WITNESS: () = 0;
-   |                                      ^ expected (), found integer
-   |
-   = note: expected type `()`
-              found type `{integer}`
+   |                                      ^ expected `()`, found integer
 
 error: aborting due to 3 previous errors
 

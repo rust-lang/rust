@@ -55,10 +55,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-34264.rs:8:13
    |
 LL |     bar("", "");
-   |             ^^ expected usize, found reference
-   |
-   = note: expected type `usize`
-              found type `&'static str`
+   |             ^^ expected `usize`, found `&str`
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
   --> $DIR/issue-34264.rs:10:5

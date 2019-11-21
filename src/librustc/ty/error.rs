@@ -64,8 +64,11 @@ pub enum UnconstrainedNumeric {
 impl<'tcx> fmt::Display for TypeError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::TypeError::*;
-        fn report_maybe_different(f: &mut fmt::Formatter<'_>,
-                                  expected: &str, found: &str) -> fmt::Result {
+        fn report_maybe_different(
+            f: &mut fmt::Formatter<'_>,
+            expected: &str,
+            found: &str,
+        ) -> fmt::Result {
             // A naive approach to making sure that we're not reporting silly errors such as:
             // (expected closure, found closure).
             if expected == found {
@@ -183,46 +186,77 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
     }
 }
 
+impl<'tcx> TypeError<'tcx> {
+    pub fn must_include_note(&self) -> bool {
+        use self::TypeError::*;
+        match self {
+            CyclicTy(_) |
+            UnsafetyMismatch(_) |
+            Mismatch |
+            AbiMismatch(_) |
+            FixedArraySize(_) |
+            Sorts(_) |
+            IntMismatch(_) |
+            FloatMismatch(_) |
+            VariadicMismatch(_) => false,
+
+            Mutability |
+            TupleSize(_) |
+            ArgCount |
+            RegionsDoesNotOutlive(..) |
+            RegionsInsufficientlyPolymorphic(..) |
+            RegionsOverlyPolymorphic(..) |
+            RegionsPlaceholderMismatch |
+            Traits(_) |
+            ProjectionMismatched(_) |
+            ProjectionBoundsLength(_) |
+            ExistentialMismatch(_) |
+            ConstMismatch(_) |
+            IntrinsicCast |
+            ObjectUnsafeCoercion(_) => true,
+        }
+    }
+}
+
 impl<'tcx> ty::TyS<'tcx> {
     pub fn sort_string(&self, tcx: TyCtxt<'_>) -> Cow<'static, str> {
         match self.kind {
             ty::Bool | ty::Char | ty::Int(_) |
-            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => self.to_string().into(),
-            ty::Tuple(ref tys) if tys.is_empty() => self.to_string().into(),
+            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => format!("`{}`", self).into(),
+            ty::Tuple(ref tys) if tys.is_empty() => format!("`{}`", self).into(),
 
             ty::Adt(def, _) => format!("{} `{}`", def.descr(), tcx.def_path_str(def.did)).into(),
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
-            ty::Array(_, n) => {
+            ty::Array(t, n) => {
                 let n = tcx.lift(&n).unwrap();
                 match n.try_eval_usize(tcx, ty::ParamEnv::empty()) {
-                    Some(n) => {
-                        format!("array of {} element{}", n, pluralize!(n)).into()
-                    }
+                    _ if t.is_simple_ty() => format!("array `{}`", self).into(),
+                    Some(n) => format!("array of {} element{} ", n, pluralize!(n)).into(),
                     None => "array".into(),
                 }
             }
+            ty::Slice(ty) if ty.is_simple_ty() => format!("slice `{}`", self).into(),
             ty::Slice(_) => "slice".into(),
             ty::RawPtr(_) => "*-ptr".into(),
-            ty::Ref(region, ty, mutbl) => {
+            ty::Ref(_, ty, mutbl) => {
                 let tymut = ty::TypeAndMut { ty, mutbl };
                 let tymut_string = tymut.to_string();
-                if tymut_string == "_" ||         //unknown type name,
-                   tymut_string.len() > 10 ||     //name longer than saying "reference",
-                   region.to_string() != "'_"     //... or a complex type
-                {
-                    format!("{}reference", match mutbl {
-                        hir::Mutability::Mutable => "mutable ",
-                        _ => ""
-                    }).into()
-                } else {
-                    format!("&{}", tymut_string).into()
+                if tymut_string != "_" && (
+                    ty.is_simple_text() || tymut_string.len() < "mutable reference".len()
+                ) {
+                    format!("`&{}`", tymut_string).into()
+                } else { // Unknown type name, it's long or has type arguments
+                    match mutbl {
+                        hir::Mutability::Mutable => "mutable reference",
+                        _ => "reference",
+                    }.into()
                 }
             }
             ty::FnDef(..) => "fn item".into(),
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) => {
                 if let Some(principal) = inner.principal() {
-                    format!("trait {}", tcx.def_path_str(principal.def_id())).into()
+                    format!("trait `{}`", tcx.def_path_str(principal.def_id())).into()
                 } else {
                     "trait".into()
                 }
@@ -244,6 +278,36 @@ impl<'tcx> ty::TyS<'tcx> {
             ty::Param(p) => format!("type parameter `{}`", p).into(),
             ty::Opaque(..) => "opaque type".into(),
             ty::Error => "type error".into(),
+        }
+    }
+
+    pub fn prefix_string(&self) -> Cow<'static, str> {
+        match self.kind {
+            ty::Infer(_) | ty::Error | ty::Bool | ty::Char | ty::Int(_) |
+            ty::Uint(_) | ty::Float(_) | ty::Str | ty::Never => "type".into(),
+            ty::Tuple(ref tys) if tys.is_empty() => "unit type".into(),
+            ty::Adt(def, _) => def.descr().into(),
+            ty::Foreign(_) => "extern type".into(),
+            ty::Array(..) => "array".into(),
+            ty::Slice(_) => "slice".into(),
+            ty::RawPtr(_) => "raw pointer".into(),
+            ty::Ref(.., mutbl) => match mutbl {
+                hir::Mutability::Mutable => "mutable reference",
+                _ => "reference"
+            }.into(),
+            ty::FnDef(..) => "fn item".into(),
+            ty::FnPtr(_) => "fn pointer".into(),
+            ty::Dynamic(..) => "trait object".into(),
+            ty::Closure(..) => "closure".into(),
+            ty::Generator(..) => "generator".into(),
+            ty::GeneratorWitness(..) => "generator witness".into(),
+            ty::Tuple(..) => "tuple".into(),
+            ty::Placeholder(..) => "higher-ranked type".into(),
+            ty::Bound(..) => "bound type variable".into(),
+            ty::Projection(_) => "associated type".into(),
+            ty::UnnormalizedProjection(_) => "associated type".into(),
+            ty::Param(_) => "type parameter".into(),
+            ty::Opaque(..) => "opaque type".into(),
         }
     }
 }

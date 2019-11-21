@@ -285,8 +285,8 @@ LL |         let _: Z = Z::Fn;
    |                    expected enum `m::n::Z`, found fn item
    |                    help: use parentheses to instantiate this tuple variant: `Z::Fn(_)`
    |
-   = note: expected type `m::n::Z`
-              found type `fn(u8) -> m::n::Z {m::n::Z::Fn}`
+   = note: expected enum `m::n::Z`
+           found fn item `fn(u8) -> m::n::Z {m::n::Z::Fn}`
 
 error[E0618]: expected function, found enum variant `Z::Unit`
   --> $DIR/privacy-enum-ctor.rs:31:17
@@ -316,8 +316,8 @@ LL |     let _: E = m::E::Fn;
    |                expected enum `m::E`, found fn item
    |                help: use parentheses to instantiate this tuple variant: `m::E::Fn(_)`
    |
-   = note: expected type `m::E`
-              found type `fn(u8) -> m::E {m::E::Fn}`
+   = note: expected enum `m::E`
+           found fn item `fn(u8) -> m::E {m::E::Fn}`
 
 error[E0618]: expected function, found enum variant `m::E::Unit`
   --> $DIR/privacy-enum-ctor.rs:47:16
@@ -347,8 +347,8 @@ LL |     let _: E = E::Fn;
    |                expected enum `m::E`, found fn item
    |                help: use parentheses to instantiate this tuple variant: `E::Fn(_)`
    |
-   = note: expected type `m::E`
-              found type `fn(u8) -> m::E {m::E::Fn}`
+   = note: expected enum `m::E`
+           found fn item `fn(u8) -> m::E {m::E::Fn}`
 
 error[E0618]: expected function, found enum variant `E::Unit`
   --> $DIR/privacy-enum-ctor.rs:55:16

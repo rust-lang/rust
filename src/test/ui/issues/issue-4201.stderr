@@ -5,15 +5,11 @@ LL |       } else if false {
    |  ____________^
 LL | |
 LL | |
-LL | |
-LL | |
 LL | |         1
    | |         - found here
 LL | |     };
-   | |_____^ expected (), found integer
+   | |_____^ expected `()`, found integer
    |
-   = note: expected type `()`
-              found type `{integer}`
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type
 

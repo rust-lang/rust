@@ -14,15 +14,12 @@ error[E0308]: mismatched types
   --> $DIR/issue-43162.rs:1:13
    |
 LL | fn foo() -> bool {
-   |    ---      ^^^^ expected bool, found ()
+   |    ---      ^^^^ expected `bool`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |
 LL |     break true;
    |               - help: consider removing this semicolon
-   |
-   = note: expected type `bool`
-              found type `()`
 
 error: aborting due to 3 previous errors
 

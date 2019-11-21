@@ -24,8 +24,8 @@ error[E0308]: mismatched types
 LL |     closure_expecting_bound(|x: &'x u32| {
    |                                 ^^^^^^^ lifetime mismatch
    |
-   = note: expected type `&u32`
-              found type `&'x u32`
+   = note: expected reference `&u32`
+              found reference `&'x u32`
 note: the anonymous lifetime #2 defined on the body at 37:29...
   --> $DIR/expect-region-supply-region.rs:37:29
    |
@@ -50,8 +50,8 @@ error[E0308]: mismatched types
 LL |     closure_expecting_bound(|x: &'x u32| {
    |                                 ^^^^^^^ lifetime mismatch
    |
-   = note: expected type `&u32`
-              found type `&'x u32`
+   = note: expected reference `&u32`
+              found reference `&'x u32`
 note: the lifetime `'x` as defined on the function body at 32:30...
   --> $DIR/expect-region-supply-region.rs:32:30
    |

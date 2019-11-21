@@ -20,19 +20,13 @@ error[E0308]: mismatched types
   --> $DIR/recover-missing-semi.rs:2:20
    |
 LL |     let _: usize = ()
-   |                    ^^ expected usize, found ()
-   |
-   = note: expected type `usize`
-              found type `()`
+   |                    ^^ expected `usize`, found `()`
 
 error[E0308]: mismatched types
   --> $DIR/recover-missing-semi.rs:9:20
    |
 LL |     let _: usize = ()
-   |                    ^^ expected usize, found ()
-   |
-   = note: expected type `usize`
-              found type `()`
+   |                    ^^ expected `usize`, found `()`
 
 error: aborting due to 4 previous errors
 

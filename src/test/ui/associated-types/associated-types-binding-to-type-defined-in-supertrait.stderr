@@ -6,9 +6,6 @@ LL | fn blue_car<C:Car<Color=Blue>>(c: C) {
 ...
 LL | fn b() { blue_car(ModelT); }
    |          ^^^^^^^^ expected struct `Blue`, found struct `Black`
-   |
-   = note: expected type `Blue`
-              found type `Black`
 
 error[E0271]: type mismatch resolving `<ModelU as Vehicle>::Color == Black`
   --> $DIR/associated-types-binding-to-type-defined-in-supertrait.rs:32:10
@@ -18,9 +15,6 @@ LL | fn black_car<C:Car<Color=Black>>(c: C) {
 ...
 LL | fn c() { black_car(ModelU); }
    |          ^^^^^^^^^ expected struct `Black`, found struct `Blue`
-   |
-   = note: expected type `Black`
-              found type `Blue`
 
 error: aborting due to 2 previous errors
 

@@ -5,9 +5,9 @@ LL |     missing_discourses()?
    |     ^^^^^^^^^^^^^^^^^^^^-
    |     |                   |
    |     |                   help: try removing this `?`
-   |     expected enum `std::result::Result`, found isize
+   |     expected enum `std::result::Result`, found `isize`
    |
-   = note: expected type `std::result::Result<isize, ()>`
+   = note: expected enum `std::result::Result<isize, ()>`
               found type `isize`
 
 error: aborting due to previous error

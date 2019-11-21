@@ -2,37 +2,37 @@ error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:7:17
    |
 LL |     let ref x = arr: &[u8];
-   |                 ^^^ expected slice, found array of 3 elements
+   |                 ^^^ expected slice `[u8]`, found array `[u8; 3]`
    |
-   = note: expected type `&[u8]`
-              found type `&[u8; 3]`
+   = note: expected reference `&[u8]`
+              found reference `&[u8; 3]`
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:8:21
    |
 LL |     let ref mut x = arr: &[u8];
-   |                     ^^^ expected slice, found array of 3 elements
+   |                     ^^^ expected slice `[u8]`, found array `[u8; 3]`
    |
-   = note: expected type `&[u8]`
-              found type `&[u8; 3]`
+   = note: expected reference `&[u8]`
+              found reference `&[u8; 3]`
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:9:11
    |
 LL |     match arr: &[u8] {
-   |           ^^^ expected slice, found array of 3 elements
+   |           ^^^ expected slice `[u8]`, found array `[u8; 3]`
    |
-   = note: expected type `&[u8]`
-              found type `&[u8; 3]`
+   = note: expected reference `&[u8]`
+              found reference `&[u8; 3]`
 
 error[E0308]: mismatched types
   --> $DIR/type-ascription-soundness.rs:12:17
    |
 LL |     let _len = (arr: &[u8]).len();
-   |                 ^^^ expected slice, found array of 3 elements
+   |                 ^^^ expected slice `[u8]`, found array `[u8; 3]`
    |
-   = note: expected type `&[u8]`
-              found type `&[u8; 3]`
+   = note: expected reference `&[u8]`
+              found reference `&[u8; 3]`
 
 error: aborting due to 4 previous errors
 

@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::IterMut<'_, &'new (), _>`
-              found type `std::collections::btree_map::IterMut<'_, &'static (), _>`
+   = note: expected struct `std::collections::btree_map::IterMut<'_, &'new (), _>`
+              found struct `std::collections::btree_map::IterMut<'_, &'static (), _>`
 note: the lifetime `'new` as defined on the function body at 3:21...
   --> $DIR/variance-btree-invariant-types.rs:3:21
    |
@@ -19,8 +19,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::IterMut<'_, _, &'new ()>`
-              found type `std::collections::btree_map::IterMut<'_, _, &'static ()>`
+   = note: expected struct `std::collections::btree_map::IterMut<'_, _, &'new ()>`
+              found struct `std::collections::btree_map::IterMut<'_, _, &'static ()>`
 note: the lifetime `'new` as defined on the function body at 6:21...
   --> $DIR/variance-btree-invariant-types.rs:6:21
    |
@@ -34,8 +34,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::IterMut<'_, &'static (), _>`
-              found type `std::collections::btree_map::IterMut<'_, &'new (), _>`
+   = note: expected struct `std::collections::btree_map::IterMut<'_, &'static (), _>`
+              found struct `std::collections::btree_map::IterMut<'_, &'new (), _>`
 note: the lifetime `'new` as defined on the function body at 9:24...
   --> $DIR/variance-btree-invariant-types.rs:9:24
    |
@@ -49,8 +49,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::IterMut<'_, _, &'static ()>`
-              found type `std::collections::btree_map::IterMut<'_, _, &'new ()>`
+   = note: expected struct `std::collections::btree_map::IterMut<'_, _, &'static ()>`
+              found struct `std::collections::btree_map::IterMut<'_, _, &'new ()>`
 note: the lifetime `'new` as defined on the function body at 12:24...
   --> $DIR/variance-btree-invariant-types.rs:12:24
    |
@@ -64,8 +64,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
-              found type `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
 note: the lifetime `'new` as defined on the function body at 16:20...
   --> $DIR/variance-btree-invariant-types.rs:16:20
    |
@@ -79,8 +79,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
-              found type `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
 note: the lifetime `'new` as defined on the function body at 20:20...
   --> $DIR/variance-btree-invariant-types.rs:20:20
    |
@@ -94,8 +94,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
-              found type `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, &'static (), _>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, &'new (), _>`
 note: the lifetime `'new` as defined on the function body at 24:23...
   --> $DIR/variance-btree-invariant-types.rs:24:23
    |
@@ -109,8 +109,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
-              found type `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
+   = note: expected struct `std::collections::btree_map::OccupiedEntry<'_, _, &'static ()>`
+              found struct `std::collections::btree_map::OccupiedEntry<'_, _, &'new ()>`
 note: the lifetime `'new` as defined on the function body at 28:23...
   --> $DIR/variance-btree-invariant-types.rs:28:23
    |
@@ -124,8 +124,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
-              found type `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
+   = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
+              found struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
 note: the lifetime `'new` as defined on the function body at 33:20...
   --> $DIR/variance-btree-invariant-types.rs:33:20
    |
@@ -139,8 +139,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
-              found type `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
+   = note: expected struct `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
+              found struct `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
 note: the lifetime `'new` as defined on the function body at 37:20...
   --> $DIR/variance-btree-invariant-types.rs:37:20
    |
@@ -154,8 +154,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
-              found type `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
+   = note: expected struct `std::collections::btree_map::VacantEntry<'_, &'static (), _>`
+              found struct `std::collections::btree_map::VacantEntry<'_, &'new (), _>`
 note: the lifetime `'new` as defined on the function body at 41:23...
   --> $DIR/variance-btree-invariant-types.rs:41:23
    |
@@ -169,8 +169,8 @@ error[E0308]: mismatched types
 LL |     v
    |     ^ lifetime mismatch
    |
-   = note: expected type `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
-              found type `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
+   = note: expected struct `std::collections::btree_map::VacantEntry<'_, _, &'static ()>`
+              found struct `std::collections::btree_map::VacantEntry<'_, _, &'new ()>`
 note: the lifetime `'new` as defined on the function body at 45:23...
   --> $DIR/variance-btree-invariant-types.rs:45:23
    |

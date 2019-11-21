@@ -8,8 +8,8 @@ LL | / check! { free_x_vs_free_y: (fn(&'x u32),
 LL | |                             fn(&'y u32)) }
    | |__________________________________________- in this macro invocation
    |
-   = note: expected type `std::option::Option<fn(&'x u32)>`
-              found type `std::option::Option<fn(&'y u32)>`
+   = note: expected enum `std::option::Option<fn(&'x u32)>`
+              found enum `std::option::Option<fn(&'y u32)>`
 note: the lifetime `'x` as defined on the function body at 38:22...
   --> $DIR/hr-subtype.rs:38:22
    |

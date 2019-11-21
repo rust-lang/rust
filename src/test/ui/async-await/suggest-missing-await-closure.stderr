@@ -4,11 +4,11 @@ error[E0308]: mismatched types
 LL |         take_u32(x)
    |                  ^
    |                  |
-   |                  expected u32, found opaque type
+   |                  expected `u32`, found opaque type
    |                  help: consider using `.await` here: `x.await`
    |
-   = note: expected type `u32`
-              found type `impl std::future::Future`
+   = note:     expected type `u32`
+           found opaque type `impl std::future::Future`
 
 error: aborting due to previous error
 

@@ -209,7 +209,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     //   LL | impl Bar for Foo {
                     //      | ---------------- in this `impl` item
                     //   LL |     type Ok = ();
-                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //      |     ^^^^^^^^^^^^^ expected `u32`, found `()`
                     //      |
                     //      = note: expected type `u32`
                     //                 found type `()`
@@ -228,7 +228,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     //   LL | impl Bar for Foo {
                     //      | ---------------- in this `impl` item
                     //   LL |     type Ok = ();
-                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //      |     ^^^^^^^^^^^^^ expected `u32`, found `()`
                     //   ...
                     //   LL | impl Bar2 for Foo2 {
                     //      | ---------------- in this `impl` item

@@ -4,11 +4,8 @@ error[E0308]: mismatched types
 LL |     (*p)(())
    |          ^^
    |          |
-   |          expected &mut (), found ()
+   |          expected `&mut ()`, found `()`
    |          help: consider mutably borrowing here: `&mut ()`
-   |
-   = note: expected type `&mut ()`
-              found type `()`
 
 error: aborting due to previous error
 

@@ -9,12 +9,10 @@ LL | |         E::D => 4,
 LL | |         E::E => unimplemented!(""),
    | |                 ------------------ this and all prior arms are found to be of type `{integer}`
 LL | |         E::F => "",
-   | |                 ^^ expected integer, found reference
+   | |                 ^^ expected integer, found `&str`
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `{integer}`
-              found type `&'static str`
    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: aborting due to previous error

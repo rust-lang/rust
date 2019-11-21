@@ -8,6 +8,6 @@ impl Trait for Foo {}
 pub fn main() {
     let x: Box<dyn Trait> = Box::new(Foo);
     let _y: &dyn Trait = x; //~ ERROR E0308
-                            //~| expected type `&dyn Trait`
-                            //~| found type `std::boxed::Box<dyn Trait>`
+                            //~| expected reference `&dyn Trait`
+                            //~| found struct `std::boxed::Box<dyn Trait>`
 }

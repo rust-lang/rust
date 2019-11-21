@@ -2,46 +2,40 @@ error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:16:5
    |
 LL |     fn mul(self, s: &f64) -> Vec1 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected f64, found &f64
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `f64`, found `&f64`
    |
-   = note: expected type `fn(Vec1, f64) -> Vec1`
-              found type `fn(Vec1, &f64) -> Vec1`
+   = note: expected fn pointer `fn(Vec1, f64) -> Vec1`
+              found fn pointer `fn(Vec1, &f64) -> Vec1`
 
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:33:5
    |
 LL |     fn mul(self, s: f64) -> Vec2 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found f64
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found `f64`
    |
-   = note: expected type `fn(Vec2, Vec2) -> f64`
-              found type `fn(Vec2, f64) -> Vec2`
+   = note: expected fn pointer `fn(Vec2, Vec2) -> f64`
+              found fn pointer `fn(Vec2, f64) -> Vec2`
 
 error[E0053]: method `mul` has an incompatible type for trait
   --> $DIR/wrong-mul-method-signature.rs:52:5
    |
 LL |     fn mul(self, s: f64) -> f64 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected i32, found f64
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `f64`
    |
-   = note: expected type `fn(Vec3, f64) -> i32`
-              found type `fn(Vec3, f64) -> f64`
+   = note: expected fn pointer `fn(Vec3, f64) -> i32`
+              found fn pointer `fn(Vec3, f64) -> f64`
 
 error[E0308]: mismatched types
   --> $DIR/wrong-mul-method-signature.rs:63:45
    |
 LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
    |                                             ^^^ expected struct `Vec2`, found floating-point number
-   |
-   = note: expected type `Vec2`
-              found type `{float}`
 
 error[E0308]: mismatched types
   --> $DIR/wrong-mul-method-signature.rs:63:19
    |
 LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
-   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found f64
-   |
-   = note: expected type `Vec2`
-              found type `f64`
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found `f64`
 
 error: aborting due to 5 previous errors
 

@@ -4,10 +4,7 @@ error[E0308]: mismatched types
 LL | ...-> usize {
    |       ----- expected `usize` because of return type
 LL | ...                                                                                                                                                                                 ()
-   |                                                                                                                                                                                     ^^ expected usize, found ()
-   |
-   = note: expected type `usize`
-              found type `()`
+   |                                                                                                                                                                                     ^^ expected `usize`, found `()`
 
 error: aborting due to previous error
 

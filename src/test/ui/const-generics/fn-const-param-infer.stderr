@@ -12,17 +12,17 @@ error[E0308]: mismatched types
 LL |     let _: Checked<not_one> = Checked::<not_two>;
    |                               ^^^^^^^^^^^^^^^^^^ expected `not_one`, found `not_two`
    |
-   = note: expected type `Checked<not_one>`
-              found type `Checked<not_two>`
+   = note: expected struct `Checked<not_one>`
+              found struct `Checked<not_two>`
 
 error[E0308]: mismatched types
   --> $DIR/fn-const-param-infer.rs:20:24
    |
 LL |     let _ = Checked::<{generic_arg::<u32>}>;
-   |                        ^^^^^^^^^^^^^^^^^^ expected usize, found u32
+   |                        ^^^^^^^^^^^^^^^^^^ expected `usize`, found `u32`
    |
-   = note: expected type `fn(usize) -> bool`
-              found type `fn(u32) -> bool {generic_arg::<u32>}`
+   = note: expected fn pointer `fn(usize) -> bool`
+                 found fn item `fn(u32) -> bool {generic_arg::<u32>}`
 
 error[E0282]: type annotations needed
   --> $DIR/fn-const-param-infer.rs:22:23
@@ -36,8 +36,8 @@ error[E0308]: mismatched types
 LL |     let _: Checked<{generic::<u32>}> = Checked::<{generic::<u16>}>;
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `generic::<u32>`, found `generic::<u16>`
    |
-   = note: expected type `Checked<generic::<u32>>`
-              found type `Checked<generic::<u16>>`
+   = note: expected struct `Checked<generic::<u32>>`
+              found struct `Checked<generic::<u16>>`
 
 error: aborting due to 4 previous errors
 

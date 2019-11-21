@@ -17,13 +17,11 @@ fn main() {
         //~^ ERROR mismatched types
         //~| Perhaps two different versions of crate `crate_a1`
         //~| expected struct `main::a::Foo`
-        //~| expected type `main::a::Foo`
-        //~| found type `main::a::Foo`
         a::try_bar(bar2);
         //~^ ERROR mismatched types
         //~| Perhaps two different versions of crate `crate_a1`
         //~| expected trait `main::a::Bar`
-        //~| expected type `std::boxed::Box<(dyn main::a::Bar + 'static)>`
-        //~| found type `std::boxed::Box<dyn main::a::Bar>`
+        //~| expected struct `std::boxed::Box<(dyn main::a::Bar + 'static)>`
+        //~| found struct `std::boxed::Box<dyn main::a::Bar>`
     }
 }

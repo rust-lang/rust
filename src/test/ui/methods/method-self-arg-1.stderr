@@ -4,20 +4,17 @@ error[E0308]: mismatched types
 LL |     Foo::bar(x);
    |              ^
    |              |
-   |              expected &Foo, found struct `Foo`
+   |              expected `&Foo`, found struct `Foo`
    |              help: consider borrowing here: `&x`
-   |
-   = note: expected type `&Foo`
-              found type `Foo`
 
 error[E0308]: mismatched types
-  --> $DIR/method-self-arg-1.rs:15:14
+  --> $DIR/method-self-arg-1.rs:13:14
    |
 LL |     Foo::bar(&42);
    |              ^^^ expected struct `Foo`, found integer
    |
-   = note: expected type `&Foo`
-              found type `&{integer}`
+   = note: expected reference `&Foo`
+              found reference `&{integer}`
 
 error: aborting due to 2 previous errors
 

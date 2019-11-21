@@ -10,7 +10,7 @@ error[E0308]: mismatched types
   --> $DIR/method-ambig-one-trait-unknown-int-type.rs:33:20
    |
 LL |     let y: usize = x.foo();
-   |                    ^^^^^^^ expected usize, found isize
+   |                    ^^^^^^^ expected `usize`, found `isize`
    |
 help: you can convert an `isize` to `usize` and panic if the converted value wouldn't fit
    |

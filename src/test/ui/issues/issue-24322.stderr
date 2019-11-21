@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     let x: &fn(&B) -> u32 = &B::func;
    |                             ^^^^^^^^ expected fn pointer, found fn item
    |
-   = note: expected type `&for<'r> fn(&'r B) -> u32`
-              found type `&for<'r> fn(&'r B) -> u32 {B::func}`
+   = note: expected reference `&for<'r> fn(&'r B) -> u32`
+              found reference `&for<'r> fn(&'r B) -> u32 {B::func}`
 
 error: aborting due to previous error
 

@@ -2,19 +2,13 @@ error[E0308]: mismatched types
   --> $DIR/nested-item-spans.rs:9:22
    |
 LL |         let x: u32 = "x";
-   |                      ^^^ expected u32, found reference
-   |
-   = note: expected type `u32`
-              found type `&'static str`
+   |                      ^^^ expected `u32`, found `&str`
 
 error[E0308]: mismatched types
   --> $DIR/nested-item-spans.rs:18:22
    |
 LL |         let x: u32 = "x";
-   |                      ^^^ expected u32, found reference
-   |
-   = note: expected type `u32`
-              found type `&'static str`
+   |                      ^^^ expected `u32`, found `&str`
 
 error: aborting due to 2 previous errors
 

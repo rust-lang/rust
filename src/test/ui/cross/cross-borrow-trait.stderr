@@ -4,11 +4,11 @@ error[E0308]: mismatched types
 LL |     let _y: &dyn Trait = x;
    |                          ^
    |                          |
-   |                          expected &dyn Trait, found struct `std::boxed::Box`
+   |                          expected `&dyn Trait`, found struct `std::boxed::Box`
    |                          help: consider borrowing here: `&x`
    |
-   = note: expected type `&dyn Trait`
-              found type `std::boxed::Box<dyn Trait>`
+   = note: expected reference `&dyn Trait`
+                 found struct `std::boxed::Box<dyn Trait>`
 
 error: aborting due to previous error
 

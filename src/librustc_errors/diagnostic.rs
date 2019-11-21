@@ -154,20 +154,21 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_expected_found(&mut self,
-                               label: &dyn fmt::Display,
-                               expected: DiagnosticStyledString,
-                               found: DiagnosticStyledString)
-                               -> &mut Self
-    {
-        self.note_expected_found_extra(label, expected, found, &"", &"")
+    pub fn note_expected_found(
+        &mut self,
+        expected_label: &dyn fmt::Display,
+        expected: DiagnosticStyledString,
+        found_label: &dyn fmt::Display,
+        found: DiagnosticStyledString,
+    ) -> &mut Self {
+        self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
 
-    pub fn note_unsuccessfull_coercion(&mut self,
-                                       expected: DiagnosticStyledString,
-                                       found: DiagnosticStyledString)
-                                       -> &mut Self
-    {
+    pub fn note_unsuccessfull_coercion(
+        &mut self,
+        expected: DiagnosticStyledString,
+        found: DiagnosticStyledString,
+    ) -> &mut Self {
         let mut msg: Vec<_> =
             vec![(format!("required when trying to coerce from type `"),
                   Style::NoStyle)];
@@ -189,27 +190,38 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_expected_found_extra(&mut self,
-                                     label: &dyn fmt::Display,
-                                     expected: DiagnosticStyledString,
-                                     found: DiagnosticStyledString,
-                                     expected_extra: &dyn fmt::Display,
-                                     found_extra: &dyn fmt::Display)
-                                     -> &mut Self
-    {
-        let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
+    pub fn note_expected_found_extra(
+        &mut self,
+        expected_label: &dyn fmt::Display,
+        expected: DiagnosticStyledString,
+        found_label: &dyn fmt::Display,
+        found: DiagnosticStyledString,
+        expected_extra: &dyn fmt::Display,
+        found_extra: &dyn fmt::Display,
+    ) -> &mut Self {
+        let expected_label = format!("expected {}", expected_label);
+        let found_label = format!("found {}", found_label);
+        let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
+            (expected_label.len() - found_label.len(), 0)
+        } else {
+            (0, found_label.len() - expected_label.len())
+        };
+        let mut msg: Vec<_> = vec![(
+            format!("{}{} `", " ".repeat(expected_padding), expected_label),
+            Style::NoStyle,
+        )];
         msg.extend(expected.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
+            .map(|x| match *x {
+                StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+            }));
         msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
-        msg.push((format!("   found {} `", label), Style::NoStyle));
+        msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
         msg.extend(found.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
+            .map(|x| match *x {
+                StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+            }));
         msg.push((format!("`{}", found_extra), Style::NoStyle));
 
         // For now, just attach these as notes

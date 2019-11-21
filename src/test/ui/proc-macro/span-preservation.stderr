@@ -2,10 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:11:20
    |
 LL |     let x: usize = "hello";
-   |                    ^^^^^^^ expected usize, found reference
-   |
-   = note: expected type `usize`
-              found type `&'static str`
+   |                    ^^^^^^^ expected `usize`, found `&str`
 
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:17:29
@@ -14,13 +11,13 @@ LL | fn b(x: Option<isize>) -> usize {
    |                           ----- expected `usize` because of return type
 LL |     match x {
 LL |         Some(x) => { return x },
-   |                             ^ expected usize, found isize
+   |                             ^ expected `usize`, found `isize`
 
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:33:22
    |
 LL |     let x = Foo { a: 10isize };
-   |                      ^^^^^^^ expected usize, found isize
+   |                      ^^^^^^^ expected `usize`, found `isize`
 
 error[E0560]: struct `c::Foo` has no field named `b`
   --> $DIR/span-preservation.rs:34:26
@@ -36,10 +33,7 @@ error[E0308]: mismatched types
 LL | extern fn bar() {
    |                 - possibly return type missing here?
 LL |     0
-   |     ^ expected (), found integer
-   |
-   = note: expected type `()`
-              found type `{integer}`
+   |     ^ expected `()`, found integer
 
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:44:5
@@ -47,10 +41,7 @@ error[E0308]: mismatched types
 LL | extern "C" fn baz() {
    |                     - possibly return type missing here?
 LL |     0
-   |     ^ expected (), found integer
-   |
-   = note: expected type `()`
-              found type `{integer}`
+   |     ^ expected `()`, found integer
 
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:49:5
@@ -58,10 +49,7 @@ error[E0308]: mismatched types
 LL | extern "Rust" fn rust_abi() {
    |                             - possibly return type missing here?
 LL |     0
-   |     ^ expected (), found integer
-   |
-   = note: expected type `()`
-              found type `{integer}`
+   |     ^ expected `()`, found integer
 
 error[E0308]: mismatched types
   --> $DIR/span-preservation.rs:54:5
@@ -69,10 +57,7 @@ error[E0308]: mismatched types
 LL | extern "\x43" fn c_abi_escaped() {
    |                                  - possibly return type missing here?
 LL |     0
-   |     ^ expected (), found integer
-   |
-   = note: expected type `()`
-              found type `{integer}`
+   |     ^ expected `()`, found integer
 
 error: aborting due to 8 previous errors
 

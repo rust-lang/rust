@@ -4,10 +4,7 @@ error[E0308]: mismatched types
 LL |       let x: u32 = (
    |  __________________^
 LL | |     );
-   | |_____^ expected u32, found ()
-   |
-   = note: expected type `u32`
-              found type `()`
+   | |_____^ expected `u32`, found `()`
 
 error: aborting due to previous error
 

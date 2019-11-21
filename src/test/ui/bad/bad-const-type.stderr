@@ -6,9 +6,6 @@ LL | static i: String = 10;
    |                    |
    |                    expected struct `std::string::String`, found integer
    |                    help: try using a conversion method: `10.to_string()`
-   |
-   = note: expected type `std::string::String`
-              found type `{integer}`
 
 error: aborting due to previous error
 

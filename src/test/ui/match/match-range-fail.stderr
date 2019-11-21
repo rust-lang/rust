@@ -28,10 +28,7 @@ error[E0308]: mismatched types
   --> $DIR/match-range-fail.rs:18:9
    |
 LL |         'c' ..= 100 => { }
-   |         ^^^^^^^^^^^ expected integer, found char
-   |
-   = note: expected type `{integer}`
-              found type `char`
+   |         ^^^^^^^^^^^ expected integer, found `char`
 
 error: aborting due to 4 previous errors
 

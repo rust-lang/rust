@@ -10,8 +10,6 @@ fn main() {
         E::B(
           Tau{t: x},
           //~^ ERROR mismatched types
-          //~| expected type `main::R`
-          //~| found type `main::Tau`
           //~| expected enum `main::R`, found struct `main::Tau`
           _) => x,
     };

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:4:17
    |
 LL |     foo(return, 22, 44);
-   |                 ^^ expected !, found integer
+   |                 ^^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -11,7 +11,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:16:13
    |
 LL |     foo(22, 44, return);
-   |             ^^ expected !, found integer
+   |             ^^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -20,7 +20,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:24:12
    |
 LL |     foo(a, b, c); // ... and hence a reference to `a` is expected to diverge.
-   |            ^ expected !, found integer
+   |            ^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -29,7 +29,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:34:12
    |
 LL |     foo(a, b, c);
-   |            ^ expected !, found integer
+   |            ^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -38,7 +38,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:43:12
    |
 LL |     foo(a, b, c);
-   |            ^ expected !, found integer
+   |            ^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -47,16 +47,16 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:48:21
    |
 LL |     let x: [!; 2] = [return, 22];
-   |                     ^^^^^^^^^^^^ expected !, found integer
+   |                     ^^^^^^^^^^^^ expected `!`, found integer
    |
-   = note: expected type `[!; 2]`
-              found type `[{integer}; 2]`
+   = note: expected array `[!; 2]`
+              found array `[{integer}; 2]`
 
 error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:53:22
    |
 LL |     let x: [!; 2] = [22, return];
-   |                      ^^ expected !, found integer
+   |                      ^^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -65,7 +65,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:58:37
    |
 LL |     let x: (usize, !, usize) = (22, 44, 66);
-   |                                     ^^ expected !, found integer
+   |                                     ^^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -74,7 +74,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:63:41
    |
 LL |     let x: (usize, !, usize) = (return, 44, 66);
-   |                                         ^^ expected !, found integer
+   |                                         ^^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`
@@ -83,7 +83,7 @@ error[E0308]: mismatched types
   --> $DIR/coerce-to-bang.rs:74:37
    |
 LL |     let x: (usize, !, usize) = (22, 44, return);
-   |                                     ^^ expected !, found integer
+   |                                     ^^ expected `!`, found integer
    |
    = note: expected type `!`
               found type `{integer}`

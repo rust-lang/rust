@@ -3,9 +3,6 @@ error[E0308]: mismatched types
    |
 LL |     let Vec3 { y: _, z: _ } = v;
    |         ^^^^^^^^^^^^^^^^^^^ expected struct `Vec2`, found struct `Vec3`
-   |
-   = note: expected type `Vec2`
-              found type `Vec3`
 
 error: aborting due to previous error
 
