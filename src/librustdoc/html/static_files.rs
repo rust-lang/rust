@@ -96,15 +96,11 @@ pub mod source_serif_pro {
 
 /// Files related to the Source Code Pro font.
 pub mod source_code_pro {
-    /// The file `SourceCodePro-Regular.ttf.woff`, the Regular variant of the Source Code Pro font.
-    pub static REGULAR: &'static [u8] = include_bytes!("static/SourceCodePro-Regular.ttf.woff");
+    /// The file `SourceCodePro-Regular.woff`, the Regular variant of the Source Code Pro font.
+    pub static REGULAR: &'static [u8] = include_bytes!("static/SourceCodePro-Regular.woff");
 
-    /// The file `SourceCodePro-Semibold.ttf.woff`, the Semibold variant of the Source Code Pro
-    /// font.
-    pub static SEMIBOLD: &'static [u8] = include_bytes!("static/SourceCodePro-Semibold.ttf.woff");
-
-    /// The file `SourceCodePro-It.ttf.woff`, the Italic variant of the Source Code Pro font.
-    pub static ITALIC: &'static [u8] = include_bytes!("static/SourceCodePro-It.ttf.woff");
+    /// The file `SourceCodePro-Semibold.woff`, the Semibold variant of the Source Code Pro font.
+    pub static SEMIBOLD: &'static [u8] = include_bytes!("static/SourceCodePro-Semibold.woff");
 
     /// The file `SourceCodePro-LICENSE.txt`, the license text of the Source Code Pro font.
     pub static LICENSE: &'static [u8] = include_bytes!("static/SourceCodePro-LICENSE.txt");
