@@ -84,24 +84,19 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
         };
 
         res += &match token.kind() {
-            k @ _
-                if (k.is_keyword() || k.is_literal() || k == IDENT)
-                    && is_next(|it| !it.is_punct(), true) =>
-            {
+            k @ _ if is_text(k) && is_next(|it| !it.is_punct(), true) => {
                 token.text().to_string() + " "
             }
             L_CURLY if is_next(|it| it != R_CURLY, true) => {
                 indent += 1;
-                format!(" {{\n{}", "  ".repeat(indent))
+                let leading_space = if is_last(|it| is_text(it), false) { " " } else { "" };
+                format!("{}{{\n{}", leading_space, "  ".repeat(indent))
             }
             R_CURLY if is_last(|it| it != L_CURLY, true) => {
                 indent = indent.checked_sub(1).unwrap_or(0);
-                format!("\n}}{}", "  ".repeat(indent))
+                format!("\n{}}}", "  ".repeat(indent))
             }
-            R_CURLY => {
-                indent = indent.checked_sub(1).unwrap_or(0);
-                format!("}}\n{}", "  ".repeat(indent))
-            }
+            R_CURLY => format!("}}\n{}", "  ".repeat(indent)),
             T![;] => format!(";\n{}", "  ".repeat(indent)),
             T![->] => " -> ".to_string(),
             T![=] => " = ".to_string(),
@@ -112,7 +107,11 @@ fn insert_whitespaces(syn: SyntaxNode) -> String {
         last = Some(token.kind());
     }
 
-    res
+    return res;
+
+    fn is_text(k: SyntaxKind) -> bool {
+        k.is_keyword() || k.is_literal() || k == IDENT
+    }
 }
 
 #[cfg(test)]
