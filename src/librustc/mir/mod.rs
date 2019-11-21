@@ -689,13 +689,6 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return place are always mutable.
     pub mutability: Mutability,
 
-    /// `Some(binding_mode)` if this corresponds to a user-declared local variable.
-    ///
-    /// This is solely used for local diagnostics when generating
-    /// warnings/errors when compiling the current crate, and
-    /// therefore it need not be visible across crates. pnkfelix
-    /// currently hypothesized we *need* to wrap this in a
-    /// `ClearCrossCrate` as long as it carries as `HirId`.
     // FIXME(matthewjasper) Don't store in this in `Body`
     pub local_info: LocalInfo<'tcx>,
 
@@ -831,6 +824,10 @@ pub struct LocalDecl<'tcx> {
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum LocalInfo<'tcx> {
     /// A user-defined local variable or function parameter
+    ///
+    /// The `BindingForm` is solely used for local diagnostics when generating
+    /// warnings/errors when compiling the current crate, and therefore it need
+    /// not be visible across crates.
     User(ClearCrossCrate<BindingForm<'tcx>>),
     /// A temporary created that references the static with the given `DefId`.
     StaticRef { def_id: DefId, is_thread_local: bool },

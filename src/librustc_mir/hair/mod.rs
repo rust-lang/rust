@@ -264,7 +264,10 @@ pub enum ExprKind<'tcx> {
         literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
     },
-    /// A literal containing the address of a `static`
+    /// A literal containing the address of a `static`.
+    ///
+    /// This is only distinguished from `Literal` so that we can register some
+    /// info for diagnostics.
     StaticRef {
         literal: &'tcx Const<'tcx>,
         def_id: DefId,
