@@ -6,15 +6,14 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::Signedness,
     path::{GenericArg, GenericArgs},
+    resolver::resolver_for_expr,
 };
 use hir_expand::name;
 
-use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 use crate::{
     db::HirDatabase,
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::{GenericParams, HasGenericParams},
-    resolve::resolver_for_expr,
     ty::{
         autoderef, method_resolution, op, CallableDef, InferTy, IntTy, Mutability, Namespace,
         Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
@@ -22,6 +21,8 @@ use crate::{
     },
     Adt, Name,
 };
+
+use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_expr(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {

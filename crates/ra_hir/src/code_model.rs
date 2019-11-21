@@ -11,6 +11,7 @@ use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     nameres::per_ns::PerNs,
+    resolver::{HasResolver, TypeNs},
     traits::TraitData,
     type_ref::{Mutability, TypeRef},
     ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
@@ -31,7 +32,6 @@ use crate::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
         TypeAliasId,
     },
-    resolve::{HasResolver, TypeNs},
     ty::{InferenceResult, Namespace, TraitRef},
     Either, HasSource, ImportId, Name, Source, Ty,
 };

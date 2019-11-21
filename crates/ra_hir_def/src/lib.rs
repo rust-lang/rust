@@ -19,6 +19,7 @@ pub mod expr;
 pub mod body;
 pub mod generics;
 pub mod traits;
+pub mod resolver;
 
 #[cfg(test)]
 mod test_db;

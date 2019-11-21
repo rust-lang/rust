@@ -5,11 +5,11 @@
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
+use hir_def::resolver::Resolver;
 use rustc_hash::FxHashMap;
 
 use crate::{
     db::HirDatabase,
-    resolve::Resolver,
     ty::primitive::{FloatBitness, Uncertain},
     ty::{Ty, TypeCtor},
     AssocItem, Crate, Function, ImplBlock, Module, Mutability, Name, Trait,

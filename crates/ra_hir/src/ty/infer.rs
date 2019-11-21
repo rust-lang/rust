@@ -23,6 +23,7 @@ use rustc_hash::FxHashMap;
 
 use hir_def::{
     path::known,
+    resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
     AdtId, DefWithBodyId,
 };
@@ -41,7 +42,6 @@ use crate::{
     code_model::TypeAlias,
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
-    resolve::{HasResolver, Resolver, TypeNs},
     ty::infer::diagnostics::InferenceDiagnostic,
     Adt, AssocItem, ConstData, DefWithBody, FloatTy, FnData, Function, HasBody, IntTy, Path,
     StructField, Trait, VariantDef,

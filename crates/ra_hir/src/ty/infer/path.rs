@@ -1,15 +1,18 @@
 //! Path expression resolution.
 
-use hir_def::path::PathSegment;
+use hir_def::{
+    path::PathSegment,
+    resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
+};
 
-use super::{ExprOrPatId, InferenceContext, TraitRef};
 use crate::{
     db::HirDatabase,
     generics::HasGenericParams,
-    resolve::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     ty::{method_resolution, Namespace, Substs, Ty, TypableDef, TypeWalk},
     AssocItem, Container, Function, Name, Path,
 };
+
+use super::{ExprOrPatId, InferenceContext, TraitRef};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn infer_path(

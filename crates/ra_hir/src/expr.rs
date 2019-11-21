@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::path::known;
+use hir_def::{path::known, resolver::HasResolver};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::ast;
 use ra_syntax::AstPtr;
@@ -11,7 +11,6 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::HirDatabase,
     diagnostics::{MissingFields, MissingOkInTailExpr},
-    resolve::HasResolver,
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
     Adt, Function, Name, Path,
 };

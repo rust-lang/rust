@@ -11,6 +11,7 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType},
     path::{GenericArg, PathSegment},
+    resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     GenericDefId,
 };
@@ -23,7 +24,6 @@ use crate::{
     db::HirDatabase,
     generics::HasGenericParams,
     generics::{GenericDef, WherePredicate},
-    resolve::{HasResolver, Resolver, TypeNs},
     ty::{
         primitive::{FloatTy, IntTy, Uncertain},
         Adt,

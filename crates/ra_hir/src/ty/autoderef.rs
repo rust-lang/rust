@@ -5,11 +5,12 @@
 
 use std::iter::successors;
 
+use hir_def::resolver::Resolver;
 use hir_expand::name;
 use log::{info, warn};
 
 use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
-use crate::{db::HirDatabase, generics::HasGenericParams, Resolver};
+use crate::{db::HirDatabase, generics::HasGenericParams};
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 

@@ -4,18 +4,18 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
+use hir_def::resolver::Resolver;
 use rustc_hash::FxHashMap;
-
 use test_utils::tested_by;
 
-use super::{InferTy, InferenceContext, TypeVarValue};
 use crate::{
     db::HirDatabase,
     lang_item::LangItemTarget,
-    resolve::Resolver,
     ty::{autoderef, Substs, Ty, TypeCtor, TypeWalk},
     Adt, Mutability,
 };
+
+use super::{InferTy, InferenceContext, TypeVarValue};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// Unify two types, but may coerce the first one to the second one

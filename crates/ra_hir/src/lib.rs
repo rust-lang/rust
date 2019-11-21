@@ -38,7 +38,6 @@ mod impl_block;
 mod expr;
 mod lang_item;
 pub mod generics;
-mod resolve;
 pub mod diagnostics;
 mod util;
 
@@ -51,8 +50,6 @@ pub mod from_source;
 mod test_db;
 #[cfg(test)]
 mod marks;
-
-use crate::resolve::Resolver;
 
 pub use crate::{
     code_model::{

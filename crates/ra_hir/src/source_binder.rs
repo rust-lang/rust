@@ -10,6 +10,7 @@ use std::sync::Arc;
 use hir_def::{
     expr::{ExprId, PatId},
     path::known,
+    resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
     DefWithBodyId,
 };
 use hir_expand::{name::AsName, AstId, MacroCallId, MacroCallLoc, MacroFileKind, Source};
@@ -24,11 +25,10 @@ use crate::{
     db::HirDatabase,
     expr::{BodySourceMap, ExprScopes, ScopeId},
     ids::LocationCtx,
-    resolve::{self, resolver_for_scope, HasResolver, TypeNs, ValueNs},
     ty::method_resolution::{self, implements_trait},
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
-    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, Resolver, ScopeDef,
-    Static, Struct, Trait, Ty, TypeAlias,
+    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, ScopeDef, Static,
+    Struct, Trait, Ty, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
@@ -317,14 +317,14 @@ impl SourceAnalyzer {
     pub fn process_all_names(&self, db: &impl HirDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {
         self.resolver.process_all_names(db, &mut |name, def| {
             let def = match def {
-                resolve::ScopeDef::PerNs(it) => it.into(),
-                resolve::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
-                resolve::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
-                resolve::ScopeDef::GenericParam(idx) => {
+                resolver::ScopeDef::PerNs(it) => it.into(),
+                resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
+                resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
+                resolver::ScopeDef::GenericParam(idx) => {
                     let parent = self.resolver.generic_def().unwrap().into();
                     ScopeDef::GenericParam(GenericParam { parent, idx })
                 }
-                resolve::ScopeDef::Local(pat_id) => {
+                resolver::ScopeDef::Local(pat_id) => {
                     let parent = self.resolver.body_owner().unwrap().into();
                     ScopeDef::Local(Local { parent, pat_id })
                 }
