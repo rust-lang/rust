@@ -37,6 +37,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
+use rustc_macros::HashStable_Generic;
 
 use std::fmt;
 
@@ -722,9 +723,8 @@ pub enum PatKind {
     Mac(Mac),
 }
 
-#[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug, Copy,
-)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
+         RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub enum Mutability {
     Mutable,
     Immutable,
@@ -1328,7 +1328,7 @@ pub struct QSelf {
 }
 
 /// A capture clause used in closures and `async` blocks.
-#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum CaptureBy {
     /// `move |x| y + x`.
     Value,
@@ -1339,7 +1339,7 @@ pub enum CaptureBy {
 /// The movability of a generator / closure literal:
 /// whether a generator contains self-references, causing it to be `!Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, Debug, Copy)]
+         RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -1400,7 +1400,7 @@ impl MacroDef {
 }
 
 // Clippy uses Hash and PartialEq
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Copy, Hash, PartialEq, HashStable_Generic)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`.
     Cooked,
@@ -1451,7 +1451,7 @@ impl StrLit {
 
 // Clippy uses Hash and PartialEq
 /// Type of the integer literal based on provided suffix.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
 pub enum LitIntType {
     /// e.g. `42_i32`.
     Signed(IntTy),
@@ -1462,7 +1462,7 @@ pub enum LitIntType {
 }
 
 /// Type of the float literal based on provided suffix.
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
 pub enum LitFloatType {
     /// A float literal with a suffix (`1f32` or `1E10f32`).
     Suffixed(FloatTy),
@@ -1474,7 +1474,7 @@ pub enum LitFloatType {
 ///
 /// E.g., `"foo"`, `42`, `12.34`, or `bool`.
 // Clippy uses Hash and PartialEq
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Hash, PartialEq, HashStable_Generic)]
 pub enum LitKind {
     /// A string literal (`"foo"`).
     Str(Symbol, StrStyle),
@@ -1609,7 +1609,8 @@ pub enum ImplItemKind {
     Macro(Mac),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic,
+         RustcEncodable, RustcDecodable, Debug)]
 pub enum FloatTy {
     F32,
     F64,
@@ -1638,7 +1639,8 @@ impl FloatTy {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic,
+         RustcEncodable, RustcDecodable, Debug)]
 pub enum IntTy {
     Isize,
     I8,
@@ -1690,7 +1692,8 @@ impl IntTy {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Copy, Debug)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic,
+         RustcEncodable, RustcDecodable, Copy, Debug)]
 pub enum UintTy {
     Usize,
     U8,
@@ -1863,7 +1866,7 @@ pub enum TraitObjectSyntax {
 /// Inline assembly dialect.
 ///
 /// E.g., `"intel"` as in `asm!("mov eax, 2" : "={eax}"(result) : : : "intel")`.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub enum AsmDialect {
     Att,
     Intel,
@@ -2021,14 +2024,14 @@ impl FnDecl {
 }
 
 /// Is the trait definition an auto trait?
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum IsAuto {
     Yes,
     No,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, Debug)]
+         RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum Unsafety {
     Unsafe,
     Normal,
@@ -2085,7 +2088,7 @@ impl IsAsync {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum Constness {
     Const,
     NotConst,
@@ -2093,13 +2096,13 @@ pub enum Constness {
 
 /// Item defaultness.
 /// For details see the [RFC #2532](https://github.com/rust-lang/rfcs/pull/2532).
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum Defaultness {
     Default,
     Final,
 }
 
-#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum ImplPolarity {
     /// `impl Trait for Type`
     Positive,
@@ -2233,7 +2236,7 @@ impl UseTree {
 /// Distinguishes between `Attribute`s that decorate items and Attributes that
 /// are contained as statements within items. These two cases need to be
 /// distinguished for pretty-printing.
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy, HashStable_Generic)]
 pub enum AttrStyle {
     Outer,
     Inner,
@@ -2331,7 +2334,7 @@ impl PolyTraitRef {
     }
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum CrateSugar {
     /// Source is `pub(crate)`.
     PubCrate,

@@ -15,6 +15,7 @@ use syntax_pos::{self, Span, DUMMY_SP};
 use std::fmt;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
+use rustc_macros::HashStable_Generic;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BinOpToken {
@@ -53,7 +54,7 @@ impl DelimToken {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum LitKind {
     Bool, // AST only, must never appear in a `Token`
     Byte,
@@ -68,7 +69,7 @@ pub enum LitKind {
 }
 
 /// A literal token.
-#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, Copy, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Lit {
     pub kind: LitKind,
     pub symbol: Symbol,

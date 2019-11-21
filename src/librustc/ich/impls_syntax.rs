@@ -10,135 +10,12 @@ use syntax::ast;
 use syntax::feature_gate;
 use syntax::token;
 use syntax::tokenstream;
-use syntax_pos::symbol::SymbolStr;
 use syntax_pos::SourceFile;
 
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 
 use smallvec::SmallVec;
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
-
-impl<'a> HashStable<StableHashingContext<'a>> for SymbolStr {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        let str = self as &str;
-        str.hash_stable(hcx, hasher)
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for SymbolStr {
-    type KeyType = SymbolStr;
-
-    #[inline]
-    fn to_stable_hash_key(&self,
-                          _: &StableHashingContext<'a>)
-                          -> SymbolStr {
-        self.clone()
-    }
-}
-
-impl<'a> HashStable<StableHashingContext<'a>> for ast::Name {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.as_str().hash_stable(hcx, hasher);
-    }
-}
-
-impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::Name {
-    type KeyType = SymbolStr;
-
-    #[inline]
-    fn to_stable_hash_key(&self,
-                          _: &StableHashingContext<'a>)
-                          -> SymbolStr {
-        self.as_str()
-    }
-}
-
-impl_stable_hash_for!(enum ::syntax::ast::AsmDialect {
-    Att,
-    Intel
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::MacroKind {
-    Bang,
-    Attr,
-    Derive,
-});
-
-
-impl_stable_hash_for!(enum ::rustc_target::spec::abi::Abi {
-    Cdecl,
-    Stdcall,
-    Fastcall,
-    Vectorcall,
-    Thiscall,
-    Aapcs,
-    Win64,
-    SysV64,
-    PtxKernel,
-    Msp430Interrupt,
-    X86Interrupt,
-    AmdGpuKernel,
-    EfiApi,
-    Rust,
-    C,
-    System,
-    RustIntrinsic,
-    RustCall,
-    PlatformIntrinsic,
-    Unadjusted
-});
-
-impl_stable_hash_for!(struct ::syntax::attr::Deprecation { since, note });
-impl_stable_hash_for!(struct ::syntax::attr::Stability {
-    level,
-    feature,
-    rustc_depr,
-    promotable,
-    allow_const_fn_ptr,
-    const_stability
-});
-
-impl_stable_hash_for!(enum ::syntax::edition::Edition {
-    Edition2015,
-    Edition2018,
-});
-
-impl<'a> HashStable<StableHashingContext<'a>>
-for ::syntax::attr::StabilityLevel {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            ::syntax::attr::StabilityLevel::Unstable { ref reason, ref issue, ref is_soft } => {
-                reason.hash_stable(hcx, hasher);
-                issue.hash_stable(hcx, hasher);
-                is_soft.hash_stable(hcx, hasher);
-            }
-            ::syntax::attr::StabilityLevel::Stable { ref since } => {
-                since.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-impl_stable_hash_for!(struct ::syntax::attr::RustcDeprecation { since, reason, suggestion });
-
-impl_stable_hash_for!(enum ::syntax::attr::IntType {
-    SignedInt(int_ty),
-    UnsignedInt(uint_ty)
-});
-
-impl_stable_hash_for!(enum ::syntax::ast::LitIntType {
-    Signed(int_ty),
-    Unsigned(int_ty),
-    Unsuffixed
-});
-
-impl_stable_hash_for!(enum ::syntax::ast::LitFloatType {
-    Suffixed(float_ty),
-    Unsuffixed
-});
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
 impl_stable_hash_for!(struct ::syntax::ast::Lit {
     kind,
@@ -146,32 +23,9 @@ impl_stable_hash_for!(struct ::syntax::ast::Lit {
     span
 });
 
-impl_stable_hash_for!(enum ::syntax::ast::LitKind {
-    Str(value, style),
-    ByteStr(value),
-    Byte(value),
-    Char(value),
-    Int(value, lit_int_type),
-    Float(value, lit_float_type),
-    Bool(value),
-    Err(value)
-});
-
 impl_stable_hash_for_spanned!(::syntax::ast::LitKind);
 
-impl_stable_hash_for!(enum ::syntax::ast::IntTy { Isize, I8, I16, I32, I64, I128 });
-impl_stable_hash_for!(enum ::syntax::ast::UintTy { Usize, U8, U16, U32, U64, U128 });
-impl_stable_hash_for!(enum ::syntax::ast::FloatTy { F32, F64 });
-impl_stable_hash_for!(enum ::syntax::ast::Unsafety { Unsafe, Normal });
-impl_stable_hash_for!(enum ::syntax::ast::Constness { Const, NotConst });
-impl_stable_hash_for!(enum ::syntax::ast::Defaultness { Default, Final });
 impl_stable_hash_for!(struct ::syntax::ast::Lifetime { id, ident });
-impl_stable_hash_for!(enum ::syntax::ast::StrStyle { Cooked, Raw(pounds) });
-impl_stable_hash_for!(enum ::syntax::ast::AttrStyle { Outer, Inner });
-impl_stable_hash_for!(enum ::syntax::ast::Movability { Static, Movable });
-impl_stable_hash_for!(enum ::syntax::ast::CaptureBy { Value, Ref });
-impl_stable_hash_for!(enum ::syntax::ast::IsAuto { Yes, No });
-impl_stable_hash_for!(enum ::syntax::ast::ImplPolarity { Positive, Negative });
 
 impl<'a> HashStable<StableHashingContext<'a>> for [ast::Attribute] {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -254,25 +108,6 @@ for tokenstream::TokenStream {
         }
     }
 }
-
-impl_stable_hash_for!(enum token::LitKind {
-    Bool,
-    Byte,
-    Char,
-    Integer,
-    Float,
-    Str,
-    ByteStr,
-    StrRaw(n),
-    ByteStrRaw(n),
-    Err
-});
-
-impl_stable_hash_for!(struct token::Lit {
-    kind,
-    symbol,
-    suffix
-});
 
 impl<'a> HashStable<StableHashingContext<'a>> for token::TokenKind {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -359,12 +194,6 @@ impl_stable_hash_for!(enum ::syntax::ast::MetaItemKind {
     NameValue(lit)
 });
 
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::Transparency {
-    Transparent,
-    SemiTransparent,
-    Opaque,
-});
-
 impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
     kind,
     parent -> _,
@@ -374,43 +203,6 @@ impl_stable_hash_for!(struct ::syntax_pos::hygiene::ExpnData {
     allow_internal_unsafe,
     local_inner_macros,
     edition
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::ExpnKind {
-    Root,
-    Macro(kind, descr),
-    AstPass(kind),
-    Desugaring(kind)
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::AstPass {
-    StdImports,
-    TestHarness,
-    ProcMacroHarness,
-    PluginMacroDefs,
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::hygiene::DesugaringKind {
-    CondTemporary,
-    Async,
-    Await,
-    QuestionMark,
-    OpaqueTy,
-    ForLoop,
-    TryBlock
-});
-
-impl_stable_hash_for!(enum ::syntax_pos::FileName {
-    Real(pb),
-    Macros(s),
-    QuoteExpansion(s),
-    Anon(s),
-    MacroExpansion(s),
-    ProcMacroSourceCode(s),
-    CliCrateAttr(s),
-    CfgSpec(s),
-    Custom(s),
-    DocTest(pb, line),
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
