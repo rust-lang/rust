@@ -34,12 +34,14 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
 
 #[cfg(test)]
 mod tests {
+    use ra_cfg::CfgOptions;
+    use ra_db::Env;
+
     use crate::{
         mock_analysis::{analysis_and_position, MockAnalysis},
         AnalysisChange, CrateGraph,
         Edition::Edition2018,
     };
-    use ra_cfg::CfgOptions;
 
     #[test]
     fn test_resolve_parent_module() {
@@ -87,7 +89,12 @@ mod tests {
         assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 
         let mut crate_graph = CrateGraph::default();
-        let crate_id = crate_graph.add_crate_root(root_file, Edition2018, CfgOptions::default());
+        let crate_id = crate_graph.add_crate_root(
+            root_file,
+            Edition2018,
+            CfgOptions::default(),
+            Env::default(),
+        );
         let mut change = AnalysisChange::new();
         change.set_crate_graph(crate_graph);
         host.apply_change(change);

@@ -10,7 +10,7 @@ use ra_syntax::{ast, Parse, SourceFile, TextRange, TextUnit};
 
 pub use crate::{
     cancellation::Canceled,
-    input::{CrateGraph, CrateId, Dependency, Edition, FileId, SourceRoot, SourceRootId},
+    input::{CrateGraph, CrateId, Dependency, Edition, Env, FileId, SourceRoot, SourceRootId},
 };
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
