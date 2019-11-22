@@ -35,7 +35,6 @@ pub mod copy_prop;
 pub mod const_prop;
 pub mod generator;
 pub mod inline;
-pub mod uniform_array_move_out;
 pub mod uninhabited_enum_branching;
 
 pub(crate) fn provide(providers: &mut Providers<'_>) {
@@ -229,7 +228,6 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
         // What we need to do constant evaluation.
         &simplify::SimplifyCfg::new("initial"),
         &rustc_peek::SanityCheck,
-        &uniform_array_move_out::UniformArrayMoveOut,
     ]);
     body.ensure_predecessors();
     tcx.alloc_steal_mir(body)
@@ -294,7 +292,6 @@ fn run_optimization_passes<'tcx>(
         // Optimizations begin.
         &uninhabited_enum_branching::UninhabitedEnumBranching,
         &simplify::SimplifyCfg::new("after-uninhabited-enum-branching"),
-        &uniform_array_move_out::RestoreSubsliceArrayMoveOut::new(tcx),
         &inline::Inline,
 
         // Lowering generator control-flow and variables

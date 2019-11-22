@@ -26,7 +26,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
         let def_id = src.def_id();
         let param_env = tcx.param_env(src.def_id()).with_reveal_all();
-        let move_data = match MoveData::gather_moves(body, tcx) {
+        let move_data = match MoveData::gather_moves(body, tcx, param_env) {
             Ok(move_data) => move_data,
             Err(_) => bug!("No `move_errors` should be allowed in MIR borrowck"),
         };

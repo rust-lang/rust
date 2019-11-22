@@ -533,8 +533,8 @@ fn place_projection_conflict<'tcx>(
             }
         }
         (ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true },
-         ProjectionElem::Subslice { to, .. })
-        | (ProjectionElem::Subslice { to, .. },
+         ProjectionElem::Subslice { to, from_end: true, .. })
+        | (ProjectionElem::Subslice { to, from_end: true, .. },
             ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true }) => {
             if offset > to {
                 debug!("place_element_conflict: \
