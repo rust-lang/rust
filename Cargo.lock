@@ -3838,6 +3838,7 @@ dependencies = [
  "log",
  "rustc_data_structures",
  "rustc_index",
+ "rustc_macros",
  "serialize",
  "syntax_pos",
 ]
@@ -4405,6 +4406,7 @@ dependencies = [
  "rustc_errors",
  "rustc_index",
  "rustc_lexer",
+ "rustc_macros",
  "scoped-tls",
  "serialize",
  "smallvec 1.0.0",

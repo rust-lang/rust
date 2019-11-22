@@ -2,8 +2,11 @@ use crate::symbol::{Symbol, sym};
 use std::fmt;
 use std::str::FromStr;
 
+use rustc_macros::HashStable_Generic;
+
 /// The edition of the compiler (RFC 2052)
-#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, RustcEncodable, RustcDecodable, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug,
+         RustcEncodable, RustcDecodable, Eq, HashStable_Generic)]
 pub enum Edition {
     // editions must be kept in order, oldest to newest
 

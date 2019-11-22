@@ -213,11 +213,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem {
     }
 }
 
-impl_stable_hash_for!(enum ast::CrateSugar {
-    JustCrate,
-    PubCrate,
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);

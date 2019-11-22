@@ -8,6 +8,7 @@ use rustc_index::vec::Idx;
 use rustc_macros::symbols;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
+use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 
 use std::cmp::{PartialEq, PartialOrd, Ord};
 use std::fmt;
@@ -941,6 +942,22 @@ impl Decodable for Symbol {
     }
 }
 
+impl<CTX> HashStable<CTX> for Symbol {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.as_str().hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> ToStableHashKey<CTX> for Symbol {
+    type KeyType = SymbolStr;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> SymbolStr {
+        self.as_str()
+    }
+}
+
 // The `&'static str`s in this type actually point into the arena.
 #[derive(Default)]
 pub struct Interner {
@@ -1136,5 +1153,21 @@ impl fmt::Debug for SymbolStr {
 impl fmt::Display for SymbolStr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(self.string, f)
+    }
+}
+
+impl<CTX> HashStable<CTX> for SymbolStr {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.string.hash_stable(hcx, hasher)
+    }
+}
+
+impl<CTX> ToStableHashKey<CTX> for SymbolStr {
+    type KeyType = SymbolStr;
+
+    #[inline]
+    fn to_stable_hash_key(&self, _: &CTX) -> SymbolStr {
+        self.clone()
     }
 }
