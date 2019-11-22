@@ -53,8 +53,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             ctx.analyzer.iterate_path_candidates(ctx.db, ty.clone(), None, |_ty, item| {
                 match item {
                     hir::AssocItem::Function(func) => {
-                        let data = func.data(ctx.db);
-                        if !data.has_self_param() {
+                        if !func.has_self_param(ctx.db) {
                             acc.add_function(ctx, func);
                         }
                     }
@@ -80,8 +79,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             for item in t.items(ctx.db) {
                 match item {
                     hir::AssocItem::Function(func) => {
-                        let data = func.data(ctx.db);
-                        if !data.has_self_param() {
+                        if !func.has_self_param(ctx.db) {
                             acc.add_function(ctx, func);
                         }
                     }

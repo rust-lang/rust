@@ -10,10 +10,10 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
+    data::TraitData,
     nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
-    traits::TraitData,
-    type_ref::{Mutability, TypeRef},
+    type_ref::TypeRef,
     ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
     ModuleId, UnionId,
 };
@@ -561,77 +561,6 @@ pub struct Function {
     pub(crate) id: FunctionId,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FnData {
-    pub(crate) name: Name,
-    pub(crate) params: Vec<TypeRef>,
-    pub(crate) ret_type: TypeRef,
-    /// True if the first param is `self`. This is relevant to decide whether this
-    /// can be called as a method.
-    pub(crate) has_self_param: bool,
-}
-
-impl FnData {
-    pub(crate) fn fn_data_query(
-        db: &(impl DefDatabase + AstDatabase),
-        func: Function,
-    ) -> Arc<FnData> {
-        let src = func.source(db);
-        let name = src.value.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
-        let mut params = Vec::new();
-        let mut has_self_param = false;
-        if let Some(param_list) = src.value.param_list() {
-            if let Some(self_param) = param_list.self_param() {
-                let self_type = if let Some(type_ref) = self_param.ascribed_type() {
-                    TypeRef::from_ast(type_ref)
-                } else {
-                    let self_type = TypeRef::Path(name::SELF_TYPE.into());
-                    match self_param.kind() {
-                        ast::SelfParamKind::Owned => self_type,
-                        ast::SelfParamKind::Ref => {
-                            TypeRef::Reference(Box::new(self_type), Mutability::Shared)
-                        }
-                        ast::SelfParamKind::MutRef => {
-                            TypeRef::Reference(Box::new(self_type), Mutability::Mut)
-                        }
-                    }
-                };
-                params.push(self_type);
-                has_self_param = true;
-            }
-            for param in param_list.params() {
-                let type_ref = TypeRef::from_ast_opt(param.ascribed_type());
-                params.push(type_ref);
-            }
-        }
-        let ret_type = if let Some(type_ref) = src.value.ret_type().and_then(|rt| rt.type_ref()) {
-            TypeRef::from_ast(type_ref)
-        } else {
-            TypeRef::unit()
-        };
-
-        let sig = FnData { name, params, ret_type, has_self_param };
-        Arc::new(sig)
-    }
-    pub fn name(&self) -> &Name {
-        &self.name
-    }
-
-    pub fn params(&self) -> &[TypeRef] {
-        &self.params
-    }
-
-    pub fn ret_type(&self) -> &TypeRef {
-        &self.ret_type
-    }
-
-    /// True if the first arg is `self`. This is relevant to decide whether this
-    /// can be called as a method.
-    pub fn has_self_param(&self) -> bool {
-        self.has_self_param
-    }
-}
-
 impl Function {
     pub fn module(self, db: &impl DefDatabase) -> Module {
         self.id.lookup(db).module(db).into()
@@ -642,7 +571,15 @@ impl Function {
     }
 
     pub fn name(self, db: &impl HirDatabase) -> Name {
-        self.data(db).name.clone()
+        db.function_data(self.id).name.clone()
+    }
+
+    pub fn has_self_param(self, db: &impl HirDatabase) -> bool {
+        db.function_data(self.id).has_self_param
+    }
+
+    pub fn params(self, db: &impl HirDatabase) -> Vec<TypeRef> {
+        db.function_data(self.id).params.clone()
     }
 
     pub(crate) fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
@@ -655,10 +592,6 @@ impl Function {
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
         db.type_for_def(self.into(), Namespace::Values)
-    }
-
-    pub fn data(self, db: &impl HirDatabase) -> Arc<FnData> {
-        db.fn_data(self)
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {

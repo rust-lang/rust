@@ -22,6 +22,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use hir_def::{
+    data::FunctionData,
     path::known,
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
@@ -43,8 +44,8 @@ use crate::{
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, ConstData, DefWithBody, FloatTy, FnData, Function, HasBody, IntTy, Path,
-    StructField, Trait, VariantDef,
+    Adt, AssocItem, ConstData, DefWithBody, FloatTy, Function, HasBody, IntTy, Path, StructField,
+    Trait, VariantDef,
 };
 
 macro_rules! ty_app {
@@ -70,7 +71,7 @@ pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResu
 
     match def {
         DefWithBody::Const(ref c) => ctx.collect_const(&c.data(db)),
-        DefWithBody::Function(ref f) => ctx.collect_fn(&f.data(db)),
+        DefWithBody::Function(ref f) => ctx.collect_fn(&db.function_data(f.id)),
         DefWithBody::Static(ref s) => ctx.collect_const(&s.data(db)),
     }
 
@@ -562,14 +563,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.return_ty = self.make_ty(data.type_ref());
     }
 
-    fn collect_fn(&mut self, data: &FnData) {
+    fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in data.params().iter().zip(body.params()) {
+        for (type_ref, pat) in data.params.iter().zip(body.params()) {
             let ty = self.make_ty(type_ref);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        self.return_ty = self.make_ty(data.ret_type());
+        self.return_ty = self.make_ty(&data.ret_type);
     }
 
     fn infer_body(&mut self) {

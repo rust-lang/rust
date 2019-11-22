@@ -291,9 +291,9 @@ fn is_valid_candidate(
 ) -> bool {
     match item {
         AssocItem::Function(m) => {
-            let data = m.data(db);
-            name.map_or(true, |name| data.name() == name)
-                && (data.has_self_param() || mode == LookupMode::Path)
+            let data = db.function_data(m.id);
+            name.map_or(true, |name| data.name == *name)
+                && (data.has_self_param || mode == LookupMode::Path)
         }
         AssocItem::Const(c) => {
             name.map_or(true, |name| Some(name) == c.name(db).as_ref())
