@@ -347,7 +347,7 @@ fn assert_covariance() {
 // Destructors must be called exactly once per element.
 // FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(any(miri, target_os = "emscripten")))] // Miri does not support catching panics
+#[cfg(not(target_os = "emscripten"))]
 fn panic_safe() {
     use std::cmp;
     use std::panic::{self, AssertUnwindSafe};
