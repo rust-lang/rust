@@ -15,7 +15,8 @@ use crate::{
         CrateDefMap,
     },
     traits::TraitData,
-    DefWithBodyId, EnumId, GenericDefId, ImplId, ItemLoc, StructOrUnionId, TraitId,
+    type_alias::TypeAliasData,
+    DefWithBodyId, EnumId, GenericDefId, ImplId, ItemLoc, StructOrUnionId, TraitId, TypeAliasId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -63,6 +64,9 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
+
+    #[salsa::invoke(TypeAliasData::type_alias_data_query)]
+    fn type_alias_data(&self, e: TypeAliasId) -> Arc<TypeAliasData>;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);
