@@ -1,15 +1,15 @@
-use rustc_errors::DiagnosticBuilder;
-use rustc_span::Span;
-use smallvec::smallvec;
-use smallvec::SmallVec;
+use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::DiagnosticBuilder;
 use rustc_hir::def_id::DefId;
+pub use rustc_infer::traits::util::*;
 use rustc_middle::ty::subst::{GenericArg, Subst, SubstsRef};
 use rustc_middle::ty::{self, ToPredicate, Ty, TyCtxt, WithConstness};
+use rustc_span::Span;
 
-use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
-pub use rustc_infer::traits::util::*;
+use smallvec::smallvec;
+use smallvec::SmallVec;
 
 ///////////////////////////////////////////////////////////////////////////
 // `TraitAliasExpander` iterator

@@ -108,7 +108,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         idx: u64,
     ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
         let ptr_size = self.pointer_size();
-        // Skip over the 'drop_ptr', 'size', and 'align' fields.
+        // Skip over the `drop_ptr`, `size`, and `align` fields.
         let vtable_slot = vtable.ptr_offset(ptr_size * idx.checked_add(3).unwrap(), self)?;
         let vtable_slot = self
             .memory
