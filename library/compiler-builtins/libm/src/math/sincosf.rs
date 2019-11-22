@@ -89,11 +89,11 @@ pub fn sincosf(x: f32) -> (f32, f32) {
             }
         } else {
             if sign {
-                s = k_cosf((x + S4PIO2) as f64);
-                c = k_sinf((x + S4PIO2) as f64);
+                s = k_sinf((x + S4PIO2) as f64);
+                c = k_cosf((x + S4PIO2) as f64);
             } else {
-                s = k_cosf((x - S4PIO2) as f64);
-                c = k_sinf((x - S4PIO2) as f64);
+                s = k_sinf((x - S4PIO2) as f64);
+                c = k_cosf((x - S4PIO2) as f64);
             }
         }
 
@@ -132,5 +132,23 @@ mod tests {
         let (s, c) = sincosf(core::f32::consts::PI);
         _eqf(s.abs(), 0.0).unwrap();
         _eqf(c, -1.0).unwrap();
+    }
+
+    #[test]
+    fn rotational_symmetry() {
+        use core::f32::consts::PI;
+        const N: usize = 24;
+        for n in 0..N {
+            let theta = 2. * PI * (n as f32) / (N as f32);
+            let (s, c) = sincosf(theta);
+            let (s_plus, c_plus) = sincosf(theta + 2. * PI);
+            let (s_minus, c_minus) = sincosf(theta - 2. * PI);
+
+            const TOLERANCE: f32 = 1e-6;
+            assert!((s - s_plus).abs() < TOLERANCE);
+            assert!((s - s_minus).abs() < TOLERANCE);
+            assert!((c - c_plus).abs() < TOLERANCE);
+            assert!((c - c_minus).abs() < TOLERANCE);
+        }
     }
 }
