@@ -1,3 +1,5 @@
+//! Contains basic data about various HIR declarations.
+
 use std::sync::Arc;
 
 use hir_expand::{
@@ -135,10 +137,10 @@ impl TraitData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImplData {
-    target_trait: Option<TypeRef>,
-    target_type: TypeRef,
-    items: Vec<AssocItemId>,
-    negative: bool,
+    pub target_trait: Option<TypeRef>,
+    pub target_type: TypeRef,
+    pub items: Vec<AssocItemId>,
+    pub is_negative: bool,
 }
 
 impl ImplData {
@@ -148,7 +150,7 @@ impl ImplData {
 
         let target_trait = src.value.target_trait().map(TypeRef::from_ast);
         let target_type = TypeRef::from_ast_opt(src.value.target_type());
-        let negative = src.value.is_negative();
+        let is_negative = src.value.is_negative();
 
         let items = if let Some(item_list) = src.value.item_list() {
             item_list
@@ -184,23 +186,7 @@ impl ImplData {
             Vec::new()
         };
 
-        let res = ImplData { target_trait, target_type, items, negative };
+        let res = ImplData { target_trait, target_type, items, is_negative };
         Arc::new(res)
-    }
-
-    pub fn target_trait(&self) -> Option<&TypeRef> {
-        self.target_trait.as_ref()
-    }
-
-    pub fn target_type(&self) -> &TypeRef {
-        &self.target_type
-    }
-
-    pub fn items(&self) -> &[AssocItemId] {
-        &self.items
-    }
-
-    pub fn is_negative(&self) -> bool {
-        self.negative
     }
 }

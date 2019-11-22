@@ -18,11 +18,11 @@ impl HasSource for ImplBlock {
 
 impl ImplBlock {
     pub fn target_trait(&self, db: &impl DefDatabase) -> Option<TypeRef> {
-        db.impl_data(self.id).target_trait().cloned()
+        db.impl_data(self.id).target_trait.clone()
     }
 
     pub fn target_type(&self, db: &impl DefDatabase) -> TypeRef {
-        db.impl_data(self.id).target_type().clone()
+        db.impl_data(self.id).target_type.clone()
     }
 
     pub fn target_ty(&self, db: &impl HirDatabase) -> Ty {
@@ -35,11 +35,11 @@ impl ImplBlock {
     }
 
     pub fn items(&self, db: &impl DefDatabase) -> Vec<AssocItem> {
-        db.impl_data(self.id).items().iter().map(|it| (*it).into()).collect()
+        db.impl_data(self.id).items.iter().map(|it| (*it).into()).collect()
     }
 
     pub fn is_negative(&self, db: &impl DefDatabase) -> bool {
-        db.impl_data(self.id).is_negative()
+        db.impl_data(self.id).is_negative
     }
 
     pub fn module(&self, db: &impl DefDatabase) -> Module {

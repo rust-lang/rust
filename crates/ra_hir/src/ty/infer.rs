@@ -22,7 +22,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use hir_def::{
-    function::FunctionData,
+    data::FunctionData,
     path::known,
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
