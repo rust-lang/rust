@@ -1405,7 +1405,6 @@ fn test_box_slice_clone() {
 #[test]
 #[allow(unused_must_use)] // here, we care about the side effects of `.clone()`
 #[cfg_attr(target_os = "emscripten", ignore)]
-#[cfg(not(miri))] // Miri does not support catching panics
 fn test_box_slice_clone_panics() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -1595,7 +1594,6 @@ thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
 
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)] // no threads
-#[cfg(not(miri))] // Miri does not support catching panics
 fn panic_safe() {
     let prev = panic::take_hook();
     panic::set_hook(Box::new(move |info| {
@@ -1606,7 +1604,12 @@ fn panic_safe() {
 
     let mut rng = thread_rng();
 
-    for len in (1..20).chain(70..MAX_LEN) {
+    #[cfg(not(miri))] // Miri is too slow
+    let large_range = 70..MAX_LEN;
+    #[cfg(miri)]
+    let large_range = 0..0; // empty range
+
+    for len in (1..20).chain(large_range) {
         for &modulus in &[5, 20, 50] {
             for &has_runs in &[false, true] {
                 let mut input = (0..len)
