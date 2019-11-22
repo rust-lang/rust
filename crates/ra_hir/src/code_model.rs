@@ -10,10 +10,12 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
+    nameres::per_ns::PerNs,
+    resolver::{HasResolver, TypeNs},
     traits::TraitData,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId,
-    LocalStructFieldId, Lookup, ModuleId, UnionId,
+    ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
+    ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -25,14 +27,12 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
-    generics::{GenericDef, HasGenericParams},
     ids::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
         TypeAliasId,
     },
-    resolve::{HasResolver, TypeNs},
     ty::{InferenceResult, Namespace, TraitRef},
-    Either, HasSource, ImportId, Name, ScopeDef, Source, Ty,
+    Either, HasSource, ImportId, Name, Source, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -829,12 +829,12 @@ impl Trait {
     }
 
     fn direct_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
-        let resolver = self.resolver(db);
+        let resolver = self.id.resolver(db);
         // returning the iterator directly doesn't easily work because of
         // lifetime problems, but since there usually shouldn't be more than a
         // few direct traits this should be fine (we could even use some kind of
         // SmallVec if performance is a concern)
-        self.generic_params(db)
+        db.generic_params(self.id.into())
             .where_predicates
             .iter()
             .filter_map(|pred| match &pred.type_ref {
@@ -842,9 +842,10 @@ impl Trait {
                 _ => None,
             })
             .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {
-                Some(TypeNs::Trait(t)) => Some(t),
+                Some(TypeNs::TraitId(t)) => Some(t),
                 _ => None,
             })
+            .map(Trait::from)
             .collect()
     }
 
@@ -871,14 +872,9 @@ impl Trait {
 
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
         let trait_data = self.trait_data(db);
-        trait_data
-            .items
-            .iter()
-            .filter_map(|item| match item {
-                AssocItemId::TypeAliasId(t) => Some(TypeAlias::from(*t)),
-                _ => None,
-            })
-            .find(|t| &t.name(db) == name)
+        let res =
+            trait_data.associated_types().map(TypeAlias::from).find(|t| &t.name(db) == name)?;
+        Some(res)
     }
 
     pub fn associated_type_by_name_including_super_traits(
@@ -978,16 +974,6 @@ pub enum AssocItem {
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_froms!(AssocItem: Function, Const, TypeAlias);
 
-impl From<AssocItem> for crate::generics::GenericDef {
-    fn from(item: AssocItem) -> Self {
-        match item {
-            AssocItem::Function(f) => f.into(),
-            AssocItem::Const(c) => c.into(),
-            AssocItem::TypeAlias(t) => t.into(),
-        }
-    }
-}
-
 impl AssocItem {
     pub fn module(self, db: &impl DefDatabase) -> Module {
         match self {
@@ -1004,6 +990,39 @@ impl AssocItem {
             AssocItem::TypeAlias(t) => t.container(db),
         }
         .expect("AssocItem without container")
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub enum GenericDef {
+    Function(Function),
+    Adt(Adt),
+    Trait(Trait),
+    TypeAlias(TypeAlias),
+    ImplBlock(ImplBlock),
+    // enum variants cannot have generics themselves, but their parent enums
+    // can, and this makes some code easier to write
+    EnumVariant(EnumVariant),
+    // consts can have type parameters from their parents (i.e. associated consts of traits)
+    Const(Const),
+}
+impl_froms!(
+    GenericDef: Function,
+    Adt(Struct, Enum, Union),
+    Trait,
+    TypeAlias,
+    ImplBlock,
+    EnumVariant,
+    Const
+);
+
+impl From<AssocItem> for GenericDef {
+    fn from(item: AssocItem) -> Self {
+        match item {
+            AssocItem::Function(f) => f.into(),
+            AssocItem::Const(c) => c.into(),
+            AssocItem::TypeAlias(t) => t.into(),
+        }
     }
 }
 
@@ -1067,4 +1086,27 @@ pub struct GenericParam {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     pub(crate) id: ImplId,
+}
+
+/// For IDE only
+pub enum ScopeDef {
+    ModuleDef(ModuleDef),
+    MacroDef(MacroDef),
+    GenericParam(GenericParam),
+    ImplSelfType(ImplBlock),
+    AdtSelfType(Adt),
+    Local(Local),
+    Unknown,
+}
+
+impl From<PerNs> for ScopeDef {
+    fn from(def: PerNs) -> Self {
+        def.take_types()
+            .or_else(|| def.take_values())
+            .map(|module_def_id| ScopeDef::ModuleDef(module_def_id.into()))
+            .or_else(|| {
+                def.get_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
+            })
+            .unwrap_or(ScopeDef::Unknown)
+    }
 }

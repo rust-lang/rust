@@ -10,8 +10,11 @@ use std::sync::Arc;
 
 use hir_def::{
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType},
+    generics::WherePredicate,
     path::{GenericArg, PathSegment},
+    resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
+    AdtId, GenericDefId,
 };
 
 use super::{
@@ -20,16 +23,13 @@ use super::{
 };
 use crate::{
     db::HirDatabase,
-    generics::HasGenericParams,
-    generics::{GenericDef, WherePredicate},
-    resolve::{HasResolver, Resolver, TypeNs},
     ty::{
         primitive::{FloatTy, IntTy, Uncertain},
         Adt,
     },
     util::make_mut_slice,
-    Const, Enum, EnumVariant, Function, ModuleDef, Path, Static, Struct, StructField, Trait,
-    TypeAlias, Union, VariantDef,
+    Const, Enum, EnumVariant, Function, GenericDef, ImplBlock, ModuleDef, Path, Static, Struct,
+    StructField, Trait, TypeAlias, Union, VariantDef,
 };
 
 // FIXME: this is only really used in `type_for_def`, which contains a bunch of
@@ -156,9 +156,14 @@ impl Ty {
         remaining_segments: &[PathSegment],
     ) -> Ty {
         let ty = match resolution {
-            TypeNs::Trait(trait_) => {
-                let trait_ref =
-                    TraitRef::from_resolved_path(db, resolver, trait_, resolved_segment, None);
+            TypeNs::TraitId(trait_) => {
+                let trait_ref = TraitRef::from_resolved_path(
+                    db,
+                    resolver,
+                    trait_.into(),
+                    resolved_segment,
+                    None,
+                );
                 return if remaining_segments.len() == 1 {
                     let segment = &remaining_segments[0];
                     match trait_ref
@@ -189,18 +194,18 @@ impl Ty {
                 let name = resolved_segment.name.clone();
                 Ty::Param { idx, name }
             }
-            TypeNs::SelfType(impl_block) => impl_block.target_ty(db),
-            TypeNs::AdtSelfType(adt) => adt.ty(db),
+            TypeNs::SelfType(impl_block) => ImplBlock::from(impl_block).target_ty(db),
+            TypeNs::AdtSelfType(adt) => Adt::from(adt).ty(db),
 
-            TypeNs::Adt(it) => Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into()),
+            TypeNs::AdtId(it) => Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into()),
             TypeNs::BuiltinType(it) => {
                 Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into())
             }
-            TypeNs::TypeAlias(it) => {
+            TypeNs::TypeAliasId(it) => {
                 Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into())
             }
             // FIXME: report error
-            TypeNs::EnumVariant(_) => return Ty::Unknown,
+            TypeNs::EnumVariantId(_) => return Ty::Unknown,
         };
 
         Ty::from_type_relative_path(db, resolver, ty, remaining_segments)
@@ -247,7 +252,7 @@ impl Ty {
             Some(def) => def,
             None => return Ty::Unknown, // this can't actually happen
         };
-        let predicates = db.generic_predicates_for_param(def, param_idx);
+        let predicates = db.generic_predicates_for_param(def.into(), param_idx);
         let traits_from_env = predicates.iter().filter_map(|pred| match pred {
             GenericPredicate::Implemented(tr) if tr.self_ty() == &self_ty => Some(tr.trait_),
             _ => None,
@@ -336,7 +341,7 @@ pub(super) fn substs_from_path_segment(
     add_self_param: bool,
 ) -> Substs {
     let mut substs = Vec::new();
-    let def_generics = def_generic.map(|def| def.generic_params(db));
+    let def_generics = def_generic.map(|def| db.generic_params(def.into()));
 
     let (parent_param_count, param_count) =
         def_generics.map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
@@ -391,11 +396,11 @@ impl TraitRef {
         explicit_self_ty: Option<Ty>,
     ) -> Option<Self> {
         let resolved = match resolver.resolve_path_in_type_ns_fully(db, &path)? {
-            TypeNs::Trait(tr) => tr,
+            TypeNs::TraitId(tr) => tr,
             _ => return None,
         };
         let segment = path.segments.last().expect("path should have at least one segment");
-        Some(TraitRef::from_resolved_path(db, resolver, resolved, segment, explicit_self_ty))
+        Some(TraitRef::from_resolved_path(db, resolver, resolved.into(), segment, explicit_self_ty))
     }
 
     pub(super) fn from_resolved_path(
@@ -437,7 +442,7 @@ impl TraitRef {
     }
 
     pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {
-        let substs = Substs::identity(&trait_.generic_params(db));
+        let substs = Substs::identity(&db.generic_params(trait_.id.into()));
         TraitRef { trait_, substs }
     }
 
@@ -548,8 +553,8 @@ pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSi
 pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
     let parent_def = field.parent_def(db);
     let resolver = match parent_def {
-        VariantDef::Struct(it) => it.resolver(db),
-        VariantDef::EnumVariant(it) => it.parent_enum(db).resolver(db),
+        VariantDef::Struct(it) => it.id.resolver(db),
+        VariantDef::EnumVariant(it) => it.parent.id.resolver(db),
     };
     let var_data = parent_def.variant_data(db);
     let type_ref = &var_data.fields().unwrap()[field.id].type_ref;
@@ -569,7 +574,7 @@ pub(crate) fn generic_predicates_for_param_query(
     def: GenericDef,
     param_idx: u32,
 ) -> Arc<[GenericPredicate]> {
-    let resolver = def.resolver(db);
+    let resolver = GenericDefId::from(def).resolver(db);
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
@@ -595,7 +600,7 @@ pub(crate) fn generic_predicates_query(
     db: &impl HirDatabase,
     def: GenericDef,
 ) -> Arc<[GenericPredicate]> {
-    let resolver = def.resolver(db);
+    let resolver = GenericDefId::from(def).resolver(db);
     resolver
         .where_predicates_in_scope()
         .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
@@ -604,8 +609,8 @@ pub(crate) fn generic_predicates_query(
 
 /// Resolve the default type params from generics
 pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> Substs {
-    let resolver = def.resolver(db);
-    let generic_params = def.generic_params(db);
+    let resolver = GenericDefId::from(def).resolver(db);
+    let generic_params = db.generic_params(def.into());
 
     let defaults = generic_params
         .params_including_parent()
@@ -618,7 +623,7 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> 
 
 fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
     let data = def.data(db);
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
     let params = data.params().iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
     let ret = Ty::from_hir(db, &resolver, data.ret_type());
     FnSig::from_params_and_return(params, ret)
@@ -627,7 +632,7 @@ fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
 /// Build the declared type of a function. This should not need to look at the
 /// function body.
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
-    let generics = def.generic_params(db);
+    let generics = db.generic_params(def.id.into());
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
@@ -635,7 +640,7 @@ fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
 /// Build the declared type of a const.
 fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
     let data = def.data(db);
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
 
     Ty::from_hir(db, &resolver, data.type_ref())
 }
@@ -643,7 +648,7 @@ fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
 /// Build the declared type of a static.
 fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
     let data = def.data(db);
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
 
     Ty::from_hir(db, &resolver, data.type_ref())
 }
@@ -695,7 +700,7 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
         Some(fields) => fields,
         None => panic!("fn_sig_for_struct_constructor called on unit struct"),
     };
-    let resolver = def.resolver(db);
+    let resolver = def.id.resolver(db);
     let params = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
@@ -710,7 +715,7 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     if struct_data.variant_data.fields().is_none() {
         return type_for_adt(db, def); // Unit struct
     }
-    let generics = def.generic_params(db);
+    let generics = db.generic_params(def.id.into());
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
@@ -721,12 +726,12 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) 
         Some(fields) => fields,
         None => panic!("fn_sig_for_enum_variant_constructor called for unit variant"),
     };
-    let resolver = def.parent_enum(db).resolver(db);
+    let resolver = def.parent.id.resolver(db);
     let params = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let generics = def.parent_enum(db).generic_params(db);
+    let generics = db.generic_params(def.parent_enum(db).id.into());
     let substs = Substs::identity(&generics);
     let ret = type_for_adt(db, def.parent_enum(db)).subst(&substs);
     FnSig::from_params_and_return(params, ret)
@@ -738,19 +743,21 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     if var_data.fields().is_none() {
         return type_for_adt(db, def.parent_enum(db)); // Unit variant
     }
-    let generics = def.parent_enum(db).generic_params(db);
+    let generics = db.generic_params(def.parent_enum(db).id.into());
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
-fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt> + HasGenericParams) -> Ty {
-    let generics = adt.generic_params(db);
-    Ty::apply(TypeCtor::Adt(adt.into()), Substs::identity(&generics))
+fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt>) -> Ty {
+    let adt = adt.into();
+    let adt_id: AdtId = adt.into();
+    let generics = db.generic_params(adt_id.into());
+    Ty::apply(TypeCtor::Adt(adt), Substs::identity(&generics))
 }
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
-    let generics = t.generic_params(db);
-    let resolver = t.resolver(db);
+    let generics = db.generic_params(t.id.into());
+    let resolver = t.id.resolver(db);
     let type_ref = t.type_ref(db);
     let substs = Substs::identity(&generics);
     let inner = Ty::from_hir(db, &resolver, &type_ref.unwrap_or(TypeRef::Error));

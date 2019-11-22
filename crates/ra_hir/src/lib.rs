@@ -37,8 +37,6 @@ mod ty;
 mod impl_block;
 mod expr;
 mod lang_item;
-pub mod generics;
-mod resolve;
 pub mod diagnostics;
 mod util;
 
@@ -52,23 +50,19 @@ mod test_db;
 #[cfg(test)]
 mod marks;
 
-use crate::resolve::Resolver;
-
 pub use crate::{
     code_model::{
         attrs::{AttrDef, Attrs},
         docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource},
         Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
-        EnumVariant, FieldSource, FnData, Function, GenericParam, HasBody, ImplBlock, Local,
-        MacroDef, Module, ModuleDef, ModuleSource, Static, Struct, StructField, Trait, TypeAlias,
-        Union, VariantDef,
+        EnumVariant, FieldSource, FnData, Function, GenericDef, GenericParam, HasBody, ImplBlock,
+        Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField,
+        Trait, TypeAlias, Union, VariantDef,
     },
     expr::ExprScopes,
     from_source::FromSource,
-    generics::GenericDef,
     ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
-    resolve::ScopeDef,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
         display::HirDisplay,

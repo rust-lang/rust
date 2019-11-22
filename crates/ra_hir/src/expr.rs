@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::path::known;
+use hir_def::{path::known, resolver::HasResolver};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::ast;
 use ra_syntax::AstPtr;
@@ -11,9 +11,8 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::HirDatabase,
     diagnostics::{MissingFields, MissingOkInTailExpr},
-    resolve::HasResolver,
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    Adt, DefWithBody, Function, HasBody, Name, Path, Resolver,
+    Adt, Function, Name, Path,
 };
 
 pub use hir_def::{
@@ -26,30 +25,6 @@ pub use hir_def::{
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement, UnaryOp,
     },
 };
-
-// needs arbitrary_self_types to be a method... or maybe move to the def?
-pub(crate) fn resolver_for_expr(
-    db: &impl HirDatabase,
-    owner: DefWithBody,
-    expr_id: ExprId,
-) -> Resolver {
-    let scopes = owner.expr_scopes(db);
-    resolver_for_scope(db, owner, scopes.scope_for(expr_id))
-}
-
-pub(crate) fn resolver_for_scope(
-    db: &impl HirDatabase,
-    owner: DefWithBody,
-    scope_id: Option<ScopeId>,
-) -> Resolver {
-    let mut r = owner.resolver(db);
-    let scopes = owner.expr_scopes(db);
-    let scope_chain = scopes.scope_chain(scope_id).collect::<Vec<_>>();
-    for scope in scope_chain.into_iter().rev() {
-        r = r.push_expr_scope(owner, Arc::clone(&scopes), scope);
-    }
-    r
-}
 
 pub(crate) struct ExprValidator<'a, 'b: 'a> {
     func: Function,
@@ -146,13 +121,13 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let std_result_path = known::std_result_result();
 
-        let resolver = self.func.resolver(db);
+        let resolver = self.func.id.resolver(db);
         let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {
             Some(it) => it,
             _ => return,
         };
 
-        let std_result_ctor = TypeCtor::Adt(Adt::Enum(std_result_enum));
+        let std_result_ctor = TypeCtor::Adt(Adt::Enum(std_result_enum.into()));
         let params = match &mismatch.expected {
             Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &std_result_ctor => parameters,
             _ => return,

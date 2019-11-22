@@ -174,7 +174,7 @@ mod tests {
     use hir_expand::{name::AsName, Source};
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase};
     use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
-    use test_utils::{assert_eq_text, extract_offset};
+    use test_utils::{assert_eq_text, covers, extract_offset};
 
     use crate::{db::DefDatabase2, test_db::TestDB, FunctionId, ModuleDefId};
 
@@ -380,6 +380,22 @@ mod tests {
             }
             ",
             53,
+        );
+    }
+
+    #[test]
+    fn while_let_desugaring() {
+        covers!(infer_resolve_while_let);
+        do_check_local_name(
+            r#"
+fn test() {
+    let foo: Option<f32> = None;
+    while let Option::Some(spam) = foo {
+        spam<|>
+    }
+}
+"#,
+            75,
         );
     }
 }

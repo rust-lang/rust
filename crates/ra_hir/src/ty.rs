@@ -17,12 +17,11 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
+use hir_def::{generics::GenericParams, AdtId};
+
 use crate::{
-    db::HirDatabase,
-    expr::ExprId,
-    generics::{GenericParams, HasGenericParams},
-    util::make_mut_slice,
-    Adt, Crate, DefWithBody, FloatTy, IntTy, Mutability, Name, Trait, TypeAlias, Uncertain,
+    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, FloatTy,
+    GenericDef, IntTy, Mutability, Name, Trait, TypeAlias, Uncertain,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -131,15 +130,15 @@ impl TypeCtor {
             | TypeCtor::Closure { .. } // 1 param representing the signature of the closure
             => 1,
             TypeCtor::Adt(adt) => {
-                let generic_params = adt.generic_params(db);
+                let generic_params = db.generic_params(AdtId::from(adt).into());
                 generic_params.count_params_including_parent()
             }
             TypeCtor::FnDef(callable) => {
-                let generic_params = callable.generic_params(db);
+                let generic_params = db.generic_params(callable.into());
                 generic_params.count_params_including_parent()
             }
             TypeCtor::AssociatedType(type_alias) => {
-                let generic_params = type_alias.generic_params(db);
+                let generic_params = db.generic_params(type_alias.id.into());
                 generic_params.count_params_including_parent()
             }
             TypeCtor::FnPtr { num_args } => num_args as usize + 1,
@@ -168,7 +167,7 @@ impl TypeCtor {
         }
     }
 
-    pub fn as_generic_def(self) -> Option<crate::generics::GenericDef> {
+    pub fn as_generic_def(self) -> Option<crate::GenericDef> {
         match self {
             TypeCtor::Bool
             | TypeCtor::Char
@@ -348,8 +347,9 @@ impl Substs {
         )
     }
 
-    pub fn build_for_def(db: &impl HirDatabase, def: impl HasGenericParams) -> SubstsBuilder {
-        let params = def.generic_params(db);
+    pub fn build_for_def(db: &impl HirDatabase, def: impl Into<GenericDef>) -> SubstsBuilder {
+        let def = def.into();
+        let params = db.generic_params(def.into());
         let param_count = params.count_params_including_parent();
         Substs::builder(param_count)
     }

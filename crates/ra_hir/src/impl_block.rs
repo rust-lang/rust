@@ -1,11 +1,10 @@
 //! FIXME: write short doc here
 
-use hir_def::{type_ref::TypeRef, AstItemDef};
-use ra_syntax::ast::{self};
+use hir_def::{resolver::HasResolver, type_ref::TypeRef, AstItemDef};
+use ra_syntax::ast;
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    resolve::HasResolver,
     ty::Ty,
     AssocItem, Crate, HasSource, ImplBlock, Module, Source, TraitRef,
 };
@@ -27,12 +26,12 @@ impl ImplBlock {
     }
 
     pub fn target_ty(&self, db: &impl HirDatabase) -> Ty {
-        Ty::from_hir(db, &self.resolver(db), &self.target_type(db))
+        Ty::from_hir(db, &self.id.resolver(db), &self.target_type(db))
     }
 
     pub fn target_trait_ref(&self, db: &impl HirDatabase) -> Option<TraitRef> {
         let target_ty = self.target_ty(db);
-        TraitRef::from_hir(db, &self.resolver(db), &self.target_trait(db)?, Some(target_ty))
+        TraitRef::from_hir(db, &self.id.resolver(db), &self.target_trait(db)?, Some(target_ty))
     }
 
     pub fn items(&self, db: &impl DefDatabase) -> Vec<AssocItem> {
