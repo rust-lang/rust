@@ -17,6 +17,7 @@ use crate::token::{self, DelimToken, Token, TokenKind};
 
 use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable_Generic;
 use rustc_data_structures::sync::Lrc;
 use smallvec::{SmallVec, smallvec};
 
