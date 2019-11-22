@@ -279,6 +279,7 @@ symbols! {
         Err,
         Eq,
         Equal,
+        enclosing_scope,
         except,
         exclusive_range_pattern,
         exhaustive_integer_patterns,
