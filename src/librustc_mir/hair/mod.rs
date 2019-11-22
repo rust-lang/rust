@@ -208,9 +208,6 @@ pub enum ExprKind<'tcx> {
     },
     /// first argument, used for self in a closure
     SelfRef,
-    StaticRef {
-        id: DefId,
-    },
     Borrow {
         borrow_kind: BorrowKind,
         arg: ExprRef<'tcx>,
@@ -266,6 +263,14 @@ pub enum ExprKind<'tcx> {
     Literal {
         literal: &'tcx Const<'tcx>,
         user_ty: Option<Canonical<'tcx, UserType<'tcx>>>,
+    },
+    /// A literal containing the address of a `static`.
+    ///
+    /// This is only distinguished from `Literal` so that we can register some
+    /// info for diagnostics.
+    StaticRef {
+        literal: &'tcx Const<'tcx>,
+        def_id: DefId,
     },
     InlineAsm {
         asm: &'tcx hir::InlineAsmInner,

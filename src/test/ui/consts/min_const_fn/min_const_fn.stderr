@@ -116,10 +116,10 @@ LL | const fn foo25() -> u32 { BAR }
    = help: add `#![feature(const_fn)]` to the crate attributes to enable
 
 error[E0723]: cannot access `static` items in const fn
-  --> $DIR/min_const_fn.rs:91:36
+  --> $DIR/min_const_fn.rs:91:37
    |
 LL | const fn foo26() -> &'static u32 { &BAR }
-   |                                    ^^^^
+   |                                     ^^^
    |
    = note: for more information, see issue https://github.com/rust-lang/rust/issues/57563
    = help: add `#![feature(const_fn)]` to the crate attributes to enable

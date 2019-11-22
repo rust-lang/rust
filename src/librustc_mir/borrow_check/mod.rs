@@ -308,7 +308,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     // would have a chance of erroneously adding non-user-defined mutable vars
     // to the set.
     let temporary_used_locals: FxHashSet<Local> = mbcx.used_mut.iter()
-        .filter(|&local| mbcx.body.local_decls[*local].is_user_variable.is_none())
+        .filter(|&local| !mbcx.body.local_decls[*local].is_user_variable())
         .cloned()
         .collect();
     // For the remaining unused locals that are marked as mutable, we avoid linting any that
@@ -1287,7 +1287,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match *operand {
             Operand::Move(ref place) | Operand::Copy(ref place) => {
                 match place.as_local() {
-                    Some(local) if self.body.local_decls[local].is_user_variable.is_none() => {
+                    Some(local) if !self.body.local_decls[local].is_user_variable() => {
                         if self.body.local_decls[local].ty.is_mutable_ptr() {
                             // The variable will be marked as mutable by the borrow.
                             return;
@@ -1399,7 +1399,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ) {
         debug!("check_for_invalidation_at_exit({:?})", borrow);
         let place = &borrow.borrowed_place;
-        let root_place = self.prefixes(place.as_ref(), PrefixSet::All).last().unwrap();
+        let deref = [ProjectionElem::Deref];
+        let mut root_place = PlaceRef { base: &place.base, projection: &[] };
 
         // FIXME(nll-rfc#40): do more precise destructor tracking here. For now
         // we just know that all locals are dropped at function exit (otherwise
@@ -1407,26 +1408,20 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         //
         // FIXME: allow thread-locals to borrow other thread locals?
 
-        assert!(root_place.projection.is_empty());
         let (might_be_alive, will_be_dropped) = match root_place.base {
-            PlaceBase::Static(box Static {
-                kind: StaticKind::Promoted(..),
-                ..
-            }) => {
+            PlaceBase::Static(_) => {
                 (true, false)
             }
-            PlaceBase::Static(box Static {
-                kind: StaticKind::Static,
-                ..
-            }) => {
-                // Thread-locals might be dropped after the function exits, but
-                // "true" statics will never be.
-                (true, self.is_place_thread_local(root_place))
-            }
-            PlaceBase::Local(_) => {
-                // Locals are always dropped at function exit, and if they
-                // have a destructor it would've been called already.
-                (false, self.locals_are_invalidated_at_exit)
+            PlaceBase::Local(local) => {
+                if self.body.local_decls[*local].is_ref_to_thread_local() {
+                    // Thread-locals might be dropped after the function exits
+                    // We have to dereference the outer reference because
+                    // borrows don't conflict behind shared references.
+                    root_place.projection = &deref;
+                    (true, true)
+                } else {
+                    (false, self.locals_are_invalidated_at_exit)
+                }
             }
         };
 

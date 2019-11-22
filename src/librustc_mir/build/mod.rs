@@ -820,7 +820,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 visibility_scope: source_info.scope,
                 name,
                 internal: false,
-                is_user_variable: None,
+                local_info: LocalInfo::Other,
                 is_block_tail: None,
             });
         }
@@ -855,17 +855,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     } => {
                         self.local_decls[local].mutability = mutability;
                         self.local_decls[local].source_info.scope = self.source_scope;
-                        self.local_decls[local].is_user_variable =
+                        self.local_decls[local].local_info =
                             if let Some(kind) = self_binding {
-                                Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(*kind)))
+                                LocalInfo::User(ClearCrossCrate::Set(
+                                    BindingForm::ImplicitSelf(*kind),
+                                ))
                             } else {
                                 let binding_mode = ty::BindingMode::BindByValue(mutability.into());
-                                Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                                    binding_mode,
-                                    opt_ty_info,
-                                    opt_match_place: Some((Some(place.clone()), span)),
-                                    pat_span: span,
-                                })))
+                                LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                                    VarBindingForm {
+                                        binding_mode,
+                                        opt_ty_info,
+                                        opt_match_place: Some((Some(place.clone()), span)),
+                                        pat_span: span,
+                                    },
+                                )))
                             };
                         self.var_indices.insert(var, LocalsForNode::One(local));
                     }

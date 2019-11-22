@@ -209,7 +209,9 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
             // local must conflict. This is purely an optimization so we don't have to call
             // `places_conflict` for every borrow.
             if place.projection.is_empty() {
-                trans.kill_all(other_borrows_of_local);
+                if !self.body.local_decls[local].is_ref_to_static() {
+                    trans.kill_all(other_borrows_of_local);
+                }
                 return;
             }
 

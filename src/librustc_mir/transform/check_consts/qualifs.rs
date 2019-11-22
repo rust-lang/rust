@@ -2,6 +2,7 @@
 
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
+use rustc::hir::def_id::DefId;
 use syntax_pos::DUMMY_SP;
 
 use super::{ConstKind, Item as ConstCx};
@@ -32,7 +33,7 @@ pub trait Qualif {
     /// of the type.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> bool;
 
-    fn in_static(_cx: &ConstCx<'_, 'tcx>, _static: &Static<'tcx>) -> bool {
+    fn in_static(_cx: &ConstCx<'_, 'tcx>, _def_id: DefId) -> bool {
         // FIXME(eddyb) should we do anything here for value properties?
         false
     }
@@ -86,18 +87,9 @@ pub trait Qualif {
                 projection: [],
             } => per_local(*local),
             PlaceRef {
-                base: PlaceBase::Static(box Static {
-                    kind: StaticKind::Promoted(..),
-                    ..
-                }),
+                base: PlaceBase::Static(_),
                 projection: [],
             } => bug!("qualifying already promoted MIR"),
-            PlaceRef {
-                base: PlaceBase::Static(static_),
-                projection: [],
-            } => {
-                Self::in_static(cx, static_)
-            },
             PlaceRef {
                 base: _,
                 projection: [.., _],
@@ -115,7 +107,9 @@ pub trait Qualif {
             Operand::Move(ref place) => Self::in_place(cx, per_local, place.as_ref()),
 
             Operand::Constant(ref constant) => {
-                if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
+                if let Some(static_) = constant.check_static_ptr(cx.tcx) {
+                    Self::in_static(cx, static_)
+                } else if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty)

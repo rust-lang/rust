@@ -4,12 +4,6 @@ error[E0017]: references in constants may only refer to immutable values
 LL |         let b: *mut u32 = &mut a;
    |                           ^^^^^^ constants require immutable values
 
-error[E0019]: constant contains unimplemented expression type
-  --> $DIR/projection_qualif.rs:7:18
-   |
-LL |         unsafe { *b = 5; }
-   |                  ^^^^^^
-
 error[E0658]: dereferencing raw pointers in constants is unstable
   --> $DIR/projection_qualif.rs:7:18
    |
@@ -18,6 +12,12 @@ LL |         unsafe { *b = 5; }
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/51911
    = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+
+error[E0019]: constant contains unimplemented expression type
+  --> $DIR/projection_qualif.rs:7:18
+   |
+LL |         unsafe { *b = 5; }
+   |                  ^^^^^^
 
 error: aborting due to 3 previous errors
 

@@ -458,10 +458,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for binding in &candidate.bindings {
                 let local = self.var_local_id(binding.var_id, OutsideGuard);
 
-                if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                     opt_match_place: Some((ref mut match_place, _)),
                     ..
-                }))) = self.local_decls[local].is_user_variable
+                }))) = self.local_decls[local].local_info
                 {
                     *match_place = Some(initializer.clone());
                 } else {
@@ -1734,16 +1734,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             visibility_scope,
             internal: false,
             is_block_tail: None,
-            is_user_variable: Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode,
-                // hypothetically, `visit_bindings` could try to unzip
-                // an outermost hir::Ty as we descend, matching up
-                // idents in pat; but complex w/ unclear UI payoff.
-                // Instead, just abandon providing diagnostic info.
-                opt_ty_info: None,
-                opt_match_place,
-                pat_span,
-            }))),
+            local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                VarBindingForm {
+                    binding_mode,
+                    // hypothetically, `visit_bindings` could try to unzip
+                    // an outermost hir::Ty as we descend, matching up
+                    // idents in pat; but complex w/ unclear UI payoff.
+                    // Instead, just abandon providing diagnostic info.
+                    opt_ty_info: None,
+                    opt_match_place,
+                    pat_span,
+                },
+            ))),
         };
         let for_arm_body = self.local_decls.push(local);
         let locals = if has_guard.0 {
@@ -1758,7 +1760,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 visibility_scope,
                 internal: false,
                 is_block_tail: None,
-                is_user_variable: Some(ClearCrossCrate::Set(BindingForm::RefForGuard)),
+                local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)),
             });
             LocalsForNode::ForGuard {
                 ref_for_guard,
