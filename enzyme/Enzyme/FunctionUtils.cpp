@@ -490,21 +490,15 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
         argno++;
         continue;
      }
-     if (I.getType()->isPointerTy() || I.getType()->isIntegerTy()) {
+     if (!I.getType()->isFPOrFPVectorTy()) {
         ArgTypes.push_back(I.getType());
-        /*
-        if (I.getType()->isPointerTy() && !(I.hasAttribute(Attribute::ReadOnly) || I.hasAttribute(Attribute::ReadNone) ) ) {
-          llvm::errs() << "Cannot take derivative of function " <<F->getName()<< " input argument to function " << I.getName() << " is not marked read-only\n";
-          exit(1);
-        }
-        */
      } else {
        RetTypes.push_back(I.getType());
      }
      argno++;
  }
 
- if (diffeReturnArg && !F->getReturnType()->isPointerTy() && !F->getReturnType()->isIntegerTy()) {
+ if (diffeReturnArg && F->getReturnType()->isFPOrFPVectorTy()) {
     assert(!F->getReturnType()->isVoidTy());
     ArgTypes.push_back(F->getReturnType());
  }
@@ -531,7 +525,7 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
 
  // Create the new function...
  Function *NewF = Function::Create(FTy, F->getLinkage(), name, F->getParent());
- if (diffeReturnArg && !F->getReturnType()->isPointerTy() && !F->getReturnType()->isIntegerTy()) {
+ if (diffeReturnArg && F->getReturnType()->isFPOrFPVectorTy()) {
     auto I = NewF->arg_end();
     I--;
     if(additionalArg)
@@ -560,7 +554,7 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
         llvm::errs() << "in new function " << NewF->getName() << " nonconstant arg " << *j << "\n";
    }
 
-   if (!isconstant && ( i->getType()->isPointerTy() || i->getType()->isIntegerTy()) ) {
+   if (!isconstant && ( !i->getType()->isFPOrFPVectorTy() ) ) {
      VMap[i] = j;
      hasPtrInput = true;
      ptrInputs[j] = (j+1);

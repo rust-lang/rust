@@ -1466,7 +1466,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
     auto argType = op->getArgOperand(i)->getType();
 
-    if ( (argType->isPointerTy() || argType->isIntegerTy()) && !gutils->isConstantValue(op->getArgOperand(i)) ) {
+    if ( (!argType->isFPOrFPVectorTy()) && !gutils->isConstantValue(op->getArgOperand(i)) ) {
       argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
       args.push_back(gutils->invertPointerM(op->getArgOperand(i), Builder2));
       pre_args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
@@ -1850,6 +1850,18 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     args.push_back(gutils->lookupM(tape, Builder2));
   }
 
+  if (auto NC = dyn_cast<Function>(newcalled)) {
+      if (args.size()  != NC->getFunctionType()->getNumParams()) {
+        llvm::errs() << *gutils->oldFunc << "\n";
+        llvm::errs() << *gutils->newFunc << "\n";
+        llvm::errs() << " trying to call " << NC->getName() << " " << *NC->getFunctionType() << "\n";
+        for(unsigned i=0; i<args.size(); i++) {
+            llvm::errs() << "args[" << i << "] = " << *args[i] << "\n";
+        }
+        assert(0 && "calling with wrong number of arguments");
+        exit(1);
+      }
+  }
   CallInst* diffes = Builder2.CreateCall(newcalled, args);
   diffes->setCallingConv(op->getCallingConv());
   diffes->setDebugLoc(op->getDebugLoc());
