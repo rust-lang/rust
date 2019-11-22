@@ -1,4 +1,4 @@
-#![feature(rustc_private, never_type, decl_macro, type_alias_impl_trait, associated_type_bounds)]
+#![feature(rustc_private, decl_macro, type_alias_impl_trait, associated_type_bounds)]
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate flate2;
