@@ -6,14 +6,14 @@
 //! actual IO. See `vfs` and `project_model` in the `ra_lsp_server` crate for how
 //! actual IO is done and lowered to input.
 
-use rustc_hash::FxHashMap;
+use std::{fmt, str::FromStr};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
+use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
-use std::str::FromStr;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -80,16 +80,16 @@ pub struct CrateGraph {
     arena: FxHashMap<CrateId, CrateData>,
 }
 
-#[derive(Debug)]
-pub struct CyclicDependencies;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
-impl CrateId {
-    pub fn shift(self, amount: u32) -> CrateId {
-        CrateId(self.0 + amount)
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CrateData {
+    file_id: FileId,
+    edition: Edition,
+    cfg_options: CfgOptions,
+    env: Env,
+    dependencies: Vec<Dependency>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -98,56 +98,15 @@ pub enum Edition {
     Edition2015,
 }
 
-#[derive(Debug)]
-pub struct ParseEditionError {
-    pub msg: String,
-}
-
-impl FromStr for Edition {
-    type Err = ParseEditionError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "2015" => Ok(Edition::Edition2015),
-            "2018" => Ok(Edition::Edition2018),
-            _ => Err(ParseEditionError { msg: format!("unknown edition: {}", s) }),
-        }
-    }
-}
-
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct Env {
     entries: FxHashMap<String, String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct CrateData {
-    file_id: FileId,
-    edition: Edition,
-    dependencies: Vec<Dependency>,
-    cfg_options: CfgOptions,
-    env: Env,
-}
-
-impl CrateData {
-    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions, env: Env) -> CrateData {
-        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options, env }
-    }
-
-    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
-        self.dependencies.push(Dependency { name, crate_id })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
     pub crate_id: CrateId,
     pub name: SmolStr,
-}
-
-impl Dependency {
-    pub fn crate_id(&self) -> CrateId {
-        self.crate_id
-    }
 }
 
 impl CrateGraph {
@@ -174,9 +133,9 @@ impl CrateGraph {
         from: CrateId,
         name: SmolStr,
         to: CrateId,
-    ) -> Result<(), CyclicDependencies> {
+    ) -> Result<(), CyclicDependenciesError> {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
-            return Err(CyclicDependencies);
+            return Err(CyclicDependenciesError);
         }
         self.arena.get_mut(&from).unwrap().add_dep(name, to);
         Ok(())
@@ -246,6 +205,57 @@ impl CrateGraph {
         false
     }
 }
+
+impl CrateId {
+    pub fn shift(self, amount: u32) -> CrateId {
+        CrateId(self.0 + amount)
+    }
+}
+
+impl CrateData {
+    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions, env: Env) -> CrateData {
+        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options, env }
+    }
+
+    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
+        self.dependencies.push(Dependency { name, crate_id })
+    }
+}
+
+impl FromStr for Edition {
+    type Err = ParseEditionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let res = match s {
+            "2015" => Edition::Edition2015,
+            "2018" => Edition::Edition2018,
+            _ => Err(ParseEditionError { invalid_input: s.to_string() })?,
+        };
+        Ok(res)
+    }
+}
+
+impl Dependency {
+    pub fn crate_id(&self) -> CrateId {
+        self.crate_id
+    }
+}
+
+#[derive(Debug)]
+pub struct ParseEditionError {
+    invalid_input: String,
+}
+
+impl fmt::Display for ParseEditionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid edition: {:?}", self.invalid_input)
+    }
+}
+
+impl std::error::Error for ParseEditionError {}
+
+#[derive(Debug)]
+pub struct CyclicDependenciesError;
 
 #[cfg(test)]
 mod tests {
