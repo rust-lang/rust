@@ -69,10 +69,10 @@ pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResu
     let resolver = DefWithBodyId::from(def).resolver(db);
     let mut ctx = InferenceContext::new(db, def, resolver);
 
-    match def {
-        DefWithBody::Const(ref c) => ctx.collect_const(&c.data(db)),
-        DefWithBody::Function(ref f) => ctx.collect_fn(&db.function_data(f.id)),
-        DefWithBody::Static(ref s) => ctx.collect_const(&s.data(db)),
+    match &def {
+        DefWithBody::Const(c) => ctx.collect_const(&db.const_data(c.id)),
+        DefWithBody::Function(f) => ctx.collect_fn(&db.function_data(f.id)),
+        DefWithBody::Static(s) => ctx.collect_const(&db.static_data(s.id)),
     }
 
     ctx.infer_body();

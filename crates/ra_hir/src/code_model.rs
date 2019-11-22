@@ -10,7 +10,7 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
-    data::{ConstData, TraitData},
+    data::TraitData,
     nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -644,12 +644,8 @@ impl Const {
         Some(self.module(db).krate())
     }
 
-    pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
-        db.const_data(self.id)
-    }
-
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
-        self.data(db).name.clone()
+        db.const_data(self.id).name.clone()
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
@@ -693,10 +689,6 @@ impl Static {
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
         Some(self.module(db).krate())
-    }
-
-    pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
-        db.static_data(self.id)
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
