@@ -63,7 +63,7 @@ impl HasSource for StructField {
 
         let field_sources = match struct_kind {
             ast::StructKind::Tuple(fl) => fl.fields().map(|it| FieldSource::Pos(it)).collect(),
-            ast::StructKind::Named(fl) => fl.fields().map(|it| FieldSource::Named(it)).collect(),
+            ast::StructKind::Record(fl) => fl.fields().map(|it| FieldSource::Named(it)).collect(),
             ast::StructKind::Unit => Vec::new(),
         };
         let value = field_sources

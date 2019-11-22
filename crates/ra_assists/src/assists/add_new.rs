@@ -36,7 +36,7 @@ pub(crate) fn add_new(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
 
     // We want to only apply this to non-union structs with named fields
     let field_list = match (strukt.kind(), strukt.is_union()) {
-        (StructKind::Named(named), false) => named,
+        (StructKind::Record(named), false) => named,
         _ => return None,
     };
 

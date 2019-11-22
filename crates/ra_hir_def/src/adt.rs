@@ -30,13 +30,9 @@ pub struct EnumVariantData {
     pub variant_data: Arc<VariantData>,
 }
 
-/// Fields of an enum variant or struct
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VariantData(VariantDataInner);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum VariantDataInner {
-    Struct(Arena<LocalStructFieldId, StructFieldData>),
+pub enum VariantData {
+    Record(Arena<LocalStructFieldId, StructFieldData>),
     Tuple(Arena<LocalStructFieldId, StructFieldData>),
     Unit,
 }
@@ -86,7 +82,7 @@ impl EnumData {
 
 impl VariantData {
     fn new(flavor: ast::StructKind) -> Self {
-        let inner = match flavor {
+        match flavor {
             ast::StructKind::Tuple(fl) => {
                 let fields = fl
                     .fields()
@@ -96,9 +92,9 @@ impl VariantData {
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     })
                     .collect();
-                VariantDataInner::Tuple(fields)
+                VariantData::Tuple(fields)
             }
-            ast::StructKind::Named(fl) => {
+            ast::StructKind::Record(fl) => {
                 let fields = fl
                     .fields()
                     .map(|fd| StructFieldData {
@@ -106,16 +102,15 @@ impl VariantData {
                         type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
                     })
                     .collect();
-                VariantDataInner::Struct(fields)
+                VariantData::Record(fields)
             }
-            ast::StructKind::Unit => VariantDataInner::Unit,
-        };
-        VariantData(inner)
+            ast::StructKind::Unit => VariantData::Unit,
+        }
     }
 
     pub fn fields(&self) -> Option<&Arena<LocalStructFieldId, StructFieldData>> {
-        match &self.0 {
-            VariantDataInner::Struct(fields) | VariantDataInner::Tuple(fields) => Some(fields),
+        match self {
+            VariantData::Record(fields) | VariantData::Tuple(fields) => Some(fields),
             _ => None,
         }
     }
