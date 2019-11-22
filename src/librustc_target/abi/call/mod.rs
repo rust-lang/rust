@@ -69,6 +69,7 @@ mod attr_impl {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
+    /// The dereferenceable size of the pointee.
     pub pointee_size: Size,
     pub pointee_align: Option<Align>
 }
