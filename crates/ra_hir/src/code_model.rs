@@ -10,7 +10,7 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
-    data::TraitData,
+    data::{ConstData, TraitData},
     nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -22,10 +22,10 @@ use hir_expand::{
     name::{self, AsName},
 };
 use ra_db::{CrateId, Edition};
-use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
+use ra_syntax::ast;
 
 use crate::{
-    db::{AstDatabase, DefDatabase, HirDatabase},
+    db::{DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     ids::{
         AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
@@ -645,11 +645,11 @@ impl Const {
     }
 
     pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
-        db.const_data(self)
+        db.const_data(self.id)
     }
 
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
-        self.data(db).name().cloned()
+        self.data(db).name.clone()
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
@@ -681,45 +681,6 @@ impl Const {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ConstData {
-    pub(crate) name: Option<Name>,
-    pub(crate) type_ref: TypeRef,
-}
-
-impl ConstData {
-    pub fn name(&self) -> Option<&Name> {
-        self.name.as_ref()
-    }
-
-    pub fn type_ref(&self) -> &TypeRef {
-        &self.type_ref
-    }
-
-    pub(crate) fn const_data_query(
-        db: &(impl DefDatabase + AstDatabase),
-        konst: Const,
-    ) -> Arc<ConstData> {
-        let node = konst.source(db).value;
-        const_data_for(&node)
-    }
-
-    pub(crate) fn static_data_query(
-        db: &(impl DefDatabase + AstDatabase),
-        konst: Static,
-    ) -> Arc<ConstData> {
-        let node = konst.source(db).value;
-        const_data_for(&node)
-    }
-}
-
-fn const_data_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<ConstData> {
-    let name = node.name().map(|n| n.as_name());
-    let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
-    let sig = ConstData { name, type_ref };
-    Arc::new(sig)
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Static {
     pub(crate) id: StaticId,
@@ -735,7 +696,7 @@ impl Static {
     }
 
     pub fn data(self, db: &impl HirDatabase) -> Arc<ConstData> {
-        db.static_data(self)
+        db.static_data(self.id)
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {

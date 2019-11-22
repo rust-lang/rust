@@ -11,8 +11,8 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 use crate::{
     db::DefDatabase2,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, AstItemDef, ConstLoc, ContainerId, FunctionId, FunctionLoc, HasSource, ImplId,
-    Intern, Lookup, TraitId, TypeAliasId, TypeAliasLoc,
+    AssocItemId, AstItemDef, ConstId, ConstLoc, ContainerId, FunctionId, FunctionLoc, HasSource,
+    ImplId, Intern, Lookup, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -189,4 +189,29 @@ impl ImplData {
         let res = ImplData { target_trait, target_type, items, is_negative };
         Arc::new(res)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ConstData {
+    pub name: Option<Name>,
+    pub type_ref: TypeRef,
+}
+
+impl ConstData {
+    pub(crate) fn const_data_query(db: &impl DefDatabase2, konst: ConstId) -> Arc<ConstData> {
+        let node = konst.lookup(db).source(db).value;
+        const_data_for(&node)
+    }
+
+    pub(crate) fn static_data_query(db: &impl DefDatabase2, konst: StaticId) -> Arc<ConstData> {
+        let node = konst.source(db).value;
+        const_data_for(&node)
+    }
+}
+
+fn const_data_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<ConstData> {
+    let name = node.name().map(|n| n.as_name());
+    let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
+    let sig = ConstData { name, type_ref };
+    Arc::new(sig)
 }

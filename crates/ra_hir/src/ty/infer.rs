@@ -22,7 +22,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use hir_def::{
-    data::FunctionData,
+    data::{ConstData, FunctionData},
     path::known,
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
@@ -44,8 +44,8 @@ use crate::{
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, ConstData, DefWithBody, FloatTy, Function, HasBody, IntTy, Path, StructField,
-    Trait, VariantDef,
+    Adt, AssocItem, DefWithBody, FloatTy, Function, HasBody, IntTy, Path, StructField, Trait,
+    VariantDef,
 };
 
 macro_rules! ty_app {
@@ -560,7 +560,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn collect_const(&mut self, data: &ConstData) {
-        self.return_ty = self.make_ty(data.type_ref());
+        self.return_ty = self.make_ty(&data.type_ref);
     }
 
     fn collect_fn(&mut self, data: &FunctionData) {

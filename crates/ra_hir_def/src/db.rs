@@ -8,14 +8,14 @@ use ra_syntax::ast;
 use crate::{
     adt::{EnumData, StructData},
     body::{scope::ExprScopes, Body, BodySourceMap},
-    data::{FunctionData, ImplData, TraitData, TypeAliasData},
+    data::{ConstData, FunctionData, ImplData, TraitData, TypeAliasData},
     generics::GenericParams,
     nameres::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, StructOrUnionId, TraitId,
-    TypeAliasId,
+    ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, StaticId,
+    StructOrUnionId, TraitId, TypeAliasId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -69,6 +69,12 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(FunctionData::fn_data_query)]
     fn function_data(&self, func: FunctionId) -> Arc<FunctionData>;
+
+    #[salsa::invoke(ConstData::const_data_query)]
+    fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
+
+    #[salsa::invoke(ConstData::static_data_query)]
+    fn static_data(&self, konst: StaticId) -> Arc<ConstData>;
 
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);

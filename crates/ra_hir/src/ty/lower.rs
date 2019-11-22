@@ -642,7 +642,7 @@ fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
     let data = def.data(db);
     let resolver = def.id.resolver(db);
 
-    Ty::from_hir(db, &resolver, data.type_ref())
+    Ty::from_hir(db, &resolver, &data.type_ref)
 }
 
 /// Build the declared type of a static.
@@ -650,7 +650,7 @@ fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
     let data = def.data(db);
     let resolver = def.id.resolver(db);
 
-    Ty::from_hir(db, &resolver, data.type_ref())
+    Ty::from_hir(db, &resolver, &data.type_ref)
 }
 
 /// Build the declared type of a static.

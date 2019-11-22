@@ -16,15 +16,15 @@ use crate::{
         CallableDef, FnSig, GenericPredicate, InferenceResult, Namespace, Substs, Ty, TypableDef,
         TypeCtor,
     },
-    Const, ConstData, Crate, DefWithBody, GenericDef, ImplBlock, Module, Static, StructField,
-    Trait,
+    Crate, DefWithBody, GenericDef, ImplBlock, Module, StructField, Trait,
 };
 
 pub use hir_def::db::{
-    BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
-    EnumDataQuery, ExprScopesQuery, FunctionDataQuery, GenericParamsQuery, ImplDataQuery,
-    InternDatabase, InternDatabaseStorage, RawItemsQuery, RawItemsWithSourceMapQuery,
-    StructDataQuery, TraitDataQuery, TypeAliasDataQuery,
+    BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, DefDatabase2,
+    DefDatabase2Storage, EnumDataQuery, ExprScopesQuery, FunctionDataQuery, GenericParamsQuery,
+    ImplDataQuery, InternDatabase, InternDatabaseStorage, RawItemsQuery,
+    RawItemsWithSourceMapQuery, StaticDataQuery, StructDataQuery, TraitDataQuery,
+    TypeAliasDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -35,12 +35,6 @@ pub use hir_expand::db::{
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
 pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
-    #[salsa::invoke(ConstData::const_data_query)]
-    fn const_data(&self, konst: Const) -> Arc<ConstData>;
-
-    #[salsa::invoke(ConstData::static_data_query)]
-    fn static_data(&self, konst: Static) -> Arc<ConstData>;
-
     #[salsa::invoke(LangItems::module_lang_items_query)]
     fn module_lang_items(&self, module: Module) -> Option<Arc<LangItems>>;
 
