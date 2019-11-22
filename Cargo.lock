@@ -587,9 +587,9 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.3.25"
+version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f75b10a18fb53549fdd090846eb01c7f8593914494d1faabc4d3005c436e417a"
+checksum = "d7d8975604ebad8b6660796802377eb6495045c5606168fc1b8d19a4dd9bfa46"
 dependencies = [
  "diff",
  "filetime",
@@ -4563,9 +4563,9 @@ dependencies = [
 
 [[package]]
 name = "tester"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd0d1044cb5ca390e9c93f8c35abd2c55484397dfd786f189321aa34605ee6ab"
+checksum = "7647e6d732eb84375d8e7abda37818f81861ddbfc7235e33f4983cb254b71e4f"
 dependencies = [
  "getopts",
  "libc",
