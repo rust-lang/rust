@@ -40,7 +40,7 @@ fn expand_macro_recur(
     let analyzer = hir::SourceAnalyzer::new(db, source, None);
     let expansion = analyzer.expand(db, macro_call)?;
     let macro_file_id = expansion.file_id();
-    let expanded: SyntaxNode = db.parse_or_expand(macro_file_id)?;
+    let mut expanded: SyntaxNode = db.parse_or_expand(macro_file_id)?;
 
     let children = expanded.descendants().filter_map(ast::MacroCall::cast);
     let mut replaces = FxHashMap::default();
@@ -49,7 +49,14 @@ fn expand_macro_recur(
         let node = hir::Source::new(macro_file_id, &child);
         let new_node = expand_macro_recur(db, source, node)?;
 
-        replaces.insert(child.syntax().clone().into(), new_node.into());
+        // Replace the whole node if it is root
+        // `replace_descendants` will not replace the parent node
+        // but `SyntaxNode::descendants include itself
+        if expanded == *child.syntax() {
+            expanded = new_node;
+        } else {
+            replaces.insert(child.syntax().clone().into(), new_node.into());
+        }
     }
 
     Some(replace_descendants(&expanded, &replaces))
@@ -216,5 +223,28 @@ fn some_thing() -> u32 {
   }
 }
 "###);
+    }
+
+    #[test]
+    fn macro_expand_match_ast_inside_let_statement() {
+        let res = check_expand_macro(
+            r#"
+        //- /lib.rs
+        macro_rules! match_ast {
+            (match $node:ident { $($tt:tt)* }) => { match_ast!(match ($node) { $($tt)* }) };        
+            (match ($node:expr) {}) => {{}};
+        }        
+
+        fn main() {        
+            let p = f(|it| {
+                let res = mat<|>ch_ast! { match c {}};
+                Some(res)
+            })?;
+        }
+        "#,
+        );
+
+        assert_eq!(res.name, "match_ast");
+        assert_snapshot!(res.expansion, @r###"{}"###);
     }
 }
