@@ -16,6 +16,31 @@ pub enum BuiltinExpander {
     Stringify,
 }
 
+struct BuiltInMacroInfo {
+    name: name::Name,
+    kind: BuiltinExpander,
+    expand: fn(
+        db: &dyn AstDatabase,
+        id: MacroCallId,
+        _tt: &tt::Subtree,
+    ) -> Result<tt::Subtree, mbe::ExpandError>,
+}
+
+macro_rules! register_builtin {
+    ( $(($name:ident, $kind: ident) => $expand:ident),* ) => {
+        const BUILTIN_MACROS: &[BuiltInMacroInfo] = &[
+            $(BuiltInMacroInfo { name: name::$name, kind: BuiltinExpander::$kind, expand: $expand }),*
+        ];
+    };
+}
+
+register_builtin! {
+    (COLUMN_MACRO, Column) => column_expand,
+    (FILE_MACRO, File) => file_expand,
+    (LINE_MACRO, Line) => line_expand,
+    (STRINGIFY_MACRO, Stringify) => stringify_expand
+}
+
 impl BuiltinExpander {
     pub fn expand(
         &self,
@@ -23,12 +48,13 @@ impl BuiltinExpander {
         id: MacroCallId,
         tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
-        match self {
-            BuiltinExpander::Column => column_expand(db, id, tt),
-            BuiltinExpander::File => file_expand(db, id, tt),
-            BuiltinExpander::Line => line_expand(db, id, tt),
-            BuiltinExpander::Stringify => stringify_expand(db, id, tt),
-        }
+        let expander = BUILTIN_MACROS
+            .iter()
+            .find(|it| *self == it.kind)
+            .map(|it| it.expand)
+            .ok_or_else(|| mbe::ExpandError::ConversionError)?;
+
+        expander(db, id, tt)
     }
 }
 
@@ -37,18 +63,9 @@ pub fn find_builtin_macro(
     krate: CrateId,
     ast_id: AstId<ast::MacroCall>,
 ) -> Option<MacroDefId> {
-    // FIXME: Better registering method
-    if ident == &name::COLUMN_MACRO {
-        Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Column) })
-    } else if ident == &name::FILE_MACRO {
-        Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::File) })
-    } else if ident == &name::LINE_MACRO {
-        Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Line) })
-    } else if ident == &name::STRINGIFY_MACRO {
-        Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Stringify) })
-    } else {
-        None
-    }
+    let kind = BUILTIN_MACROS.iter().find(|it| *ident == it.name).map(|it| it.kind)?;
+
+    Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(kind) })
 }
 
 fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
@@ -170,4 +187,93 @@ fn file_expand(
     };
 
     Ok(expanded)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{test_db::TestDB, MacroCallLoc};
+    use ra_db::{fixture::WithFixture, SourceDatabase};
+
+    fn expand_builtin_macro(s: &str, expander: BuiltinExpander) -> String {
+        let (db, file_id) = TestDB::with_single_file(&s);
+        let parsed = db.parse(file_id);
+        let macro_calls: Vec<_> =
+            parsed.syntax_node().descendants().filter_map(|it| ast::MacroCall::cast(it)).collect();
+
+        let ast_id_map = db.ast_id_map(file_id.into());
+
+        // the first one should be a macro_rules
+        let def = MacroDefId {
+            krate: CrateId(0),
+            ast_id: AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0])),
+            kind: MacroDefKind::BuiltIn(expander),
+        };
+
+        let loc = MacroCallLoc {
+            def,
+            ast_id: AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[1])),
+        };
+
+        let id = db.intern_macro(loc);
+        let parsed = db.parse_or_expand(id.as_file(MacroFileKind::Expr)).unwrap();
+
+        parsed.text().to_string()
+    }
+
+    #[test]
+    fn test_column_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+        #[rustc_builtin_macro]
+        macro_rules! column {() => {}}
+        column!()
+"#,
+            BuiltinExpander::Column,
+        );
+
+        assert_eq!(expanded, "9");
+    }
+
+    #[test]
+    fn test_line_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+        #[rustc_builtin_macro]
+        macro_rules! line {() => {}}
+        line!()
+"#,
+            BuiltinExpander::Line,
+        );
+
+        assert_eq!(expanded, "4");
+    }
+
+    #[test]
+    fn test_stringify_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+        #[rustc_builtin_macro]
+        macro_rules! stringify {() => {}}
+        stringify!(a b c)
+"#,
+            BuiltinExpander::Stringify,
+        );
+
+        assert_eq!(expanded, "\"a b c\"");
+    }
+
+    #[test]
+    fn test_file_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+        #[rustc_builtin_macro]
+        macro_rules! file {() => {}}
+        file!()
+"#,
+            BuiltinExpander::File,
+        );
+
+        assert_eq!(expanded, "\"\"");
+    }
 }
