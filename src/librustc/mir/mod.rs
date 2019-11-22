@@ -7,7 +7,7 @@
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
 use crate::hir;
-use crate::mir::interpret::{PanicInfo, Scalar};
+use crate::mir::interpret::{GlobalAlloc, PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
 use crate::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
@@ -292,7 +292,7 @@ impl<'tcx> Body<'tcx> {
     pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable.is_some() {
+            if self.local_decls[local].is_user_variable() {
                 None
             } else {
                 Some(local)
@@ -305,7 +305,7 @@ impl<'tcx> Body<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable.is_some() {
+            if self.local_decls[local].is_user_variable() {
                 Some(local)
             } else {
                 None
@@ -319,7 +319,7 @@ impl<'tcx> Body<'tcx> {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
-            if decl.is_user_variable.is_some() && decl.mutability == Mutability::Mut {
+            if decl.is_user_variable() && decl.mutability == Mutability::Mut {
                 Some(local)
             } else {
                 None
@@ -333,7 +333,7 @@ impl<'tcx> Body<'tcx> {
         (1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
             let decl = &self.local_decls[local];
-            if (decl.is_user_variable.is_some() || index < self.arg_count + 1)
+            if (decl.is_user_variable() || index < self.arg_count + 1)
                 && decl.mutability == Mutability::Mut
             {
                 Some(local)
@@ -689,14 +689,8 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return place are always mutable.
     pub mutability: Mutability,
 
-    /// `Some(binding_mode)` if this corresponds to a user-declared local variable.
-    ///
-    /// This is solely used for local diagnostics when generating
-    /// warnings/errors when compiling the current crate, and
-    /// therefore it need not be visible across crates. pnkfelix
-    /// currently hypothesized we *need* to wrap this in a
-    /// `ClearCrossCrate` as long as it carries as `HirId`.
-    pub is_user_variable: Option<ClearCrossCrate<BindingForm<'tcx>>>,
+    // FIXME(matthewjasper) Don't store in this in `Body`
+    pub local_info: LocalInfo<'tcx>,
 
     /// `true` if this is an internal local.
     ///
@@ -721,6 +715,7 @@ pub struct LocalDecl<'tcx> {
     /// then it is a temporary created for evaluation of some
     /// subexpression of some block's tail expression (with no
     /// intervening statement context).
+    // FIXME(matthewjasper) Don't store in this in `Body`
     pub is_block_tail: Option<BlockTailInfo>,
 
     /// The type of this local.
@@ -730,6 +725,7 @@ pub struct LocalDecl<'tcx> {
     /// e.g., via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
+    // FIXME(matthewjasper) Don't store in this in `Body`
     pub user_ty: UserTypeProjections,
 
     /// The name of the local, used in debuginfo and pretty-printing.
@@ -824,6 +820,21 @@ pub struct LocalDecl<'tcx> {
     pub visibility_scope: SourceScope,
 }
 
+/// Extra information about a local that's used for diagnostics.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub enum LocalInfo<'tcx> {
+    /// A user-defined local variable or function parameter
+    ///
+    /// The `BindingForm` is solely used for local diagnostics when generating
+    /// warnings/errors when compiling the current crate, and therefore it need
+    /// not be visible across crates.
+    User(ClearCrossCrate<BindingForm<'tcx>>),
+    /// A temporary created that references the static with the given `DefId`.
+    StaticRef { def_id: DefId, is_thread_local: bool },
+    /// Any other temporary, the return place, or an anonymous function parameter.
+    Other,
+}
+
 impl<'tcx> LocalDecl<'tcx> {
     /// Returns `true` only if local is a binding that can itself be
     /// made mutable via the addition of the `mut` keyword, namely
@@ -832,15 +843,17 @@ impl<'tcx> LocalDecl<'tcx> {
     /// - `let x = ...`,
     /// - or `match ... { C(x) => ... }`
     pub fn can_be_made_mutable(&self) -> bool {
-        match self.is_user_variable {
-            Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+        match self.local_info {
+            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
             }))) => true,
 
-            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm))) => true,
+            LocalInfo::User(
+                ClearCrossCrate::Set(BindingForm::ImplicitSelf(ImplicitSelfKind::Imm)),
+            ) => true,
 
             _ => false,
         }
@@ -850,16 +863,26 @@ impl<'tcx> LocalDecl<'tcx> {
     /// `ref mut ident` binding. (Such bindings cannot be made into
     /// mutable bindings, but the inverse does not necessarily hold).
     pub fn is_nonref_binding(&self) -> bool {
-        match self.is_user_variable {
-            Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+        match self.local_info {
+            LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                 binding_mode: ty::BindingMode::BindByValue(_),
                 opt_ty_info: _,
                 opt_match_place: _,
                 pat_span: _,
             }))) => true,
 
-            Some(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_))) => true,
+            LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(_))) => true,
 
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this variable is a named variable or function
+    /// parameter declared by the user.
+    #[inline]
+    pub fn is_user_variable(&self) -> bool {
+        match self.local_info {
+            LocalInfo::User(_) => true,
             _ => false,
         }
     }
@@ -868,8 +891,26 @@ impl<'tcx> LocalDecl<'tcx> {
     /// expression that is used to access said variable for the guard of the
     /// match arm.
     pub fn is_ref_for_guard(&self) -> bool {
-        match self.is_user_variable {
-            Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) => true,
+        match self.local_info {
+            LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `Some` if this is a reference to a static item that is used to
+    /// access that static
+    pub fn is_ref_to_static(&self) -> bool {
+        match self.local_info {
+            LocalInfo::StaticRef { .. } => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `Some` if this is a reference to a static item that is used to
+    /// access that static
+    pub fn is_ref_to_thread_local(&self) -> bool {
+        match self.local_info {
+            LocalInfo::StaticRef { is_thread_local, .. } => is_thread_local,
             _ => false,
         }
     }
@@ -918,7 +959,7 @@ impl<'tcx> LocalDecl<'tcx> {
             source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
             visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal,
-            is_user_variable: None,
+            local_info: LocalInfo::Other,
             is_block_tail: None,
         }
     }
@@ -937,7 +978,7 @@ impl<'tcx> LocalDecl<'tcx> {
             internal: false,
             is_block_tail: None,
             name: None, // FIXME maybe we do want some name here?
-            is_user_variable: None,
+            local_info: LocalInfo::Other,
         }
     }
 }
@@ -2339,6 +2380,24 @@ pub struct Constant<'tcx> {
     pub user_ty: Option<UserTypeAnnotationIndex>,
 
     pub literal: &'tcx ty::Const<'tcx>,
+}
+
+impl Constant<'tcx> {
+    pub fn check_static_ptr(&self, tcx: TyCtxt<'_>) -> Option<DefId> {
+        match self.literal.val.try_to_scalar() {
+            Some(Scalar::Ptr(ptr)) => match tcx.alloc_map.lock().get(ptr.alloc_id) {
+                Some(GlobalAlloc::Static(def_id)) => Some(def_id),
+                Some(_) => None,
+                None => {
+                    tcx.sess.delay_span_bug(
+                        DUMMY_SP, "MIR cannot contain dangling const pointers",
+                    );
+                    None
+                },
+            },
+            _ => None,
+        }
+    }
 }
 
 /// A collection of projections into user types.

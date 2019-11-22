@@ -1,13 +1,10 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
-// ignore-tidy-filelength
-
 use crate::lint;
 use crate::middle::cstore;
 use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
-use crate::hir::map as hir_map;
 
 use rustc_data_structures::fx::FxHashSet;
 
@@ -444,7 +441,7 @@ top_level_options!(
         // by the compiler.
         json_artifact_notifications: bool [TRACKED],
 
-        pretty: Option<(PpMode, Option<UserIdentifiedItem>)> [UNTRACKED],
+        pretty: Option<PpMode> [UNTRACKED],
     }
 );
 
@@ -2562,7 +2559,7 @@ fn parse_pretty(
     matches: &getopts::Matches,
     debugging_opts: &DebuggingOptions,
     efmt: ErrorOutputType,
-) -> Option<(PpMode, Option<UserIdentifiedItem>)> {
+) -> Option<PpMode> {
     let pretty = if debugging_opts.unstable_options {
         matches.opt_default("pretty", "normal").map(|a| {
             // stable pretty-print variants only
@@ -2585,13 +2582,10 @@ fn parse_pretty(
         efmt: ErrorOutputType,
         name: &str,
         extended: bool,
-    ) -> (PpMode, Option<UserIdentifiedItem>) {
+    ) -> PpMode {
         use PpMode::*;
         use PpSourceMode::*;
-        let mut split = name.splitn(2, '=');
-        let first = split.next().unwrap();
-        let opt_second = split.next();
-        let first = match (first, extended) {
+        let first = match (name, extended) {
             ("normal", _) => PpmSource(PpmNormal),
             ("identified", _) => PpmSource(PpmIdentified),
             ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
@@ -2619,8 +2613,7 @@ fn parse_pretty(
                 }
             }
         };
-        let opt_second = opt_second.and_then(|s| s.parse::<UserIdentifiedItem>().ok());
-        (first, opt_second)
+        first
     }
 }
 
@@ -2752,13 +2745,13 @@ pub enum PpMode {
 }
 
 impl PpMode {
-    pub fn needs_ast_map(&self, opt_uii: &Option<UserIdentifiedItem>) -> bool {
+    pub fn needs_ast_map(&self) -> bool {
         use PpMode::*;
         use PpSourceMode::*;
         match *self {
             PpmSource(PpmNormal) |
             PpmSource(PpmEveryBodyLoops) |
-            PpmSource(PpmIdentified) => opt_uii.is_some(),
+            PpmSource(PpmIdentified) => false,
 
             PpmSource(PpmExpanded) |
             PpmSource(PpmExpandedIdentified) |
@@ -2777,102 +2770,6 @@ impl PpMode {
             PpmMir | PpmMirCFG => true,
             _ => false,
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum UserIdentifiedItem {
-    ItemViaNode(ast::NodeId),
-    ItemViaPath(Vec<String>),
-}
-
-impl FromStr for UserIdentifiedItem {
-    type Err = ();
-    fn from_str(s: &str) -> Result<UserIdentifiedItem, ()> {
-        use UserIdentifiedItem::*;
-        Ok(s.parse()
-            .map(ast::NodeId::from_u32)
-            .map(ItemViaNode)
-            .unwrap_or_else(|_| ItemViaPath(s.split("::").map(|s| s.to_string()).collect())))
-    }
-}
-
-pub enum NodesMatchingUII<'a> {
-    NodesMatchingDirect(std::option::IntoIter<ast::NodeId>),
-    NodesMatchingSuffix(Box<dyn Iterator<Item = ast::NodeId> + 'a>),
-}
-
-impl<'a> Iterator for NodesMatchingUII<'a> {
-    type Item = ast::NodeId;
-
-    fn next(&mut self) -> Option<ast::NodeId> {
-        use NodesMatchingUII::*;
-        match self {
-            &mut NodesMatchingDirect(ref mut iter) => iter.next(),
-            &mut NodesMatchingSuffix(ref mut iter) => iter.next(),
-        }
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        use NodesMatchingUII::*;
-        match self {
-            &NodesMatchingDirect(ref iter) => iter.size_hint(),
-            &NodesMatchingSuffix(ref iter) => iter.size_hint(),
-        }
-    }
-}
-
-impl UserIdentifiedItem {
-    pub fn reconstructed_input(&self) -> String {
-        use UserIdentifiedItem::*;
-        match *self {
-            ItemViaNode(node_id) => node_id.to_string(),
-            ItemViaPath(ref parts) => parts.join("::"),
-        }
-    }
-
-    pub fn all_matching_node_ids<'a, 'hir>(&'a self,
-                                       map: &'a hir_map::Map<'hir>)
-                                       -> NodesMatchingUII<'a> {
-        use UserIdentifiedItem::*;
-        use NodesMatchingUII::*;
-        match *self {
-            ItemViaNode(node_id) => NodesMatchingDirect(Some(node_id).into_iter()),
-            ItemViaPath(ref parts) => {
-                NodesMatchingSuffix(Box::new(map.nodes_matching_suffix(&parts)))
-            }
-        }
-    }
-
-    pub fn to_one_node_id(self,
-                      user_option: &str,
-                      sess: &Session,
-                      map: &hir_map::Map<'_>)
-                      -> ast::NodeId {
-        let fail_because = |is_wrong_because| -> ast::NodeId {
-            let message = format!("{} needs NodeId (int) or unique path suffix (b::c::d); got \
-                                   {}, which {}",
-                                  user_option,
-                                  self.reconstructed_input(),
-                                  is_wrong_because);
-            sess.fatal(&message)
-        };
-
-        let mut saw_node = ast::DUMMY_NODE_ID;
-        let mut seen = 0;
-        for node in self.all_matching_node_ids(map) {
-            saw_node = node;
-            seen += 1;
-            if seen > 1 {
-                fail_because("does not resolve uniquely");
-            }
-        }
-        if seen == 0 {
-            fail_because("does not resolve to any item");
-        }
-
-        assert!(seen == 1);
-        return saw_node;
     }
 }
 

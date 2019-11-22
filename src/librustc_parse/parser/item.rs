@@ -1,4 +1,4 @@
-use super::{Parser, PathStyle};
+use super::{Parser, PathStyle, FollowedByType};
 use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
 
-        let vis = self.parse_visibility(false)?;
+        let vis = self.parse_visibility(FollowedByType::No)?;
 
         if self.eat_keyword(kw::Use) {
             // USE ITEM
@@ -696,7 +696,7 @@ impl<'a> Parser<'a> {
         mut attrs: Vec<Attribute>,
     ) -> PResult<'a, ImplItem> {
         let lo = self.token.span;
-        let vis = self.parse_visibility(false)?;
+        let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             let (name, ty, generics) = self.parse_type_alias()?;
@@ -883,7 +883,7 @@ impl<'a> Parser<'a> {
         mut attrs: Vec<Attribute>,
     ) -> PResult<'a, TraitItem> {
         let lo = self.token.span;
-        self.eat_bad_pub();
+        let vis = self.parse_visibility(FollowedByType::No)?;
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
@@ -899,6 +899,7 @@ impl<'a> Parser<'a> {
             id: DUMMY_NODE_ID,
             ident: name,
             attrs,
+            vis,
             generics,
             kind,
             span: lo.to(self.prev_span),
@@ -1129,7 +1130,7 @@ impl<'a> Parser<'a> {
 
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
-        let visibility = self.parse_visibility(false)?;
+        let visibility = self.parse_visibility(FollowedByType::No)?;
 
         // FOREIGN STATIC ITEM
         // Treat `const` as `static` for error recovery, but don't add it to expected tokens.
@@ -1339,7 +1340,7 @@ impl<'a> Parser<'a> {
             let variant_attrs = self.parse_outer_attributes()?;
             let vlo = self.token.span;
 
-            self.eat_bad_pub();
+            let vis = self.parse_visibility(FollowedByType::No)?;
             let ident = self.parse_ident()?;
 
             let struct_def = if self.check(&token::OpenDelim(token::Brace)) {
@@ -1366,6 +1367,7 @@ impl<'a> Parser<'a> {
 
             let vr = ast::Variant {
                 ident,
+                vis,
                 id: DUMMY_NODE_ID,
                 attrs: variant_attrs,
                 data: struct_def,
@@ -1519,7 +1521,7 @@ impl<'a> Parser<'a> {
         self.parse_paren_comma_seq(|p| {
             let attrs = p.parse_outer_attributes()?;
             let lo = p.token.span;
-            let vis = p.parse_visibility(true)?;
+            let vis = p.parse_visibility(FollowedByType::Yes)?;
             let ty = p.parse_ty()?;
             Ok(StructField {
                 span: lo.to(ty.span),
@@ -1537,7 +1539,7 @@ impl<'a> Parser<'a> {
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
-        let vis = self.parse_visibility(false)?;
+        let vis = self.parse_visibility(FollowedByType::No)?;
         self.parse_single_struct_field(lo, vis, attrs)
     }
 

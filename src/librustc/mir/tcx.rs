@@ -81,7 +81,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 let ty = self.ty
                              .builtin_deref(true)
                              .unwrap_or_else(|| {
-                                 bug!("deref projection of non-dereferencable ty {:?}", self)
+                                 bug!("deref projection of non-dereferenceable ty {:?}", self)
                              })
                              .ty;
                 PlaceTy::from_ty(ty)

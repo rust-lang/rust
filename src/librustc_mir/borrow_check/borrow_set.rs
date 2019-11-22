@@ -189,8 +189,8 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         location: mir::Location,
     ) {
         if let mir::Rvalue::Ref(region, kind, ref borrowed_place) = *rvalue {
-            if borrowed_place.ignore_borrow(
-                self.tcx, self.body, &self.locals_state_at_exit) {
+            if borrowed_place.ignore_borrow(self.tcx, self.body, &self.locals_state_at_exit) {
+                debug!("ignoring_borrow of {:?}", borrowed_place);
                 return;
             }
 

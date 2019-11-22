@@ -270,6 +270,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 resume.and(this.unit_rvalue())
             }
             ExprKind::Literal { .. }
+            | ExprKind::StaticRef { .. }
             | ExprKind::Block { .. }
             | ExprKind::Match { .. }
             | ExprKind::NeverToAny { .. }
@@ -288,7 +289,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Continue { .. }
             | ExprKind::Return { .. }
             | ExprKind::InlineAsm { .. }
-            | ExprKind::StaticRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. } => {
                 // these do not have corresponding `Rvalue` variants,

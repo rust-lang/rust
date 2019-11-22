@@ -249,7 +249,10 @@ fn check_operand(
         Operand::Move(place) | Operand::Copy(place) => {
             check_place(tcx, place, span, def_id, body)
         }
-        Operand::Constant(_) => Ok(()),
+        Operand::Constant(c) => match c.check_static_ptr(tcx) {
+            Some(_) => Err((span, "cannot access `static` items in const fn".into())),
+            None => Ok(()),
+        },
     }
 }
 
@@ -285,13 +288,7 @@ fn check_place(
         }
     }
 
-    match place.base {
-        PlaceBase::Static(box Static { kind: StaticKind::Static, .. }) => {
-            Err((span, "cannot access `static` items in const fn".into()))
-        }
-        PlaceBase::Local(_)
-        | PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => Ok(()),
-    }
+    Ok(())
 }
 
 /// Returns whether `allow_internal_unstable(..., <feature_gate>, ...)` is present.

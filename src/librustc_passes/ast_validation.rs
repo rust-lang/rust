@@ -529,6 +529,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
+                    self.invalid_visibility(&variant.vis, None);
                     for field in variant.data.fields() {
                         self.invalid_visibility(&field.vis, None);
                     }
@@ -750,6 +751,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             self.check_fn_decl(&sig.decl);
         }
         visit::walk_impl_item(self, ii);
+    }
+
+    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
+        self.invalid_visibility(&ti.vis, None);
+        visit::walk_trait_item(self, ti);
     }
 }
 

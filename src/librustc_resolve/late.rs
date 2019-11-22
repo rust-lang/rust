@@ -69,6 +69,7 @@ impl PatternSource {
 /// Denotes whether the context for the set of already bound bindings is a `Product`
 /// or `Or` context. This is used in e.g., `fresh_binding` and `resolve_pattern_inner`.
 /// See those functions for more information.
+#[derive(PartialEq)]
 enum PatBoundCtx {
     /// A product pattern context, e.g., `Variant(a, b)`.
     Product,
@@ -1417,21 +1418,12 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         // later passes make about or-patterns.)
         let ident = ident.modern_and_legacy();
 
-        // Walk outwards the stack of products / or-patterns and
-        // find out if the identifier has been bound in any of these.
-        let mut already_bound_and = false;
-        let mut already_bound_or = false;
-        for (is_sum, set) in bindings.iter_mut().rev() {
-            match (is_sum, set.get(&ident).cloned()) {
-                // Already bound in a product pattern, e.g. `(a, a)` which is not allowed.
-                (PatBoundCtx::Product, Some(..)) => already_bound_and = true,
-                // Already bound in an or-pattern, e.g. `V1(a) | V2(a)`.
-                // This is *required* for consistency which is checked later.
-                (PatBoundCtx::Or, Some(..)) => already_bound_or = true,
-                // Not already bound here.
-                _ => {}
-            }
-        }
+        let mut bound_iter = bindings.iter().filter(|(_, set)| set.contains(&ident));
+        // Already bound in a product pattern? e.g. `(a, a)` which is not allowed.
+        let already_bound_and = bound_iter.clone().any(|(ctx, _)| *ctx == PatBoundCtx::Product);
+        // Already bound in an or-pattern? e.g. `V1(a) | V2(a)`.
+        // This is *required* for consistency which is checked later.
+        let already_bound_or = bound_iter.any(|(ctx, _)| *ctx == PatBoundCtx::Or);
 
         if already_bound_and {
             // Overlap in a product pattern somewhere; report an error.

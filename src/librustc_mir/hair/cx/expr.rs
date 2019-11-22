@@ -5,7 +5,7 @@ use crate::hair::cx::to_ref::ToRef;
 use crate::hair::util::UserAnnotatedTyHelpers;
 use rustc_index::vec::Idx;
 use rustc::hir::def::{CtorOf, Res, DefKind, CtorKind};
-use rustc::mir::interpret::{GlobalId, ErrorHandled};
+use rustc::mir::interpret::{GlobalId, ErrorHandled, Scalar};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability, PointerCast};
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
@@ -961,7 +961,29 @@ fn convert_path_expr<'a, 'tcx>(
             }
         }
 
-        Res::Def(DefKind::Static, id) => ExprKind::StaticRef { id },
+        // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
+        // a constant reference (or constant raw pointer for `static mut`) in MIR
+        Res::Def(DefKind::Static, id) => {
+            let ty = cx.tcx.type_of(id);
+            let ty = if cx.tcx.is_mutable_static(id) {
+                cx.tcx.mk_mut_ptr(ty)
+            } else if cx.tcx.is_foreign_item(id) {
+                cx.tcx.mk_imm_ptr(ty)
+            } else {
+                cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_static, ty)
+            };
+            let ptr = cx.tcx.alloc_map.lock().create_static_alloc(id);
+            let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
+            ExprKind::Deref { arg: Expr {
+                ty,
+                temp_lifetime,
+                span: expr.span,
+                kind: ExprKind::StaticRef {
+                    literal: ty::Const::from_scalar(cx.tcx, Scalar::Ptr(ptr.into()), ty),
+                    def_id: id,
+                }
+            }.to_ref() }
+        },
 
         Res::Local(var_hir_id) => convert_var(cx, expr, var_hir_id),
 

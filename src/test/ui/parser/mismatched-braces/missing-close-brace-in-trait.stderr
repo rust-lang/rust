@@ -1,5 +1,5 @@
 error: this file contains an un-closed delimiter
-  --> $DIR/missing-close-brace-in-trait.rs:10:66
+  --> $DIR/missing-close-brace-in-trait.rs:12:66
    |
 LL | trait T {
    |         - un-closed delimiter
@@ -7,19 +7,24 @@ LL | trait T {
 LL | fn main() {}
    |                                                                  ^
 
-error: expected one of `async`, `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found keyword `pub`
-  --> $DIR/missing-close-brace-in-trait.rs:4:1
+error: expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`, found keyword `struct`
+  --> $DIR/missing-close-brace-in-trait.rs:5:12
    |
-LL | trait T {
-   |         - unclosed delimiter
-LL |     fn foo(&self);
-   |                   -
-   |                   |
-   |                   expected one of 7 possible tokens
-   |                   help: `}` may belong here
-LL | 
 LL | pub(crate) struct Bar<T>();
-   | ^^^ unexpected token
+   |            ^^^^^^ expected one of `async`, `const`, `extern`, `fn`, `type`, or `unsafe`
 
-error: aborting due to 2 previous errors
+error[E0601]: `main` function not found in crate `missing_close_brace_in_trait`
+  --> $DIR/missing-close-brace-in-trait.rs:1:1
+   |
+LL | / trait T {
+LL | |
+LL | |     fn foo(&self);
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |_________________________________________________________________^ consider adding a `main` function to `$DIR/missing-close-brace-in-trait.rs`
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

@@ -1,6 +1,6 @@
 //! The `Visitor` responsible for actually checking a `mir::Body` for invalid operations.
 
-use rustc::hir::HirId;
+use rustc::hir::{HirId, def_id::DefId};
 use rustc::middle::lang_items;
 use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;
@@ -288,6 +288,15 @@ impl Validator<'a, 'mir, 'tcx> {
         let span = self.span;
         self.check_op_spanned(op, span)
     }
+
+    fn check_static(&mut self, def_id: DefId, span: Span) -> CheckOpResult {
+        let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
+        if is_thread_local {
+            self.check_op_spanned(ops::ThreadLocalAccess, span)
+        } else {
+            self.check_op_spanned(ops::StaticAccess, span)
+        }
+    }
 }
 
 impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
@@ -408,17 +417,21 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match place_base {
             PlaceBase::Local(_) => {}
-            PlaceBase::Static(box Static{ kind: StaticKind::Promoted(_, _), .. }) => {
+            PlaceBase::Static(_) => {
                 bug!("Promotion must be run after const validation");
             }
+        }
+    }
 
-            PlaceBase::Static(box Static{ kind: StaticKind::Static, def_id, .. }) => {
-                let is_thread_local = self.tcx.has_attr(*def_id, sym::thread_local);
-                if is_thread_local {
-                    self.check_op(ops::ThreadLocalAccess);
-                } else if self.const_kind() != ConstKind::Static || !context.is_mutating_use() {
-                    self.check_op(ops::StaticAccess);
-                }
+    fn visit_operand(
+        &mut self,
+        op: &Operand<'tcx>,
+        location: Location,
+    ) {
+        self.super_operand(op, location);
+        if let Operand::Constant(c) = op {
+            if let Some(def_id) = c.check_static_ptr(self.tcx) {
+                self.check_static(def_id, self.span);
             }
         }
     }
@@ -497,13 +510,23 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                if context.is_mutating_use() {
-                    self.check_op(ops::MutDeref);
-                }
-
                 let base_ty = Place::ty_from(place_base, proj_base, self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind {
+                    if proj_base.is_empty() {
+                        if let (PlaceBase::Local(local), []) = (place_base, proj_base) {
+                            let decl = &self.body.local_decls[*local];
+                            if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
+                                let span = decl.source_info.span;
+                                self.check_static(def_id, span);
+                                return;
+                            }
+                        }
+                    }
                     self.check_op(ops::RawPtrDeref);
+                }
+
+                if context.is_mutating_use() {
+                    self.check_op(ops::MutDeref);
                 }
             }
 

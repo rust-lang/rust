@@ -11,10 +11,10 @@ LL |     Y
    |     ^
 
 error[E0013]: constant functions cannot refer to statics, use a constant instead
-  --> $DIR/const-fn-not-safe-for-const.rs:25:5
+  --> $DIR/const-fn-not-safe-for-const.rs:25:6
    |
 LL |     &Y
-   |     ^^
+   |      ^
 
 error: aborting due to 3 previous errors
 

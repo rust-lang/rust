@@ -1189,26 +1189,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Recovers from `pub` keyword in places where it seems _reasonable_ but isn't valid.
-    pub(super) fn eat_bad_pub(&mut self) {
-        // When `unclosed_delims` is populated, it means that the code being parsed is already
-        // quite malformed, which might mean that, for example, a pub struct definition could be
-        // parsed as being a trait item, which is invalid and this error would trigger
-        // unconditionally, resulting in misleading diagnostics. Because of this, we only attempt
-        // this nice to have recovery for code that is otherwise well formed.
-        if self.token.is_keyword(kw::Pub) && self.unclosed_delims.is_empty() {
-            match self.parse_visibility(false) {
-                Ok(vis) => {
-                    self.diagnostic()
-                        .struct_span_err(vis.span, "unnecessary visibility qualifier")
-                        .span_label(vis.span, "`pub` not permitted here")
-                        .emit();
-                }
-                Err(mut err) => err.emit(),
-            }
-        }
-    }
-
     /// Eats tokens until we can be relatively sure we reached the end of the
     /// statement. This is something of a best-effort heuristic.
     ///

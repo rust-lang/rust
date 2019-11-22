@@ -1,9 +1,7 @@
 use rustc::hir;
 use rustc::hir::Node;
-use rustc::mir::{self, BindingForm, ClearCrossCrate, Local, Location, Body};
-use rustc::mir::{
-    Mutability, Place, PlaceRef, PlaceBase, ProjectionElem, Static, StaticKind
-};
+use rustc::mir::{self, Body, ClearCrossCrate, Local, LocalInfo, Location};
+use rustc::mir::{Mutability, Place, PlaceRef, PlaceBase, ProjectionElem};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_index::vec::Idx;
 use syntax_pos::Span;
@@ -77,6 +75,31 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: [ProjectionElem::Deref],
+            } if self.body.local_decls[local].is_ref_for_guard() => {
+                item_msg = format!("`{}`", access_place_desc.unwrap());
+                reason = ", as it is immutable for the pattern guard".to_string();
+            }
+            PlaceRef {
+                base: &PlaceBase::Local(local),
+                projection: [ProjectionElem::Deref],
+            } if self.body.local_decls[local].is_ref_to_static() => {
+                if access_place.projection.len() == 1 {
+                    item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
+                    reason = String::new();
+                } else {
+                    item_msg = format!("`{}`", access_place_desc.unwrap());
+                    let local_info = &self.body.local_decls[local].local_info;
+                    if let LocalInfo::StaticRef { def_id, .. } = *local_info {
+                        let static_name = &self.infcx.tcx.item_name(def_id);
+                        reason = format!(", as `{}` is an immutable static item", static_name);
+                    } else {
+                        bug!("is_ref_to_static return true, but not ref to static?");
+                    }
+                }
+            }
+            PlaceRef {
                 base: _,
                 projection: [proj_base @ .., ProjectionElem::Deref],
             } => {
@@ -101,15 +124,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         } else {
                             ", as `Fn` closures cannot mutate their captured variables".to_string()
                         }
-                } else if {
-                    if let (PlaceBase::Local(local), []) = (&the_place_err.base, proj_base) {
-                        self.body.local_decls[*local].is_ref_for_guard()
-                    } else {
-                        false
-                    }
-                } {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
-                    reason = ", as it is immutable for the pattern guard".to_string();
                 } else {
                     let source = self.borrowed_content_source(PlaceRef {
                         base: the_place_err.base,
@@ -133,37 +147,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             PlaceRef {
-                base:
-                    PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(..),
-                        ..
-                    }),
-                projection: [],
-            } => unreachable!(),
-
-            PlaceRef {
-                base:
-                    PlaceBase::Static(box Static {
-                        kind: StaticKind::Static,
-                        def_id,
-                        ..
-                    }),
-                projection: [],
-            } => {
-                if let PlaceRef {
-                    base: &PlaceBase::Static(_),
-                    projection: &[],
-                } = access_place.as_ref() {
-                    item_msg = format!("immutable static item `{}`", access_place_desc.unwrap());
-                    reason = String::new();
-                } else {
-                    item_msg = format!("`{}`", access_place_desc.unwrap());
-                    let static_name = &self.infcx.tcx.item_name(*def_id);
-                    reason = format!(", as `{}` is an immutable static item", static_name);
-                }
+                base: PlaceBase::Static(_),
+                ..
             }
-
-            PlaceRef {
+            | PlaceRef {
                 base: _,
                 projection: [.., ProjectionElem::Index(_)],
             }
@@ -257,15 +244,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [],
             } if {
                 self.body.local_decls.get(*local).map(|local_decl| {
-                    if let ClearCrossCrate::Set(
+                    if let LocalInfo::User(ClearCrossCrate::Set(
                         mir::BindingForm::ImplicitSelf(kind)
-                    ) = local_decl.is_user_variable.as_ref().unwrap() {
+                    )) = local_decl.local_info {
                         // Check if the user variable is a `&mut self` and we can therefore
                         // suggest removing the `&mut`.
                         //
                         // Deliberately fall into this case for all implicit self types,
                         // so that we don't fall in to the next case with them.
-                        *kind == mir::ImplicitSelfKind::MutRef
+                        kind == mir::ImplicitSelfKind::MutRef
                     } else if Some(kw::SelfLower) == local_decl.name {
                         // Otherwise, check if the name is the self kewyord - in which case
                         // we have an explicit self. Do the same thing in this case and check
@@ -360,16 +347,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [ProjectionElem::Deref],
-            } if {
-                if let Some(ClearCrossCrate::Set(BindingForm::RefForGuard)) =
-                    self.body.local_decls[*local].is_user_variable
-                {
-                    true
-                } else {
-                    false
-                }
-            } =>
-            {
+            } if self.body.local_decls[*local].is_ref_for_guard() => {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.note(
                     "variables bound in patterns are immutable until the end of the pattern guard",
@@ -384,38 +362,42 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [ProjectionElem::Deref],
-            } if self.body.local_decls[*local].is_user_variable.is_some() =>
+            } if self.body.local_decls[*local].is_user_variable() =>
             {
                 let local_decl = &self.body.local_decls[*local];
-                let suggestion = match local_decl.is_user_variable.as_ref().unwrap() {
-                    ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(_)) => {
+                let suggestion = match local_decl.local_info {
+                    LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::ImplicitSelf(_))) => {
                         Some(suggest_ampmut_self(self.infcx.tcx, local_decl))
                     }
 
-                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                        binding_mode: ty::BindingMode::BindByValue(_),
-                        opt_ty_info,
-                        ..
-                    })) => Some(suggest_ampmut(
+                    LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
+                        mir::VarBindingForm {
+                            binding_mode: ty::BindingMode::BindByValue(_),
+                            opt_ty_info,
+                            ..
+                        },
+                    ))) => Some(suggest_ampmut(
                         self.infcx.tcx,
                         self.body,
                         *local,
                         local_decl,
-                        *opt_ty_info,
+                        opt_ty_info,
                     )),
 
-                    ClearCrossCrate::Set(mir::BindingForm::Var(mir::VarBindingForm {
-                        binding_mode: ty::BindingMode::BindByReference(_),
-                        ..
-                    })) => {
+                    LocalInfo::User(ClearCrossCrate::Set(mir::BindingForm::Var(
+                        mir::VarBindingForm {
+                            binding_mode: ty::BindingMode::BindByReference(_),
+                            ..
+                        },
+                    ))) => {
                         let pattern_span = local_decl.source_info.span;
                         suggest_ref_mut(self.infcx.tcx, pattern_span)
                             .map(|replacement| (pattern_span, replacement))
                     }
 
-                    ClearCrossCrate::Set(mir::BindingForm::RefForGuard) => unreachable!(),
+                    LocalInfo::User(ClearCrossCrate::Clear) => bug!("saw cleared local state"),
 
-                    ClearCrossCrate::Clear => bug!("saw cleared local state"),
+                    _ => unreachable!(),
                 };
 
                 let (pointer_sigil, pointer_desc) = if local_decl.ty.is_region_ptr() {
