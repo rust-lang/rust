@@ -3,6 +3,7 @@ use std::fmt::Write;
 use std::mem;
 
 use syntax::source_map::{self, Span, DUMMY_SP};
+use rustc::ich::StableHashingContext;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::DefKind;
 use rustc::mir;
@@ -18,6 +19,7 @@ use rustc::mir::interpret::{
     InterpResult, truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 
 use super::{
@@ -827,5 +829,23 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames
+    }
+}
+
+impl<'ctx, 'mir, 'tcx, Tag, Extra> HashStable<StableHashingContext<'ctx>>
+for Frame<'mir, 'tcx, Tag, Extra>
+    where Extra: HashStable<StableHashingContext<'ctx>>,
+          Tag:   HashStable<StableHashingContext<'ctx>>
+{
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
+        self.body.hash_stable(hcx, hasher);
+        self.instance.hash_stable(hcx, hasher);
+        self.span.hash_stable(hcx, hasher);
+        self.return_to_block.hash_stable(hcx, hasher);
+        self.return_place.as_ref().map(|r| &**r).hash_stable(hcx, hasher);
+        self.locals.hash_stable(hcx, hasher);
+        self.block.hash_stable(hcx, hasher);
+        self.stmt.hash_stable(hcx, hasher);
+        self.extra.hash_stable(hcx, hasher);
     }
 }
