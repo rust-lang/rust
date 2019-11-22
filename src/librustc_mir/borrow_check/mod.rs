@@ -1738,25 +1738,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// static variable, as we do not track those in the MoveData.
     fn move_path_closest_to(
         &mut self,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'_, 'tcx>,
     ) -> Result<(PlaceRef<'cx, 'tcx>, MovePathIndex), NoMovePathFound> {
-        let mut last_prefix = place.base;
-
-        for prefix in self.prefixes(place, PrefixSet::All) {
-            if let Some(mpi) = self.move_path_for_place(prefix) {
-                return Ok((prefix, mpi));
-            }
-
-            last_prefix = prefix.base;
-        }
-
-        match last_prefix {
-            PlaceBase::Local(_) => panic!("should have move path for every Local"),
-            PlaceBase::Static(_) => Err(NoMovePathFound::ReachedStatic),
+        match self.move_data.rev_lookup.find(place) {
+            LookupResult::Parent(Some(mpi))
+            | LookupResult::Exact(mpi) => Ok((self.move_data.move_paths[mpi].place.as_ref(), mpi)),
+            LookupResult::Parent(None) => Err(NoMovePathFound::ReachedStatic),
         }
     }
 
-    fn move_path_for_place(&mut self, place: PlaceRef<'cx, 'tcx>) -> Option<MovePathIndex> {
+    fn move_path_for_place(&mut self, place: PlaceRef<'_, 'tcx>) -> Option<MovePathIndex> {
         // If returns None, then there is no move path corresponding
         // to a direct owner of `place` (which means there is nothing
         // that borrowck tracks for its analysis).
