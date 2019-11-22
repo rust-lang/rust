@@ -1,13 +1,13 @@
 //! FIXME: write short doc here
 
-use hir_def::{HasSource as _, Lookup};
+use hir_def::{HasChildSource, HasSource as _, Lookup, VariantId};
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::AstItemDef,
     Const, Either, Enum, EnumVariant, FieldSource, Function, HasBody, HirFileId, MacroDef, Module,
-    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
+    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
 pub use hir_expand::Source;
@@ -46,33 +46,12 @@ impl Module {
 impl HasSource for StructField {
     type Ast = FieldSource;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<FieldSource> {
-        let var_data = self.parent.variant_data(db);
-        let fields = var_data.fields().unwrap();
-        let ss;
-        let es;
-        let (file_id, struct_kind) = match self.parent {
-            VariantDef::Struct(s) => {
-                ss = s.source(db);
-                (ss.file_id, ss.value.kind())
-            }
-            VariantDef::EnumVariant(e) => {
-                es = e.source(db);
-                (es.file_id, es.value.kind())
-            }
-        };
-
-        let field_sources = match struct_kind {
-            ast::StructKind::Tuple(fl) => fl.fields().map(|it| FieldSource::Pos(it)).collect(),
-            ast::StructKind::Record(fl) => fl.fields().map(|it| FieldSource::Named(it)).collect(),
-            ast::StructKind::Unit => Vec::new(),
-        };
-        let value = field_sources
-            .into_iter()
-            .zip(fields.iter())
-            .find(|(_syntax, (id, _))| *id == self.id)
-            .unwrap()
-            .0;
-        Source { file_id, value }
+        let var = VariantId::from(self.parent);
+        let src = var.child_source(db);
+        src.map(|it| match it[self.id].clone() {
+            Either::A(it) => FieldSource::Pos(it),
+            Either::B(it) => FieldSource::Named(it),
+        })
     }
 }
 impl HasSource for Struct {
@@ -96,18 +75,7 @@ impl HasSource for Enum {
 impl HasSource for EnumVariant {
     type Ast = ast::EnumVariant;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::EnumVariant> {
-        let enum_data = db.enum_data(self.parent.id);
-        let src = self.parent.id.source(db);
-        let value = src
-            .value
-            .variant_list()
-            .into_iter()
-            .flat_map(|it| it.variants())
-            .zip(enum_data.variants.iter())
-            .find(|(_syntax, (id, _))| *id == self.id)
-            .unwrap()
-            .0;
-        Source { file_id: src.file_id, value }
+        self.parent.id.child_source(db).map(|map| map[self.id].clone())
     }
 }
 impl HasSource for Function {
