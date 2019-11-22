@@ -101,7 +101,7 @@ fn build_pat(var: ast::EnumVariant) -> Option<ast::Pat> {
                 iter::repeat(make::placeholder_pat().into()).take(field_list.fields().count());
             make::tuple_struct_pat(path, pats).into()
         }
-        ast::StructKind::Named(field_list) => {
+        ast::StructKind::Record(field_list) => {
             let pats = field_list.fields().map(|f| make::bind_pat(f.name().unwrap()).into());
             make::record_pat(path, pats).into()
         }
