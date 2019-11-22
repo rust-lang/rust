@@ -285,8 +285,8 @@ pub fn run_compiler(
 
         compiler.parse()?;
 
-        if let Some((ppm, opt_uii)) = &sess.opts.pretty {
-            if ppm.needs_ast_map(&opt_uii) {
+        if let Some(ppm) = &sess.opts.pretty {
+            if ppm.needs_ast_map() {
                 compiler.global_ctxt()?.peek_mut().enter(|tcx| {
                     let expanded_crate = compiler.expansion()?.take().0;
                     pretty::print_after_hir_lowering(
@@ -294,7 +294,6 @@ pub fn run_compiler(
                         compiler.input(),
                         &expanded_crate,
                         *ppm,
-                        opt_uii.clone(),
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
                     Ok(())

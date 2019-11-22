@@ -5,7 +5,7 @@ use rustc::hir::map as hir_map;
 use rustc::hir::print as pprust_hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::session::Session;
-use rustc::session::config::{PpMode, PpSourceMode, UserIdentifiedItem, Input};
+use rustc::session::config::{PpMode, PpSourceMode, Input};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::common::ErrorReported;
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
@@ -19,7 +19,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 
-pub use self::UserIdentifiedItem::*;
 pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use crate::abort_on_err;
@@ -444,14 +443,12 @@ pub fn print_after_hir_lowering<'tcx>(
     input: &Input,
     krate: &ast::Crate,
     ppm: PpMode,
-    opt_uii: Option<UserIdentifiedItem>,
     ofile: Option<&Path>,
 ) {
     if ppm.needs_analysis() {
         abort_on_err(print_with_analysis(
             tcx,
             ppm,
-            opt_uii,
             ofile
         ), tcx.sess);
         return;
@@ -461,8 +458,8 @@ pub fn print_after_hir_lowering<'tcx>(
 
     let mut out = String::new();
 
-    match (ppm, opt_uii) {
-            (PpmSource(s), _) => {
+    match ppm {
+            PpmSource(s) => {
                 // Silently ignores an identified node.
                 let out = &mut out;
                 let src = src.clone();
@@ -479,7 +476,7 @@ pub fn print_after_hir_lowering<'tcx>(
                 })
             }
 
-            (PpmHir(s), None) => {
+            PpmHir(s) => {
                 let out = &mut out;
                 let src = src.clone();
                 call_with_pp_support_hir(&s, tcx, move |annotation, krate| {
@@ -494,50 +491,12 @@ pub fn print_after_hir_lowering<'tcx>(
                 })
             }
 
-            (PpmHirTree(s), None) => {
+            PpmHirTree(s) => {
                 let out = &mut out;
                 call_with_pp_support_hir(&s, tcx, move |_annotation, krate| {
                     debug!("pretty printing source code {:?}", s);
                     *out = format!("{:#?}", krate);
                 });
-            }
-
-            (PpmHir(s), Some(uii)) => {
-                let out = &mut out;
-                let src = src.clone();
-                call_with_pp_support_hir(&s, tcx, move |annotation, _| {
-                    debug!("pretty printing source code {:?}", s);
-                    let sess = annotation.sess();
-                    let hir_map = annotation.hir_map().expect("-Z unpretty missing HIR map");
-                    let mut pp_state = pprust_hir::State::new_from_input(sess.source_map(),
-                                                                         &sess.parse_sess,
-                                                                         src_name,
-                                                                         src,
-                                                                         annotation.pp_ann());
-                    for node_id in uii.all_matching_node_ids(hir_map) {
-                        let hir_id = tcx.hir().node_to_hir_id(node_id);
-                        let node = hir_map.get(hir_id);
-                        pp_state.print_node(node);
-                        pp_state.s.space();
-                        let path = annotation.node_path(hir_id)
-                            .expect("-Z unpretty missing node paths");
-                        pp_state.synth_comment(path);
-                        pp_state.s.hardbreak();
-                    }
-                    *out = pp_state.s.eof();
-                })
-            }
-
-            (PpmHirTree(s), Some(uii)) => {
-                let out = &mut out;
-                call_with_pp_support_hir(&s, tcx, move |_annotation, _krate| {
-                    debug!("pretty printing source code {:?}", s);
-                    for node_id in uii.all_matching_node_ids(tcx.hir()) {
-                        let hir_id = tcx.hir().node_to_hir_id(node_id);
-                        let node = tcx.hir().get(hir_id);
-                        out.push_str(&format!("{:#?}", node));
-                    }
-                })
             }
 
             _ => unreachable!(),
@@ -553,27 +512,17 @@ pub fn print_after_hir_lowering<'tcx>(
 fn print_with_analysis(
     tcx: TyCtxt<'_>,
     ppm: PpMode,
-    uii: Option<UserIdentifiedItem>,
     ofile: Option<&Path>,
 ) -> Result<(), ErrorReported> {
-    let nodeid = if let Some(uii) = uii {
-        debug!("pretty printing for {:?}", uii);
-        Some(uii.to_one_node_id("-Z unpretty", tcx.sess, tcx.hir()))
-    } else {
-        debug!("pretty printing for whole crate");
-        None
-    };
-
     let mut out = Vec::new();
 
     tcx.analysis(LOCAL_CRATE)?;
 
     match ppm {
         PpmMir | PpmMirCFG => {
-            let def_id = nodeid.map(|nid| tcx.hir().local_def_id_from_node_id(nid));
             match ppm {
-                PpmMir => write_mir_pretty(tcx, def_id, &mut out),
-                PpmMirCFG => write_mir_graphviz(tcx, def_id, &mut out),
+                PpmMir => write_mir_pretty(tcx, None, &mut out),
+                PpmMirCFG => write_mir_graphviz(tcx, None, &mut out),
                 _ => unreachable!(),
             }
         }
