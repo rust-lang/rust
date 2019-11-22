@@ -954,7 +954,7 @@ macro_rules! visit_place_fns {
                     );
                 }
                 ProjectionElem::Deref |
-                ProjectionElem::Subslice { from: _, to: _ } |
+                ProjectionElem::Subslice { from: _, to: _, from_end: _ } |
                 ProjectionElem::ConstantIndex { offset: _,
                                                 min_length: _,
                                                 from_end: _ } |

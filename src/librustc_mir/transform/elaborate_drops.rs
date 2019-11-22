@@ -234,11 +234,10 @@ impl<'a, 'b, 'tcx> DropElaborator<'a, 'tcx> for Elaborator<'a, 'b, 'tcx> {
 
     fn array_subpath(&self, path: Self::Path, index: u32, size: u32) -> Option<Self::Path> {
         dataflow::move_path_children_matching(self.ctxt.move_data(), path, |e| match e {
-            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: false } => {
+            ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
+                debug_assert!(size == *min_length, "min_length should be exact for arrays");
+                assert!(!from_end, "from_end should not be used for array element ConstantIndex");
                 *offset == index
-            }
-            ProjectionElem::ConstantIndex { offset, min_length: _, from_end: true } => {
-                size - offset == index
             }
             _ => false,
         })

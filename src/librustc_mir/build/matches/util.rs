@@ -2,6 +2,7 @@ use crate::build::Builder;
 use crate::build::matches::MatchPair;
 use crate::hair::*;
 use rustc::mir::*;
+use rustc::ty;
 use smallvec::SmallVec;
 use std::u32;
 use std::convert::TryInto;
@@ -31,9 +32,17 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                      prefix: &'pat [Pat<'tcx>],
                                      opt_slice: Option<&'pat Pat<'tcx>>,
                                      suffix: &'pat [Pat<'tcx>]) {
-        let min_length = prefix.len() + suffix.len();
-        let min_length = min_length.try_into().unwrap();
         let tcx = self.hir.tcx();
+        let (min_length, exact_size) = match place.ty(&self.local_decls, tcx).ty.kind {
+            ty::Array(_, length) => (
+                length.eval_usize(tcx, self.hir.param_env).try_into().unwrap(),
+                true
+            ),
+            _ => (
+                (prefix.len() + suffix.len()).try_into().unwrap(),
+                false,
+            ),
+        };
 
         match_pairs.extend(
             prefix.iter()
@@ -50,10 +59,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         if let Some(subslice_pat) = opt_slice {
-            let subslice = tcx.mk_place_elem(place.clone(),ProjectionElem::Subslice {
-                from: prefix.len() as u32,
-                to: suffix.len() as u32
-            });
+            let suffix_len = suffix.len() as u32;
+            let subslice = tcx.mk_place_elem(
+                place.clone(),
+                ProjectionElem::Subslice {
+                    from: prefix.len() as u32,
+                    to: if exact_size { min_length - suffix_len } else { suffix_len },
+                    from_end: !exact_size,
+                },
+            );
             match_pairs.push(MatchPair::new(subslice, subslice_pat));
         }
 
@@ -62,10 +76,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                   .rev()
                   .enumerate()
                   .map(|(idx, subpattern)| {
+                      let end_offset = (idx + 1) as u32;
                       let elem = ProjectionElem::ConstantIndex {
-                          offset: (idx+1) as u32,
+                          offset: if exact_size { min_length - end_offset } else { end_offset },
                           min_length,
-                          from_end: true,
+                          from_end: !exact_size,
                       };
                       let place = tcx.mk_place_elem(place.clone(), elem);
                       MatchPair::new(place, subpattern)
