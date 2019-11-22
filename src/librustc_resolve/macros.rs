@@ -880,8 +880,8 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
-    /// extension partially or entirely for built-in macros and legacy plugin macros.
+    /// Compile the macro into a `SyntaxExtension` and possibly replace
+    /// its expander to a pre-defined one for built-in macros.
     crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
         let mut result = compile_declarative_macro(
             &self.session.parse_sess, self.session.features_untracked(), item, edition
@@ -890,14 +890,9 @@ impl<'a> Resolver<'a> {
         if result.is_builtin {
             // The macro was marked with `#[rustc_builtin_macro]`.
             if let Some(ext) = self.builtin_macros.remove(&item.ident.name) {
-                if ext.is_builtin {
-                    // The macro is a built-in, replace only the expander function.
-                    result.kind = ext.kind;
-                } else {
-                    // The macro is from a plugin, the in-source definition is dummy,
-                    // take all the data from the resolver.
-                    result = ext;
-                }
+                // The macro is a built-in, replace its expander function
+                // while still taking everything else from the source code.
+                result.kind = ext.kind;
             } else {
                 let msg = format!("cannot find a built-in macro with name `{}`", item.ident);
                 self.session.span_err(item.span, &msg);

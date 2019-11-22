@@ -1,11 +1,11 @@
-// aux-build:attr-plugin-test.rs
+// aux-build:empty-plugin.rs
 // ignore-cross-compile
 //
-// attr_plugin_test will not compile on a cross-compiled target because
+// empty_plugin will not compile on a cross-compiled target because
 // libsyntax is not compiled for it.
 
 #![deny(plugin_as_library)]
 
-extern crate attr_plugin_test; //~ ERROR compiler plugin used as an ordinary library
+extern crate empty_plugin; //~ ERROR compiler plugin used as an ordinary library
 
 fn main() { }

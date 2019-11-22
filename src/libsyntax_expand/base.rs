@@ -825,8 +825,6 @@ impl SyntaxExtension {
     }
 }
 
-pub type NamedSyntaxExtension = (Name, SyntaxExtension);
-
 /// Result of resolving a macro invocation.
 pub enum InvocationRes {
     Single(Lrc<SyntaxExtension>),

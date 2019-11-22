@@ -2,10 +2,6 @@
 
 use rustc::lint::LintStore;
 use rustc::session::Session;
-
-use syntax_expand::base::{SyntaxExtension, SyntaxExtensionKind, NamedSyntaxExtension};
-use syntax_expand::base::MacroExpanderFn;
-use syntax::symbol::Symbol;
 use syntax::ast;
 use syntax_pos::Span;
 
@@ -34,9 +30,6 @@ pub struct Registry<'a> {
     pub krate_span: Span,
 
     #[doc(hidden)]
-    pub syntax_exts: Vec<NamedSyntaxExtension>,
-
-    #[doc(hidden)]
     pub llvm_passes: Vec<String>,
 }
 
@@ -48,7 +41,6 @@ impl<'a> Registry<'a> {
             lint_store,
             args_hidden: None,
             krate_span,
-            syntax_exts: vec![],
             llvm_passes: vec![],
         }
     }
@@ -65,24 +57,6 @@ impl<'a> Registry<'a> {
     /// with `--extra-plugins`
     pub fn args(&self) -> &[ast::NestedMetaItem] {
         self.args_hidden.as_ref().map(|v| &v[..]).unwrap_or(&[])
-    }
-
-    /// Register a syntax extension of any kind.
-    ///
-    /// This is the most general hook into `libsyntax`'s expansion behavior.
-    pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
-        self.syntax_exts.push((name, extension));
-    }
-
-    /// Register a macro of the usual kind.
-    ///
-    /// This is a convenience wrapper for `register_syntax_extension`.
-    /// It builds for you a `SyntaxExtensionKind::LegacyBang` that calls `expander`,
-    /// and also takes care of interning the macro's name.
-    pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        let kind = SyntaxExtensionKind::LegacyBang(Box::new(expander));
-        let ext = SyntaxExtension::default(kind, self.sess.edition());
-        self.register_syntax_extension(Symbol::intern(name), ext);
     }
 
     /// Register an LLVM pass.
