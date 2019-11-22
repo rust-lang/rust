@@ -1654,6 +1654,12 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
     if (modref)
       break;
+
+    //If already did forward reverse replacement for iter, we cannot put it into post create (since it would have a dependence on our output, making a circular dependency)
+    if (gutils->originalToNewFn.find(&*iter) == gutils->originalToNewFn.end()) {
+      break;
+    }
+
     postCreate.push_back(cast<Instruction>(gutils->getNewFromOriginal(&*iter)));
     iter++;
     continue;
@@ -1756,10 +1762,13 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         llvm::errs() << " +  considering placeholder: " << *placeholder << "\n";
         if (I != E && placeholder == &*I) I++;
 
-        bool subcheck = topLevel ? 
+        bool subcheck = subdifferentialreturn && !op->getType()->isFPOrFPVectorTy();
+            /*
+             * topLevel ? 
             ( subdifferentialreturn && (op->getType()->isPointerTy() || (op->getType()->isIntegerTy() && isIntASecretFloat(op, IntType::Pointer) == IntType::Pointer ) ) )
             :
             ( subdifferentialreturn && (op->getType()->isPointerTy() || (op->getType()->isIntegerTy()) ) );
+            */
         
         if( subcheck ) {
             Value* newip = nullptr;

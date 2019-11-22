@@ -306,6 +306,14 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       Value* val0 = nullptr;
       Value* val1 = nullptr;
 
+      if (isConstantValue(arg->getOperand(0)) && isConstantValue(arg->getOperand(1))) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        dumpSet(this->originalInstructions);
+        llvm::errs() << *arg->getParent() << "\n";
+        llvm::errs() << " binary operator for ip has both operands as constant values " << *arg << "\n";
+      }
+
       //if (isa<ConstantInt>(arg->getOperand(0))) {
       if (isConstantValue(arg->getOperand(0))) {
         val0 = arg->getOperand(0);

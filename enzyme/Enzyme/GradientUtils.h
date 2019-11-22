@@ -100,6 +100,9 @@ public:
     assert(originst);
     auto f = originalToNewFn.find(originst);
     if (f == originalToNewFn.end()) {
+        llvm::errs() << *oldFunc << "\n";
+        llvm::errs() << *newFunc << "\n";
+        dumpMap(originalToNewFn);
         llvm::errs() << *originst << "\n";
     }
     assert(f != originalToNewFn.end());
