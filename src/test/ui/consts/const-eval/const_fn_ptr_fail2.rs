@@ -17,6 +17,8 @@ const Z: usize = bar(double, 2); // FIXME: should fail to typeck someday
 fn main() {
     assert_eq!(Y, 4);
     //~^ ERROR evaluation of constant expression failed
+    //~| ERROR erroneous constant used [E0080]
     assert_eq!(Z, 4);
     //~^ ERROR evaluation of constant expression failed
+    //~| ERROR erroneous constant used [E0080]
 }

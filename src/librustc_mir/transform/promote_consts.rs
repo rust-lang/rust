@@ -27,7 +27,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
-use std::{iter, mem, usize};
+use std::{cmp, iter, mem, usize};
 
 use crate::const_eval::{is_const_fn, is_unstable_const_fn};
 use crate::transform::check_consts::{is_lang_panic_fn, qualifs, ConstKind, Item};
@@ -761,6 +761,7 @@ struct Promoter<'a, 'tcx> {
     source: &'a mut BodyAndCache<'tcx>,
     promoted: BodyAndCache<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
+    extra_statements: &'a mut Vec<(Location, Statement<'tcx>)>,
 
     /// If true, all nested temps are also kept in the
     /// source MIR, not moved to the promoted MIR.
@@ -903,7 +904,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         candidate: Candidate,
         next_promoted_id: usize,
     ) -> Option<BodyAndCache<'tcx>> {
-        let mut operand = {
+        let mut rvalue = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
             let tcx = self.tcx;
@@ -927,15 +928,70 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                 Candidate::Ref(loc) => {
                     let ref mut statement = blocks[loc.block].statements[loc.statement_index];
                     match statement.kind {
-                        StatementKind::Assign(box (_, Rvalue::Ref(_, _, ref mut place))) => {
+                        StatementKind::Assign(box (
+                            _,
+                            Rvalue::Ref(ref mut region, borrow_kind, ref mut place),
+                        )) => {
                             // Use the underlying local for this (necessarily interior) borrow.
                             let ty = place.base.ty(local_decls).ty;
                             let span = statement.source_info.span;
 
-                            Operand::Move(Place {
-                                base: mem::replace(&mut place.base, promoted_place(ty, span).base),
-                                projection: List::empty(),
-                            })
+                            let ref_ty = tcx.mk_ref(
+                                tcx.lifetimes.re_static,
+                                ty::TypeAndMut { ty, mutbl: borrow_kind.to_mutbl_lossy() },
+                            );
+
+                            promoted.span = span;
+                            promoted.local_decls[RETURN_PLACE] =
+                                LocalDecl::new_return_place(ref_ty, span);
+
+                            *region = tcx.lifetimes.re_static;
+
+                            let mut projection = vec![PlaceElem::Deref];
+                            projection.extend(place.projection);
+                            place.projection = tcx.intern_place_elems(&projection);
+
+                            // Create a temp to hold the promoted reference.
+                            // This is because `*r` requires `r` to be a local,
+                            // otherwise we would use the `promoted` directly.
+                            let mut promoted_ref = LocalDecl::new_temp(ref_ty, span);
+                            promoted_ref.source_info = statement.source_info;
+                            let promoted_ref = local_decls.push(promoted_ref);
+                            assert_eq!(self.temps.push(TempState::Unpromotable), promoted_ref);
+
+                            let promoted_ref_rvalue =
+                                Rvalue::Use(Operand::Constant(Box::new(Constant {
+                                    span,
+                                    user_ty: None,
+                                    literal: tcx.mk_const(ty::Const {
+                                        ty: ref_ty,
+                                        val: ty::ConstKind::Unevaluated(
+                                            def_id,
+                                            InternalSubsts::identity_for_item(tcx, def_id),
+                                            Some(promoted_id),
+                                        ),
+                                    }),
+                                })));
+                            let promoted_ref_statement = Statement {
+                                source_info: statement.source_info,
+                                kind: StatementKind::Assign(Box::new((
+                                    Place::from(promoted_ref),
+                                    promoted_ref_rvalue,
+                                ))),
+                            };
+                            self.extra_statements.push((loc, promoted_ref_statement));
+
+                            Rvalue::Ref(
+                                tcx.lifetimes.re_static,
+                                borrow_kind,
+                                Place {
+                                    base: mem::replace(
+                                        &mut place.base,
+                                        PlaceBase::Local(promoted_ref),
+                                    ),
+                                    projection: List::empty(),
+                                },
+                            )
                         }
                         _ => bug!(),
                     }
@@ -946,7 +1002,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         StatementKind::Assign(box (_, Rvalue::Repeat(ref mut operand, _))) => {
                             let ty = operand.ty(local_decls, self.tcx);
                             let span = statement.source_info.span;
-                            mem::replace(operand, Operand::Copy(promoted_place(ty, span)))
+                            Rvalue::Use(mem::replace(
+                                operand,
+                                Operand::Copy(promoted_place(ty, span)),
+                            ))
                         }
                         _ => bug!(),
                     }
@@ -958,7 +1017,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let ty = args[index].ty(local_decls, self.tcx);
                             let span = terminator.source_info.span;
                             let operand = Operand::Copy(promoted_place(ty, span));
-                            mem::replace(&mut args[index], operand)
+                            Rvalue::Use(mem::replace(&mut args[index], operand))
                         }
                         // We expected a `TerminatorKind::Call` for which we'd like to promote an
                         // argument. `qualify_consts` saw a `TerminatorKind::Call` here, but
@@ -975,13 +1034,13 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         };
 
         assert_eq!(self.new_block(), START_BLOCK);
-        self.visit_operand(
-            &mut operand,
+        self.visit_rvalue(
+            &mut rvalue,
             Location { block: BasicBlock::new(0), statement_index: usize::MAX },
         );
 
         let span = self.promoted.span;
-        self.assign(RETURN_PLACE, Rvalue::Use(operand), span);
+        self.assign(RETURN_PLACE, rvalue, span);
         Some(self.promoted)
     }
 }
@@ -1020,6 +1079,7 @@ pub fn promote_candidates<'tcx>(
 
     let mut promotions = IndexVec::new();
 
+    let mut extra_statements = vec![];
     for candidate in candidates.into_iter().rev() {
         match candidate {
             Candidate::Repeat(Location { block, statement_index })
@@ -1043,23 +1103,27 @@ pub fn promote_candidates<'tcx>(
         let initial_locals =
             iter::once(LocalDecl::new_return_place(tcx.types.never, body.span)).collect();
 
+        let mut promoted = Body::new(
+            IndexVec::new(),
+            // FIXME: maybe try to filter this to avoid blowing up
+            // memory usage?
+            body.source_scopes.clone(),
+            initial_locals,
+            IndexVec::new(),
+            0,
+            vec![],
+            body.span,
+            vec![],
+            body.generator_kind,
+        );
+        promoted.ignore_interior_mut_in_const_validation = true;
+
         let promoter = Promoter {
-            promoted: BodyAndCache::new(Body::new(
-                IndexVec::new(),
-                // FIXME: maybe try to filter this to avoid blowing up
-                // memory usage?
-                body.source_scopes.clone(),
-                initial_locals,
-                IndexVec::new(),
-                0,
-                vec![],
-                body.span,
-                vec![],
-                body.generator_kind,
-            )),
+            promoted: BodyAndCache::new(promoted),
             tcx,
             source: body,
             temps: &mut temps,
+            extra_statements: &mut extra_statements,
             keep_original: false,
         };
 
@@ -1067,6 +1131,13 @@ pub fn promote_candidates<'tcx>(
         if let Some(promoted) = promoter.promote_candidate(def_id, candidate, promotions.len()) {
             promotions.push(promoted);
         }
+    }
+
+    // Insert each of `extra_statements` before its indicated location, which
+    // has to be done in reverse location order, to not invalidate the rest.
+    extra_statements.sort_by_key(|&(loc, _)| cmp::Reverse(loc));
+    for (loc, statement) in extra_statements {
+        body[loc.block].statements.insert(loc.statement_index, statement);
     }
 
     // Eliminate assignments to, and drops of promoted temps.

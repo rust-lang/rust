@@ -6,7 +6,8 @@ fn main() {
 // START rustc.main.ConstProp.before.mir
 // bb0: {
 //     ...
-//     _2 = &(promoted[0]: i32);
+//     _4 = const main::promoted[0];
+//     _2 = _4;
 //     _1 = (*_2);
 //     ...
 //}
@@ -14,7 +15,8 @@ fn main() {
 // START rustc.main.ConstProp.after.mir
 // bb0: {
 //     ...
-//     _2 = &(promoted[0]: i32);
+//     _4 = const main::promoted[0];
+//     _2 = _4;
 //     _1 = const 4i32;
 //     ...
 // }

@@ -14,4 +14,6 @@ fn main() {
     println!("{} {}", X, Y);
     //~^ ERROR evaluation of constant expression failed
     //~| ERROR evaluation of constant expression failed
+    //~| ERROR erroneous constant used [E0080]
+    //~| ERROR erroneous constant used [E0080]
 }

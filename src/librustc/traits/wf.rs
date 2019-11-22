@@ -359,7 +359,9 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for an array length to be WF
     /// into `self.out`.
     fn compute_array_len(&mut self, constant: ty::Const<'tcx>) {
-        if let ty::ConstKind::Unevaluated(def_id, substs) = constant.val {
+        if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.val {
+            assert!(promoted.is_none());
+
             let obligations = self.nominal_obligations(def_id, substs);
             self.out.extend(obligations);
 

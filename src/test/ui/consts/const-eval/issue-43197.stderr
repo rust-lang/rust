@@ -26,12 +26,24 @@ error[E0080]: evaluation of constant expression failed
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
+error[E0080]: erroneous constant used
+  --> $DIR/issue-43197.rs:14:23
+   |
+LL |     println!("{} {}", X, Y);
+   |                       ^ referenced constant has errors
+
 error[E0080]: evaluation of constant expression failed
   --> $DIR/issue-43197.rs:14:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
-error: aborting due to 2 previous errors
+error[E0080]: erroneous constant used
+  --> $DIR/issue-43197.rs:14:26
+   |
+LL |     println!("{} {}", X, Y);
+   |                          ^ referenced constant has errors
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

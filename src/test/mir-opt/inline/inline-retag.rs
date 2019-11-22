@@ -25,11 +25,11 @@ fn foo(x: &i32, y: &i32) -> bool {
 //         ...
 //         Retag(_3);
 //         Retag(_6);
-//         StorageLive(_9);
-//         _9 = (*_3);
-//         StorageLive(_10);
-//         _10 = (*_6);
-//         _0 = Eq(move _9, move _10);
+//         StorageLive(_11);
+//         _11 = (*_3);
+//         StorageLive(_12);
+//         _12 = (*_6);
+//         _0 = Eq(move _11, move _12);
 //         ...
 //         return;
 //     }

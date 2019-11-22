@@ -802,8 +802,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::Predicate::ConstEvaluatable(def_id, substs) => {
                 if !(obligation.param_env, substs).has_local_value() {
-                    match self.tcx().const_eval_resolve(obligation.param_env, def_id, substs, None)
-                    {
+                    match self.tcx().const_eval_resolve(
+                        obligation.param_env,
+                        def_id,
+                        substs,
+                        None,
+                        None,
+                    ) {
                         Ok(_) => Ok(EvaluatedToOk),
                         Err(_) => Ok(EvaluatedToErr),
                     }

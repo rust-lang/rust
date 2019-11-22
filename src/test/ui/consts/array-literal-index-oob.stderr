@@ -14,5 +14,12 @@ LL |     &{[1, 2, 3][4]};
    |       |
    |       indexing out of bounds: the len is 3 but the index is 4
 
-error: aborting due to 2 previous errors
+error[E0080]: erroneous constant used
+  --> $DIR/array-literal-index-oob.rs:4:5
+   |
+LL |     &{[1, 2, 3][4]};
+   |     ^^^^^^^^^^^^^^^ referenced constant has errors
 
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0080`.

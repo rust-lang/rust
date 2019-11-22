@@ -102,7 +102,9 @@ pub trait Qualif {
                     // Note: this uses `constant.literal.ty` which is a reference or pointer to the
                     // type of the actual `static` item.
                     Self::in_any_value_of_ty(cx, constant.literal.ty)
-                } else if let ty::ConstKind::Unevaluated(def_id, _) = constant.literal.val {
+                } else if let ty::ConstKind::Unevaluated(def_id, _, promoted) = constant.literal.val
+                {
+                    assert!(promoted.is_none());
                     // Don't peek inside trait associated constants.
                     if cx.tcx.trait_of_item(def_id).is_some() {
                         Self::in_any_value_of_ty(cx, constant.literal.ty)

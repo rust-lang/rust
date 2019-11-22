@@ -1249,8 +1249,8 @@ fn collect_const<'tcx>(
                 collect_miri(tcx, id, output);
             }
         }
-        ty::ConstKind::Unevaluated(def_id, substs) => {
-            match tcx.const_eval_resolve(param_env, def_id, substs, None) {
+        ty::ConstKind::Unevaluated(def_id, substs, promoted) => {
+            match tcx.const_eval_resolve(param_env, def_id, substs, promoted, None) {
                 Ok(val) => collect_const(tcx, val, param_substs, output),
                 Err(ErrorHandled::Reported) => {}
                 Err(ErrorHandled::TooGeneric) => {

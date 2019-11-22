@@ -65,7 +65,8 @@ fn main() {
 //  }
 //  bb6: { // binding1 and guard
 //      StorageLive(_6);
-//      _6 = &(((promoted[0]: std::option::Option<i32>) as Some).0: i32);
+//      _11 = const full_tested_match::promoted[0];
+//      _6 = &(((*_11) as Some).0: i32);
 //      _4 = &shallow _2;
 //      StorageLive(_7);
 //      _7 = const guard() -> [return: bb7, unwind: bb1];

@@ -310,17 +310,54 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
-            if let ty::ConstKind::Unevaluated(def_id, substs) = constant.literal.val {
-                if let Err(terr) = self.cx.fully_perform_op(
-                    location.to_locations(),
-                    ConstraintCategory::Boring,
-                    self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        constant.literal.ty,
-                        def_id,
-                        UserSubsts { substs, user_self_ty: None },
-                    )),
-                ) {
-                    span_mirbug!(self, constant, "bad constant type {:?} ({:?})", constant, terr);
+            if let ty::ConstKind::Unevaluated(def_id, substs, promoted) = constant.literal.val {
+                if let Some(promoted) = promoted {
+                    let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
+                                     promoted: &ReadOnlyBodyAndCache<'_, 'tcx>,
+                                     ty,
+                                     san_ty| {
+                        if let Err(terr) = verifier.cx.eq_types(
+                            san_ty,
+                            ty,
+                            location.to_locations(),
+                            ConstraintCategory::Boring,
+                        ) {
+                            span_mirbug!(
+                                verifier,
+                                promoted,
+                                "bad promoted type ({:?}: {:?}): {:?}",
+                                ty,
+                                san_ty,
+                                terr
+                            );
+                        };
+                    };
+
+                    if !self.errors_reported {
+                        let promoted_body = self.promoted[promoted];
+                        self.sanitize_promoted(promoted_body, location);
+
+                        let promoted_ty = promoted_body.return_ty();
+                        check_err(self, &promoted_body, ty, promoted_ty);
+                    }
+                } else {
+                    if let Err(terr) = self.cx.fully_perform_op(
+                        location.to_locations(),
+                        ConstraintCategory::Boring,
+                        self.cx.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
+                            constant.literal.ty,
+                            def_id,
+                            UserSubsts { substs, user_self_ty: None },
+                        )),
+                    ) {
+                        span_mirbug!(
+                            self,
+                            constant,
+                            "bad constant type {:?} ({:?})",
+                            constant,
+                            terr
+                        );
+                    }
                 }
             }
             if let ty::FnDef(def_id, substs) = constant.literal.ty.kind {

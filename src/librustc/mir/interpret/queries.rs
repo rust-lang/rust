@@ -36,11 +36,16 @@ impl<'tcx> TyCtxt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
+        promoted: Option<mir::Promoted>,
         span: Option<Span>,
     ) -> ConstEvalResult<'tcx> {
         let instance = ty::Instance::resolve(self, param_env, def_id, substs);
         if let Some(instance) = instance {
-            self.const_eval_instance(param_env, instance, span)
+            if let Some(promoted) = promoted {
+                self.const_eval_promoted(instance, promoted)
+            } else {
+                self.const_eval_instance(param_env, instance, span)
+            }
         } else {
             Err(ErrorHandled::TooGeneric)
         }
