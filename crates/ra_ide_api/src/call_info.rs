@@ -30,7 +30,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
             let (callable_def, _subst) = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::Function(it) => {
-                    (CallInfo::with_fn(db, it), it.data(db).has_self_param())
+                    (CallInfo::with_fn(db, it), it.has_self_param(db))
                 }
                 hir::CallableDef::Struct(it) => (CallInfo::with_struct(db, it)?, false),
                 hir::CallableDef::EnumVariant(it) => (CallInfo::with_enum_variant(db, it)?, false),
@@ -38,7 +38,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
         }
         FnCallNode::MethodCallExpr(expr) => {
             let function = analyzer.resolve_method_call(&expr)?;
-            (CallInfo::with_fn(db, function), function.data(db).has_self_param())
+            (CallInfo::with_fn(db, function), function.has_self_param(db))
         }
         FnCallNode::MacroCallExpr(expr) => {
             let macro_def = analyzer.resolve_macro_call(db, &expr)?;

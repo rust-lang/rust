@@ -313,7 +313,7 @@ impl RootDatabase {
             hir::db::RawItemsQuery
             hir::db::CrateDefMapQuery
             hir::db::GenericParamsQuery
-            hir::db::FnDataQuery
+            hir::db::FunctionDataQuery
             hir::db::TypeAliasDataQuery
             hir::db::ConstDataQuery
             hir::db::StaticDataQuery

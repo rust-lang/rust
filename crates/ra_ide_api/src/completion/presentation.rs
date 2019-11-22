@@ -199,14 +199,17 @@ impl Completions {
         name: Option<String>,
         func: hir::Function,
     ) {
-        let data = func.data(ctx.db);
-        let name = name.unwrap_or_else(|| data.name().to_string());
+        let func_name = func.name(ctx.db);
+        let has_self_param = func.has_self_param(ctx.db);
+        let params = func.params(ctx.db);
+
+        let name = name.unwrap_or_else(|| func_name.to_string());
         let ast_node = func.source(ctx.db).value;
         let detail = function_label(&ast_node);
 
         let mut builder =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
-                .kind(if data.has_self_param() {
+                .kind(if has_self_param {
                     CompletionItemKind::Method
                 } else {
                     CompletionItemKind::Function
@@ -222,10 +225,10 @@ impl Completions {
         {
             tested_by!(inserts_parens_for_function_calls);
             let (snippet, label) =
-                if data.params().is_empty() || data.has_self_param() && data.params().len() == 1 {
-                    (format!("{}()$0", data.name()), format!("{}()", name))
+                if params.is_empty() || has_self_param && params.len() == 1 {
+                    (format!("{}()$0", func_name), format!("{}()", name))
                 } else {
-                    (format!("{}($0)", data.name()), format!("{}(…)", name))
+                    (format!("{}($0)", func_name), format!("{}(…)", name))
                 };
             builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }

@@ -21,6 +21,7 @@ pub mod generics;
 pub mod traits;
 pub mod resolver;
 pub mod type_alias;
+pub mod function;
 
 #[cfg(test)]
 mod test_db;
