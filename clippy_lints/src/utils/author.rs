@@ -458,8 +458,8 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     println!("Ret(None) = {};", current);
                 }
             },
-            ExprKind::InlineAsm(_, ref _input, ref _output) => {
-                println!("InlineAsm(_, ref input, ref output) = {};", current);
+            ExprKind::InlineAsm(_) => {
+                println!("InlineAsm(_) = {};", current);
                 println!("    // unimplemented: `ExprKind::InlineAsm` is not further destructured at the moment");
             },
             ExprKind::Struct(ref path, ref fields, ref opt_base) => {
