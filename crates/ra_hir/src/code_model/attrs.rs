@@ -8,7 +8,6 @@ use crate::{
 use hir_def::attr::Attr;
 use hir_expand::hygiene::Hygiene;
 use ra_syntax::ast;
-use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AttrDef {
@@ -38,16 +37,19 @@ impl_froms!(
 );
 
 pub trait Attrs {
-    fn attrs(&self, db: &impl HirDatabase) -> Option<Arc<[Attr]>>;
+    fn attrs(&self, db: &impl HirDatabase) -> hir_def::attr::Attrs;
 }
 
 pub(crate) fn attributes_query(
     db: &(impl DefDatabase + AstDatabase),
     def: AttrDef,
-) -> Option<Arc<[Attr]>> {
+) -> hir_def::attr::Attrs {
     match def {
         AttrDef::Module(it) => {
-            let src = it.declaration_source(db)?;
+            let src = match it.declaration_source(db) {
+                Some(it) => it,
+                None => return hir_def::attr::Attrs::default(),
+            };
             let hygiene = Hygiene::new(db, src.file_id);
             Attr::from_attrs_owner(&src.value, &hygiene)
         }
@@ -57,7 +59,7 @@ pub(crate) fn attributes_query(
                 let hygiene = Hygiene::new(db, src.file_id);
                 Attr::from_attrs_owner(&named, &hygiene)
             }
-            FieldSource::Pos(..) => None,
+            FieldSource::Pos(..) => hir_def::attr::Attrs::default(),
         },
         AttrDef::Adt(it) => match it {
             Adt::Struct(it) => attrs_from_ast(it, db),
@@ -74,7 +76,7 @@ pub(crate) fn attributes_query(
     }
 }
 
-fn attrs_from_ast<T, D>(node: T, db: &D) -> Option<Arc<[Attr]>>
+fn attrs_from_ast<T, D>(node: T, db: &D) -> hir_def::attr::Attrs
 where
     T: HasSource,
     T::Ast: ast::AttrsOwner,
@@ -86,7 +88,7 @@ where
 }
 
 impl<T: Into<AttrDef> + Copy> Attrs for T {
-    fn attrs(&self, db: &impl HirDatabase) -> Option<Arc<[Attr]>> {
+    fn attrs(&self, db: &impl HirDatabase) -> hir_def::attr::Attrs {
         db.attrs((*self).into())
     }
 }

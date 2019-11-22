@@ -1,6 +1,6 @@
 //! A higher level attributes based on TokenTree, with also some shortcuts.
 
-use std::sync::Arc;
+use std::{ops, sync::Arc};
 
 use hir_expand::hygiene::Hygiene;
 use mbe::ast_to_token_tree;
@@ -12,6 +12,28 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::path::Path;
+
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct Attrs {
+    entries: Option<Arc<[Attr]>>,
+}
+
+impl ops::Deref for Attrs {
+    type Target = [Attr];
+
+    fn deref(&self) -> &[Attr] {
+        match &self.entries {
+            Some(it) => &*it,
+            None => &[],
+        }
+    }
+}
+
+impl Attrs {
+    pub fn has_atom(&self, atom: &str) -> bool {
+        self.iter().any(|it| it.is_simple_atom(atom))
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attr {
@@ -43,13 +65,15 @@ impl Attr {
         Some(Attr { path, input })
     }
 
-    pub fn from_attrs_owner(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Option<Arc<[Attr]>> {
+    pub fn from_attrs_owner(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
         let mut attrs = owner.attrs().peekable();
-        if attrs.peek().is_none() {
+        let entries = if attrs.peek().is_none() {
             // Avoid heap allocation
-            return None;
-        }
-        Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).collect())
+            None
+        } else {
+            Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).collect())
+        };
+        Attrs { entries }
     }
 
     pub fn is_simple_atom(&self, name: &str) -> bool {

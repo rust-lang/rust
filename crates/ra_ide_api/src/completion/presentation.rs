@@ -286,10 +286,7 @@ impl Completions {
 }
 
 fn is_deprecated(node: impl Attrs, db: &impl HirDatabase) -> bool {
-    match node.attrs(db) {
-        None => false,
-        Some(attrs) => attrs.iter().any(|x| x.is_simple_atom("deprecated")),
-    }
+    node.attrs(db).has_atom("deprecated")
 }
 
 fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> bool {
