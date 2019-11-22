@@ -47,6 +47,4 @@ fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
 }
 
 #[rustc_error]
-fn main() { }
-//[ok]~^ ERROR fatal error triggered by #[rustc_error]
-//[oneuse]~^^ ERROR fatal error triggered by #[rustc_error]
+fn main() { } //[ok,oneuse]~ ERROR fatal error triggered by #[rustc_error]
