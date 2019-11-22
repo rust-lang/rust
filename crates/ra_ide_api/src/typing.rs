@@ -40,9 +40,13 @@ pub(crate) fn on_enter(db: &RootDatabase, position: FilePosition) -> Option<Sour
     }
 
     let prefix = comment.prefix();
-    if position.offset
-        < comment.syntax().text_range().start() + TextUnit::of_str(prefix) + TextUnit::from(1)
-    {
+    let comment_range = comment.syntax().text_range();
+    if position.offset < comment_range.start() + TextUnit::of_str(prefix) + TextUnit::from(1) {
+        return None;
+    }
+
+    // Continuing non-doc line comments (like this one :) ) is annoying
+    if prefix == "//" && comment_range.end() == position.offset {
         return None;
     }
 
@@ -247,6 +251,30 @@ impl S {
 }
 ",
         );
+        do_check(
+            r"
+fn main() {
+    // Fix<|> me
+    let x = 1 + 1;
+}
+",
+            r"
+fn main() {
+    // Fix
+    // <|> me
+    let x = 1 + 1;
+}
+",
+        );
+        do_check_noop(
+            r"
+fn main() {
+    // Fix me<|>
+    let x = 1 + 1;
+}
+",
+        );
+
         do_check_noop(r"<|>//! docz");
     }
 
