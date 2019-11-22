@@ -16,16 +16,15 @@ use crate::{
         CallableDef, FnSig, GenericPredicate, InferenceResult, Namespace, Substs, Ty, TypableDef,
         TypeCtor,
     },
-    type_alias::TypeAliasData,
     Const, ConstData, Crate, DefWithBody, FnData, Function, GenericDef, ImplBlock, Module, Static,
-    StructField, Trait, TypeAlias,
+    StructField, Trait,
 };
 
 pub use hir_def::db::{
     BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
     EnumDataQuery, ExprScopesQuery, GenericParamsQuery, ImplDataQuery, InternDatabase,
     InternDatabaseStorage, RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
-    TraitDataQuery,
+    TraitDataQuery, TypeAliasDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -38,9 +37,6 @@ pub use hir_expand::db::{
 pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
     #[salsa::invoke(FnData::fn_data_query)]
     fn fn_data(&self, func: Function) -> Arc<FnData>;
-
-    #[salsa::invoke(TypeAliasData::type_alias_data_query)]
-    fn type_alias_data(&self, typ: TypeAlias) -> Arc<TypeAliasData>;
 
     #[salsa::invoke(ConstData::const_data_query)]
     fn const_data(&self, konst: Const) -> Arc<ConstData>;

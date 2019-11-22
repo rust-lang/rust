@@ -32,7 +32,6 @@ pub mod db;
 pub mod source_binder;
 
 mod ids;
-mod type_alias;
 mod ty;
 mod impl_block;
 mod expr;

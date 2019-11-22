@@ -20,6 +20,7 @@ pub mod body;
 pub mod generics;
 pub mod traits;
 pub mod resolver;
+pub mod type_alias;
 
 #[cfg(test)]
 mod test_db;

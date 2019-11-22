@@ -937,7 +937,7 @@ impl TypeAlias {
     }
 
     pub fn type_ref(self, db: &impl DefDatabase) -> Option<TypeRef> {
-        db.type_alias_data(self).type_ref.clone()
+        db.type_alias_data(self.id).type_ref.clone()
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
@@ -945,7 +945,7 @@ impl TypeAlias {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Name {
-        db.type_alias_data(self).name.clone()
+        db.type_alias_data(self.id).name.clone()
     }
 }
 

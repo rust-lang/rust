@@ -143,3 +143,4 @@ pub const BOX_TYPE: Name = Name::new_inline_ascii(3, b"Box");
 
 // Builtin Macros
 pub const LINE_MACRO: Name = Name::new_inline_ascii(4, b"line");
+pub const STRINGIFY_MACRO: Name = Name::new_inline_ascii(9, b"stringify");

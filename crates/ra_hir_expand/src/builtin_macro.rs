@@ -11,6 +11,7 @@ use crate::quote;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BuiltinExpander {
     Line,
+    Stringify,
 }
 
 impl BuiltinExpander {
@@ -22,6 +23,7 @@ impl BuiltinExpander {
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self {
             BuiltinExpander::Line => line_expand(db, id, tt),
+            BuiltinExpander::Stringify => stringify_expand(db, id, tt),
         }
     }
 }
@@ -34,6 +36,8 @@ pub fn find_builtin_macro(
     // FIXME: Better registering method
     if ident == &name::LINE_MACRO {
         Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Line) })
+    } else if ident == &name::STRINGIFY_MACRO {
+        Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Stringify) })
     } else {
         None
     }
@@ -74,6 +78,29 @@ fn line_expand(
 
     let expanded = quote! {
         #line_num
+    };
+
+    Ok(expanded)
+}
+
+fn stringify_expand(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    let loc = db.lookup_intern_macro(id);
+    let macro_call = loc.ast_id.to_node(db);
+
+    let macro_content = {
+        let arg = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
+        let macro_args = arg.syntax().clone();
+        let text = macro_args.text();
+        let without_parens = TextUnit::of_char('(')..text.len() - TextUnit::of_char(')');
+        text.slice(without_parens).to_string()
+    };
+
+    let expanded = quote! {
+        #macro_content
     };
 
     Ok(expanded)
