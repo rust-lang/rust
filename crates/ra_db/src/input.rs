@@ -80,16 +80,16 @@ pub struct CrateGraph {
     arena: FxHashMap<CrateId, CrateData>,
 }
 
-#[derive(Debug)]
-pub struct CyclicDependencies;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
-impl CrateId {
-    pub fn shift(self, amount: u32) -> CrateId {
-        CrateId(self.0 + amount)
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CrateData {
+    file_id: FileId,
+    edition: Edition,
+    cfg_options: CfgOptions,
+    env: Env,
+    dependencies: Vec<Dependency>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -104,34 +104,9 @@ pub struct Env {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct CrateData {
-    file_id: FileId,
-    edition: Edition,
-    dependencies: Vec<Dependency>,
-    cfg_options: CfgOptions,
-    env: Env,
-}
-
-impl CrateData {
-    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions, env: Env) -> CrateData {
-        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options, env }
-    }
-
-    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
-        self.dependencies.push(Dependency { name, crate_id })
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Dependency {
     pub crate_id: CrateId,
     pub name: SmolStr,
-}
-
-impl Dependency {
-    pub fn crate_id(&self) -> CrateId {
-        self.crate_id
-    }
 }
 
 impl CrateGraph {
@@ -158,9 +133,9 @@ impl CrateGraph {
         from: CrateId,
         name: SmolStr,
         to: CrateId,
-    ) -> Result<(), CyclicDependencies> {
+    ) -> Result<(), CyclicDependenciesError> {
         if self.dfs_find(from, to, &mut FxHashSet::default()) {
-            return Err(CyclicDependencies);
+            return Err(CyclicDependenciesError);
         }
         self.arena.get_mut(&from).unwrap().add_dep(name, to);
         Ok(())
@@ -231,9 +206,20 @@ impl CrateGraph {
     }
 }
 
-#[derive(Debug)]
-pub struct ParseEditionError {
-    invalid_input: String,
+impl CrateId {
+    pub fn shift(self, amount: u32) -> CrateId {
+        CrateId(self.0 + amount)
+    }
+}
+
+impl CrateData {
+    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions, env: Env) -> CrateData {
+        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options, env }
+    }
+
+    fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
+        self.dependencies.push(Dependency { name, crate_id })
+    }
 }
 
 impl FromStr for Edition {
@@ -249,6 +235,17 @@ impl FromStr for Edition {
     }
 }
 
+impl Dependency {
+    pub fn crate_id(&self) -> CrateId {
+        self.crate_id
+    }
+}
+
+#[derive(Debug)]
+pub struct ParseEditionError {
+    invalid_input: String,
+}
+
 impl fmt::Display for ParseEditionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "invalid edition: {:?}", self.invalid_input)
@@ -256,6 +253,9 @@ impl fmt::Display for ParseEditionError {
 }
 
 impl std::error::Error for ParseEditionError {}
+
+#[derive(Debug)]
+pub struct CyclicDependenciesError;
 
 #[cfg(test)]
 mod tests {
