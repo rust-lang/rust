@@ -75,6 +75,8 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             clippy_lints::register_pre_expansion_lints(&mut lint_store, &conf);
             clippy_lints::register_renamed(&mut lint_store);
         }));
+
+        config.opts.debugging_opts.mir_opt_level = 0;
     }
 }
 

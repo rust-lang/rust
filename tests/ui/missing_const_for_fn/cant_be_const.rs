@@ -32,8 +32,11 @@ fn random_caller() -> u32 {
 
 static Y: u32 = 0;
 
+// We should not suggest to make this function `const` because const functions are not allowed to
+// refer to a static variable
 fn get_y() -> u32 {
     Y
+    //~^ ERROR E0013
 }
 
 // Don't lint entrypoint functions
