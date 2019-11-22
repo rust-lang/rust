@@ -76,6 +76,8 @@ unsafe fn configure_llvm(sess: &Session) {
             }
         }
 
+        add("-import-instr-limit=25");
+
         if sess.target.target.target_os == "emscripten" &&
             sess.panic_strategy() == PanicStrategy::Unwind {
             add("-enable-emscripten-cxx-exceptions");
