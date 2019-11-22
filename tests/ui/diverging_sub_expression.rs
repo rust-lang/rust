@@ -1,4 +1,3 @@
-#![feature(never_type)]
 #![warn(clippy::diverging_sub_expression)]
 #![allow(clippy::match_same_arms, clippy::logic_bug)]
 

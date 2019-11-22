@@ -2,7 +2,6 @@
 
 #![feature(box_syntax)]
 #![feature(box_patterns)]
-#![feature(never_type)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]

@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(never_type)]
 #![warn(clippy::result_map_unit_fn)]
 #![allow(unused)]
 
