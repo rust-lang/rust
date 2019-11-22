@@ -4857,3 +4857,22 @@ fn main() {
     "###
     );
 }
+
+#[test]
+fn infer_builtin_macros_file() {
+    assert_snapshot!(
+        infer(r#"
+#[rustc_builtin_macro]
+macro_rules! file {() => {}}
+
+fn main() {
+    let x = file!();
+}
+"#),
+        @r###"
+    ![0; 2) '""': &str
+    [64; 88) '{     ...!(); }': ()
+    [74; 75) 'x': &str
+    "###
+    );
+}

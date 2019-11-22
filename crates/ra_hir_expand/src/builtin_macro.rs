@@ -10,6 +10,7 @@ use crate::quote;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BuiltinExpander {
+    File,
     Line,
     Stringify,
 }
@@ -22,6 +23,7 @@ impl BuiltinExpander {
         tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self {
+            BuiltinExpander::File => file_expand(db, id, tt),
             BuiltinExpander::Line => line_expand(db, id, tt),
             BuiltinExpander::Stringify => stringify_expand(db, id, tt),
         }
@@ -34,7 +36,9 @@ pub fn find_builtin_macro(
     ast_id: AstId<ast::MacroCall>,
 ) -> Option<MacroDefId> {
     // FIXME: Better registering method
-    if ident == &name::LINE_MACRO {
+    if ident == &name::FILE_MACRO {
+        Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::File) })
+    } else if ident == &name::LINE_MACRO {
         Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Line) })
     } else if ident == &name::STRINGIFY_MACRO {
         Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Stringify) })
@@ -101,6 +105,26 @@ fn stringify_expand(
 
     let expanded = quote! {
         #macro_content
+    };
+
+    Ok(expanded)
+}
+
+fn file_expand(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    let loc = db.lookup_intern_macro(id);
+    let macro_call = loc.ast_id.to_node(db);
+    let _ = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
+
+    // FIXME: RA purposefully lacks knowledge of absolute file names
+    // so just return "".
+    let file_name = "";
+
+    let expanded = quote! {
+        #file_name
     };
 
     Ok(expanded)
