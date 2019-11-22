@@ -982,12 +982,12 @@ pub struct Arm {
 /// Access of a named (e.g., `obj.foo`) or unnamed (e.g., `obj.0`) struct field.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Field {
-    pub ident: Ident,
-    pub expr: P<Expr>,
-    pub span: Span,
-    pub is_shorthand: bool,
     pub attrs: ThinVec<Attribute>,
     pub id: NodeId,
+    pub span: Span,
+    pub ident: Ident,
+    pub expr: P<Expr>,
+    pub is_shorthand: bool,
     pub is_placeholder: bool,
 }
 
@@ -1567,12 +1567,14 @@ pub struct FnSig {
 /// signature) or provided (meaning it has a default implementation).
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitItem {
-    pub id: NodeId,
-    pub ident: Ident,
     pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub vis: Visibility,
+    pub ident: Ident,
+
     pub generics: Generics,
     pub kind: TraitItemKind,
-    pub span: Span,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }
@@ -1588,14 +1590,15 @@ pub enum TraitItemKind {
 /// Represents anything within an `impl` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ImplItem {
-    pub id: NodeId,
-    pub ident: Ident,
-    pub vis: Visibility,
-    pub defaultness: Defaultness,
     pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub vis: Visibility,
+    pub ident: Ident,
+
+    pub defaultness: Defaultness,
     pub generics: Generics,
     pub kind: ImplItemKind,
-    pub span: Span,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }
@@ -2174,22 +2177,24 @@ pub struct GlobalAsm {
 pub struct EnumDef {
     pub variants: Vec<Variant>,
 }
-
 /// Enum variant.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Variant {
-    /// Name of the variant.
-    pub ident: Ident,
     /// Attributes of the variant.
     pub attrs: Vec<Attribute>,
     /// Id of the variant (not the constructor, see `VariantData::ctor_id()`).
     pub id: NodeId,
+    /// Span
+    pub span: Span,
+    /// The visibility of the variant. Syntactically accepted but not semantically.
+    pub vis: Visibility,
+    /// Name of the variant.
+    pub ident: Ident,
+
     /// Fields and constructor id of the variant.
     pub data: VariantData,
     /// Explicit discriminant, e.g., `Foo = 1`.
     pub disr_expr: Option<AnonConst>,
-    /// Span
-    pub span: Span,
     /// Is a macro placeholder
     pub is_placeholder: bool,
 }
@@ -2368,12 +2373,13 @@ impl VisibilityKind {
 /// E.g., `bar: usize` as in `struct Foo { bar: usize }`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct StructField {
-    pub span: Span,
-    pub ident: Option<Ident>,
-    pub vis: Visibility,
-    pub id: NodeId,
-    pub ty: P<Ty>,
     pub attrs: Vec<Attribute>,
+    pub id: NodeId,
+    pub span: Span,
+    pub vis: Visibility,
+    pub ident: Option<Ident>,
+
+    pub ty: P<Ty>,
     pub is_placeholder: bool,
 }
 
@@ -2417,12 +2423,13 @@ impl VariantData {
 /// The name might be a dummy name in case of anonymous items.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
-    pub ident: Ident,
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
-    pub kind: ItemKind,
-    pub vis: Visibility,
     pub span: Span,
+    pub vis: Visibility,
+    pub ident: Ident,
+
+    pub kind: ItemKind,
 
     /// Original tokens this item was parsed from. This isn't necessarily
     /// available for all items, although over time more and more items should
@@ -2579,12 +2586,13 @@ impl ItemKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignItem {
-    pub ident: Ident,
     pub attrs: Vec<Attribute>,
-    pub kind: ForeignItemKind,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
+    pub ident: Ident,
+
+    pub kind: ForeignItemKind,
 }
 
 /// An item within an `extern` block.

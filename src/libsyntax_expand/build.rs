@@ -582,12 +582,13 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn variant(&self, span: Span, ident: Ident, tys: Vec<P<ast::Ty>> ) -> ast::Variant {
+        let vis_span = span.shrink_to_lo();
         let fields: Vec<_> = tys.into_iter().map(|ty| {
             ast::StructField {
                 span: ty.span,
                 ty,
                 ident: None,
-                vis: respan(span.shrink_to_lo(), ast::VisibilityKind::Inherited),
+                vis: respan(vis_span, ast::VisibilityKind::Inherited),
                 attrs: Vec::new(),
                 id: ast::DUMMY_NODE_ID,
                 is_placeholder: false,
@@ -606,6 +607,7 @@ impl<'a> ExtCtxt<'a> {
             disr_expr: None,
             id: ast::DUMMY_NODE_ID,
             ident,
+            vis: respan(vis_span, ast::VisibilityKind::Inherited),
             span,
             is_placeholder: false,
         }

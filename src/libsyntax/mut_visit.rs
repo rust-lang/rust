@@ -472,16 +472,17 @@ pub fn noop_visit_foreign_mod<T: MutVisitor>(foreign_mod: &mut ForeignMod, vis: 
     items.flat_map_in_place(|item| vis.flat_map_foreign_item(item));
 }
 
-pub fn noop_flat_map_variant<T: MutVisitor>(mut variant: Variant, vis: &mut T)
+pub fn noop_flat_map_variant<T: MutVisitor>(mut variant: Variant, visitor: &mut T)
     -> SmallVec<[Variant; 1]>
 {
-    let Variant { ident, attrs, id, data, disr_expr, span, is_placeholder: _ } = &mut variant;
-    vis.visit_ident(ident);
-    visit_attrs(attrs, vis);
-    vis.visit_id(id);
-    vis.visit_variant_data(data);
-    visit_opt(disr_expr, |disr_expr| vis.visit_anon_const(disr_expr));
-    vis.visit_span(span);
+    let Variant { ident, vis, attrs, id, data, disr_expr, span, is_placeholder: _ } = &mut variant;
+    visitor.visit_ident(ident);
+    visitor.visit_vis(vis);
+    visit_attrs(attrs, visitor);
+    visitor.visit_id(id);
+    visitor.visit_variant_data(data);
+    visit_opt(disr_expr, |disr_expr| visitor.visit_anon_const(disr_expr));
+    visitor.visit_span(span);
     smallvec![variant]
 }
 
@@ -916,32 +917,33 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     }
 }
 
-pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, vis: &mut T)
+pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, visitor: &mut T)
     -> SmallVec<[TraitItem; 1]>
 {
-    let TraitItem { id, ident, attrs, generics, kind, span, tokens: _ } = &mut item;
-    vis.visit_id(id);
-    vis.visit_ident(ident);
-    visit_attrs(attrs, vis);
-    vis.visit_generics(generics);
+    let TraitItem { id, ident, vis, attrs, generics, kind, span, tokens: _ } = &mut item;
+    visitor.visit_id(id);
+    visitor.visit_ident(ident);
+    visitor.visit_vis(vis);
+    visit_attrs(attrs, visitor);
+    visitor.visit_generics(generics);
     match kind {
         TraitItemKind::Const(ty, default) => {
-            vis.visit_ty(ty);
-            visit_opt(default, |default| vis.visit_expr(default));
+            visitor.visit_ty(ty);
+            visit_opt(default, |default| visitor.visit_expr(default));
         }
         TraitItemKind::Method(sig, body) => {
-            visit_fn_sig(sig, vis);
-            visit_opt(body, |body| vis.visit_block(body));
+            visit_fn_sig(sig, visitor);
+            visit_opt(body, |body| visitor.visit_block(body));
         }
         TraitItemKind::Type(bounds, default) => {
-            visit_bounds(bounds, vis);
-            visit_opt(default, |default| vis.visit_ty(default));
+            visit_bounds(bounds, visitor);
+            visit_opt(default, |default| visitor.visit_ty(default));
         }
         TraitItemKind::Macro(mac) => {
-            vis.visit_mac(mac);
+            visitor.visit_mac(mac);
         }
     }
-    vis.visit_span(span);
+    visitor.visit_span(span);
 
     smallvec![item]
 }

@@ -310,6 +310,7 @@ pub fn walk_variant<'a, V: Visitor<'a>>(visitor: &mut V, variant: &'a Variant)
     where V: Visitor<'a>,
 {
     visitor.visit_ident(variant.ident);
+    visitor.visit_vis(&variant.vis);
     visitor.visit_variant_data(&variant.data);
     walk_list!(visitor, visit_anon_const, &variant.disr_expr);
     walk_list!(visitor, visit_attribute, &variant.attrs);
@@ -581,6 +582,7 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
 }
 
 pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a TraitItem) {
+    visitor.visit_vis(&trait_item.vis);
     visitor.visit_ident(trait_item.ident);
     walk_list!(visitor, visit_attribute, &trait_item.attrs);
     visitor.visit_generics(&trait_item.generics);
