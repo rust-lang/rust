@@ -322,20 +322,9 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         trace!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
 
-        // Check nested operands and places.
+        // Special-case reborrows to be more like a copy of a reference.
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
-            // Special-case reborrows to be more like a copy of a reference.
-            let mut reborrow_place = None;
-            if let &[ref proj_base @ .., elem] = place.projection.as_ref() {
-                if elem == ProjectionElem::Deref {
-                    let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
-                    if let ty::Ref(..) = base_ty.kind {
-                        reborrow_place = Some(proj_base);
-                    }
-                }
-            }
-
-            if let Some(proj) = reborrow_place {
+            if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, self.body, place) {
                 let ctx = match kind {
                     BorrowKind::Shared => PlaceContext::NonMutatingUse(
                         NonMutatingUseContext::SharedBorrow,
@@ -351,13 +340,12 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                     ),
                 };
                 self.visit_place_base(&place.base, ctx, location);
-                self.visit_projection(&place.base, proj, ctx, location);
-            } else {
-                self.super_rvalue(rvalue, location);
+                self.visit_projection(&place.base, reborrowed_proj, ctx, location);
+                return;
             }
-        } else {
-            self.super_rvalue(rvalue, location);
         }
+
+        self.super_rvalue(rvalue, location);
 
         match *rvalue {
             Rvalue::Use(_) |
@@ -369,8 +357,86 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             Rvalue::Cast(CastKind::Pointer(_), ..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) |
-            Rvalue::Ref(..) |
             Rvalue::Aggregate(..) => {}
+
+            | Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
+            | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place)
+            => {
+                let ty = place.ty(self.body, self.tcx).ty;
+                let is_allowed = match ty.kind {
+                    // Inside a `static mut`, `&mut [...]` is allowed.
+                    ty::Array(..) | ty::Slice(_) if self.const_kind() == ConstKind::StaticMut
+                        => true,
+
+                    // FIXME(ecstaticmorse): We could allow `&mut []` inside a const context given
+                    // that this is merely a ZST and it is already eligible for promotion.
+                    // This may require an RFC?
+                    /*
+                    ty::Array(_, len) if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
+                        => true,
+                    */
+
+                    _ => false,
+                };
+
+                if !is_allowed {
+                    self.check_op(ops::MutBorrow(kind));
+                }
+            }
+
+            // Taking a shared borrow of a `static` is always legal, even if that `static` has
+            // interior mutability.
+            | Rvalue::Ref(_, BorrowKind::Shared, ref place)
+            | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
+            if matches!(place.base, PlaceBase::Static(_))
+            => {}
+
+            | Rvalue::Ref(_, kind @ BorrowKind::Shared, ref place)
+            | Rvalue::Ref(_, kind @ BorrowKind::Shallow, ref place)
+            => {
+                // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually
+                // seek the cursors beforehand.
+                self.qualifs.has_mut_interior.cursor.seek_before(location);
+                self.qualifs.indirectly_mutable.seek(location);
+
+                let borrowed_place_has_mut_interior = HasMutInterior::in_place(
+                    &self.item,
+                    &|local| self.qualifs.has_mut_interior_eager_seek(local),
+                    place.as_ref(),
+                );
+
+                if borrowed_place_has_mut_interior {
+                    let src_derived_from_illegal_borrow = borrowed_place
+                        .as_local()
+                        .map_or(false, |local| self.derived_from_illegal_borrow.contains(local));
+
+                    // Don't emit errors for borrows of values that are *themselves* the result of
+                    // an illegal borrow (e.g., the outermost `&` in `&&Cell::new(42)`). We want to
+                    // point the user to the place where the original illegal borrow occurred, not
+                    // to subsequent borrows of the resulting value.
+                    let dest_derived_from_illegal_borrow = if !src_derived_from_illegal_borrow {
+                        self.check_op(ops::MutBorrow(kind)) == CheckOpResult::Forbidden
+                    } else {
+                        true
+                    };
+
+                    // When the target of the assignment is a local with no projections, it will be
+                    // marked as derived from an illegal borrow if necessary.
+                    //
+                    // FIXME: should we also clear `derived_from_illegal_borrow` when a local is
+                    // assigned a new value?
+
+                    if dest_derived_from_illegal_borrow {
+                        let block = &self.body[location.block];
+                        let statement = &block.statements[location.statement_index];
+                        if let StatementKind::Assign(box (dest, _)) = &statement.kind {
+                            if let Some(dest) = dest.as_local() {
+                                self.derived_from_illegal_borrow.insert(dest);
+                            }
+                        }
+                    }
+                }
+            }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
                 let operand_ty = operand.ty(self.body, self.tcx);
@@ -434,58 +500,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 self.check_static(def_id, self.span);
             }
         }
-    }
-
-    fn visit_assign(&mut self, dest: &Place<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
-        trace!("visit_assign: dest={:?} rvalue={:?} location={:?}", dest, rvalue, location);
-
-        // Error on mutable borrows or shared borrows of values with interior mutability.
-        //
-        // This replicates the logic at the start of `assign` in the old const checker.  Note that
-        // it depends on `HasMutInterior` being set for mutable borrows as well as values with
-        // interior mutability.
-        if let Rvalue::Ref(_, kind, ref borrowed_place) = *rvalue {
-            // FIXME: Change the `in_*` methods to take a `FnMut` so we don't have to manually seek
-            // the cursors beforehand.
-            self.qualifs.has_mut_interior.cursor.seek_before(location);
-            self.qualifs.indirectly_mutable.seek(location);
-
-            let rvalue_has_mut_interior = HasMutInterior::in_rvalue(
-                &self.item,
-                &|local| self.qualifs.has_mut_interior_eager_seek(local),
-                rvalue,
-            );
-
-            if rvalue_has_mut_interior {
-                let is_derived_from_illegal_borrow = match borrowed_place.as_local() {
-                    // If an unprojected local was borrowed and its value was the result of an
-                    // illegal borrow, suppress this error and mark the result of this borrow as
-                    // illegal as well.
-                    Some(borrowed_local)
-                        if self.derived_from_illegal_borrow.contains(borrowed_local) =>
-                    {
-                        true
-                    }
-
-                    // Otherwise proceed normally: check the legality of a mutable borrow in this
-                    // context.
-                    _ => self.check_op(ops::MutBorrow(kind)) == CheckOpResult::Forbidden,
-                };
-
-                // When the target of the assignment is a local with no projections, mark it as
-                // derived from an illegal borrow if necessary.
-                //
-                // FIXME: should we also clear `derived_from_illegal_borrow` when a local is
-                // assigned a new value?
-                if is_derived_from_illegal_borrow {
-                    if let Some(dest) = dest.as_local() {
-                        self.derived_from_illegal_borrow.insert(dest);
-                    }
-                }
-            }
-        }
-
-        self.super_assign(dest, rvalue, location);
     }
 
     fn visit_projection_elem(
@@ -724,4 +738,25 @@ fn check_return_ty_is_sync(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, hir_id: HirId) 
             infcx.report_fulfillment_errors(&err, None, false);
         }
     });
+}
+
+fn place_as_reborrow(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    place: &'a Place<'tcx>,
+) -> Option<&'a [PlaceElem<'tcx>]> {
+    place
+        .projection
+        .split_last()
+        .and_then(|(outermost, inner)| {
+            if outermost != &ProjectionElem::Deref {
+                return None;
+            }
+
+            let inner_ty = Place::ty_from(&place.base, inner, body, tcx).ty;
+            match inner_ty.kind {
+                ty::Ref(..) => Some(inner),
+                _ => None,
+            }
+        })
 }
