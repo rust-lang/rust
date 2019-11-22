@@ -33,9 +33,10 @@ pub trait Qualif {
     /// of the type.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> bool;
 
-    fn in_static(_cx: &ConstCx<'_, 'tcx>, _def_id: DefId) -> bool {
-        // FIXME(eddyb) should we do anything here for value properties?
-        false
+    fn in_static(cx: &ConstCx<'_, 'tcx>, def_id: DefId) -> bool {
+        // `mir_const_qualif` does return the qualifs in the final value of a `static`, so we could
+        // use value-based qualification here, but we shouldn't do this without a good reason.
+        Self::in_any_value_of_ty(cx, cx.tcx.type_of(def_id))
     }
 
     fn in_projection_structurally(
