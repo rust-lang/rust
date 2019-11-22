@@ -233,7 +233,7 @@ fn iterate_trait_method_candidates<T>(
         .chain(traits_from_env)
         .chain(resolver.traits_in_scope(db).into_iter().map(Trait::from));
     'traits: for t in traits {
-        let data = t.trait_data(db);
+        let data = db.trait_data(t.id);
 
         // we'll be lazy about checking whether the type implements the
         // trait, but if we find out it doesn't, we'll skip the rest of the
