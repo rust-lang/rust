@@ -10,7 +10,6 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
-    data::TraitData,
     nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
@@ -707,11 +706,11 @@ impl Trait {
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        self.trait_data(db).name.clone()
+        db.trait_data(self.id).name.clone()
     }
 
     pub fn items(self, db: &impl DefDatabase) -> Vec<AssocItem> {
-        self.trait_data(db).items.iter().map(|it| (*it).into()).collect()
+        db.trait_data(self.id).items.iter().map(|it| (*it).into()).collect()
     }
 
     fn direct_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
@@ -757,7 +756,7 @@ impl Trait {
     }
 
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
-        let trait_data = self.trait_data(db);
+        let trait_data = db.trait_data(self.id);
         let res =
             trait_data.associated_types().map(TypeAlias::from).find(|t| &t.name(db) == name)?;
         Some(res)
@@ -771,16 +770,12 @@ impl Trait {
         self.all_super_traits(db).into_iter().find_map(|t| t.associated_type_by_name(db, name))
     }
 
-    pub(crate) fn trait_data(self, db: &impl DefDatabase) -> Arc<TraitData> {
-        db.trait_data(self.id)
-    }
-
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
         TraitRef::for_trait(db, self)
     }
 
     pub fn is_auto(self, db: &impl DefDatabase) -> bool {
-        self.trait_data(db).auto
+        db.trait_data(self.id).auto
     }
 }
 
