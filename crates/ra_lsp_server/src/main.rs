@@ -1,8 +1,7 @@
-//! FIXME: write short doc here
+//! `ra_lsp_server` binary
 
 use flexi_logger::{Duplicate, Logger};
 use lsp_server::Connection;
-
 use ra_lsp_server::{show_message, Result, ServerConfig};
 use ra_prof;
 
