@@ -33,7 +33,6 @@ use syntax::source_map::FilePathMapping;
 use syntax::mut_visit::{self, MutVisitor, visit_clobber};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax_expand::config::process_configure_mod;
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
@@ -205,7 +204,7 @@ fn main() {
 }
 
 fn run() {
-    let ps = ParseSess::new(FilePathMapping::empty(), process_configure_mod);
+    let ps = ParseSess::new(FilePathMapping::empty());
 
     iter_exprs(2, &mut |mut e| {
         // If the pretty printer is correct, then `parse(print(e))` should be identical to `e`,

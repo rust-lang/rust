@@ -1,4 +1,14 @@
-use rustc_parse::validate_attr;
+//! Process the potential `cfg` attributes on a module.
+//! Also determine if the module should be included in this configuration.
+//!
+//! This module properly belongs in syntax_expand, but for now it's tied into
+//! parsing, so we leave it here to avoid complicated out-of-line dependencies.
+//!
+//! A principled solution to this wrong location would be to implement [#64197].
+//!
+//! [#64197]: https://github.com/rust-lang/rust/issues/64197
+
+use crate::validate_attr;
 use syntax::attr::HasAttrs;
 use syntax::feature_gate::{
     feature_err,
@@ -113,7 +123,7 @@ impl<'a> StripUnconfigured<'a> {
             return vec![];
         }
 
-        let res = rustc_parse::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
+        let res = crate::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
         let (cfg_predicate, expanded_attrs) = match res {
             Ok(result) => result,
             Err(mut e) => {

@@ -40,8 +40,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `mod <foo> { ... }` or `mod <foo>;` item.
     pub(super) fn parse_item_mod(&mut self, outer_attrs: &[Attribute]) -> PResult<'a, ItemInfo> {
-        // HACK(Centril): See documentation on `ParseSess::process_cfg_mod`.
-        let (in_cfg, outer_attrs) = (self.sess.process_cfg_mod)(
+        let (in_cfg, outer_attrs) = crate::config::process_configure_mod(
             self.sess,
             self.cfg_mods,
             outer_attrs,

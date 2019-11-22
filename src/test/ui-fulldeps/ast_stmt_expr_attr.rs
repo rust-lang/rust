@@ -22,7 +22,6 @@ use syntax::source_map::{FilePathMapping, FileName};
 use syntax::ptr::P;
 use syntax::print::pprust;
 use syntax::token;
-use syntax_expand::config::process_configure_mod;
 use std::fmt;
 
 // Copied out of syntax::util::parser_testing
@@ -75,7 +74,7 @@ fn str_compare<T, F: Fn(&T) -> String>(e: &str, expected: &[T], actual: &[T], f:
 }
 
 fn sess() -> ParseSess {
-    ParseSess::new(FilePathMapping::empty(), process_configure_mod)
+    ParseSess::new(FilePathMapping::empty())
 }
 
 fn check_expr_attrs(es: &str, expected: &[&str]) {

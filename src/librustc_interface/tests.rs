@@ -17,7 +17,6 @@ use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel};
 use syntax::symbol::sym;
 use syntax::edition::{Edition, DEFAULT_EDITION};
 use syntax;
-use syntax_expand::config::process_configure_mod;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ColorConfig, emitter::HumanReadableErrorType, registry};
 
@@ -32,7 +31,7 @@ fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options
 fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
     let registry = registry::Registry::new(&[]);
     let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-    let sess = build_session(sessopts, None, registry, process_configure_mod);
+    let sess = build_session(sessopts, None, registry);
     (sess, cfg)
 }
 
