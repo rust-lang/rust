@@ -538,7 +538,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_dereferencable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat) -> bool {
+    pub fn check_dereferenceable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat) -> bool {
         if let PatKind::Binding(..) = inner.kind {
             if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
                 if let ty::Dynamic(..) = mt.ty.kind {
@@ -1075,7 +1075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         discrim_span: Option<Span>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
-        let (box_ty, inner_ty) = if self.check_dereferencable(span, expected, &inner) {
+        let (box_ty, inner_ty) = if self.check_dereferenceable(span, expected, &inner) {
             // Here, `demand::subtype` is good enough, but I don't
             // think any errors can be introduced by using `demand::eqtype`.
             let inner_ty = self.next_ty_var(TypeVariableOrigin {
@@ -1103,7 +1103,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
         let expected = self.shallow_resolve(expected);
-        let (rptr_ty, inner_ty) = if self.check_dereferencable(pat.span, expected, &inner) {
+        let (rptr_ty, inner_ty) = if self.check_dereferenceable(pat.span, expected, &inner) {
             // `demand::subtype` would be good enough, but using `eqtype` turns
             // out to be equally general. See (note_1) for details.
 

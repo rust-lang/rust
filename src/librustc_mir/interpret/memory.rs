@@ -47,7 +47,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
 #[derive(Debug, Copy, Clone)]
 pub enum AllocCheck {
     /// Allocation must be live and not a function pointer.
-    Dereferencable,
+    Dereferenceable,
     /// Allocations needs to be live, but may be a function pointer.
     Live,
     /// Allocation may be dead.
@@ -365,7 +365,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             Err(ptr) => {
                 let (allocation_size, alloc_align) =
-                    self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferencable)?;
+                    self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferenceable)?;
                 // Test bounds. This also ensures non-NULL.
                 // It is sufficient to check this for the end pointer. The addition
                 // checks for overflow.
@@ -569,7 +569,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
         if let Ok(_) = self.get_fn_alloc(id) {
-            return if let AllocCheck::Dereferencable = liveness {
+            return if let AllocCheck::Dereferenceable = liveness {
                 // The caller requested no function pointers.
                 throw_unsup!(DerefFunctionPointer)
             } else {
