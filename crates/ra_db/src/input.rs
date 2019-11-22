@@ -6,14 +6,14 @@
 //! actual IO. See `vfs` and `project_model` in the `ra_lsp_server` crate for how
 //! actual IO is done and lowered to input.
 
-use rustc_hash::FxHashMap;
+use std::{fmt, str::FromStr};
 
 use ra_cfg::CfgOptions;
 use ra_syntax::SmolStr;
+use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 
 use crate::{RelativePath, RelativePathBuf};
-use std::str::FromStr;
 
 /// `FileId` is an integer which uniquely identifies a file. File paths are
 /// messy and system-dependent, so most of the code should work directly with
@@ -96,22 +96,6 @@ impl CrateId {
 pub enum Edition {
     Edition2018,
     Edition2015,
-}
-
-#[derive(Debug)]
-pub struct ParseEditionError {
-    pub msg: String,
-}
-
-impl FromStr for Edition {
-    type Err = ParseEditionError;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "2015" => Ok(Edition::Edition2015),
-            "2018" => Ok(Edition::Edition2018),
-            _ => Err(ParseEditionError { msg: format!("unknown edition: {}", s) }),
-        }
-    }
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -246,6 +230,32 @@ impl CrateGraph {
         false
     }
 }
+
+#[derive(Debug)]
+pub struct ParseEditionError {
+    invalid_input: String,
+}
+
+impl FromStr for Edition {
+    type Err = ParseEditionError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let res = match s {
+            "2015" => Edition::Edition2015,
+            "2018" => Edition::Edition2018,
+            _ => Err(ParseEditionError { invalid_input: s.to_string() })?,
+        };
+        Ok(res)
+    }
+}
+
+impl fmt::Display for ParseEditionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "invalid edition: {:?}", self.invalid_input)
+    }
+}
+
+impl std::error::Error for ParseEditionError {}
 
 #[cfg(test)]
 mod tests {
