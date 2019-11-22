@@ -8,15 +8,12 @@ use ra_syntax::ast;
 use crate::{
     adt::{EnumData, StructData},
     body::{scope::ExprScopes, Body, BodySourceMap},
-    function::FunctionData,
+    data::{FunctionData, ImplData, TraitData, TypeAliasData},
     generics::GenericParams,
-    impls::ImplData,
     nameres::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    traits::TraitData,
-    type_alias::TypeAliasData,
     DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, StructOrUnionId, TraitId,
     TypeAliasId,
 };

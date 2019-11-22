@@ -224,12 +224,11 @@ impl Completions {
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
         {
             tested_by!(inserts_parens_for_function_calls);
-            let (snippet, label) =
-                if params.is_empty() || has_self_param && params.len() == 1 {
-                    (format!("{}()$0", func_name), format!("{}()", name))
-                } else {
-                    (format!("{}($0)", func_name), format!("{}(…)", name))
-                };
+            let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
+                (format!("{}()$0", func_name), format!("{}()", name))
+            } else {
+                (format!("{}($0)", func_name), format!("{}(…)", name))
+            };
             builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }
 
