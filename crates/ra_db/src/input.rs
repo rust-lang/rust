@@ -114,17 +114,23 @@ impl FromStr for Edition {
     }
 }
 
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
+pub struct Env {
+    entries: FxHashMap<String, String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CrateData {
     file_id: FileId,
     edition: Edition,
     dependencies: Vec<Dependency>,
     cfg_options: CfgOptions,
+    env: Env,
 }
 
 impl CrateData {
-    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions) -> CrateData {
-        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options }
+    fn new(file_id: FileId, edition: Edition, cfg_options: CfgOptions, env: Env) -> CrateData {
+        CrateData { file_id, edition, dependencies: Vec::new(), cfg_options, env }
     }
 
     fn add_dep(&mut self, name: SmolStr, crate_id: CrateId) {
@@ -150,9 +156,11 @@ impl CrateGraph {
         file_id: FileId,
         edition: Edition,
         cfg_options: CfgOptions,
+        env: Env,
     ) -> CrateId {
+        let data = CrateData::new(file_id, edition, cfg_options, env);
         let crate_id = CrateId(self.arena.len() as u32);
-        let prev = self.arena.insert(crate_id, CrateData::new(file_id, edition, cfg_options));
+        let prev = self.arena.insert(crate_id, data);
         assert!(prev.is_none());
         crate_id
     }
@@ -241,14 +249,17 @@ impl CrateGraph {
 
 #[cfg(test)]
 mod tests {
-    use super::{CfgOptions, CrateGraph, Edition::Edition2018, FileId, SmolStr};
+    use super::{CfgOptions, CrateGraph, Edition::Edition2018, Env, FileId, SmolStr};
 
     #[test]
     fn it_should_panic_because_of_cycle_dependencies() {
         let mut graph = CrateGraph::default();
-        let crate1 = graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default());
-        let crate2 = graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default());
-        let crate3 = graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default());
+        let crate1 =
+            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate2 =
+            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate3 =
+            graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
         assert!(graph.add_dep(crate1, SmolStr::new("crate2"), crate2).is_ok());
         assert!(graph.add_dep(crate2, SmolStr::new("crate3"), crate3).is_ok());
         assert!(graph.add_dep(crate3, SmolStr::new("crate1"), crate1).is_err());
@@ -257,9 +268,12 @@ mod tests {
     #[test]
     fn it_works() {
         let mut graph = CrateGraph::default();
-        let crate1 = graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default());
-        let crate2 = graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default());
-        let crate3 = graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default());
+        let crate1 =
+            graph.add_crate_root(FileId(1u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate2 =
+            graph.add_crate_root(FileId(2u32), Edition2018, CfgOptions::default(), Env::default());
+        let crate3 =
+            graph.add_crate_root(FileId(3u32), Edition2018, CfgOptions::default(), Env::default());
         assert!(graph.add_dep(crate1, SmolStr::new("crate2"), crate2).is_ok());
         assert!(graph.add_dep(crate2, SmolStr::new("crate3"), crate3).is_ok());
     }

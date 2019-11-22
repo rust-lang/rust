@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
 use crate::{
-    CrateGraph, CrateId, Edition, FileId, FilePosition, RelativePathBuf, SourceDatabaseExt,
+    CrateGraph, CrateId, Edition, Env, FileId, FilePosition, RelativePathBuf, SourceDatabaseExt,
     SourceRoot, SourceRootId,
 };
 
@@ -53,7 +53,12 @@ fn with_single_file(db: &mut dyn SourceDatabaseExt, text: &str) -> FileId {
     source_root.insert_file(rel_path.clone(), file_id);
 
     let mut crate_graph = CrateGraph::default();
-    crate_graph.add_crate_root(file_id, Edition::Edition2018, CfgOptions::default());
+    crate_graph.add_crate_root(
+        file_id,
+        Edition::Edition2018,
+        CfgOptions::default(),
+        Env::default(),
+    );
 
     db.set_file_text(file_id, Arc::new(text.to_string()));
     db.set_file_relative_path(file_id, rel_path);
@@ -93,7 +98,8 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
         assert!(meta.path.starts_with(&source_root_prefix));
 
         if let Some(krate) = meta.krate {
-            let crate_id = crate_graph.add_crate_root(file_id, meta.edition, meta.cfg);
+            let crate_id =
+                crate_graph.add_crate_root(file_id, meta.edition, meta.cfg, Env::default());
             let prev = crates.insert(krate.clone(), crate_id);
             assert!(prev.is_none());
             for dep in meta.deps {
@@ -123,7 +129,12 @@ fn with_files(db: &mut dyn SourceDatabaseExt, fixture: &str) -> Option<FilePosit
 
     if crates.is_empty() {
         let crate_root = default_crate_root.unwrap();
-        crate_graph.add_crate_root(crate_root, Edition::Edition2018, CfgOptions::default());
+        crate_graph.add_crate_root(
+            crate_root,
+            Edition::Edition2018,
+            CfgOptions::default(),
+            Env::default(),
+        );
     } else {
         for (from, to) in crate_deps {
             let from_id = crates[&from];

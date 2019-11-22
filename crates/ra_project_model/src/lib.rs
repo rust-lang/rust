@@ -13,7 +13,7 @@ use std::{
 };
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateId, Edition, FileId};
+use ra_db::{CrateGraph, CrateId, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -146,7 +146,12 @@ impl ProjectWorkspace {
                         };
                         crates.insert(
                             crate_id,
-                            crate_graph.add_crate_root(file_id, edition, cfg_options),
+                            crate_graph.add_crate_root(
+                                file_id,
+                                edition,
+                                cfg_options,
+                                Env::default(),
+                            ),
                         );
                     }
                 }
@@ -180,8 +185,12 @@ impl ProjectWorkspace {
                             opts
                         };
 
-                        let crate_id =
-                            crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
+                        let crate_id = crate_graph.add_crate_root(
+                            file_id,
+                            Edition::Edition2018,
+                            cfg_options,
+                            Env::default(),
+                        );
                         sysroot_crates.insert(krate, crate_id);
                         names.insert(crate_id, krate.name(&sysroot).to_string());
                     }
@@ -216,8 +225,12 @@ impl ProjectWorkspace {
                                 opts.insert_features(pkg.features(&cargo).iter().map(Into::into));
                                 opts
                             };
-                            let crate_id =
-                                crate_graph.add_crate_root(file_id, edition, cfg_options);
+                            let crate_id = crate_graph.add_crate_root(
+                                file_id,
+                                edition,
+                                cfg_options,
+                                Env::default(),
+                            );
                             names.insert(crate_id, pkg.name(&cargo).to_string());
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);
