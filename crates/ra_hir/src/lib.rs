@@ -52,7 +52,7 @@ mod marks;
 
 pub use crate::{
     code_model::{
-        attrs::{AttrDef, Attrs},
+        attrs::{AttrDef, HasAttrs},
         docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource},
         Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,

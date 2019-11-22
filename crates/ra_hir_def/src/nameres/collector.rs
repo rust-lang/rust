@@ -12,7 +12,7 @@ use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attr,
+    attr::Attrs,
     db::DefDatabase2,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
@@ -549,7 +549,7 @@ where
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            if self.is_cfg_enabled(item.attrs()) {
+            if self.is_cfg_enabled(&item.attrs) {
                 if let raw::RawItemKind::Import(import_id) = item.kind {
                     let import = self.raw_items[import_id].clone();
                     if import.is_extern_crate && import.is_macro_use {
@@ -560,10 +560,10 @@ where
         }
 
         for item in items {
-            if self.is_cfg_enabled(item.attrs()) {
+            if self.is_cfg_enabled(&item.attrs) {
                 match item.kind {
                     raw::RawItemKind::Module(m) => {
-                        self.collect_module(&self.raw_items[m], item.attrs())
+                        self.collect_module(&self.raw_items[m], &item.attrs)
                     }
                     raw::RawItemKind::Import(import_id) => self
                         .def_collector
@@ -585,9 +585,9 @@ where
         }
     }
 
-    fn collect_module(&mut self, module: &raw::ModuleData, attrs: &[Attr]) {
+    fn collect_module(&mut self, module: &raw::ModuleData, attrs: &Attrs) {
         let path_attr = self.path_attr(attrs);
-        let is_macro_use = self.is_macro_use(attrs);
+        let is_macro_use = attrs.has_atom("macro_use");
         match module {
             // inline module, just recurse
             raw::ModuleData::Definition { name, items, ast_id } => {
@@ -779,16 +779,12 @@ where
         }
     }
 
-    fn is_cfg_enabled(&self, attrs: &[Attr]) -> bool {
+    fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
         attrs.iter().all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
     }
 
-    fn path_attr<'a>(&self, attrs: &'a [Attr]) -> Option<&'a SmolStr> {
+    fn path_attr<'a>(&self, attrs: &'a Attrs) -> Option<&'a SmolStr> {
         attrs.iter().find_map(|attr| attr.as_path())
-    }
-
-    fn is_macro_use<'a>(&self, attrs: &'a [Attr]) -> bool {
-        attrs.iter().any(|attr| attr.is_simple_atom("macro_use"))
     }
 }
 

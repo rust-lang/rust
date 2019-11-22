@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::attr::Attr;
+use hir_def::attr::Attrs;
 use ra_db::salsa;
 use ra_syntax::SmolStr;
 
@@ -61,7 +61,7 @@ pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
     fn documentation(&self, def: crate::DocDef) -> Option<crate::Documentation>;
 
     #[salsa::invoke(crate::code_model::attrs::attributes_query)]
-    fn attrs(&self, def: crate::AttrDef) -> Option<Arc<[Attr]>>;
+    fn attrs(&self, def: crate::AttrDef) -> Attrs;
 }
 
 #[salsa::query_group(HirDatabaseStorage)]
