@@ -10,6 +10,7 @@ use crate::quote;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BuiltinExpander {
+    Column,
     File,
     Line,
     Stringify,
@@ -23,6 +24,7 @@ impl BuiltinExpander {
         tt: &tt::Subtree,
     ) -> Result<tt::Subtree, mbe::ExpandError> {
         match self {
+            BuiltinExpander::Column => column_expand(db, id, tt),
             BuiltinExpander::File => file_expand(db, id, tt),
             BuiltinExpander::Line => line_expand(db, id, tt),
             BuiltinExpander::Stringify => stringify_expand(db, id, tt),
@@ -36,7 +38,9 @@ pub fn find_builtin_macro(
     ast_id: AstId<ast::MacroCall>,
 ) -> Option<MacroDefId> {
     // FIXME: Better registering method
-    if ident == &name::FILE_MACRO {
+    if ident == &name::COLUMN_MACRO {
+        Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Column) })
+    } else if ident == &name::FILE_MACRO {
         Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::File) })
     } else if ident == &name::LINE_MACRO {
         Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(BuiltinExpander::Line) })
@@ -110,6 +114,43 @@ fn stringify_expand(
     Ok(expanded)
 }
 
+fn to_col_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
+    // FIXME: Use expansion info
+    let file_id = file.original_file(db);
+    let text = db.file_text(file_id);
+    let mut col_num = 1;
+
+    for c in text[..pos.to_usize()].chars().rev() {
+        if c == '\n' {
+            break;
+        }
+        col_num = col_num + 1;
+    }
+
+    col_num
+}
+
+fn column_expand(
+    db: &dyn AstDatabase,
+    id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    let loc = db.lookup_intern_macro(id);
+    let macro_call = loc.ast_id.to_node(db);
+
+    let _arg = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
+    let col_start = macro_call.syntax().text_range().start();
+
+    let file = id.as_file(MacroFileKind::Expr);
+    let col_num = to_col_number(db, file, col_start);
+
+    let expanded = quote! {
+        #col_num
+    };
+
+    Ok(expanded)
+}
+
 fn file_expand(
     db: &dyn AstDatabase,
     id: MacroCallId,
@@ -117,6 +158,7 @@ fn file_expand(
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let loc = db.lookup_intern_macro(id);
     let macro_call = loc.ast_id.to_node(db);
+
     let _ = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
 
     // FIXME: RA purposefully lacks knowledge of absolute file names

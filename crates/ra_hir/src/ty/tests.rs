@@ -4876,3 +4876,22 @@ fn main() {
     "###
     );
 }
+
+#[test]
+fn infer_builtin_macros_column() {
+    assert_snapshot!(
+        infer(r#"
+#[rustc_builtin_macro]
+macro_rules! column {() => {}}
+
+fn main() {
+    let x = column!();
+}
+"#),
+        @r###"
+    ![0; 2) '13': i32
+    [66; 92) '{     ...!(); }': ()
+    [76; 77) 'x': i32
+    "###
+    );
+}
