@@ -1,6 +1,6 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{db::HirDatabase, Attrs, Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
+use hir::{db::HirDatabase, Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
@@ -285,7 +285,7 @@ impl Completions {
     }
 }
 
-fn is_deprecated(node: impl Attrs, db: &impl HirDatabase) -> bool {
+fn is_deprecated(node: impl HasAttrs, db: &impl HirDatabase) -> bool {
     node.attrs(db).has_atom("deprecated")
 }
 

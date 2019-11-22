@@ -5,7 +5,7 @@ use crate::{
     Adt, Const, Enum, EnumVariant, FieldSource, Function, HasSource, MacroDef, Module, Static,
     Struct, StructField, Trait, TypeAlias, Union,
 };
-use hir_def::attr::Attr;
+use hir_def::attr::{Attr, Attrs};
 use hir_expand::hygiene::Hygiene;
 use ra_syntax::ast;
 
@@ -36,19 +36,16 @@ impl_froms!(
     MacroDef
 );
 
-pub trait Attrs {
-    fn attrs(&self, db: &impl HirDatabase) -> hir_def::attr::Attrs;
+pub trait HasAttrs {
+    fn attrs(&self, db: &impl HirDatabase) -> Attrs;
 }
 
-pub(crate) fn attributes_query(
-    db: &(impl DefDatabase + AstDatabase),
-    def: AttrDef,
-) -> hir_def::attr::Attrs {
+pub(crate) fn attributes_query(db: &(impl DefDatabase + AstDatabase), def: AttrDef) -> Attrs {
     match def {
         AttrDef::Module(it) => {
             let src = match it.declaration_source(db) {
                 Some(it) => it,
-                None => return hir_def::attr::Attrs::default(),
+                None => return Attrs::default(),
             };
             let hygiene = Hygiene::new(db, src.file_id);
             Attr::from_attrs_owner(&src.value, &hygiene)
@@ -59,7 +56,7 @@ pub(crate) fn attributes_query(
                 let hygiene = Hygiene::new(db, src.file_id);
                 Attr::from_attrs_owner(&named, &hygiene)
             }
-            FieldSource::Pos(..) => hir_def::attr::Attrs::default(),
+            FieldSource::Pos(..) => Attrs::default(),
         },
         AttrDef::Adt(it) => match it {
             Adt::Struct(it) => attrs_from_ast(it, db),
@@ -76,7 +73,7 @@ pub(crate) fn attributes_query(
     }
 }
 
-fn attrs_from_ast<T, D>(node: T, db: &D) -> hir_def::attr::Attrs
+fn attrs_from_ast<T, D>(node: T, db: &D) -> Attrs
 where
     T: HasSource,
     T::Ast: ast::AttrsOwner,
@@ -87,8 +84,8 @@ where
     Attr::from_attrs_owner(&src.value, &hygiene)
 }
 
-impl<T: Into<AttrDef> + Copy> Attrs for T {
-    fn attrs(&self, db: &impl HirDatabase) -> hir_def::attr::Attrs {
+impl<T: Into<AttrDef> + Copy> HasAttrs for T {
+    fn attrs(&self, db: &impl HirDatabase) -> Attrs {
         db.attrs((*self).into())
     }
 }
