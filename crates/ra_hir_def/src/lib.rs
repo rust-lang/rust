@@ -20,6 +20,8 @@ pub mod generics;
 pub mod resolver;
 pub mod data;
 
+mod trace;
+
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]
@@ -31,7 +33,7 @@ pub mod nameres;
 use std::hash::{Hash, Hasher};
 
 use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, Source};
-use ra_arena::{impl_arena_id, RawId};
+use ra_arena::{impl_arena_id, map::ArenaMap, RawId};
 use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{ast, AstNode, SyntaxNode};
 
@@ -549,4 +551,13 @@ impl HasSource for ConstLoc {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }
+}
+
+pub trait HasChildSource {
+    type ChildId;
+    type Value;
+    fn child_source(
+        &self,
+        db: &impl db::DefDatabase2,
+    ) -> Source<ArenaMap<Self::ChildId, Self::Value>>;
 }

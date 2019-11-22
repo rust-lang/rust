@@ -5,13 +5,13 @@
 
 use hir_def::{
     AdtId, AssocItemId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    ModuleDefId, StaticId, StructId, TypeAliasId, UnionId,
+    ModuleDefId, StaticId, StructId, TypeAliasId, UnionId, VariantId,
 };
 
 use crate::{
     ty::{CallableDef, TypableDef},
     Adt, AssocItem, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef, ModuleDef,
-    Static, TypeAlias,
+    Static, TypeAlias, VariantDef,
 };
 
 impl From<ra_db::CrateId> for Crate {
@@ -67,6 +67,12 @@ impl From<Adt> for AdtId {
 impl From<EnumVariantId> for EnumVariant {
     fn from(id: EnumVariantId) -> Self {
         EnumVariant { parent: id.parent.into(), id: id.local_id }
+    }
+}
+
+impl From<EnumVariant> for EnumVariantId {
+    fn from(def: EnumVariant) -> Self {
+        EnumVariantId { parent: def.parent.id, local_id: def.id }
     }
 }
 
@@ -216,6 +222,15 @@ impl From<CallableDef> for GenericDefId {
             CallableDef::EnumVariant(it) => {
                 EnumVariantId { parent: it.parent.id, local_id: it.id }.into()
             }
+        }
+    }
+}
+
+impl From<VariantDef> for VariantId {
+    fn from(def: VariantDef) -> Self {
+        match def {
+            VariantDef::Struct(it) => VariantId::StructId(it.id),
+            VariantDef::EnumVariant(it) => VariantId::EnumVariantId(it.into()),
         }
     }
 }
