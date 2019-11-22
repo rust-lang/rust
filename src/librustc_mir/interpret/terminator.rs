@@ -12,17 +12,6 @@ use super::{
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    #[inline]
-    pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
-        if let Some(target) = target {
-            self.frame_mut().block = Some(target);
-            self.frame_mut().stmt = 0;
-            Ok(())
-        } else {
-            throw_ub!(Unreachable)
-        }
-    }
-
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
@@ -34,7 +23,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.pop_stack_frame(/* unwinding */ false)?
             }
 
-            Goto { target } => self.goto_block(Some(target))?,
+            Goto { target } => self.go_to_block(target),
 
             SwitchInt {
                 ref discr,
@@ -60,7 +49,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
 
-                self.goto_block(Some(target_block))?;
+                self.go_to_block(target_block);
             }
 
             Call {
@@ -133,7 +122,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 let cond_val = self.read_immediate(self.eval_operand(cond, None)?)?
                     .to_scalar()?.to_bool()?;
                 if expected == cond_val {
-                    self.goto_block(Some(target))?;
+                    self.go_to_block(target);
                 } else {
                     // Compute error message
                     use rustc::mir::interpret::PanicInfo::*;
@@ -272,7 +261,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // No stack frame gets pushed, the main loop will just act as if the
                 // call completed.
                 if ret.is_some() {
-                    self.goto_block(ret)?;
+                    self.return_to_block(ret)?;
                 } else {
                     // If this intrinsic call doesn't have a ret block,
                     // then the intrinsic implementation should have

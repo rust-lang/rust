@@ -338,7 +338,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // that for const fn!  We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
                 return if ecx.hook_panic_fn(instance, args, dest)? {
-                    ecx.goto_block(ret)?; // fully evaluated and done
+                    ecx.return_to_block(ret)?; // callee is fully evaluated and done
                     Ok(None)
                 } else {
                     throw_unsup_format!("calling non-const function `{}`", instance)
