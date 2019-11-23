@@ -592,7 +592,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`
+    /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
     fn parse_address_of(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         self.expect_and()?;
         let (k, m) = if self.check_keyword(kw::Raw)

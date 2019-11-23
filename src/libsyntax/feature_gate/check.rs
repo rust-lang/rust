@@ -866,6 +866,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
+    gate_all!(raw_ref_op, "raw address of syntax is experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).

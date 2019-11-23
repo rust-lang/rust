@@ -520,13 +520,16 @@ declare_features! (
     /// Allows using the `efiapi` ABI.
     (active, abi_efiapi, "1.40.0", Some(65815), None),
 
+    /// Allows `&raw const $place_expr` and `&raw mut $place_expr` expressions.
+    (active, raw_ref_op, "1.41.0", Some(64490), None),
+
     /// Allows diverging expressions to fall back to `!` rather than `()`.
     (active, never_type_fallback, "1.41.0", Some(65992), None),
 
     /// Allows using the `#[register_attr]` attribute.
     (active, register_attr, "1.41.0", Some(66080), None),
 
-    /// Allows using the `#[register_attr]` attribute.
+    /// Allows using the `#[register_tool]` attribute.
     (active, register_tool, "1.41.0", Some(66079), None),
 
     /// Allows the use of `if` and `match` in constants.
