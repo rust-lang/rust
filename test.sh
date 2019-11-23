@@ -66,10 +66,13 @@ $RUSTC example/mod_bench.rs --crate-type bin
 #./build_sysroot/build_sysroot.sh --release
 
 pushd simple-raytracer
-echo "[BENCH] ebobby/simple-raytracer"
-cargo clean && ../cargo.sh build
-cp ./target/*/debug/main ./raytracer_cg_clif
+echo "[BENCH COMPILE] ebobby/simple-raytracer"
+hyperfine --runs ${RUN_RUNS:-10} --warmup 1 --prepare "rm -r target/*/debug" \
+    "RUSTFLAGS='' cargo build --target $TARGET_TRIPLE" \
+    "../cargo.sh build"
 
+echo "[BENCH RUN] ebobby/simple-raytracer"
+cp ./target/*/debug/main ./raytracer_cg_clif
 hyperfine --runs ${RUN_RUNS:-10} ./raytracer_cg_llvm ./raytracer_cg_clif
 popd
 
