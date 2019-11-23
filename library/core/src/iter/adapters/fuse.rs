@@ -3,6 +3,8 @@ use crate::iter::adapters::zip::try_get_unchecked;
 use crate::iter::TrustedRandomAccess;
 use crate::iter::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator};
 use crate::ops::Try;
+use crate::iter::adapters::SourceIter;
+use super::InPlaceIterable;
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
@@ -517,3 +519,24 @@ where
         unchecked!(self).is_empty()
     }
 }
+
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, I: FusedIterator> SourceIter for Fuse<I>
+    where
+        I: SourceIter<Source = S>,
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        match self.iter {
+            Some(ref mut iter) => SourceIter::as_inner(iter),
+            // SAFETY: the specialized iterator never sets `None`
+            None => unsafe { intrinsics::unreachable() },
+        }
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable> InPlaceIterable for Fuse<I> {}
