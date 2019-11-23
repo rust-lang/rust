@@ -264,7 +264,7 @@ pub enum TokenKind {
 rustc_data_structures::static_assert_size!(TokenKind, 16);
 
 impl<CTX> HashStable<CTX> for TokenKind
-    where CTX: crate::StableHashingContextLike
+    where CTX: crate::HashStableContext
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         hcx.hash_stable_tokenkind(self, hasher)

@@ -246,7 +246,7 @@ impl Ord for Span {
 }
 
 impl<CTX> HashStable<CTX> for Span
-    where CTX: StableHashingContextLike
+    where CTX: HashStableContext
 {
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         ctx.hash_stable_span(self, hasher)
@@ -1574,6 +1574,6 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc.
-pub trait StableHashingContextLike {
+pub trait HashStableContext {
     fn hash_stable_span(&mut self, span: &Span, hasher: &mut StableHasher);
 }

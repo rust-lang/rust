@@ -16,7 +16,7 @@ use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 
-impl<'ctx> rustc_target::StableHashingContextLike for StableHashingContext<'ctx> {}
+impl<'ctx> rustc_target::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for ast::Lifetime {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -65,7 +65,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
     }
 }
 
-impl<'ctx> syntax::StableHashingContextLike for StableHashingContext<'ctx> {
+impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {
     fn hash_stable_tokenkind(&mut self, tokenkind: &token::TokenKind, hasher: &mut StableHasher) {
         mem::discriminant(tokenkind).hash_stable(self, hasher);
         match *tokenkind {

@@ -54,7 +54,7 @@ where
 {}
 
 impl<CTX> HashStable<CTX> for TokenTree
-    where CTX: crate::StableHashingContextLike
+    where CTX: crate::HashStableContext
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
@@ -138,7 +138,7 @@ impl TokenTree {
 }
 
 impl<CTX> HashStable<CTX> for TokenStream
-    where CTX: crate::StableHashingContextLike
+    where CTX: crate::HashStableContext
 {
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
         for sub_tt in self.trees() {

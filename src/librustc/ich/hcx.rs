@@ -280,7 +280,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
     }
 }
 
-impl<'a> syntax_pos::StableHashingContextLike for StableHashingContext<'a> {
+impl<'a> syntax_pos::HashStableContext for StableHashingContext<'a> {
     /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
     /// fields (that would be similar to hashing pointers, since those are just
     /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)

@@ -21,4 +21,4 @@ pub mod spec;
 /// Requirements for a `StableHashingContext` to be used in this crate.
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in librustc.
-pub trait StableHashingContextLike {}
+pub trait HashStableContext {}
