@@ -5,7 +5,6 @@ use std::sync::Arc;
 use ra_db::salsa;
 
 use crate::{
-    debug::HirDebugDatabase,
     ids,
     ty::{
         method_resolution::CrateImplBlocks,
@@ -18,23 +17,17 @@ use crate::{
 
 pub use hir_def::db::{
     BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, CrateLangItemsQuery,
-    DefDatabase2, DefDatabase2Storage, EnumDataQuery, ExprScopesQuery, FunctionDataQuery,
-    GenericParamsQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage, LangItemQuery,
-    ModuleLangItemsQuery, RawItemsQuery, RawItemsWithSourceMapQuery, StaticDataQuery,
-    StructDataQuery, TraitDataQuery, TypeAliasDataQuery,
+    DefDatabase2, DefDatabase2Storage, DocumentationQuery, EnumDataQuery, ExprScopesQuery,
+    FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
+    LangItemQuery, ModuleLangItemsQuery, RawItemsQuery, RawItemsWithSourceMapQuery,
+    StaticDataQuery, StructDataQuery, TraitDataQuery, TypeAliasDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
     ParseMacroQuery,
 };
 
-// This database uses `AstDatabase` internally,
-#[salsa::query_group(DefDatabaseStorage)]
-#[salsa::requires(AstDatabase)]
-pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
-    #[salsa::invoke(crate::code_model::docs::documentation_query)]
-    fn documentation(&self, def: crate::DocDef) -> Option<crate::Documentation>;
-}
+pub use DefDatabase2 as DefDatabase;
 
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]

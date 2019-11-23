@@ -9,7 +9,6 @@ use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath
     ra_db::SourceDatabaseStorage,
     hir::db::InternDatabaseStorage,
     hir::db::AstDatabaseStorage,
-    hir::db::DefDatabaseStorage,
     hir::db::DefDatabase2Storage,
     hir::db::HirDatabaseStorage
 )]

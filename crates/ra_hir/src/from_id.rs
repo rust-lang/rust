@@ -4,14 +4,14 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    ModuleDefId, StaticId, StructFieldId, StructId, TypeAliasId, UnionId, VariantId,
+    AdtId, AssocItemId, AttrDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
+    GenericDefId, ModuleDefId, StaticId, StructFieldId, StructId, TypeAliasId, UnionId, VariantId,
 };
 
 use crate::{
     ty::{CallableDef, TypableDef},
-    Adt, AssocItem, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef, ModuleDef,
-    Static, StructField, TypeAlias, VariantDef,
+    Adt, AssocItem, AttrDef, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef,
+    ModuleDef, Static, StructField, TypeAlias, VariantDef,
 };
 
 impl From<ra_db::CrateId> for Crate {
@@ -238,5 +238,22 @@ impl From<VariantDef> for VariantId {
 impl From<StructField> for StructFieldId {
     fn from(def: StructField) -> Self {
         StructFieldId { parent: def.parent.into(), local_id: def.id }
+    }
+}
+
+impl From<AttrDef> for AttrDefId {
+    fn from(def: AttrDef) -> Self {
+        match def {
+            AttrDef::Module(it) => AttrDefId::ModuleId(it.id),
+            AttrDef::StructField(it) => AttrDefId::StructFieldId(it.into()),
+            AttrDef::Adt(it) => AttrDefId::AdtId(it.into()),
+            AttrDef::Function(it) => AttrDefId::FunctionId(it.id),
+            AttrDef::EnumVariant(it) => AttrDefId::EnumVariantId(it.into()),
+            AttrDef::Static(it) => AttrDefId::StaticId(it.id),
+            AttrDef::Const(it) => AttrDefId::ConstId(it.id),
+            AttrDef::Trait(it) => AttrDefId::TraitId(it.id),
+            AttrDef::TypeAlias(it) => AttrDefId::TypeAliasId(it.id),
+            AttrDef::MacroDef(it) => AttrDefId::MacroDefId(it.id),
+        }
     }
 }

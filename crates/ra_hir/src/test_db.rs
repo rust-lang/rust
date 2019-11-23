@@ -14,7 +14,6 @@ use crate::{db, debug::HirDebugHelper};
     ra_db::SourceDatabaseStorage,
     db::InternDatabaseStorage,
     db::AstDatabaseStorage,
-    db::DefDatabaseStorage,
     db::DefDatabase2Storage,
     db::HirDatabaseStorage
 )]

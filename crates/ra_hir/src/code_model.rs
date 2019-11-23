@@ -1,7 +1,6 @@
 //! FIXME: write short doc here
 
 pub(crate) mod src;
-pub(crate) mod docs;
 
 use std::sync::Arc;
 
@@ -9,11 +8,12 @@ use hir_def::{
     adt::VariantData,
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
+    docs::Documentation,
     nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    AdtId, ContainerId, CrateModuleId, EnumVariantId, HasModule, ImplId, LocalEnumVariantId,
-    LocalStructFieldId, Lookup, ModuleId, StructFieldId, UnionId,
+    ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
+    ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -1024,18 +1024,17 @@ pub trait HasAttrs {
 
 impl<T: Into<AttrDef>> HasAttrs for T {
     fn attrs(self, db: &impl DefDatabase) -> Attrs {
-        let def = self.into();
-        match def {
-            AttrDef::Module(it) => db.attrs(it.id.into()),
-            AttrDef::StructField(it) => db.attrs(StructFieldId::from(it).into()),
-            AttrDef::Adt(it) => db.attrs(AdtId::from(it).into()),
-            AttrDef::Function(it) => db.attrs(it.id.into()),
-            AttrDef::EnumVariant(it) => db.attrs(EnumVariantId::from(it).into()),
-            AttrDef::Static(it) => db.attrs(it.id.into()),
-            AttrDef::Const(it) => db.attrs(it.id.into()),
-            AttrDef::Trait(it) => db.attrs(it.id.into()),
-            AttrDef::TypeAlias(it) => db.attrs(it.id.into()),
-            AttrDef::MacroDef(it) => db.attrs(it.id.into()),
-        }
+        let def: AttrDef = self.into();
+        db.attrs(def.into())
+    }
+}
+
+pub trait Docs {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation>;
+}
+impl<T: Into<AttrDef> + Copy> Docs for T {
+    fn docs(&self, db: &impl HirDatabase) -> Option<Documentation> {
+        let def: AttrDef = (*self).into();
+        db.documentation(def.into())
     }
 }

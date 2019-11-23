@@ -20,6 +20,7 @@ pub mod generics;
 pub mod resolver;
 pub mod data;
 pub mod lang_item;
+pub mod docs;
 
 mod trace;
 
