@@ -1093,6 +1093,22 @@ where
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator, P> FusedIterator for Filter<I, P> where P: FnMut(&I::Item) -> bool {}
 
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, P, I: Iterator> SourceIter for Filter<I, P> where
+    P: FnMut(&I::Item) -> bool,
+    I: SourceIter<Source = S>
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.iter)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable, P> InPlaceIterable for Filter<I, P> where P: FnMut(&I::Item) -> bool {}
+
 /// An iterator that uses `f` to both filter and map elements from `iter`.
 ///
 /// This `struct` is created by the [`filter_map`] method on [`Iterator`]. See its
@@ -1218,6 +1234,23 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<B, I: FusedIterator, F> FusedIterator for FilterMap<I, F> where F: FnMut(I::Item) -> Option<B> {}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, B, I: Iterator, F> SourceIter for FilterMap<I, F> where
+    F: FnMut(I::Item) -> Option<B>,
+    I: SourceIter<Source = S>
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.iter)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<B, I: InPlaceIterable, F> InPlaceIterable for FilterMap<I, F> where F: FnMut(I::Item) -> Option<B> {}
+
 
 /// An iterator that yields the current count and the element during iteration.
 ///
@@ -1777,6 +1810,22 @@ where
 {
 }
 
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, P, I: Iterator> SourceIter for SkipWhile<I, P> where
+    P: FnMut(&I::Item) -> bool,
+    I: SourceIter<Source = S>
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.iter)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable, F> InPlaceIterable for SkipWhile<I, F> where F: FnMut(&I::Item) -> bool {}
+
 /// An iterator that only accepts elements while `predicate` returns `true`.
 ///
 /// This `struct` is created by the [`take_while`] method on [`Iterator`]. See its
@@ -1965,6 +2014,24 @@ where
     P: FnMut(&I::Item) -> bool,
 {
 }
+
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, P, I: Iterator> SourceIter for TakeWhile<I, P> where
+    P: FnMut(&I::Item) -> bool,
+    I: SourceIter<Source = S>
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.iter)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable, F> InPlaceIterable for TakeWhile<I, F> where F: FnMut(&I::Item) -> bool {}
+
 
 /// An iterator that skips over `n` elements of `iter`.
 ///
@@ -2259,6 +2326,19 @@ where
     }
 }
 
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, I: Iterator> SourceIter for Take<I> where I: SourceIter<Source = S> {
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.iter)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable> InPlaceIterable for Take<I> {}
+
 #[stable(feature = "double_ended_take_iterator", since = "1.38.0")]
 impl<I> DoubleEndedIterator for Take<I>
 where
@@ -2390,6 +2470,24 @@ where
         self.iter.try_fold(init, scan(state, f, fold)).into_try()
     }
 }
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<St, F, B, S: Iterator, I: Iterator> SourceIter for Scan<I, St, F>
+    where I: SourceIter<Source = S>,
+          F: FnMut(&mut St, I::Item) -> Option<B>,
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.iter)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<St, F, B, I: InPlaceIterable> InPlaceIterable for Scan<I, St, F>
+    where F: FnMut(&mut St, I::Item) -> Option<B>,
+{}
 
 /// An iterator that yields `None` forever after the underlying iterator
 /// yields `None` once.
@@ -2807,6 +2905,22 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator, F> FusedIterator for Inspect<I, F> where F: FnMut(&I::Item) {}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S: Iterator, I: Iterator, F> SourceIter for Inspect<I, F> where
+    F: FnMut(&I::Item),
+    I: SourceIter<Source = S>
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.iter)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<I: InPlaceIterable, F> InPlaceIterable for Inspect<I, F> where F: FnMut(&I::Item)  {}
 
 /// An iterator adapter that produces output as long as the underlying
 /// iterator produces `Result::Ok` values.
