@@ -1337,6 +1337,8 @@ impl<'a> Parser<'a> {
     /// Parses the part of an enum declaration following the `{`.
     fn parse_enum_def(&mut self, _generics: &Generics) -> PResult<'a, EnumDef> {
         let mut variants = Vec::new();
+        // FIXME: Consider using `parse_delim_comma_seq`.
+        // We could then remove eating comma in `recover_nested_adt_item`.
         while self.token != token::CloseDelim(token::Brace) {
             let variant_attrs = self.parse_outer_attributes()?;
             let vlo = self.token.span;
