@@ -86,7 +86,7 @@ macro_rules! ast_fragments {
                         // mention some macro variable from those arguments even if it's not used.
                         #[cfg_attr(bootstrap, allow(unused_macros))]
                         macro _repeating($flat_map_ast_elt) {}
-                        placeholder(AstFragmentKind::$Kind, *id).$make_ast()
+                        placeholder(AstFragmentKind::$Kind, *id, None).$make_ast()
                     })),)?)*
                     _ => panic!("unexpected AST fragment kind")
                 }
@@ -273,6 +273,23 @@ pub enum InvocationKind {
         derives: Vec<Path>,
         item: Annotatable,
     },
+}
+
+impl InvocationKind {
+    fn placeholder_visibility(&self) -> Option<ast::Visibility> {
+        // HACK: For unnamed fields placeholders should have the same visibility as the actual
+        // fields because for tuple structs/variants resolve determines visibilities of their
+        // constructor using these field visibilities before attributes on them are are expanded.
+        // The assumption is that the attribute expansion cannot change field visibilities,
+        // and it holds because only inert attributes are supported in this position.
+        match self {
+            InvocationKind::Attr { item: Annotatable::StructField(field), .. } |
+            InvocationKind::Derive { item: Annotatable::StructField(field), .. } |
+            InvocationKind::DeriveContainer { item: Annotatable::StructField(field), .. }
+                if field.ident.is_none() => Some(field.vis.clone()),
+            _ => None,
+        }
+    }
 }
 
 impl Invocation {
@@ -931,6 +948,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             _ => None,
         };
         let expn_id = ExpnId::fresh(expn_data);
+        let vis = kind.placeholder_visibility();
         self.invocations.push(Invocation {
             kind,
             fragment_kind,
@@ -940,7 +958,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 ..self.cx.current_expansion.clone()
             },
         });
-        placeholder(fragment_kind, NodeId::placeholder_from_expn_id(expn_id))
+        placeholder(fragment_kind, NodeId::placeholder_from_expn_id(expn_id), vis)
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: AstFragmentKind) -> AstFragment {

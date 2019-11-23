@@ -12,7 +12,8 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
 
-pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
+pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visibility>)
+                   -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
@@ -26,7 +27,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     let ident = ast::Ident::invalid();
     let attrs = Vec::new();
     let generics = ast::Generics::default();
-    let vis = dummy_spanned(ast::VisibilityKind::Inherited);
+    let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
     let span = DUMMY_SP;
     let expr_placeholder = || P(ast::Expr {
         id, span,
