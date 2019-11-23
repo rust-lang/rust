@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 334] = [
+pub const ALL_LINTS: [Lint; 337] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -711,13 +711,6 @@ pub const ALL_LINTS: [Lint; 334] = [
         name: "ifs_same_cond",
         group: "correctness",
         desc: "consecutive `ifs` with the same condition",
-        deprecation: None,
-        module: "copies",
-    },
-    Lint {
-        name: "ifs_same_cond_fn",
-        group: "pedantic",
-        desc: "consecutive `ifs` with the same function call",
         deprecation: None,
         module: "copies",
     },
@@ -1721,6 +1714,13 @@ pub const ALL_LINTS: [Lint; 334] = [
         desc: "iteration over an empty range, such as `10..0` or `5..5`",
         deprecation: None,
         module: "loops",
+    },
+    Lint {
+        name: "same_functions_in_if_condition",
+        group: "pedantic",
+        desc: "consecutive `ifs` with the same function call",
+        deprecation: None,
+        module: "copies",
     },
     Lint {
         name: "search_is_some",
