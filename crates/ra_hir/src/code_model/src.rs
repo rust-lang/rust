@@ -8,7 +8,7 @@ use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::AstItemDef,
     Const, Enum, EnumVariant, FieldSource, Function, HasBody, MacroDef, Module, ModuleSource,
-    Static, Struct, StructField, Trait, TypeAlias, Union,
+    Static, Struct, StructField, Trait, TypeAlias, Union, Import
 };
 
 pub use hir_expand::Source;
@@ -111,6 +111,16 @@ impl HasSource for MacroDef {
     type Ast = ast::MacroCall;
     fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ast::MacroCall> {
         Source { file_id: self.id.ast_id.file_id(), value: self.id.ast_id.to_node(db) }
+    }
+}
+impl HasSource for Import {
+    type Ast = Either<ast::UseTree, ast::ExternCrateItem>;
+
+    /// Returns the syntax of the last path segment corresponding to this import
+    fn source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<Self::Ast> {
+        let src = self.parent.definition_source(db);
+        let (_, source_map) = db.raw_items_with_source_map(src.file_id);
+        src.with_value(source_map.get(&src.value, self.id))
     }
 }
 

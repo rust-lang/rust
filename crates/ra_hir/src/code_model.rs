@@ -9,7 +9,7 @@ use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
-    nameres::per_ns::PerNs,
+    nameres::{per_ns::PerNs, raw::ImportId},
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
     ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
@@ -30,7 +30,7 @@ use crate::{
         TypeAliasId,
     },
     ty::{InferenceResult, Namespace, TraitRef},
-    Either, HasSource, ImportId, Name, Source, Ty,
+    Either, HasSource, Name, Source, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -129,17 +129,6 @@ impl Module {
         })
     }
 
-    /// Returns the syntax of the last path segment corresponding to this import
-    pub fn import_source(
-        self,
-        db: &impl HirDatabase,
-        import: ImportId,
-    ) -> Either<ast::UseTree, ast::ExternCrateItem> {
-        let src = self.definition_source(db);
-        let (_, source_map) = db.raw_items_with_source_map(src.file_id);
-        source_map.get(&src.value, import)
-    }
-
     /// Returns the crate this module is part of.
     pub fn krate(self) -> Crate {
         Crate { crate_id: self.id.krate }
@@ -189,11 +178,13 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(self, db: &impl HirDatabase) -> Vec<(Name, ScopeDef, Option<ImportId>)> {
+    pub fn scope(self, db: &impl HirDatabase) -> Vec<(Name, ScopeDef, Option<Import>)> {
         db.crate_def_map(self.id.krate)[self.id.module_id]
             .scope
             .entries()
-            .map(|(name, res)| (name.clone(), res.def.into(), res.import))
+            .map(|(name, res)| {
+                (name.clone(), res.def.into(), res.import.map(|id| Import { parent: self, id }))
+            })
             .collect()
     }
 
@@ -234,6 +225,11 @@ impl Module {
     fn with_module_id(self, module_id: CrateModuleId) -> Module {
         Module::new(self.krate(), module_id)
     }
+}
+
+pub struct Import {
+    pub(crate) parent: Module,
+    pub(crate) id: ImportId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
