@@ -55,7 +55,10 @@ crate enum RegionNameSource {
     AnonRegionFromUpvar(Span, String),
     /// The region corresponding to the return type of a closure.
     AnonRegionFromOutput(Span, String, String),
+    /// The region from a type yielded by a generator.
     AnonRegionFromYieldTy(Span, String),
+    /// An anonymous region from a trait object in an async fn.
+    AnonRegionFromTraitObjAsync(Span),
 }
 
 /// Records region names that have been assigned before so that we can use the same ones in later
@@ -113,7 +116,8 @@ impl RegionName {
             RegionNameSource::MatchedAdtAndSegment(..) |
             RegionNameSource::AnonRegionFromUpvar(..) |
             RegionNameSource::AnonRegionFromOutput(..) |
-            RegionNameSource::AnonRegionFromYieldTy(..) => false,
+            RegionNameSource::AnonRegionFromYieldTy(..) |
+            RegionNameSource::AnonRegionFromTraitObjAsync(..) => false,
         }
     }
 
@@ -137,7 +141,8 @@ impl RegionName {
             RegionNameSource::CannotMatchHirTy(span, type_name) => {
                 diag.span_label(*span, format!("has type `{}`", type_name));
             }
-            RegionNameSource::MatchedHirTy(span) => {
+            RegionNameSource::MatchedHirTy(span) |
+            RegionNameSource::AnonRegionFromTraitObjAsync(span) => {
                 diag.span_label(
                     *span,
                     format!("let's call the lifetime of this reference `{}`", self),
@@ -287,11 +292,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             ty::ReFree(free_region) => match free_region.bound_region {
                 ty::BoundRegion::BrNamed(_, name) => {
+                    // Get the span to point to, even if we don't use the name.
                     let span = self.get_named_span(tcx, error_region, name);
-                    Some(RegionName {
-                        name,
-                        source: RegionNameSource::NamedFreeRegion(span),
-                    })
+                    debug!("bound region named: {:?}, is_named: {:?}",
+                        name, free_region.bound_region.is_named());
+
+                    if free_region.bound_region.is_named() {
+                        // A named region that is actually named.
+                        Some(RegionName {
+                            name,
+                            source: RegionNameSource::NamedFreeRegion(span),
+                        })
+                    } else {
+                        // If we spuriously thought that the region is named, we should let the
+                        // system generate a true name for error messages. Currently this can
+                        // happen if we have an elided name in a trait object used in an async fn
+                        // for example: the compiler will generate a region named `'_`, but
+                        // reporting such a name is not actually useful, so we synthesize a name
+                        // for it instead.
+                        let name = self.synthesize_region_name(renctx);
+                        Some(RegionName {
+                            name,
+                            source: RegionNameSource::AnonRegionFromTraitObjAsync(span),
+                        })
+                    }
                 }
 
                 ty::BoundRegion::BrEnv => {
