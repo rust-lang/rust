@@ -99,7 +99,7 @@ crate struct CrateMetadata {
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
     dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    crate dep_kind: Lock<DepKind>,
+    dep_kind: Lock<DepKind>,
     /// Filesystem location of this crate.
     source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
@@ -1537,6 +1537,14 @@ impl<'a, 'tcx> CrateMetadata {
 
     crate fn source(&self) -> &CrateSource {
         &self.source
+    }
+
+    crate fn dep_kind(&self) -> DepKind {
+        *self.dep_kind.lock()
+    }
+
+    crate fn update_dep_kind(&self, f: impl FnOnce(DepKind) -> DepKind) {
+        self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
     }
 }
 
