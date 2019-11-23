@@ -18,7 +18,8 @@
             target_arch = "hexagon",
             target_arch = "powerpc",
             target_arch = "powerpc64",
-            target_arch = "s390x"
+            target_arch = "s390x",
+            target_arch = "riscv64"
         )
     ),
     all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
@@ -60,7 +61,8 @@ pub type c_char = u8;
             target_arch = "hexagon",
             target_arch = "powerpc",
             target_arch = "powerpc64",
-            target_arch = "s390x"
+            target_arch = "s390x",
+            target_arch = "riscv64"
         )
     ),
     all(target_os = "android", any(target_arch = "aarch64", target_arch = "arm")),
