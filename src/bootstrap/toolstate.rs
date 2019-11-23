@@ -290,6 +290,8 @@ fn commit_toolstate_change(
         }
     }
 
+    // If changing anything here, then please check that src/ci/publish_toolstate.sh is up to date
+    // as well.
     git_config("user.email", "7378925+rust-toolstate-update@users.noreply.github.com");
     git_config("user.name", "Rust Toolstate Update");
     git_config("credential.helper", "store");
