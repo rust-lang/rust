@@ -457,7 +457,7 @@ dependencies = [
  "cargo_metadata 0.9.0",
  "clippy-mini-macro-test",
  "clippy_lints",
- "compiletest_rs",
+ "compiletest_rs 0.4.0",
  "derive-new",
  "lazy_static 1.3.0",
  "regex",
@@ -465,6 +465,7 @@ dependencies = [
  "rustc_tools_util 0.2.0",
  "semver",
  "serde",
+ "tester 0.7.0",
 ]
 
 [[package]]
@@ -603,7 +604,29 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tempfile",
- "tester",
+ "tester 0.6.0",
+ "winapi 0.3.8",
+]
+
+[[package]]
+name = "compiletest_rs"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7b678957210a00ba0fbeacc23d38cbfbf29895564da1616564634351e1dac5e"
+dependencies = [
+ "diff",
+ "filetime",
+ "getopts",
+ "libc",
+ "log",
+ "miow 0.3.3",
+ "regex",
+ "rustfix",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "tempfile",
+ "tester 0.7.0",
  "winapi 0.3.8",
 ]
 
@@ -2172,7 +2195,7 @@ dependencies = [
  "byteorder",
  "cargo_metadata 0.9.0",
  "colored",
- "compiletest_rs",
+ "compiletest_rs 0.3.26",
  "directories",
  "env_logger 0.7.1",
  "getrandom",
@@ -4566,6 +4589,17 @@ name = "tester"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7647e6d732eb84375d8e7abda37818f81861ddbfc7235e33f4983cb254b71e4f"
+dependencies = [
+ "getopts",
+ "libc",
+ "term 0.6.0",
+]
+
+[[package]]
+name = "tester"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ee72ec31009a42b53de9a6b7d8f462b493ab3b1e4767bda1fcdbb52127f13b6c"
 dependencies = [
  "getopts",
  "libc",
