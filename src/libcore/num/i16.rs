@@ -4,4 +4,4 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-int_module! { i16 }
+int_module! { i16, -32768, 32767 }
