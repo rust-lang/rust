@@ -53,8 +53,8 @@ pub use crate::{
         src::{HasBodySource, HasSource},
         Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency, DefWithBody, Docs, Enum,
         EnumVariant, FieldSource, Function, GenericDef, GenericParam, HasAttrs, HasBody, ImplBlock,
-        Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField,
-        Trait, TypeAlias, Union, VariantDef,
+        Import, Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct,
+        StructField, Trait, TypeAlias, Union, VariantDef,
     },
     expr::ExprScopes,
     from_source::FromSource,
@@ -70,7 +70,6 @@ pub use crate::{
 pub use hir_def::{
     builtin_type::BuiltinType,
     docs::Documentation,
-    nameres::raw::ImportId,
     path::{Path, PathKind},
     type_ref::Mutability,
 };

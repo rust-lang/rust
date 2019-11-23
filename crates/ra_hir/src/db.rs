@@ -29,7 +29,7 @@ pub use hir_expand::db::{
 
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
-pub trait HirDatabase: DefDatabase + AstDatabase {
+pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::infer_query)]
     fn infer(&self, def: DefWithBody) -> Arc<InferenceResult>;
 
