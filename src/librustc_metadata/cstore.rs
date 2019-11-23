@@ -66,7 +66,7 @@ impl CStore {
     fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
         if !deps.contains(&cnum) {
             let data = self.get_crate_data(cnum);
-            for &dep in data.dependencies.borrow().iter() {
+            for &dep in data.dependencies().iter() {
                 if dep != cnum {
                     self.push_dependencies_in_postorder(deps, dep);
                 }

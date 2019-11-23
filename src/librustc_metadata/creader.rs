@@ -428,7 +428,7 @@ impl<'a> CrateLoader<'a> {
 
         // Propagate the extern crate info to dependencies.
         extern_crate.dependency_of = cnum;
-        for &dep_cnum in cmeta.dependencies.borrow().iter() {
+        for &dep_cnum in cmeta.dependencies().iter() {
             self.update_extern_crate(dep_cnum, extern_crate, visited);
         }
     }
@@ -829,7 +829,7 @@ impl<'a> CrateLoader<'a> {
             }
 
             info!("injecting a dep from {} to {}", cnum, krate);
-            data.dependencies.borrow_mut().push(krate);
+            data.add_dependency(krate);
         });
     }
 

@@ -4,7 +4,7 @@ use crate::rmeta::*;
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{Lrc, Lock, Once, AtomicCell};
+use rustc_data_structures::sync::{Lrc, Lock, LockGuard, Once, AtomicCell};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir;
@@ -97,7 +97,7 @@ crate struct CrateMetadata {
     /// IDs as they are seen from the current compilation session.
     cnum_map: CrateNumMap,
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    crate dependencies: Lock<Vec<CrateNum>>,
+    dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
     crate dep_kind: Lock<DepKind>,
     /// Filesystem location of this crate.
@@ -1516,6 +1516,14 @@ impl<'a, 'tcx> CrateMetadata {
         }
 
         dep_node_index
+    }
+
+    crate fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
+        self.dependencies.borrow()
+    }
+
+    crate fn add_dependency(&self, cnum: CrateNum) {
+        self.dependencies.borrow_mut().push(cnum);
     }
 }
 
