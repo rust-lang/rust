@@ -1877,6 +1877,13 @@ pub const ALL_LINTS: [Lint; 334] = [
         module: "formatting",
     },
     Lint {
+        name: "tabs_in_doc_comments",
+        group: "style",
+        desc: "using tabs in doc comments is not recommended",
+        deprecation: None,
+        module: "tabs_in_doc_comments",
+    },
+    Lint {
         name: "temporary_assignment",
         group: "complexity",
         desc: "assignments to temporaries",

@@ -275,6 +275,7 @@ pub mod slow_vector_initialization;
 pub mod strings;
 pub mod suspicious_trait_impl;
 pub mod swap;
+pub mod tabs_in_doc_comments;
 pub mod temporary_assignment;
 pub mod to_digit_is_some;
 pub mod trait_bounds;
@@ -720,6 +721,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         &swap::ALMOST_SWAPPED,
         &swap::MANUAL_SWAP,
+        &tabs_in_doc_comments::TABS_IN_DOC_COMMENTS,
         &temporary_assignment::TEMPORARY_ASSIGNMENT,
         &to_digit_is_some::TO_DIGIT_IS_SOME,
         &trait_bounds::TYPE_REPETITION_IN_BOUNDS,
@@ -950,6 +952,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
+    store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
     store.register_late_pass(|| box exit::Exit);
@@ -1252,6 +1255,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(&swap::ALMOST_SWAPPED),
         LintId::of(&swap::MANUAL_SWAP),
+        LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
@@ -1379,6 +1383,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
+        LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&try_err::TRY_ERR),
         LintId::of(&types::FN_TO_NUMERIC_CAST),
