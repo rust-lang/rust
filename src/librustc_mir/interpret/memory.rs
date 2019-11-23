@@ -793,7 +793,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
     /// Reads a 0x0000-terminated sequence of bytes from memory. Returns them as a slice.
     /// Needed for reading wide-strings in Windows-OS
-    /// 
+    ///
     /// Performs appropriate bounds checks.
     pub fn read_wide_str(&self, ptr: Scalar<M::PointerTag>) -> InterpResult<'tcx, &[u8]> {
         let ptr = self.force_ptr(ptr)?; // We need to read at least 1 byte, so we *need* a ptr.

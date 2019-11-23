@@ -324,7 +324,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         })
     }
 
-    /// Reads bytes until a `0x00` is encountered. Will error if the end of the allocation 
+    /// Reads bytes until a `0x00` is encountered. Will error if the end of the allocation
     /// is reached before a `0x00` is found.
     ///
     /// Most likely, you want to call `Memory::read_wide_str` instead of this method.
