@@ -452,7 +452,7 @@ impl TypeId {
 /// The current implementation uses the same infrastructure as compiler
 /// diagnostics and debuginfo, but this is not guaranteed.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// assert_eq!(
@@ -464,4 +464,43 @@ impl TypeId {
 #[rustc_const_unstable(feature = "const_type_name")]
 pub const fn type_name<T: ?Sized>() -> &'static str {
     intrinsics::type_name::<T>()
+}
+
+/// Returns the name of the type of the pointed-to value as a string slice.
+/// This is the same as `type_name::<T>()`, but can be used where the type of a
+/// variable is not easily available.
+///
+/// # Note
+///
+/// This is intended for diagnostic use. The exact contents and format of the
+/// string are not specified, other than being a best-effort description of the
+/// type. For example, `type_name_of::<Option<String>>(None)` could return the
+/// `"Option<String>"` or `"std::option::Option<std::string::String>"`, but not
+/// `"foobar"`. In addition, the output may change between versions of the
+/// compiler.
+///
+/// The type name should not be considered a unique identifier of a type;
+/// multiple types may share the same type name.
+///
+/// The current implementation uses the same infrastructure as compiler
+/// diagnostics and debuginfo, but this is not guaranteed.
+///
+/// # Examples
+///
+/// Prints the default integer and float types.
+///
+/// ```rust
+/// #![feature(type_name_of_val)]
+/// use std::any::type_name_of_val;
+///
+/// let x = 1;
+/// println!("{}", type_name_of_val(&x));
+/// let y = 1.0;
+/// println!("{}", type_name_of_val(&y));
+/// ```
+#[unstable(feature = "type_name_of_val", issue = "66359")]
+#[rustc_const_unstable(feature = "const_type_name")]
+pub const fn type_name_of_val<T: ?Sized>(val: &T) -> &'static str {
+    let _ = val;
+    type_name::<T>()
 }

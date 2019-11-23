@@ -20,10 +20,14 @@ pub trait Step: Clone + PartialOrd + Sized {
     /// without overflow.
     fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 
-    /// Replaces this step with `1`, returning itself.
+    /// Replaces this step with `1`, returning a clone of itself.
+    ///
+    /// The output of this method should always be greater than the output of replace_zero.
     fn replace_one(&mut self) -> Self;
 
-    /// Replaces this step with `0`, returning itself.
+    /// Replaces this step with `0`, returning a clone of itself.
+    ///
+    /// The output of this method should always be less than the output of replace_one.
     fn replace_zero(&mut self) -> Self;
 
     /// Adds one to this step, returning the result.
