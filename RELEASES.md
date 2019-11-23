@@ -7804,7 +7804,7 @@ Version 0.7 (2013-07-03)
       * extra: Implementation of fixed output size variations of SHA-2.
 
    * Tooling
-      * `unused_variable`  lint mode for unused variables (default: warn).
+      * `unused_variables` lint mode for unused variables (default: warn).
       * `unused_unsafe` lint mode for detecting unnecessary `unsafe` blocks
         (default: warn).
       * `unused_mut` lint mode for identifying unused `mut` qualifiers
