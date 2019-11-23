@@ -376,7 +376,10 @@ fn panic_safe() {
     }
     let mut rng = thread_rng();
     const DATASZ: usize = 32;
+    #[cfg(not(miri))] // Miri is too slow
     const NTEST: usize = 10;
+    #[cfg(miri)]
+    const NTEST: usize = 1;
 
     // don't use 0 in the data -- we want to catch the zeroed-out case.
     let data = (1..=DATASZ).collect::<Vec<_>>();

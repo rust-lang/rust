@@ -1605,12 +1605,17 @@ fn panic_safe() {
     let mut rng = thread_rng();
 
     #[cfg(not(miri))] // Miri is too slow
-    let large_range = 70..MAX_LEN;
-    #[cfg(miri)]
-    let large_range = 0..0; // empty range
+    let lens = (1..20).chain(70..MAX_LEN);
+    #[cfg(not(miri))] // Miri is too slow
+    let moduli = &[5, 20, 50];
 
-    for len in (1..20).chain(large_range) {
-        for &modulus in &[5, 20, 50] {
+    #[cfg(miri)]
+    let lens = (1..13);
+    #[cfg(miri)]
+    let moduli = &[10];
+
+    for len in lens {
+        for &modulus in moduli {
             for &has_runs in &[false, true] {
                 let mut input = (0..len)
                     .map(|id| {
@@ -1643,6 +1648,9 @@ fn panic_safe() {
             }
         }
     }
+
+    // Set default panic hook again.
+    drop(panic::take_hook());
 }
 
 #[test]
