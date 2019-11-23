@@ -169,7 +169,6 @@ mod job {
 pub use crate::config::Config;
 use crate::flags::Subcommand;
 use crate::cache::{Interned, INTERNER};
-use crate::toolstate::ToolState;
 
 const LLVM_TOOLS: &[&str] = &[
     "llvm-nm", // used to inspect binaries; it shows symbol names, their sizes and visibility
@@ -1071,32 +1070,6 @@ impl Build {
         match &self.config.channel[..] {
             "stable" | "beta" => false,
             "nightly" | _ => true,
-        }
-    }
-
-    /// Updates the actual toolstate of a tool.
-    ///
-    /// The toolstates are saved to the file specified by the key
-    /// `rust.save-toolstates` in `config.toml`. If unspecified, nothing will be
-    /// done. The file is updated immediately after this function completes.
-    pub fn save_toolstate(&self, tool: &str, state: ToolState) {
-        if let Some(ref path) = self.config.save_toolstates {
-            if let Some(parent) = path.parent() {
-                // Ensure the parent directory always exists
-                t!(std::fs::create_dir_all(parent));
-            }
-            let mut file = t!(fs::OpenOptions::new()
-                .create(true)
-                .read(true)
-                .write(true)
-                .open(path));
-
-            let mut current_toolstates: HashMap<Box<str>, ToolState> =
-                serde_json::from_reader(&mut file).unwrap_or_default();
-            current_toolstates.insert(tool.into(), state);
-            t!(file.seek(SeekFrom::Start(0)));
-            t!(file.set_len(0));
-            t!(serde_json::to_writer(file, &current_toolstates));
         }
     }
 

@@ -368,6 +368,7 @@ impl<'a> Builder<'a> {
                 check::Rustdoc
             ),
             Kind::Test => describe!(
+                crate::toolstate::ToolStateCheck,
                 test::Tidy,
                 test::Ui,
                 test::CompileFail,
