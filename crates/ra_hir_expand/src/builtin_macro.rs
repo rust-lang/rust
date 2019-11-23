@@ -8,29 +8,39 @@ use crate::{
 
 use crate::quote;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BuiltinFnLikeExpander {
-    Column,
-    File,
-    Line,
-    Stringify,
-}
-
-struct BuiltInMacroInfo {
-    name: name::Name,
-    kind: BuiltinFnLikeExpander,
-    expand: fn(
-        db: &dyn AstDatabase,
-        id: MacroCallId,
-        _tt: &tt::Subtree,
-    ) -> Result<tt::Subtree, mbe::ExpandError>,
-}
-
 macro_rules! register_builtin {
     ( $(($name:ident, $kind: ident) => $expand:ident),* ) => {
-        const BUILTIN_MACROS: &[BuiltInMacroInfo] = &[
-            $(BuiltInMacroInfo { name: name::$name, kind: BuiltinFnLikeExpander::$kind, expand: $expand }),*
-        ];
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum BuiltinFnLikeExpander {
+            $($kind),*
+        }
+
+        impl BuiltinFnLikeExpander {
+            pub fn expand(
+                &self,
+                db: &dyn AstDatabase,
+                id: MacroCallId,
+                tt: &tt::Subtree,
+            ) -> Result<tt::Subtree, mbe::ExpandError> {
+                let expander = match *self {
+                    $( BuiltinFnLikeExpander::$kind => $expand, )*
+                };
+                expander(db, id, tt)
+            }
+        }
+
+        pub fn find_builtin_macro(
+            ident: &name::Name,
+            krate: CrateId,
+            ast_id: AstId<ast::MacroCall>,
+        ) -> Option<MacroDefId> {
+            let kind = match ident {
+                 $( id if id == &name::$name => BuiltinFnLikeExpander::$kind, )*
+                 _ => return None,
+            };
+
+            Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(kind) })
+        }
     };
 }
 
@@ -39,33 +49,6 @@ register_builtin! {
     (FILE_MACRO, File) => file_expand,
     (LINE_MACRO, Line) => line_expand,
     (STRINGIFY_MACRO, Stringify) => stringify_expand
-}
-
-impl BuiltinFnLikeExpander {
-    pub fn expand(
-        &self,
-        db: &dyn AstDatabase,
-        id: MacroCallId,
-        tt: &tt::Subtree,
-    ) -> Result<tt::Subtree, mbe::ExpandError> {
-        let expander = BUILTIN_MACROS
-            .iter()
-            .find(|it| *self == it.kind)
-            .map(|it| it.expand)
-            .ok_or_else(|| mbe::ExpandError::ConversionError)?;
-
-        expander(db, id, tt)
-    }
-}
-
-pub fn find_builtin_macro(
-    ident: &name::Name,
-    krate: CrateId,
-    ast_id: AstId<ast::MacroCall>,
-) -> Option<MacroDefId> {
-    let kind = BUILTIN_MACROS.iter().find(|it| *ident == it.name).map(|it| it.kind)?;
-
-    Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(kind) })
 }
 
 fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
