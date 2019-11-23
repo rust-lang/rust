@@ -9,7 +9,7 @@ use crate::{
 use crate::quote;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum BuiltinExpander {
+pub enum BuiltinFnLikeExpander {
     Column,
     File,
     Line,
@@ -18,7 +18,7 @@ pub enum BuiltinExpander {
 
 struct BuiltInMacroInfo {
     name: name::Name,
-    kind: BuiltinExpander,
+    kind: BuiltinFnLikeExpander,
     expand: fn(
         db: &dyn AstDatabase,
         id: MacroCallId,
@@ -29,7 +29,7 @@ struct BuiltInMacroInfo {
 macro_rules! register_builtin {
     ( $(($name:ident, $kind: ident) => $expand:ident),* ) => {
         const BUILTIN_MACROS: &[BuiltInMacroInfo] = &[
-            $(BuiltInMacroInfo { name: name::$name, kind: BuiltinExpander::$kind, expand: $expand }),*
+            $(BuiltInMacroInfo { name: name::$name, kind: BuiltinFnLikeExpander::$kind, expand: $expand }),*
         ];
     };
 }
@@ -41,7 +41,7 @@ register_builtin! {
     (STRINGIFY_MACRO, Stringify) => stringify_expand
 }
 
-impl BuiltinExpander {
+impl BuiltinFnLikeExpander {
     pub fn expand(
         &self,
         db: &dyn AstDatabase,
@@ -195,7 +195,7 @@ mod tests {
     use crate::{test_db::TestDB, MacroCallLoc};
     use ra_db::{fixture::WithFixture, SourceDatabase};
 
-    fn expand_builtin_macro(s: &str, expander: BuiltinExpander) -> String {
+    fn expand_builtin_macro(s: &str, expander: BuiltinFnLikeExpander) -> String {
         let (db, file_id) = TestDB::with_single_file(&s);
         let parsed = db.parse(file_id);
         let macro_calls: Vec<_> =
@@ -229,7 +229,7 @@ mod tests {
         macro_rules! column {() => {}}
         column!()
 "#,
-            BuiltinExpander::Column,
+            BuiltinFnLikeExpander::Column,
         );
 
         assert_eq!(expanded, "9");
@@ -243,7 +243,7 @@ mod tests {
         macro_rules! line {() => {}}
         line!()
 "#,
-            BuiltinExpander::Line,
+            BuiltinFnLikeExpander::Line,
         );
 
         assert_eq!(expanded, "4");
@@ -257,7 +257,7 @@ mod tests {
         macro_rules! stringify {() => {}}
         stringify!(a b c)
 "#,
-            BuiltinExpander::Stringify,
+            BuiltinFnLikeExpander::Stringify,
         );
 
         assert_eq!(expanded, "\"a b c\"");
@@ -271,7 +271,7 @@ mod tests {
         macro_rules! file {() => {}}
         file!()
 "#,
-            BuiltinExpander::File,
+            BuiltinFnLikeExpander::File,
         );
 
         assert_eq!(expanded, "\"\"");

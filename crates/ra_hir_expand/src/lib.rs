@@ -24,7 +24,7 @@ use ra_syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
-use crate::builtin_macro::BuiltinExpander;
+use crate::builtin_macro::BuiltinFnLikeExpander;
 
 #[cfg(test)]
 mod test_db;
@@ -138,7 +138,7 @@ pub struct MacroDefId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroDefKind {
     Declarative,
-    BuiltIn(BuiltinExpander),
+    BuiltIn(BuiltinFnLikeExpander),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
