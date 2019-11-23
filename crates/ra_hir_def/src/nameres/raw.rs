@@ -12,7 +12,7 @@ use hir_expand::{
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, AstPtr, SourceFile,
+    AstNode, AstPtr,
 };
 use test_utils::tested_by;
 
@@ -20,7 +20,7 @@ use crate::{
     attr::{Attr, Attrs},
     db::DefDatabase,
     path::Path,
-    FileAstId, HirFileId, LocalImportId, ModuleSource, Source,
+    FileAstId, HirFileId, LocalImportId, Source,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -44,24 +44,14 @@ pub struct ImportSourceMap {
 }
 
 type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
-type ImportSource = Either<ast::UseTree, ast::ExternCrateItem>;
-
-fn to_node(ptr: ImportSourcePtr, file: &SourceFile) -> ImportSource {
-    ptr.map(|ptr| ptr.to_node(file.syntax()), |ptr| ptr.to_node(file.syntax()))
-}
 
 impl ImportSourceMap {
     fn insert(&mut self, import: LocalImportId, ptr: ImportSourcePtr) {
         self.map.insert(import, ptr)
     }
 
-    pub fn get(&self, source: &ModuleSource, import: LocalImportId) -> ImportSource {
-        let file = match source {
-            ModuleSource::SourceFile(file) => file.clone(),
-            ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
-        };
-
-        to_node(self.map[import], &file)
+    pub fn get(&self, import: LocalImportId) -> ImportSourcePtr {
+        self.map[import].clone()
     }
 }
 

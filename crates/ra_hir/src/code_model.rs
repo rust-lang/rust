@@ -18,9 +18,10 @@ use hir_def::{
 use hir_expand::{
     diagnostics::DiagnosticSink,
     name::{self, AsName},
+    AstId,
 };
-use ra_db::{CrateId, Edition};
-use ra_syntax::ast;
+use ra_db::{CrateId, Edition, FileId, FilePosition};
+use ra_syntax::{ast, AstNode, SyntaxNode};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
@@ -78,6 +79,64 @@ impl Crate {
     }
 }
 
+pub enum ModuleSource {
+    SourceFile(ast::SourceFile),
+    Module(ast::Module),
+}
+
+impl ModuleSource {
+    pub fn new(
+        db: &impl DefDatabase,
+        file_id: Option<FileId>,
+        decl_id: Option<AstId<ast::Module>>,
+    ) -> ModuleSource {
+        match (file_id, decl_id) {
+            (Some(file_id), _) => {
+                let source_file = db.parse(file_id).tree();
+                ModuleSource::SourceFile(source_file)
+            }
+            (None, Some(item_id)) => {
+                let module = item_id.to_node(db);
+                assert!(module.item_list().is_some(), "expected inline module");
+                ModuleSource::Module(module)
+            }
+            (None, None) => panic!(),
+        }
+    }
+
+    // FIXME: this methods do not belong here
+    pub fn from_position(db: &impl DefDatabase, position: FilePosition) -> ModuleSource {
+        let parse = db.parse(position.file_id);
+        match &ra_syntax::algo::find_node_at_offset::<ast::Module>(
+            parse.tree().syntax(),
+            position.offset,
+        ) {
+            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
+            _ => {
+                let source_file = parse.tree();
+                ModuleSource::SourceFile(source_file)
+            }
+        }
+    }
+
+    pub fn from_child_node(db: &impl DefDatabase, child: Source<&SyntaxNode>) -> ModuleSource {
+        if let Some(m) =
+            child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
+        {
+            ModuleSource::Module(m)
+        } else {
+            let file_id = child.file_id.original_file(db);
+            let source_file = db.parse(file_id).tree();
+            ModuleSource::SourceFile(source_file)
+        }
+    }
+
+    pub fn from_file_id(db: &impl DefDatabase, file_id: FileId) -> ModuleSource {
+        let source_file = db.parse(file_id).tree();
+        ModuleSource::SourceFile(source_file)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Module {
     pub(crate) id: ModuleId,
@@ -109,7 +168,7 @@ impl_froms!(
     BuiltinType
 );
 
-pub use hir_def::{attr::Attrs, ModuleSource};
+pub use hir_def::attr::Attrs;
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
