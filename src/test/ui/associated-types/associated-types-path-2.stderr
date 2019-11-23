@@ -43,7 +43,9 @@ error[E0308]: mismatched types
   --> $DIR/associated-types-path-2.rs:41:18
    |
 LL |     let _: i32 = f2(2i32);
-   |                  ^^^^^^^^ expected `i32`, found `u32`
+   |            ---   ^^^^^^^^ expected `i32`, found `u32`
+   |            |
+   |            expected due to this
    |
 help: you can convert an `u32` to `i32` and panic if the converted value wouldn't fit
    |

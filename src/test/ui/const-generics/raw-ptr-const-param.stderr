@@ -10,7 +10,9 @@ error[E0308]: mismatched types
   --> $DIR/raw-ptr-const-param.rs:7:38
    |
 LL |     let _: Const<{15 as *const _}> = Const::<{10 as *const _}>;
-   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{pointer}`, found `{pointer}`
+   |            -----------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `{pointer}`, found `{pointer}`
+   |            |
+   |            expected due to this
    |
    = note: expected struct `Const<{pointer}>`
               found struct `Const<{pointer}>`

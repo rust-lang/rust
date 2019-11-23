@@ -57,7 +57,9 @@ error[E0308]: mismatched types
   --> $DIR/issue-5100.rs:55:19
    |
 LL |     let x: char = true;
-   |                   ^^^^ expected `char`, found `bool`
+   |            ----   ^^^^ expected `char`, found `bool`
+   |            |
+   |            expected due to this
 
 error: aborting due to 7 previous errors
 

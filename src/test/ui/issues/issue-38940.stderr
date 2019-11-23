@@ -10,7 +10,9 @@ error[E0308]: mismatched types
   --> $DIR/issue-38940.rs:43:22
    |
 LL |     let x: &Bottom = &t;
-   |                      ^^ expected struct `Bottom`, found struct `Top`
+   |            -------   ^^ expected struct `Bottom`, found struct `Top`
+   |            |
+   |            expected due to this
    |
    = note: expected reference `&Bottom`
               found reference `&Top`

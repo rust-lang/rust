@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/whitespace-trimming.rs:4:193
    |
 LL | ...                   let _: () = 42;
-   |                                   ^^ expected `()`, found integer
+   |                              --   ^^ expected `()`, found integer
+   |                              |
+   |                              expected due to this
 
 error: aborting due to previous error
 

@@ -250,7 +250,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
     let extern_names: Vec<String> = externs.iter().map(|(s,_)| s).cloned().collect();
 
-    // Add the rustdoc cfg into the doc build.
+    // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
 
     let cpath = Some(input.clone());

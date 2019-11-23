@@ -43,7 +43,9 @@ error[E0308]: mismatched types
   --> $DIR/lex-bad-char-literals-6.rs:15:20
    |
 LL |     let a: usize = "";
-   |                    ^^ expected `usize`, found `&str`
+   |            -----   ^^ expected `usize`, found `&str`
+   |            |
+   |            expected due to this
 
 error[E0277]: can't compare `&str` with `char`
   --> $DIR/lex-bad-char-literals-6.rs:12:10

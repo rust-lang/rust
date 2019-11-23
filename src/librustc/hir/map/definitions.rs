@@ -105,7 +105,7 @@ pub struct Definitions {
     /// we know what parent node that fragment should be attached to thanks to this table.
     invocation_parents: FxHashMap<ExpnId, DefIndex>,
     /// Indices of unnamed struct or variant fields with unresolved attributes.
-    pub(super) placeholder_field_indices: NodeMap<usize>,
+    placeholder_field_indices: NodeMap<usize>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -534,6 +534,15 @@ impl Definitions {
     pub fn set_invocation_parent(&mut self, invoc_id: ExpnId, parent: DefIndex) {
         let old_parent = self.invocation_parents.insert(invoc_id, parent);
         assert!(old_parent.is_none(), "parent `DefIndex` is reset for an invocation");
+    }
+
+    pub fn placeholder_field_index(&self, node_id: ast::NodeId) -> usize {
+        self.placeholder_field_indices[&node_id]
+    }
+
+    pub fn set_placeholder_field_index(&mut self, node_id: ast::NodeId, index: usize) {
+        let old_index = self.placeholder_field_indices.insert(node_id, index);
+        assert!(old_index.is_none(), "placeholder field index is reset for a node ID");
     }
 }
 

@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/no_revealing_outside_defining_module.rs:15:19
    |
 LL |     let _: &str = bomp();
-   |                   ^^^^^^ expected `&str`, found opaque type
+   |            ----   ^^^^^^ expected `&str`, found opaque type
+   |            |
+   |            expected due to this
    |
    = note: expected reference `&str`
             found opaque type `Boo`

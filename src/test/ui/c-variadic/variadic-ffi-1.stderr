@@ -26,7 +26,9 @@ error[E0308]: mismatched types
   --> $DIR/variadic-ffi-1.rs:19:56
    |
 LL |         let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
-   |                                                        ^^^ expected non-variadic fn, found variadic function
+   |                -------------------------------------   ^^^ expected non-variadic fn, found variadic function
+   |                |
+   |                expected due to this
    |
    = note: expected fn pointer `unsafe extern "C" fn(isize, u8)`
                  found fn item `unsafe extern "C" fn(isize, u8, ...) {foo}`
@@ -35,7 +37,9 @@ error[E0308]: mismatched types
   --> $DIR/variadic-ffi-1.rs:20:54
    |
 LL |         let y: extern "C" fn(f: isize, x: u8, ...) = bar;
-   |                                                      ^^^ expected variadic fn, found non-variadic function
+   |                -----------------------------------   ^^^ expected variadic fn, found non-variadic function
+   |                |
+   |                expected due to this
    |
    = note: expected fn pointer `extern "C" fn(isize, u8, ...)`
                  found fn item `extern "C" fn(isize, u8) {bar}`
