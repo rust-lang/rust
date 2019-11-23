@@ -558,6 +558,22 @@ impl CrateRoot<'_> {
         self.proc_macro_data.is_some()
     }
 
+    crate fn name(&self) -> Symbol {
+        self.name
+    }
+
+    crate fn disambiguator(&self) -> CrateDisambiguator {
+        self.disambiguator
+    }
+
+    crate fn hash(&self) -> Svh {
+        self.hash
+    }
+
+    crate fn triple(&self) -> &TargetTriple {
+        &self.triple
+    }
+
     crate fn decode_crate_deps(
         &self,
         metadata: &'a MetadataBlob,
@@ -1545,6 +1561,38 @@ impl<'a, 'tcx> CrateMetadata {
 
     crate fn update_dep_kind(&self, f: impl FnOnce(DepKind) -> DepKind) {
         self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
+    }
+
+    crate fn panic_strategy(&self) -> PanicStrategy {
+        self.root.panic_strategy
+    }
+
+    crate fn needs_panic_runtime(&self) -> bool {
+        self.root.needs_panic_runtime
+    }
+
+    crate fn is_panic_runtime(&self) -> bool {
+        self.root.panic_runtime
+    }
+
+    crate fn is_sanitizer_runtime(&self) -> bool {
+        self.root.sanitizer_runtime
+    }
+
+    crate fn is_profiler_runtime(&self) -> bool {
+        self.root.profiler_runtime
+    }
+
+    crate fn needs_allocator(&self) -> bool {
+        self.root.needs_allocator
+    }
+
+    crate fn has_global_allocator(&self) -> bool {
+        self.root.has_global_allocator
+    }
+
+    crate fn has_default_lib_allocator(&self) -> bool {
+        self.root.has_default_lib_allocator
     }
 }
 
