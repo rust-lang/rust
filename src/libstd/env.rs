@@ -1033,6 +1033,11 @@ mod arch {
     pub const ARCH: &'static str = "hexagon";
 }
 
+#[cfg(target_arch = "riscv64")]
+mod arch {
+    pub const ARCH: &'static str = "riscv64";
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
