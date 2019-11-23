@@ -36,8 +36,8 @@ use rustc_error_codes::*;
 #[derive(Clone)]
 pub struct CStore {
     metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
-    crate injected_panic_runtime: Option<CrateNum>,
-    crate allocator_kind: Option<AllocatorKind>,
+    injected_panic_runtime: Option<CrateNum>,
+    allocator_kind: Option<AllocatorKind>,
 }
 
 pub struct CrateLoader<'a> {
@@ -91,7 +91,7 @@ fn dump_crates(cstore: &CStore) {
 }
 
 impl CStore {
-    crate fn alloc_new_crate_num(&mut self) -> CrateNum {
+    fn alloc_new_crate_num(&mut self) -> CrateNum {
         self.metas.push(None);
         CrateNum::new(self.metas.len() - 1)
     }
@@ -101,7 +101,7 @@ impl CStore {
             .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum))
     }
 
-    crate fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
+    fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
         assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
         self.metas[cnum] = Some(Lrc::new(data));
     }
@@ -137,10 +137,18 @@ impl CStore {
         deps
     }
 
-    crate fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+    fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
         let mut deps = self.crate_dependencies_in_postorder(cnum);
         deps.reverse();
         deps
+    }
+
+    crate fn injected_panic_runtime(&self) -> Option<CrateNum> {
+        self.injected_panic_runtime
+    }
+
+    crate fn allocator_kind(&self) -> Option<AllocatorKind> {
+        self.allocator_kind
     }
 }
 

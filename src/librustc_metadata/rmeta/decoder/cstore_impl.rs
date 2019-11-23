@@ -530,10 +530,10 @@ impl CrateStore for CStore {
     }
 
     fn injected_panic_runtime(&self) -> Option<CrateNum> {
-        self.injected_panic_runtime
+        self.injected_panic_runtime()
     }
 
     fn allocator_kind(&self) -> Option<AllocatorKind> {
-        self.allocator_kind
+        self.allocator_kind()
     }
 }
