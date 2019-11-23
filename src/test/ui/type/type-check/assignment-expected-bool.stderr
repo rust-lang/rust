@@ -107,7 +107,9 @@ error[E0308]: mismatched types
   --> $DIR/assignment-expected-bool.rs:31:20
    |
 LL |     let _: usize = 0 = 0;
-   |                    ^^^^^ expected `usize`, found `()`
+   |            -----   ^^^^^ expected `usize`, found `()`
+   |            |
+   |            expected due to this
 
 error: aborting due to 13 previous errors
 

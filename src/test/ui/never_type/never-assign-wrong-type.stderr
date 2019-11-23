@@ -2,7 +2,9 @@ error[E0308]: mismatched types
   --> $DIR/never-assign-wrong-type.rs:6:16
    |
 LL |     let x: ! = "hello";
-   |                ^^^^^^^ expected `!`, found `&str`
+   |            -   ^^^^^^^ expected `!`, found `&str`
+   |            |
+   |            expected due to this
    |
    = note:   expected type `!`
            found reference `&'static str`

@@ -32,10 +32,11 @@ error[E0308]: mismatched types
   --> $DIR/str-array-assignment.rs:9:17
    |
 LL |   let w: &str = s[..2];
-   |                 ^^^^^^
-   |                 |
-   |                 expected `&str`, found `str`
-   |                 help: consider borrowing here: `&s[..2]`
+   |          ----   ^^^^^^
+   |          |      |
+   |          |      expected `&str`, found `str`
+   |          |      help: consider borrowing here: `&s[..2]`
+   |          expected due to this
 
 error: aborting due to 4 previous errors
 

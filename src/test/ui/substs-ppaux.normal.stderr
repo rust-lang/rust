@@ -5,10 +5,11 @@ LL |     fn bar<'a, T>() where T: 'a {}
    |     --------------------------- fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>} defined here
 ...
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                 |
-   |                 expected `()`, found fn item
-   |                 help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>()`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            |    |
+   |            |    expected `()`, found fn item
+   |            |    help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::bar::<'static, char>()`
+   |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::bar::<'static, char>}`
@@ -20,10 +21,11 @@ LL |     fn bar<'a, T>() where T: 'a {}
    |     --------------------------- fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>} defined here
 ...
 LL |     let x: () = <i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                 |
-   |                 expected `()`, found fn item
-   |                 help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>()`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            |    |
+   |            |    expected `()`, found fn item
+   |            |    help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u32>>::bar::<'static, char>()`
+   |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static>>::bar::<'static, char>}`
@@ -35,10 +37,11 @@ LL |     fn baz() {}
    |     -------- fn() {<i8 as Foo<'static, 'static, u8>>::baz} defined here
 ...
 LL |     let x: () = <i8 as Foo<'static, 'static,  u8>>::baz;
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                 |
-   |                 expected `()`, found fn item
-   |                 help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::baz()`
+   |            --   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            |    |
+   |            |    expected `()`, found fn item
+   |            |    help: use parentheses to call this function: `<i8 as Foo<'static, 'static,  u8>>::baz()`
+   |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {<i8 as Foo<'static, 'static, u8>>::baz}`
@@ -50,10 +53,11 @@ LL | fn foo<'z>() where &'z (): Sized {
    | -------------------------------- fn() {foo::<'static>} defined here
 ...
 LL |     let x: () = foo::<'static>;
-   |                 ^^^^^^^^^^^^^^
-   |                 |
-   |                 expected `()`, found fn item
-   |                 help: use parentheses to call this function: `foo::<'static>()`
+   |            --   ^^^^^^^^^^^^^^
+   |            |    |
+   |            |    expected `()`, found fn item
+   |            |    help: use parentheses to call this function: `foo::<'static>()`
+   |            expected due to this
    |
    = note: expected unit type `()`
                 found fn item `fn() {foo::<'static>}`

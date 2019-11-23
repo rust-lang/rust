@@ -2,19 +2,21 @@ error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:2:21
    |
 LL |     let a: String = &String::from("a");
-   |                     ^^^^^^^^^^^^^^^^^^
-   |                     |
-   |                     expected struct `std::string::String`, found `&std::string::String`
-   |                     help: consider removing the borrow: `String::from("a")`
+   |            ------   ^^^^^^^^^^^^^^^^^^
+   |            |        |
+   |            |        expected struct `std::string::String`, found `&std::string::String`
+   |            |        help: consider removing the borrow: `String::from("a")`
+   |            expected due to this
 
 error[E0308]: mismatched types
   --> $DIR/format-borrow.rs:4:21
    |
 LL |     let b: String = &format!("b");
-   |                     ^^^^^^^^^^^^^
-   |                     |
-   |                     expected struct `std::string::String`, found `&std::string::String`
-   |                     help: consider removing the borrow: `format!("b")`
+   |            ------   ^^^^^^^^^^^^^
+   |            |        |
+   |            |        expected struct `std::string::String`, found `&std::string::String`
+   |            |        help: consider removing the borrow: `format!("b")`
+   |            expected due to this
 
 error: aborting due to 2 previous errors
 

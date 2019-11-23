@@ -280,10 +280,11 @@ LL |             Fn(u8),
    |             ------ fn(u8) -> m::n::Z {m::n::Z::Fn} defined here
 ...
 LL |         let _: Z = Z::Fn;
-   |                    ^^^^^
-   |                    |
-   |                    expected enum `m::n::Z`, found fn item
-   |                    help: use parentheses to instantiate this tuple variant: `Z::Fn(_)`
+   |                -   ^^^^^
+   |                |   |
+   |                |   expected enum `m::n::Z`, found fn item
+   |                |   help: use parentheses to instantiate this tuple variant: `Z::Fn(_)`
+   |                expected due to this
    |
    = note: expected enum `m::n::Z`
            found fn item `fn(u8) -> m::n::Z {m::n::Z::Fn}`
@@ -311,10 +312,11 @@ LL |         Fn(u8),
    |         ------ fn(u8) -> m::E {m::E::Fn} defined here
 ...
 LL |     let _: E = m::E::Fn;
-   |                ^^^^^^^^
-   |                |
-   |                expected enum `m::E`, found fn item
-   |                help: use parentheses to instantiate this tuple variant: `m::E::Fn(_)`
+   |            -   ^^^^^^^^
+   |            |   |
+   |            |   expected enum `m::E`, found fn item
+   |            |   help: use parentheses to instantiate this tuple variant: `m::E::Fn(_)`
+   |            expected due to this
    |
    = note: expected enum `m::E`
            found fn item `fn(u8) -> m::E {m::E::Fn}`
@@ -342,10 +344,11 @@ LL |         Fn(u8),
    |         ------ fn(u8) -> m::E {m::E::Fn} defined here
 ...
 LL |     let _: E = E::Fn;
-   |                ^^^^^
-   |                |
-   |                expected enum `m::E`, found fn item
-   |                help: use parentheses to instantiate this tuple variant: `E::Fn(_)`
+   |            -   ^^^^^
+   |            |   |
+   |            |   expected enum `m::E`, found fn item
+   |            |   help: use parentheses to instantiate this tuple variant: `E::Fn(_)`
+   |            expected due to this
    |
    = note: expected enum `m::E`
            found fn item `fn(u8) -> m::E {m::E::Fn}`

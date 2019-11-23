@@ -2,10 +2,11 @@ error[E0308]: cannot coerce intrinsics to function pointers
   --> $DIR/reify-intrinsic.rs:6:64
    |
 LL |     let _: unsafe extern "rust-intrinsic" fn(isize) -> usize = std::mem::transmute;
-   |                                                                ^^^^^^^^^^^^^^^^^^^
-   |                                                                |
-   |                                                                cannot coerce intrinsics to function pointers
-   |                                                                help: use parentheses to call this function: `std::mem::transmute(...)`
+   |            -------------------------------------------------   ^^^^^^^^^^^^^^^^^^^
+   |            |                                                   |
+   |            |                                                   cannot coerce intrinsics to function pointers
+   |            |                                                   help: use parentheses to call this function: `std::mem::transmute(...)`
+   |            expected due to this
    |
    = note: expected fn pointer `unsafe extern "rust-intrinsic" fn(isize) -> usize`
                  found fn item `unsafe extern "rust-intrinsic" fn(_) -> _ {std::intrinsics::transmute::<_, _>}`
