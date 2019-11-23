@@ -112,7 +112,7 @@ crate struct CrateMetadata {
 
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
     /// If this is `None`, then the crate was injected (e.g., by the allocator).
-    crate extern_crate: Lock<Option<ExternCrate>>,
+    extern_crate: Lock<Option<ExternCrate>>,
 }
 
 /// Holds information about a syntax_pos::SourceFile imported from another crate.
@@ -1524,6 +1524,15 @@ impl<'a, 'tcx> CrateMetadata {
 
     crate fn add_dependency(&self, cnum: CrateNum) {
         self.dependencies.borrow_mut().push(cnum);
+    }
+
+    crate fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
+        let mut extern_crate = self.extern_crate.borrow_mut();
+        let update = Some(new_extern_crate.rank()) > extern_crate.as_ref().map(ExternCrate::rank);
+        if update {
+            *extern_crate = Some(new_extern_crate);
+        }
+        update
     }
 }
 

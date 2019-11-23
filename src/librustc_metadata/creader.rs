@@ -400,36 +400,12 @@ impl<'a> CrateLoader<'a> {
         if !visited.insert((cnum, extern_crate.is_direct())) { return }
 
         let cmeta = self.cstore.get_crate_data(cnum);
-        let mut old_extern_crate = cmeta.extern_crate.borrow_mut();
-
-        // Prefer:
-        // - something over nothing (tuple.0);
-        // - direct extern crate to indirect (tuple.1);
-        // - shorter paths to longer (tuple.2).
-        let new_rank = (
-            true,
-            extern_crate.is_direct(),
-            cmp::Reverse(extern_crate.path_len),
-        );
-        let old_rank = match *old_extern_crate {
-            None => (false, false, cmp::Reverse(usize::max_value())),
-            Some(ref c) => (
-                true,
-                c.is_direct(),
-                cmp::Reverse(c.path_len),
-            ),
-        };
-        if old_rank >= new_rank {
-            return; // no change needed
-        }
-
-        *old_extern_crate = Some(extern_crate);
-        drop(old_extern_crate);
-
-        // Propagate the extern crate info to dependencies.
-        extern_crate.dependency_of = cnum;
-        for &dep_cnum in cmeta.dependencies().iter() {
-            self.update_extern_crate(dep_cnum, extern_crate, visited);
+        if cmeta.update_extern_crate(extern_crate) {
+            // Propagate the extern crate info to dependencies.
+            extern_crate.dependency_of = cnum;
+            for &dep_cnum in cmeta.dependencies().iter() {
+                self.update_extern_crate(dep_cnum, extern_crate, visited);
+            }
         }
     }
 

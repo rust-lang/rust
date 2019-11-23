@@ -146,6 +146,13 @@ impl ExternCrate {
     pub fn is_direct(&self) -> bool {
         self.dependency_of == LOCAL_CRATE
     }
+
+    pub fn rank(&self) -> impl PartialOrd {
+        // Prefer:
+        // - direct extern crate to indirect
+        // - shorter paths to longer
+        (self.is_direct(), !self.path_len)
+    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
