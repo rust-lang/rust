@@ -216,7 +216,11 @@ impl NonConstOp for MutBorrow {
 
 #[derive(Debug)]
 pub struct MutDeref;
-impl NonConstOp for MutDeref {}
+impl NonConstOp for MutDeref {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_mut_refs)
+    }
+}
 
 #[derive(Debug)]
 pub struct Panic;

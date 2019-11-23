@@ -7,7 +7,9 @@ struct Foo {
 }
 
 const fn bar(foo: &mut Foo) -> usize {
-    foo.x + 1
+    let x = &mut foo.x;
+    *x = 1;
+    *x
 }
 
 fn main() {
