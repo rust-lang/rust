@@ -1,13 +1,14 @@
 //! FIXME: write short doc here
 
-use rustc_hash::FxHashMap;
 use std::sync::Arc;
 
-use ra_syntax::{ast::AttrsOwner, SmolStr};
+use hir_def::{AdtId, AttrDefId, ModuleDefId};
+use ra_syntax::SmolStr;
+use rustc_hash::FxHashMap;
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    Adt, Crate, Enum, Function, HasSource, ImplBlock, Module, ModuleDef, Static, Struct, Trait,
+    Crate, Enum, Function, ImplBlock, Module, Static, Struct, Trait,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -95,26 +96,27 @@ impl LangItems {
 
     fn collect_lang_items(&mut self, db: &(impl DefDatabase + AstDatabase), module: Module) {
         // Look for impl targets
-        for impl_block in module.impl_blocks(db) {
-            let src = impl_block.source(db);
-            if let Some(lang_item_name) = lang_item_name(&src.value) {
-                self.items
-                    .entry(lang_item_name)
-                    .or_insert_with(|| LangItemTarget::ImplBlock(impl_block));
-            }
+        let def_map = db.crate_def_map(module.id.krate);
+        let module_data = &def_map[module.id.module_id];
+        for &impl_block in module_data.impls.iter() {
+            self.collect_lang_item(db, impl_block, LangItemTarget::ImplBlock)
         }
 
-        for def in module.declarations(db) {
+        for def in module_data.scope.declarations() {
             match def {
-                ModuleDef::Trait(trait_) => {
+                ModuleDefId::TraitId(trait_) => {
                     self.collect_lang_item(db, trait_, LangItemTarget::Trait)
                 }
-                ModuleDef::Adt(Adt::Enum(e)) => self.collect_lang_item(db, e, LangItemTarget::Enum),
-                ModuleDef::Adt(Adt::Struct(s)) => {
+                ModuleDefId::AdtId(AdtId::EnumId(e)) => {
+                    self.collect_lang_item(db, e, LangItemTarget::Enum)
+                }
+                ModuleDefId::AdtId(AdtId::StructId(s)) => {
                     self.collect_lang_item(db, s, LangItemTarget::Struct)
                 }
-                ModuleDef::Function(f) => self.collect_lang_item(db, f, LangItemTarget::Function),
-                ModuleDef::Static(s) => self.collect_lang_item(db, s, LangItemTarget::Static),
+                ModuleDefId::FunctionId(f) => {
+                    self.collect_lang_item(db, f, LangItemTarget::Function)
+                }
+                ModuleDefId::StaticId(s) => self.collect_lang_item(db, s, LangItemTarget::Static),
                 _ => {}
             }
         }
@@ -135,26 +137,18 @@ impl LangItems {
         }
     }
 
-    fn collect_lang_item<T, N>(
+    fn collect_lang_item<T, D>(
         &mut self,
         db: &(impl DefDatabase + AstDatabase),
         item: T,
-        constructor: fn(T) -> LangItemTarget,
+        constructor: fn(D) -> LangItemTarget,
     ) where
-        T: Copy + HasSource<Ast = N>,
-        N: AttrsOwner,
+        T: Into<AttrDefId> + Copy,
+        D: From<T>,
     {
-        let node = item.source(db).value;
-        if let Some(lang_item_name) = lang_item_name(&node) {
-            self.items.entry(lang_item_name).or_insert_with(|| constructor(item));
+        let attrs = db.attrs(item.into());
+        if let Some(lang_item_name) = attrs.find_string_value("lang") {
+            self.items.entry(lang_item_name).or_insert_with(|| constructor(D::from(item)));
         }
     }
-}
-
-fn lang_item_name<T: AttrsOwner>(node: &T) -> Option<SmolStr> {
-    node.attrs()
-        .filter_map(|a| a.as_simple_key_value())
-        .filter(|(key, _)| key == "lang")
-        .map(|(_, val)| val)
-        .nth(0)
 }
