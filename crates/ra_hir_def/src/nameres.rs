@@ -58,7 +58,10 @@ mod tests;
 
 use std::sync::Arc;
 
-use hir_expand::{ast_id_map::FileAstId, diagnostics::DiagnosticSink, name::Name, MacroDefId};
+use hir_expand::{
+    ast_id_map::FileAstId, diagnostics::DiagnosticSink, either::Either, name::Name, MacroDefId,
+    Source,
+};
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
 use ra_db::{CrateId, Edition, FileId};
@@ -116,12 +119,15 @@ pub struct ModuleData {
     pub parent: Option<CrateModuleId>,
     pub children: FxHashMap<Name, CrateModuleId>,
     pub scope: ModuleScope,
+
+    //  FIXME: these can't be both null, we need a three-state enum here.
     /// None for root
     pub declaration: Option<AstId<ast::Module>>,
     /// None for inline modules.
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
     pub definition: Option<FileId>,
+
     pub impls: Vec<ImplId>,
 }
 
@@ -282,6 +288,29 @@ impl CrateDefMap {
             .iter()
             .filter(move |(_id, data)| data.definition == Some(file_id))
             .map(|(id, _data)| id)
+    }
+}
+
+impl ModuleData {
+    /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
+    pub fn definition_source(
+        &self,
+        db: &impl DefDatabase2,
+    ) -> Source<Either<ast::SourceFile, ast::Module>> {
+        if let Some(file_id) = self.definition {
+            let sf = db.parse(file_id).tree();
+            return Source::new(file_id.into(), Either::A(sf));
+        }
+        let decl = self.declaration.unwrap();
+        Source::new(decl.file_id(), Either::B(decl.to_node(db)))
+    }
+
+    /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
+    /// `None` for the crate root.
+    pub fn declaration_source(&self, db: &impl DefDatabase2) -> Option<Source<ast::Module>> {
+        let decl = self.declaration?;
+        let value = decl.to_node(db);
+        Some(Source { file_id: decl.file_id(), value })
     }
 }
 

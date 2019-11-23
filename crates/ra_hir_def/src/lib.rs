@@ -32,7 +32,7 @@ pub mod nameres;
 
 use std::hash::{Hash, Hasher};
 
-use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, Source};
+use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, MacroDefId, Source};
 use ra_arena::{impl_arena_id, map::ArenaMap, RawId};
 use ra_db::{salsa, CrateId, FileId};
 use ra_syntax::{ast, AstNode, SyntaxNode};
@@ -280,8 +280,8 @@ pub enum VariantId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructFieldId {
-    parent: VariantId,
-    local_id: LocalStructFieldId,
+    pub parent: VariantId,
+    pub local_id: LocalStructFieldId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -475,6 +475,33 @@ impl_froms!(
     ImplId,
     EnumVariantId,
     ConstId
+);
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AttrDefId {
+    ModuleId(ModuleId),
+    StructFieldId(StructFieldId),
+    AdtId(AdtId),
+    FunctionId(FunctionId),
+    EnumVariantId(EnumVariantId),
+    StaticId(StaticId),
+    ConstId(ConstId),
+    TraitId(TraitId),
+    TypeAliasId(TypeAliasId),
+    MacroDefId(MacroDefId),
+}
+
+impl_froms!(
+    AttrDefId: ModuleId,
+    StructFieldId,
+    AdtId(StructId, EnumId, UnionId),
+    EnumVariantId,
+    StaticId,
+    ConstId,
+    FunctionId,
+    TraitId,
+    TypeAliasId,
+    MacroDefId
 );
 
 trait Intern {

@@ -2,7 +2,6 @@
 
 pub(crate) mod src;
 pub(crate) mod docs;
-pub(crate) mod attrs;
 
 use std::sync::Arc;
 
@@ -13,8 +12,8 @@ use hir_def::{
     nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
-    ModuleId, UnionId,
+    AdtId, ContainerId, CrateModuleId, EnumVariantId, HasModule, ImplId, LocalEnumVariantId,
+    LocalStructFieldId, Lookup, ModuleId, StructFieldId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -110,7 +109,7 @@ impl_froms!(
     BuiltinType
 );
 
-pub use hir_def::ModuleSource;
+pub use hir_def::{attr::Attrs, ModuleSource};
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: CrateModuleId) -> Module {
@@ -989,5 +988,54 @@ impl From<PerNs> for ScopeDef {
                 def.get_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
             })
             .unwrap_or(ScopeDef::Unknown)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum AttrDef {
+    Module(Module),
+    StructField(StructField),
+    Adt(Adt),
+    Function(Function),
+    EnumVariant(EnumVariant),
+    Static(Static),
+    Const(Const),
+    Trait(Trait),
+    TypeAlias(TypeAlias),
+    MacroDef(MacroDef),
+}
+
+impl_froms!(
+    AttrDef: Module,
+    StructField,
+    Adt(Struct, Enum, Union),
+    EnumVariant,
+    Static,
+    Const,
+    Function,
+    Trait,
+    TypeAlias,
+    MacroDef
+);
+
+pub trait HasAttrs {
+    fn attrs(self, db: &impl DefDatabase) -> Attrs;
+}
+
+impl<T: Into<AttrDef>> HasAttrs for T {
+    fn attrs(self, db: &impl DefDatabase) -> Attrs {
+        let def = self.into();
+        match def {
+            AttrDef::Module(it) => db.attrs(it.id.into()),
+            AttrDef::StructField(it) => db.attrs(StructFieldId::from(it).into()),
+            AttrDef::Adt(it) => db.attrs(AdtId::from(it).into()),
+            AttrDef::Function(it) => db.attrs(it.id.into()),
+            AttrDef::EnumVariant(it) => db.attrs(EnumVariantId::from(it).into()),
+            AttrDef::Static(it) => db.attrs(it.id.into()),
+            AttrDef::Const(it) => db.attrs(it.id.into()),
+            AttrDef::Trait(it) => db.attrs(it.id.into()),
+            AttrDef::TypeAlias(it) => db.attrs(it.id.into()),
+            AttrDef::MacroDef(it) => db.attrs(it.id.into()),
+        }
     }
 }

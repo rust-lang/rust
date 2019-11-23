@@ -51,13 +51,12 @@ mod marks;
 
 pub use crate::{
     code_model::{
-        attrs::{AttrDef, HasAttrs},
         docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource},
-        Adt, AssocItem, Const, Container, Crate, CrateDependency, DefWithBody, Enum, EnumVariant,
-        FieldSource, Function, GenericDef, GenericParam, HasBody, ImplBlock, Local, MacroDef,
-        Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField, Trait, TypeAlias,
-        Union, VariantDef,
+        Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency, DefWithBody, Enum,
+        EnumVariant, FieldSource, Function, GenericDef, GenericParam, HasAttrs, HasBody, ImplBlock,
+        Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField,
+        Trait, TypeAlias, Union, VariantDef,
     },
     expr::ExprScopes,
     from_source::FromSource,
