@@ -7,6 +7,7 @@ use ra_syntax::ast;
 
 use crate::{
     adt::{EnumData, StructData},
+    attr::Attrs,
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{ConstData, FunctionData, ImplData, TraitData, TypeAliasData},
     generics::GenericParams,
@@ -14,7 +15,7 @@ use crate::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, StaticId,
+    AttrDefId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, StaticId,
     StructOrUnionId, TraitId, TypeAliasId,
 };
 
@@ -87,4 +88,7 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
+
+    #[salsa::invoke(Attrs::attrs_query)]
+    fn attrs(&self, def: AttrDefId) -> Attrs;
 }

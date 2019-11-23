@@ -1,13 +1,14 @@
 //! FIXME: write short doc here
 
 use hir_def::{HasChildSource, HasSource as _, Lookup, VariantId};
+use hir_expand::either::Either;
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     ids::AstItemDef,
-    Const, Either, Enum, EnumVariant, FieldSource, Function, HasBody, HirFileId, MacroDef, Module,
-    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+    Const, Enum, EnumVariant, FieldSource, Function, HasBody, MacroDef, Module, ModuleSource,
+    Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
 pub use hir_expand::Source;
@@ -23,11 +24,11 @@ impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(self, db: &(impl DefDatabase + AstDatabase)) -> Source<ModuleSource> {
         let def_map = db.crate_def_map(self.id.krate);
-        let decl_id = def_map[self.id.module_id].declaration;
-        let file_id = def_map[self.id.module_id].definition;
-        let value = ModuleSource::new(db, file_id, decl_id);
-        let file_id = file_id.map(HirFileId::from).unwrap_or_else(|| decl_id.unwrap().file_id());
-        Source { file_id, value }
+        let src = def_map[self.id.module_id].definition_source(db);
+        src.map(|it| match it {
+            Either::A(it) => ModuleSource::SourceFile(it),
+            Either::B(it) => ModuleSource::Module(it),
+        })
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
@@ -37,9 +38,7 @@ impl Module {
         db: &(impl DefDatabase + AstDatabase),
     ) -> Option<Source<ast::Module>> {
         let def_map = db.crate_def_map(self.id.krate);
-        let decl = def_map[self.id.module_id].declaration?;
-        let value = decl.to_node(db);
-        Some(Source { file_id: decl.file_id(), value })
+        def_map[self.id.module_id].declaration_source(db)
     }
 }
 

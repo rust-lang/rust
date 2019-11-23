@@ -5,13 +5,13 @@
 
 use hir_def::{
     AdtId, AssocItemId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    ModuleDefId, StaticId, StructId, TypeAliasId, UnionId, VariantId,
+    ModuleDefId, StaticId, StructFieldId, StructId, TypeAliasId, UnionId, VariantId,
 };
 
 use crate::{
     ty::{CallableDef, TypableDef},
     Adt, AssocItem, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef, ModuleDef,
-    Static, TypeAlias, VariantDef,
+    Static, StructField, TypeAlias, VariantDef,
 };
 
 impl From<ra_db::CrateId> for Crate {
@@ -232,5 +232,11 @@ impl From<VariantDef> for VariantId {
             VariantDef::Struct(it) => VariantId::StructId(it.id),
             VariantDef::EnumVariant(it) => VariantId::EnumVariantId(it.into()),
         }
+    }
+}
+
+impl From<StructField> for StructFieldId {
+    fn from(def: StructField) -> Self {
+        StructFieldId { parent: def.parent.into(), local_id: def.id }
     }
 }
