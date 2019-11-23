@@ -1,7 +1,7 @@
 #![feature(test)]
 
 use compiletest_rs as compiletest;
-extern crate test;
+extern crate tester as test;
 
 use std::env::{set_var, var};
 use std::ffi::OsStr;

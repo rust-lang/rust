@@ -75,6 +75,12 @@ impl rustc_driver::Callbacks for ClippyCallbacks {
             clippy_lints::register_pre_expansion_lints(&mut lint_store, &conf);
             clippy_lints::register_renamed(&mut lint_store);
         }));
+
+        // FIXME: #4825; This is required, because Clippy lints that are based on MIR have to be
+        // run on the unoptimized MIR. On the other hand this results in some false negatives. If
+        // MIR passes can be enabled / disabled separately, we should figure out, what passes to
+        // use for Clippy.
+        config.opts.debugging_opts.mir_opt_level = 0;
     }
 }
 

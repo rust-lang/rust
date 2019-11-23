@@ -720,7 +720,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
         ExprKind::Struct(_, _, None)
         | ExprKind::Yield(_, _)
         | ExprKind::Closure(_, _, _, _, _)
-        | ExprKind::InlineAsm(_, _, _)
+        | ExprKind::InlineAsm(_)
         | ExprKind::Path(_)
         | ExprKind::Lit(_)
         | ExprKind::Err => NeverLoopResult::Otherwise,

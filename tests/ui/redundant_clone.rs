@@ -1,5 +1,6 @@
 // run-rustfix
 // rustfix-only-machine-applicable
+
 use std::ffi::OsString;
 use std::path::Path;
 
@@ -46,6 +47,7 @@ fn main() {
     let _ = Some(String::new()).unwrap_or_else(|| x.0.clone()); // ok; closure borrows `x`
 
     with_branch(Alpha, true);
+    cannot_double_move(Alpha);
     cannot_move_from_type_with_drop();
     borrower_propagation();
 }
@@ -58,6 +60,10 @@ fn with_branch(a: Alpha, b: bool) -> (Alpha, Alpha) {
     } else {
         (Alpha, a)
     }
+}
+
+fn cannot_double_move(a: Alpha) -> (Alpha, Alpha) {
+    (a.clone(), a)
 }
 
 struct TypeWithDrop {

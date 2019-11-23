@@ -16,8 +16,8 @@ LL | fn foo<u32>(a: u32) -> u32 {
 LL |     42
    |     ^^ expected type parameter `u32`, found integer
    |
-   = note: expected type `u32`
-              found type `{integer}`
+   = note: expected type parameter `u32`
+                        found type `{integer}`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
