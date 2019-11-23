@@ -2,7 +2,10 @@
 
 use crate::cmp;
 
-use super::super::{DoubleEndedIterator, ExactSizeIterator, FusedIterator, Iterator, TrustedLen};
+use super::super::{
+    DoubleEndedIterator, ExactSizeIterator, FusedIterator, InPlaceIterable, Iterator, SourceIter,
+    TrustedLen,
+};
 
 /// An iterator that iterates two other iterators simultaneously.
 ///
@@ -288,6 +291,26 @@ where
     B: TrustedLen,
 {
 }
+
+// Arbitrarily selects the left side of the zip iteration as extractable "source"
+// it would require negative trait bounds to be able to try both
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<S, A, B> SourceIter for Zip<A, B>
+where
+    A: SourceIter<Source = S>,
+    B: Iterator,
+    S: Iterator,
+{
+    type Source = S;
+
+    #[inline]
+    fn as_inner(&mut self) -> &mut S {
+        SourceIter::as_inner(&mut self.a)
+    }
+}
+
+#[unstable(issue = "0", feature = "inplace_iteration")]
+unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> {}
 
 /// An iterator whose items are random-accessible efficiently
 ///
