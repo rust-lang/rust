@@ -3,12 +3,8 @@
 
 use crate::ich::StableHashingContext;
 
-use std::hash as std_hash;
-use std::mem;
-
 use syntax::ast;
 use syntax::feature_gate;
-use syntax::token;
 use syntax_pos::SourceFile;
 
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
@@ -65,68 +61,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ast::Attribute {
     }
 }
 
-impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {
-    fn hash_stable_tokenkind(&mut self, tokenkind: &token::TokenKind, hasher: &mut StableHasher) {
-        mem::discriminant(tokenkind).hash_stable(self, hasher);
-        match *tokenkind {
-            token::Eq |
-            token::Lt |
-            token::Le |
-            token::EqEq |
-            token::Ne |
-            token::Ge |
-            token::Gt |
-            token::AndAnd |
-            token::OrOr |
-            token::Not |
-            token::Tilde |
-            token::At |
-            token::Dot |
-            token::DotDot |
-            token::DotDotDot |
-            token::DotDotEq |
-            token::Comma |
-            token::Semi |
-            token::Colon |
-            token::ModSep |
-            token::RArrow |
-            token::LArrow |
-            token::FatArrow |
-            token::Pound |
-            token::Dollar |
-            token::Question |
-            token::SingleQuote |
-            token::Whitespace |
-            token::Comment |
-            token::Eof => {}
-
-            token::BinOp(bin_op_token) |
-            token::BinOpEq(bin_op_token) => {
-                std_hash::Hash::hash(&bin_op_token, hasher);
-            }
-
-            token::OpenDelim(delim_token) |
-            token::CloseDelim(delim_token) => {
-                std_hash::Hash::hash(&delim_token, hasher);
-            }
-            token::Literal(lit) => lit.hash_stable(self, hasher),
-
-            token::Ident(name, is_raw) => {
-                name.hash_stable(self, hasher);
-                is_raw.hash_stable(self, hasher);
-            }
-            token::Lifetime(name) => name.hash_stable(self, hasher),
-
-            token::Interpolated(_) => {
-                bug!("interpolated tokens should not be present in the HIR")
-            }
-
-            token::DocComment(val) |
-            token::Shebang(val) |
-            token::Unknown(val) => val.hash_stable(self, hasher),
-        }
-    }
-}
+impl<'ctx> syntax::HashStableContext for StableHashingContext<'ctx> {}
 
 impl<'a> HashStable<StableHashingContext<'a>> for SourceFile {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

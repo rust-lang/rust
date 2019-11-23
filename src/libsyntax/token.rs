@@ -19,6 +19,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(HashStable_Generic)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -192,7 +193,7 @@ fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {
     ].contains(&name)
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -263,14 +264,6 @@ pub enum TokenKind {
 // `TokenKind` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(TokenKind, 16);
-
-impl<CTX> HashStable<CTX> for TokenKind
-    where CTX: crate::HashStableContext
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        hcx.hash_stable_tokenkind(self, hasher)
-    }
-}
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Token {
@@ -733,5 +726,13 @@ impl fmt::Debug for Nonterminal {
             NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
+    }
+}
+
+impl<CTX> HashStable<CTX> for Nonterminal
+    where CTX: crate::HashStableContext
+{
+    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+        panic!("interpolated tokens should not be present in the HIR")
     }
 }
