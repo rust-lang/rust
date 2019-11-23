@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 333] = [
+pub const ALL_LINTS: [Lint; 337] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -904,6 +904,13 @@ pub const ALL_LINTS: [Lint; 333] = [
         module: "large_enum_variant",
     },
     Lint {
+        name: "large_stack_arrays",
+        group: "pedantic",
+        desc: "allocating large arrays on stack may cause stack overflow",
+        deprecation: None,
+        module: "large_stack_arrays",
+    },
+    Lint {
         name: "len_without_is_empty",
         group: "style",
         desc: "traits or impls with a public `len` method but no corresponding `is_empty` method",
@@ -1709,6 +1716,13 @@ pub const ALL_LINTS: [Lint; 333] = [
         module: "loops",
     },
     Lint {
+        name: "same_functions_in_if_condition",
+        group: "pedantic",
+        desc: "consecutive `ifs` with the same function call",
+        deprecation: None,
+        module: "copies",
+    },
+    Lint {
         name: "search_is_some",
         group: "complexity",
         desc: "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`",
@@ -1861,6 +1875,13 @@ pub const ALL_LINTS: [Lint; 333] = [
         desc: "suspicious formatting of unary `-` or `!` on the RHS of a BinOp",
         deprecation: None,
         module: "formatting",
+    },
+    Lint {
+        name: "tabs_in_doc_comments",
+        group: "style",
+        desc: "using tabs in doc comments is not recommended",
+        deprecation: None,
+        module: "tabs_in_doc_comments",
     },
     Lint {
         name: "temporary_assignment",
@@ -2337,6 +2358,13 @@ pub const ALL_LINTS: [Lint; 333] = [
         desc: "using a zero-width space in a string literal, which is confusing",
         deprecation: None,
         module: "unicode",
+    },
+    Lint {
+        name: "zst_offset",
+        group: "correctness",
+        desc: "Check for offset calculations on raw pointers to zero-sized types",
+        deprecation: None,
+        module: "methods",
     },
 ];
 // end lint list, do not remove this comment, it’s used in `update_lints`

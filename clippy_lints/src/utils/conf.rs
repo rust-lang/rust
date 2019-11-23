@@ -151,6 +151,8 @@ define_Conf! {
     (trivial_copy_size_limit, "trivial_copy_size_limit", None => Option<u64>),
     /// Lint: TOO_MANY_LINES. The maximum number of lines a function or method can have
     (too_many_lines_threshold, "too_many_lines_threshold", 100 => u64),
+    /// Lint: LARGE_STACK_ARRAYS. The maximum allowed size for arrays on the stack
+    (array_size_threshold, "array_size_threshold", 512_000 => u64),
 }
 
 impl Default for Conf {

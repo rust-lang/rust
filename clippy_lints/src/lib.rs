@@ -212,6 +212,7 @@ pub mod int_plus_one;
 pub mod integer_division;
 pub mod items_after_statements;
 pub mod large_enum_variant;
+pub mod large_stack_arrays;
 pub mod len_zero;
 pub mod let_if_seq;
 pub mod lifetimes;
@@ -274,6 +275,7 @@ pub mod slow_vector_initialization;
 pub mod strings;
 pub mod suspicious_trait_impl;
 pub mod swap;
+pub mod tabs_in_doc_comments;
 pub mod temporary_assignment;
 pub mod to_digit_is_some;
 pub mod trait_bounds;
@@ -472,6 +474,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &copies::IFS_SAME_COND,
         &copies::IF_SAME_THEN_ELSE,
         &copies::MATCH_SAME_ARMS,
+        &copies::SAME_FUNCTIONS_IN_IF_CONDITION,
         &copy_iterator::COPY_ITERATOR,
         &dbg_macro::DBG_MACRO,
         &default_trait_access::DEFAULT_TRAIT_ACCESS,
@@ -538,6 +541,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &integer_division::INTEGER_DIVISION,
         &items_after_statements::ITEMS_AFTER_STATEMENTS,
         &large_enum_variant::LARGE_ENUM_VARIANT,
+        &large_stack_arrays::LARGE_STACK_ARRAYS,
         &len_zero::LEN_WITHOUT_IS_EMPTY,
         &len_zero::LEN_ZERO,
         &let_if_seq::USELESS_LET_IF_SEQ,
@@ -624,6 +628,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &methods::USELESS_ASREF,
         &methods::WRONG_PUB_SELF_CONVENTION,
         &methods::WRONG_SELF_CONVENTION,
+        &methods::ZST_OFFSET,
         &minmax::MIN_MAX,
         &misc::CMP_NAN,
         &misc::CMP_OWNED,
@@ -716,6 +721,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL,
         &swap::ALMOST_SWAPPED,
         &swap::MANUAL_SWAP,
+        &tabs_in_doc_comments::TABS_IN_DOC_COMMENTS,
         &temporary_assignment::TEMPORARY_ASSIGNMENT,
         &to_digit_is_some::TO_DIGIT_IS_SOME,
         &trait_bounds::TYPE_REPETITION_IN_BOUNDS,
@@ -946,10 +952,13 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_early_pass(|| box utils::internal_lints::ClippyLintsInternal);
     let enum_variant_name_threshold = conf.enum_variant_name_threshold;
     store.register_early_pass(move || box enum_variants::EnumVariantNames::new(enum_variant_name_threshold));
+    store.register_early_pass(|| box tabs_in_doc_comments::TabsInDocComments);
     store.register_late_pass(|| box unused_self::UnusedSelf);
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
     store.register_late_pass(|| box exit::Exit);
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
+    let array_size_threshold = conf.array_size_threshold;
+    store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -989,6 +998,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&attrs::INLINE_ALWAYS),
         LintId::of(&checked_conversions::CHECKED_CONVERSIONS),
         LintId::of(&copies::MATCH_SAME_ARMS),
+        LintId::of(&copies::SAME_FUNCTIONS_IN_IF_CONDITION),
         LintId::of(&copy_iterator::COPY_ITERATOR),
         LintId::of(&default_trait_access::DEFAULT_TRAIT_ACCESS),
         LintId::of(&derive::EXPL_IMPL_CLONE_ON_COPY),
@@ -1003,6 +1013,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&if_not_else::IF_NOT_ELSE),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),
+        LintId::of(&large_stack_arrays::LARGE_STACK_ARRAYS),
         LintId::of(&literal_representation::LARGE_DIGIT_GROUPS),
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
@@ -1176,6 +1187,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&methods::UNNECESSARY_FOLD),
         LintId::of(&methods::USELESS_ASREF),
         LintId::of(&methods::WRONG_SELF_CONVENTION),
+        LintId::of(&methods::ZST_OFFSET),
         LintId::of(&minmax::MIN_MAX),
         LintId::of(&misc::CMP_NAN),
         LintId::of(&misc::CMP_OWNED),
@@ -1243,6 +1255,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&suspicious_trait_impl::SUSPICIOUS_OP_ASSIGN_IMPL),
         LintId::of(&swap::ALMOST_SWAPPED),
         LintId::of(&swap::MANUAL_SWAP),
+        LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&temporary_assignment::TEMPORARY_ASSIGNMENT),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&transmute::CROSSPOINTER_TRANSMUTE),
@@ -1370,6 +1383,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&returns::NEEDLESS_RETURN),
         LintId::of(&returns::UNUSED_UNIT),
         LintId::of(&strings::STRING_LIT_AS_BYTES),
+        LintId::of(&tabs_in_doc_comments::TABS_IN_DOC_COMMENTS),
         LintId::of(&to_digit_is_some::TO_DIGIT_IS_SOME),
         LintId::of(&try_err::TRY_ERR),
         LintId::of(&types::FN_TO_NUMERIC_CAST),
@@ -1497,6 +1511,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&methods::CLONE_DOUBLE_REF),
         LintId::of(&methods::TEMPORARY_CSTRING_AS_PTR),
         LintId::of(&methods::UNINIT_ASSUMED_INIT),
+        LintId::of(&methods::ZST_OFFSET),
         LintId::of(&minmax::MIN_MAX),
         LintId::of(&misc::CMP_NAN),
         LintId::of(&misc::FLOAT_CMP),
