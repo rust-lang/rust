@@ -35,7 +35,7 @@ use std::{iter, mem};
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token
     Token(Token),
@@ -52,26 +52,6 @@ where
     DelimToken: Send + Sync,
     TokenStream: Send + Sync,
 {}
-
-impl<CTX> HashStable<CTX> for TokenTree
-    where CTX: crate::HashStableContext
-{
-    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            TokenTree::Token(ref token) => {
-                token.hash_stable(hcx, hasher);
-            }
-            TokenTree::Delimited(span, delim, ref tts) => {
-                span.hash_stable(hcx, hasher);
-                std::hash::Hash::hash(&delim, hasher);
-                for sub_tt in tts.trees() {
-                    sub_tt.hash_stable(hcx, hasher);
-                }
-            }
-        }
-    }
-}
 
 impl TokenTree {
     /// Checks if this TokenTree is equal to the other, regardless of span information.
