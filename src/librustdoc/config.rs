@@ -626,7 +626,12 @@ fn parse_extern_html_roots(
 // FIXME(eddyb) This shouldn't be duplicated with `rustc::session`.
 fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
     let mut externs: BTreeMap<_, ExternEntry> = BTreeMap::new();
-    for arg in matches.opt_strs("extern").iter().chain(matches.opt_strs("extern-private").iter()) {
+    let extern_private = if nightly_options::is_nightly_build() {
+        matches.opt_strs("extern-private")
+    } else {
+        Vec::new()
+    };
+    for arg in matches.opt_strs("extern").iter().chain(extern_private.iter()) {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;
         let location = parts.next().map(|s| s.to_string());
