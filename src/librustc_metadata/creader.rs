@@ -1,11 +1,12 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
-use crate::cstore::CStore;
 use crate::locator::{CrateLocator, CratePaths};
 use crate::rmeta::{CrateMetadata, CrateNumMap, CrateRoot, CrateDep, MetadataBlob};
 
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
+use rustc_data_structures::sync::Lrc;
+use rustc_index::vec::IndexVec;
 use rustc::middle::cstore::DepKind;
 use rustc::session::{Session, CrateDisambiguator};
 use rustc::session::config::{Sanitizer, self};
@@ -21,18 +22,22 @@ use std::{cmp, fs};
 
 use syntax::ast;
 use syntax::attr;
+use syntax::edition::Edition;
 use syntax::expand::allocator::{global_allocator_spans, AllocatorKind};
 use syntax::symbol::{Symbol, sym};
 use syntax::span_fatal;
+use syntax_expand::base::SyntaxExtension;
 use syntax_pos::{Span, DUMMY_SP};
 use log::{debug, info, log_enabled};
 use proc_macro::bridge::client::ProcMacro;
 
 use rustc_error_codes::*;
 
-crate struct Library {
-    pub source: CrateSource,
-    pub metadata: MetadataBlob,
+#[derive(Clone)]
+pub struct CStore {
+    metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
+    crate injected_panic_runtime: Option<CrateNum>,
+    crate allocator_kind: Option<AllocatorKind>,
 }
 
 pub struct CrateLoader<'a> {
@@ -44,18 +49,14 @@ pub struct CrateLoader<'a> {
     cstore: CStore,
 }
 
-fn dump_crates(cstore: &CStore) {
-    info!("resolved crates:");
-    cstore.iter_crate_data(|cnum, data| {
-        info!("  name: {}", data.name());
-        info!("  cnum: {}", cnum);
-        info!("  hash: {}", data.hash());
-        info!("  reqd: {:?}", data.dep_kind());
-        let CrateSource { dylib, rlib, rmeta } = data.source();
-        dylib.as_ref().map(|dl| info!("  dylib: {}", dl.0.display()));
-        rlib.as_ref().map(|rl|  info!("   rlib: {}", rl.0.display()));
-        rmeta.as_ref().map(|rl| info!("   rmeta: {}", rl.0.display()));
-    });
+pub enum LoadedMacro {
+    MacroDef(ast::Item, Edition),
+    ProcMacro(SyntaxExtension),
+}
+
+crate struct Library {
+    pub source: CrateSource,
+    pub metadata: MetadataBlob,
 }
 
 enum LoadResult {
@@ -75,6 +76,74 @@ impl<'a> LoadError<'a> {
     }
 }
 
+fn dump_crates(cstore: &CStore) {
+    info!("resolved crates:");
+    cstore.iter_crate_data(|cnum, data| {
+        info!("  name: {}", data.name());
+        info!("  cnum: {}", cnum);
+        info!("  hash: {}", data.hash());
+        info!("  reqd: {:?}", data.dep_kind());
+        let CrateSource { dylib, rlib, rmeta } = data.source();
+        dylib.as_ref().map(|dl| info!("  dylib: {}", dl.0.display()));
+        rlib.as_ref().map(|rl|  info!("   rlib: {}", rl.0.display()));
+        rmeta.as_ref().map(|rl| info!("   rmeta: {}", rl.0.display()));
+    });
+}
+
+impl CStore {
+    crate fn alloc_new_crate_num(&mut self) -> CrateNum {
+        self.metas.push(None);
+        CrateNum::new(self.metas.len() - 1)
+    }
+
+    crate fn get_crate_data(&self, cnum: CrateNum) -> &CrateMetadata {
+        self.metas[cnum].as_ref()
+            .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum))
+    }
+
+    crate fn set_crate_data(&mut self, cnum: CrateNum, data: CrateMetadata) {
+        assert!(self.metas[cnum].is_none(), "Overwriting crate metadata entry");
+        self.metas[cnum] = Some(Lrc::new(data));
+    }
+
+    crate fn iter_crate_data(&self, mut f: impl FnMut(CrateNum, &CrateMetadata)) {
+        for (cnum, data) in self.metas.iter_enumerated() {
+            if let Some(data) = data {
+                f(cnum, data);
+            }
+        }
+    }
+
+    fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
+        if !deps.contains(&cnum) {
+            let data = self.get_crate_data(cnum);
+            for &dep in data.dependencies().iter() {
+                if dep != cnum {
+                    self.push_dependencies_in_postorder(deps, dep);
+                }
+            }
+
+            deps.push(cnum);
+        }
+    }
+
+    crate fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+        let mut deps = Vec::new();
+        if cnum == LOCAL_CRATE {
+            self.iter_crate_data(|cnum, _| self.push_dependencies_in_postorder(&mut deps, cnum));
+        } else {
+            self.push_dependencies_in_postorder(&mut deps, cnum);
+        }
+        deps
+    }
+
+    crate fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+        let mut deps = self.crate_dependencies_in_postorder(cnum);
+        deps.reverse();
+        deps
+    }
+}
+
 impl<'a> CrateLoader<'a> {
     pub fn new(
         sess: &'a Session,
@@ -85,7 +154,15 @@ impl<'a> CrateLoader<'a> {
             sess,
             metadata_loader,
             local_crate_name: Symbol::intern(local_crate_name),
-            cstore: Default::default(),
+            cstore: CStore {
+                // We add an empty entry for LOCAL_CRATE (which maps to zero) in
+                // order to make array indices in `metas` match with the
+                // corresponding `CrateNum`. This first entry will always remain
+                // `None`.
+                metas: IndexVec::from_elem_n(None, 1),
+                injected_panic_runtime: None,
+                allocator_kind: None,
+            }
         }
     }
 

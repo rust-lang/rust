@@ -19,7 +19,7 @@ use rustc::hir::def::{self, *};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
-use rustc_metadata::cstore::LoadedMacro;
+use rustc_metadata::creader::LoadedMacro;
 
 use std::cell::Cell;
 use std::ptr;

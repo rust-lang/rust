@@ -25,7 +25,6 @@ use rustc_data_structures::{box_region_allow_access, declare_box_region_type, pa
 use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
 use rustc_errors::PResult;
 use rustc_incremental;
-use rustc_metadata::cstore;
 use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, ast_validation, hir_stats, layout_test};
@@ -728,7 +727,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     middle::region::provide(providers);
-    cstore::provide(providers);
+    rustc_metadata::provide(providers);
     lint::provide(providers);
     rustc_lint::provide(providers);
     rustc_codegen_utils::provide(providers);
@@ -736,7 +735,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
 }
 
 pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
-    cstore::provide_extern(providers);
+    rustc_metadata::provide_extern(providers);
     rustc_codegen_ssa::provide_extern(providers);
 }
 

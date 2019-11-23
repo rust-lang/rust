@@ -32,8 +32,7 @@ use rustc::ty::{self, DefIdTree, ResolverOutputs};
 use rustc::util::nodemap::{NodeMap, NodeSet, FxHashMap, FxHashSet, DefIdMap};
 use rustc::span_bug;
 
-use rustc_metadata::creader::CrateLoader;
-use rustc_metadata::cstore::CStore;
+use rustc_metadata::creader::{CrateLoader, CStore};
 
 use syntax::{struct_span_err, unwrap_or};
 use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};

@@ -1,4 +1,4 @@
-use crate::cstore::{self, LoadedMacro};
+use crate::creader::{CStore, LoadedMacro};
 use crate::link_args;
 use crate::native_libs;
 use crate::foreign_modules;
@@ -382,7 +382,7 @@ pub fn provide(providers: &mut Providers<'_>) {
     };
 }
 
-impl cstore::CStore {
+impl CStore {
     pub fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
         let mut dep_kind = data.dep_kind.lock();
@@ -458,7 +458,7 @@ impl cstore::CStore {
     }
 }
 
-impl CrateStore for cstore::CStore {
+impl CrateStore for CStore {
     fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any {
         self.get_crate_data(cnum)
     }

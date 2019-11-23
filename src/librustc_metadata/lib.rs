@@ -24,6 +24,8 @@ extern crate rustc;
 #[macro_use]
 extern crate rustc_data_structures;
 
+pub use rmeta::{provide, provide_extern};
+
 mod dependency_format;
 mod foreign_modules;
 mod link_args;
@@ -31,7 +33,6 @@ mod native_libs;
 mod rmeta;
 
 pub mod creader;
-pub mod cstore;
 pub mod dynamic_lib;
 pub mod locator;
 
