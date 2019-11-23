@@ -649,9 +649,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn should_const_prop(&mut self, op: OpTy<'tcx>) -> bool {
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
-            return true;
-        } else if self.tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
+        if self.tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return false;
         }
 
