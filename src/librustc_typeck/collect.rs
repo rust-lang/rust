@@ -2128,7 +2128,7 @@ fn explicit_predicates_of(
                     } else {
                         // named opaque types
                         predicates.extend(bounds_predicates);
-                        generics.clone()
+                        generics
                     }
                 }
 
