@@ -4,13 +4,12 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
-use hir_def::resolver::Resolver;
+use hir_def::{lang_item::LangItemTarget, resolver::Resolver};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
     db::HirDatabase,
-    lang_item::LangItemTarget,
     ty::{autoderef, Substs, Ty, TypeCtor, TypeWalk},
     Adt, Mutability,
 };
@@ -50,7 +49,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     ) -> FxHashMap<(TypeCtor, TypeCtor), usize> {
         let krate = resolver.krate().unwrap();
         let impls = match db.lang_item(krate.into(), "coerce_unsized".into()) {
-            Some(LangItemTarget::Trait(trait_)) => db.impls_for_trait(krate.into(), trait_),
+            Some(LangItemTarget::TraitId(trait_)) => {
+                db.impls_for_trait(krate.into(), trait_.into())
+            }
             _ => return FxHashMap::default(),
         };
 

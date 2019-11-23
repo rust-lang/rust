@@ -9,6 +9,7 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 
+use hir_def::lang_item::LangItemTarget;
 use hir_expand::name;
 
 use ra_db::salsa::{InternId, InternKey};
@@ -832,9 +833,9 @@ fn closure_fn_trait_output_assoc_ty_value(
 }
 
 fn get_fn_trait(db: &impl HirDatabase, krate: Crate, fn_trait: super::FnTrait) -> Option<Trait> {
-    let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
+    let target = db.lang_item(krate.crate_id, fn_trait.lang_item_name().into())?;
     match target {
-        crate::lang_item::LangItemTarget::Trait(t) => Some(t),
+        LangItemTarget::TraitId(t) => Some(t.into()),
         _ => None,
     }
 }

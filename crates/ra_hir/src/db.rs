@@ -3,27 +3,25 @@
 use std::sync::Arc;
 
 use ra_db::salsa;
-use ra_syntax::SmolStr;
 
 use crate::{
     debug::HirDebugDatabase,
     ids,
-    lang_item::{LangItemTarget, LangItems},
     ty::{
         method_resolution::CrateImplBlocks,
         traits::{AssocTyValue, Impl},
         CallableDef, FnSig, GenericPredicate, InferenceResult, Namespace, Substs, Ty, TypableDef,
         TypeCtor,
     },
-    Crate, DefWithBody, GenericDef, ImplBlock, Module, StructField, Trait,
+    Crate, DefWithBody, GenericDef, ImplBlock, StructField, Trait,
 };
 
 pub use hir_def::db::{
-    BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, DefDatabase2,
-    DefDatabase2Storage, EnumDataQuery, ExprScopesQuery, FunctionDataQuery, GenericParamsQuery,
-    ImplDataQuery, InternDatabase, InternDatabaseStorage, RawItemsQuery,
-    RawItemsWithSourceMapQuery, StaticDataQuery, StructDataQuery, TraitDataQuery,
-    TypeAliasDataQuery,
+    BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, CrateLangItemsQuery,
+    DefDatabase2, DefDatabase2Storage, EnumDataQuery, ExprScopesQuery, FunctionDataQuery,
+    GenericParamsQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage, LangItemQuery,
+    ModuleLangItemsQuery, RawItemsQuery, RawItemsWithSourceMapQuery, StaticDataQuery,
+    StructDataQuery, TraitDataQuery, TypeAliasDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -34,15 +32,6 @@ pub use hir_expand::db::{
 #[salsa::query_group(DefDatabaseStorage)]
 #[salsa::requires(AstDatabase)]
 pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
-    #[salsa::invoke(LangItems::module_lang_items_query)]
-    fn module_lang_items(&self, module: Module) -> Option<Arc<LangItems>>;
-
-    #[salsa::invoke(LangItems::crate_lang_items_query)]
-    fn crate_lang_items(&self, krate: Crate) -> Arc<LangItems>;
-
-    #[salsa::invoke(LangItems::lang_item_query)]
-    fn lang_item(&self, start_crate: Crate, item: SmolStr) -> Option<LangItemTarget>;
-
     #[salsa::invoke(crate::code_model::docs::documentation_query)]
     fn documentation(&self, def: crate::DocDef) -> Option<crate::Documentation>;
 }
