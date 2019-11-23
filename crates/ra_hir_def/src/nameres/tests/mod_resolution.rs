@@ -665,7 +665,7 @@ fn unresolved_module_diagnostics() {
         @r###"
     [
         UnresolvedModule {
-            module: CrateModuleId(
+            module: LocalModuleId(
                 0,
             ),
             declaration: AstId {

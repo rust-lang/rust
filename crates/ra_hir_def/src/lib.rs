@@ -106,14 +106,14 @@ impl_arena_id!(LocalImportId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
     pub krate: CrateId,
-    pub module_id: CrateModuleId,
+    pub module_id: LocalModuleId,
 }
 
 /// An ID of a module, **local** to a specific crate
 // FIXME: rename to `LocalModuleId`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CrateModuleId(RawId);
-impl_arena_id!(CrateModuleId);
+pub struct LocalModuleId(RawId);
+impl_arena_id!(LocalModuleId);
 
 macro_rules! impl_intern_key {
     ($name:ident) => {

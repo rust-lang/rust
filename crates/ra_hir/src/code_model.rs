@@ -12,7 +12,7 @@ use hir_def::{
     nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalImportId,
+    ContainerId, HasModule, ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId,
     LocalStructFieldId, Lookup, ModuleId, UnionId,
 };
 use hir_expand::{
@@ -112,7 +112,7 @@ impl_froms!(
 pub use hir_def::{attr::Attrs, ModuleSource};
 
 impl Module {
-    pub(crate) fn new(krate: Crate, crate_module_id: CrateModuleId) -> Module {
+    pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
         Module { id: ModuleId { krate: krate.crate_id, module_id: crate_module_id } }
     }
 
@@ -222,7 +222,7 @@ impl Module {
         def_map[self.id.module_id].impls.iter().copied().map(ImplBlock::from).collect()
     }
 
-    fn with_module_id(self, module_id: CrateModuleId) -> Module {
+    fn with_module_id(self, module_id: LocalModuleId) -> Module {
         Module::new(self.krate(), module_id)
     }
 }

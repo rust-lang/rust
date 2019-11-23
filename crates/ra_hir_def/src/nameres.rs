@@ -74,7 +74,7 @@ use crate::{
     db::DefDatabase,
     nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs},
     path::Path,
-    AstId, CrateModuleId, FunctionId, ImplId, LocalImportId, ModuleDefId, ModuleId, TraitId,
+    AstId, FunctionId, ImplId, LocalImportId, LocalModuleId, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -87,8 +87,8 @@ pub struct CrateDefMap {
     /// a dependency (`std` or `core`).
     prelude: Option<ModuleId>,
     extern_prelude: FxHashMap<Name, ModuleDefId>,
-    root: CrateModuleId,
-    modules: Arena<CrateModuleId, ModuleData>,
+    root: LocalModuleId,
+    modules: Arena<LocalModuleId, ModuleData>,
 
     /// Some macros are not well-behavior, which leads to infinite loop
     /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
@@ -105,17 +105,17 @@ pub struct CrateDefMap {
     diagnostics: Vec<DefDiagnostic>,
 }
 
-impl std::ops::Index<CrateModuleId> for CrateDefMap {
+impl std::ops::Index<LocalModuleId> for CrateDefMap {
     type Output = ModuleData;
-    fn index(&self, id: CrateModuleId) -> &ModuleData {
+    fn index(&self, id: LocalModuleId) -> &ModuleData {
         &self.modules[id]
     }
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ModuleData {
-    pub parent: Option<CrateModuleId>,
-    pub children: FxHashMap<Name, CrateModuleId>,
+    pub parent: Option<LocalModuleId>,
+    pub children: FxHashMap<Name, LocalModuleId>,
     pub scope: ModuleScope,
 
     //  FIXME: these can't be both null, we need a three-state enum here.
@@ -225,7 +225,7 @@ impl CrateDefMap {
         let def_map = {
             let crate_graph = db.crate_graph();
             let edition = crate_graph.edition(krate);
-            let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
+            let mut modules: Arena<LocalModuleId, ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {
                 krate,
@@ -246,7 +246,7 @@ impl CrateDefMap {
         self.krate
     }
 
-    pub fn root(&self) -> CrateModuleId {
+    pub fn root(&self) -> LocalModuleId {
         self.root
     }
 
@@ -261,7 +261,7 @@ impl CrateDefMap {
     pub fn add_diagnostics(
         &self,
         db: &impl DefDatabase,
-        module: CrateModuleId,
+        module: LocalModuleId,
         sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
@@ -270,18 +270,18 @@ impl CrateDefMap {
     pub fn resolve_path(
         &self,
         db: &impl DefDatabase,
-        original_module: CrateModuleId,
+        original_module: LocalModuleId,
         path: &Path,
     ) -> (PerNs, Option<usize>) {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
     }
 
-    pub fn modules(&self) -> impl Iterator<Item = CrateModuleId> + '_ {
+    pub fn modules(&self) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules.iter().map(|(id, _data)| id)
     }
 
-    pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = CrateModuleId> + '_ {
+    pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules
             .iter()
             .filter(move |(_id, data)| data.definition == Some(file_id))
@@ -317,12 +317,12 @@ mod diagnostics {
     use ra_db::RelativePathBuf;
     use ra_syntax::{ast, AstPtr};
 
-    use crate::{db::DefDatabase, diagnostics::UnresolvedModule, nameres::CrateModuleId, AstId};
+    use crate::{db::DefDatabase, diagnostics::UnresolvedModule, nameres::LocalModuleId, AstId};
 
     #[derive(Debug, PartialEq, Eq)]
     pub(super) enum DefDiagnostic {
         UnresolvedModule {
-            module: CrateModuleId,
+            module: LocalModuleId,
             declaration: AstId<ast::Module>,
             candidate: RelativePathBuf,
         },
@@ -332,7 +332,7 @@ mod diagnostics {
         pub(super) fn add_to(
             &self,
             db: &impl DefDatabase,
-            target_module: CrateModuleId,
+            target_module: LocalModuleId,
             sink: &mut DiagnosticSink,
         ) {
             match self {
