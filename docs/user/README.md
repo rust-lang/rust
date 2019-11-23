@@ -133,7 +133,7 @@ to load path and require it in `init.el`
 ## Vim and NeoVim
 
 Neovim 0.5 has a built in language server. For a quick start configuration of
-rust-analyzer, use [neovim/nvim-lsp](https://github.com/neovim/nvim-lsp).
+rust-analyzer, use [neovim/nvim-lsp](https://github.com/neovim/nvim-lsp#rust_analyzer).
 Once `neovim/nvim-lsp` is installed, you can use `call nvim_lsp#setup("rust_analyzer", {})`
 or `lua require'nvim_lsp'.rust_analyzer.setup({})` to quickly get set up.
 
