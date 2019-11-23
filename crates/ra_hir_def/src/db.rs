@@ -17,28 +17,28 @@ use crate::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    AttrDefId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, ModuleId,
-    StaticId, StructOrUnionId, TraitId, TypeAliasId,
+    AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, FunctionId, FunctionLoc, GenericDefId,
+    ImplId, ItemLoc, ModuleId, StaticId, StructOrUnionId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
-    fn intern_function(&self, loc: crate::FunctionLoc) -> crate::FunctionId;
+    fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
     #[salsa::interned]
-    fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> crate::StructOrUnionId;
+    fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> StructOrUnionId;
     #[salsa::interned]
-    fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> crate::EnumId;
+    fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> EnumId;
     #[salsa::interned]
-    fn intern_const(&self, loc: crate::ConstLoc) -> crate::ConstId;
+    fn intern_const(&self, loc: ConstLoc) -> ConstId;
     #[salsa::interned]
-    fn intern_static(&self, loc: ItemLoc<ast::StaticDef>) -> crate::StaticId;
+    fn intern_static(&self, loc: ItemLoc<ast::StaticDef>) -> StaticId;
     #[salsa::interned]
-    fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> crate::TraitId;
+    fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> TraitId;
     #[salsa::interned]
-    fn intern_type_alias(&self, loc: crate::TypeAliasLoc) -> crate::TypeAliasId;
+    fn intern_type_alias(&self, loc: TypeAliasLoc) -> TypeAliasId;
     #[salsa::interned]
-    fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> crate::ImplId;
+    fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> ImplId;
 }
 
 #[salsa::query_group(DefDatabaseStorage)]
