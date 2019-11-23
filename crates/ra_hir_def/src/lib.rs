@@ -489,6 +489,7 @@ pub enum AttrDefId {
     TraitId(TraitId),
     TypeAliasId(TypeAliasId),
     MacroDefId(MacroDefId),
+    ImplId(ImplId),
 }
 
 impl_froms!(
@@ -501,7 +502,8 @@ impl_froms!(
     FunctionId,
     TraitId,
     TypeAliasId,
-    MacroDefId
+    MacroDefId,
+    ImplId
 );
 
 trait Intern {

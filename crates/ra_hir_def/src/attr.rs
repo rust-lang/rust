@@ -53,27 +53,37 @@ impl Attrs {
                     }
                 }
             }
-            AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => attrs_from_ast(it.0.lookup_intern(db).ast_id, db),
-                AdtId::EnumId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
-                AdtId::UnionId(it) => attrs_from_ast(it.0.lookup_intern(db).ast_id, db),
-            },
             AttrDefId::EnumVariantId(it) => {
                 let src = it.parent.child_source(db);
                 let hygiene = Hygiene::new(db, src.file_id);
                 Attr::from_attrs_owner(&src.value[it.local_id], &hygiene)
             }
+            AttrDefId::AdtId(it) => match it {
+                AdtId::StructId(it) => attrs_from_ast(it.0.lookup_intern(db).ast_id, db),
+                AdtId::EnumId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+                AdtId::UnionId(it) => attrs_from_ast(it.0.lookup_intern(db).ast_id, db),
+            },
             AttrDefId::StaticId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+            AttrDefId::TraitId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
+            AttrDefId::MacroDefId(it) => attrs_from_ast(it.ast_id, db),
+            AttrDefId::ImplId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
             AttrDefId::ConstId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::FunctionId(it) => attrs_from_loc(it.lookup(db), db),
-            AttrDefId::TraitId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
             AttrDefId::TypeAliasId(it) => attrs_from_loc(it.lookup(db), db),
-            AttrDefId::MacroDefId(it) => attrs_from_ast(it.ast_id, db),
         }
     }
 
     pub fn has_atom(&self, atom: &str) -> bool {
         self.iter().any(|it| it.is_simple_atom(atom))
+    }
+
+    pub fn find_string_value(&self, key: &str) -> Option<SmolStr> {
+        self.iter().filter(|attr| attr.is_simple_atom(key)).find_map(|attr| {
+            match attr.input.as_ref()? {
+                AttrInput::Literal(it) => Some(it.clone()),
+                _ => None,
+            }
+        })
     }
 }
 
