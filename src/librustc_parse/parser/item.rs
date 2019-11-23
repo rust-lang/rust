@@ -1752,25 +1752,22 @@ impl<'a> Parser<'a> {
     fn recover_nested_adt_item(&mut self, keyword: Symbol) -> PResult<'a, bool> {
         if self.token.is_keyword(kw::Enum) ||
             self.token.is_keyword(kw::Struct) ||
-            self.token.is_keyword(kw::Union)  {
-
-            let prev_token = self.token.clone();
+            self.token.is_keyword(kw::Union)
+        {
+            let kw_token = self.token.clone();
+            let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item()?;
-            if self.token == token::Comma {
-                self.bump();
-            }
+            self.eat(&token::Comma);
 
-            let mut err = self.struct_span_err(
-                prev_token.span,
-                &format!("`{}` definition cannot be nested inside `{}`", pprust::token_to_string(&prev_token), keyword),
-            );
-            err.span_suggestion(
+            self.struct_span_err(
+                kw_token.span,
+                &format!("`{}` definition cannot be nested inside `{}`", kw_str, keyword),
+            ).span_suggestion(
                 item.unwrap().span,
-                &format!("consider creating a new `{}` definition instead of nesting", pprust::token_to_string(&prev_token)),
+                &format!("consider creating a new `{}` definition instead of nesting", kw_str),
                 String::new(),
                 Applicability::MaybeIncorrect,
-            );
-            err.emit();
+            ).emit();
             // We successfully parsed the item but we must inform the caller about nested problem.
             return Ok(false)
         }
