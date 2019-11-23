@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 333] = [
+pub const ALL_LINTS: [Lint; 334] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -2337,6 +2337,13 @@ pub const ALL_LINTS: [Lint; 333] = [
         desc: "using a zero-width space in a string literal, which is confusing",
         deprecation: None,
         module: "unicode",
+    },
+    Lint {
+        name: "zst_offset",
+        group: "correctness",
+        desc: "Check for offset calculations on raw pointers to zero-sized types",
+        deprecation: None,
+        module: "methods",
     },
 ];
 // end lint list, do not remove this comment, it’s used in `update_lints`
