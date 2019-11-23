@@ -911,6 +911,13 @@ pub const ALL_LINTS: [Lint; 334] = [
         module: "large_enum_variant",
     },
     Lint {
+        name: "large_stack_arrays",
+        group: "pedantic",
+        desc: "allocating large arrays on stack may cause stack overflow",
+        deprecation: None,
+        module: "large_stack_arrays",
+    },
+    Lint {
         name: "len_without_is_empty",
         group: "style",
         desc: "traits or impls with a public `len` method but no corresponding `is_empty` method",

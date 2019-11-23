@@ -212,6 +212,7 @@ pub mod int_plus_one;
 pub mod integer_division;
 pub mod items_after_statements;
 pub mod large_enum_variant;
+pub mod large_stack_arrays;
 pub mod len_zero;
 pub mod let_if_seq;
 pub mod lifetimes;
@@ -539,6 +540,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &integer_division::INTEGER_DIVISION,
         &items_after_statements::ITEMS_AFTER_STATEMENTS,
         &large_enum_variant::LARGE_ENUM_VARIANT,
+        &large_stack_arrays::LARGE_STACK_ARRAYS,
         &len_zero::LEN_WITHOUT_IS_EMPTY,
         &len_zero::LEN_ZERO,
         &let_if_seq::USELESS_LET_IF_SEQ,
@@ -952,6 +954,8 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_late_pass(|| box mutable_debug_assertion::DebugAssertWithMutCall);
     store.register_late_pass(|| box exit::Exit);
     store.register_late_pass(|| box to_digit_is_some::ToDigitIsSome);
+    let array_size_threshold = conf.array_size_threshold;
+    store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1006,6 +1010,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&if_not_else::IF_NOT_ELSE),
         LintId::of(&infinite_iter::MAYBE_INFINITE_ITER),
         LintId::of(&items_after_statements::ITEMS_AFTER_STATEMENTS),
+        LintId::of(&large_stack_arrays::LARGE_STACK_ARRAYS),
         LintId::of(&literal_representation::LARGE_DIGIT_GROUPS),
         LintId::of(&loops::EXPLICIT_INTO_ITER_LOOP),
         LintId::of(&loops::EXPLICIT_ITER_LOOP),
