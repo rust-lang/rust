@@ -101,7 +101,7 @@ crate struct CrateMetadata {
     /// How to link (or not link) this crate to the currently compiled crate.
     crate dep_kind: Lock<DepKind>,
     /// Filesystem location of this crate.
-    crate source: CrateSource,
+    source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
     private_dep: bool,
@@ -1533,6 +1533,10 @@ impl<'a, 'tcx> CrateMetadata {
             *extern_crate = Some(new_extern_crate);
         }
         update
+    }
+
+    crate fn source(&self) -> &CrateSource {
+        &self.source
     }
 }
 
