@@ -122,7 +122,6 @@
 #![feature(try_trait)]
 #![feature(associated_type_bounds)]
 #![feature(inplace_iteration)]
-#![feature(never_type)]
 #![feature(type_alias_impl_trait)]
 
 // Allow testing this library
