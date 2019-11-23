@@ -117,7 +117,9 @@ impl HasSource for Import {
     fn source(self, db: &impl DefDatabase) -> Source<Self::Ast> {
         let src = self.parent.definition_source(db);
         let (_, source_map) = db.raw_items_with_source_map(src.file_id);
-        src.with_value(source_map.get(&src.value, self.id))
+        let root = db.parse_or_expand(src.file_id).unwrap();
+        let ptr = source_map.get(self.id);
+        src.with_value(ptr.map(|it| it.to_node(&root), |it| it.to_node(&root)))
     }
 }
 

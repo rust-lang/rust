@@ -21,95 +21,40 @@ pub mod resolver;
 pub mod data;
 pub mod lang_item;
 pub mod docs;
+pub mod per_ns;
 
 mod trace;
+mod nameres;
 
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]
 mod marks;
 
-// FIXME: this should be private
-pub mod nameres;
-
 use std::hash::{Hash, Hasher};
 
 use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, MacroDefId, Source};
 use ra_arena::{impl_arena_id, map::ArenaMap, RawId};
-use ra_db::{salsa, CrateId, FileId};
-use ra_syntax::{ast, AstNode, SyntaxNode};
+use ra_db::{salsa, CrateId};
+use ra_syntax::{ast, AstNode};
 
 use crate::{builtin_type::BuiltinType, db::InternDatabase};
 
-pub enum ModuleSource {
-    SourceFile(ast::SourceFile),
-    Module(ast::Module),
-}
-
-impl ModuleSource {
-    pub fn new(
-        db: &impl db::DefDatabase,
-        file_id: Option<FileId>,
-        decl_id: Option<AstId<ast::Module>>,
-    ) -> ModuleSource {
-        match (file_id, decl_id) {
-            (Some(file_id), _) => {
-                let source_file = db.parse(file_id).tree();
-                ModuleSource::SourceFile(source_file)
-            }
-            (None, Some(item_id)) => {
-                let module = item_id.to_node(db);
-                assert!(module.item_list().is_some(), "expected inline module");
-                ModuleSource::Module(module)
-            }
-            (None, None) => panic!(),
-        }
-    }
-
-    // FIXME: this methods do not belong here
-    pub fn from_position(db: &impl db::DefDatabase, position: ra_db::FilePosition) -> ModuleSource {
-        let parse = db.parse(position.file_id);
-        match &ra_syntax::algo::find_node_at_offset::<ast::Module>(
-            parse.tree().syntax(),
-            position.offset,
-        ) {
-            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
-            _ => {
-                let source_file = parse.tree();
-                ModuleSource::SourceFile(source_file)
-            }
-        }
-    }
-
-    pub fn from_child_node(db: &impl db::DefDatabase, child: Source<&SyntaxNode>) -> ModuleSource {
-        if let Some(m) =
-            child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
-        {
-            ModuleSource::Module(m)
-        } else {
-            let file_id = child.file_id.original_file(db);
-            let source_file = db.parse(file_id).tree();
-            ModuleSource::SourceFile(source_file)
-        }
-    }
-
-    pub fn from_file_id(db: &impl db::DefDatabase, file_id: FileId) -> ModuleSource {
-        let source_file = db.parse(file_id).tree();
-        ModuleSource::SourceFile(source_file)
-    }
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LocalImportId(RawId);
+impl_arena_id!(LocalImportId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
     pub krate: CrateId,
-    pub module_id: CrateModuleId,
+    pub module_id: LocalModuleId,
 }
 
 /// An ID of a module, **local** to a specific crate
 // FIXME: rename to `LocalModuleId`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CrateModuleId(RawId);
-impl_arena_id!(CrateModuleId);
+pub struct LocalModuleId(RawId);
+impl_arena_id!(LocalModuleId);
 
 macro_rules! impl_intern_key {
     ($name:ident) => {

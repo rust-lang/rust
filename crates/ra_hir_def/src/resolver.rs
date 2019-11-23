@@ -14,11 +14,12 @@ use crate::{
     db::DefDatabase,
     expr::{ExprId, PatId},
     generics::GenericParams,
-    nameres::{per_ns::PerNs, CrateDefMap},
+    nameres::CrateDefMap,
     path::{Path, PathKind},
-    AdtId, AstItemDef, ConstId, ContainerId, CrateModuleId, DefWithBodyId, EnumId, EnumVariantId,
-    FunctionId, GenericDefId, ImplId, Lookup, ModuleDefId, ModuleId, StaticId, StructId, TraitId,
-    TypeAliasId,
+    per_ns::PerNs,
+    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
+    GenericDefId, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -30,7 +31,7 @@ pub struct Resolver {
 #[derive(Debug, Clone)]
 pub(crate) struct ModuleItemMap {
     crate_def_map: Arc<CrateDefMap>,
-    module_id: CrateModuleId,
+    module_id: LocalModuleId,
 }
 
 #[derive(Debug, Clone)]
@@ -330,7 +331,7 @@ impl Resolver {
         traits
     }
 
-    fn module(&self) -> Option<(&CrateDefMap, CrateModuleId)> {
+    fn module(&self) -> Option<(&CrateDefMap, LocalModuleId)> {
         self.scopes.iter().rev().find_map(|scope| match scope {
             Scope::ModuleScope(m) => Some((&*m.crate_def_map, m.module_id)),
 
@@ -466,7 +467,7 @@ impl Resolver {
     fn push_module_scope(
         self,
         crate_def_map: Arc<CrateDefMap>,
-        module_id: CrateModuleId,
+        module_id: LocalModuleId,
     ) -> Resolver {
         self.push_scope(Scope::ModuleScope(ModuleItemMap { crate_def_map, module_id }))
     }

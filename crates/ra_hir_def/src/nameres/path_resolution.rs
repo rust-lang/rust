@@ -16,9 +16,10 @@ use test_utils::tested_by;
 
 use crate::{
     db::DefDatabase,
-    nameres::{per_ns::PerNs, CrateDefMap},
+    nameres::CrateDefMap,
     path::{Path, PathKind},
-    AdtId, CrateModuleId, EnumVariantId, ModuleDefId, ModuleId,
+    per_ns::PerNs,
+    AdtId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -65,7 +66,7 @@ impl CrateDefMap {
         &self,
         db: &impl DefDatabase,
         mode: ResolveMode,
-        original_module: CrateModuleId,
+        original_module: LocalModuleId,
         path: &Path,
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
@@ -217,7 +218,7 @@ impl CrateDefMap {
     fn resolve_name_in_module(
         &self,
         db: &impl DefDatabase,
-        module: CrateModuleId,
+        module: LocalModuleId,
         name: &Name,
     ) -> PerNs {
         // Resolve in:
