@@ -10,6 +10,7 @@ edition = "2018"
 crate-type = ["dylib"]
 
 [features]
+default = ["backend_object"]
 backend_object = ["object/write", "cranelift-object"]
 
 [dependencies]
