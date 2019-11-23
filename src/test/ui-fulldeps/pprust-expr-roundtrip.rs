@@ -139,7 +139,10 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
                             Some(make_x()), Some(e), RangeLimits::HalfOpen)));
             },
             15 => {
-                iter_exprs(depth - 1, &mut |e| g(ExprKind::AddrOf(Mutability::Immutable, e)));
+                iter_exprs(
+                    depth - 1,
+                    &mut |e| g(ExprKind::AddrOf(BorrowKind::Ref, Mutability::Immutable, e)),
+                );
             },
             16 => {
                 g(ExprKind::Ret(None));
