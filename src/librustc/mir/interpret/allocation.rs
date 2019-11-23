@@ -324,6 +324,33 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         })
     }
 
+    /// Reads bytes until a `0x00` is encountered. Will error if the end of the allocation 
+    /// is reached before a `0x00` is found.
+    ///
+    /// Most likely, you want to call `Memory::read_wide_str` instead of this method.
+    pub fn read_wide_str(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr : Pointer<Tag>
+    ) -> InterpResult<'tcx, &[u8]>
+    {
+        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
+        let offset = ptr.offset.bytes() as usize;
+        Ok(match self.bytes[offset..self.bytes.len() - 1].iter().step_by(2)
+           .zip(self.bytes[(offset+1)..].iter().step_by(2))
+           .position(|&(l,r)| l == 0 && r == 0) {
+            Some(size) => {
+                let size_with_null = Size::from_bytes((size + 2) as u64);
+                // Go through `get_bytes` for checks and AllocationExtra hooks.
+                // We read the null, so we include it in the request, but we want it removed
+                // from the result, so we do subslicing.
+                &self.get_bytes(cx, ptr, size_with_null)?[..size]
+            }
+            // This includes the case where `offset` is out-of-bounds to begin with.
+            None => throw_unsup!(UnterminatedCString(ptr.erase_tag())),
+        })
+    }
+
     /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
     /// relocation. If `allow_ptr_and_undef` is `false`, also enforces that the memory in the
     /// given range contains neither relocations nor undef bytes.
