@@ -1,4 +1,5 @@
 use crate::utils::span_lint_and_sugg;
+use crate::utils::sugg::format_numeric_literal;
 use if_chain::if_chain;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -86,8 +87,7 @@ impl ExcessivePrecision {
             if sym_str == s {
                 None
             } else {
-                let di = super::literal_representation::DigitInfo::new(&s, true);
-                Some(di.grouping_hint())
+                Some(format_numeric_literal(&s, None, true))
             }
         } else {
             None

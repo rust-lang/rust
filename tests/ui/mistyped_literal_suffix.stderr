@@ -72,5 +72,11 @@ error: mistyped literal suffix
 LL |     let fail29 = 42279.911_32;
    |                  ^^^^^^^^^^^^ help: did you mean to write: `42_279.911_f32`
 
-error: aborting due to 12 previous errors
+error: mistyped literal suffix
+  --> $DIR/mistyped_literal_suffix.rs:23:13
+   |
+LL |     let _ = 1.12345E1_32;
+   |             ^^^^^^^^^^^^ help: did you mean to write: `1.123_45E1_f32`
+
+error: aborting due to 13 previous errors
 
