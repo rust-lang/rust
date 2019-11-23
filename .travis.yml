@@ -72,8 +72,9 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=bluss/rust-itertools
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    - env: INTEGRATION=serde-rs/serde
-      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
+    # FIXME: rustc ICE on `serde_test_suite`
+    # - env: INTEGRATION=serde-rs/serde
+    #   if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang-nursery/stdsimd
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-random/rand
