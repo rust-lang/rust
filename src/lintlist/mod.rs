@@ -715,6 +715,13 @@ pub const ALL_LINTS: [Lint; 334] = [
         module: "copies",
     },
     Lint {
+        name: "ifs_same_cond_fn",
+        group: "pedantic",
+        desc: "consecutive `ifs` with the same function call",
+        deprecation: None,
+        module: "copies",
+    },
+    Lint {
         name: "implicit_hasher",
         group: "style",
         desc: "missing generalization over different hashers",
