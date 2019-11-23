@@ -57,7 +57,8 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                path_str: &str,
                ns: Namespace,
                current_item: &Option<String>,
-               parent_id: Option<hir::HirId>)
+               parent_id: Option<hir::HirId>,
+               extra_fragment: &Option<String>)
         -> Result<(Res, Option<String>), ()>
     {
         let cx = self.cx;
@@ -80,16 +81,23 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 let value = match res {
                     Res::Def(DefKind::Method, _) | Res::Def(DefKind::AssocConst, _) => true,
                     Res::Def(DefKind::AssocTy, _) => false,
-                    Res::Def(DefKind::Variant, _) => return handle_variant(cx, res),
+                    Res::Def(DefKind::Variant, _) => return handle_variant(cx, res, extra_fragment),
                     // Not a trait item; just return what we found.
+                    Res::PrimTy(..) if extra_fragment.is_some() => {
+                        // TODO: warn in here! (and don't return Ok)
+                        return Ok((res, Some(path_str.to_owned())))
+                    }
                     Res::PrimTy(..) => return Ok((res, Some(path_str.to_owned()))),
-                    _ => return Ok((res, None))
+                    _ => return Ok((res, extra_fragment.clone()))
                 };
 
                 if value != (ns == ValueNS) {
                     return Err(())
                 }
             } else if let Some(prim) = is_primitive(path_str, ns) {
+                //if extra_fragment.is_some() {
+                    // TODO: warn in here! (and don't return Ok)
+                //}
                 return Ok((prim, Some(path_str.to_owned())))
             } else {
                 // If resolution failed, it may still be a method
@@ -153,6 +161,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
                             _ => return Err(())
                         };
+                        //if extra_fragment.is_some() {
+                            // TODO: warn in here! (and don't return Ok)
+                        //}
                         Ok((ty_res, Some(format!("{}.{}", out, item_name))))
                     } else {
                         match cx.tcx.type_of(did).kind {
@@ -165,6 +176,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                        .iter()
                                        .find(|item| item.ident.name == item_name)
                                 } {
+                                    //if extra_fragment.is_some() {
+                                        // TODO: warn in here! (and don't return Ok)
+                                    //}
                                     Ok((ty_res,
                                         Some(format!("{}.{}",
                                                      if def.is_enum() {
@@ -199,6 +213,9 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             _ => return Err(())
                         };
 
+                        //if extra_fragment.is_some() {
+                            // TODO: warn in here! (and don't return Ok)
+                        //}
                         Ok((ty_res, Some(format!("{}.{}", kind, item_name))))
                     } else {
                         Err(())
@@ -289,6 +306,27 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             }
 
             let link = ori_link.replace("`", "");
+            let parts = link.split('#').collect::<Vec<_>>();
+            let (link, extra_fragment) = if parts.len() > 2 {
+                let mut diag = cx.tcx.struct_span_lint_hir(
+                    lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
+                    item_hir_id.unwrap(),
+                    span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
+                    &format!("`[{}]` cannot be resolved, ignoring it...", ori_link),
+                );
+                // TODO: use the correct span!
+                diag.span_label(DUMMY_SP, "only one `#` is allowed in a link");
+                diag.emit();
+                continue;
+            } else if parts.len() == 2 {
+                if parts[0].trim().is_empty() {
+                    // This is an anchor to an element of the current page, nothing to do in here!
+                    continue;
+                }
+                (parts[0].to_owned(), Some(parts[1].to_owned()))
+            } else {
+                (parts[0].to_owned(), None)
+            };
             let (res, fragment) = {
                 let mut kind = None;
                 let path_str = if let Some(prefix) =
@@ -341,7 +379,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
 
                 match kind {
                     Some(ns @ ValueNS) => {
-                        if let Ok(res) = self.resolve(path_str, ns, &current_item, base_node) {
+                        if let Ok(res) = self.resolve(path_str, ns, &current_item, base_node,
+                                                      &extra_fragment) {
                             res
                         } else {
                             resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -352,7 +391,8 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                         }
                     }
                     Some(ns @ TypeNS) => {
-                        if let Ok(res) = self.resolve(path_str, ns, &current_item, base_node) {
+                        if let Ok(res) = self.resolve(path_str, ns, &current_item, base_node,
+                                                      &extra_fragment) {
                             res
                         } else {
                             resolution_failure(cx, &item, path_str, &dox, link_range);
@@ -363,18 +403,27 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     None => {
                         // Try everything!
                         let candidates = PerNS {
-                            macro_ns: macro_resolve(cx, path_str).map(|res| (res, None)),
+                            macro_ns: macro_resolve(cx, path_str)
+                                        .map(|res| (res, extra_fragment.clone())),
                             type_ns: self
-                                .resolve(path_str, TypeNS, &current_item, base_node)
+                                .resolve(path_str, TypeNS, &current_item, base_node, &extra_fragment)
                                 .ok(),
                             value_ns: self
-                                .resolve(path_str, ValueNS, &current_item, base_node)
+                                .resolve(path_str, ValueNS, &current_item, base_node, &extra_fragment)
                                 .ok()
                                 .and_then(|(res, fragment)| {
                                     // Constructors are picked up in the type namespace.
                                     match res {
                                         Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) => None,
-                                        _ => Some((res, fragment))
+                                        _ => match (fragment, extra_fragment) {
+                                            (Some(fragment), Some(_)) => {
+                                                // Shouldn't happen but who knows?
+                                                Some((res, Some(fragment)))
+                                            }
+                                            (fragment, None) | (None, fragment) => {
+                                                Some((res, fragment))
+                                            }
+                                        },
                                     }
                                 }),
                         };
@@ -402,7 +451,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
                     }
                     Some(MacroNS) => {
                         if let Some(res) = macro_resolve(cx, path_str) {
-                            (res, None)
+                            (res, extra_fragment)
                         } else {
                             resolution_failure(cx, &item, path_str, &dox, link_range);
                             continue
@@ -637,7 +686,11 @@ fn ambiguity_error(
 }
 
 /// Given an enum variant's res, return the res of its enum and the associated fragment.
-fn handle_variant(cx: &DocContext<'_>, res: Res) -> Result<(Res, Option<String>), ()> {
+fn handle_variant(
+    cx: &DocContext<'_>,
+    res: Res,
+    extra_fragment: &Option<String>,
+) -> Result<(Res, Option<String>), ()> {
     use rustc::ty::DefIdTree;
 
     let parent = if let Some(parent) = cx.tcx.parent(res.def_id()) {
@@ -647,6 +700,9 @@ fn handle_variant(cx: &DocContext<'_>, res: Res) -> Result<(Res, Option<String>)
     };
     let parent_def = Res::Def(DefKind::Enum, parent);
     let variant = cx.tcx.expect_variant_res(res);
+    if extra_fragment.is_some() {
+        // TODO warn in here! (and don't return ok)
+    }
     Ok((parent_def, Some(format!("{}.v", variant.ident.name))))
 }
 
