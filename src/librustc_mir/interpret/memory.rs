@@ -752,12 +752,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     pub fn leak_report(&self) -> usize {
-        eprintln!("### LEAK REPORT ###");
         let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
             if kind.may_leak() { None } else { Some(id) }
         });
         let n = leaks.len();
-        self.dump_allocs(leaks);
+        if n > 0 {
+            eprintln!("### LEAK REPORT ###");
+            self.dump_allocs(leaks);
+        }
         n
     }
 
