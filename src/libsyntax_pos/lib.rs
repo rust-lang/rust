@@ -18,6 +18,8 @@ use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_macros::HashStable_Generic;
 
 pub mod source_map;
+mod caching_source_map_view;
+pub use self::caching_source_map_view::CachingSourceMapView;
 
 pub mod edition;
 use edition::Edition;

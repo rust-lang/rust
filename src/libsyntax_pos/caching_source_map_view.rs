@@ -1,6 +1,6 @@
 use rustc_data_structures::sync::Lrc;
-use syntax::source_map::SourceMap;
-use syntax_pos::{BytePos, SourceFile};
+use crate::source_map::SourceMap;
+use crate::{BytePos, SourceFile};
 
 #[derive(Clone)]
 struct CacheEntry {
