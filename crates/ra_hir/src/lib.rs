@@ -70,7 +70,7 @@ pub use crate::{
 pub use hir_def::{
     builtin_type::BuiltinType,
     docs::Documentation,
-    nameres::{per_ns::PerNs, raw::ImportId},
+    nameres::raw::ImportId,
     path::{Path, PathKind},
     type_ref::Mutability,
 };
