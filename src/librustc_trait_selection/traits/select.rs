@@ -2696,16 +2696,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // where we can unify, because otherwise select would have
             // reported an ambiguity. (When we do find a match, also
             // record it for later.)
-            let nonmatching = util::supertraits(tcx, poly_trait_ref).take_while(|&t| {
-                match self.infcx.commit_if_ok(|_| self.match_poly_trait_ref(obligation, t)) {
-                    Ok(obligations) => {
-                        upcast_trait_ref = Some(t);
-                        nested.extend(obligations);
-                        false
-                    }
-                    Err(_) => true,
-                }
-            });
+            let nonmatching = util::supertraits_with_repetitions(tcx, poly_trait_ref)
+                .take_while(
+                    |&trait_ref| match self.infcx.commit_if_ok(
+                        |_| self.match_poly_trait_ref(obligation, trait_ref)
+                    ) {
+                        Ok(obligations) => {
+                            upcast_trait_ref = Some(trait_ref);
+                            nested.extend(obligations);
+                            false
+                        }
+                        Err(_) => true,
+                    },
+                );
 
             // Additionally, for each of the non-matching predicates that
             // we pass over, we sum up the set of number of vtable
@@ -2713,9 +2716,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // trait.
             vtable_base = nonmatching
                 // Skip 3 entries in vtable per supertrait for `(drop, size, align)` metadata.
-                .map(|trait_ref|
-                    u64::try_from(tcx.count_own_vtable_entries(trait_ref)).unwrap().checked_add(3).unwrap()
-                )
+                .map(|trait_ref| util::count_own_vtable_entries(tcx, trait_ref).checked_add(3).unwrap())
                 .sum();
         }
 

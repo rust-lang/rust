@@ -66,7 +66,8 @@ pub use self::util::{
     get_vtable_index_of_object_method, impl_item_is_final, predicate_for_trait_def, upcast_choices,
 };
 pub use self::util::{
-    supertrait_def_ids, supertraits, transitive_bounds, SupertraitDefIds, Supertraits,
+    supertraits, supertraits_with_repetitions, supertrait_def_ids, transitive_bounds, Supertraits,
+    SupertraitDefIds,
 };
 
 pub use rustc_infer::traits::*;
@@ -471,51 +472,52 @@ fn vtable_methods<'tcx>(
 ) -> &'tcx [&'tcx [Option<(DefId, SubstsRef<'tcx>)>]] {
     debug!("vtable_methods({:?})", trait_ref);
 
-    tcx.arena.alloc_from_iter(supertraits(tcx, trait_ref).map(move |trait_ref| {
-        let trait_methods = tcx
-            .associated_items(trait_ref.def_id())
-            .in_definition_order()
-            .filter(|item| item.kind == ty::AssocKind::Fn);
+    tcx.arena.alloc_from_iter(supertraits_with_repetitions(tcx, trait_ref)
+        .map(move |trait_ref| {
+            let trait_methods = tcx
+                .associated_items(trait_ref.def_id())
+                .in_definition_order()
+                .filter(|item| item.kind == ty::AssocKind::Fn);
 
-        // Now, list each method's `DefId` and `InternalSubsts` (for within its trait).
-        // If the method can never be called from this object, produce `None`.
-        &*tcx.arena.alloc_from_iter(trait_methods.map(move |trait_method| {
-            debug!("vtable_methods: trait_method={:?}", trait_method);
-            let def_id = trait_method.def_id;
+            // Now, list each method's `DefId` and `InternalSubsts` (for within its trait).
+            // If the method can never be called from this object, produce `None`.
+            &*tcx.arena.alloc_from_iter(trait_methods.map(move |trait_method| {
+                debug!("vtable_methods: trait_method={:?}", trait_method);
+                let def_id = trait_method.def_id;
 
-            // Some methods cannot be called on an object; skip those.
-            if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
-                debug!("vtable_methods: not vtable safe");
-                return None;
-            }
+                // Some methods cannot be called on an object; skip those.
+                if !is_vtable_safe_method(tcx, trait_ref.def_id(), &trait_method) {
+                    debug!("vtable_methods: not vtable safe");
+                    return None;
+                }
 
-            // The method may have some early-bound lifetimes; add regions for those.
-            let substs = trait_ref.map_bound(|trait_ref| {
-                InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
-                    GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
-                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
-                        trait_ref.substs[param.index as usize]
-                    }
-                })
-            });
+                // The method may have some early-bound lifetimes; add regions for those.
+                let substs = trait_ref.map_bound(|trait_ref| {
+                    InternalSubsts::for_item(tcx, def_id, |param, _| match param.kind {
+                        GenericParamDefKind::Lifetime => tcx.lifetimes.re_erased.into(),
+                        GenericParamDefKind::Type { .. } | GenericParamDefKind::Const => {
+                            trait_ref.substs[param.index as usize]
+                        }
+                    })
+                });
 
-            // The trait type may have higher-ranked lifetimes in it;
-            // erase them if they appear, so that we get the type
-            // at some particular call site.
-            let substs =
-                tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &substs);
+                // The trait type may have higher-ranked lifetimes in it;
+                // erase them if they appear, so that we get the type
+                // at some particular call site.
+                let substs =
+                    tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &substs);
 
-            // It's possible that the method relies on where-clauses that
-            // do not hold for this particular set of type parameters.
-            // Note that this method could then never be called, so we
-            // do not want to try and codegen it, in that case (see #23435).
-            let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
-            if !normalize_and_test_predicates(tcx, predicates.predicates) {
-                debug!("vtable_methods: predicates do not hold");
-                return None;
-            }
+                // It's possible that the method relies on where-clauses that
+                // do not hold for this particular set of type parameters.
+                // Note that this method could then never be called, so we
+                // do not want to try and codegen it, in that case (see #23435).
+                let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs);
+                if !normalize_and_test_predicates(tcx, predicates.predicates) {
+                    debug!("vtable_methods: predicates do not hold");
+                    return None;
+                }
 
-            Some((def_id, substs))
+                Some((def_id, substs))
         }))
     }))
 }

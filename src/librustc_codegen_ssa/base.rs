@@ -38,8 +38,8 @@ use rustc_middle::middle::cstore::EncodedMetadata;
 use rustc_middle::middle::cstore::{self, LinkagePreference};
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
+use rustc_middle::traits::Vtable;
 use rustc_middle::ty::layout::{self, HasTyCtxt, TyAndLayout};
-use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
@@ -166,7 +166,8 @@ pub fn unsized_info<'tcx, 'a, Bx: BuilderMethods<'a, 'tcx>>(
             let target_ptr = if let Some(target_trait_ref) = target_data.principal() {
                 // Find the offset of the supertrait's vtable within the subtrait (parent) vtable.
                 let trait_ref = target_trait_ref.with_self_ty(tcx, source);
-                let vtable = tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref));
+                let vtable = tcx.codegen_fulfill_obligation((ty::ParamEnv::reveal_all(), trait_ref))
+                    .unwrap_or_else(|| bug!("unsized_info: no vtable found"));
                 let offset = match vtable {
                     Vtable::VtableObject(ref data) => data.vtable_base,
                     // HACK(alexreg): slightly dubious solution to ICE in
@@ -257,7 +258,7 @@ pub fn unsize_thin_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 pub fn coerce_ptr_unsized<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     op: OperandRef<'tcx, Bx::Value>,
-    dst: TyLayout<'tcx>,
+    dst: TyAndLayout<'tcx>,
 ) -> OperandValue<Bx::Value> {
     assert!(bx.cx().is_backend_scalar_pair(dst));
     let src = op.layout;
@@ -341,7 +342,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Ref(..), &ty::Ref(..) | &ty::RawPtr(..)) | (&ty::RawPtr(..), &ty::RawPtr(..)) => {
             let src_op = bx.load_operand(src);
             let dst_op = coerce_ptr_unsized(bx, src_op, dst.layout);
-            dst_op.store(bx, dst);s
+            dst_op.store(bx, dst);
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);

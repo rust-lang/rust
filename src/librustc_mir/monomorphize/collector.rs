@@ -889,6 +889,8 @@ fn create_mono_items_for_vtable_methods<'tcx>(
             // Walk all methods of the trait, including those of its supertraits.
             let methods = tcx.vtable_methods(poly_trait_ref);
             let methods = methods
+                .into_iter()
+                .flat_map(|s| *s)
                 .cloned()
                 .filter_map(|method| method)
                 .map(|(def_id, substs)| {

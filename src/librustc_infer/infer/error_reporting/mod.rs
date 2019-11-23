@@ -1681,10 +1681,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         exp_found: &ty::error::ExpectedFound<DefId>,
         diag: &mut DiagnosticBuilder<'tcx>,
     ) {
-        use rustc::ty::{Binder, TraitRef};
+        use ty::{Binder, TraitRef};
 
         let trait_ref = Binder::bind(TraitRef::identity(self.tcx, exp_found.found));
-        let supertraits = crate::traits::supertraits(self.tcx, trait_ref);
+        let supertraits = crate::traits::util::supertraits(self.tcx, trait_ref);
         if supertraits.into_iter().any(|trait_ref| trait_ref.def_id() == exp_found.expected) {
             diag.note("add `#![feature(trait_upcasting)]` to the crate attributes to enable");
         }

@@ -61,7 +61,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ptr_size * (
                 methods
                     .iter()
-                    .map(|l| u64::try_from(methods.len()).unwrap().checked_add(3).unwrap())
+                    .map(|l| u64::try_from(l.len()).unwrap().checked_add(3).unwrap())
                     .sum()
             ),
             ptr_align,
