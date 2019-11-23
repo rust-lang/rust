@@ -144,7 +144,7 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("extern", |o| {
             o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")
         }),
-        stable("extern-private", |o| {
+        unstable("extern-private", |o| {
             o.optmulti("", "extern-private",
                        "pass an --extern to rustc (compatibility only)", "NAME=PATH")
         }),
