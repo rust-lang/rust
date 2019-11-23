@@ -47,9 +47,9 @@ pub struct CrateLoader<'a> {
 fn dump_crates(cstore: &CStore) {
     info!("resolved crates:");
     cstore.iter_crate_data(|cnum, data| {
-        info!("  name: {}", data.root.name());
+        info!("  name: {}", data.name());
         info!("  cnum: {}", cnum);
-        info!("  hash: {}", data.root.hash());
+        info!("  hash: {}", data.hash());
         info!("  reqd: {:?}", data.dep_kind());
         let CrateSource { dylib, rlib, rmeta } = data.source();
         dylib.as_ref().map(|dl| info!("  dylib: {}", dl.0.display()));
@@ -101,10 +101,10 @@ impl<'a> CrateLoader<'a> {
                       -> Option<CrateNum> {
         let mut ret = None;
         self.cstore.iter_crate_data(|cnum, data| {
-            if data.root.name() != name { return }
+            if data.name() != name { return }
 
             match hash {
-                Some(hash) if *hash == data.root.hash() => { ret = Some(cnum); return }
+                Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }
                 Some(..) => return,
                 None => {}
             }
@@ -164,9 +164,9 @@ impl<'a> CrateLoader<'a> {
 
         // Check for conflicts with any crate loaded so far
         self.cstore.iter_crate_data(|_, other| {
-            if other.root.name() == root.name() && // same crate-name
-               other.root.disambiguator() == root.disambiguator() &&  // same crate-disambiguator
-               other.root.hash() != root.hash() { // but different SVH
+            if other.name() == root.name() && // same crate-name
+               other.disambiguator() == root.disambiguator() &&  // same crate-disambiguator
+               other.hash() != root.hash() { // but different SVH
                 span_fatal!(self.sess, span, E0523,
                         "found two different crates with name `{}` that are \
                          not distinguished by differing `-C metadata`. This \
@@ -350,7 +350,7 @@ impl<'a> CrateLoader<'a> {
         match result {
             (LoadResult::Previous(cnum), None) => {
                 let data = self.cstore.get_crate_data(cnum);
-                if data.root.is_proc_macro_crate() {
+                if data.is_proc_macro_crate() {
                     dep_kind = DepKind::UnexportedMacrosOnly;
                 }
                 data.update_dep_kind(|data_dep_kind| cmp::max(data_dep_kind, dep_kind));
@@ -378,7 +378,7 @@ impl<'a> CrateLoader<'a> {
         if locator.triple == self.sess.opts.target_triple {
             let mut result = LoadResult::Loaded(library);
             self.cstore.iter_crate_data(|cnum, data| {
-                if data.root.name() == root.name() && root.hash() == data.root.hash() {
+                if data.name() == root.name() && root.hash() == data.hash() {
                     assert!(locator.hash.is_none());
                     info!("load success, going to previous cnum: {}", cnum);
                     result = LoadResult::Previous(cnum);
@@ -621,7 +621,7 @@ impl<'a> CrateLoader<'a> {
 
             let mut uses_std = false;
             self.cstore.iter_crate_data(|_, data| {
-                if data.root.name() == sym::std {
+                if data.name() == sym::std {
                     uses_std = true;
                 }
             });
@@ -731,14 +731,14 @@ impl<'a> CrateLoader<'a> {
                                             conflicts with this global \
                                             allocator in: {}",
                                            other_crate,
-                                           data.root.name()));
+                                           data.name()));
                 }
                 Some(None) => {
                     self.sess.err(&format!("the `#[global_allocator]` in this \
                                             crate conflicts with global \
-                                            allocator in: {}", data.root.name()));
+                                            allocator in: {}", data.name()));
                 }
-                None => global_allocator = Some(Some(data.root.name())),
+                None => global_allocator = Some(Some(data.name())),
             }
         });
         if global_allocator.is_some() {
@@ -786,9 +786,9 @@ impl<'a> CrateLoader<'a> {
                 self.sess.err(&format!("the crate `{}` cannot depend \
                                         on a crate that needs {}, but \
                                         it depends on `{}`",
-                                       self.cstore.get_crate_data(krate).root.name(),
+                                       self.cstore.get_crate_data(krate).name(),
                                        what,
-                                       data.root.name()));
+                                       data.name()));
             }
         }
 

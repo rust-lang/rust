@@ -66,7 +66,7 @@ crate struct CrateMetadata {
     /// lifetime is only used behind `Lazy`, and therefore acts like an
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
     /// is being used to decode those values.
-    crate root: CrateRoot<'static>,
+    root: CrateRoot<'static>,
     /// For each definition in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
     /// hashmap, which gives the reverse mapping. This allows us to
@@ -1593,6 +1593,22 @@ impl<'a, 'tcx> CrateMetadata {
 
     crate fn has_default_lib_allocator(&self) -> bool {
         self.root.has_default_lib_allocator
+    }
+
+    crate fn is_proc_macro_crate(&self) -> bool {
+        self.root.is_proc_macro_crate()
+    }
+
+    crate fn name(&self) -> Symbol {
+        self.root.name
+    }
+
+    crate fn disambiguator(&self) -> CrateDisambiguator {
+        self.root.disambiguator
+    }
+
+    crate fn hash(&self) -> Svh {
+        self.root.hash
     }
 }
 
