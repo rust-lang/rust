@@ -30,7 +30,7 @@ use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
     StackPopCleanup, LocalValue, LocalState, AllocId, Frame,
     Allocation, MemoryKind, ImmTy, Pointer, Memory, PlaceTy,
-    Operand as InterpOperand,
+    Operand as InterpOperand, intern_const_alloc_recursive,
 };
 use crate::const_eval::error_to_const_error;
 use crate::transform::{MirPass, MirSource};
@@ -655,14 +655,27 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return false;
         }
 
-        match *op {
+        let is_scalar = match *op {
             interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Scalar(s))) =>
                 s.is_bits(),
             interpret::Operand::Immediate(Immediate::ScalarPair(ScalarMaybeUndef::Scalar(l),
                                                                 ScalarMaybeUndef::Scalar(r))) =>
                 l.is_bits() && r.is_bits(),
             _ => false
+        };
+
+        if let interpret::Operand::Indirect(_) = *op {
+            if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+                intern_const_alloc_recursive(
+                    &mut self.ecx,
+                    None,
+                    op.assert_mem_place()
+                ).expect("failed to intern alloc");
+                return true;
+            }
         }
+
+        return is_scalar;
     }
 }
 
