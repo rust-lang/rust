@@ -16,9 +16,10 @@ use crate::{
     db::DefDatabase,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
+        raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
+    per_ns::PerNs,
     AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplId,
     Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
     StructOrUnionId, TraitId, TypeAliasLoc, UnionId,

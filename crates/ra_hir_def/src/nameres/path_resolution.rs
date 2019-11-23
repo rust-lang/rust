@@ -16,8 +16,9 @@ use test_utils::tested_by;
 
 use crate::{
     db::DefDatabase,
-    nameres::{per_ns::PerNs, CrateDefMap},
+    nameres::CrateDefMap,
     path::{Path, PathKind},
+    per_ns::PerNs,
     AdtId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 

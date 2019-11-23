@@ -47,8 +47,7 @@
 //! path and, upon success, we run macro expansion and "collect module" phase on
 //! the result
 
-pub mod raw;
-pub mod per_ns;
+pub(crate) mod raw;
 mod collector;
 mod mod_resolution;
 mod path_resolution;
@@ -72,8 +71,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
-    nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs},
+    nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::Path,
+    per_ns::PerNs,
     AstId, FunctionId, ImplId, LocalImportId, LocalModuleId, ModuleDefId, ModuleId, TraitId,
 };
 

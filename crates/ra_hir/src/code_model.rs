@@ -9,7 +9,7 @@ use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
-    nameres::per_ns::PerNs,
+    per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
     ContainerId, HasModule, ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId,

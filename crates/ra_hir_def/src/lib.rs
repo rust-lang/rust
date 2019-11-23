@@ -21,16 +21,15 @@ pub mod resolver;
 pub mod data;
 pub mod lang_item;
 pub mod docs;
+pub mod per_ns;
 
 mod trace;
+mod nameres;
 
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]
 mod marks;
-
-// FIXME: this should be private
-pub mod nameres;
 
 use std::hash::{Hash, Hasher};
 
