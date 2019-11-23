@@ -1241,7 +1241,7 @@ fn resolve_local<'tcx>(
         blk_id: Option<Scope>,
     ) {
         match expr.kind {
-            hir::ExprKind::AddrOf(_, ref subexpr) => {
+            hir::ExprKind::AddrOf(_, _, ref subexpr) => {
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 record_rvalue_scope(visitor, &subexpr, blk_id);
             }
@@ -1301,7 +1301,7 @@ fn resolve_local<'tcx>(
             visitor.scope_tree.record_rvalue_scope(expr.hir_id.local_id, blk_scope);
 
             match expr.kind {
-                hir::ExprKind::AddrOf(_, ref subexpr) |
+                hir::ExprKind::AddrOf(_, _, ref subexpr) |
                 hir::ExprKind::Unary(hir::UnDeref, ref subexpr) |
                 hir::ExprKind::Field(ref subexpr, _) |
                 hir::ExprKind::Index(ref subexpr, _) => {

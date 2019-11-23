@@ -645,7 +645,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionCtxt<'a, 'tcx> {
                 intravisit::walk_expr(self, expr);
             }
 
-            hir::ExprKind::AddrOf(m, ref base) => {
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, m, ref base) => {
                 self.link_addr_of(expr, m, &base);
 
                 // Require that when you write a `&expr` expression, the

@@ -294,16 +294,12 @@ impl<'a> State<'a> {
             }
             hir::TyKind::Ptr(ref mt) => {
                 self.s.word("*");
-                match mt.mutbl {
-                    hir::Mutability::Mutable => self.word_nbsp("mut"),
-                    hir::Mutability::Immutable => self.word_nbsp("const"),
-                }
-                self.print_type(&mt.ty);
+                self.print_mt(mt, true);
             }
             hir::TyKind::Rptr(ref lifetime, ref mt) => {
                 self.s.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt);
+                self.print_mt(mt, false);
             }
             hir::TyKind::Never => {
                 self.s.word("!");
@@ -1178,11 +1174,18 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_addr_of(&mut self,
+                          kind: hir::BorrowKind,
                           mutability: hir::Mutability,
                           expr: &hir::Expr)
-                          {
+    {
         self.s.word("&");
-        self.print_mutability(mutability);
+        match kind {
+            hir::BorrowKind::Ref => self.print_mutability(mutability, false),
+            hir::BorrowKind::Raw => {
+                self.word_nbsp("raw");
+                self.print_mutability(mutability, true);
+            }
+        }
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
@@ -1225,8 +1228,8 @@ impl<'a> State<'a> {
             hir::ExprKind::Unary(op, ref expr) => {
                 self.print_expr_unary(op, &expr);
             }
-            hir::ExprKind::AddrOf(m, ref expr) => {
-                self.print_expr_addr_of(m, &expr);
+            hir::ExprKind::AddrOf(k, m, ref expr) => {
+                self.print_expr_addr_of(k, m, &expr);
             }
             hir::ExprKind::Lit(ref lit) => {
                 self.print_literal(&lit);
@@ -1629,11 +1632,11 @@ impl<'a> State<'a> {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Immutable);
+                        self.print_mutability(hir::Mutability::Immutable, false);
                     }
                     hir::BindingAnnotation::RefMut => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::Mutability::Mutable);
+                        self.print_mutability(hir::Mutability::Mutable, false);
                     }
                     hir::BindingAnnotation::Unannotated => {}
                     hir::BindingAnnotation::Mutable => {
@@ -2060,15 +2063,15 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_mutability(&mut self, mutbl: hir::Mutability) {
+    pub fn print_mutability(&mut self, mutbl: hir::Mutability, print_const: bool) {
         match mutbl {
             hir::Mutability::Mutable => self.word_nbsp("mut"),
-            hir::Mutability::Immutable => {},
+            hir::Mutability::Immutable => if print_const { self.word_nbsp("const") },
         }
     }
 
-    pub fn print_mt(&mut self, mt: &hir::MutTy) {
-        self.print_mutability(mt.mutbl);
+    pub fn print_mt(&mut self, mt: &hir::MutTy, print_const: bool) {
+        self.print_mutability(mt.mutbl, print_const);
         self.print_type(&mt.ty)
     }
 

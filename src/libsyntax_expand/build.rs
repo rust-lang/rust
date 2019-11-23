@@ -270,7 +270,7 @@ impl<'a> ExtCtxt<'a> {
     }
 
     pub fn expr_addr_of(&self, sp: Span, e: P<ast::Expr>) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::AddrOf(ast::Mutability::Immutable, e))
+        self.expr(sp, ast::ExprKind::AddrOf(ast::BorrowKind::Ref, ast::Mutability::Immutable, e))
     }
 
     pub fn expr_call(

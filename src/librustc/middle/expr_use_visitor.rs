@@ -276,7 +276,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprKind::AddrOf(m, ref base) => {   // &base
+            hir::ExprKind::AddrOf(_, m, ref base) => {   // &base
                 // make sure that the thing we are pointing out stays valid
                 // for the lifetime `scope_r` of the resulting ptr:
                 let bk = ty::BorrowKind::from_mutbl(m);

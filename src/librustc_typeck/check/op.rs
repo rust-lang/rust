@@ -33,7 +33,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_ty
         };
 
-        if !lhs_expr.is_place_expr() {
+        if !lhs_expr.is_syntactic_place_expr() {
             struct_span_err!(
                 self.tcx.sess, lhs_expr.span,
                 E0067, "invalid left-hand side expression")

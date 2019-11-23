@@ -1128,7 +1128,7 @@ pub fn noop_visit_expr<T: MutVisitor>(Expr { kind, id, span, attrs }: &mut Expr,
             vis.visit_expr(expr);
             vis.visit_ty(ty);
         }
-        ExprKind::AddrOf(_m, ohs) => vis.visit_expr(ohs),
+        ExprKind::AddrOf(_, _, ohs) => vis.visit_expr(ohs),
         ExprKind::Let(pat, scrutinee) => {
             vis.visit_pat(pat);
             vis.visit_expr(scrutinee);

@@ -1174,7 +1174,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Box(ref e) |
-            hir::ExprKind::AddrOf(_, ref e) |
+            hir::ExprKind::AddrOf(_, _, ref e) |
             hir::ExprKind::Cast(ref e, _) |
             hir::ExprKind::Type(ref e, _) |
             hir::ExprKind::DropTemps(ref e) |

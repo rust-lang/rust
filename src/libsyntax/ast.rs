@@ -754,6 +754,21 @@ impl Mutability {
     }
 }
 
+/// The kind of borrow in an `AddrOf` expression,
+/// e.g., `&place` or `&raw const place`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(RustcEncodable, RustcDecodable, HashStable_Generic)]
+pub enum BorrowKind {
+    /// A raw borrow, `&raw const $expr` or `&raw mut $expr`.
+    /// The resulting type is either `*const T` or `*mut T`
+    /// where `T = typeof($expr)`.
+    Ref,
+    /// A normal borrow, `&$expr` or `&mut $expr`.
+    /// The resulting type is either `&'a T` or `&'a mut T`
+    /// where `T = typeof($expr)` and `'a` is some lifetime.
+    Raw,
+}
+
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BinOpKind {
     /// The `+` operator (addition)
@@ -1071,7 +1086,7 @@ impl Expr {
 
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
 
-            ExprKind::AddrOf(mutbl, expr) => expr
+            ExprKind::AddrOf(BorrowKind::Ref, mutbl, expr) => expr
                 .to_ty()
                 .map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?,
 
@@ -1262,8 +1277,8 @@ pub enum ExprKind {
     /// Optionally "qualified" (e.g., `<Vec<T> as SomeTrait>::SomeType`).
     Path(Option<QSelf>, Path),
 
-    /// A referencing operation (`&a` or `&mut a`).
-    AddrOf(Mutability, P<Expr>),
+    /// A referencing operation (`&a`, `&mut a`, `&raw const a` or `&raw mut a`).
+    AddrOf(BorrowKind, Mutability, P<Expr>),
     /// A `break`, with an optional label to break, and an optional expression.
     Break(Option<Label>, Option<P<Expr>>),
     /// A `continue`, with an optional label.
