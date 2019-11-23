@@ -68,6 +68,7 @@ use rustc_error_codes::*;
 
 type Res = def::Res<NodeId>;
 
+mod def_collector;
 mod diagnostics;
 mod late;
 mod macros;

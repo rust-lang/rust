@@ -1,26 +1,31 @@
-use crate::hir::map::definitions::*;
-use crate::hir::def_id::DefIndex;
-
+use log::debug;
+use rustc::hir::map::definitions::*;
+use rustc::hir::def_id::DefIndex;
 use syntax::ast::*;
 use syntax::visit;
 use syntax::symbol::{kw, sym};
 use syntax::token::{self, Token};
+use syntax_expand::expand::AstFragment;
 use syntax_pos::hygiene::ExpnId;
 use syntax_pos::Span;
 
+crate fn collect_definitions(
+    definitions: &mut Definitions,
+    fragment: &AstFragment,
+    expansion: ExpnId,
+) {
+    let parent_def = definitions.invocation_parent(expansion);
+    fragment.visit_with(&mut DefCollector { definitions, parent_def, expansion });
+}
+
 /// Creates `DefId`s for nodes in the AST.
-pub struct DefCollector<'a> {
+struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: DefIndex,
     expansion: ExpnId,
 }
 
 impl<'a> DefCollector<'a> {
-    pub fn new(definitions: &'a mut Definitions, expansion: ExpnId) -> Self {
-        let parent_def = definitions.invocation_parent(expansion);
-        DefCollector { definitions, parent_def, expansion }
-    }
-
     fn create_def(&mut self,
                   node_id: NodeId,
                   data: DefPathData,
@@ -82,7 +87,7 @@ impl<'a> DefCollector<'a> {
                 .or_else(|| index.map(sym::integer))
                 .unwrap_or_else(|| {
                     let node_id = NodeId::placeholder_from_expn_id(self.expansion);
-                    sym::integer(self.definitions.placeholder_field_indices[&node_id])
+                    sym::integer(self.definitions.placeholder_field_index(node_id))
                 });
             let def = self.create_def(field.id, DefPathData::ValueNs(name), field.span);
             self.with_parent(def, |this| visit::walk_struct_field(this, field));
@@ -186,7 +191,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         for (index, field) in data.fields().iter().enumerate() {
             self.collect_field(field, Some(index));
             if field.is_placeholder && field.ident.is_none() {
-                self.definitions.placeholder_field_indices.insert(field.id, index);
+                self.definitions.set_placeholder_field_index(field.id, index);
             }
         }
     }
