@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase};
-use ra_syntax::ast;
+use ra_syntax::{ast, SmolStr};
 
 use crate::{
     adt::{EnumData, StructData},
@@ -11,12 +11,13 @@ use crate::{
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{ConstData, FunctionData, ImplData, TraitData, TypeAliasData},
     generics::GenericParams,
+    lang_item::{LangItemTarget, LangItems},
     nameres::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    AttrDefId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, StaticId,
-    StructOrUnionId, TraitId, TypeAliasId,
+    AttrDefId, ConstId, DefWithBodyId, EnumId, FunctionId, GenericDefId, ImplId, ItemLoc, ModuleId,
+    StaticId, StructOrUnionId, TraitId, TypeAliasId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -91,4 +92,13 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(Attrs::attrs_query)]
     fn attrs(&self, def: AttrDefId) -> Attrs;
+
+    #[salsa::invoke(LangItems::module_lang_items_query)]
+    fn module_lang_items(&self, module: ModuleId) -> Option<Arc<LangItems>>;
+
+    #[salsa::invoke(LangItems::crate_lang_items_query)]
+    fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
+
+    #[salsa::invoke(LangItems::lang_item_query)]
+    fn lang_item(&self, start_crate: CrateId, item: SmolStr) -> Option<LangItemTarget>;
 }

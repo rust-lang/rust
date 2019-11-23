@@ -35,7 +35,6 @@ mod ids;
 mod ty;
 mod impl_block;
 mod expr;
-mod lang_item;
 pub mod diagnostics;
 mod util;
 

@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
-use hir_def::resolver::Resolver;
+use hir_def::{lang_item::LangItemTarget, resolver::Resolver, AstItemDef};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -91,34 +91,43 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
     // Types like slice can have inherent impls in several crates, (core and alloc).
     // The corresponding impls are marked with lang items, so we can use them to find the required crates.
     macro_rules! lang_item_crate {
-        ($db:expr, $cur_crate:expr, $($name:expr),+ $(,)?) => {{
-            let mut v = ArrayVec::<[Crate; 2]>::new();
+        ($($name:expr),+ $(,)?) => {{
+            let mut v = ArrayVec::<[LangItemTarget; 2]>::new();
             $(
-                v.extend($db.lang_item($cur_crate, $name.into()).and_then(|item| item.krate($db)));
+                v.extend(db.lang_item(cur_crate.crate_id, $name.into()));
             )+
-            Some(v)
+            v
         }};
     }
 
-    match ty {
+    let lang_item_targets = match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
-            TypeCtor::Adt(def_id) => Some(std::iter::once(def_id.krate(db)?).collect()),
-            TypeCtor::Bool => lang_item_crate!(db, cur_crate, "bool"),
-            TypeCtor::Char => lang_item_crate!(db, cur_crate, "char"),
+            TypeCtor::Adt(def_id) => return Some(std::iter::once(def_id.krate(db)?).collect()),
+            TypeCtor::Bool => lang_item_crate!("bool"),
+            TypeCtor::Char => lang_item_crate!("char"),
             TypeCtor::Float(Uncertain::Known(f)) => match f.bitness {
                 // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
-                FloatBitness::X32 => lang_item_crate!(db, cur_crate, "f32", "f32_runtime"),
-                FloatBitness::X64 => lang_item_crate!(db, cur_crate, "f64", "f64_runtime"),
+                FloatBitness::X32 => lang_item_crate!("f32", "f32_runtime"),
+                FloatBitness::X64 => lang_item_crate!("f64", "f64_runtime"),
             },
-            TypeCtor::Int(Uncertain::Known(i)) => lang_item_crate!(db, cur_crate, i.ty_to_string()),
-            TypeCtor::Str => lang_item_crate!(db, cur_crate, "str_alloc", "str"),
-            TypeCtor::Slice => lang_item_crate!(db, cur_crate, "slice_alloc", "slice"),
-            TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!(db, cur_crate, "const_ptr"),
-            TypeCtor::RawPtr(Mutability::Mut) => lang_item_crate!(db, cur_crate, "mut_ptr"),
-            _ => None,
+            TypeCtor::Int(Uncertain::Known(i)) => lang_item_crate!(i.ty_to_string()),
+            TypeCtor::Str => lang_item_crate!("str_alloc", "str"),
+            TypeCtor::Slice => lang_item_crate!("slice_alloc", "slice"),
+            TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!("const_ptr"),
+            TypeCtor::RawPtr(Mutability::Mut) => lang_item_crate!("mut_ptr"),
+            _ => return None,
         },
-        _ => None,
-    }
+        _ => return None,
+    };
+    let res = lang_item_targets
+        .into_iter()
+        .filter_map(|it| match it {
+            LangItemTarget::ImplBlockId(it) => Some(it),
+            _ => None,
+        })
+        .map(|it| it.module(db).krate.into())
+        .collect();
+    Some(res)
 }
 
 /// Look up the method with the given name, returning the actual autoderefed
