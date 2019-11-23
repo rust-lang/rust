@@ -616,6 +616,7 @@ impl Step for DebuggerScripts {
             cp_debugger_script("natvis/intrinsic.natvis");
             cp_debugger_script("natvis/liballoc.natvis");
             cp_debugger_script("natvis/libcore.natvis");
+            cp_debugger_script("natvis/libstd.natvis");
         } else {
             cp_debugger_script("debugger_pretty_printers_common.py");
 
