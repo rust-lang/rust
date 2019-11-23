@@ -8,7 +8,7 @@ use hir_expand::name::{self, AsName, Name};
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
-    db::DefDatabase2,
+    db::DefDatabase,
     type_ref::{TypeBound, TypeRef},
     AdtId, AstItemDef, ContainerId, GenericDefId, HasSource, Lookup,
 };
@@ -42,7 +42,7 @@ pub struct WherePredicate {
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
         let parent_generics = parent_generic_def(db, def).map(|it| db.generic_params(it));
@@ -50,7 +50,7 @@ impl GenericParams {
     }
 
     fn new(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         def: GenericDefId,
         parent_params: Option<Arc<GenericParams>>,
     ) -> GenericParams {
@@ -168,7 +168,7 @@ impl GenericParams {
     }
 }
 
-fn parent_generic_def(db: &impl DefDatabase2, def: GenericDefId) -> Option<GenericDefId> {
+fn parent_generic_def(db: &impl DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
     let container = match def {
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,

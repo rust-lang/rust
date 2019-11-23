@@ -1,3 +1,5 @@
+//! XXX: This does not work at the moment.
+//!
 //! printf debugging infrastructure for rust-analyzer.
 //!
 //! When you print a hir type, like a module, using `eprintln!("{:?}", module)`,

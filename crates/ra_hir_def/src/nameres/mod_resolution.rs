@@ -3,7 +3,7 @@ use hir_expand::name::Name;
 use ra_db::{FileId, RelativePathBuf};
 use ra_syntax::SmolStr;
 
-use crate::{db::DefDatabase2, HirFileId};
+use crate::{db::DefDatabase, HirFileId};
 
 #[derive(Clone, Debug)]
 pub(super) struct ModDir {
@@ -40,7 +40,7 @@ impl ModDir {
 
     pub(super) fn resolve_declaration(
         &self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         file_id: HirFileId,
         name: &Name,
         attr_path: Option<&SmolStr>,

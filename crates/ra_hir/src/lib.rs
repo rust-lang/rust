@@ -50,9 +50,8 @@ mod marks;
 
 pub use crate::{
     code_model::{
-        docs::{DocDef, Docs, Documentation},
         src::{HasBodySource, HasSource},
-        Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency, DefWithBody, Enum,
+        Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency, DefWithBody, Docs, Enum,
         EnumVariant, FieldSource, Function, GenericDef, GenericParam, HasAttrs, HasBody, ImplBlock,
         Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField,
         Trait, TypeAlias, Union, VariantDef,
@@ -70,6 +69,7 @@ pub use crate::{
 
 pub use hir_def::{
     builtin_type::BuiltinType,
+    docs::Documentation,
     nameres::{per_ns::PerNs, raw::ImportId},
     path::{Path, PathKind},
     type_ref::Mutability,

@@ -22,7 +22,6 @@ use crate::{
     hir::db::InternDatabaseStorage,
     hir::db::AstDatabaseStorage,
     hir::db::DefDatabaseStorage,
-    hir::db::DefDatabase2Storage,
     hir::db::HirDatabaseStorage
 )]
 #[derive(Debug)]

@@ -13,7 +13,7 @@ use test_utils::tested_by;
 
 use crate::{
     attr::Attrs,
-    db::DefDatabase2,
+    db::DefDatabase,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
         per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
@@ -24,7 +24,7 @@ use crate::{
     StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
 };
 
-pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> CrateDefMap {
+pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     let crate_graph = db.crate_graph();
 
     // populate external prelude
@@ -108,7 +108,7 @@ struct DefCollector<'a, DB> {
 
 impl<DB> DefCollector<'_, DB>
 where
-    DB: DefDatabase2,
+    DB: DefDatabase,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
@@ -530,7 +530,7 @@ struct ModCollector<'a, D> {
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<'_, DB>>
 where
-    DB: DefDatabase2,
+    DB: DefDatabase,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         // Note: don't assert that inserted value is fresh: it's simply not true
@@ -798,12 +798,12 @@ mod tests {
     use ra_db::{fixture::WithFixture, SourceDatabase};
     use rustc_hash::FxHashSet;
 
-    use crate::{db::DefDatabase2, test_db::TestDB};
+    use crate::{db::DefDatabase, test_db::TestDB};
 
     use super::*;
 
     fn do_collect_defs(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         def_map: CrateDefMap,
         monitor: MacroStackMonitor,
     ) -> CrateDefMap {

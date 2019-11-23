@@ -9,7 +9,7 @@ use hir_expand::{
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    db::DefDatabase2,
+    db::DefDatabase,
     type_ref::{Mutability, TypeRef},
     AssocItemId, AstItemDef, ConstId, ConstLoc, ContainerId, FunctionId, FunctionLoc, HasSource,
     ImplId, Intern, Lookup, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
@@ -26,7 +26,7 @@ pub struct FunctionData {
 }
 
 impl FunctionData {
-    pub(crate) fn fn_data_query(db: &impl DefDatabase2, func: FunctionId) -> Arc<FunctionData> {
+    pub(crate) fn fn_data_query(db: &impl DefDatabase, func: FunctionId) -> Arc<FunctionData> {
         let src = func.lookup(db).source(db);
         let name = src.value.name().map(|n| n.as_name()).unwrap_or_else(Name::missing);
         let mut params = Vec::new();
@@ -74,7 +74,7 @@ pub struct TypeAliasData {
 
 impl TypeAliasData {
     pub(crate) fn type_alias_data_query(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         typ: TypeAliasId,
     ) -> Arc<TypeAliasData> {
         let node = typ.lookup(db).source(db).value;
@@ -92,7 +92,7 @@ pub struct TraitData {
 }
 
 impl TraitData {
-    pub(crate) fn trait_data_query(db: &impl DefDatabase2, tr: TraitId) -> Arc<TraitData> {
+    pub(crate) fn trait_data_query(db: &impl DefDatabase, tr: TraitId) -> Arc<TraitData> {
         let src = tr.source(db);
         let name = src.value.name().map(|n| n.as_name());
         let auto = src.value.is_auto();
@@ -144,7 +144,7 @@ pub struct ImplData {
 }
 
 impl ImplData {
-    pub(crate) fn impl_data_query(db: &impl DefDatabase2, id: ImplId) -> Arc<ImplData> {
+    pub(crate) fn impl_data_query(db: &impl DefDatabase, id: ImplId) -> Arc<ImplData> {
         let src = id.source(db);
         let items = db.ast_id_map(src.file_id);
 
@@ -198,12 +198,12 @@ pub struct ConstData {
 }
 
 impl ConstData {
-    pub(crate) fn const_data_query(db: &impl DefDatabase2, konst: ConstId) -> Arc<ConstData> {
+    pub(crate) fn const_data_query(db: &impl DefDatabase, konst: ConstId) -> Arc<ConstData> {
         let node = konst.lookup(db).source(db).value;
         const_data_for(&node)
     }
 
-    pub(crate) fn static_data_query(db: &impl DefDatabase2, konst: StaticId) -> Arc<ConstData> {
+    pub(crate) fn static_data_query(db: &impl DefDatabase, konst: StaticId) -> Arc<ConstData> {
         let node = konst.source(db).value;
         const_data_for(&node)
     }

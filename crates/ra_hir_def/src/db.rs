@@ -10,6 +10,7 @@ use crate::{
     attr::Attrs,
     body::{scope::ExprScopes, Body, BodySourceMap},
     data::{ConstData, FunctionData, ImplData, TraitData, TypeAliasData},
+    docs::Documentation,
     generics::GenericParams,
     lang_item::{LangItemTarget, LangItems},
     nameres::{
@@ -40,8 +41,8 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> crate::ImplId;
 }
 
-#[salsa::query_group(DefDatabase2Storage)]
-pub trait DefDatabase2: InternDatabase + AstDatabase {
+#[salsa::query_group(DefDatabaseStorage)]
+pub trait DefDatabase: InternDatabase + AstDatabase {
     #[salsa::invoke(RawItems::raw_items_with_source_map_query)]
     fn raw_items_with_source_map(
         &self,
@@ -101,4 +102,9 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(LangItems::lang_item_query)]
     fn lang_item(&self, start_crate: CrateId, item: SmolStr) -> Option<LangItemTarget>;
+
+    // FIXME(https://github.com/rust-analyzer/rust-analyzer/issues/2148#issuecomment-550519102)
+    // Remove this query completely, in favor of `Attrs::docs` method
+    #[salsa::invoke(Documentation::documentation_query)]
+    fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
 }
