@@ -1,4 +1,6 @@
-use crate::utils::{if_sequence, parent_node_is_if_expr, span_help_and_lint, SpanlessEq};
+use crate::utils::{
+    get_trait_def_id, if_sequence, implements_trait, parent_node_is_if_expr, paths, span_help_and_lint, SpanlessEq,
+};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -82,6 +84,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ComparisonChain {
                 if (!spanless_eq.eq_expr(lhs1, lhs2) || !spanless_eq.eq_expr(rhs1, rhs2))
                     && (!spanless_eq.eq_expr(lhs1, rhs2) || !spanless_eq.eq_expr(rhs1, lhs2))
                 {
+                    return;
+                }
+
+                // Check that the type being compared implements `core::cmp::Ord`
+                let ty = cx.tables.expr_ty(lhs1);
+                let is_ord = get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]));
+
+                if !is_ord {
                     return;
                 }
             } else {
