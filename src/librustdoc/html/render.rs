@@ -546,7 +546,8 @@ fn write_shared(
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
-    let _lock = flock::Lock::panicking_new(&cx.dst.join(".lock"), true, true, true);
+    let lock_file = cx.dst.join(".lock");
+    let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
     // Add all the static files. These may already exist, but we just
     // overwrite them anyway to make sure that they're fresh and up-to-date.
