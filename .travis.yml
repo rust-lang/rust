@@ -61,9 +61,8 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/cargo
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    # FIXME: Output too large
-    # - env: INTEGRATION=rust-lang-nursery/chalk
-    #   if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
+    - env: INTEGRATION=rust-lang/chalk
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=Geal/nom
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/rustfmt
