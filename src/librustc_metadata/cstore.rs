@@ -5,7 +5,7 @@ use crate::rmeta::CrateMetadata;
 
 use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
-use rustc::hir::def_id::CrateNum;
+use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use syntax::ast;
 use syntax::edition::Edition;
 use syntax::expand::allocator::AllocatorKind;
@@ -55,45 +55,40 @@ impl CStore {
         self.metas[cnum] = Some(Lrc::new(data));
     }
 
-    crate fn iter_crate_data<I>(&self, mut i: I)
-        where I: FnMut(CrateNum, &CrateMetadata)
-    {
-        for (k, v) in self.metas.iter_enumerated() {
-            if let &Some(ref v) = v {
-                i(k, v);
+    crate fn iter_crate_data(&self, mut f: impl FnMut(CrateNum, &CrateMetadata)) {
+        for (cnum, data) in self.metas.iter_enumerated() {
+            if let Some(data) = data {
+                f(cnum, data);
             }
         }
     }
 
-    crate fn crate_dependencies_in_rpo(&self, krate: CrateNum) -> Vec<CrateNum> {
-        let mut ordering = Vec::new();
-        self.push_dependencies_in_postorder(&mut ordering, krate);
-        ordering.reverse();
-        ordering
+    fn push_dependencies_in_postorder(&self, deps: &mut Vec<CrateNum>, cnum: CrateNum) {
+        if !deps.contains(&cnum) {
+            let data = self.get_crate_data(cnum);
+            for &dep in data.dependencies.borrow().iter() {
+                if dep != cnum {
+                    self.push_dependencies_in_postorder(deps, dep);
+                }
+            }
+
+            deps.push(cnum);
+        }
     }
 
-    crate fn push_dependencies_in_postorder(&self, ordering: &mut Vec<CrateNum>, krate: CrateNum) {
-        if ordering.contains(&krate) {
-            return;
+    crate fn crate_dependencies_in_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+        let mut deps = Vec::new();
+        if cnum == LOCAL_CRATE {
+            self.iter_crate_data(|cnum, _| self.push_dependencies_in_postorder(&mut deps, cnum));
+        } else {
+            self.push_dependencies_in_postorder(&mut deps, cnum);
         }
-
-        let data = self.get_crate_data(krate);
-        for &dep in data.dependencies.borrow().iter() {
-            if dep != krate {
-                self.push_dependencies_in_postorder(ordering, dep);
-            }
-        }
-
-        ordering.push(krate);
+        deps
     }
 
-    crate fn do_postorder_cnums_untracked(&self) -> Vec<CrateNum> {
-        let mut ordering = Vec::new();
-        for (num, v) in self.metas.iter_enumerated() {
-            if let &Some(_) = v {
-                self.push_dependencies_in_postorder(&mut ordering, num);
-            }
-        }
-        return ordering
+    crate fn crate_dependencies_in_reverse_postorder(&self, cnum: CrateNum) -> Vec<CrateNum> {
+        let mut deps = self.crate_dependencies_in_postorder(cnum);
+        deps.reverse();
+        deps
     }
 }

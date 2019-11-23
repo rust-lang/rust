@@ -807,7 +807,7 @@ impl<'a> CrateLoader<'a> {
         // Before we inject any dependencies, make sure we don't inject a
         // circular dependency by validating that this crate doesn't
         // transitively depend on any crates satisfying `needs_dep`.
-        for dep in self.cstore.crate_dependencies_in_rpo(krate) {
+        for dep in self.cstore.crate_dependencies_in_reverse_postorder(krate) {
             let data = self.cstore.get_crate_data(dep);
             if needs_dep(&data) {
                 self.sess.err(&format!("the crate `{}` cannot depend \

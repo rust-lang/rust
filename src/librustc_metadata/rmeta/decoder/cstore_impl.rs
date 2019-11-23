@@ -517,7 +517,7 @@ impl CrateStore for cstore::CStore {
     }
 
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum> {
-        self.do_postorder_cnums_untracked()
+        self.crate_dependencies_in_postorder(LOCAL_CRATE)
     }
 
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
