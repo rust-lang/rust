@@ -5,6 +5,7 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
+use crate::def_collector::collect_definitions;
 use crate::macros::{LegacyBinding, LegacyScope};
 use crate::resolve_imports::ImportDirective;
 use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
@@ -16,7 +17,6 @@ use crate::{ResolutionError, Determinacy, PathResult, CrateLint};
 use rustc::bug;
 use rustc::hir::def::{self, *};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::hir::map::DefCollector;
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
 use rustc_metadata::cstore::LoadedMacro;
@@ -167,8 +167,7 @@ impl<'a> Resolver<'a> {
         fragment: &AstFragment,
         parent_scope: ParentScope<'a>,
     ) -> LegacyScope<'a> {
-        let mut def_collector = DefCollector::new(&mut self.definitions, parent_scope.expansion);
-        fragment.visit_with(&mut def_collector);
+        collect_definitions(&mut self.definitions, fragment, parent_scope.expansion);
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
         visitor.parent_scope.legacy

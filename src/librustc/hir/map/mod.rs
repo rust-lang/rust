@@ -1,5 +1,4 @@
 use self::collector::NodeCollector;
-pub use self::def_collector::DefCollector;
 pub use self::definitions::{
     Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData, DefPathHash
 };
@@ -25,7 +24,6 @@ use syntax_pos::{Span, DUMMY_SP};
 
 pub mod blocks;
 mod collector;
-mod def_collector;
 pub mod definitions;
 mod hir_id_validator;
 
