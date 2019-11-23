@@ -1,0 +1,9 @@
+error[E0015]: calls in constants are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-46843.rs:11:26
+   |
+LL | pub const Q: i32 = match non_const() {
+   |                          ^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0015`.

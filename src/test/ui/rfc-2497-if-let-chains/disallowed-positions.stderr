@@ -513,23 +513,32 @@ warning: the feature `let_chains` is incomplete and may cause the compiler to cr
 LL | #![feature(let_chains)] // Avoid inflating `.stderr` with overzealous gates in this test.
    |            ^^^^^^^^^^
 
-error[E0744]: `match` is not allowed in a `const`
+error[E0658]: `match` is not allowed in a `const`
   --> $DIR/disallowed-positions.rs:218:17
    |
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error[E0744]: `match` is not allowed in a `const`
+error[E0658]: `match` is not allowed in a `const`
   --> $DIR/disallowed-positions.rs:223:17
    |
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error[E0744]: `match` is not allowed in a `const`
+error[E0658]: `match` is not allowed in a `const`
   --> $DIR/disallowed-positions.rs:228:17
    |
 LL |         true && let 1 = 1
    |                 ^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0308]: mismatched types
   --> $DIR/disallowed-positions.rs:32:8
@@ -952,5 +961,5 @@ LL |         let 0 = 0?;
 
 error: aborting due to 106 previous errors
 
-Some errors have detailed explanations: E0277, E0308, E0600, E0614, E0744.
+Some errors have detailed explanations: E0277, E0308, E0600, E0614, E0658.
 For more information about an error, try `rustc --explain E0277`.

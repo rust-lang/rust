@@ -1,24 +1,17 @@
-error[E0658]: `match` is not allowed in a `const`
-  --> $DIR/const-match-pattern-arm.rs:3:17
+error[E0658]: `if` is not allowed in a `const`
+  --> $DIR/assert.rs:8:15
    |
-LL |   const x: bool = match Some(true) {
-   |  _________________^
-LL | |     Some(value) => true,
-LL | |     _ => false
-LL | | };
-   | |_^
+LL | const _: () = assert!(true);
+   |               ^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49146
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
-error[E0658]: `match` is not allowed in a `const`
-  --> $DIR/const-match-pattern-arm.rs:9:5
+error[E0658]: `if` is not allowed in a `const`
+  --> $DIR/assert.rs:12:15
    |
-LL | /     match Some(true) {
-LL | |         Some(value) => true,
-LL | |         _ => false
-LL | |     }
-   | |_____^
+LL | const _: () = assert!(false);
+   |               ^^^^^^^^^^^^^^
    |
    = note: for more information, see https://github.com/rust-lang/rust/issues/49146
    = help: add `#![feature(const_if_match)]` to the crate attributes to enable

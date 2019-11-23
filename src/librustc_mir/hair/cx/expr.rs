@@ -341,9 +341,10 @@ fn make_mirror_unadjusted<'a, 'tcx>(
             } else {
                 // FIXME overflow
                 match (op.node, cx.constness) {
-                    // FIXME(eddyb) use logical ops in constants when
-                    // they can handle that kind of control-flow.
-                    (hir::BinOpKind::And, hir::Constness::Const) => {
+                    // Destroy control flow if `#![feature(const_if_match)]` is not enabled.
+                    (hir::BinOpKind::And, hir::Constness::Const)
+                        if !cx.tcx.features().const_if_match =>
+                    {
                         cx.control_flow_destroyed.push((
                             op.span,
                             "`&&` operator".into(),
@@ -354,7 +355,9 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                             rhs: rhs.to_ref(),
                         }
                     }
-                    (hir::BinOpKind::Or, hir::Constness::Const) => {
+                    (hir::BinOpKind::Or, hir::Constness::Const)
+                        if !cx.tcx.features().const_if_match =>
+                    {
                         cx.control_flow_destroyed.push((
                             op.span,
                             "`||` operator".into(),
@@ -366,14 +369,14 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                         }
                     }
 
-                    (hir::BinOpKind::And, hir::Constness::NotConst) => {
+                    (hir::BinOpKind::And, _) => {
                         ExprKind::LogicalOp {
                             op: LogicalOp::And,
                             lhs: lhs.to_ref(),
                             rhs: rhs.to_ref(),
                         }
                     }
-                    (hir::BinOpKind::Or, hir::Constness::NotConst) => {
+                    (hir::BinOpKind::Or, _) => {
                         ExprKind::LogicalOp {
                             op: LogicalOp::Or,
                             lhs: lhs.to_ref(),

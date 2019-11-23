@@ -1,35 +1,35 @@
 error[E0744]: `loop` is not allowed in a `const`
-  --> $DIR/const-loop.rs:1:15
+  --> $DIR/loop.rs:8:15
    |
 LL | const _: () = loop {};
    |               ^^^^^^^
 
 error[E0744]: `loop` is not allowed in a `static`
-  --> $DIR/const-loop.rs:3:19
+  --> $DIR/loop.rs:10:19
    |
 LL | static FOO: i32 = loop { break 4; };
    |                   ^^^^^^^^^^^^^^^^^
 
 error[E0744]: `loop` is not allowed in a `const fn`
-  --> $DIR/const-loop.rs:6:5
+  --> $DIR/loop.rs:13:5
    |
 LL |     loop {}
    |     ^^^^^^^
 
 error[E0744]: `loop` is not allowed in a `const fn`
-  --> $DIR/const-loop.rs:19:9
+  --> $DIR/loop.rs:26:9
    |
 LL |         loop {}
    |         ^^^^^^^
 
 error[E0744]: `while` is not allowed in a `const`
-  --> $DIR/const-loop.rs:31:9
+  --> $DIR/loop.rs:38:9
    |
 LL |         while false {}
    |         ^^^^^^^^^^^^^^
 
 error[E0744]: `while` is not allowed in a `const`
-  --> $DIR/const-loop.rs:40:5
+  --> $DIR/loop.rs:47:5
    |
 LL | /     while x < 4 {
 LL | |         x += 1;
@@ -37,7 +37,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `while` is not allowed in a `const`
-  --> $DIR/const-loop.rs:44:5
+  --> $DIR/loop.rs:51:5
    |
 LL | /     while x < 8 {
 LL | |         x += 1;
@@ -45,7 +45,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `for` is not allowed in a `const`
-  --> $DIR/const-loop.rs:54:5
+  --> $DIR/loop.rs:61:5
    |
 LL | /     for i in 0..4 {
 LL | |         x += i;
@@ -53,7 +53,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `for` is not allowed in a `const`
-  --> $DIR/const-loop.rs:58:5
+  --> $DIR/loop.rs:65:5
    |
 LL | /     for i in 0..4 {
 LL | |         x += i;
@@ -61,7 +61,7 @@ LL | |     }
    | |_____^
 
 error[E0744]: `loop` is not allowed in a `const`
-  --> $DIR/const-loop.rs:68:5
+  --> $DIR/loop.rs:75:5
    |
 LL | /     loop {
 LL | |         x += 1;
@@ -71,16 +71,8 @@ LL | |         }
 LL | |     }
    | |_____^
 
-error[E0744]: `if` is not allowed in a `const`
-  --> $DIR/const-loop.rs:70:9
-   |
-LL | /         if x == 4 {
-LL | |             break;
-LL | |         }
-   | |_________^
-
 error[E0744]: `loop` is not allowed in a `const`
-  --> $DIR/const-loop.rs:75:5
+  --> $DIR/loop.rs:82:5
    |
 LL | /     loop {
 LL | |         x += 1;
@@ -90,38 +82,30 @@ LL | |         }
 LL | |     }
    | |_____^
 
-error[E0744]: `if` is not allowed in a `const`
-  --> $DIR/const-loop.rs:77:9
-   |
-LL | /         if x == 8 {
-LL | |             break;
-LL | |         }
-   | |_________^
-
-error[E0744]: `while let` is not allowed in a `const`
-  --> $DIR/const-loop.rs:87:5
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:94:5
    |
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0744]: `while let` is not allowed in a `const`
-  --> $DIR/const-loop.rs:88:5
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:95:5
    |
 LL |     while let None = Some(x) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0744]: `loop` is not allowed in a `const`
-  --> $DIR/const-loop.rs:10:22
+  --> $DIR/loop.rs:17:22
    |
 LL |     const BAR: i32 = loop { break 4; };
    |                      ^^^^^^^^^^^^^^^^^
 
 error[E0744]: `loop` is not allowed in a `const`
-  --> $DIR/const-loop.rs:14:22
+  --> $DIR/loop.rs:21:22
    |
 LL |     const BAR: i32 = loop { break 4; };
    |                      ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 17 previous errors
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0744`.

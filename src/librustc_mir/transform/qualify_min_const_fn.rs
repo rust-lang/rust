@@ -216,7 +216,9 @@ fn check_statement(
             check_rvalue(tcx, body, def_id, rval, span)
         }
 
-        StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
+        | StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _)
+        if !tcx.features().const_if_match
+        => {
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
 
@@ -267,9 +269,10 @@ fn check_place(
     while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Downcast(..) => {
-                return Err((span, "`match` or `if let` in `const fn` is unstable".into()));
-            }
+            ProjectionElem::Downcast(..) if !tcx.features().const_if_match
+                => return Err((span, "`match` or `if let` in `const fn` is unstable".into())),
+            ProjectionElem::Downcast(_symbol, _variant_index) => {}
+
             ProjectionElem::Field(..) => {
                 let base_ty = Place::ty_from(&place.base, &proj_base, body, tcx).ty;
                 if let Some(def) = base_ty.ty_adt_def() {
@@ -321,10 +324,19 @@ fn check_terminator(
             check_operand(tcx, value, span, def_id, body)
         },
 
-        TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. } => Err((
+        | TerminatorKind::FalseEdges { .. }
+        | TerminatorKind::SwitchInt { .. }
+        if !tcx.features().const_if_match
+        => Err((
             span,
             "loops and conditional expressions are not stable in const fn".into(),
         )),
+
+        TerminatorKind::FalseEdges { .. } => Ok(()),
+        TerminatorKind::SwitchInt { discr, switch_ty: _, values: _, targets: _ } => {
+            check_operand(tcx, discr, span, def_id, body)
+        }
+
         | TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))
         }

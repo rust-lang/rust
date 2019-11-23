@@ -1,0 +1,134 @@
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/loop.rs:8:15
+   |
+LL | const _: () = loop {};
+   |               ^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `static`
+  --> $DIR/loop.rs:10:19
+   |
+LL | static FOO: i32 = loop { break 4; };
+   |                   ^^^^^^^^^^^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const fn`
+  --> $DIR/loop.rs:13:5
+   |
+LL |     loop {}
+   |     ^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const fn`
+  --> $DIR/loop.rs:26:9
+   |
+LL |         loop {}
+   |         ^^^^^^^
+
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:38:9
+   |
+LL |         while false {}
+   |         ^^^^^^^^^^^^^^
+
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:47:5
+   |
+LL | /     while x < 4 {
+LL | |         x += 1;
+LL | |     }
+   | |_____^
+
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:51:5
+   |
+LL | /     while x < 8 {
+LL | |         x += 1;
+LL | |     }
+   | |_____^
+
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/loop.rs:61:5
+   |
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
+
+error[E0744]: `for` is not allowed in a `const`
+  --> $DIR/loop.rs:65:5
+   |
+LL | /     for i in 0..4 {
+LL | |         x += i;
+LL | |     }
+   | |_____^
+
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/loop.rs:75:5
+   |
+LL | /     loop {
+LL | |         x += 1;
+LL | |         if x == 4 {
+LL | |             break;
+LL | |         }
+LL | |     }
+   | |_____^
+
+error[E0658]: `if` is not allowed in a `const`
+  --> $DIR/loop.rs:77:9
+   |
+LL | /         if x == 4 {
+LL | |             break;
+LL | |         }
+   | |_________^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/loop.rs:82:5
+   |
+LL | /     loop {
+LL | |         x += 1;
+LL | |         if x == 8 {
+LL | |             break;
+LL | |         }
+LL | |     }
+   | |_____^
+
+error[E0658]: `if` is not allowed in a `const`
+  --> $DIR/loop.rs:84:9
+   |
+LL | /         if x == 8 {
+LL | |             break;
+LL | |         }
+   | |_________^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/49146
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
+
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:94:5
+   |
+LL |     while let None = Some(x) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0744]: `while` is not allowed in a `const`
+  --> $DIR/loop.rs:95:5
+   |
+LL |     while let None = Some(x) { }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/loop.rs:17:22
+   |
+LL |     const BAR: i32 = loop { break 4; };
+   |                      ^^^^^^^^^^^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/loop.rs:21:22
+   |
+LL |     const BAR: i32 = loop { break 4; };
+   |                      ^^^^^^^^^^^^^^^^^
+
+error: aborting due to 17 previous errors
+
+Some errors have detailed explanations: E0658, E0744.
+For more information about an error, try `rustc --explain E0658`.

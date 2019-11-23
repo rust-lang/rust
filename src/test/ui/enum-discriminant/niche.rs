@@ -1,8 +1,7 @@
-// compile-flags: -Zunleash-the-miri-inside-of-you -Awarnings
 // run-pass
 
-// miri unleashed warnings are not useful and change frequently, so they are silenced above.
 #![feature(const_panic)]
+#![feature(const_if_match)]
 
 //! Make sure that we read and write enum discriminants correctly for corner cases caused
 //! by layout optimizations.
