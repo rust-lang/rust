@@ -2192,6 +2192,12 @@ fn from_into_iter_source<T, I>(mut iterator: I) -> Vec<T>
 where
     I: Iterator<Item = T> + InPlaceIterable + SourceIter<Source = IntoIter<T>>,
 {
+    // This specialization only makes sense if we're juggling real allocations.
+    // Additionally some of the pointer arithmetic would panic on ZSTs.
+    if mem::size_of::<T>() == 0 {
+        return SpecFromNested::from_iter(iterator);
+    }
+
     let src_buf = iterator.as_inner().buf.as_ptr();
     let src_end = iterator.as_inner().end;
     let dst = src_buf;
@@ -2237,6 +2243,13 @@ where
     // caveat: if they weren't we may not even make it to this point
     debug_assert_eq!(src_buf, src.buf.as_ptr());
     debug_assert!(dst as *const _ <= src.ptr, "InPlaceIterable contract violation");
+
+    if mem::needs_drop::<T>() {
+        // drop tail if iterator was only partially exhaused
+        unsafe {
+            ptr::drop_in_place(src.as_mut_slice());
+        }
+    }
 
     let vec = unsafe {
         let len = dst.offset_from(src_buf) as usize;
