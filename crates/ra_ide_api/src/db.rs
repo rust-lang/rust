@@ -21,7 +21,7 @@ use crate::{
     symbol_index::SymbolsDatabaseStorage,
     hir::db::InternDatabaseStorage,
     hir::db::AstDatabaseStorage,
-    hir::db::DefDatabase2Storage,
+    hir::db::DefDatabaseStorage,
     hir::db::HirDatabaseStorage
 )]
 #[derive(Debug)]

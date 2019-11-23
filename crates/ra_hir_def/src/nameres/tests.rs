@@ -10,7 +10,7 @@ use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, SourceDatabase};
 use test_utils::covers;
 
-use crate::{db::DefDatabase2, nameres::*, test_db::TestDB, CrateModuleId};
+use crate::{db::DefDatabase, nameres::*, test_db::TestDB, CrateModuleId};
 
 fn def_map(fixtute: &str) -> String {
     let dm = compute_crate_def_map(fixtute);

@@ -71,7 +71,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     builtin_type::BuiltinType,
-    db::DefDatabase2,
+    db::DefDatabase,
     nameres::{
         diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs, raw::ImportId,
     },
@@ -220,7 +220,7 @@ impl CrateDefMap {
     pub(crate) fn crate_def_map_query(
         // Note that this doesn't have `+ AstDatabase`!
         // This gurantess that `CrateDefMap` is stable across reparses.
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         krate: CrateId,
     ) -> Arc<CrateDefMap> {
         let _p = profile("crate_def_map_query");
@@ -262,7 +262,7 @@ impl CrateDefMap {
 
     pub fn add_diagnostics(
         &self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         module: CrateModuleId,
         sink: &mut DiagnosticSink,
     ) {
@@ -271,7 +271,7 @@ impl CrateDefMap {
 
     pub fn resolve_path(
         &self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         original_module: CrateModuleId,
         path: &Path,
     ) -> (PerNs, Option<usize>) {
@@ -295,7 +295,7 @@ impl ModuleData {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(
         &self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
     ) -> Source<Either<ast::SourceFile, ast::Module>> {
         if let Some(file_id) = self.definition {
             let sf = db.parse(file_id).tree();
@@ -307,7 +307,7 @@ impl ModuleData {
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root.
-    pub fn declaration_source(&self, db: &impl DefDatabase2) -> Option<Source<ast::Module>> {
+    pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<Source<ast::Module>> {
         let decl = self.declaration?;
         let value = decl.to_node(db);
         Some(Source { file_id: decl.file_id(), value })
@@ -319,7 +319,7 @@ mod diagnostics {
     use ra_db::RelativePathBuf;
     use ra_syntax::{ast, AstPtr};
 
-    use crate::{db::DefDatabase2, diagnostics::UnresolvedModule, nameres::CrateModuleId, AstId};
+    use crate::{db::DefDatabase, diagnostics::UnresolvedModule, nameres::CrateModuleId, AstId};
 
     #[derive(Debug, PartialEq, Eq)]
     pub(super) enum DefDiagnostic {
@@ -333,7 +333,7 @@ mod diagnostics {
     impl DefDiagnostic {
         pub(super) fn add_to(
             &self,
-            db: &impl DefDatabase2,
+            db: &impl DefDatabase,
             target_module: CrateModuleId,
             sink: &mut DiagnosticSink,
         ) {

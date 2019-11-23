@@ -17,7 +17,7 @@ use crate::{
 
 pub use hir_def::db::{
     BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, CrateLangItemsQuery,
-    DefDatabase2, DefDatabase2Storage, DocumentationQuery, EnumDataQuery, ExprScopesQuery,
+    DefDatabase, DefDatabaseStorage, DocumentationQuery, EnumDataQuery, ExprScopesQuery,
     FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
     LangItemQuery, ModuleLangItemsQuery, RawItemsQuery, RawItemsWithSourceMapQuery,
     StaticDataQuery, StructDataQuery, TraitDataQuery, TypeAliasDataQuery,
@@ -26,8 +26,6 @@ pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
     ParseMacroQuery,
 };
-
-pub use DefDatabase2 as DefDatabase;
 
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]

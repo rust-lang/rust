@@ -18,7 +18,7 @@ use test_utils::tested_by;
 
 use crate::{
     attr::{Attr, Attrs},
-    db::DefDatabase2,
+    db::DefDatabase,
     path::Path,
     FileAstId, HirFileId, ModuleSource, Source,
 };
@@ -67,14 +67,14 @@ impl ImportSourceMap {
 
 impl RawItems {
     pub(crate) fn raw_items_query(
-        db: &(impl DefDatabase2 + AstDatabase),
+        db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> Arc<RawItems> {
         db.raw_items_with_source_map(file_id).0
     }
 
     pub(crate) fn raw_items_with_source_map_query(
-        db: &(impl DefDatabase2 + AstDatabase),
+        db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {

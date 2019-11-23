@@ -13,7 +13,7 @@ use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    db::DefDatabase2,
+    db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
     nameres::CrateDefMap,
     path::Path,
@@ -28,7 +28,7 @@ pub struct Expander {
 }
 
 impl Expander {
-    pub fn new(db: &impl DefDatabase2, current_file_id: HirFileId, module: ModuleId) -> Expander {
+    pub fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
         Expander { crate_def_map, current_file_id, hygiene, module }
@@ -36,7 +36,7 @@ impl Expander {
 
     fn enter_expand(
         &mut self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, ast::Expr)> {
         let ast_id = AstId::new(
@@ -67,7 +67,7 @@ impl Expander {
         None
     }
 
-    fn exit(&mut self, db: &impl DefDatabase2, mark: Mark) {
+    fn exit(&mut self, db: &impl DefDatabase, mark: Mark) {
         self.hygiene = Hygiene::new(db, mark.file_id);
         self.current_file_id = mark.file_id;
         std::mem::forget(mark);
@@ -81,7 +81,7 @@ impl Expander {
         Path::from_src(path, &self.hygiene)
     }
 
-    fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
+    fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
         self.crate_def_map.resolve_path(db, self.module.module_id, path).0.get_macros()
     }
 }
@@ -142,7 +142,7 @@ pub struct BodySourceMap {
 
 impl Body {
     pub(crate) fn body_with_source_map_query(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         def: DefWithBodyId,
     ) -> (Arc<Body>, Arc<BodySourceMap>) {
         let mut params = None;
@@ -169,12 +169,12 @@ impl Body {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub(crate) fn body_query(db: &impl DefDatabase2, def: DefWithBodyId) -> Arc<Body> {
+    pub(crate) fn body_query(db: &impl DefDatabase, def: DefWithBodyId) -> Arc<Body> {
         db.body_with_source_map(def).0
     }
 
     fn new(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         expander: Expander,
         params: Option<ast::ParamList>,
         body: Option<ast::Expr>,

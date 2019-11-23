@@ -11,7 +11,7 @@ use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    db::DefDatabase2, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId, HasChildSource,
+    db::DefDatabase, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId, HasChildSource,
     LocalEnumVariantId, LocalStructFieldId, StructOrUnionId, VariantId,
 };
 
@@ -49,10 +49,7 @@ pub struct StructFieldData {
 }
 
 impl StructData {
-    pub(crate) fn struct_data_query(
-        db: &impl DefDatabase2,
-        id: StructOrUnionId,
-    ) -> Arc<StructData> {
+    pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructOrUnionId) -> Arc<StructData> {
         let src = id.source(db);
         let name = src.value.name().map(|n| n.as_name());
         let variant_data = VariantData::new(src.value.kind());
@@ -62,7 +59,7 @@ impl StructData {
 }
 
 impl EnumData {
-    pub(crate) fn enum_data_query(db: &impl DefDatabase2, e: EnumId) -> Arc<EnumData> {
+    pub(crate) fn enum_data_query(db: &impl DefDatabase, e: EnumId) -> Arc<EnumData> {
         let src = e.source(db);
         let name = src.value.name().map(|n| n.as_name());
         let mut trace = Trace::new_for_arena();
@@ -79,7 +76,7 @@ impl EnumData {
 impl HasChildSource for EnumId {
     type ChildId = LocalEnumVariantId;
     type Value = ast::EnumVariant;
-    fn child_source(&self, db: &impl DefDatabase2) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &impl DefDatabase) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
         let src = self.source(db);
         let mut trace = Trace::new_for_map();
         lower_enum(&mut trace, &src.value);
@@ -124,7 +121,7 @@ impl HasChildSource for VariantId {
     type ChildId = LocalStructFieldId;
     type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
 
-    fn child_source(&self, db: &impl DefDatabase2) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &impl DefDatabase) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
         let src = match self {
             VariantId::EnumVariantId(it) => {
                 // I don't really like the fact that we call into parent source

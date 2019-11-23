@@ -48,7 +48,7 @@ pub enum ModuleSource {
 
 impl ModuleSource {
     pub fn new(
-        db: &impl db::DefDatabase2,
+        db: &impl db::DefDatabase,
         file_id: Option<FileId>,
         decl_id: Option<AstId<ast::Module>>,
     ) -> ModuleSource {
@@ -67,10 +67,7 @@ impl ModuleSource {
     }
 
     // FIXME: this methods do not belong here
-    pub fn from_position(
-        db: &impl db::DefDatabase2,
-        position: ra_db::FilePosition,
-    ) -> ModuleSource {
+    pub fn from_position(db: &impl db::DefDatabase, position: ra_db::FilePosition) -> ModuleSource {
         let parse = db.parse(position.file_id);
         match &ra_syntax::algo::find_node_at_offset::<ast::Module>(
             parse.tree().syntax(),
@@ -84,7 +81,7 @@ impl ModuleSource {
         }
     }
 
-    pub fn from_child_node(db: &impl db::DefDatabase2, child: Source<&SyntaxNode>) -> ModuleSource {
+    pub fn from_child_node(db: &impl db::DefDatabase, child: Source<&SyntaxNode>) -> ModuleSource {
         if let Some(m) =
             child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
         {
@@ -96,7 +93,7 @@ impl ModuleSource {
         }
     }
 
-    pub fn from_file_id(db: &impl db::DefDatabase2, file_id: FileId) -> ModuleSource {
+    pub fn from_file_id(db: &impl db::DefDatabase, file_id: FileId) -> ModuleSource {
         let source_file = db.parse(file_id).tree();
         ModuleSource::SourceFile(source_file)
     }
@@ -211,14 +208,14 @@ pub struct FunctionLoc {
 
 impl Intern for FunctionLoc {
     type ID = FunctionId;
-    fn intern(self, db: &impl db::DefDatabase2) -> FunctionId {
+    fn intern(self, db: &impl db::DefDatabase) -> FunctionId {
         db.intern_function(self)
     }
 }
 
 impl Lookup for FunctionId {
     type Data = FunctionLoc;
-    fn lookup(&self, db: &impl db::DefDatabase2) -> FunctionLoc {
+    fn lookup(&self, db: &impl db::DefDatabase) -> FunctionLoc {
         db.lookup_intern_function(*self)
     }
 }
@@ -301,14 +298,14 @@ pub struct ConstLoc {
 
 impl Intern for ConstLoc {
     type ID = ConstId;
-    fn intern(self, db: &impl db::DefDatabase2) -> ConstId {
+    fn intern(self, db: &impl db::DefDatabase) -> ConstId {
         db.intern_const(self)
     }
 }
 
 impl Lookup for ConstId {
     type Data = ConstLoc;
-    fn lookup(&self, db: &impl db::DefDatabase2) -> ConstLoc {
+    fn lookup(&self, db: &impl db::DefDatabase) -> ConstLoc {
         db.lookup_intern_const(*self)
     }
 }
@@ -349,14 +346,14 @@ pub struct TypeAliasLoc {
 
 impl Intern for TypeAliasLoc {
     type ID = TypeAliasId;
-    fn intern(self, db: &impl db::DefDatabase2) -> TypeAliasId {
+    fn intern(self, db: &impl db::DefDatabase) -> TypeAliasId {
         db.intern_type_alias(self)
     }
 }
 
 impl Lookup for TypeAliasId {
     type Data = TypeAliasLoc;
-    fn lookup(&self, db: &impl db::DefDatabase2) -> TypeAliasLoc {
+    fn lookup(&self, db: &impl db::DefDatabase) -> TypeAliasLoc {
         db.lookup_intern_type_alias(*self)
     }
 }
@@ -510,20 +507,20 @@ impl_froms!(
 
 trait Intern {
     type ID;
-    fn intern(self, db: &impl db::DefDatabase2) -> Self::ID;
+    fn intern(self, db: &impl db::DefDatabase) -> Self::ID;
 }
 
 pub trait Lookup {
     type Data;
-    fn lookup(&self, db: &impl db::DefDatabase2) -> Self::Data;
+    fn lookup(&self, db: &impl db::DefDatabase) -> Self::Data;
 }
 
 pub trait HasModule {
-    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId;
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId;
 }
 
 impl HasModule for FunctionLoc {
-    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self.container {
             ContainerId::ModuleId(it) => it,
             ContainerId::ImplId(it) => it.module(db),
@@ -533,7 +530,7 @@ impl HasModule for FunctionLoc {
 }
 
 impl HasModule for TypeAliasLoc {
-    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self.container {
             ContainerId::ModuleId(it) => it,
             ContainerId::ImplId(it) => it.module(db),
@@ -543,7 +540,7 @@ impl HasModule for TypeAliasLoc {
 }
 
 impl HasModule for ConstLoc {
-    fn module(&self, db: &impl db::DefDatabase2) -> ModuleId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
         match self.container {
             ContainerId::ModuleId(it) => it,
             ContainerId::ImplId(it) => it.module(db),
@@ -554,13 +551,13 @@ impl HasModule for ConstLoc {
 
 pub trait HasSource {
     type Value;
-    fn source(&self, db: &impl db::DefDatabase2) -> Source<Self::Value>;
+    fn source(&self, db: &impl db::DefDatabase) -> Source<Self::Value>;
 }
 
 impl HasSource for FunctionLoc {
     type Value = ast::FnDef;
 
-    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::FnDef> {
+    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::FnDef> {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }
@@ -569,7 +566,7 @@ impl HasSource for FunctionLoc {
 impl HasSource for TypeAliasLoc {
     type Value = ast::TypeAliasDef;
 
-    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::TypeAliasDef> {
+    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::TypeAliasDef> {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }
@@ -578,7 +575,7 @@ impl HasSource for TypeAliasLoc {
 impl HasSource for ConstLoc {
     type Value = ast::ConstDef;
 
-    fn source(&self, db: &impl db::DefDatabase2) -> Source<ast::ConstDef> {
+    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::ConstDef> {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }
@@ -589,6 +586,6 @@ pub trait HasChildSource {
     type Value;
     fn child_source(
         &self,
-        db: &impl db::DefDatabase2,
+        db: &impl db::DefDatabase,
     ) -> Source<ArenaMap<Self::ChildId, Self::Value>>;
 }

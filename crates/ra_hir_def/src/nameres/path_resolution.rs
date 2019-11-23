@@ -15,7 +15,7 @@ use ra_db::Edition;
 use test_utils::tested_by;
 
 use crate::{
-    db::DefDatabase2,
+    db::DefDatabase,
     nameres::{per_ns::PerNs, CrateDefMap},
     path::{Path, PathKind},
     AdtId, CrateModuleId, EnumVariantId, ModuleDefId, ModuleId,
@@ -63,7 +63,7 @@ impl CrateDefMap {
     // the result.
     pub(super) fn resolve_path_fp_with_macro(
         &self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         mode: ResolveMode,
         original_module: CrateModuleId,
         path: &Path,
@@ -216,7 +216,7 @@ impl CrateDefMap {
 
     fn resolve_name_in_module(
         &self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         module: CrateModuleId,
         name: &Name,
     ) -> PerNs {
@@ -243,7 +243,7 @@ impl CrateDefMap {
         from_crate_root.or(from_extern_prelude)
     }
 
-    fn resolve_in_prelude(&self, db: &impl DefDatabase2, name: &Name) -> PerNs {
+    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs {
         if let Some(prelude) = self.prelude {
             let keep;
             let def_map = if prelude.krate == self.krate {

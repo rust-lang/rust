@@ -41,8 +41,8 @@ pub trait InternDatabase: SourceDatabase {
     fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> crate::ImplId;
 }
 
-#[salsa::query_group(DefDatabase2Storage)]
-pub trait DefDatabase2: InternDatabase + AstDatabase {
+#[salsa::query_group(DefDatabaseStorage)]
+pub trait DefDatabase: InternDatabase + AstDatabase {
     #[salsa::invoke(RawItems::raw_items_with_source_map_query)]
     fn raw_items_with_source_map(
         &self,

@@ -9,7 +9,7 @@ use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath
     ra_db::SourceDatabaseStorage,
     hir::db::InternDatabaseStorage,
     hir::db::AstDatabaseStorage,
-    hir::db::DefDatabase2Storage,
+    hir::db::DefDatabaseStorage,
     hir::db::HirDatabaseStorage
 )]
 #[derive(Debug, Default)]

@@ -12,7 +12,7 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::{
-    db::DefDatabase2, path::Path, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup,
+    db::DefDatabase, path::Path, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -32,7 +32,7 @@ impl ops::Deref for Attrs {
 }
 
 impl Attrs {
-    pub(crate) fn attrs_query(db: &impl DefDatabase2, def: AttrDefId) -> Attrs {
+    pub(crate) fn attrs_query(db: &impl DefDatabase, def: AttrDefId) -> Attrs {
         match def {
             AttrDefId::ModuleId(module) => {
                 let def_map = db.crate_def_map(module.krate);
@@ -162,7 +162,7 @@ impl Attr {
 fn attrs_from_ast<D, N>(src: AstId<N>, db: &D) -> Attrs
 where
     N: ast::AttrsOwner,
-    D: DefDatabase2,
+    D: DefDatabase,
 {
     let hygiene = Hygiene::new(db, src.file_id());
     Attr::from_attrs_owner(&src.to_node(db), &hygiene)
@@ -172,7 +172,7 @@ fn attrs_from_loc<T, D>(node: T, db: &D) -> Attrs
 where
     T: HasSource,
     T::Value: ast::AttrsOwner,
-    D: DefDatabase2,
+    D: DefDatabase,
 {
     let src = node.source(db);
     let hygiene = Hygiene::new(db, src.file_id);

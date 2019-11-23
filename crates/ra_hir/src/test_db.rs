@@ -2,7 +2,7 @@
 
 use std::{panic, sync::Arc};
 
-use hir_def::{db::DefDatabase2, ModuleId};
+use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::diagnostics::DiagnosticSink;
 use parking_lot::Mutex;
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase};
@@ -14,7 +14,7 @@ use crate::{db, debug::HirDebugHelper};
     ra_db::SourceDatabaseStorage,
     db::InternDatabaseStorage,
     db::AstDatabaseStorage,
-    db::DefDatabase2Storage,
+    db::DefDatabaseStorage,
     db::HirDatabaseStorage
 )]
 #[derive(Debug, Default)]

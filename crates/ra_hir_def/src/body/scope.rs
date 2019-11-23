@@ -7,7 +7,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     body::Body,
-    db::DefDatabase2,
+    db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId, Statement},
     DefWithBodyId,
 };
@@ -45,7 +45,7 @@ pub struct ScopeData {
 }
 
 impl ExprScopes {
-    pub(crate) fn expr_scopes_query(db: &impl DefDatabase2, def: DefWithBodyId) -> Arc<ExprScopes> {
+    pub(crate) fn expr_scopes_query(db: &impl DefDatabase, def: DefWithBodyId) -> Arc<ExprScopes> {
         let body = db.body(def);
         Arc::new(ExprScopes::new(&*body))
     }
@@ -176,7 +176,7 @@ mod tests {
     use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
     use test_utils::{assert_eq_text, covers, extract_offset};
 
-    use crate::{db::DefDatabase2, test_db::TestDB, FunctionId, ModuleDefId};
+    use crate::{db::DefDatabase, test_db::TestDB, FunctionId, ModuleDefId};
 
     fn find_function(db: &TestDB, file_id: FileId) -> FunctionId {
         let krate = db.test_crate();

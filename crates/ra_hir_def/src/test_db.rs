@@ -12,7 +12,7 @@ use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath
     ra_db::SourceDatabaseStorage,
     hir_expand::db::AstDatabaseStorage,
     crate::db::InternDatabaseStorage,
-    crate::db::DefDatabase2Storage
+    crate::db::DefDatabaseStorage
 )]
 #[derive(Debug, Default)]
 pub struct TestDB {

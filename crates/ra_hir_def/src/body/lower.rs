@@ -17,7 +17,7 @@ use test_utils::tested_by;
 use crate::{
     body::{Body, BodySourceMap, Expander, PatPtr},
     builtin_type::{BuiltinFloat, BuiltinInt},
-    db::DefDatabase2,
+    db::DefDatabase,
     expr::{
         ArithOp, Array, BinaryOp, BindingAnnotation, CmpOp, Expr, ExprId, Literal, LogicOp,
         MatchArm, Ordering, Pat, PatId, RecordFieldPat, RecordLitField, Statement,
@@ -28,7 +28,7 @@ use crate::{
 };
 
 pub(super) fn lower(
-    db: &impl DefDatabase2,
+    db: &impl DefDatabase,
     expander: Expander,
     params: Option<ast::ParamList>,
     body: Option<ast::Expr>,
@@ -57,7 +57,7 @@ struct ExprCollector<DB> {
 
 impl<'a, DB> ExprCollector<&'a DB>
 where
-    DB: DefDatabase2,
+    DB: DefDatabase,
 {
     fn collect(
         mut self,

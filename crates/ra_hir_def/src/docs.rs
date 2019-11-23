@@ -5,7 +5,7 @@ use std::sync::Arc;
 use hir_expand::either::Either;
 use ra_syntax::ast;
 
-use crate::{db::DefDatabase2, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup};
+use crate::{db::DefDatabase, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup};
 
 /// Holds documentation
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,7 +27,7 @@ impl Documentation {
     }
 
     pub(crate) fn documentation_query(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         def: AttrDefId,
     ) -> Option<Documentation> {
         match def {
