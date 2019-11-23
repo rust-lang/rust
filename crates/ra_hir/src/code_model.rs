@@ -9,11 +9,11 @@ use hir_def::{
     body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
-    nameres::{per_ns::PerNs, raw::ImportId},
+    nameres::per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalStructFieldId, Lookup,
-    ModuleId, UnionId,
+    ContainerId, CrateModuleId, HasModule, ImplId, LocalEnumVariantId, LocalImportId,
+    LocalStructFieldId, Lookup, ModuleId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -229,7 +229,7 @@ impl Module {
 
 pub struct Import {
     pub(crate) parent: Module,
-    pub(crate) id: ImportId,
+    pub(crate) id: LocalImportId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

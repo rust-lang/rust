@@ -20,8 +20,8 @@ use crate::{
     },
     path::{Path, PathKind},
     AdtId, AstId, AstItemDef, ConstLoc, ContainerId, CrateModuleId, EnumId, EnumVariantId,
-    FunctionLoc, ImplId, Intern, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
-    StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
+    FunctionLoc, ImplId, Intern, LocalImportId, LocationCtx, ModuleDefId, ModuleId, StaticId,
+    StructId, StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -94,8 +94,8 @@ impl MacroStackMonitor {
 struct DefCollector<'a, DB> {
     db: &'a DB,
     def_map: CrateDefMap,
-    glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
-    unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
+    glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, LocalImportId)>>,
+    unresolved_imports: Vec<(CrateModuleId, LocalImportId, raw::ImportData)>,
     unexpanded_macros: Vec<(CrateModuleId, AstId<ast::MacroCall>, Path)>,
     mod_dirs: FxHashMap<CrateModuleId, ModDir>,
 
@@ -293,7 +293,7 @@ where
         &mut self,
         module_id: CrateModuleId,
         def: PerNs,
-        import_id: raw::ImportId,
+        import_id: LocalImportId,
         import: &raw::ImportData,
     ) {
         if import.is_glob {
@@ -388,7 +388,7 @@ where
     fn update(
         &mut self,
         module_id: CrateModuleId,
-        import: Option<raw::ImportId>,
+        import: Option<LocalImportId>,
         resolutions: &[(Name, Resolution)],
     ) {
         self.update_recursive(module_id, import, resolutions, 0)
@@ -397,7 +397,7 @@ where
     fn update_recursive(
         &mut self,
         module_id: CrateModuleId,
-        import: Option<raw::ImportId>,
+        import: Option<LocalImportId>,
         resolutions: &[(Name, Resolution)],
         depth: usize,
     ) {

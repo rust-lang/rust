@@ -72,11 +72,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     builtin_type::BuiltinType,
     db::DefDatabase,
-    nameres::{
-        diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs, raw::ImportId,
-    },
+    nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs},
     path::Path,
-    AstId, CrateModuleId, FunctionId, ImplId, ModuleDefId, ModuleId, TraitId,
+    AstId, CrateModuleId, FunctionId, ImplId, LocalImportId, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
@@ -213,7 +211,7 @@ pub struct Resolution {
     /// None for unresolved
     pub def: PerNs,
     /// ident by which this is imported into local scope.
-    pub import: Option<ImportId>,
+    pub import: Option<LocalImportId>,
 }
 
 impl CrateDefMap {
