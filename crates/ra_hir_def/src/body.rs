@@ -17,7 +17,7 @@ use crate::{
     expr::{Expr, ExprId, Pat, PatId},
     nameres::CrateDefMap,
     path::Path,
-    AstItemDef, DefWithBodyId, HasModule, HasSource, Lookup, ModuleId,
+    DefWithBodyId, HasModule, HasSource, Lookup, ModuleId,
 };
 
 pub struct Expander {
@@ -160,6 +160,7 @@ impl Body {
                 (src.file_id, c.module(db), src.value.body())
             }
             DefWithBodyId::StaticId(s) => {
+                let s = s.lookup(db);
                 let src = s.source(db);
                 (src.file_id, s.module(db), src.value.body())
             }

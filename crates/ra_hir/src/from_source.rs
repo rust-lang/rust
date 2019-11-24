@@ -104,10 +104,21 @@ impl FromSource for Const {
 impl FromSource for Static {
     type Ast = ast::StaticDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Static { id })
+        let module = match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
+            Container::Module(it) => it,
+            Container::Trait(_) | Container::ImplBlock(_) => return None,
+        };
+        module
+            .declarations(db)
+            .into_iter()
+            .filter_map(|it| match it {
+                ModuleDef::Static(it) => Some(it),
+                _ => None,
+            })
+            .find(|it| same_source(&it.source(db), &src))
     }
 }
+
 impl FromSource for TypeAlias {
     type Ast = ast::TypeAliasDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
@@ -271,7 +282,9 @@ where
     let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
     let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
     let ctx = LocationCtx::new(db, module.id, src.file_id);
-    Some(DEF::from_ast(ctx, &src.value))
+    let items = db.ast_id_map(src.file_id);
+    let item_id = items.ast_id(&src.value);
+    Some(DEF::from_ast_id(ctx, item_id))
 }
 
 enum Container {

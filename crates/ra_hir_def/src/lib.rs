@@ -94,25 +94,10 @@ impl<'a, DB> LocationCtx<&'a DB> {
     }
 }
 
-impl<'a, DB: AstDatabase + InternDatabase> LocationCtx<&'a DB> {
-    pub fn to_def<N, DEF>(self, ast: &N) -> DEF
-    where
-        N: AstNode,
-        DEF: AstItemDef<N>,
-    {
-        DEF::from_ast(self, ast)
-    }
-}
-
 pub trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
     fn intern(db: &impl InternDatabase, loc: ItemLoc<N>) -> Self;
     fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<N>;
 
-    fn from_ast(ctx: LocationCtx<&(impl AstDatabase + InternDatabase)>, ast: &N) -> Self {
-        let items = ctx.db.ast_id_map(ctx.file_id);
-        let item_id = items.ast_id(ast);
-        Self::from_ast_id(ctx, item_id)
-    }
     fn from_ast_id(ctx: LocationCtx<&impl InternDatabase>, ast_id: FileAstId<N>) -> Self {
         let loc = ItemLoc { module: ctx.module, ast_id: AstId::new(ctx.file_id, ast_id) };
         Self::intern(ctx.db, loc)
@@ -245,12 +230,24 @@ impl Lookup for ConstId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StaticId(salsa::InternId);
 impl_intern_key!(StaticId);
-impl AstItemDef<ast::StaticDef> for StaticId {
-    fn intern(db: &impl InternDatabase, loc: ItemLoc<ast::StaticDef>) -> Self {
-        db.intern_static(loc)
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StaticLoc {
+    pub container: ModuleId,
+    pub ast_id: AstId<ast::StaticDef>,
+}
+
+impl Intern for StaticLoc {
+    type ID = StaticId;
+    fn intern(self, db: &impl db::DefDatabase) -> StaticId {
+        db.intern_static(self)
     }
-    fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<ast::StaticDef> {
-        db.lookup_intern_static(self)
+}
+
+impl Lookup for StaticId {
+    type Data = StaticLoc;
+    fn lookup(&self, db: &impl db::DefDatabase) -> StaticLoc {
+        db.lookup_intern_static(*self)
     }
 }
 
@@ -481,6 +478,12 @@ impl HasModule for ConstLoc {
     }
 }
 
+impl HasModule for StaticLoc {
+    fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
+        self.container
+    }
+}
+
 pub trait HasSource {
     type Value;
     fn source(&self, db: &impl db::DefDatabase) -> Source<Self::Value>;
@@ -508,6 +511,15 @@ impl HasSource for ConstLoc {
     type Value = ast::ConstDef;
 
     fn source(&self, db: &impl db::DefDatabase) -> Source<ast::ConstDef> {
+        let node = self.ast_id.to_node(db);
+        Source::new(self.ast_id.file_id(), node)
+    }
+}
+
+impl HasSource for StaticLoc {
+    type Value = ast::StaticDef;
+
+    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::StaticDef> {
         let node = self.ast_id.to_node(db);
         Source::new(self.ast_id.file_id(), node)
     }

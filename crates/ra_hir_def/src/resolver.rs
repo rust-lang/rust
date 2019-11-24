@@ -540,7 +540,7 @@ impl HasResolver for ConstId {
 
 impl HasResolver for StaticId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
-        self.module(db).resolver(db)
+        self.lookup(db).container.resolver(db)
     }
 }
 

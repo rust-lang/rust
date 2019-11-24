@@ -7,7 +7,7 @@ use hir_expand::{
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
-use ra_syntax::{ast, SmolStr};
+use ra_syntax::ast;
 use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::tested_by;
 
@@ -21,7 +21,7 @@ use crate::{
     path::{Path, PathKind},
     per_ns::PerNs,
     AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplId,
-    Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
+    Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
     StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
 };
 
@@ -599,8 +599,8 @@ where
     }
 
     fn collect_module(&mut self, module: &raw::ModuleData, attrs: &Attrs) {
-        let path_attr = self.path_attr(attrs);
-        let is_macro_use = attrs.has_atom("macro_use");
+        let path_attr = attrs.by_key("path").string_value();
+        let is_macro_use = attrs.by_key("macro_use").exists();
         match module {
             // inline module, just recurse
             raw::ModuleData::Definition { name, items, ast_id } => {
@@ -715,7 +715,10 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Static(ast_id) => {
-                PerNs::values(StaticId::from_ast_id(ctx, ast_id).into())
+                let def = StaticLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+
+                PerNs::values(def.into())
             }
             raw::DefKind::Trait(ast_id) => PerNs::types(TraitId::from_ast_id(ctx, ast_id).into()),
             raw::DefKind::TypeAlias(ast_id) => {
@@ -793,11 +796,11 @@ where
     }
 
     fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
-        attrs.iter().all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
-    }
-
-    fn path_attr<'a>(&self, attrs: &'a Attrs) -> Option<&'a SmolStr> {
-        attrs.iter().find_map(|attr| attr.as_path())
+        // FIXME: handle cfg_attr :-)
+        attrs
+            .by_key("cfg")
+            .tt_values()
+            .all(|tt| self.def_collector.cfg_options.is_cfg_enabled(tt) != Some(false))
     }
 }
 

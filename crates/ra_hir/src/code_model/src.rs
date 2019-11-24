@@ -88,7 +88,7 @@ impl HasSource for Const {
 impl HasSource for Static {
     type Ast = ast::StaticDef;
     fn source(self, db: &impl DefDatabase) -> Source<ast::StaticDef> {
-        self.id.source(db)
+        self.id.lookup(db).source(db)
     }
 }
 impl HasSource for Trait {

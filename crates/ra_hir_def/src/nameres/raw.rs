@@ -17,10 +17,7 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    attr::{Attr, Attrs},
-    db::DefDatabase,
-    path::Path,
-    FileAstId, HirFileId, LocalImportId, Source,
+    attr::Attrs, db::DefDatabase, path::Path, FileAstId, HirFileId, LocalImportId, Source,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -407,6 +404,6 @@ impl RawItemsCollector {
     }
 
     fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
-        Attr::from_attrs_owner(item, &self.hygiene)
+        Attrs::new(item, &self.hygiene)
     }
 }
