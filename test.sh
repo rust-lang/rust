@@ -76,6 +76,11 @@ cp ./target/*/debug/main ./raytracer_cg_clif
 hyperfine --runs ${RUN_RUNS:-10} ./raytracer_cg_llvm ./raytracer_cg_clif
 popd
 
+pushd build_sysroot/sysroot_src/src/libcore/tests
+rm -r sysroot_src/src/**/*/target/ || true
+cargo test
+popd
+
 pushd regex
 echo "[TEST] rust-lang/regex example shootout-regex-dna"
 ../cargo.sh clean

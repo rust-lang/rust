@@ -1,4 +1,5 @@
 #![feature(core_intrinsics)]
+#![feature(is_sorted)]
 
 use std::arch::x86_64::*;
 use std::io::Write;
@@ -75,6 +76,9 @@ fn main() {
     assert_eq!(houndred_f64 as i128, 100);
 
     let _a = 1u32 << 2u8;
+
+    let empty: [i32; 0] = [];
+    assert!(empty.is_sorted());
 
     println!("{:?}", unsafe { std::intrinsics::caller_location() });
 

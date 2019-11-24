@@ -12,7 +12,6 @@ popd >/dev/null
 # Cleanup for previous run
 #     v Clean target dir except for build scripts and incremental cache
 rm -r target/*/{debug,release}/{build,deps,examples,libsysroot*,native} || true
-rm -r sysroot_src/src/{libcore,libtest}/target/ || true
 rm Cargo.lock test_target/Cargo.lock 2>/dev/null || true
 rm -r sysroot/ 2>/dev/null || true
 
