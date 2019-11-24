@@ -39,7 +39,12 @@ pub struct MissingFields {
 
 impl Diagnostic for MissingFields {
     fn message(&self) -> String {
-        "fill structure fields".to_string()
+        use std::fmt::Write;
+        let mut message = String::from("Missing structure fields:\n");
+        for field in &self.missed_fields {
+            write!(message, "- {}\n", field).unwrap();
+        }
+        message
     }
     fn source(&self) -> Source<SyntaxNodePtr> {
         Source { file_id: self.file, value: self.field_list.into() }
