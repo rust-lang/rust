@@ -215,19 +215,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
                 for (field_idx, field) in fields.iter().enumerate() {
-                    let field_ty = def_id
-                        .and_then(|it| match it.field(self.db, &field.name) {
-                            Some(field) => Some(field),
-                            None => {
-                                self.push_diagnostic(InferenceDiagnostic::NoSuchField {
-                                    expr: tgt_expr,
-                                    field: field_idx,
-                                });
-                                None
-                            }
-                        })
-                        .map_or(Ty::Unknown, |field| field.ty(self.db))
-                        .subst(&substs);
+                    let field_def = def_id.and_then(|it| match it.field(self.db, &field.name) {
+                        Some(field) => Some(field),
+                        None => {
+                            self.push_diagnostic(InferenceDiagnostic::NoSuchField {
+                                expr: tgt_expr,
+                                field: field_idx,
+                            });
+                            None
+                        }
+                    });
+                    if let Some(field_def) = field_def {
+                        self.result.record_field_resolutions.insert(field.expr, field_def);
+                    }
+                    let field_ty =
+                        field_def.map_or(Ty::Unknown, |field| field.ty(self.db)).subst(&substs);
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
                 if let Some(expr) = spread {
