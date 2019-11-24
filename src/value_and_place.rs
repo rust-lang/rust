@@ -334,7 +334,15 @@ impl<'tcx> CPlace<'tcx> {
                 fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
                 None,
             ),
-            CPlaceInner::NoPlace => (fx.bcx.ins().iconst(fx.pointer_type, 45), None),
+            CPlaceInner::NoPlace => {
+                (
+                    fx.bcx.ins().iconst(
+                        fx.pointer_type,
+                        i64::try_from(self.layout.align.pref.bytes()).unwrap(),
+                    ),
+                    None
+                )
+            }
             CPlaceInner::Var(_) => bug!("Expected CPlace::Addr, found CPlace::Var"),
         }
     }
