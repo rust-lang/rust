@@ -13,7 +13,6 @@ use rustc::session::config::{Sanitizer, self};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
-use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
 
@@ -483,19 +482,13 @@ impl<'a> CrateLoader<'a> {
         }
     }
 
-    fn update_extern_crate(&self,
-                           cnum: CrateNum,
-                           mut extern_crate: ExternCrate,
-                           visited: &mut FxHashSet<(CrateNum, bool)>)
-    {
-        if !visited.insert((cnum, extern_crate.is_direct())) { return }
-
+    fn update_extern_crate(&self, cnum: CrateNum, extern_crate: ExternCrate) {
         let cmeta = self.cstore.get_crate_data(cnum);
         if cmeta.update_extern_crate(extern_crate) {
-            // Propagate the extern crate info to dependencies.
-            extern_crate.dependency_of = cnum;
+            // Propagate the extern crate info to dependencies if it was updated.
+            let extern_crate = ExternCrate { dependency_of: cnum, ..extern_crate };
             for &dep_cnum in cmeta.dependencies().iter() {
-                self.update_extern_crate(dep_cnum, extern_crate, visited);
+                self.update_extern_crate(dep_cnum, extern_crate);
             }
         }
     }
@@ -935,7 +928,6 @@ impl<'a> CrateLoader<'a> {
                         path_len,
                         dependency_of: LOCAL_CRATE,
                     },
-                    &mut FxHashSet::default(),
                 );
                 cnum
             }
@@ -955,27 +947,12 @@ impl<'a> CrateLoader<'a> {
                 path_len: usize::max_value(),
                 dependency_of: LOCAL_CRATE,
             },
-            &mut FxHashSet::default(),
         );
 
         cnum
     }
 
     pub fn maybe_process_path_extern(&mut self, name: Symbol, span: Span) -> Option<CrateNum> {
-        let cnum = self.maybe_resolve_crate(name, span, DepKind::Explicit, None).ok()?;
-
-        self.update_extern_crate(
-            cnum,
-            ExternCrate {
-                src: ExternCrateSource::Path,
-                span,
-                // to have the least priority in `update_extern_crate`
-                path_len: usize::max_value(),
-                dependency_of: LOCAL_CRATE,
-            },
-            &mut FxHashSet::default(),
-        );
-
-        Some(cnum)
+        self.maybe_resolve_crate(name, span, DepKind::Explicit, None).ok()
     }
 }
