@@ -5,20 +5,7 @@
 //! This module defines a bunch of ids we are using. The most important ones are
 //! probably `HirFileId` and `DefId`.
 
-use ra_db::salsa;
-
-macro_rules! impl_intern_key {
-    ($name:ident) => {
-        impl salsa::InternKey for $name {
-            fn from_intern_id(v: salsa::InternId) -> Self {
-                $name(v)
-            }
-            fn as_intern_id(&self) -> salsa::InternId {
-                self.0
-            }
-        }
-    };
-}
+use ra_db::{impl_intern_key, salsa};
 
 /// This exists just for Chalk, because Chalk just has a single `StructId` where
 /// we have different kinds of ADTs, primitive types and special type
