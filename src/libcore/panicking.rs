@@ -6,8 +6,7 @@
 //! interface for panicking is:
 //!
 //! ```
-//! # use std::fmt;
-//! fn panic_impl(pi: &PanicInfo<'_>) -> !
+//! fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !
 //! # { loop {} }
 //! ```
 //!
