@@ -62,7 +62,7 @@ impl Crate {
     }
 
     pub fn root_module(self, db: &impl DefDatabase) -> Option<Module> {
-        let module_id = db.crate_def_map(self.crate_id).root();
+        let module_id = db.crate_def_map(self.crate_id).root;
         Some(Module::new(self, module_id))
     }
 
@@ -195,7 +195,7 @@ impl Module {
     /// in the module tree of any target in `Cargo.toml`.
     pub fn crate_root(self, db: &impl DefDatabase) -> Module {
         let def_map = db.crate_def_map(self.id.krate);
-        self.with_module_id(def_map.root())
+        self.with_module_id(def_map.root)
     }
 
     /// Finds a child module with the specified name.

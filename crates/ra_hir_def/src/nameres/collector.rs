@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! The core of the module-level name resolution algorithm.
+//!
+//! `DefCollector::collect` contains the fixed-point iteration loop which
+//! resolves imports and expands macros.
 
 use hir_expand::{
     builtin_macro::find_builtin_macro,

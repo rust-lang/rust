@@ -39,8 +39,9 @@ impl LangItems {
         let crate_def_map = db.crate_def_map(krate);
 
         crate_def_map
-            .modules()
-            .filter_map(|module_id| db.module_lang_items(ModuleId { krate, module_id }))
+            .modules
+            .iter()
+            .filter_map(|(module_id, _)| db.module_lang_items(ModuleId { krate, module_id }))
             .for_each(|it| lang_items.items.extend(it.items.iter().map(|(k, v)| (k.clone(), *v))));
 
         Arc::new(lang_items)
