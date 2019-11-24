@@ -415,8 +415,11 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock")?;
-    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
