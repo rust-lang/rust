@@ -308,7 +308,7 @@ impl Resolver {
 
     pub fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
         let (item_map, module) = self.module()?;
-        item_map.resolve_path(db, module, path).0.get_macros()
+        item_map.resolve_path(db, module, path).0.take_macros()
     }
 
     pub fn process_all_names(&self, db: &impl DefDatabase, f: &mut dyn FnMut(Name, ScopeDef)) {

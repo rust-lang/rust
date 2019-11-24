@@ -476,7 +476,7 @@ where
                 path,
             );
 
-            if let Some(def) = resolved_res.resolved_def.get_macros() {
+            if let Some(def) = resolved_res.resolved_def.take_macros() {
                 let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id: *ast_id });
                 resolved.push((*module_id, call_id, def));
                 res = ReachedFixedPoint::No;

@@ -8,20 +8,23 @@
 //! actually true.
 
 pub mod db;
+
 pub mod attr;
 pub mod path;
 pub mod type_ref;
 pub mod builtin_type;
-pub mod adt;
 pub mod diagnostics;
-pub mod expr;
-pub mod body;
-pub mod generics;
-pub mod resolver;
+pub mod per_ns;
+
+pub mod adt;
 pub mod data;
+pub mod generics;
 pub mod lang_item;
 pub mod docs;
-pub mod per_ns;
+
+pub mod expr;
+pub mod body;
+pub mod resolver;
 
 mod trace;
 mod nameres;
