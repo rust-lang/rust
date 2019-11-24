@@ -58,7 +58,6 @@ pub use crate::{
     },
     expr::ExprScopes,
     from_source::FromSource,
-    ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
         display::HirDisplay,
@@ -73,4 +72,6 @@ pub use hir_def::{
     path::{Path, PathKind},
     type_ref::Mutability,
 };
-pub use hir_expand::{either::Either, name::Name, Source};
+pub use hir_expand::{
+    either::Either, name::Name, HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Source,
+};

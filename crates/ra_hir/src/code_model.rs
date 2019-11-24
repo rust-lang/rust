@@ -12,13 +12,14 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    ContainerId, HasModule, ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId,
-    LocalStructFieldId, Lookup, ModuleId, UnionId,
+    AstItemDef, ConstId, ContainerId, EnumId, FunctionId, HasModule, ImplId, LocalEnumVariantId,
+    LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId,
+    TraitId, TypeAliasId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
     name::{self, AsName},
-    AstId,
+    AstId, MacroDefId,
 };
 use ra_db::{CrateId, Edition, FileId, FilePosition};
 use ra_syntax::{ast, AstNode, SyntaxNode};
@@ -26,10 +27,6 @@ use ra_syntax::{ast, AstNode, SyntaxNode};
 use crate::{
     db::{DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
-    ids::{
-        AstItemDef, ConstId, EnumId, FunctionId, MacroDefId, StaticId, StructId, TraitId,
-        TypeAliasId,
-    },
     ty::{InferenceResult, Namespace, TraitRef},
     Either, HasSource, Name, Source, Ty,
 };

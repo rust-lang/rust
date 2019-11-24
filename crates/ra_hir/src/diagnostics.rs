@@ -2,9 +2,10 @@
 
 use std::any::Any;
 
+use hir_expand::HirFileId;
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 
-use crate::{db::AstDatabase, HirFileId, Name, Source};
+use crate::{db::AstDatabase, Name, Source};
 
 pub use hir_def::diagnostics::UnresolvedModule;
 pub use hir_expand::diagnostics::{AstDiagnostic, Diagnostic, DiagnosticSink};

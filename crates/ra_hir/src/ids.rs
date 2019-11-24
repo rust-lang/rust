@@ -7,12 +7,6 @@
 
 use ra_db::salsa;
 
-pub use hir_def::{
-    AstItemDef, ConstId, EnumId, FunctionId, ItemLoc, LocationCtx, StaticId, StructId, TraitId,
-    TypeAliasId,
-};
-pub use hir_expand::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, MacroFileKind};
-
 macro_rules! impl_intern_key {
     ($name:ident) => {
         impl salsa::InternKey for $name {
