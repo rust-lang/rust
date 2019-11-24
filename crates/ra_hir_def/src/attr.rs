@@ -144,17 +144,7 @@ impl Attr {
         }
     }
 
-    pub fn as_path(&self) -> Option<&SmolStr> {
-        if !self.is_simple_atom("path") {
-            return None;
-        }
-        match &self.input {
-            Some(AttrInput::Literal(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    pub fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Option<bool> {
+    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Option<bool> {
         cfg_options.is_cfg_enabled(self.as_cfg()?)
     }
 }

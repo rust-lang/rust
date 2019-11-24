@@ -7,7 +7,7 @@ use hir_expand::{
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
-use ra_syntax::{ast, SmolStr};
+use ra_syntax::ast;
 use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::tested_by;
 
@@ -599,7 +599,7 @@ where
     }
 
     fn collect_module(&mut self, module: &raw::ModuleData, attrs: &Attrs) {
-        let path_attr = self.path_attr(attrs);
+        let path_attr = attrs.find_string_value("path");
         let is_macro_use = attrs.has_atom("macro_use");
         match module {
             // inline module, just recurse
@@ -612,7 +612,7 @@ where
                     module_id,
                     file_id: self.file_id,
                     raw_items: self.raw_items,
-                    mod_dir: self.mod_dir.descend_into_definition(name, path_attr),
+                    mod_dir: self.mod_dir.descend_into_definition(name, path_attr.as_ref()),
                 }
                 .collect(&*items);
                 if is_macro_use {
@@ -626,7 +626,7 @@ where
                     self.def_collector.db,
                     self.file_id,
                     name,
-                    path_attr,
+                    path_attr.as_ref(),
                 ) {
                     Ok((file_id, mod_dir)) => {
                         let module_id = self.push_child_module(name.clone(), ast_id, Some(file_id));
@@ -797,10 +797,6 @@ where
 
     fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
         attrs.iter().all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
-    }
-
-    fn path_attr<'a>(&self, attrs: &'a Attrs) -> Option<&'a SmolStr> {
-        attrs.iter().find_map(|attr| attr.as_path())
     }
 }
 
