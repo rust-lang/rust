@@ -1,7 +1,7 @@
 // See src/libstd/primitive_docs.rs for documentation.
 
-use crate::cmp::*;
 use crate::cmp::Ordering::*;
+use crate::cmp::*;
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! tuple_impls {

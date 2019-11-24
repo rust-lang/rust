@@ -39,35 +39,34 @@ pub trait CoerceUnsized<T: ?Sized> {
 
 // &mut T -> &mut U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
 // &mut T -> &U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
 // &mut T -> *mut U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
 // &mut T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
 
 // &T -> &U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
 // &T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
 
 // *mut T -> *mut U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
 // *mut T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 
 // *const T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
-
+impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
 
 /// This is used for object safety, to check that a method's receiver type can be dispatched on.
 ///
@@ -90,13 +89,13 @@ pub trait DispatchFromDyn<T> {
 
 // &T -> &U
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
 // &mut T -> &mut U
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
-impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
 // *const T -> *const U
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
 // *mut T -> *mut U
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
-impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}

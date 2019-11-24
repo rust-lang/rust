@@ -25,25 +25,25 @@ pub use crate::mem::drop;
 pub use crate::clone::Clone;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use crate::cmp::{PartialEq, PartialOrd, Eq, Ord};
+pub use crate::cmp::{Eq, Ord, PartialEq, PartialOrd};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use crate::convert::{AsRef, AsMut, Into, From};
+pub use crate::convert::{AsMut, AsRef, From, Into};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
 pub use crate::default::Default;
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use crate::iter::{Iterator, Extend, IntoIterator};
-#[stable(feature = "core_prelude", since = "1.4.0")]
-#[doc(no_inline)]
 pub use crate::iter::{DoubleEndedIterator, ExactSizeIterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use crate::option::Option::{self, Some, None};
+pub use crate::iter::{Extend, IntoIterator, Iterator};
 #[stable(feature = "core_prelude", since = "1.4.0")]
 #[doc(no_inline)]
-pub use crate::result::Result::{self, Ok, Err};
+pub use crate::option::Option::{self, None, Some};
+#[stable(feature = "core_prelude", since = "1.4.0")]
+#[doc(no_inline)]
+pub use crate::result::Result::{self, Err, Ok};
 
 // Re-exported built-in macros
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
@@ -56,37 +56,14 @@ pub use crate::hash::macros::Hash;
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(no_inline)]
 pub use crate::{
-    asm,
-    assert,
-    cfg,
-    column,
-    compile_error,
-    concat,
-    concat_idents,
-    env,
-    file,
-    format_args,
-    format_args_nl,
-    global_asm,
-    include,
-    include_bytes,
-    include_str,
-    line,
-    log_syntax,
-    module_path,
-    option_env,
-    stringify,
-    trace_macros,
+    asm, assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
+    format_args_nl, global_asm, include, include_bytes, include_str, line, log_syntax, module_path,
+    option_env, stringify, trace_macros,
 };
 
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
 #[doc(no_inline)]
 pub use crate::macros::builtin::{
-    RustcDecodable,
-    RustcEncodable,
-    bench,
-    global_allocator,
-    test,
-    test_case,
+    bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
 };

@@ -374,10 +374,10 @@
 
 #![stable(feature = "pin", since = "1.33.0")]
 
+use crate::cmp::{self, PartialEq, PartialOrd};
 use crate::fmt;
 use crate::marker::{Sized, Unpin};
-use crate::cmp::{self, PartialEq, PartialOrd};
-use crate::ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
+use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 
 /// A pinned pointer.
 ///
@@ -646,7 +646,8 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     ///
     /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
-    pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U> where
+    pub unsafe fn map_unchecked<U, F>(self, func: F) -> Pin<&'a U>
+    where
         F: FnOnce(&T) -> &U,
     {
         let pointer = &*self.pointer;
@@ -698,7 +699,8 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[stable(feature = "pin", since = "1.33.0")]
     #[inline(always)]
     pub fn get_mut(self) -> &'a mut T
-        where T: Unpin,
+    where
+        T: Unpin,
     {
         self.pointer
     }
@@ -735,7 +737,8 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     ///
     /// [`pin` module]: ../../std/pin/index.html#projections-and-structural-pinning
     #[stable(feature = "pin", since = "1.33.0")]
-    pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U> where
+    pub unsafe fn map_unchecked_mut<U, F>(self, func: F) -> Pin<&'a mut U>
+    where
         F: FnOnce(&mut T) -> &mut U,
     {
         let pointer = Pin::get_unchecked_mut(self);
@@ -789,13 +792,7 @@ impl<P: fmt::Pointer> fmt::Pointer for Pin<P> {
 // for other reasons, though, so we just need to take care not to allow such
 // impls to land in std.
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P, U> CoerceUnsized<Pin<U>> for Pin<P>
-where
-    P: CoerceUnsized<U>,
-{}
+impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
-impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P>
-where
-    P: DispatchFromDyn<U>,
-{}
+impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}

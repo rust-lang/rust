@@ -130,11 +130,7 @@ impl char {
             }
         };
 
-        if val < radix {
-            Some(val)
-        } else {
-            None
-        }
+        if val < radix { Some(val) } else { None }
     }
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a
@@ -950,11 +946,7 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_uppercase(&self) -> char {
-        if self.is_ascii() {
-            (*self as u8).to_ascii_uppercase() as char
-        } else {
-            *self
-        }
+        if self.is_ascii() { (*self as u8).to_ascii_uppercase() as char } else { *self }
     }
 
     /// Makes a copy of the value in its ASCII lower case equivalent.
@@ -982,11 +974,7 @@ impl char {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn to_ascii_lowercase(&self) -> char {
-        if self.is_ascii() {
-            (*self as u8).to_ascii_lowercase() as char
-        } else {
-            *self
-        }
+        if self.is_ascii() { (*self as u8).to_ascii_lowercase() as char } else { *self }
     }
 
     /// Checks that two values are an ASCII case-insensitive match.

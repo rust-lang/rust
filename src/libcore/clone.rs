@@ -107,7 +107,7 @@
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "clone"]
-pub trait Clone : Sized {
+pub trait Clone: Sized {
     /// Returns a copy of the value.
     ///
     /// # Examples
@@ -137,7 +137,9 @@ pub trait Clone : Sized {
 #[rustc_builtin_macro]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow_internal_unstable(core_intrinsics, derive_clone_copy)]
-pub macro Clone($item:item) { /* compiler built-in */ }
+pub macro Clone($item:item) {
+    /* compiler built-in */
+}
 
 // FIXME(aburka): these structs are used solely by #[derive] to
 // assert that every component of a type implements Clone or Copy.
@@ -145,16 +147,24 @@ pub macro Clone($item:item) { /* compiler built-in */ }
 // These structs should never appear in user code.
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
-#[unstable(feature = "derive_clone_copy",
-           reason = "deriving hack, should not be public",
-           issue = "0")]
-pub struct AssertParamIsClone<T: Clone + ?Sized> { _field: crate::marker::PhantomData<T> }
+#[unstable(
+    feature = "derive_clone_copy",
+    reason = "deriving hack, should not be public",
+    issue = "0"
+)]
+pub struct AssertParamIsClone<T: Clone + ?Sized> {
+    _field: crate::marker::PhantomData<T>,
+}
 #[doc(hidden)]
 #[allow(missing_debug_implementations)]
-#[unstable(feature = "derive_clone_copy",
-           reason = "deriving hack, should not be public",
-           issue = "0")]
-pub struct AssertParamIsCopy<T: Copy + ?Sized> { _field: crate::marker::PhantomData<T> }
+#[unstable(
+    feature = "derive_clone_copy",
+    reason = "deriving hack, should not be public",
+    issue = "0"
+)]
+pub struct AssertParamIsCopy<T: Copy + ?Sized> {
+    _field: crate::marker::PhantomData<T>,
+}
 
 /// Implementations of `Clone` for primitive types.
 ///
@@ -217,5 +227,4 @@ mod impls {
             *self
         }
     }
-
 }

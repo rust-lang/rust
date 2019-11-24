@@ -192,7 +192,8 @@ pub trait Hash {
     /// [`Hasher`]: trait.Hasher.html
     #[stable(feature = "hash_slice", since = "1.3.0")]
     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H)
-        where Self: Sized
+    where
+        Self: Sized,
     {
         for piece in data {
             piece.hash(state);
@@ -206,7 +207,9 @@ pub(crate) mod macros {
     #[rustc_builtin_macro]
     #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
     #[allow_internal_unstable(core_intrinsics)]
-    pub macro Hash($item:item) { /* compiler built-in */ }
+    pub macro Hash($item:item) {
+        /* compiler built-in */
+    }
 }
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[doc(inline)]
@@ -666,7 +669,6 @@ mod impls {
         }
     }
 
-
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<T: ?Sized + Hash> Hash for &T {
         fn hash<H: Hasher>(&self, state: &mut H) {
@@ -689,9 +691,7 @@ mod impls {
                 state.write_usize(*self as *const () as usize);
             } else {
                 // Fat pointer
-                let (a, b) = unsafe {
-                    *(self as *const Self as *const (usize, usize))
-                };
+                let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);
             }
@@ -706,9 +706,7 @@ mod impls {
                 state.write_usize(*self as *const () as usize);
             } else {
                 // Fat pointer
-                let (a, b) = unsafe {
-                    *(self as *const Self as *const (usize, usize))
-                };
+                let (a, b) = unsafe { *(self as *const Self as *const (usize, usize)) };
                 state.write_usize(a);
                 state.write_usize(b);
             }
