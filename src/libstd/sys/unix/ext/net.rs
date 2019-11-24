@@ -431,7 +431,7 @@ impl UnixStream {
     ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
     ///     let err = result.unwrap_err();
-    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     ///     Ok(())
     /// }
     /// ```
@@ -477,7 +477,7 @@ impl UnixStream {
     ///     let socket = UdpSocket::bind("127.0.0.1:34254")?;
     ///     let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
     ///     let err = result.unwrap_err();
-    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     ///     Ok(())
     /// }
     /// ```
@@ -583,7 +583,7 @@ impl UnixStream {
     /// use std::net::Shutdown;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let socket = UnixStream::connect("/tmp/sock");
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
     ///     socket.shutdown(Shutdown::Both).expect("shutdown function failed");
     ///     Ok(())
     /// }
@@ -1421,7 +1421,7 @@ impl UnixDatagram {
     ///     let socket = UnixDatagram::unbound()?;
     ///     let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
     ///     let err = result.unwrap_err();
-    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     ///     Ok(())
     /// }
     /// ```
@@ -1467,7 +1467,7 @@ impl UnixDatagram {
     ///     let socket = UnixDatagram::unbound()?;
     ///     let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
     ///     let err = result.unwrap_err();
-    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
     ///     Ok(())
     /// }
     /// ```
