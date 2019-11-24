@@ -294,7 +294,7 @@ pub fn panicking() -> bool {
     update_panic_count(0) != 0
 }
 
-/// Entry point of panic from the libcore crate.
+/// Entry point of panic from the libcore crate (`panic_impl` lang item).
 #[cfg(not(test))]
 #[panic_handler]
 #[unwind(allowed)]
@@ -380,7 +380,7 @@ fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
            issue = "0")]
-#[cfg_attr(not(test), lang = "begin_panic")]
+#[cfg_attr(not(test), lang = "begin_panic")] // lang item for CTFE panic support
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
