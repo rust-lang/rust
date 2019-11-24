@@ -44,6 +44,8 @@ extern {
                                 data: *mut u8,
                                 data_ptr: *mut usize,
                                 vtable_ptr: *mut usize) -> u32;
+
+    /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
     #[unwind(allowed)]
     fn __rust_start_panic(payload: usize) -> u32;
 }
