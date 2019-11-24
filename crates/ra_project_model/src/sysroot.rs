@@ -31,6 +31,10 @@ impl Sysroot {
         self.by_name("core")
     }
 
+    pub fn alloc(&self) -> Option<SysrootCrate> {
+        self.by_name("alloc")
+    }
+
     pub fn std(&self) -> Option<SysrootCrate> {
         self.by_name("std")
     }

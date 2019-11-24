@@ -209,6 +209,7 @@ impl ProjectWorkspace {
                 }
 
                 let libcore = sysroot.core().and_then(|it| sysroot_crates.get(&it).copied());
+                let liballoc = sysroot.alloc().and_then(|it| sysroot_crates.get(&it).copied());
                 let libstd = sysroot.std().and_then(|it| sysroot_crates.get(&it).copied());
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
@@ -259,6 +260,11 @@ impl ProjectWorkspace {
                         if let Some(core) = libcore {
                             if let Err(_) = crate_graph.add_dep(from, "core".into(), core) {
                                 log::error!("cyclic dependency on core for {}", pkg.name(&cargo))
+                            }
+                        }
+                        if let Some(alloc) = liballoc {
+                            if let Err(_) = crate_graph.add_dep(from, "alloc".into(), alloc) {
+                                log::error!("cyclic dependency on alloc for {}", pkg.name(&cargo))
                             }
                         }
                         if let Some(std) = libstd {
