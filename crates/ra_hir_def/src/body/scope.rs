@@ -54,8 +54,8 @@ impl ExprScopes {
         let mut scopes =
             ExprScopes { scopes: Arena::default(), scope_by_expr: FxHashMap::default() };
         let root = scopes.root_scope();
-        scopes.add_params_bindings(body, root, body.params());
-        compute_expr_scopes(body.body_expr(), body, &mut scopes, root);
+        scopes.add_params_bindings(body, root, &body.params);
+        compute_expr_scopes(body.body_expr, body, &mut scopes, root);
         scopes
     }
 

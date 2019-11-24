@@ -44,15 +44,15 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
     pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
         let body = self.func.body(db);
 
-        for e in body.exprs() {
+        for e in body.exprs.iter() {
             if let (id, Expr::RecordLit { path, fields, spread }) = e {
                 self.validate_record_literal(id, path, fields, *spread, db);
             }
         }
 
-        let body_expr = &body[body.body_expr()];
+        let body_expr = &body[body.body_expr];
         if let Expr::Block { statements: _, tail: Some(t) } = body_expr {
-            self.validate_results_in_tail_expr(body.body_expr(), *t, db);
+            self.validate_results_in_tail_expr(body.body_expr, *t, db);
         }
     }
 

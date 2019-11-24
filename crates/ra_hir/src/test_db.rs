@@ -80,7 +80,7 @@ impl TestDB {
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter().next() {
             let crate_def_map = self.crate_def_map(krate);
-            for module_id in crate_def_map.modules() {
+            for (module_id, _) in crate_def_map.modules.iter() {
                 let module_id = ModuleId { krate, module_id };
                 let module = crate::Module::from(module_id);
                 module.diagnostics(

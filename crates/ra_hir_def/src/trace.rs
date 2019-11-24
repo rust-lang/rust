@@ -12,38 +12,48 @@
 use ra_arena::{map::ArenaMap, Arena, ArenaId, RawId};
 
 pub(crate) struct Trace<ID: ArenaId, T, V> {
-    for_arena: bool,
-    arena: Arena<ID, T>,
-    map: ArenaMap<ID, V>,
+    arena: Option<Arena<ID, T>>,
+    map: Option<ArenaMap<ID, V>>,
     len: u32,
 }
 
-impl<ID: ra_arena::ArenaId, T, V> Trace<ID, T, V> {
+impl<ID: ra_arena::ArenaId + Copy, T, V> Trace<ID, T, V> {
+    pub(crate) fn new() -> Trace<ID, T, V> {
+        Trace { arena: Some(Arena::default()), map: Some(ArenaMap::default()), len: 0 }
+    }
+
     pub(crate) fn new_for_arena() -> Trace<ID, T, V> {
-        Trace { for_arena: true, arena: Arena::default(), map: ArenaMap::default(), len: 0 }
+        Trace { arena: Some(Arena::default()), map: None, len: 0 }
     }
 
     pub(crate) fn new_for_map() -> Trace<ID, T, V> {
-        Trace { for_arena: false, arena: Arena::default(), map: ArenaMap::default(), len: 0 }
+        Trace { arena: None, map: Some(ArenaMap::default()), len: 0 }
     }
 
-    pub(crate) fn alloc(&mut self, value: impl Fn() -> V, data: impl Fn() -> T) {
-        if self.for_arena {
-            self.arena.alloc(data());
+    pub(crate) fn alloc(&mut self, value: impl FnOnce() -> V, data: impl FnOnce() -> T) -> ID {
+        let id = if let Some(arena) = &mut self.arena {
+            arena.alloc(data())
         } else {
             let id = ID::from_raw(RawId::from(self.len));
             self.len += 1;
-            self.map.insert(id, value());
+            id
+        };
+
+        if let Some(map) = &mut self.map {
+            map.insert(id, value());
         }
+        id
     }
 
-    pub(crate) fn into_arena(self) -> Arena<ID, T> {
-        assert!(self.for_arena);
-        self.arena
+    pub(crate) fn into_arena(mut self) -> Arena<ID, T> {
+        self.arena.take().unwrap()
     }
 
-    pub(crate) fn into_map(self) -> ArenaMap<ID, V> {
-        assert!(!self.for_arena);
-        self.map
+    pub(crate) fn into_map(mut self) -> ArenaMap<ID, V> {
+        self.map.take().unwrap()
+    }
+
+    pub(crate) fn into_arena_and_map(mut self) -> (Arena<ID, T>, ArenaMap<ID, V>) {
+        (self.arena.take().unwrap(), self.map.take().unwrap())
     }
 }

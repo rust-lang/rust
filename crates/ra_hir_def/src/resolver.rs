@@ -321,7 +321,7 @@ impl Resolver {
         let mut traits = FxHashSet::default();
         for scope in &self.scopes {
             if let Scope::ModuleScope(m) = scope {
-                if let Some(prelude) = m.crate_def_map.prelude() {
+                if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
                     traits.extend(prelude_def_map[prelude.module_id].scope.traits());
                 }
@@ -340,7 +340,7 @@ impl Resolver {
     }
 
     pub fn krate(&self) -> Option<CrateId> {
-        self.module().map(|t| t.0.krate())
+        self.module().map(|t| t.0.krate)
     }
 
     pub fn where_predicates_in_scope<'a>(
@@ -395,10 +395,10 @@ impl Scope {
                 m.crate_def_map[m.module_id].scope.legacy_macros().for_each(|(name, macro_)| {
                     f(name.clone(), ScopeDef::PerNs(PerNs::macros(macro_)));
                 });
-                m.crate_def_map.extern_prelude().iter().for_each(|(name, &def)| {
+                m.crate_def_map.extern_prelude.iter().for_each(|(name, &def)| {
                     f(name.clone(), ScopeDef::PerNs(PerNs::types(def.into())));
                 });
-                if let Some(prelude) = m.crate_def_map.prelude() {
+                if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
                     prelude_def_map[prelude.module_id].scope.entries().for_each(|(name, res)| {
                         f(name.clone(), ScopeDef::PerNs(res.def));
