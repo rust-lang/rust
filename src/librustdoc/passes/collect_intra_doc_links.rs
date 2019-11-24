@@ -121,23 +121,18 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
 
             // Try looking for methods and associated items.
             let mut split = path_str.rsplitn(2, "::");
-            let item_name = if let Some(first) = split.next() {
-                Symbol::intern(first)
-            } else {
-                return Err(ErrorKind::ResolutionFailure)
-            };
-
-            let mut path = if let Some(second) = split.next() {
-                second.to_owned()
-            } else {
-                return Err(ErrorKind::ResolutionFailure)
-            };
-
-            if path == "self" || path == "Self" {
-                if let Some(name) = current_item.as_ref() {
-                    path = name.clone();
+            let item_name = split.next()
+                .map(|f| Symbol::intern(f))
+                .ok_or(ErrorKind::ResolutionFailure)?;
+            let path = split.next().map(|f| {
+                if f == "self" || f == "Self" {
+                    if let Some(name) = current_item.as_ref() {
+                        return name.clone();
+                    }
                 }
-            }
+                f.to_owned()
+            }).ok_or(ErrorKind::ResolutionFailure)?;
+
             if let Some(prim) = is_primitive(&path, TypeNS) {
                 let did = primitive_impl(cx, &path).ok_or(ErrorKind::ResolutionFailure)?;
                 return cx.tcx.associated_items(did)
