@@ -28,8 +28,7 @@ use crate::{
     expr::{BodySourceMap, ExprScopes, ScopeId},
     ty::method_resolution::{self, implements_trait},
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
-    GenericParam, HasBody, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Ty,
-    TypeAlias,
+    GenericParam, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Ty, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
@@ -155,8 +154,8 @@ impl SourceAnalyzer {
     ) -> SourceAnalyzer {
         let def_with_body = def_with_body_from_child_node(db, node);
         if let Some(def) = def_with_body {
-            let source_map = def.body_source_map(db);
-            let scopes = def.expr_scopes(db);
+            let (_body, source_map) = db.body_with_source_map(def.into());
+            let scopes = db.expr_scopes(def.into());
             let scope = match offset {
                 None => scope_for(&scopes, &source_map, node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
@@ -166,7 +165,7 @@ impl SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
                 body_source_map: Some(source_map),
-                infer: Some(def.infer(db)),
+                infer: Some(db.infer(def)),
                 scopes: Some(scopes),
                 file_id: node.file_id,
             }

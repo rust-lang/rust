@@ -44,8 +44,7 @@ use crate::{
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, DefWithBody, FloatTy, Function, HasBody, IntTy, Path, StructField, Trait,
-    VariantDef,
+    Adt, AssocItem, DefWithBody, FloatTy, Function, IntTy, Path, StructField, Trait, VariantDef,
 };
 
 macro_rules! ty_app {
@@ -221,7 +220,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             owner,
-            body: owner.body(db),
+            body: db.body(owner.into()),
             resolver,
         }
     }

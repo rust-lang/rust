@@ -9,9 +9,9 @@ use ra_syntax::{
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    AssocItem, Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource,
-    ImplBlock, Local, MacroDef, Module, ModuleDef, ModuleSource, Source, Static, Struct,
-    StructField, Trait, TypeAlias, Union, VariantDef,
+    AssocItem, Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock,
+    Local, MacroDef, Module, ModuleDef, ModuleSource, Source, Static, Struct, StructField, Trait,
+    TypeAlias, Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -221,7 +221,7 @@ impl Local {
             };
             Some(res)
         })?;
-        let source_map = parent.body_source_map(db);
+        let (_body, source_map) = db.body_with_source_map(parent.into());
         let src = src.map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         Some(Local { parent, pat_id })
