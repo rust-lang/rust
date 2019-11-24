@@ -56,6 +56,59 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         }
     }
 
+    fn variant_field(
+        &self,
+        path_str: &str,
+        current_item: &Option<String>,
+        module_id: syntax::ast::NodeId,
+    ) -> Result<(Res, Option<String>), ()> {
+        let cx = self.cx;
+
+        let mut split = path_str.rsplitn(3, "::");
+        let variant_field_name = split.next().map(|f| Symbol::intern(f)).ok_or(())?;
+        let variant_name = split.next().map(|f| Symbol::intern(f)).ok_or(())?;
+        let path = split.next().map(|f| {
+            if f == "self" || f == "Self" {
+                if let Some(name) = current_item.as_ref() {
+                    return name.clone();
+                }
+            }
+            f.to_owned()
+        }).ok_or(())?;
+        let (_, ty_res) = cx.enter_resolver(|resolver| {
+            resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
+        })?;
+        if let Res::Err = ty_res {
+            return Err(());
+        }
+        let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
+        match ty_res {
+            Res::Def(DefKind::Enum, did) => {
+                let item = cx.tcx.inherent_impls(did)
+                                 .iter()
+                                 .flat_map(|imp| cx.tcx.associated_items(*imp))
+                                 .find(|item| item.ident.name == variant_name);
+                if item.is_some() {
+                    return Err(());
+                }
+                match cx.tcx.type_of(did).kind {
+                    ty::Adt(def, _) if def.is_enum() => {
+                        if def.all_fields()
+                              .find(|item| item.ident.name == variant_field_name).is_some() {
+                            Ok((ty_res,
+                                Some(format!("variant.{}.field.{}",
+                                             variant_name, variant_field_name))))
+                        } else {
+                            Err(())
+                        }
+                    }
+                    _ => Err(()),
+                }
+            }
+            _ => Err(())
+        }
+    }
+
     /// Resolves a string as a path within a particular namespace. Also returns an optional
     /// URL fragment in the case of variants and methods.
     fn resolve(
@@ -149,7 +202,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
             }).map_err(|_| ErrorKind::ResolutionFailure)?;
             if let Res::Err = ty_res {
-                return Err(ErrorKind::ResolutionFailure);
+                return self.variant_field(path_str, current_item, module_id);
             }
             let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
             match ty_res {
@@ -165,7 +218,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                         let out = match item.kind {
                             ty::AssocKind::Method if ns == ValueNS => "method",
                             ty::AssocKind::Const if ns == ValueNS => "associatedconstant",
-                            _ => return Err(ErrorKind::ResolutionFailure)
+                            _ => return self.variant_field(path_str, current_item, module_id),
                         };
                         if extra_fragment.is_some() {
                             Err(ErrorKind::AnchorFailure(
@@ -206,10 +259,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                                          item.ident))))
                                     }
                                 } else {
-                                    Err(ErrorKind::ResolutionFailure)
+                                    self.variant_field(path_str, current_item, module_id)
                                 }
                             }
-                            _ => Err(ErrorKind::ResolutionFailure),
+                            _ => self.variant_field(path_str, current_item, module_id),
                         }
                     }
                 }
@@ -228,7 +281,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                     "tymethod"
                                 }
                             }
-                            _ => return Err(ErrorKind::ResolutionFailure)
+                            _ => return self.variant_field(path_str, current_item, module_id),
                         };
 
                         if extra_fragment.is_some() {
@@ -244,10 +297,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                             Ok((ty_res, Some(format!("{}.{}", kind, item_name))))
                         }
                     } else {
-                        Err(ErrorKind::ResolutionFailure)
+                        self.variant_field(path_str, current_item, module_id)
                     }
                 }
-                _ => Err(ErrorKind::ResolutionFailure)
+                _ => self.variant_field(path_str, current_item, module_id),
             }
         } else {
             debug!("attempting to resolve item without parent module: {}", path_str);
