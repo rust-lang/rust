@@ -4,4 +4,6 @@ thread 'main' panicked at 'Hello from panic: 1', $DIR/catch_panic.rs:48:20
 Caught panic message (String): Hello from panic: 1
 thread 'main' panicked at 'Hello from panic: 2', $DIR/catch_panic.rs:49:20
 Caught panic message (String): Hello from panic: 2
+thread 'main' panicked at 'Box<Any>', $DIR/catch_panic.rs:50:21
+Failed get caught panic message.
 Success!
