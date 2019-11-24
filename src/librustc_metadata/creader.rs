@@ -191,14 +191,13 @@ impl<'a> CrateLoader<'a> {
         self.cstore
     }
 
-    fn existing_match(&self, name: Symbol, hash: Option<&Svh>, kind: PathKind)
-                      -> Option<CrateNum> {
+    fn existing_match(&self, name: Symbol, hash: Option<Svh>, kind: PathKind) -> Option<CrateNum> {
         let mut ret = None;
         self.cstore.iter_crate_data(|cnum, data| {
             if data.name() != name { return }
 
             match hash {
-                Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }
+                Some(hash) if hash == data.hash() => { ret = Some(cnum); return }
                 Some(..) => return,
                 None => {}
             }
@@ -410,10 +409,10 @@ impl<'a> CrateLoader<'a> {
         let (root, hash, host_hash, extra_filename, path_kind) = match dep {
             Some((root, dep)) => (
                 Some(root),
-                Some(&dep.hash),
-                dep.host_hash.as_ref(),
+                Some(dep.hash),
+                dep.host_hash,
                 Some(&dep.extra_filename[..]),
-                PathKind::Dependency
+                PathKind::Dependency,
             ),
             None => (None, None, None, None, PathKind::Crate),
         };

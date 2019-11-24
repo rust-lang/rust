@@ -262,8 +262,8 @@ crate struct CrateLocator<'a> {
     // Immutable per-search configuration.
     crate_name: Symbol,
     exact_paths: Vec<PathBuf>,
-    pub hash: Option<&'a Svh>,
-    pub host_hash: Option<&'a Svh>,
+    pub hash: Option<Svh>,
+    pub host_hash: Option<Svh>,
     extra_filename: Option<&'a str>,
     pub target: &'a Target,
     pub triple: TargetTriple,
@@ -313,8 +313,8 @@ impl<'a> CrateLocator<'a> {
         sess: &'a Session,
         metadata_loader: &'a dyn MetadataLoader,
         crate_name: Symbol,
-        hash: Option<&'a Svh>,
-        host_hash: Option<&'a Svh>,
+        hash: Option<Svh>,
+        host_hash: Option<Svh>,
         extra_filename: Option<&'a str>,
         is_host: bool,
         path_kind: PathKind,
@@ -792,7 +792,7 @@ impl<'a> CrateLocator<'a> {
         }
 
         let hash = root.hash();
-        if let Some(&expected_hash) = self.hash {
+        if let Some(expected_hash) = self.hash {
             if hash != expected_hash {
                 info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
                 self.rejected_via_hash.push(CrateMismatch {
