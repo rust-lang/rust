@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
+//! representation.
 
 use hir_expand::{
     either::Either,
