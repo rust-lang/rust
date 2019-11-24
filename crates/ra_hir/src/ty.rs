@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{generics::GenericParams, AdtId};
+use ra_db::{impl_intern_key, salsa};
 
 use crate::{
     db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, FloatTy,
@@ -113,6 +114,13 @@ pub enum TypeCtor {
     /// parameter.
     Closure { def: DefWithBody, expr: ExprId },
 }
+
+/// This exists just for Chalk, because Chalk just has a single `StructId` where
+/// we have different kinds of ADTs, primitive types and special type
+/// constructors like tuples and function pointers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeCtorId(salsa::InternId);
+impl_intern_key!(TypeCtorId);
 
 impl TypeCtor {
     pub fn num_ty_params(self, db: &impl HirDatabase) -> usize {

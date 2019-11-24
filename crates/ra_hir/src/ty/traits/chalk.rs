@@ -847,38 +847,38 @@ fn id_to_chalk<T: InternKey>(salsa_id: T) -> chalk_ir::RawId {
     chalk_ir::RawId { index: salsa_id.as_intern_id().as_u32() }
 }
 
-impl From<chalk_ir::StructId> for crate::ids::TypeCtorId {
+impl From<chalk_ir::StructId> for crate::ty::TypeCtorId {
     fn from(struct_id: chalk_ir::StructId) -> Self {
         id_from_chalk(struct_id.0)
     }
 }
 
-impl From<crate::ids::TypeCtorId> for chalk_ir::StructId {
-    fn from(type_ctor_id: crate::ids::TypeCtorId) -> Self {
+impl From<crate::ty::TypeCtorId> for chalk_ir::StructId {
+    fn from(type_ctor_id: crate::ty::TypeCtorId) -> Self {
         chalk_ir::StructId(id_to_chalk(type_ctor_id))
     }
 }
 
-impl From<chalk_ir::ImplId> for crate::ids::GlobalImplId {
+impl From<chalk_ir::ImplId> for crate::ty::traits::GlobalImplId {
     fn from(impl_id: chalk_ir::ImplId) -> Self {
         id_from_chalk(impl_id.0)
     }
 }
 
-impl From<crate::ids::GlobalImplId> for chalk_ir::ImplId {
-    fn from(impl_id: crate::ids::GlobalImplId) -> Self {
+impl From<crate::ty::traits::GlobalImplId> for chalk_ir::ImplId {
+    fn from(impl_id: crate::ty::traits::GlobalImplId) -> Self {
         chalk_ir::ImplId(id_to_chalk(impl_id))
     }
 }
 
-impl From<chalk_rust_ir::AssociatedTyValueId> for crate::ids::AssocTyValueId {
+impl From<chalk_rust_ir::AssociatedTyValueId> for crate::ty::traits::AssocTyValueId {
     fn from(id: chalk_rust_ir::AssociatedTyValueId) -> Self {
         id_from_chalk(id.0)
     }
 }
 
-impl From<crate::ids::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId {
-    fn from(assoc_ty_value_id: crate::ids::AssocTyValueId) -> Self {
+impl From<crate::ty::traits::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId {
+    fn from(assoc_ty_value_id: crate::ty::traits::AssocTyValueId) -> Self {
         chalk_rust_ir::AssociatedTyValueId(id_to_chalk(assoc_ty_value_id))
     }
 }

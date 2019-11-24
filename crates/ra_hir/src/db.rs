@@ -5,7 +5,6 @@ use std::sync::Arc;
 use ra_db::salsa;
 
 use crate::{
-    ids,
     ty::{
         method_resolution::CrateImplBlocks,
         traits::{AssocTyValue, Impl},
@@ -71,11 +70,14 @@ pub trait HirDatabase: DefDatabase {
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
+    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> crate::ty::TypeCtorId;
     #[salsa::interned]
-    fn intern_chalk_impl(&self, impl_: Impl) -> ids::GlobalImplId;
+    fn intern_chalk_impl(&self, impl_: Impl) -> crate::ty::traits::GlobalImplId;
     #[salsa::interned]
-    fn intern_assoc_ty_value(&self, assoc_ty_value: AssocTyValue) -> ids::AssocTyValueId;
+    fn intern_assoc_ty_value(
+        &self,
+        assoc_ty_value: AssocTyValue,
+    ) -> crate::ty::traits::AssocTyValueId;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
     fn associated_ty_data(

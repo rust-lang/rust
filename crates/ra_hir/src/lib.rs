@@ -31,7 +31,6 @@ pub mod debug;
 pub mod db;
 pub mod source_binder;
 
-mod ids;
 mod ty;
 mod impl_block;
 mod expr;
