@@ -12,7 +12,7 @@ use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel
 use rustc_target::spec::{Target, TargetTriple};
 
 use syntax;
-use syntax::ast::{self, IntTy, UintTy};
+use syntax::ast;
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::symbol::{sym, Symbol};
@@ -36,8 +36,7 @@ use std::path::{Path, PathBuf};
 
 pub struct Config {
     pub target: Target,
-    pub isize_ty: IntTy,
-    pub usize_ty: UintTy,
+    pub ptr_width: u32,
 }
 
 #[derive(Clone, Hash, Debug)]
@@ -1570,10 +1569,10 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
         FatalError.raise();
     });
 
-    let (isize_ty, usize_ty) = match &target.target_pointer_width[..] {
-        "16" => (ast::IntTy::I16, ast::UintTy::U16),
-        "32" => (ast::IntTy::I32, ast::UintTy::U32),
-        "64" => (ast::IntTy::I64, ast::UintTy::U64),
+    let ptr_width = match &target.target_pointer_width[..] {
+        "16" => 16,
+        "32" => 32,
+        "64" => 64,
         w => sp.fatal(&format!(
             "target specification was invalid: \
              unrecognized target-pointer-width {}",
@@ -1583,8 +1582,7 @@ pub fn build_target_config(opts: &Options, sp: &Handler) -> Config {
 
     Config {
         target,
-        isize_ty,
-        usize_ty,
+        ptr_width,
     }
 }
 
