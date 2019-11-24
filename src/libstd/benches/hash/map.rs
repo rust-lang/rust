@@ -1,11 +1,10 @@
 #![cfg(test)]
 
 use test::Bencher;
+use std::collections::HashMap;
 
 #[bench]
 fn new_drop(b: &mut Bencher) {
-    use super::map::HashMap;
-
     b.iter(|| {
         let m: HashMap<i32, i32> = HashMap::new();
         assert_eq!(m.len(), 0);
@@ -14,8 +13,6 @@ fn new_drop(b: &mut Bencher) {
 
 #[bench]
 fn new_insert_drop(b: &mut Bencher) {
-    use super::map::HashMap;
-
     b.iter(|| {
         let mut m = HashMap::new();
         m.insert(0, 0);
@@ -25,8 +22,6 @@ fn new_insert_drop(b: &mut Bencher) {
 
 #[bench]
 fn grow_by_insertion(b: &mut Bencher) {
-    use super::map::HashMap;
-
     let mut m = HashMap::new();
 
     for i in 1..1001 {
@@ -43,8 +38,6 @@ fn grow_by_insertion(b: &mut Bencher) {
 
 #[bench]
 fn find_existing(b: &mut Bencher) {
-    use super::map::HashMap;
-
     let mut m = HashMap::new();
 
     for i in 1..1001 {
@@ -60,8 +53,6 @@ fn find_existing(b: &mut Bencher) {
 
 #[bench]
 fn find_nonexisting(b: &mut Bencher) {
-    use super::map::HashMap;
-
     let mut m = HashMap::new();
 
     for i in 1..1001 {
@@ -77,8 +68,6 @@ fn find_nonexisting(b: &mut Bencher) {
 
 #[bench]
 fn hashmap_as_queue(b: &mut Bencher) {
-    use super::map::HashMap;
-
     let mut m = HashMap::new();
 
     for i in 1..1001 {
@@ -96,8 +85,6 @@ fn hashmap_as_queue(b: &mut Bencher) {
 
 #[bench]
 fn get_remove_insert(b: &mut Bencher) {
-    use super::map::HashMap;
-
     let mut m = HashMap::new();
 
     for i in 1..1001 {
