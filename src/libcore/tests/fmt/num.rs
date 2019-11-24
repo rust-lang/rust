@@ -38,6 +38,16 @@ fn test_format_int() {
     assert_eq!(format!("{:o}", 1i16), "1");
     assert_eq!(format!("{:o}", 1i32), "1");
     assert_eq!(format!("{:o}", 1i64), "1");
+    assert_eq!(format!("{:e}", 1isize), "1e0");
+    assert_eq!(format!("{:e}", 1i8), "1e0");
+    assert_eq!(format!("{:e}", 1i16), "1e0");
+    assert_eq!(format!("{:e}", 1i32), "1e0");
+    assert_eq!(format!("{:e}", 1i64), "1e0");
+    assert_eq!(format!("{:E}", 1isize), "1E0");
+    assert_eq!(format!("{:E}", 1i8), "1E0");
+    assert_eq!(format!("{:E}", 1i16), "1E0");
+    assert_eq!(format!("{:E}", 1i32), "1E0");
+    assert_eq!(format!("{:E}", 1i64), "1E0");
 
     assert_eq!(format!("{}", 1usize), "1");
     assert_eq!(format!("{}", 1u8), "1");
@@ -69,6 +79,14 @@ fn test_format_int() {
     assert_eq!(format!("{:o}", 1u16), "1");
     assert_eq!(format!("{:o}", 1u32), "1");
     assert_eq!(format!("{:o}", 1u64), "1");
+    assert_eq!(format!("{:e}", 1u8), "1e0");
+    assert_eq!(format!("{:e}", 1u16), "1e0");
+    assert_eq!(format!("{:e}", 1u32), "1e0");
+    assert_eq!(format!("{:e}", 1u64), "1e0");
+    assert_eq!(format!("{:E}", 1u8), "1E0");
+    assert_eq!(format!("{:E}", 1u16), "1E0");
+    assert_eq!(format!("{:E}", 1u32), "1E0");
+    assert_eq!(format!("{:E}", 1u64), "1E0");
 
     // Test a larger number
     assert_eq!(format!("{:b}", 55), "110111");
@@ -76,6 +94,64 @@ fn test_format_int() {
     assert_eq!(format!("{}", 55), "55");
     assert_eq!(format!("{:x}", 55), "37");
     assert_eq!(format!("{:X}", 55), "37");
+    assert_eq!(format!("{:e}", 55), "5.5e1");
+    assert_eq!(format!("{:E}", 55), "5.5E1");
+    assert_eq!(format!("{:e}", 10000000000u64), "1e10");
+    assert_eq!(format!("{:E}", 10000000000u64), "1E10");
+    assert_eq!(format!("{:e}", 10000000001u64), "1.0000000001e10");
+    assert_eq!(format!("{:E}", 10000000001u64), "1.0000000001E10");
+}
+
+#[test]
+fn test_format_int_exp_limits() {
+    use core::{i128, i16, i32, i64, i8, u128, u16, u32, u64, u8};
+    assert_eq!(format!("{:e}", i8::MIN), "-1.28e2");
+    assert_eq!(format!("{:e}", i8::MAX), "1.27e2");
+    assert_eq!(format!("{:e}", i16::MIN), "-3.2768e4");
+    assert_eq!(format!("{:e}", i16::MAX), "3.2767e4");
+    assert_eq!(format!("{:e}", i32::MIN), "-2.147483648e9");
+    assert_eq!(format!("{:e}", i32::MAX), "2.147483647e9");
+    assert_eq!(format!("{:e}", i64::MIN), "-9.223372036854775808e18");
+    assert_eq!(format!("{:e}", i64::MAX), "9.223372036854775807e18");
+    assert_eq!(format!("{:e}", i128::MIN), "-1.70141183460469231731687303715884105728e38");
+    assert_eq!(format!("{:e}", i128::MAX), "1.70141183460469231731687303715884105727e38");
+
+    assert_eq!(format!("{:e}", u8::MAX), "2.55e2");
+    assert_eq!(format!("{:e}", u16::MAX), "6.5535e4");
+    assert_eq!(format!("{:e}", u32::MAX), "4.294967295e9");
+    assert_eq!(format!("{:e}", u64::MAX), "1.8446744073709551615e19");
+    assert_eq!(format!("{:e}", u128::MAX), "3.40282366920938463463374607431768211455e38");
+}
+
+#[test]
+fn test_format_int_exp_precision() {
+    use core::{i128, i16, i32, i64, i8};
+
+    //test that float and integer match
+    let big_int: u32 = 314_159_265;
+    assert_eq!(format!("{:.1e}", big_int), format!("{:.1e}", f64::from(big_int)));
+
+    //test adding precision
+    assert_eq!(format!("{:.10e}", i8::MIN), "-1.2800000000e2");
+    assert_eq!(format!("{:.10e}", i16::MIN), "-3.2768000000e4");
+    assert_eq!(format!("{:.10e}", i32::MIN), "-2.1474836480e9");
+    assert_eq!(format!("{:.20e}", i64::MIN), "-9.22337203685477580800e18");
+    assert_eq!(format!("{:.40e}", i128::MIN), "-1.7014118346046923173168730371588410572800e38");
+
+    //test rounding
+    assert_eq!(format!("{:.1e}", i8::MIN), "-1.3e2");
+    assert_eq!(format!("{:.1e}", i16::MIN), "-3.3e4");
+    assert_eq!(format!("{:.1e}", i32::MIN), "-2.1e9");
+    assert_eq!(format!("{:.1e}", i64::MIN), "-9.2e18");
+    assert_eq!(format!("{:.1e}", i128::MIN), "-1.7e38");
+
+    //test huge precision
+    assert_eq!(format!("{:.1000e}", 1), format!("1.{}e0", "0".repeat(1000)));
+    //test zero precision
+    assert_eq!(format!("{:.0e}", 1), format!("1e0",));
+
+    //test padding with precision (and sign)
+    assert_eq!(format!("{:+10.3e}", 1), "  +1.000e0");
 }
 
 #[test]
@@ -86,6 +162,8 @@ fn test_format_int_zero() {
     assert_eq!(format!("{:o}", 0), "0");
     assert_eq!(format!("{:x}", 0), "0");
     assert_eq!(format!("{:X}", 0), "0");
+    assert_eq!(format!("{:e}", 0), "0e0");
+    assert_eq!(format!("{:E}", 0), "0E0");
 
     assert_eq!(format!("{}", 0u32), "0");
     assert_eq!(format!("{:?}", 0u32), "0");
@@ -93,6 +171,8 @@ fn test_format_int_zero() {
     assert_eq!(format!("{:o}", 0u32), "0");
     assert_eq!(format!("{:x}", 0u32), "0");
     assert_eq!(format!("{:X}", 0u32), "0");
+    assert_eq!(format!("{:e}", 0u32), "0e0");
+    assert_eq!(format!("{:E}", 0u32), "0E0");
 }
 
 #[test]
