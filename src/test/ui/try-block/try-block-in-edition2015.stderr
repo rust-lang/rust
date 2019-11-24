@@ -6,11 +6,6 @@ LL |     let try_result: Option<_> = try {
 LL |
 LL |         let x = 5;
    |         ^^^ expected identifier, found keyword
-   |
-help: you can escape reserved keywords to use them as identifiers
-   |
-LL |         r#let x = 5;
-   |         ^^^^^
 
 error[E0574]: expected struct, variant or union type, found macro `try`
   --> $DIR/try-block-in-edition2015.rs:4:33

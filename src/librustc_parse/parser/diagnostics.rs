@@ -225,8 +225,21 @@ impl<'a> Parser<'a> {
             self.token.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
         );
+        let valid_follow = &[
+            TokenKind::Eq,
+            TokenKind::Colon,
+            TokenKind::Comma,
+            TokenKind::Semi,
+            TokenKind::ModSep,
+            TokenKind::OpenDelim(token::DelimToken::Brace),
+            TokenKind::OpenDelim(token::DelimToken::Paren),
+            TokenKind::CloseDelim(token::DelimToken::Brace),
+            TokenKind::CloseDelim(token::DelimToken::Paren),
+        ];
         if let token::Ident(name, false) = self.token.kind {
-            if Ident::new(name, self.token.span).is_raw_guess() {
+            if Ident::new(name, self.token.span).is_raw_guess() &&
+                self.look_ahead(1, |t| valid_follow.contains(&t.kind))
+            {
                 err.span_suggestion(
                     self.token.span,
                     "you can escape reserved keywords to use them as identifiers",

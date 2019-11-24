@@ -2894,15 +2894,16 @@ fn names_to_string(names: &[Name]) -> String {
         if i > 0 {
             result.push_str("::");
         }
+        if Ident::with_dummy_span(*name).is_raw_guess() {
+            result.push_str("r#");
+        }
         result.push_str(&name.as_str());
     }
     result
 }
 
 fn path_names_to_string(path: &Path) -> String {
-    names_to_string(&path.segments.iter()
-                        .map(|seg| seg.ident.name)
-                        .collect::<Vec<_>>())
+    names_to_string(&path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>())
 }
 
 /// A somewhat inefficient routine to obtain the name of a module.
