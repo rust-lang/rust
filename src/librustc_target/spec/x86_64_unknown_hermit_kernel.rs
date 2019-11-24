@@ -4,7 +4,9 @@ pub fn target() -> TargetResult {
     let mut base = super::hermit_kernel_base::opts();
     base.cpu = "x86-64".to_string();
     base.max_atomic_width = Some(64);
-    base.features = "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float".to_string();
+    base.features =
+        "-mmx,-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-3dnow,-3dnowa,-avx,-avx2,+soft-float"
+        .to_string();
     base.stack_probes = true;
 
     Ok(Target {
