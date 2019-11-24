@@ -173,10 +173,21 @@ fn ast_from_text<N: AstNode>(text: &str) -> N {
 }
 
 pub mod tokens {
-    use crate::{AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken, T};
+    use crate::{AstNode, Parse, SourceFile, SyntaxKind, SyntaxKind::*, SyntaxToken, T};
     use once_cell::sync::Lazy;
 
-    static SOURCE_FILE: Lazy<Parse<SourceFile>> = Lazy::new(|| SourceFile::parse(",\n; ;"));
+    static SOURCE_FILE: Lazy<Parse<SourceFile>> =
+        Lazy::new(|| SourceFile::parse("const C: () = (1 != 1, 2 == 2)\n;"));
+
+    pub fn op(op: SyntaxKind) -> SyntaxToken {
+        SOURCE_FILE
+            .tree()
+            .syntax()
+            .descendants_with_tokens()
+            .filter_map(|it| it.into_token())
+            .find(|it| it.kind() == op)
+            .unwrap()
+    }
 
     pub fn comma() -> SyntaxToken {
         SOURCE_FILE

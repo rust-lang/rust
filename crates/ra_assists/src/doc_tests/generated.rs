@@ -347,12 +347,12 @@ fn doctest_invert_if() {
         "invert_if",
         r#####"
 fn main() {
-    if<|> !y {A} else {B}
+    if<|> !y { A } else { B }
 }
 "#####,
         r#####"
 fn main() {
-    if y {B} else {A}
+    if y { B } else { A }
 }
 "#####,
     )

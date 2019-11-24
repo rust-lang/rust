@@ -13,10 +13,20 @@ use crate::{
         make::{self, tokens},
         AstNode, TypeBoundsOwner,
     },
-    AstToken, Direction, InsertPosition, SmolStr, SyntaxElement,
+    AstToken, Direction, InsertPosition, SmolStr, SyntaxElement, SyntaxKind,
     SyntaxKind::{ATTR, COMMENT, WHITESPACE},
     SyntaxNode, SyntaxToken, T,
 };
+
+impl ast::BinExpr {
+    #[must_use]
+    pub fn replace_op(&self, op: SyntaxKind) -> Option<ast::BinExpr> {
+        let op_node: SyntaxElement = self.op_details()?.0.into();
+        let to_insert: Option<SyntaxElement> = Some(tokens::op(op).into());
+        let replace_range = RangeInclusive::new(op_node.clone(), op_node);
+        Some(replace_children(self, replace_range, to_insert.into_iter()))
+    }
+}
 
 impl ast::FnDef {
     #[must_use]

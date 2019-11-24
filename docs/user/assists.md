@@ -339,12 +339,12 @@ on `if`.
 ```rust
 // BEFORE
 fn main() {
-    if┃ !y {A} else {B}
+    if┃ !y { A } else { B }
 }
 
 // AFTER
 fn main() {
-    if y {B} else {A}
+    if y { B } else { A }
 }
 ```
 
