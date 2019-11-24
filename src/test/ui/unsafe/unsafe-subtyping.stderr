@@ -6,8 +6,8 @@ LL | fn foo(x: Option<fn(i32)>) -> Option<unsafe fn(i32)> {
 LL |     x
    |     ^ expected unsafe fn, found normal fn
    |
-   = note: expected enum `std::option::Option<unsafe fn(i32)>`
-              found enum `std::option::Option<fn(i32)>`
+   = note: expected enum `std::option::Option<unsafe fn(_)>`
+              found enum `std::option::Option<fn(_)>`
 
 error: aborting due to previous error
 
