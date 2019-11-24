@@ -270,19 +270,44 @@ fn setup(ask_user: bool) {
         ask_to_run(cmd, ask_user, "install a recent enough xargo");
     }
 
-    // Then, unless `XARGO_RUST_SRC` is set, we also need rust-src.
-    // Let's see if it is already installed.
-    if std::env::var("XARGO_RUST_SRC").is_err() {
-        let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output()
-            .expect("failed to get rustc sysroot")
-            .stdout;
-        let sysroot = std::str::from_utf8(&sysroot).unwrap();
-        let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
-        if !src.exists() {
-            let mut cmd = Command::new("rustup");
-            cmd.args(&["component", "add", "rust-src"]);
-            ask_to_run(cmd, ask_user, "install the rustc-src component for the selected toolchain");
+    // Determine where the rust sources are located.  `XARGO_RUST_SRC` env var trumps everything.
+    let rust_src = match std::env::var("XARGO_RUST_SRC") {
+        Ok(val) => PathBuf::from(val),
+        Err(_) => {
+            // Check for `rust-src` rustup component.
+            let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output()
+                .expect("failed to get rustc sysroot")
+                .stdout;
+            let sysroot = std::str::from_utf8(&sysroot).unwrap();
+            let sysroot = Path::new(sysroot.trim_end_matches('\n'));
+            // First try: `$SYSROOT/lib/rustlib/src/rust`; test if that contains `Cargo.lock`.
+            let rustup_src = sysroot.join("lib").join("rustlib").join("src").join("rust");
+            let base_dir = if rustup_src.join("Cargo.lock").exists() {
+                // Just use this.
+                rustup_src
+            } else {
+                // Maybe this is a local toolchain built with `x.py` and linked into `rustup`?
+                // Second try: `$SYSROOT/../../..`; test if that contains `x.py`.
+                let local_src = sysroot.parent().and_then(Path::parent).and_then(Path::parent);
+                match local_src {
+                    Some(local_src) if local_src.join("x.py").exists() => {
+                        // Use this.
+                        PathBuf::from(local_src)
+                    }
+                    _ => {
+                        // Fallback: Ask the user to install the `rust-src` component, and use that.
+                        let mut cmd = Command::new("rustup");
+                        cmd.args(&["component", "add", "rust-src"]);
+                        ask_to_run(cmd, ask_user, "install the rustc-src component for the selected toolchain");
+                        rustup_src
+                    }
+                }
+            };
+            base_dir.join("src") // Xargo wants the src-subdir
         }
+    };
+    if !rust_src.exists() {
+        show_error(format!("Given Rust source directory `{}` does not exist.", rust_src.display()));
     }
 
     // Next, we need our own libstd. We will do this work in whatever is a good cache dir for this platform.
@@ -321,7 +346,8 @@ path = "lib.rs"
     command.arg("build").arg("-q");
     command.current_dir(&dir);
     command.env("RUSTFLAGS", miri::miri_default_args().join(" "));
-    command.env("XARGO_HOME", dir.to_str().unwrap());
+    command.env("XARGO_HOME", &dir);
+    command.env("XARGO_RUST_SRC", &rust_src);
     // In bootstrap, make sure we don't get debug assertons into our libstd.
     command.env("RUSTC_DEBUG_ASSERTIONS", "false");
     // Handle target flag.

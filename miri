@@ -65,16 +65,11 @@ find_sysroot() {
         return 0
     fi
     # We need to build a sysroot.
-    if echo "$SYSROOT" | egrep -q 'build/[^/]+/stage'; then
-        # A local rustc build. Use its source dir.
-        export XARGO_RUST_SRC="$SYSROOT/../../../src"
-    fi
     if [ -n "$MIRI_TEST_TARGET" ]; then
         build_sysroot --target "$MIRI_TEST_TARGET"
     else
         build_sysroot
     fi
-    export MIRI_SYSROOT
 }
 
 ## Main
