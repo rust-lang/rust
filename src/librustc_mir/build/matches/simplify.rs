@@ -164,7 +164,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         self.hir.tcx().features().exhaustive_patterns &&
                         !v.uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind()).is_empty()
                     }
-                });
+                }) && (adt_def.did.is_local() || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
                     let place = tcx.mk_place_downcast(match_pair.place, adt_def, variant_index);
                     candidate.match_pairs.extend(self.field_match_pairs(place, subpatterns));
