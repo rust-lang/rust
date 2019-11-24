@@ -9,6 +9,7 @@ use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, VariantData, StructField};
 use syntax::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
+use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::ThinVec;
 use syntax::token;
@@ -16,7 +17,7 @@ use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::source_map::{self, respan, Span};
 use syntax::struct_span_err;
 use syntax_pos::BytePos;
-use syntax_pos::symbol::{kw, sym};
+use syntax_pos::symbol::{kw, sym, Symbol};
 
 use rustc_error_codes::*;
 
@@ -1336,11 +1337,17 @@ impl<'a> Parser<'a> {
     /// Parses the part of an enum declaration following the `{`.
     fn parse_enum_def(&mut self, _generics: &Generics) -> PResult<'a, EnumDef> {
         let mut variants = Vec::new();
+        // FIXME: Consider using `parse_delim_comma_seq`.
+        // We could then remove eating comma in `recover_nested_adt_item`.
         while self.token != token::CloseDelim(token::Brace) {
             let variant_attrs = self.parse_outer_attributes()?;
             let vlo = self.token.span;
 
             let vis = self.parse_visibility(FollowedByType::No)?;
+            if !self.recover_nested_adt_item(kw::Enum)? {
+                // Item already parsed, we need to skip this variant.
+                continue
+            }
             let ident = self.parse_ident()?;
 
             let struct_def = if self.check(&token::OpenDelim(token::Brace)) {
@@ -1740,6 +1747,33 @@ impl<'a> Parser<'a> {
             ';'.to_string(),
             Applicability::MaybeIncorrect,
         ).emit();
+    }
+
+    /// Checks if current token is one of tokens which cannot be nested like `kw::Enum`. In case
+    /// it is, we try to parse the item and report error about nested types.
+    fn recover_nested_adt_item(&mut self, keyword: Symbol) -> PResult<'a, bool> {
+        if self.token.is_keyword(kw::Enum) ||
+            self.token.is_keyword(kw::Struct) ||
+            self.token.is_keyword(kw::Union)
+        {
+            let kw_token = self.token.clone();
+            let kw_str = pprust::token_to_string(&kw_token);
+            let item = self.parse_item()?;
+            self.eat(&token::Comma);
+
+            self.struct_span_err(
+                kw_token.span,
+                &format!("`{}` definition cannot be nested inside `{}`", kw_str, keyword),
+            ).span_suggestion(
+                item.unwrap().span,
+                &format!("consider creating a new `{}` definition instead of nesting", kw_str),
+                String::new(),
+                Applicability::MaybeIncorrect,
+            ).emit();
+            // We successfully parsed the item but we must inform the caller about nested problem.
+            return Ok(false)
+        }
+        Ok(true)
     }
 
     fn mk_item(&self, span: Span, ident: Ident, kind: ItemKind, vis: Visibility,
