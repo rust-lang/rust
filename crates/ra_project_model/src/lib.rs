@@ -211,6 +211,8 @@ impl ProjectWorkspace {
                 let libcore = sysroot.core().and_then(|it| sysroot_crates.get(&it).copied());
                 let liballoc = sysroot.alloc().and_then(|it| sysroot_crates.get(&it).copied());
                 let libstd = sysroot.std().and_then(|it| sysroot_crates.get(&it).copied());
+                let libproc_macro =
+                    sysroot.proc_macro().and_then(|it| sysroot_crates.get(&it).copied());
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
                 let mut pkg_crates = FxHashMap::default();
@@ -237,6 +239,21 @@ impl ProjectWorkspace {
                                 lib_tgt = Some(crate_id);
                                 pkg_to_lib_crate.insert(pkg, crate_id);
                             }
+                            if tgt.is_proc_macro(&cargo) {
+                                if let Some(proc_macro) = libproc_macro {
+                                    if let Err(_) = crate_graph.add_dep(
+                                        crate_id,
+                                        "proc_macro".into(),
+                                        proc_macro,
+                                    ) {
+                                        log::error!(
+                                            "cyclic dependency on proc_macro for {}",
+                                            pkg.name(&cargo)
+                                        )
+                                    }
+                                }
+                            }
+
                             pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
                         }
                     }
