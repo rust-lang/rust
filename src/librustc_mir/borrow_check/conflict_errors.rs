@@ -7,6 +7,7 @@ use rustc::mir::{
     PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, Ty};
+use rustc::traits::error_reporting::suggest_constraining_type_param;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::Idx;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -233,7 +234,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let generics = tcx.generics_of(self.mir_def_id);
                     let param = generics.type_param(&param_ty, tcx);
                     let generics = tcx.hir().get_generics(self.mir_def_id).unwrap();
-                    generics.suggest_constraining_type_param(
+                    suggest_constraining_type_param(
+                        generics,
                         &mut err,
                         &param.name.as_str(),
                         "Copy",
