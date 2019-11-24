@@ -10,6 +10,7 @@ pub fn opts() -> TargetOptions {
     ]);
 
     TargetOptions {
+        disable_redzone: true,
         linker: Some("rust-lld".to_owned()),
         executables: true,
         has_elf_tls: true,
