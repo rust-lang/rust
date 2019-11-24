@@ -346,34 +346,38 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {
         let sess = compiler.session();
 
-        // We need to hold on to the complete resolver, so we cause everything to be
-        // cloned for the analysis passes to use. Suboptimal, but necessary in the
-        // current architecture.
-        let resolver = {
-            let parts = abort_on_err(compiler.expansion(), sess).peek();
-            let resolver = parts.1.borrow();
+        let (resolver, mut global_ctxt) = compiler.enter(|queries| {
+            // We need to hold on to the complete resolver, so we cause everything to be
+            // cloned for the analysis passes to use. Suboptimal, but necessary in the
+            // current architecture.
+            let resolver = {
+                let parts = abort_on_err(queries.expansion(), sess).peek();
+                let resolver = parts.1.borrow();
 
-            // Before we actually clone it, let's force all the extern'd crates to
-            // actually be loaded, just in case they're only referred to inside
-            // intra-doc-links
-            resolver.borrow_mut().access(|resolver| {
-                for extern_name in &extern_names {
-                    resolver.resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
-                        .unwrap_or_else(
-                            |()| panic!("Unable to resolve external crate {}", extern_name)
-                        );
-                }
-            });
+                // Before we actually clone it, let's force all the extern'd crates to
+                // actually be loaded, just in case they're only referred to inside
+                // intra-doc-links
+                resolver.borrow_mut().access(|resolver| {
+                    for extern_name in &extern_names {
+                        resolver.resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
+                            .unwrap_or_else(
+                                |()| panic!("Unable to resolve external crate {}", extern_name)
+                            );
+                    }
+                });
 
-            // Now we're good to clone the resolver because everything should be loaded
-            resolver.clone()
-        };
+                // Now we're good to clone the resolver because everything should be loaded
+                resolver.clone()
+            };
 
-        if sess.has_errors() {
-            sess.fatal("Compilation failed, aborting rustdoc");
-        }
+            if sess.has_errors() {
+                sess.fatal("Compilation failed, aborting rustdoc");
+            }
 
-        let mut global_ctxt = abort_on_err(compiler.global_ctxt(), sess).take();
+            let global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
+
+            Ok((resolver, global_ctxt))
+        }).unwrap();
 
         global_ctxt.enter(|tcx| {
             tcx.analysis(LOCAL_CRATE).ok();
