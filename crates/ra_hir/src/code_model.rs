@@ -1037,7 +1037,7 @@ impl From<PerNs> for ScopeDef {
             .or_else(|| def.take_values())
             .map(|module_def_id| ScopeDef::ModuleDef(module_def_id.into()))
             .or_else(|| {
-                def.get_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
+                def.take_macros().map(|macro_def_id| ScopeDef::MacroDef(macro_def_id.into()))
             })
             .unwrap_or(ScopeDef::Unknown)
     }

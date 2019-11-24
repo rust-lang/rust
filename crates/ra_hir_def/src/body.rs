@@ -82,7 +82,7 @@ impl Expander {
     }
 
     fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
-        self.crate_def_map.resolve_path(db, self.module.module_id, path).0.get_macros()
+        self.crate_def_map.resolve_path(db, self.module.module_id, path).0.take_macros()
     }
 }
 

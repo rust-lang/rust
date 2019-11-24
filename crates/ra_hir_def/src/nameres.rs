@@ -169,7 +169,7 @@ impl ModuleScope {
     pub fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.items
             .iter()
-            .filter_map(|(name, res)| res.def.get_macros().map(|macro_| (name, macro_)))
+            .filter_map(|(name, res)| res.def.take_macros().map(|macro_| (name, macro_)))
     }
 
     /// Iterate over all legacy textual scoped macros visable at the end of the module

@@ -1,4 +1,9 @@
-//! FIXME: write short doc here
+//! Lowers syntax tree of a rust file into a raw representation of containing
+//! items, *without* attaching them to a module structure.
+//!
+//! That is, raw items don't have semantics, just as syntax, but, unlike syntax,
+//! they don't change with trivial source code edits, making them a great tool
+//! for building salsa recomputation firewalls.
 
 use std::{ops::Index, sync::Arc};
 

@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! A desugared representation of paths like `crate::foo` or `<Type as Trait>::bar`.
 
 use std::{iter, sync::Arc};
 
@@ -66,7 +66,7 @@ pub enum PathKind {
 
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
-    pub fn expand_use_item(
+    pub(crate) fn expand_use_item(
         item_src: Source<ast::UseItem>,
         hygiene: &Hygiene,
         mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
@@ -76,7 +76,10 @@ impl Path {
         }
     }
 
-    pub fn from_simple_segments(kind: PathKind, segments: impl IntoIterator<Item = Name>) -> Path {
+    pub(crate) fn from_simple_segments(
+        kind: PathKind,
+        segments: impl IntoIterator<Item = Name>,
+    ) -> Path {
         Path {
             kind,
             segments: segments
@@ -94,7 +97,7 @@ impl Path {
 
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
-    pub fn from_src(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
+    pub(crate) fn from_src(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
         loop {
@@ -227,7 +230,7 @@ impl Path {
 }
 
 impl GenericArgs {
-    pub fn from_ast(node: ast::TypeArgList) -> Option<GenericArgs> {
+    pub(crate) fn from_ast(node: ast::TypeArgList) -> Option<GenericArgs> {
         let mut args = Vec::new();
         for type_arg in node.type_args() {
             let type_ref = TypeRef::from_ast_opt(type_arg.type_ref());
