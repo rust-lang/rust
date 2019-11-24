@@ -1,1 +1,0 @@
-thread 'main' panicked at 'Miri panic!', $DIR/panic1.rs:3:5
