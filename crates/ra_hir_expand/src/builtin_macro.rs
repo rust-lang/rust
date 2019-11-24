@@ -57,16 +57,21 @@ fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize
     let text = db.file_text(file_id);
     let mut line_num = 1;
 
+    let pos = pos.to_usize();
+    if pos > text.len() {
+        // FIXME: `pos` at the moment could be an offset inside the "wrong" file
+        // in this case, when we know it's wrong, we return a dummy value
+        return 0;
+    }
     // Count line end
     for (i, c) in text.chars().enumerate() {
-        if i == pos.to_usize() {
+        if i == pos {
             break;
         }
         if c == '\n' {
             line_num += 1;
         }
     }
-
     line_num
 }
 
@@ -118,15 +123,21 @@ fn to_col_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize 
     // FIXME: Use expansion info
     let file_id = file.original_file(db);
     let text = db.file_text(file_id);
-    let mut col_num = 1;
 
-    for c in text[..pos.to_usize()].chars().rev() {
+    let pos = pos.to_usize();
+    if pos > text.len() {
+        // FIXME: `pos` at the moment could be an offset inside the "wrong" file
+        // in this case we return a dummy value so that we don't `panic!`
+        return 0;
+    }
+
+    let mut col_num = 1;
+    for c in text[..pos].chars().rev() {
         if c == '\n' {
             break;
         }
         col_num = col_num + 1;
     }
-
     col_num
 }
 
