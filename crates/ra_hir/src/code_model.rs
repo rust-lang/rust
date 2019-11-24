@@ -734,7 +734,7 @@ pub struct Static {
 
 impl Static {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.module(db) }
+        Module { id: self.id.lookup(db).module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {

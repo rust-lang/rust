@@ -18,7 +18,8 @@ use crate::{
         CrateDefMap,
     },
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, FunctionId, FunctionLoc, GenericDefId,
-    ImplId, ItemLoc, ModuleId, StaticId, StructOrUnionId, TraitId, TypeAliasId, TypeAliasLoc,
+    ImplId, ItemLoc, ModuleId, StaticId, StaticLoc, StructOrUnionId, TraitId, TypeAliasId,
+    TypeAliasLoc,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -32,7 +33,7 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_const(&self, loc: ConstLoc) -> ConstId;
     #[salsa::interned]
-    fn intern_static(&self, loc: ItemLoc<ast::StaticDef>) -> StaticId;
+    fn intern_static(&self, loc: StaticLoc) -> StaticId;
     #[salsa::interned]
     fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> TraitId;
     #[salsa::interned]

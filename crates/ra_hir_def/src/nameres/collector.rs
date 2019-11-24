@@ -21,7 +21,7 @@ use crate::{
     path::{Path, PathKind},
     per_ns::PerNs,
     AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplId,
-    Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
+    Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
     StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
 };
 
@@ -715,7 +715,10 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Static(ast_id) => {
-                PerNs::values(StaticId::from_ast_id(ctx, ast_id).into())
+                let def = StaticLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+
+                PerNs::values(def.into())
             }
             raw::DefKind::Trait(ast_id) => PerNs::types(TraitId::from_ast_id(ctx, ast_id).into()),
             raw::DefKind::TypeAlias(ast_id) => {

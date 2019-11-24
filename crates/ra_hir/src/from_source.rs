@@ -104,10 +104,21 @@ impl FromSource for Const {
 impl FromSource for Static {
     type Ast = ast::StaticDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id = from_source(db, src)?;
-        Some(Static { id })
+        let module = match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
+            Container::Module(it) => it,
+            Container::Trait(_) | Container::ImplBlock(_) => return None,
+        };
+        module
+            .declarations(db)
+            .into_iter()
+            .filter_map(|it| match it {
+                ModuleDef::Static(it) => Some(it),
+                _ => None,
+            })
+            .find(|it| same_source(&it.source(db), &src))
     }
 }
+
 impl FromSource for TypeAlias {
     type Ast = ast::TypeAliasDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {

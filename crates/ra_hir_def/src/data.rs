@@ -204,7 +204,7 @@ impl ConstData {
     }
 
     pub(crate) fn static_data_query(db: &impl DefDatabase, konst: StaticId) -> Arc<ConstData> {
-        let node = konst.source(db).value;
+        let node = konst.lookup(db).source(db).value;
         const_data_for(&node)
     }
 }
