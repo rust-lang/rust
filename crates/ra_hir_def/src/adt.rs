@@ -109,10 +109,18 @@ impl VariantData {
         }
     }
 
-    pub fn fields(&self) -> Option<&Arena<LocalStructFieldId, StructFieldData>> {
+    pub fn fields(&self) -> &Arena<LocalStructFieldId, StructFieldData> {
+        const EMPTY: &Arena<LocalStructFieldId, StructFieldData> = &Arena::new();
         match &self {
-            VariantData::Record(fields) | VariantData::Tuple(fields) => Some(fields),
-            _ => None,
+            VariantData::Record(fields) | VariantData::Tuple(fields) => fields,
+            _ => EMPTY,
+        }
+    }
+
+    pub fn is_unit(&self) -> bool {
+        match self {
+            VariantData::Unit => true,
+            _ => false,
         }
     }
 }

@@ -37,7 +37,7 @@ impl fmt::Display for RawId {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Arena<ID: ArenaId, T> {
+pub struct Arena<ID, T> {
     data: Vec<T>,
     _ty: PhantomData<ID>,
 }
@@ -65,6 +65,12 @@ macro_rules! impl_arena_id {
 pub trait ArenaId {
     fn from_raw(raw: RawId) -> Self;
     fn into_raw(self) -> RawId;
+}
+
+impl<ID, T> Arena<ID, T> {
+    pub const fn new() -> Arena<ID, T> {
+        Arena { data: Vec::new(), _ty: PhantomData }
+    }
 }
 
 impl<ID: ArenaId, T> Arena<ID, T> {

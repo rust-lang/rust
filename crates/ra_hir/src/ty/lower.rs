@@ -557,7 +557,7 @@ pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
         VariantDef::EnumVariant(it) => it.parent.id.resolver(db),
     };
     let var_data = parent_def.variant_data(db);
-    let type_ref = &var_data.fields().unwrap()[field.id].type_ref;
+    let type_ref = &var_data.fields()[field.id].type_ref;
     Ty::from_hir(db, &resolver, type_ref)
 }
 
@@ -696,10 +696,7 @@ impl From<Option<BuiltinFloat>> for Uncertain<FloatTy> {
 
 fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
     let struct_data = db.struct_data(def.id.into());
-    let fields = match struct_data.variant_data.fields() {
-        Some(fields) => fields,
-        None => panic!("fn_sig_for_struct_constructor called on unit struct"),
-    };
+    let fields = struct_data.variant_data.fields();
     let resolver = def.id.resolver(db);
     let params = fields
         .iter()
@@ -712,7 +709,7 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
 /// Build the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     let struct_data = db.struct_data(def.id.into());
-    if struct_data.variant_data.fields().is_none() {
+    if struct_data.variant_data.is_unit() {
         return type_for_adt(db, def); // Unit struct
     }
     let generics = db.generic_params(def.id.into());
@@ -722,10 +719,7 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
 
 fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> FnSig {
     let var_data = def.variant_data(db);
-    let fields = match var_data.fields() {
-        Some(fields) => fields,
-        None => panic!("fn_sig_for_enum_variant_constructor called for unit variant"),
-    };
+    let fields = var_data.fields();
     let resolver = def.parent.id.resolver(db);
     let params = fields
         .iter()
@@ -740,7 +734,7 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) 
 /// Build the type of a tuple enum variant constructor.
 fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> Ty {
     let var_data = def.variant_data(db);
-    if var_data.fields().is_none() {
+    if var_data.is_unit() {
         return type_for_adt(db, def.parent_enum(db)); // Unit variant
     }
     let generics = db.generic_params(def.parent_enum(db).id.into());

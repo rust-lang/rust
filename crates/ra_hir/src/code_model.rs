@@ -301,7 +301,7 @@ pub enum FieldSource {
 
 impl StructField {
     pub fn name(&self, db: &impl HirDatabase) -> Name {
-        self.parent.variant_data(db).fields().unwrap()[self.id].name.clone()
+        self.parent.variant_data(db).fields()[self.id].name.clone()
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
@@ -335,8 +335,7 @@ impl Struct {
         db.struct_data(self.id.into())
             .variant_data
             .fields()
-            .into_iter()
-            .flat_map(|it| it.iter())
+            .iter()
             .map(|(id, _)| StructField { parent: self.into(), id })
             .collect()
     }
@@ -345,8 +344,7 @@ impl Struct {
         db.struct_data(self.id.into())
             .variant_data
             .fields()
-            .into_iter()
-            .flat_map(|it| it.iter())
+            .iter()
             .find(|(_id, data)| data.name == *name)
             .map(|(id, _)| StructField { parent: self.into(), id })
     }
@@ -443,8 +441,7 @@ impl EnumVariant {
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
         self.variant_data(db)
             .fields()
-            .into_iter()
-            .flat_map(|it| it.iter())
+            .iter()
             .map(|(id, _)| StructField { parent: self.into(), id })
             .collect()
     }
@@ -452,8 +449,7 @@ impl EnumVariant {
     pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
         self.variant_data(db)
             .fields()
-            .into_iter()
-            .flat_map(|it| it.iter())
+            .iter()
             .find(|(_id, data)| data.name == *name)
             .map(|(id, _)| StructField { parent: self.into(), id })
     }
