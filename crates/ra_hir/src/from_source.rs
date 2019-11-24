@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::{ModuleId, StructId, StructOrUnionId, UnionId};
+use hir_def::{AstItemDef, LocationCtx, ModuleId, StructId, StructOrUnionId, UnionId};
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
@@ -9,7 +9,6 @@ use ra_syntax::{
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    ids::{AstItemDef, LocationCtx},
     AssocItem, Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasBody, HasSource,
     ImplBlock, Local, MacroDef, Module, ModuleDef, ModuleSource, Source, Static, Struct,
     StructField, Trait, TypeAlias, Union, VariantDef,

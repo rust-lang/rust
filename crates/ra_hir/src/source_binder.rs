@@ -11,9 +11,11 @@ use hir_def::{
     expr::{ExprId, PatId},
     path::known,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
-    DefWithBodyId,
+    DefWithBodyId, LocationCtx,
 };
-use hir_expand::{name::AsName, AstId, MacroCallId, MacroCallLoc, MacroFileKind, Source};
+use hir_expand::{
+    name::AsName, AstId, HirFileId, MacroCallId, MacroCallLoc, MacroFileKind, Source,
+};
 use ra_syntax::{
     ast::{self, AstNode},
     match_ast, AstPtr,
@@ -24,11 +26,10 @@ use ra_syntax::{
 use crate::{
     db::HirDatabase,
     expr::{BodySourceMap, ExprScopes, ScopeId},
-    ids::LocationCtx,
     ty::method_resolution::{self, implements_trait},
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
-    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, ScopeDef, Static,
-    Struct, Trait, Ty, TypeAlias,
+    GenericParam, HasBody, Local, MacroDef, Module, Name, Path, ScopeDef, Static, Struct, Trait,
+    Ty, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
@@ -544,7 +545,7 @@ fn adjust(
 }
 
 /// Given a `ast::MacroCall`, return what `MacroKindFile` it belongs to.
-/// FIXME: Not completed  
+/// FIXME: Not completed
 fn to_macro_file_kind(macro_call: &ast::MacroCall) -> MacroFileKind {
     let syn = macro_call.syntax();
     let parent = match syn.parent() {

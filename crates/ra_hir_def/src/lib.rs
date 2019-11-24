@@ -35,7 +35,7 @@ use std::hash::{Hash, Hasher};
 
 use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, MacroDefId, Source};
 use ra_arena::{impl_arena_id, map::ArenaMap, RawId};
-use ra_db::{salsa, CrateId};
+use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_syntax::{ast, AstNode};
 
 use crate::{builtin_type::BuiltinType, db::InternDatabase};
@@ -55,19 +55,6 @@ pub struct ModuleId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LocalModuleId(RawId);
 impl_arena_id!(LocalModuleId);
-
-macro_rules! impl_intern_key {
-    ($name:ident) => {
-        impl salsa::InternKey for $name {
-            fn from_intern_id(v: salsa::InternId) -> Self {
-                $name(v)
-            }
-            fn as_intern_id(&self) -> salsa::InternId {
-                self.0
-            }
-        }
-    };
-}
 
 #[derive(Debug)]
 pub struct ItemLoc<N: AstNode> {

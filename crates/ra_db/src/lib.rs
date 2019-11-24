@@ -15,6 +15,20 @@ pub use crate::{
 pub use relative_path::{RelativePath, RelativePathBuf};
 pub use salsa;
 
+#[macro_export]
+macro_rules! impl_intern_key {
+    ($name:ident) => {
+        impl $crate::salsa::InternKey for $name {
+            fn from_intern_id(v: $crate::salsa::InternId) -> Self {
+                $name(v)
+            }
+            fn as_intern_id(&self) -> $crate::salsa::InternId {
+                self.0
+            }
+        }
+    };
+}
+
 pub trait CheckCanceled {
     /// Aborts current query if there are pending changes.
     ///

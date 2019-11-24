@@ -8,7 +8,7 @@ use hir_expand::{
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
 use ra_syntax::{ast, SmolStr};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::tested_by;
 
 use crate::{
@@ -57,6 +57,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         unexpanded_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         macro_stack_monitor: MacroStackMonitor::default(),
+        poison_macros: FxHashSet::default(),
         cfg_options,
     };
     collector.collect();
@@ -103,6 +104,17 @@ struct DefCollector<'a, DB> {
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
     /// To prevent stack overflow, we add a deep counter here for prevent that.
     macro_stack_monitor: MacroStackMonitor,
+    /// Some macros are not well-behavior, which leads to infinite loop
+    /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
+    /// We mark it down and skip it in collector
+    ///
+    /// FIXME:
+    /// Right now it only handle a poison macro in a single crate,
+    /// such that if other crate try to call that macro,
+    /// the whole process will do again until it became poisoned in that crate.
+    /// We should handle this macro set globally
+    /// However, do we want to put it as a global variable?
+    poison_macros: FxHashSet<MacroDefId>,
 
     cfg_options: &'a CfgOptions,
 }
@@ -489,7 +501,7 @@ where
         macro_call_id: MacroCallId,
         macro_def_id: MacroDefId,
     ) {
-        if self.def_map.poison_macros.contains(&macro_def_id) {
+        if self.poison_macros.contains(&macro_def_id) {
             return;
         }
 
@@ -509,7 +521,7 @@ where
             .collect(raw_items.items());
         } else {
             log::error!("Too deep macro expansion: {:?}", macro_call_id);
-            self.def_map.poison_macros.insert(macro_def_id);
+            self.poison_macros.insert(macro_def_id);
         }
 
         self.macro_stack_monitor.decrease(macro_def_id);
@@ -807,7 +819,7 @@ mod tests {
         db: &impl DefDatabase,
         def_map: CrateDefMap,
         monitor: MacroStackMonitor,
-    ) -> CrateDefMap {
+    ) -> (CrateDefMap, FxHashSet<MacroDefId>) {
         let mut collector = DefCollector {
             db,
             def_map,
@@ -816,13 +828,18 @@ mod tests {
             unexpanded_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             macro_stack_monitor: monitor,
+            poison_macros: FxHashSet::default(),
             cfg_options: &CfgOptions::default(),
         };
         collector.collect();
-        collector.finish()
+        (collector.def_map, collector.poison_macros)
     }
 
-    fn do_limited_resolve(code: &str, limit: u32, poison_limit: u32) -> CrateDefMap {
+    fn do_limited_resolve(
+        code: &str,
+        limit: u32,
+        poison_limit: u32,
+    ) -> (CrateDefMap, FxHashSet<MacroDefId>) {
         let (db, _file_id) = TestDB::with_single_file(&code);
         let krate = db.test_crate();
 
@@ -837,7 +854,6 @@ mod tests {
                 prelude: None,
                 root,
                 modules,
-                poison_macros: FxHashSet::default(),
                 diagnostics: Vec::new(),
             }
         };
@@ -867,7 +883,7 @@ foo!(KABOOM);
 
     #[test]
     fn test_macro_expand_poisoned() {
-        let def = do_limited_resolve(
+        let (_, poison_macros) = do_limited_resolve(
             r#"
         macro_rules! foo {
             ($ty:ty) => { foo!($ty); }
@@ -878,12 +894,12 @@ foo!(KABOOM);
             16,
         );
 
-        assert_eq!(def.poison_macros.len(), 1);
+        assert_eq!(poison_macros.len(), 1);
     }
 
     #[test]
     fn test_macro_expand_normal() {
-        let def = do_limited_resolve(
+        let (_, poison_macros) = do_limited_resolve(
             r#"
         macro_rules! foo {
             ($ident:ident) => { struct $ident {} }
@@ -894,6 +910,6 @@ foo!(Bar);
             16,
         );
 
-        assert_eq!(def.poison_macros.len(), 0);
+        assert_eq!(poison_macros.len(), 0);
     }
 }

@@ -1,12 +1,11 @@
 //! FIXME: write short doc here
 
-use hir_def::{HasChildSource, HasSource as _, Lookup, VariantId};
+use hir_def::{AstItemDef, HasChildSource, HasSource as _, Lookup, VariantId};
 use hir_expand::either::Either;
 use ra_syntax::ast::{self, AstNode};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    ids::AstItemDef,
     Const, Enum, EnumVariant, FieldSource, Function, HasBody, Import, MacroDef, Module,
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
