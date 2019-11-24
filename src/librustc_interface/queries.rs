@@ -1,5 +1,5 @@
 use crate::interface::{Compiler, Result};
-use crate::passes::{self, BoxedResolver, BoxedGlobalCtxt, PluginInfo};
+use crate::passes::{self, BoxedResolver, BoxedGlobalCtxt};
 
 use rustc_incremental::DepGraphFuture;
 use rustc_data_structures::sync::Lrc;
@@ -79,7 +79,7 @@ pub(crate) struct Queries {
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
-    register_plugins: Query<(ast::Crate, PluginInfo, Lrc<LintStore>)>,
+    register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(Steal<hir::map::Forest>, Steal<ResolverOutputs>)>,
@@ -111,7 +111,7 @@ impl Compiler {
         })
     }
 
-    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, PluginInfo, Lrc<LintStore>)>> {
+    pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, Lrc<LintStore>)>> {
         self.queries.register_plugins.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let krate = self.parse()?.take();
@@ -161,14 +161,13 @@ impl Compiler {
     ) -> Result<&Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>> {
         self.queries.expansion.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
-            let (krate, plugin_info, lint_store) = self.register_plugins()?.take();
+            let (krate, lint_store) = self.register_plugins()?.take();
             passes::configure_and_expand(
                 self.sess.clone(),
                 lint_store.clone(),
                 self.codegen_backend().metadata_loader(),
                 krate,
                 &crate_name,
-                plugin_info,
             ).map(|(krate, resolver)| {
                 (krate, Steal::new(Rc::new(RefCell::new(resolver))), lint_store)
             })

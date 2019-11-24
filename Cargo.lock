@@ -3802,7 +3802,6 @@ dependencies = [
  "rustc_error_codes",
  "rustc_metadata",
  "syntax",
- "syntax_expand",
  "syntax_pos",
 ]
 

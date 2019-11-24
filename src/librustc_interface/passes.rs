@@ -37,7 +37,7 @@ use rustc_traits;
 use rustc_typeck as typeck;
 use syntax::{self, ast, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
-use syntax_expand::base::{NamedSyntaxExtension, ExtCtxt};
+use syntax_expand::base::ExtCtxt;
 use syntax::mut_visit::MutVisitor;
 use syntax::util::node_count::NodeCounter;
 use syntax::symbol::Symbol;
@@ -119,7 +119,6 @@ pub fn configure_and_expand(
     metadata_loader: Box<MetadataLoaderDyn>,
     krate: ast::Crate,
     crate_name: &str,
-    plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, BoxedResolver)> {
     // Currently, we ignore the name resolution data structures for the purposes of dependency
     // tracking. Instead we will run name resolution and include its output in the hash of each
@@ -137,7 +136,6 @@ pub fn configure_and_expand(
             &crate_name,
             &resolver_arenas,
             &*metadata_loader,
-            plugin_info,
         );
         let mut resolver = match res {
             Err(v) => {
@@ -164,17 +162,13 @@ impl BoxedResolver {
     }
 }
 
-pub struct PluginInfo {
-    syntax_exts: Vec<NamedSyntaxExtension>,
-}
-
 pub fn register_plugins<'a>(
     sess: &'a Session,
     metadata_loader: &'a dyn MetadataLoader,
     register_lints: impl Fn(&Session, &mut lint::LintStore),
     mut krate: ast::Crate,
     crate_name: &str,
-) -> Result<(ast::Crate, PluginInfo, Lrc<lint::LintStore>)> {
+) -> Result<(ast::Crate, Lrc<lint::LintStore>)> {
     krate = time(sess, "attributes injection", || {
         syntax_ext::cmdline_attrs::inject(
             krate, &sess.parse_sess, &sess.opts.debugging_opts.crate_attr
@@ -240,10 +234,9 @@ pub fn register_plugins<'a>(
         }
     });
 
-    let Registry { syntax_exts, llvm_passes, .. } = registry;
-    *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
+    *sess.plugin_llvm_passes.borrow_mut() = registry.llvm_passes;
 
-    Ok((krate, PluginInfo { syntax_exts }, Lrc::new(lint_store)))
+    Ok((krate, Lrc::new(lint_store)))
 }
 
 fn configure_and_expand_inner<'a>(
@@ -253,7 +246,6 @@ fn configure_and_expand_inner<'a>(
     crate_name: &str,
     resolver_arenas: &'a ResolverArenas<'a>,
     metadata_loader: &'a MetadataLoaderDyn,
-    plugin_info: PluginInfo,
 ) -> Result<(ast::Crate, Resolver<'a>)> {
     time(sess, "pre-AST-expansion lint checks", || {
         lint::check_ast_crate(
@@ -289,10 +281,6 @@ fn configure_and_expand_inner<'a>(
     });
 
     util::check_attr_crate_type(&krate.attrs, &mut resolver.lint_buffer());
-
-    syntax_ext::plugin_macro_defs::inject(
-        &mut krate, &mut resolver, plugin_info.syntax_exts, sess.edition()
-    );
 
     // Expand all macros
     krate = time(sess, "expansion", || {

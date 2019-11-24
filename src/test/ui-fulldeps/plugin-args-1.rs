@@ -1,10 +1,8 @@
-// run-pass
-// aux-build:plugin-args.rs
+// check-pass
+// aux-build:empty-plugin.rs
 // ignore-stage1
 
 #![feature(plugin)]
-#![plugin(plugin_args)] //~ WARNING compiler plugins are deprecated
+#![plugin(empty_plugin)] //~ WARNING compiler plugins are deprecated
 
-fn main() {
-    assert_eq!(plugin_args!(), "");
-}
+fn main() {}
