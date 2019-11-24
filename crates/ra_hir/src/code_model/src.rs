@@ -2,11 +2,10 @@
 
 use hir_def::{AstItemDef, HasChildSource, HasSource as _, Lookup, VariantId};
 use hir_expand::either::Either;
-use ra_syntax::ast::{self, AstNode};
+use ra_syntax::ast;
 
 use crate::{
-    db::{DefDatabase, HirDatabase},
-    Const, Enum, EnumVariant, FieldSource, Function, HasBody, Import, MacroDef, Module,
+    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, Import, MacroDef, Module,
     ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
@@ -120,28 +119,4 @@ impl HasSource for Import {
         let ptr = source_map.get(self.id);
         src.with_value(ptr.map(|it| it.to_node(&root), |it| it.to_node(&root)))
     }
-}
-
-pub trait HasBodySource: HasBody + HasSource
-where
-    Self::Ast: AstNode,
-{
-    fn expr_source(
-        self,
-        db: &impl HirDatabase,
-        expr_id: crate::expr::ExprId,
-    ) -> Option<Source<Either<ast::Expr, ast::RecordField>>> {
-        let source_map = self.body_source_map(db);
-        let source_ptr = source_map.expr_syntax(expr_id)?;
-        let root = source_ptr.file_syntax(db);
-        let source = source_ptr.map(|ast| ast.map(|it| it.to_node(&root), |it| it.to_node(&root)));
-        Some(source)
-    }
-}
-
-impl<T> HasBodySource for T
-where
-    T: HasBody + HasSource,
-    T::Ast: AstNode,
-{
 }

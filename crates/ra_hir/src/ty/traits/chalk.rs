@@ -19,7 +19,7 @@ use crate::{
     db::HirDatabase,
     ty::display::HirDisplay,
     ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-    Crate, GenericDef, HasBody, ImplBlock, Trait, TypeAlias,
+    Crate, GenericDef, ImplBlock, Trait, TypeAlias,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -715,7 +715,7 @@ fn closure_fn_trait_impl_datum(
     let fn_once_trait = get_fn_trait(db, krate, super::FnTrait::FnOnce)?;
     fn_once_trait.associated_type_by_name(db, &name::OUTPUT_TYPE)?;
 
-    let num_args: u16 = match &data.def.body(db)[data.expr] {
+    let num_args: u16 = match &db.body(data.def.into())[data.expr] {
         crate::expr::Expr::Lambda { args, .. } => args.len() as u16,
         _ => {
             log::warn!("closure for closure type {:?} not found", data);
@@ -805,7 +805,7 @@ fn closure_fn_trait_output_assoc_ty_value(
 ) -> Arc<AssociatedTyValue<ChalkIr>> {
     let impl_id = Impl::ClosureFnTraitImpl(data.clone()).to_chalk(db);
 
-    let num_args: u16 = match &data.def.body(db)[data.expr] {
+    let num_args: u16 = match &db.body(data.def.into())[data.expr] {
         crate::expr::Expr::Lambda { args, .. } => args.len() as u16,
         _ => {
             log::warn!("closure for closure type {:?} not found", data);

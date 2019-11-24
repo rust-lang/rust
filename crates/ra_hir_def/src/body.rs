@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Defines `Body`: a lowered representation of bodies of functions, statics and
+//! consts.
 mod lower;
 pub mod scope;
 

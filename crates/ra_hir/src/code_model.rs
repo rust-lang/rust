@@ -6,7 +6,6 @@ use std::sync::Arc;
 
 use hir_def::{
     adt::VariantData,
-    body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
     per_ns::PerNs,
@@ -28,7 +27,7 @@ use crate::{
     db::{DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     ty::{InferenceResult, Namespace, TraitRef},
-    Either, HasSource, Name, Source, Ty,
+    Either, Name, Source, Ty,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -560,52 +559,6 @@ impl DefWithBody {
     }
 }
 
-pub trait HasBody: Copy {
-    fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult>;
-    fn body(self, db: &impl HirDatabase) -> Arc<Body>;
-    fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap>;
-    fn expr_scopes(self, db: &impl HirDatabase) -> Arc<ExprScopes>;
-}
-
-impl<T> HasBody for T
-where
-    T: Into<DefWithBody> + Copy + HasSource,
-{
-    fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.into())
-    }
-
-    fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        self.into().body(db)
-    }
-
-    fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        self.into().body_source_map(db)
-    }
-
-    fn expr_scopes(self, db: &impl HirDatabase) -> Arc<ExprScopes> {
-        self.into().expr_scopes(db)
-    }
-}
-
-impl HasBody for DefWithBody {
-    fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self)
-    }
-
-    fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body(self.into())
-    }
-
-    fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self.into()).1
-    }
-
-    fn expr_scopes(self, db: &impl HirDatabase) -> Arc<ExprScopes> {
-        db.expr_scopes(self.into())
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Function {
     pub(crate) id: FunctionId,
@@ -632,7 +585,7 @@ impl Function {
         db.function_data(self.id).params.clone()
     }
 
-    pub(crate) fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
+    pub fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
         db.body_with_source_map(self.id.into()).1
     }
 
@@ -966,7 +919,7 @@ pub struct Local {
 
 impl Local {
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
-        let body = self.parent.body(db);
+        let body = db.body(self.parent.into());
         match &body[self.pat_id] {
             Pat::Bind { name, .. } => Some(name.clone()),
             _ => None,
@@ -978,7 +931,7 @@ impl Local {
     }
 
     pub fn is_mut(self, db: &impl HirDatabase) -> bool {
-        let body = self.parent.body(db);
+        let body = db.body(self.parent.into());
         match &body[self.pat_id] {
             Pat::Bind { mode, .. } => match mode {
                 BindingAnnotation::Mutable | BindingAnnotation::RefMut => true,
@@ -1002,7 +955,7 @@ impl Local {
     }
 
     pub fn source(self, db: &impl HirDatabase) -> Source<Either<ast::BindPat, ast::SelfParam>> {
-        let source_map = self.parent.body_source_map(db);
+        let (_body, source_map) = db.body_with_source_map(self.parent.into());
         let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
         let root = src.file_syntax(db);
         src.map(|ast| ast.map(|it| it.cast().unwrap().to_node(&root), |it| it.to_node(&root)))
