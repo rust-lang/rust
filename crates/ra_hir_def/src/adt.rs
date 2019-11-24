@@ -95,7 +95,7 @@ fn lower_enum(
                 name: var.name().map(|it| it.as_name()),
                 variant_data: Arc::new(VariantData::new(var.kind())),
             },
-        )
+        );
     }
 }
 
@@ -160,7 +160,7 @@ fn lower_struct(
                         name: Name::new_tuple_field(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
                     },
-                )
+                );
             }
             StructKind::Tuple
         }
@@ -172,7 +172,7 @@ fn lower_struct(
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
                     },
-                )
+                );
             }
             StructKind::Record
         }
