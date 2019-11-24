@@ -32,7 +32,6 @@ pub mod db;
 pub mod source_binder;
 
 mod ty;
-mod impl_block;
 mod expr;
 pub mod diagnostics;
 mod util;

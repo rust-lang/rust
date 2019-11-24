@@ -29,20 +29,20 @@ pub struct Resolver {
 
 // FIXME how to store these best
 #[derive(Debug, Clone)]
-pub(crate) struct ModuleItemMap {
+struct ModuleItemMap {
     crate_def_map: Arc<CrateDefMap>,
     module_id: LocalModuleId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ExprScope {
+struct ExprScope {
     owner: DefWithBodyId,
     expr_scopes: Arc<ExprScopes>,
     scope_id: ScopeId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Scope {
+enum Scope {
     /// All the items and imported names of a module
     ModuleScope(ModuleItemMap),
     /// Brings the generic parameters of an item into scope
