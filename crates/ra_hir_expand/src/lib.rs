@@ -24,7 +24,10 @@ use ra_syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
-use crate::builtin_macro::BuiltinExpander;
+use crate::builtin_macro::BuiltinFnLikeExpander;
+
+#[cfg(test)]
+mod test_db;
 
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
@@ -135,7 +138,7 @@ pub struct MacroDefId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroDefKind {
     Declarative,
-    BuiltIn(BuiltinExpander),
+    BuiltIn(BuiltinFnLikeExpander),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
