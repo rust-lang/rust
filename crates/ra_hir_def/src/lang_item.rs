@@ -114,7 +114,7 @@ impl LangItems {
     {
         let attrs = db.attrs(item.into());
         if let Some(lang_item_name) = attrs.find_string_value("lang") {
-            self.items.entry(lang_item_name).or_insert_with(|| constructor(item));
+            self.items.entry(lang_item_name.clone()).or_insert_with(|| constructor(item));
         }
     }
 }

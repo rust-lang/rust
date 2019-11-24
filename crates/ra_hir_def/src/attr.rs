@@ -2,7 +2,7 @@
 
 use std::{ops, sync::Arc};
 
-use hir_expand::{either::Either, hygiene::Hygiene, AstId};
+use hir_expand::{either::Either, hygiene::Hygiene, AstId, Source};
 use mbe::ast_to_token_tree;
 use ra_cfg::CfgOptions;
 use ra_syntax::{
@@ -40,23 +40,19 @@ impl Attrs {
                     Some(it) => it,
                     None => return Attrs::default(),
                 };
-                let hygiene = Hygiene::new(db, src.file_id);
-                Attr::from_attrs_owner(&src.value, &hygiene)
+                Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
             }
             AttrDefId::StructFieldId(it) => {
                 let src = it.parent.child_source(db);
                 match &src.value[it.local_id] {
                     Either::A(_tuple) => Attrs::default(),
-                    Either::B(record) => {
-                        let hygiene = Hygiene::new(db, src.file_id);
-                        Attr::from_attrs_owner(record, &hygiene)
-                    }
+                    Either::B(record) => Attrs::from_attrs_owner(db, src.with_value(record)),
                 }
             }
-            AttrDefId::EnumVariantId(it) => {
-                let src = it.parent.child_source(db);
-                let hygiene = Hygiene::new(db, src.file_id);
-                Attr::from_attrs_owner(&src.value[it.local_id], &hygiene)
+            AttrDefId::EnumVariantId(var_id) => {
+                let src = var_id.parent.child_source(db);
+                let src = src.as_ref().map(|it| &it[var_id.local_id]);
+                Attrs::from_attrs_owner(db, src.map(|it| it as &dyn AttrsOwner))
             }
             AttrDefId::AdtId(it) => match it {
                 AdtId::StructId(it) => attrs_from_ast(it.0.lookup_intern(db).ast_id, db),
@@ -71,6 +67,22 @@ impl Attrs {
             AttrDefId::FunctionId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::TypeAliasId(it) => attrs_from_loc(it.lookup(db), db),
         }
+    }
+
+    fn from_attrs_owner(db: &impl DefDatabase, owner: Source<&dyn AttrsOwner>) -> Attrs {
+        let hygiene = Hygiene::new(db, owner.file_id);
+        Attrs::new(owner.value, &hygiene)
+    }
+
+    pub(crate) fn new(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
+        let mut attrs = owner.attrs().peekable();
+        let entries = if attrs.peek().is_none() {
+            // Avoid heap allocation
+            None
+        } else {
+            Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).collect())
+        };
+        Attrs { entries }
     }
 
     pub fn has_atom(&self, atom: &str) -> bool {
@@ -100,7 +112,7 @@ pub enum AttrInput {
 }
 
 impl Attr {
-    pub(crate) fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
+    fn from_src(ast: ast::Attr, hygiene: &Hygiene) -> Option<Attr> {
         let path = Path::from_src(ast.path()?, hygiene)?;
         let input = match ast.input() {
             None => None,
@@ -115,17 +127,6 @@ impl Attr {
         };
 
         Some(Attr { path, input })
-    }
-
-    pub fn from_attrs_owner(owner: &dyn AttrsOwner, hygiene: &Hygiene) -> Attrs {
-        let mut attrs = owner.attrs().peekable();
-        let entries = if attrs.peek().is_none() {
-            // Avoid heap allocation
-            None
-        } else {
-            Some(attrs.flat_map(|ast| Attr::from_src(ast, hygiene)).collect())
-        };
-        Attrs { entries }
     }
 
     pub fn is_simple_atom(&self, name: &str) -> bool {
@@ -154,8 +155,8 @@ where
     N: ast::AttrsOwner,
     D: DefDatabase,
 {
-    let hygiene = Hygiene::new(db, src.file_id());
-    Attr::from_attrs_owner(&src.to_node(db), &hygiene)
+    let src = Source::new(src.file_id(), src.to_node(db));
+    Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
 
 fn attrs_from_loc<T, D>(node: T, db: &D) -> Attrs
@@ -165,6 +166,5 @@ where
     D: DefDatabase,
 {
     let src = node.source(db);
-    let hygiene = Hygiene::new(db, src.file_id);
-    Attr::from_attrs_owner(&src.value, &hygiene)
+    Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
