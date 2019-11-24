@@ -18,8 +18,8 @@ use crate::{
     path::{Path, PathKind},
     per_ns::PerNs,
     AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId,
+    GenericDefId, HasModule, ImplId, LocalModuleId, Lookup, ModuleDefId, ModuleId, StaticId,
+    StructId, TraitId, TypeAliasId,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -503,13 +503,7 @@ impl HasResolver for TraitId {
 impl<T: Into<AdtId>> HasResolver for T {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         let def = self.into();
-        let module = match def {
-            AdtId::StructId(it) => it.0.module(db),
-            AdtId::UnionId(it) => it.0.module(db),
-            AdtId::EnumId(it) => it.module(db),
-        };
-
-        module
+        def.module(db)
             .resolver(db)
             .push_generic_params_scope(db, def.into())
             .push_scope(Scope::AdtScope(def))
