@@ -27,10 +27,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
+        let field_tys = def.map(|it| self.db.field_types(it.into())).unwrap_or_default();
         for (i, &subpat) in subpats.iter().enumerate() {
             let expected_ty = def
                 .and_then(|d| d.field(self.db, &Name::new_tuple_field(i)))
-                .map_or(Ty::Unknown, |field| field.ty(self.db))
+                .map_or(Ty::Unknown, |field| field_tys[field.id].clone())
                 .subst(&substs);
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat, &expected_ty, default_bm);
@@ -56,10 +57,12 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
+        let field_tys = def.map(|it| self.db.field_types(it.into())).unwrap_or_default();
         for subpat in subpats {
             let matching_field = def.and_then(|it| it.field(self.db, &subpat.name));
-            let expected_ty =
-                matching_field.map_or(Ty::Unknown, |field| field.ty(self.db)).subst(&substs);
+            let expected_ty = matching_field
+                .map_or(Ty::Unknown, |field| field_tys[field.id].clone())
+                .subst(&substs);
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat.pat, &expected_ty, default_bm);
         }

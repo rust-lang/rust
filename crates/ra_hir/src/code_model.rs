@@ -305,7 +305,7 @@ impl StructField {
     }
 
     pub fn ty(&self, db: &impl HirDatabase) -> Ty {
-        db.type_for_field(*self)
+        db.field_types(self.parent.into())[self.id].clone()
     }
 
     pub fn parent_def(&self, _db: &impl HirDatabase) -> VariantDef {
