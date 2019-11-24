@@ -236,7 +236,9 @@ impl<'comp> Queries<'comp> {
             let (krate, boxed_resolver, _) = &*expansion_result.peek();
             let crate_name = self.crate_name()?;
             let crate_name = crate_name.peek();
-            passes::prepare_outputs(self.session(), self.compiler, &krate, &boxed_resolver, &crate_name)
+            passes::prepare_outputs(
+                self.session(), self.compiler, &krate, &boxed_resolver, &crate_name
+            )
         })
     }
 

@@ -372,7 +372,9 @@ pub fn run_compiler(
                             &crate_name,
                             &compiler.input(),
                             None,
-                            DumpHandler::new(compiler.output_dir().as_ref().map(|p| &**p), &crate_name)
+                            DumpHandler::new(
+                                compiler.output_dir().as_ref().map(|p| &**p), &crate_name
+                            )
                         )
                     });
 

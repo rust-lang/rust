@@ -359,10 +359,11 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 // intra-doc-links
                 resolver.borrow_mut().access(|resolver| {
                     for extern_name in &extern_names {
-                        resolver.resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
-                            .unwrap_or_else(
-                                |()| panic!("Unable to resolve external crate {}", extern_name)
-                            );
+                        resolver.resolve_str_path_error(
+                            DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID
+                        ).unwrap_or_else(
+                            |()| panic!("Unable to resolve external crate {}", extern_name)
+                        );
                     }
                 });
 
