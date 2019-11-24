@@ -66,7 +66,7 @@ use ra_arena::Arena;
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::ast;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     builtin_type::BuiltinType,
@@ -89,18 +89,6 @@ pub struct CrateDefMap {
     extern_prelude: FxHashMap<Name, ModuleDefId>,
     root: LocalModuleId,
     modules: Arena<LocalModuleId, ModuleData>,
-
-    /// Some macros are not well-behavior, which leads to infinite loop
-    /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
-    /// We mark it down and skip it in collector
-    ///
-    /// FIXME:
-    /// Right now it only handle a poison macro in a single crate,
-    /// such that if other crate try to call that macro,
-    /// the whole process will do again until it became poisoned in that crate.
-    /// We should handle this macro set globally
-    /// However, do we want to put it as a global variable?
-    poison_macros: FxHashSet<MacroDefId>,
 
     diagnostics: Vec<DefDiagnostic>,
 }
@@ -234,7 +222,6 @@ impl CrateDefMap {
                 prelude: None,
                 root,
                 modules,
-                poison_macros: FxHashSet::default(),
                 diagnostics: Vec::new(),
             }
         };
