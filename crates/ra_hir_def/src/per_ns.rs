@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! In rust, it is possible to have a value, a type and a macro with the same
+//! name without conflicts.
+//!
+//! `PerNs` (per namespace) captures this.
 
 use hir_expand::MacroDefId;
 

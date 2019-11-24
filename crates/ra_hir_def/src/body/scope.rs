@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! Name resolution for expressions.
 use std::sync::Arc;
 
 use hir_expand::name::Name;
