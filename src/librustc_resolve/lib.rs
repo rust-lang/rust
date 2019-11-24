@@ -2893,7 +2893,7 @@ fn names_to_string(names: &[Name]) -> String {
         if i > 0 {
             result.push_str("::");
         }
-        if name.is_used_keyword() && name.can_be_raw() {
+        if Ident::with_dummy_span(*name).is_raw_guess() {
             result.push_str("r#");
         }
         result.push_str(&name.as_str());
