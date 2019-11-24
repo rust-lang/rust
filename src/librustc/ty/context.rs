@@ -3028,4 +3028,8 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
     };
+    providers.has_global_allocator = |tcx, cnum| {
+        assert_eq!(cnum, LOCAL_CRATE);
+        tcx.cstore.has_global_allocator()
+    };
 }

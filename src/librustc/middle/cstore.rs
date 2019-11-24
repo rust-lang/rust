@@ -237,6 +237,7 @@ pub trait CrateStore {
     fn metadata_encoding_version(&self) -> &[u8];
     fn injected_panic_runtime(&self) -> Option<CrateNum>;
     fn allocator_kind(&self) -> Option<AllocatorKind>;
+    fn has_global_allocator(&self) -> bool;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;

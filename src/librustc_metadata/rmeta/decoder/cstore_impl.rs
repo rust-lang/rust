@@ -536,4 +536,8 @@ impl CrateStore for CStore {
     fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind()
     }
+
+    fn has_global_allocator(&self) -> bool {
+        self.has_global_allocator()
+    }
 }

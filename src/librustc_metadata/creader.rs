@@ -37,7 +37,11 @@ use rustc_error_codes::*;
 pub struct CStore {
     metas: IndexVec<CrateNum, Option<Lrc<CrateMetadata>>>,
     injected_panic_runtime: Option<CrateNum>,
+    /// This crate needs an allocator and either provides it itself, or finds it in a dependency.
+    /// If the above is true, then this field denotes the kind of the found allocator.
     allocator_kind: Option<AllocatorKind>,
+    /// This crate has a `#[global_allocator]` item.
+    has_global_allocator: bool,
 }
 
 pub struct CrateLoader<'a> {
@@ -150,6 +154,10 @@ impl CStore {
     crate fn allocator_kind(&self) -> Option<AllocatorKind> {
         self.allocator_kind
     }
+
+    crate fn has_global_allocator(&self) -> bool {
+        self.has_global_allocator
+    }
 }
 
 impl<'a> CrateLoader<'a> {
@@ -170,6 +178,7 @@ impl<'a> CrateLoader<'a> {
                 metas: IndexVec::from_elem_n(None, 1),
                 injected_panic_runtime: None,
                 allocator_kind: None,
+                has_global_allocator: false,
             }
         }
     }
@@ -562,7 +571,6 @@ impl<'a> CrateLoader<'a> {
         });
         if !any_non_rlib {
             info!("panic runtime injection skipped, only generating rlib");
-            self.cstore.injected_panic_runtime = None;
             return
         }
 
@@ -593,7 +601,6 @@ impl<'a> CrateLoader<'a> {
         // we just don't need one at all, then we're done here and there's
         // nothing else to do.
         if !needs_panic_runtime || runtime_found {
-            self.cstore.injected_panic_runtime = None;
             return
         }
 
@@ -753,7 +760,7 @@ impl<'a> CrateLoader<'a> {
     }
 
     fn inject_allocator_crate(&mut self, krate: &ast::Crate) {
-        let has_global_allocator = match &*global_allocator_spans(krate) {
+        self.cstore.has_global_allocator = match &*global_allocator_spans(krate) {
             [span1, span2, ..] => {
                 self.sess.struct_span_err(*span2, "cannot define multiple global allocators")
                     .span_label(*span2, "cannot define a new global allocator")
@@ -763,7 +770,6 @@ impl<'a> CrateLoader<'a> {
             }
             spans => !spans.is_empty()
         };
-        self.sess.has_global_allocator.set(has_global_allocator);
 
         // Check to see if we actually need an allocator. This desire comes
         // about through the `#![needs_allocator]` attribute and is typically
@@ -774,7 +780,6 @@ impl<'a> CrateLoader<'a> {
             needs_allocator = needs_allocator || data.needs_allocator();
         });
         if !needs_allocator {
-            self.cstore.allocator_kind = None;
             return
         }
 
@@ -790,7 +795,6 @@ impl<'a> CrateLoader<'a> {
                 }
             });
         if all_rlib {
-            self.cstore.allocator_kind = None;
             return
         }
 
@@ -801,8 +805,8 @@ impl<'a> CrateLoader<'a> {
         // First up we check for global allocators. Look at the crate graph here
         // and see what's a global allocator, including if we ourselves are a
         // global allocator.
-        let mut global_allocator = if has_global_allocator {
-            Some(None)
+        let mut global_allocator = if self.cstore.has_global_allocator {
+            Some(Symbol::intern("this crate"))
         } else {
             None
         };
@@ -811,19 +815,14 @@ impl<'a> CrateLoader<'a> {
                 return
             }
             match global_allocator {
-                Some(Some(other_crate)) => {
+                Some(other_crate) => {
                     self.sess.err(&format!("the `#[global_allocator]` in {} \
-                                            conflicts with this global \
+                                            conflicts with global \
                                             allocator in: {}",
                                            other_crate,
                                            data.name()));
                 }
-                Some(None) => {
-                    self.sess.err(&format!("the `#[global_allocator]` in this \
-                                            crate conflicts with global \
-                                            allocator in: {}", data.name()));
-                }
-                None => global_allocator = Some(Some(data.name())),
+                None => global_allocator = Some(data.name()),
             }
         });
         if global_allocator.is_some() {
@@ -848,7 +847,7 @@ impl<'a> CrateLoader<'a> {
                            add `#[global_allocator]` to a static item \
                            that implements the GlobalAlloc trait.");
         }
-        self.cstore.allocator_kind = Some(AllocatorKind::DefaultLib);
+        self.cstore.allocator_kind = Some(AllocatorKind::Default);
     }
 
     fn inject_dependency_if(&self,
