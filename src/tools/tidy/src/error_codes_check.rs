@@ -4,7 +4,6 @@
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fs::read_to_string;
-use std::io::Read;
 use std::path::Path;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
