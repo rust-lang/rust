@@ -4,7 +4,6 @@ use std::{ops, sync::Arc};
 
 use hir_expand::{either::Either, hygiene::Hygiene, AstId, Source};
 use mbe::ast_to_token_tree;
-use ra_cfg::CfgOptions;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
     SmolStr,
@@ -85,17 +84,8 @@ impl Attrs {
         Attrs { entries }
     }
 
-    pub fn has_atom(&self, atom: &str) -> bool {
-        self.iter().any(|it| it.is_simple_atom(atom))
-    }
-
-    pub fn find_string_value(&self, key: &str) -> Option<SmolStr> {
-        self.iter().filter(|attr| attr.is_simple_atom(key)).find_map(|attr| {
-            match attr.input.as_ref()? {
-                AttrInput::Literal(it) => Some(it.clone()),
-                _ => None,
-            }
-        })
+    pub fn by_key(&self, key: &'static str) -> AttrQuery<'_> {
+        AttrQuery { attrs: self, key }
     }
 }
 
@@ -128,25 +118,37 @@ impl Attr {
 
         Some(Attr { path, input })
     }
+}
 
-    pub fn is_simple_atom(&self, name: &str) -> bool {
-        // FIXME: Avoid cloning
-        self.path.as_ident().map_or(false, |s| s.to_string() == name)
-    }
+pub struct AttrQuery<'a> {
+    attrs: &'a Attrs,
+    key: &'static str,
+}
 
-    // FIXME: handle cfg_attr :-)
-    pub fn as_cfg(&self) -> Option<&Subtree> {
-        if !self.is_simple_atom("cfg") {
-            return None;
-        }
-        match &self.input {
-            Some(AttrInput::TokenTree(subtree)) => Some(subtree),
+impl<'a> AttrQuery<'a> {
+    pub fn tt_values(self) -> impl Iterator<Item = &'a Subtree> {
+        self.attrs().filter_map(|attr| match attr.input.as_ref()? {
+            AttrInput::TokenTree(it) => Some(it),
             _ => None,
-        }
+        })
     }
 
-    pub(crate) fn is_cfg_enabled(&self, cfg_options: &CfgOptions) -> Option<bool> {
-        cfg_options.is_cfg_enabled(self.as_cfg()?)
+    pub fn string_value(self) -> Option<&'a SmolStr> {
+        self.attrs().find_map(|attr| match attr.input.as_ref()? {
+            AttrInput::Literal(it) => Some(it),
+            _ => None,
+        })
+    }
+
+    pub fn exists(self) -> bool {
+        self.attrs().next().is_some()
+    }
+
+    fn attrs(self) -> impl Iterator<Item = &'a Attr> {
+        let key = self.key;
+        self.attrs
+            .iter()
+            .filter(move |attr| attr.path.as_ident().map_or(false, |s| s.to_string() == key))
     }
 }
 
