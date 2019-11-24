@@ -47,15 +47,15 @@ fn expand_macro_recur(
 
     for child in children.into_iter() {
         let node = hir::Source::new(macro_file_id, &child);
-        let new_node = expand_macro_recur(db, source, node)?;
-
-        // Replace the whole node if it is root
-        // `replace_descendants` will not replace the parent node
-        // but `SyntaxNode::descendants include itself
-        if expanded == *child.syntax() {
-            expanded = new_node;
-        } else {
-            replaces.insert(child.syntax().clone().into(), new_node.into());
+        if let Some(new_node) = expand_macro_recur(db, source, node) {
+            // Replace the whole node if it is root
+            // `replace_descendants` will not replace the parent node
+            // but `SyntaxNode::descendants include itself
+            if expanded == *child.syntax() {
+                expanded = new_node;
+            } else {
+                replaces.insert(child.syntax().clone().into(), new_node.into());
+            }
         }
     }
 
@@ -246,5 +246,27 @@ fn some_thing() -> u32 {
 
         assert_eq!(res.name, "match_ast");
         assert_snapshot!(res.expansion, @r###"{}"###);
+    }
+
+    #[test]
+    fn macro_expand_inner_macro_fail_to_expand() {
+        let res = check_expand_macro(
+            r#"
+        //- /lib.rs
+        macro_rules! bar {
+            (BAD) => {};
+        }
+        macro_rules! foo {
+            () => {bar!()};
+        }        
+
+        fn main() {        
+            let res = fo<|>o!();
+        }
+        "#,
+        );
+
+        assert_eq!(res.name, "foo");
+        assert_snapshot!(res.expansion, @r###"bar!()"###);
     }
 }
