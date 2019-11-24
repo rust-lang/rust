@@ -481,6 +481,16 @@ impl HasModule for ConstLoc {
     }
 }
 
+impl HasModule for AdtId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        match self {
+            AdtId::StructId(it) => it.0.module(db),
+            AdtId::UnionId(it) => it.0.module(db),
+            AdtId::EnumId(it) => it.module(db),
+        }
+    }
+}
+
 impl HasModule for StaticLoc {
     fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
         self.container
