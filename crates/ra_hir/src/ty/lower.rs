@@ -14,8 +14,9 @@ use hir_def::{
     path::{GenericArg, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, GenericDefId,
+    AdtId, GenericDefId, LocalStructFieldId, VariantId,
 };
+use ra_arena::map::ArenaMap;
 
 use super::{
     FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
@@ -29,7 +30,7 @@ use crate::{
     },
     util::make_mut_slice,
     Const, Enum, EnumVariant, Function, GenericDef, ImplBlock, ModuleDef, Path, Static, Struct,
-    StructField, Trait, TypeAlias, Union, VariantDef,
+    Trait, TypeAlias, Union,
 };
 
 // FIXME: this is only really used in `type_for_def`, which contains a bunch of
@@ -549,16 +550,23 @@ pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSi
     }
 }
 
-/// Build the type of a specific field of a struct or enum variant.
-pub(crate) fn type_for_field(db: &impl HirDatabase, field: StructField) -> Ty {
-    let parent_def = field.parent_def(db);
-    let resolver = match parent_def {
-        VariantDef::Struct(it) => it.id.resolver(db),
-        VariantDef::EnumVariant(it) => it.parent.id.resolver(db),
+/// Build the type of all specific fields of a struct or enum variant.
+pub(crate) fn field_types_query(
+    db: &impl HirDatabase,
+    variant_id: VariantId,
+) -> Arc<ArenaMap<LocalStructFieldId, Ty>> {
+    let (resolver, var_data) = match variant_id {
+        VariantId::StructId(it) => (it.resolver(db), db.struct_data(it.0).variant_data.clone()),
+        VariantId::EnumVariantId(it) => (
+            it.parent.resolver(db),
+            db.enum_data(it.parent).variants[it.local_id].variant_data.clone(),
+        ),
     };
-    let var_data = parent_def.variant_data(db);
-    let type_ref = &var_data.fields()[field.id].type_ref;
-    Ty::from_hir(db, &resolver, type_ref)
+    let mut res = ArenaMap::default();
+    for (field_id, field_data) in var_data.fields().iter() {
+        res.insert(field_id, Ty::from_hir(db, &resolver, &field_data.type_ref))
+    }
+    Arc::new(res)
 }
 
 /// This query exists only to be used when resolving short-hand associated types

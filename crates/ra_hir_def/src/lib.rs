@@ -192,12 +192,6 @@ pub struct LocalEnumVariantId(RawId);
 impl_arena_id!(LocalEnumVariantId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum VariantId {
-    EnumVariantId(EnumVariantId),
-    StructId(StructId),
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct StructFieldId {
     pub parent: VariantId,
     pub local_id: LocalStructFieldId,
@@ -436,6 +430,13 @@ impl_froms!(
     MacroDefId,
     ImplId
 );
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum VariantId {
+    EnumVariantId(EnumVariantId),
+    StructId(StructId),
+}
+impl_froms!(VariantId: EnumVariantId, StructId);
 
 trait Intern {
     type ID;

@@ -85,7 +85,7 @@ impl<ID: ArenaId, T> Arena<ID, T> {
         self.data.push(value);
         ID::from_raw(id)
     }
-    pub fn iter(&self) -> impl Iterator<Item = (ID, &T)> + ExactSizeIterator {
+    pub fn iter(&self) -> impl Iterator<Item = (ID, &T)> + ExactSizeIterator + DoubleEndedIterator {
         self.data.iter().enumerate().map(|(idx, value)| (ID::from_raw(RawId(idx as u32)), value))
     }
 }

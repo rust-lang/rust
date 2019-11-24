@@ -245,14 +245,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ty_app!(TypeCtor::Adt(Adt::Struct(struct1)), st1),
                 ty_app!(TypeCtor::Adt(Adt::Struct(struct2)), st2),
             ) if struct1 == struct2 => {
-                let fields = struct1.fields(self.db);
-                let (last_field, prev_fields) = fields.split_last()?;
+                let field_tys = self.db.field_types(struct1.id.into());
+                let struct_data = self.db.struct_data(struct1.id.0);
+
+                let mut fields = struct_data.variant_data.fields().iter();
+                let (last_field_id, _data) = fields.next_back()?;
 
                 // Get the generic parameter involved in the last field.
                 let unsize_generic_index = {
                     let mut index = None;
                     let mut multiple_param = false;
-                    last_field.ty(self.db).walk(&mut |ty| match ty {
+                    field_tys[last_field_id].walk(&mut |ty| match ty {
                         &Ty::Param { idx, .. } => {
                             if index.is_none() {
                                 index = Some(idx);
@@ -271,8 +274,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 // Check other fields do not involve it.
                 let mut multiple_used = false;
-                prev_fields.iter().for_each(|field| {
-                    field.ty(self.db).walk(&mut |ty| match ty {
+                fields.for_each(|(field_id, _data)| {
+                    field_tys[field_id].walk(&mut |ty| match ty {
                         &Ty::Param { idx, .. } if idx == unsize_generic_index => {
                             multiple_used = true
                         }

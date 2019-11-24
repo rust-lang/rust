@@ -324,7 +324,7 @@ impl RootDatabase {
             hir::db::ExprScopesQuery
             hir::db::InferQuery
             hir::db::TypeForDefQuery
-            hir::db::TypeForFieldQuery
+            hir::db::FieldTypesQuery
             hir::db::CallableItemSignatureQuery
             hir::db::GenericPredicatesQuery
             hir::db::GenericDefaultsQuery
