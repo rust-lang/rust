@@ -1,5 +1,5 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::cell::Cell;
 
 thread_local! {
@@ -18,7 +18,7 @@ impl Drop for DropTester {
     }
 }
 
-fn do_panic_counter() {
+fn do_panic_counter(do_panic: impl FnOnce(usize) -> !) {
     // If this gets leaked, it will be easy to spot
     // in Miri's leak report
     let _string = "LEAKED FROM do_panic_counter".to_string();
@@ -28,35 +28,63 @@ fn do_panic_counter() {
 
     // Check for bugs in Miri's panic implementation.
     // If do_panic_counter() somehow gets called more than once,
-    // we'll generate a different panic message
+    // we'll generate a different panic message and stderr will differ.
     let old_val = MY_COUNTER.with(|c| {
         let val = c.get();
         c.set(val + 1);
         val
     });
-    panic!(format!("Hello from panic: {:?}", old_val));
+    do_panic(old_val);
 }
 
 fn main() {
-    std::panic::set_hook(Box::new(|_panic_info| {
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |panic_info| {
         HOOK_CALLED.with(|h| h.set(true));
+        prev(panic_info)
     }));
-    let res = catch_unwind(|| {
-        let _string = "LEAKED FROM CLOSURE".to_string();
-        do_panic_counter()
-    });
-    let expected: Box<String> = Box::new("Hello from panic: 0".to_string());
-    let actual = res.expect_err("do_panic() did not panic!")
-        .downcast::<String>().expect("Failed to cast to string!");
-        
-    assert_eq!(expected, actual);
-    DROPPED.with(|c| {
-        // This should have been set to 'true' by DropTester
-        assert!(c.get());
-    });
 
-    HOOK_CALLED.with(|h| {
-        assert!(h.get());
-    });
+    test(|_old_val| panic!("Hello from panic: std"));
+    test(|old_val| panic!(format!("Hello from panic: {:?}", old_val)));
+    test(|old_val| panic!("Hello from panic: {:?}", old_val));
+    test(|_old_val| panic!(1337));
+    // FIXME https://github.com/rust-lang/miri/issues/1071
+    //test(|_old_val| core::panic!("Hello from panic: core"));
+    //test(|old_val| core::panic!(&format!("Hello from panic: {:?}", old_val)));
+    //test(|old_val| core::panic!("Hello from panic: {:?}", old_val));
+
+    // Cleanup: reset to default hook.
+    drop(std::panic::take_hook());
+
+    eprintln!("Success!"); // Make sure we get this in stderr
+}
+
+fn test(do_panic: impl FnOnce(usize) -> !) {
+    // Reset test flags.
+    DROPPED.with(|c| c.set(false));
+    HOOK_CALLED.with(|c| c.set(false));
+
+    // Cause and catch a panic.
+    let res = catch_unwind(AssertUnwindSafe(|| {
+        let _string = "LEAKED FROM CLOSURE".to_string();
+        do_panic_counter(do_panic)
+    })).expect_err("do_panic() did not panic!");
+
+    // See if we can extract panic message.
+    match res.downcast::<String>() {
+        Ok(s) => {
+            eprintln!("Caught panic message (String): {}", s);
+        }
+        Err(res) =>
+            if let Ok(s) = res.downcast::<&str>() {
+                eprintln!("Caught panic message (&str): {}", s);
+            } else {
+                eprintln!("Failed get caught panic message.");
+            }
+    }
+
+    // Test flags.
+    assert!(DROPPED.with(|c| c.get()));
+    assert!(HOOK_CALLED.with(|c| c.get()));
 }
 
