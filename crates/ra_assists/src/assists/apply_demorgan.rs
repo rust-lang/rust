@@ -1,6 +1,6 @@
+use super::invert_if::invert_boolean_expression;
 use hir::db::HirDatabase;
 use ra_syntax::ast::{self, AstNode};
-use ra_syntax::SyntaxNode;
 
 use crate::{Assist, AssistCtx, AssistId};
 
@@ -32,18 +32,18 @@ pub(crate) fn apply_demorgan(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist>
     if !cursor_in_range {
         return None;
     }
-    let lhs = expr.lhs()?.syntax().clone();
-    let lhs_range = lhs.text_range();
-    let rhs = expr.rhs()?.syntax().clone();
-    let rhs_range = rhs.text_range();
-    let not_lhs = undo_negation(lhs)?;
-    let not_rhs = undo_negation(rhs)?;
+    let lhs = expr.lhs()?;
+    let lhs_range = lhs.syntax().text_range();
+    let rhs = expr.rhs()?;
+    let rhs_range = rhs.syntax().text_range();
+    let not_lhs = invert_boolean_expression(&lhs)?;
+    let not_rhs = invert_boolean_expression(&rhs)?;
 
     ctx.add_assist(AssistId("apply_demorgan"), "apply demorgan's law", |edit| {
         edit.target(op_range);
         edit.replace(op_range, opposite_op);
-        edit.replace(lhs_range, format!("!({}", not_lhs));
-        edit.replace(rhs_range, format!("{})", not_rhs));
+        edit.replace(lhs_range, format!("!({}", not_lhs.syntax().text()));
+        edit.replace(rhs_range, format!("{})", not_rhs.syntax().text()));
     })
 }
 
@@ -52,28 +52,6 @@ fn opposite_logic_op(kind: ast::BinOp) -> Option<&'static str> {
     match kind {
         ast::BinOp::BooleanOr => Some("&&"),
         ast::BinOp::BooleanAnd => Some("||"),
-        _ => None,
-    }
-}
-
-// This function tries to undo unary negation, or inequality
-fn undo_negation(node: SyntaxNode) -> Option<String> {
-    match ast::Expr::cast(node)? {
-        ast::Expr::BinExpr(bin) => match bin.op_kind()? {
-            ast::BinOp::NegatedEqualityTest => {
-                let lhs = bin.lhs()?.syntax().text();
-                let rhs = bin.rhs()?.syntax().text();
-                Some(format!("{} == {}", lhs, rhs))
-            }
-            _ => None,
-        },
-        ast::Expr::PrefixExpr(pe) => match pe.op_kind()? {
-            ast::PrefixOp::Not => {
-                let child = pe.expr()?.syntax().text();
-                Some(String::from(child))
-            }
-            _ => None,
-        },
         _ => None,
     }
 }

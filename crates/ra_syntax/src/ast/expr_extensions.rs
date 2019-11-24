@@ -127,7 +127,7 @@ pub enum BinOp {
 }
 
 impl ast::BinExpr {
-    fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
+    pub fn op_details(&self) -> Option<(SyntaxToken, BinOp)> {
         self.syntax().children_with_tokens().filter_map(|it| it.into_token()).find_map(|c| {
             let bin_op = match c.kind() {
                 T![||] => BinOp::BooleanOr,
