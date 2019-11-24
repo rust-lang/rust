@@ -49,6 +49,24 @@ macro_rules! define_scoped_cx {
 thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = Cell::new(false);
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = Cell::new(false);
+    static NO_QUERIES: Cell<bool> = Cell::new(false);
+}
+
+/// Avoids running any queries during any prints that occur
+/// during the closure. This may alter the apperance of some
+/// types (e.g. forcing verbose printing for opaque types).
+/// This method is used during some queries (e.g. `predicates_of`
+/// for opaque types), to ensure that any debug printing that
+/// occurs during the query computation does not end up recursively
+/// calling the same query.
+pub fn with_no_queries<F: FnOnce() -> R, R>(f: F) -> R {
+    NO_QUERIES.with(|no_queries| {
+        let old = no_queries.get();
+        no_queries.set(true);
+        let result = f();
+        no_queries.set(old);
+        result
+    })
 }
 
 /// Force us to name impls with just the filename/line number. We
@@ -556,52 +574,61 @@ pub trait PrettyPrinter<'tcx>:
             }
             ty::Opaque(def_id, substs) => {
                 // FIXME(eddyb) print this with `print_def_path`.
-                if self.tcx().sess.verbose() {
+                // We use verbose printing in 'NO_QUERIES' mode, to
+                // avoid needing to call `predicates_of`. This should
+                // only affect certain debug messages (e.g. messages printed
+                // from `rustc::ty` during the computation of `tcx.predicates_of`),
+                // and should have no effect on any compiler output.
+                if self.tcx().sess.verbose() || NO_QUERIES.with(|q| q.get())  {
                     p!(write("Opaque({:?}, {:?})", def_id, substs));
                     return Ok(self);
                 }
 
-                let def_key = self.tcx().def_key(def_id);
-                if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
-                    p!(write("{}", name));
-                    let mut substs = substs.iter();
-                    // FIXME(eddyb) print this with `print_def_path`.
-                    if let Some(first) = substs.next() {
-                        p!(write("::<"));
-                        p!(print(first));
-                        for subst in substs {
-                            p!(write(", "), print(subst));
-                        }
-                        p!(write(">"));
-                    }
-                    return Ok(self);
-                }
-                // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
-                // by looking up the projections associated with the def_id.
-                let bounds = self.tcx().predicates_of(def_id).instantiate(self.tcx(), substs);
+                return Ok(with_no_queries(|| {
 
-                let mut first = true;
-                let mut is_sized = false;
-                p!(write("impl"));
-                for predicate in bounds.predicates {
-                    if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
-                        // Don't print +Sized, but rather +?Sized if absent.
-                        if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
-                            is_sized = true;
-                            continue;
+                    let def_key = self.tcx().def_key(def_id);
+                    if let Some(name) = def_key.disambiguated_data.data.get_opt_name() {
+                        p!(write("{}", name));
+                        let mut substs = substs.iter();
+                        // FIXME(eddyb) print this with `print_def_path`.
+                        if let Some(first) = substs.next() {
+                            p!(write("::<"));
+                            p!(print(first));
+                            for subst in substs {
+                                p!(write(", "), print(subst));
+                            }
+                            p!(write(">"));
                         }
-
-                        p!(
-                                write("{}", if first { " " } else { "+" }),
-                                print(trait_ref));
-                        first = false;
+                        return Ok(self);
                     }
-                }
-                if !is_sized {
-                    p!(write("{}?Sized", if first { " " } else { "+" }));
-                } else if first {
-                    p!(write(" Sized"));
-                }
+                    // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
+                    // by looking up the projections associated with the def_id.
+                    let bounds = self.tcx().predicates_of(def_id).instantiate(self.tcx(), substs);
+
+                    let mut first = true;
+                    let mut is_sized = false;
+                    p!(write("impl"));
+                    for predicate in bounds.predicates {
+                        if let Some(trait_ref) = predicate.to_opt_poly_trait_ref() {
+                            // Don't print +Sized, but rather +?Sized if absent.
+                            if Some(trait_ref.def_id()) == self.tcx().lang_items().sized_trait() {
+                                is_sized = true;
+                                continue;
+                            }
+
+                            p!(
+                                    write("{}", if first { " " } else { "+" }),
+                                    print(trait_ref));
+                            first = false;
+                        }
+                    }
+                    if !is_sized {
+                        p!(write("{}?Sized", if first { " " } else { "+" }));
+                    } else if first {
+                        p!(write(" Sized"));
+                    }
+                    Ok(self)
+                })?);
             }
             ty::Str => p!(write("str")),
             ty::Generator(did, substs, movability) => {

@@ -2056,20 +2056,22 @@ fn explicit_predicates_of(
 
         Node::ImplItem(item) => match item.kind {
             ImplItemKind::OpaqueTy(ref bounds) => {
-                let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                let opaque_ty = tcx.mk_opaque(def_id, substs);
+                ty::print::with_no_queries(|| {
+                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
+                    let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
-                let bounds = AstConv::compute_bounds(
-                    &icx,
-                    opaque_ty,
-                    bounds,
-                    SizedByDefault::Yes,
-                    tcx.def_span(def_id),
-                );
+                    // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
+                    let bounds = AstConv::compute_bounds(
+                        &icx,
+                        opaque_ty,
+                        bounds,
+                        SizedByDefault::Yes,
+                        tcx.def_span(def_id),
+                    );
 
-                predicates.extend(bounds.predicates(tcx, opaque_ty));
-                &item.generics
+                    predicates.extend(bounds.predicates(tcx, opaque_ty));
+                    &item.generics
+                })
             }
             _ => &item.generics,
         },
@@ -2102,19 +2104,21 @@ fn explicit_predicates_of(
                     ref generics,
                     origin: _,
                 }) => {
-                    let substs = InternalSubsts::identity_for_item(tcx, def_id);
-                    let opaque_ty = tcx.mk_opaque(def_id, substs);
+                    let bounds_predicates = ty::print::with_no_queries(|| {
+                        let substs = InternalSubsts::identity_for_item(tcx, def_id);
+                        let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                    // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
-                    let bounds = AstConv::compute_bounds(
-                        &icx,
-                        opaque_ty,
-                        bounds,
-                        SizedByDefault::Yes,
-                        tcx.def_span(def_id),
-                    );
+                        // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
+                        let bounds = AstConv::compute_bounds(
+                            &icx,
+                            opaque_ty,
+                            bounds,
+                            SizedByDefault::Yes,
+                            tcx.def_span(def_id),
+                        );
 
-                    let bounds_predicates = bounds.predicates(tcx, opaque_ty);
+                        bounds.predicates(tcx, opaque_ty)
+                    });
                     if impl_trait_fn.is_some() {
                         // opaque types
                         return ty::GenericPredicates {
