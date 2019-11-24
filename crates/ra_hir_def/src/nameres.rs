@@ -267,16 +267,6 @@ impl CrateDefMap {
         self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
     }
 
-    pub fn resolve_path(
-        &self,
-        db: &impl DefDatabase,
-        original_module: LocalModuleId,
-        path: &Path,
-    ) -> (PerNs, Option<usize>) {
-        let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
-        (res.resolved_def, res.segment_index)
-    }
-
     pub fn modules(&self) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules.iter().map(|(id, _data)| id)
     }
@@ -286,6 +276,16 @@ impl CrateDefMap {
             .iter()
             .filter(move |(_id, data)| data.definition == Some(file_id))
             .map(|(id, _data)| id)
+    }
+
+    pub(crate) fn resolve_path(
+        &self,
+        db: &impl DefDatabase,
+        original_module: LocalModuleId,
+        path: &Path,
+    ) -> (PerNs, Option<usize>) {
+        let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
+        (res.resolved_def, res.segment_index)
     }
 }
 
