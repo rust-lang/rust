@@ -117,9 +117,12 @@ pub fn load(
                         done = true;
                     }
                 }
-                VfsChange::AddFile { .. }
-                | VfsChange::RemoveFile { .. }
-                | VfsChange::ChangeFile { .. } => {
+                VfsChange::AddFile { root, file, path, text } => {
+                    let source_root_id = vfs_root_to_id(root);
+                    let file_id = vfs_file_to_id(file);
+                    analysis_change.add_file(source_root_id, file_id, path, text);
+                }
+                VfsChange::RemoveFile { .. } | VfsChange::ChangeFile { .. } => {
                     // We just need the first scan, so just ignore these
                 }
             }
