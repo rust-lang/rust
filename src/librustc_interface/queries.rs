@@ -81,7 +81,6 @@ pub struct Queries<'comp> {
     prepare_outputs: Query<OutputFilenames>,
     global_ctxt: Query<BoxedGlobalCtxt>,
     ongoing_codegen: Query<Box<dyn Any>>,
-    link: Query<()>,
 }
 
 impl<'comp> Queries<'comp> {
@@ -98,7 +97,6 @@ impl<'comp> Queries<'comp> {
             prepare_outputs: Default::default(),
             global_ctxt: Default::default(),
             ongoing_codegen: Default::default(),
-            link: Default::default(),
         }
     }
 
@@ -278,21 +276,40 @@ impl<'comp> Queries<'comp> {
         })
     }
 
-    pub fn link(&self) -> Result<&Query<()>> {
-        self.link.compute(|| {
-            let sess = self.session();
+    pub fn linker(self) -> Result<Linker> {
+        let dep_graph = self.dep_graph()?;
+        let prepare_outputs = self.prepare_outputs()?;
+        let ongoing_codegen = self.ongoing_codegen()?;
 
-            let ongoing_codegen = self.ongoing_codegen()?.take();
+        let sess = self.session().clone();
+        let codegen_backend = self.codegen_backend().clone();
 
-            self.codegen_backend().join_codegen_and_link(
-                ongoing_codegen,
-                sess,
-                &*self.dep_graph()?.peek(),
-                &*self.prepare_outputs()?.peek(),
-            ).map_err(|_| ErrorReported)?;
-
-            Ok(())
+        Ok(Linker {
+            sess,
+            dep_graph: dep_graph.take(),
+            prepare_outputs: prepare_outputs.take(),
+            ongoing_codegen: ongoing_codegen.take(),
+            codegen_backend,
         })
+    }
+}
+
+pub struct Linker {
+    sess: Lrc<Session>,
+    dep_graph: DepGraph,
+    prepare_outputs: OutputFilenames,
+    ongoing_codegen: Box<dyn Any>,
+    codegen_backend: Lrc<Box<dyn CodegenBackend>>,
+}
+
+impl Linker {
+    pub fn link(self) -> Result<()> {
+        self.codegen_backend.join_codegen_and_link(
+            self.ongoing_codegen,
+            &self.sess,
+            &self.dep_graph,
+            &self.prepare_outputs,
+        ).map_err(|_| ErrorReported)
     }
 }
 
@@ -303,10 +320,10 @@ impl Compiler {
     // between some passes. And see `rustc_driver::run_compiler` for a more
     // complex example.
     pub fn enter<'c, F, T>(&'c self, f: F) -> Result<T>
-        where F: for<'q> FnOnce(&'q Queries<'c>) -> Result<T>
+        where F: FnOnce(Queries<'c>) -> Result<T>
     {
         let queries = Queries::new(&self);
-        f(&queries)
+        f(queries)
     }
 
     // This method is different to all the other methods in `Compiler` because
@@ -315,13 +332,13 @@ impl Compiler {
     // between some passes. And see `rustc_driver::run_compiler` for a more
     // complex example.
     pub fn compile(&self) -> Result<()> {
-        self.enter(|queries| {
+        let linker = self.enter(|queries| {
             queries.prepare_outputs()?;
 
             if self.session().opts.output_types.contains_key(&OutputType::DepInfo)
                 && self.session().opts.output_types.len() == 1
             {
-                return Ok(())
+                return Ok(None)
             }
 
             queries.global_ctxt()?;
@@ -334,7 +351,14 @@ impl Compiler {
             // Drop GlobalCtxt after starting codegen to free memory.
             mem::drop(queries.global_ctxt()?.take());
 
-            queries.link().map(|_| ())
-        })
+            let linker = queries.linker()?;
+            Ok(Some(linker))
+        })?;
+
+        if let Some(linker) = linker {
+            linker.link()?
+        }
+
+        Ok(())
     }
 }

@@ -283,7 +283,7 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        compiler.enter(|queries| {
+        let linker = compiler.enter(|queries| {
             queries.parse()?;
 
             if let Some(ppm) = &sess.opts.pretty {
@@ -309,17 +309,20 @@ pub fn run_compiler(
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
                 }
-                return sess.compile_status();
+                sess.compile_status()?;
+                return Ok(None);
             }
 
             if callbacks.after_parsing(compiler) == Compilation::Stop {
-                return sess.compile_status();
+                sess.compile_status()?;
+                return Ok(None);
             }
 
             if sess.opts.debugging_opts.parse_only ||
                sess.opts.debugging_opts.show_span.is_some() ||
                sess.opts.debugging_opts.ast_json_noexpand {
-                return sess.compile_status();
+                sess.compile_status()?;
+                return Ok(None);
             }
 
             {
@@ -328,13 +331,15 @@ pub fn run_compiler(
                 // Lint plugins are registered; now we can process command line flags.
                 if sess.opts.describe_lints {
                     describe_lints(&sess, &lint_store, true);
-                    return sess.compile_status();
+                    sess.compile_status()?;
+                    return Ok(None);
                 }
             }
 
             queries.expansion()?;
             if callbacks.after_expansion(compiler) == Compilation::Stop {
-                return sess.compile_status();
+                sess.compile_status()?;
+                return Ok(None);
             }
 
             queries.prepare_outputs()?;
@@ -342,14 +347,16 @@ pub fn run_compiler(
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
-                return sess.compile_status();
+                sess.compile_status()?;
+                return Ok(None);
             }
 
             queries.global_ctxt()?;
 
             if sess.opts.debugging_opts.no_analysis ||
                sess.opts.debugging_opts.ast_json {
-                return sess.compile_status();
+                sess.compile_status()?;
+                return Ok(None);
             }
 
             if sess.opts.debugging_opts.save_analysis {
@@ -381,7 +388,8 @@ pub fn run_compiler(
             queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
             if callbacks.after_analysis(compiler) == Compilation::Stop {
-                return sess.compile_status();
+                sess.compile_status()?;
+                return Ok(None);
             }
 
             if sess.opts.debugging_opts.save_analysis {
@@ -397,10 +405,13 @@ pub fn run_compiler(
                 sess.code_stats.print_type_sizes();
             }
 
-            queries.link()?;
-
-            Ok(())
+            let linker = queries.linker()?;
+            Ok(Some(linker))
         })?;
+
+        if let Some(linker) = linker {
+            linker.link()?
+        }
 
         if sess.opts.debugging_opts.perf_stats {
             sess.print_perf_stats();
