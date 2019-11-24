@@ -387,6 +387,8 @@ pub fn codegen_intrinsic_call<'tcx>(
         logf64(flt) -> f64 => log,
         log2f32(flt) -> f32 => log2f,
         log2f64(flt) -> f64 => log2,
+        log10f32(flt) -> f32 => log10f,
+        log10f64(flt) -> f64 => log10,
         fabsf32(flt) -> f32 => fabsf,
         fabsf64(flt) -> f64 => fabs,
         fmaf32(x, y, z) -> f32 => fmaf,
