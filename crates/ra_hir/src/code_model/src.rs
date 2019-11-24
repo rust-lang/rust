@@ -5,8 +5,8 @@ use hir_expand::either::Either;
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, Import, MacroDef, Module,
-    ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplBlock, Import, MacroDef,
+    Module, ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
 pub use hir_expand::Source;
@@ -106,6 +106,12 @@ impl HasSource for MacroDef {
     type Ast = ast::MacroCall;
     fn source(self, db: &impl DefDatabase) -> Source<ast::MacroCall> {
         Source { file_id: self.id.ast_id.file_id(), value: self.id.ast_id.to_node(db) }
+    }
+}
+impl HasSource for ImplBlock {
+    type Ast = ast::ImplBlock;
+    fn source(self, db: &impl DefDatabase) -> Source<ast::ImplBlock> {
+        self.id.source(db)
     }
 }
 impl HasSource for Import {
