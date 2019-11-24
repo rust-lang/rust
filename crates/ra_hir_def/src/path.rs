@@ -1,4 +1,4 @@
-//! FIXME: write short doc here
+//! A desugared representation of paths like `crate::foo` or `<Type as Trait>::bar`.
 
 use std::{iter, sync::Arc};
 

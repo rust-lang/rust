@@ -200,18 +200,17 @@ pub struct ConstData {
 impl ConstData {
     pub(crate) fn const_data_query(db: &impl DefDatabase, konst: ConstId) -> Arc<ConstData> {
         let node = konst.lookup(db).source(db).value;
-        const_data_for(&node)
+        Arc::new(ConstData::new(&node))
     }
 
     pub(crate) fn static_data_query(db: &impl DefDatabase, konst: StaticId) -> Arc<ConstData> {
         let node = konst.lookup(db).source(db).value;
-        const_data_for(&node)
+        Arc::new(ConstData::new(&node))
     }
-}
 
-fn const_data_for<N: NameOwner + TypeAscriptionOwner>(node: &N) -> Arc<ConstData> {
-    let name = node.name().map(|n| n.as_name());
-    let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
-    let sig = ConstData { name, type_ref };
-    Arc::new(sig)
+    fn new<N: NameOwner + TypeAscriptionOwner>(node: &N) -> ConstData {
+        let name = node.name().map(|n| n.as_name());
+        let type_ref = TypeRef::from_ast_opt(node.ascribed_type());
+        ConstData { name, type_ref }
+    }
 }

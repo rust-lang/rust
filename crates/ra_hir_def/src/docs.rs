@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! Defines hir documentation.
+//!
+//! This really shouldn't exist, instead, we should deshugar doc comments into attributes, see
+//! https://github.com/rust-analyzer/rust-analyzer/issues/2148#issuecomment-550519102
 
 use std::sync::Arc;
 
