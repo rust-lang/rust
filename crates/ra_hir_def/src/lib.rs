@@ -94,25 +94,10 @@ impl<'a, DB> LocationCtx<&'a DB> {
     }
 }
 
-impl<'a, DB: AstDatabase + InternDatabase> LocationCtx<&'a DB> {
-    pub fn to_def<N, DEF>(self, ast: &N) -> DEF
-    where
-        N: AstNode,
-        DEF: AstItemDef<N>,
-    {
-        DEF::from_ast(self, ast)
-    }
-}
-
 pub trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
     fn intern(db: &impl InternDatabase, loc: ItemLoc<N>) -> Self;
     fn lookup_intern(self, db: &impl InternDatabase) -> ItemLoc<N>;
 
-    fn from_ast(ctx: LocationCtx<&(impl AstDatabase + InternDatabase)>, ast: &N) -> Self {
-        let items = ctx.db.ast_id_map(ctx.file_id);
-        let item_id = items.ast_id(ast);
-        Self::from_ast_id(ctx, item_id)
-    }
     fn from_ast_id(ctx: LocationCtx<&impl InternDatabase>, ast_id: FileAstId<N>) -> Self {
         let loc = ItemLoc { module: ctx.module, ast_id: AstId::new(ctx.file_id, ast_id) };
         Self::intern(ctx.db, loc)

@@ -282,7 +282,9 @@ where
     let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
     let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
     let ctx = LocationCtx::new(db, module.id, src.file_id);
-    Some(DEF::from_ast(ctx, &src.value))
+    let items = db.ast_id_map(src.file_id);
+    let item_id = items.ast_id(&src.value);
+    Some(DEF::from_ast_id(ctx, item_id))
 }
 
 enum Container {
