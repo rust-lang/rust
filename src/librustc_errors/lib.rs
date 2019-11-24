@@ -993,3 +993,10 @@ macro_rules! pluralize {
         if $x != 1 { "s" } else { "" }
     };
 }
+
+// Useful type to use with `Result<>` indicate that an error has already
+// been reported to the user, so no need to continue checking.
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, Hash, PartialEq, Eq)]
+pub struct ErrorReported;
+
+rustc_data_structures::impl_stable_hash_via_hash!(ErrorReported);
