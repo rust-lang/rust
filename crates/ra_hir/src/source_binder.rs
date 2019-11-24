@@ -216,6 +216,11 @@ impl SourceAnalyzer {
         self.infer.as_ref()?.field_resolution(expr_id)
     }
 
+    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<crate::StructField> {
+        let expr_id = self.expr_id(&field.expr()?)?;
+        self.infer.as_ref()?.record_field_resolution(expr_id)
+    }
+
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<crate::VariantDef> {
         let expr_id = self.expr_id(&record_lit.clone().into())?;
         self.infer.as_ref()?.variant_resolution_for_expr(expr_id)

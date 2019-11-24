@@ -510,7 +510,7 @@ impl VariantDef {
         }
     }
 
-    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+    pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
         match self {
             VariantDef::Struct(it) => it.field(db, name),
             VariantDef::EnumVariant(it) => it.field(db, name),
