@@ -1,0 +1,17 @@
+error[E0277]: the trait bound `T: MyDisplay` is not satisfied
+  --> $DIR/issue-65774-1.rs:10:21
+   |
+LL | trait MPU {
+   | --------- required by `MPU`
+LL |     type MpuConfig: MyDisplay = T;
+   |                     ^^^^^^^^^ the trait `MyDisplay` is not implemented for `T`
+
+error[E0277]: the trait bound `T: MyDisplay` is not satisfied
+  --> $DIR/issue-65774-1.rs:16:6
+   |
+LL | impl MPU for S { }
+   |      ^^^ the trait `MyDisplay` is not implemented for `T`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
