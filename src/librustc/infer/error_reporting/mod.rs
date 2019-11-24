@@ -898,8 +898,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         // ^^^^^^
-        values.0.push(sig1.unsafety.prefix_str().to_string(), sig1.unsafety != sig2.unsafety);
-        values.1.push(sig2.unsafety.prefix_str().to_string(), sig1.unsafety != sig2.unsafety);
+        values.0.push(sig1.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
+        values.1.push(sig2.unsafety.prefix_str(), sig1.unsafety != sig2.unsafety);
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //        ^^^^^^^^^^
@@ -918,8 +918,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                           ^^^
-        values.0.push_normal("fn(".to_string());
-        values.1.push_normal("fn(".to_string());
+        values.0.push_normal("fn(");
+        values.1.push_normal("fn(");
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                              ^^^^^
@@ -936,34 +936,34 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             for (i, l) in sig1.inputs().iter().enumerate() {
                 values.0.push_highlighted(l.to_string());
                 if i != len1 - 1 {
-                    values.0.push_highlighted(", ".to_string());
+                    values.0.push_highlighted(", ");
                 }
             }
             for (i, r) in sig2.inputs().iter().enumerate() {
                 values.1.push_highlighted(r.to_string());
                 if i != len2 - 1 {
-                    values.1.push_highlighted(", ".to_string());
+                    values.1.push_highlighted(", ");
                 }
             }
         }
 
         if sig1.c_variadic {
             if len1 > 0 {
-                values.0.push_normal(", ".to_string());
+                values.0.push_normal(", ");
             }
-            values.0.push("...".to_string(), !sig2.c_variadic);
+            values.0.push("...", !sig2.c_variadic);
         }
         if sig2.c_variadic {
             if len2 > 0 {
-                values.1.push_normal(", ".to_string());
+                values.1.push_normal(", ");
             }
-            values.1.push("...".to_string(), !sig1.c_variadic);
+            values.1.push("...", !sig1.c_variadic);
         }
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                                   ^
-        values.0.push_normal(")".to_string());
-        values.1.push_normal(")".to_string());
+        values.0.push_normal(")");
+        values.1.push_normal(")");
 
         // unsafe extern "C" for<'a> fn(&'a T) -> &'a T
         //                                     ^^^^^^^^
@@ -971,11 +971,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let output2 = sig2.output();
         let (x1, x2) = self.cmp(output1, output2);
         if !output1.is_unit() {
-            values.0.push_normal(" -> ".to_string());
+            values.0.push_normal(" -> ");
             (values.0).0.extend(x1.0);
         }
         if !output2.is_unit() {
-            values.1.push_normal(" -> ".to_string());
+            values.1.push_normal(" -> ");
             (values.1).0.extend(x2.0);
         }
         values
@@ -1240,8 +1240,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             // When encountering tuples of the same size, highlight only the differing types
             (&ty::Tuple(substs1), &ty::Tuple(substs2)) if substs1.len() == substs2.len() => {
                 let mut values = (
-                    DiagnosticStyledString::normal("(".to_string()),
-                    DiagnosticStyledString::normal("(".to_string()),
+                    DiagnosticStyledString::normal("("),
+                    DiagnosticStyledString::normal("("),
                 );
                 let len = substs1.len();
                 for (i, (left, right)) in substs1.types().zip(substs2.types()).enumerate() {
@@ -1251,11 +1251,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     self.push_comma(&mut values.0, &mut values.1, len, i);
                 }
                 if len == 1 { // Keep the output for single element tuples as `(ty,)`.
-                    values.0.push_normal(",".to_string());
-                    values.1.push_normal(",".to_string());
+                    values.0.push_normal(",");
+                    values.1.push_normal(",");
                 }
-                values.0.push_normal(")".to_string());
-                values.1.push_normal(")".to_string());
+                values.0.push_normal(")");
+                values.1.push_normal(")");
                 values
             }
 

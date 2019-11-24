@@ -54,9 +54,9 @@ impl DiagnosticStyledString {
     }
     pub fn push<S: Into<String>>(&mut self, t: S, highlight: bool) {
         if highlight {
-            self.0.push(StringPart::Highlighted(t.into()));
+            self.push_highlighted(t);
         } else {
-            self.0.push(StringPart::Normal(t.into()));
+            self.push_normal(t);
         }
     }
     pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
