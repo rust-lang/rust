@@ -54,11 +54,13 @@ struct TargetData {
     name: String,
     root: PathBuf,
     kind: TargetKind,
+    is_proc_macro: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TargetKind {
     Bin,
+    /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
     Lib,
     Example,
     Test,
@@ -74,6 +76,7 @@ impl TargetKind {
                 "test" => TargetKind::Test,
                 "bench" => TargetKind::Bench,
                 "example" => TargetKind::Example,
+                "proc-macro" => TargetKind::Lib,
                 _ if kind.contains("lib") => TargetKind::Lib,
                 _ => continue,
             };
@@ -123,6 +126,9 @@ impl Target {
     pub fn kind(self, ws: &CargoWorkspace) -> TargetKind {
         ws.targets[self].kind
     }
+    pub fn is_proc_macro(self, ws: &CargoWorkspace) -> bool {
+        ws.targets[self].is_proc_macro
+    }
 }
 
 impl CargoWorkspace {
@@ -155,11 +161,13 @@ impl CargoWorkspace {
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
             for meta_tgt in meta_pkg.targets {
+                let is_proc_macro = meta_tgt.kind.as_slice() == &["proc-macro"];
                 let tgt = targets.alloc(TargetData {
                     pkg,
                     name: meta_tgt.name,
                     root: meta_tgt.src_path.clone(),
                     kind: TargetKind::new(meta_tgt.kind.as_slice()),
+                    is_proc_macro,
                 });
                 pkg_data.targets.push(tgt);
             }
