@@ -15,6 +15,7 @@ use rustc::session::search_paths::PathKind;
 use rustc::middle::cstore::{CrateSource, ExternCrate, ExternCrateSource, MetadataLoaderDyn};
 use rustc::hir::map::Definitions;
 use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::ty::TyCtxt;
 
 use std::path::Path;
 use std::{cmp, fs};
@@ -94,6 +95,10 @@ fn dump_crates(cstore: &CStore) {
 }
 
 impl CStore {
+    crate fn from_tcx(tcx: TyCtxt<'_>) -> &CStore {
+        tcx.cstore_as_any().downcast_ref::<CStore>().expect("`tcx.cstore` is not a `CStore`")
+    }
+
     fn alloc_new_crate_num(&mut self) -> CrateNum {
         self.metas.push(None);
         CrateNum::new(self.metas.len() - 1)

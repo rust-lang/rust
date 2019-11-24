@@ -1307,10 +1307,6 @@ impl<'tcx> TyCtxt<'tcx> {
         self.all_crate_nums(LOCAL_CRATE)
     }
 
-    pub fn injected_panic_runtime(self) -> Option<CrateNum> {
-        self.cstore.injected_panic_runtime()
-    }
-
     pub fn allocator_kind(self) -> Option<AllocatorKind> {
         self.cstore.allocator_kind()
     }
@@ -1391,8 +1387,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
-    pub fn crate_data_as_any(self, cnum: CrateNum) -> &'tcx dyn Any {
-        self.cstore.crate_data_as_any(cnum)
+    pub fn cstore_as_any(self) -> &'tcx dyn Any {
+        self.cstore.as_any()
     }
 
     #[inline(always)]
@@ -2999,14 +2995,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())
     };
-    providers.crate_host_hash = |tcx, cnum| {
-        assert_ne!(cnum, LOCAL_CRATE);
-        tcx.cstore.crate_host_hash_untracked(cnum)
-    };
-    providers.postorder_cnums = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc_slice(&tcx.cstore.postorder_cnums_untracked())
-    };
     providers.output_filenames = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.output_filenames.clone()
@@ -3027,9 +3015,5 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(cnum, LOCAL_CRATE);
         // We want to check if the panic handler was defined in this crate
         tcx.lang_items().panic_impl().map_or(false, |did| did.is_local())
-    };
-    providers.has_global_allocator = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.cstore.has_global_allocator()
     };
 }

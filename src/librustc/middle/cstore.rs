@@ -211,7 +211,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any;
+    fn as_any(&self) -> &dyn Any;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -224,9 +224,7 @@ pub trait CrateStore {
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn crate_host_hash_untracked(&self, cnum: CrateNum) -> Option<Svh>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
-    fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -235,9 +233,7 @@ pub trait CrateStore {
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
-    fn injected_panic_runtime(&self) -> Option<CrateNum>;
     fn allocator_kind(&self) -> Option<AllocatorKind>;
-    fn has_global_allocator(&self) -> bool;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
