@@ -35,7 +35,7 @@ macro_rules! from_str_bench {
                     .iter()
                     .cycle()
                     .take(5_000)
-                    .filter_map(|s| <($t)>::from_str(s).ok())
+                    .filter_map(|s| <$t>::from_str(s).ok())
                     .max()
             })
         }
@@ -51,7 +51,7 @@ macro_rules! from_str_radix_bench {
                     .iter()
                     .cycle()
                     .take(5_000)
-                    .filter_map(|s| <($t)>::from_str_radix(s, $radix).ok())
+                    .filter_map(|s| <$t>::from_str_radix(s, $radix).ok())
                     .max()
             })
         }
