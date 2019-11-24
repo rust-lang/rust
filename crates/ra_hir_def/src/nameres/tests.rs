@@ -25,7 +25,7 @@ fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {
 
 fn render_crate_def_map(map: &CrateDefMap) -> String {
     let mut buf = String::new();
-    go(&mut buf, map, "\ncrate", map.root());
+    go(&mut buf, map, "\ncrate", map.root);
     return buf.trim().to_string();
 
     fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: LocalModuleId) {

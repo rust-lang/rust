@@ -565,7 +565,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in data.params.iter().zip(body.params()) {
+        for (type_ref, pat) in data.params.iter().zip(body.params.iter()) {
             let ty = self.make_ty(type_ref);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
@@ -574,7 +574,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn infer_body(&mut self) {
-        self.infer_expr(self.body.body_expr(), &Expectation::has_type(self.return_ty.clone()));
+        self.infer_expr(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAlias> {

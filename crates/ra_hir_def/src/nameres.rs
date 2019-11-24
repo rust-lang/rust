@@ -81,13 +81,13 @@ use crate::{
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateDefMap {
     pub root: LocalModuleId,
+    pub modules: Arena<LocalModuleId, ModuleData>,
     pub(crate) krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
     pub(crate) prelude: Option<ModuleId>,
     pub(crate) extern_prelude: FxHashMap<Name, ModuleDefId>,
-    pub(crate) modules: Arena<LocalModuleId, ModuleData>,
 
     edition: Edition,
     diagnostics: Vec<DefDiagnostic>,

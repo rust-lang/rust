@@ -109,7 +109,7 @@ pub fn run(
         }
         let body = f.body(db);
         let inference_result = f.infer(db);
-        for (expr_id, _) in body.exprs() {
+        for (expr_id, _) in body.exprs.iter() {
             let ty = &inference_result[expr_id];
             num_exprs += 1;
             if let Ty::Unknown = ty {

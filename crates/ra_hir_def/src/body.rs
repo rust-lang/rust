@@ -20,7 +20,7 @@ use crate::{
     DefWithBodyId, HasModule, HasSource, Lookup, ModuleId,
 };
 
-pub struct Expander {
+struct Expander {
     crate_def_map: Arc<CrateDefMap>,
     current_file_id: HirFileId,
     hygiene: Hygiene,
@@ -28,7 +28,7 @@ pub struct Expander {
 }
 
 impl Expander {
-    pub fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
+    fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
         Expander { crate_def_map, current_file_id, hygiene, module }
@@ -101,17 +101,17 @@ impl Drop for Mark {
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
-    exprs: Arena<ExprId, Expr>,
-    pats: Arena<PatId, Pat>,
+    pub exprs: Arena<ExprId, Expr>,
+    pub pats: Arena<PatId, Pat>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).
     ///
     /// If this `Body` is for the body of a constant, this will just be
     /// empty.
-    params: Vec<PatId>,
+    pub params: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
-    body_expr: ExprId,
+    pub body_expr: ExprId,
 }
 
 pub type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
@@ -181,22 +181,6 @@ impl Body {
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
         lower::lower(db, expander, params, body)
-    }
-
-    pub fn params(&self) -> &[PatId] {
-        &self.params
-    }
-
-    pub fn body_expr(&self) -> ExprId {
-        self.body_expr
-    }
-
-    pub fn exprs(&self) -> impl Iterator<Item = (ExprId, &Expr)> {
-        self.exprs.iter()
-    }
-
-    pub fn pats(&self) -> impl Iterator<Item = (PatId, &Pat)> {
-        self.pats.iter()
     }
 }
 
