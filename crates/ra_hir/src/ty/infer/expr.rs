@@ -101,7 +101,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: pat_ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: into_iter_item_alias,
+                                associated_ty: into_iter_item_alias.id,
                                 parameters: Substs::single(iterable_ty),
                             },
                         };
@@ -283,7 +283,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: future_future_output_alias,
+                                associated_ty: future_future_output_alias.id,
                                 parameters: Substs::single(inner_ty),
                             },
                         };
@@ -302,7 +302,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: ops_try_ok_alias,
+                                associated_ty: ops_try_ok_alias.id,
                                 parameters: Substs::single(inner_ty),
                             },
                         };

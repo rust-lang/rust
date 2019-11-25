@@ -69,7 +69,7 @@ fn deref_by_trait(
 
     let projection = super::traits::ProjectionPredicate {
         ty: Ty::Bound(0),
-        projection_ty: super::ProjectionTy { associated_ty: target, parameters },
+        projection_ty: super::ProjectionTy { associated_ty: target.id, parameters },
     };
 
     let obligation = super::Obligation::Projection(projection);

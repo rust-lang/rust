@@ -19,13 +19,13 @@ use std::{fmt, iter, mem};
 
 use hir_def::{
     generics::GenericParams, AdtId, ContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup,
-    TypeAliasId,
+    TraitId, TypeAliasId,
 };
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
     db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, FloatTy, IntTy, Mutability,
-    Name, Trait, TypeAlias, Uncertain,
+    Name, Trait, Uncertain,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -218,18 +218,19 @@ pub struct ApplicationTy {
 /// trait and all its parameters are fully known.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct ProjectionTy {
-    pub associated_ty: TypeAlias,
+    pub associated_ty: TypeAliasId,
     pub parameters: Substs,
 }
 
 impl ProjectionTy {
     pub fn trait_ref(&self, db: &impl HirDatabase) -> TraitRef {
-        TraitRef {
-            trait_: self
-                .associated_ty
-                .parent_trait(db)
-                .expect("projection ty without parent trait"),
-            substs: self.parameters.clone(),
+        TraitRef { trait_: self.trait_(db).into(), substs: self.parameters.clone() }
+    }
+
+    fn trait_(&self, db: &impl HirDatabase) -> TraitId {
+        match self.associated_ty.lookup(db).container {
+            ContainerId::TraitId(it) => it,
+            _ => panic!("projection ty without parent trait"),
         }
     }
 }
@@ -933,18 +934,15 @@ impl HirDisplay for ProjectionTy {
             return write!(f, "…");
         }
 
-        let trait_name = self
-            .associated_ty
-            .parent_trait(f.db)
-            .and_then(|t| t.name(f.db))
-            .unwrap_or_else(Name::missing);
+        let trait_name =
+            f.db.trait_data(self.trait_(f.db)).name.clone().unwrap_or_else(Name::missing);
         write!(f, "<{} as {}", self.parameters[0].display(f.db), trait_name,)?;
         if self.parameters.len() > 1 {
             write!(f, "<")?;
             f.write_joined(&self.parameters[1..], ", ")?;
             write!(f, ">")?;
         }
-        write!(f, ">::{}", self.associated_ty.name(f.db))?;
+        write!(f, ">::{}", f.db.type_alias_data(self.associated_ty).name)?;
         Ok(())
     }
 }
@@ -1007,7 +1005,10 @@ impl HirDisplay for Ty {
                                 write!(f, "<")?;
                                 angle_open = true;
                             }
-                            let name = projection_pred.projection_ty.associated_ty.name(f.db);
+                            let name =
+                                f.db.type_alias_data(projection_pred.projection_ty.associated_ty)
+                                    .name
+                                    .clone();
                             write!(f, "{} = ", name)?;
                             projection_pred.ty.hir_fmt(f)?;
                         }
@@ -1083,7 +1084,7 @@ impl HirDisplay for GenericPredicate {
                 write!(
                     f,
                     ">::{} = {}",
-                    projection_pred.projection_ty.associated_ty.name(f.db),
+                    f.db.type_alias_data(projection_pred.projection_ty.associated_ty).name,
                     projection_pred.ty.display(f.db)
                 )?;
             }
