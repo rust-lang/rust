@@ -858,7 +858,7 @@ impl HirDisplay for ApplicationTy {
                 let name = match def {
                     CallableDef::FunctionId(ff) => f.db.function_data(ff).name.clone(),
                     CallableDef::StructId(s) => {
-                        f.db.struct_data(s.0).name.clone().unwrap_or_else(Name::missing)
+                        f.db.struct_data(s).name.clone().unwrap_or_else(Name::missing)
                     }
                     CallableDef::EnumVariantId(e) => {
                         let enum_data = f.db.enum_data(e.parent);

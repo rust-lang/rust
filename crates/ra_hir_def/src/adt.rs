@@ -12,7 +12,7 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     db::DefDatabase, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId, HasChildSource,
-    LocalEnumVariantId, LocalStructFieldId, StructOrUnionId, VariantId,
+    LocalEnumVariantId, LocalStructFieldId, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!
@@ -49,10 +49,22 @@ pub struct StructFieldData {
 }
 
 impl StructData {
-    pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructOrUnionId) -> Arc<StructData> {
+    pub(crate) fn struct_data_query(db: &impl DefDatabase, id: StructId) -> Arc<StructData> {
         let src = id.source(db);
         let name = src.value.name().map(|n| n.as_name());
         let variant_data = VariantData::new(src.value.kind());
+        let variant_data = Arc::new(variant_data);
+        Arc::new(StructData { name, variant_data })
+    }
+    pub(crate) fn union_data_query(db: &impl DefDatabase, id: UnionId) -> Arc<StructData> {
+        let src = id.source(db);
+        let name = src.value.name().map(|n| n.as_name());
+        let variant_data = VariantData::new(
+            src.value
+                .record_field_def_list()
+                .map(ast::StructKind::Record)
+                .unwrap_or(ast::StructKind::Unit),
+        );
         let variant_data = Arc::new(variant_data);
         Arc::new(StructData { name, variant_data })
     }
@@ -137,7 +149,12 @@ impl HasChildSource for VariantId {
                 let src = it.parent.child_source(db);
                 src.map(|map| map[it.local_id].kind())
             }
-            VariantId::StructId(it) => it.0.source(db).map(|it| it.kind()),
+            VariantId::StructId(it) => it.source(db).map(|it| it.kind()),
+            VariantId::UnionId(it) => it.source(db).map(|it| {
+                it.record_field_def_list()
+                    .map(ast::StructKind::Record)
+                    .unwrap_or(ast::StructKind::Unit)
+            }),
         };
         let mut trace = Trace::new_for_map();
         lower_struct(&mut trace, &src.value);

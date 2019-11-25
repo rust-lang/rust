@@ -1,13 +1,13 @@
 //! FIXME: write short doc here
 
 mod consts;
-mod nominal;
+mod adt;
 mod traits;
 mod use_item;
 
 pub(crate) use self::{
+    adt::{enum_variant_list, record_field_def_list},
     expressions::{match_arm_list, record_field_list},
-    nominal::{enum_variant_list, record_field_def_list},
     traits::{impl_item_list, trait_item_list},
     use_item::use_tree_list,
 };
@@ -247,7 +247,7 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             //     a: i32,
             //     b: f32,
             // }
-            nominal::struct_def(p, m, T![struct]);
+            adt::struct_def(p, m);
         }
         IDENT if p.at_contextual_kw("union") && p.nth(1) == IDENT => {
             // test union_items
@@ -256,9 +256,9 @@ fn items_without_modifiers(p: &mut Parser, m: Marker) -> Result<(), Marker> {
             //     a: i32,
             //     b: f32,
             // }
-            nominal::struct_def(p, m, T![union]);
+            adt::union_def(p, m);
         }
-        T![enum] => nominal::enum_def(p, m),
+        T![enum] => adt::enum_def(p, m),
         T![use] => use_item::use_item(p, m),
         T![const] if (la == IDENT || la == T![_] || la == T![mut]) => consts::const_def(p, m),
         T![static] => consts::static_def(p, m),

@@ -122,6 +122,7 @@ pub enum SyntaxKind {
     R_DOLLAR,
     SOURCE_FILE,
     STRUCT_DEF,
+    UNION_DEF,
     ENUM_DEF,
     FN_DEF,
     RET_TYPE,

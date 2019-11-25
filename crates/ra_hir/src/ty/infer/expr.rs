@@ -263,6 +263,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                                 .clone()
                                 .subst(&a_ty.parameters)
                         }),
+                        // FIXME:
+                        TypeCtor::Adt(Adt::Union(_)) => None,
                         _ => None,
                     },
                     _ => None,

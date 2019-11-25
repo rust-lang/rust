@@ -60,10 +60,8 @@ impl GenericParams {
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
             GenericDefId::FunctionId(it) => generics.fill(&it.lookup(db).source(db).value, start),
-            GenericDefId::AdtId(AdtId::StructId(it)) => {
-                generics.fill(&it.0.source(db).value, start)
-            }
-            GenericDefId::AdtId(AdtId::UnionId(it)) => generics.fill(&it.0.source(db).value, start),
+            GenericDefId::AdtId(AdtId::StructId(it)) => generics.fill(&it.source(db).value, start),
+            GenericDefId::AdtId(AdtId::UnionId(it)) => generics.fill(&it.source(db).value, start),
             GenericDefId::AdtId(AdtId::EnumId(it)) => generics.fill(&it.source(db).value, start),
             GenericDefId::TraitId(it) => {
                 // traits get the Self type as an implicit first type parameter

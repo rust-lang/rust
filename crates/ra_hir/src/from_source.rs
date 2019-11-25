@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::{AstItemDef, LocationCtx, ModuleId, StructId, StructOrUnionId, UnionId};
+use hir_def::{AstItemDef, LocationCtx, ModuleId};
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
@@ -19,19 +19,18 @@ pub trait FromSource: Sized {
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self>;
 }
 
-// FIXIME: these two impls are wrong, `ast::StructDef` might produce either a struct or a union
 impl FromSource for Struct {
     type Ast = ast::StructDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id: StructOrUnionId = from_source(db, src)?;
-        Some(Struct { id: StructId(id) })
+        let id = from_source(db, src)?;
+        Some(Struct { id })
     }
 }
 impl FromSource for Union {
-    type Ast = ast::StructDef;
+    type Ast = ast::UnionDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id: StructOrUnionId = from_source(db, src)?;
-        Some(Union { id: UnionId(id) })
+        let id = from_source(db, src)?;
+        Some(Union { id })
     }
 }
 impl FromSource for Enum {

@@ -35,8 +35,8 @@ pub(crate) fn add_new(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
     let strukt = ctx.find_node_at_offset::<ast::StructDef>()?;
 
     // We want to only apply this to non-union structs with named fields
-    let field_list = match (strukt.kind(), strukt.is_union()) {
-        (StructKind::Record(named), false) => named,
+    let field_list = match strukt.kind() {
+        StructKind::Record(named) => named,
         _ => return None,
     };
 

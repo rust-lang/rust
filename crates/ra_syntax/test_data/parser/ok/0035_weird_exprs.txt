@@ -1592,7 +1592,7 @@ SOURCE_FILE@[0; 3813)
       BLOCK@[2845; 2906)
         L_CURLY@[2845; 2846) "{"
         WHITESPACE@[2846; 2851) "\n    "
-        STRUCT_DEF@[2851; 2904)
+        UNION_DEF@[2851; 2904)
           UNION_KW@[2851; 2856) "union"
           WHITESPACE@[2856; 2857) " "
           NAME@[2857; 2862)

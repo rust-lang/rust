@@ -560,7 +560,8 @@ pub(crate) fn field_types_query(
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalStructFieldId, Ty>> {
     let (resolver, var_data) = match variant_id {
-        VariantId::StructId(it) => (it.resolver(db), db.struct_data(it.0).variant_data.clone()),
+        VariantId::StructId(it) => (it.resolver(db), db.struct_data(it).variant_data.clone()),
+        VariantId::UnionId(it) => (it.resolver(db), db.union_data(it).variant_data.clone()),
         VariantId::EnumVariantId(it) => (
             it.parent.resolver(db),
             db.enum_data(it.parent).variants[it.local_id].variant_data.clone(),
@@ -818,7 +819,7 @@ impl CallableDef {
     pub fn krate(self, db: &impl HirDatabase) -> CrateId {
         match self {
             CallableDef::FunctionId(f) => f.lookup(db).module(db).krate,
-            CallableDef::StructId(s) => s.0.module(db).krate,
+            CallableDef::StructId(s) => s.module(db).krate,
             CallableDef::EnumVariantId(e) => e.parent.module(db).krate,
         }
     }

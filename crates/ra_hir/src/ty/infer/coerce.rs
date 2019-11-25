@@ -246,7 +246,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ty_app!(TypeCtor::Adt(Adt::Struct(struct2)), st2),
             ) if struct1 == struct2 => {
                 let field_tys = self.db.field_types(struct1.id.into());
-                let struct_data = self.db.struct_data(struct1.id.0);
+                let struct_data = self.db.struct_data(struct1.id);
 
                 let mut fields = struct_data.variant_data.fields().iter();
                 let (last_field_id, _data) = fields.next_back()?;
