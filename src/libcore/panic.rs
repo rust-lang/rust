@@ -266,6 +266,8 @@ impl fmt::Display for Location<'_> {
 #[unstable(feature = "std_internals", issue = "0")]
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
-    fn box_me_up(&mut self) -> *mut (dyn Any + Send);
+    /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in libcore.
+    /// After this method got called, only some dummy default value is left in `self`.
+    fn take_box(&mut self) -> *mut (dyn Any + Send);
     fn get(&mut self) -> &(dyn Any + Send);
 }
