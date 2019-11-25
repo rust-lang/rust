@@ -17,7 +17,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
-use hir_def::{generics::GenericParams, AdtId, DefWithBodyId, GenericDefId};
+use hir_def::{
+    generics::GenericParams, AdtId, ContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup,
+    TypeAliasId,
+};
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
@@ -107,7 +110,7 @@ pub enum TypeCtor {
     /// when we have tried to normalize a projection like `T::Item` but
     /// couldn't find a better representation.  In that case, we generate
     /// an **application type** like `(Iterator::Item)<T>`.
-    AssociatedType(TypeAlias),
+    AssociatedType(TypeAliasId),
 
     /// The type of a specific closure.
     ///
@@ -147,7 +150,7 @@ impl TypeCtor {
                 generic_params.count_params_including_parent()
             }
             TypeCtor::AssociatedType(type_alias) => {
-                let generic_params = db.generic_params(type_alias.id.into());
+                let generic_params = db.generic_params(type_alias.into());
                 generic_params.count_params_including_parent()
             }
             TypeCtor::FnPtr { num_args } => num_args as usize + 1,
@@ -173,7 +176,9 @@ impl TypeCtor {
             TypeCtor::Closure { .. } => None,
             TypeCtor::Adt(adt) => adt.krate(db),
             TypeCtor::FnDef(callable) => Some(callable.krate(db).into()),
-            TypeCtor::AssociatedType(type_alias) => type_alias.krate(db),
+            TypeCtor::AssociatedType(type_alias) => {
+                Some(type_alias.lookup(db).module(db).krate.into())
+            }
         }
     }
 
@@ -194,7 +199,7 @@ impl TypeCtor {
             | TypeCtor::Closure { .. } => None,
             TypeCtor::Adt(adt) => Some(adt.into()),
             TypeCtor::FnDef(callable) => Some(callable.into()),
-            TypeCtor::AssociatedType(type_alias) => Some(type_alias.id.into()),
+            TypeCtor::AssociatedType(type_alias) => Some(type_alias.into()),
         }
     }
 }
@@ -896,11 +901,12 @@ impl HirDisplay for ApplicationTy {
                 }
             }
             TypeCtor::AssociatedType(type_alias) => {
-                let trait_name = type_alias
-                    .parent_trait(f.db)
-                    .and_then(|t| t.name(f.db))
-                    .unwrap_or_else(Name::missing);
-                let name = type_alias.name(f.db);
+                let trait_ = match type_alias.lookup(f.db).container {
+                    ContainerId::TraitId(it) => it,
+                    _ => panic!("not an associated type"),
+                };
+                let trait_name = f.db.trait_data(trait_).name.clone().unwrap_or_else(Name::missing);
+                let name = f.db.type_alias_data(type_alias).name.clone();
                 write!(f, "{}::{}", trait_name, name)?;
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;

@@ -9,7 +9,7 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 
-use hir_def::{lang_item::LangItemTarget, GenericDefId};
+use hir_def::{lang_item::LangItemTarget, GenericDefId, TypeAliasId};
 use hir_expand::name;
 
 use ra_db::salsa::{InternId, InternKey};
@@ -212,6 +212,18 @@ impl ToChalk for TypeAlias {
 
     fn from_chalk(_db: &impl HirDatabase, type_alias_id: chalk_ir::TypeId) -> TypeAlias {
         TypeAlias { id: id_from_chalk(type_alias_id.0) }
+    }
+}
+
+impl ToChalk for TypeAliasId {
+    type Chalk = chalk_ir::TypeId;
+
+    fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TypeId {
+        chalk_ir::TypeId(id_to_chalk(self))
+    }
+
+    fn from_chalk(_db: &impl HirDatabase, type_alias_id: chalk_ir::TypeId) -> TypeAliasId {
+        id_from_chalk(type_alias_id.0)
     }
 }
 
