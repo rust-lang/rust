@@ -251,6 +251,30 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
         };
 
+        // ABI check
+        {
+            let callee_abi = {
+                let instance_ty = instance.ty(*self.tcx);
+                match instance_ty.kind {
+                    ty::FnDef(..) =>
+                        instance_ty.fn_sig(*self.tcx).abi(),
+                    ty::Closure(..) => Abi::RustCall,
+                    ty::Generator(..) => Abi::Rust,
+                    _ => bug!("unexpected callee ty: {:?}", instance_ty),
+                }
+            };
+            let normalize_abi = |abi| match abi {
+                Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
+                    // These are all the same ABI, really.
+                    Abi::Rust,
+                abi =>
+                    abi,
+            };
+            if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
+                throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
+            }
+        }
+
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
@@ -263,30 +287,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
-                // ABI check
-                {
-                    let callee_abi = {
-                        let instance_ty = instance.ty(*self.tcx);
-                        match instance_ty.kind {
-                            ty::FnDef(..) =>
-                                instance_ty.fn_sig(*self.tcx).abi(),
-                            ty::Closure(..) => Abi::RustCall,
-                            ty::Generator(..) => Abi::Rust,
-                            _ => bug!("unexpected callee ty: {:?}", instance_ty),
-                        }
-                    };
-                    let normalize_abi = |abi| match abi {
-                        Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
-                            // These are all the same ABI, really.
-                            Abi::Rust,
-                        abi =>
-                            abi,
-                    };
-                    if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                        throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
-                    }
-                }
-
                 // We need MIR for this fn
                 let body = match M::find_fn(self, instance, args, dest, ret, unwind)? {
                     Some(body) => body,
