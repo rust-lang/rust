@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+
 use std::env;
 
 #[macro_export]

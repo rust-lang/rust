@@ -15,9 +15,9 @@ fi
 cargo build --features deny-warnings
 cargo test --features deny-warnings
 
-(cd clippy_lints && cargo test)
-(cd rustc_tools_util && cargo test)
-(cd clippy_dev && cargo test)
+(cd clippy_lints && cargo test --features deny-warnings)
+(cd rustc_tools_util && cargo test --features deny-warnings)
+(cd clippy_dev && cargo test --features deny-warnings)
 
 # make sure clippy can be called via ./path/to/cargo-clippy
 (
