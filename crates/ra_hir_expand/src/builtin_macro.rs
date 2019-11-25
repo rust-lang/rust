@@ -46,6 +46,7 @@ macro_rules! register_builtin {
 
 register_builtin! {
     (COLUMN_MACRO, Column) => column_expand,
+    (COMPILE_ERROR_MACRO, CompileError) => compile_error_expand,
     (FILE_MACRO, File) => file_expand,
     (LINE_MACRO, Line) => line_expand,
     (STRINGIFY_MACRO, Stringify) => stringify_expand
@@ -57,16 +58,21 @@ fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize
     let text = db.file_text(file_id);
     let mut line_num = 1;
 
+    let pos = pos.to_usize();
+    if pos > text.len() {
+        // FIXME: `pos` at the moment could be an offset inside the "wrong" file
+        // in this case, when we know it's wrong, we return a dummy value
+        return 0;
+    }
     // Count line end
     for (i, c) in text.chars().enumerate() {
-        if i == pos.to_usize() {
+        if i == pos {
             break;
         }
         if c == '\n' {
             line_num += 1;
         }
     }
-
     line_num
 }
 
@@ -118,15 +124,21 @@ fn to_col_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize 
     // FIXME: Use expansion info
     let file_id = file.original_file(db);
     let text = db.file_text(file_id);
-    let mut col_num = 1;
 
-    for c in text[..pos.to_usize()].chars().rev() {
+    let pos = pos.to_usize();
+    if pos > text.len() {
+        // FIXME: `pos` at the moment could be an offset inside the "wrong" file
+        // in this case we return a dummy value so that we don't `panic!`
+        return 0;
+    }
+
+    let mut col_num = 1;
+    for c in text[..pos].chars().rev() {
         if c == '\n' {
             break;
         }
         col_num = col_num + 1;
     }
-
     col_num
 }
 
@@ -170,6 +182,26 @@ fn file_expand(
     };
 
     Ok(expanded)
+}
+
+fn compile_error_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    if tt.count() == 1 {
+        match &tt.token_trees[0] {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => {
+                let s = it.text.as_str();
+                if s.contains(r#"""#) {
+                    return Ok(quote! { loop { #it }});
+                }
+            }
+            _ => {}
+        };
+    }
+
+    Err(mbe::ExpandError::BindingError("Must be a string".into()))
 }
 
 #[cfg(test)]
@@ -258,5 +290,22 @@ mod tests {
         );
 
         assert_eq!(expanded, "\"\"");
+    }
+
+    #[test]
+    fn test_compile_error_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+        #[rustc_builtin_macro]
+        macro_rules! compile_error {
+            ($msg:expr) => ({ /* compiler built-in */ });
+            ($msg:expr,) => ({ /* compiler built-in */ })
+        }
+        compile_error!("error!");
+"#,
+            BuiltinFnLikeExpander::CompileError,
+        );
+
+        assert_eq!(expanded, r#"loop{"error!"}"#);
     }
 }
