@@ -688,10 +688,9 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                     crate_edition: Edition, allow_features: &Option<Vec<String>>) -> Features {
     fn feature_removed(span_handler: &Handler, span: Span, reason: Option<&str>) {
         let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
+        err.span_label(span, "feature has been removed");
         if let Some(reason) = reason {
-            err.span_note(span, reason);
-        } else {
-            err.span_label(span, "feature has been removed");
+            err.note(reason);
         }
         err.emit();
     }

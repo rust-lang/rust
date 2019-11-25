@@ -2,13 +2,9 @@ error[E0557]: feature has been removed
   --> $DIR/macro-reexport-removed.rs:3:12
    |
 LL | #![feature(macro_reexport)]
-   |            ^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^ feature has been removed
    |
-note: subsumed by `pub use`
-  --> $DIR/macro-reexport-removed.rs:3:12
-   |
-LL | #![feature(macro_reexport)]
-   |            ^^^^^^^^^^^^^^
+   = note: subsumed by `pub use`
 
 error: cannot find attribute `macro_reexport` in this scope
   --> $DIR/macro-reexport-removed.rs:5:3
