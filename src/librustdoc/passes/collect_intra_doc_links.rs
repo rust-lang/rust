@@ -340,7 +340,7 @@ impl<'a, 'tcx> DocFolder for LinkCollector<'a, 'tcx> {
             let parts = link.split('#').collect::<Vec<_>>();
             let (link, extra_fragment) = if parts.len() > 2 {
                 build_diagnostic(cx, &item, &link, &dox, link_range,
-                                 "has an anchor issue...",
+                                 "has an issue with the link anchor.",
                                  "only one `#` is allowed in a link",
                                  None);
                 continue;
@@ -625,7 +625,7 @@ fn resolution_failure(
     link_range: Option<Range<usize>>,
 ) {
     build_diagnostic(cx, item, path_str, dox, link_range,
-         "cannot be resolved, ignoring it...",
+         "cannot be resolved, ignoring it.",
          "cannot be resolved, ignoring",
          Some("to escape `[` and `]` characters, just add '\\' before them like `\\[` or `\\]`"));
 }
@@ -639,7 +639,7 @@ fn anchor_failure(
     msg: &str,
 ) {
     build_diagnostic(cx, item, path_str, dox, link_range,
-         "has an anchor issue...",
+         "has an issue with the link anchor.",
          msg,
          None);
 }

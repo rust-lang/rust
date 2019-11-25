@@ -1,4 +1,4 @@
-error: `[i]` cannot be resolved, ignoring it...
+error: `[i]` cannot be resolved, ignoring it.
   --> $DIR/intra-link-span-ice-55723.rs:9:10
    |
 LL | /// （arr[i]）

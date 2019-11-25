@@ -23,23 +23,23 @@ pub enum Enum {
 /// Like [Foo#hola].
 ///
 /// Or maybe [Foo::f#hola].
-//~^ ERROR `[Foo::f#hola]` has an anchor issue...
+//~^ ERROR `[Foo::f#hola]` has an issue with the link anchor.
 pub fn foo() {}
 
 /// Empty.
 ///
 /// Another anchor error: [hello#people#!].
-//~^ ERROR `[hello#people#!]` has an anchor issue...
+//~^ ERROR `[hello#people#!]` has an issue with the link anchor.
 pub fn bar() {}
 
 /// Empty?
 ///
 /// Damn enum's variants: [Enum::A#whatever].
-//~^ ERROR `[Enum::A#whatever]` has an anchor issue...
+//~^ ERROR `[Enum::A#whatever]` has an issue with the link anchor.
 pub fn enum_link() {}
 
 /// Primitives?
 ///
 /// [u32#hello]
-//~^ ERROR `[u32#hello]` has an anchor issue...
+//~^ ERROR `[u32#hello]` has an issue with the link anchor.
 pub fn x() {}

@@ -15,7 +15,7 @@ LL | #![deny(rustdoc)]
    |         ^^^^^^^
    = note: `#[deny(private_doc_tests)]` implied by `#[deny(rustdoc)]`
 
-error: `[error]` cannot be resolved, ignoring it...
+error: `[error]` cannot be resolved, ignoring it.
   --> $DIR/lint-group.rs:9:29
    |
 LL | /// what up, let's make an [error]
