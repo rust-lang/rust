@@ -338,7 +338,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let offset = ptr.offset.bytes() as usize;
         Ok(match self.bytes[offset..self.bytes.len() - 1].iter().step_by(2)
            .zip(self.bytes[(offset+1)..].iter().step_by(2))
-           .position(|&(l,r)| l == 0 && r == 0) {
+           .position(|(&l, &r)| l == 0 && r == 0) {
             Some(size) => {
                 let size_with_null = Size::from_bytes((size + 2) as u64);
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
