@@ -5,7 +5,8 @@ static FOO: fn() = || { assert_ne!(42, 43) };
 static BAR: fn(i32, i32) = |a, b| { assert_ne!(a, b) };
 
 // use to first make the closure FnOnce() before making it fn()
-fn magic<F: FnOnce()>(f: F) -> F { f }
+fn magic0<R, F: FnOnce() -> R>(f: F) -> F { f }
+fn magic1<T, R, F: FnOnce(T) -> R>(f: F) -> F { f }
 
 fn main() {
     FOO();
@@ -15,6 +16,20 @@ fn main() {
     let boo: &dyn Fn(i32, i32) = &BAR;
     boo(48, 49);
 
-    let f = magic(||{}) as fn();
+    let f: fn() = ||{};
     f();
+    let f = magic0(||{}) as fn();
+    f();
+
+    let g: fn(i32) = |i| assert_eq!(i, 2);
+    g(2);
+    let g = magic1(|i| assert_eq!(i, 2)) as fn(i32);
+    g(2);
+
+    // FIXME: This fails with "invalid use of NULL pointer"
+    //let h: fn() -> ! = || std::process::exit(0);
+    //h();
+    // FIXME: This does not even compile?!?
+    //let h = magic0(|| std::process::exit(0)) as fn() -> !;
+    //h();
 }
