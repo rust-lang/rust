@@ -80,15 +80,16 @@ impl<'a> DefCollector<'a> {
     }
 
     fn collect_field(&mut self, field: &'a StructField, index: Option<usize>) {
+        let index = |this: &Self| index.unwrap_or_else(|| {
+            let node_id = NodeId::placeholder_from_expn_id(this.expansion);
+            this.definitions.placeholder_field_index(node_id)
+        });
+
         if field.is_placeholder {
+            self.definitions.set_placeholder_field_index(field.id, index(self));
             self.visit_macro_invoc(field.id);
         } else {
-            let name = field.ident.map(|ident| ident.name)
-                .or_else(|| index.map(sym::integer))
-                .unwrap_or_else(|| {
-                    let node_id = NodeId::placeholder_from_expn_id(self.expansion);
-                    sym::integer(self.definitions.placeholder_field_index(node_id))
-                });
+            let name = field.ident.map_or_else(|| sym::integer(index(self)), |ident| ident.name);
             let def = self.create_def(field.id, DefPathData::ValueNs(name), field.span);
             self.with_parent(def, |this| visit::walk_struct_field(this, field));
         }
@@ -190,9 +191,6 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         // and every such attribute expands into a single field after it's resolved.
         for (index, field) in data.fields().iter().enumerate() {
             self.collect_field(field, Some(index));
-            if field.is_placeholder && field.ident.is_none() {
-                self.definitions.set_placeholder_field_index(field.id, index);
-            }
         }
     }
 

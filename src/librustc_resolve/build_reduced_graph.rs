@@ -746,6 +746,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                 // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().map(|field| {
+                    // NOTE: The field may be an expansion placeholder, but expansion sets correct
+                    // visibilities for unnamed field placeholders specifically, so the constructor
+                    // visibility should still be determined correctly.
                     let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self.r) {
                         ctor_vis = field_vis;
