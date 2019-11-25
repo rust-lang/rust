@@ -296,14 +296,6 @@ pub fn panicking() -> bool {
     update_panic_count(0) != 0
 }
 
-/// Entry point of panic from the libcore crate (`panic_impl` lang item).
-#[cfg(not(test))]
-#[panic_handler]
-#[unwind(allowed)]
-pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
-    continue_panic_fmt(&info)
-}
-
 /// The entry point for panicking with a formatted message.
 ///
 /// This is designed to reduce the amount of code required at the call
@@ -327,10 +319,13 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>,
     let (file, line, col) = *file_line_col;
     let location = Location::internal_constructor(file, line, col);
     let info = PanicInfo::internal_constructor(Some(msg), &location);
-    continue_panic_fmt(&info)
+    panic_handler(&info)
 }
 
-fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
+/// Entry point of panic from the libcore crate (`panic_impl` lang item).
+#[cfg_attr(not(test), panic_handler)]
+#[unwind(allowed)]
+fn panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
         string: Option<String>,
