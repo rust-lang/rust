@@ -3789,6 +3789,34 @@ impl AstNode for TypeRef {
 }
 impl TypeRef {}
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct UnionDef {
+    pub(crate) syntax: SyntaxNode,
+}
+impl AstNode for UnionDef {
+    fn can_cast(kind: SyntaxKind) -> bool {
+        match kind {
+            UNION_DEF => true,
+            _ => false,
+        }
+    }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode {
+        &self.syntax
+    }
+}
+impl ast::VisibilityOwner for UnionDef {}
+impl ast::NameOwner for UnionDef {}
+impl ast::TypeParamsOwner for UnionDef {}
+impl ast::AttrsOwner for UnionDef {}
+impl ast::DocCommentsOwner for UnionDef {}
+impl UnionDef {}
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct UseItem {
     pub(crate) syntax: SyntaxNode,
 }

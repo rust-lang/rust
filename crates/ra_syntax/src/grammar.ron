@@ -126,6 +126,7 @@ Grammar(
         "SOURCE_FILE",
 
         "STRUCT_DEF",
+        "UNION_DEF",
         "ENUM_DEF",
         "FN_DEF",
         "RET_TYPE",
@@ -277,6 +278,15 @@ Grammar(
         ),
         "RetType": (options: ["TypeRef"]),
         "StructDef": (
+            traits: [
+                "VisibilityOwner",
+                "NameOwner",
+                "TypeParamsOwner",
+                "AttrsOwner",
+                "DocCommentsOwner"
+            ]
+        ),
+        "UnionDef": (
             traits: [
                 "VisibilityOwner",
                 "NameOwner",

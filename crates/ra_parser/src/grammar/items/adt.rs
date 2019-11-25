@@ -2,10 +2,19 @@
 
 use super::*;
 
-pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
-    assert!(p.at(T![struct]) || p.at_contextual_kw("union"));
-    p.bump_remap(kind);
+pub(super) fn struct_def(p: &mut Parser, m: Marker) {
+    assert!(p.at(T![struct]));
+    p.bump(T![struct]);
+    struct_or_union(p, m, T![struct], STRUCT_DEF);
+}
 
+pub(super) fn union_def(p: &mut Parser, m: Marker) {
+    assert!(p.at_contextual_kw("union"));
+    p.bump_remap(T![union]);
+    struct_or_union(p, m, T![union], UNION_DEF);
+}
+
+fn struct_or_union(p: &mut Parser, m: Marker, kw: SyntaxKind, def: SyntaxKind) {
     name_r(p, ITEM_RECOVERY_SET);
     type_params::opt_type_param_list(p);
     match p.current() {
@@ -22,11 +31,11 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
                 }
             }
         }
-        T![;] if kind == T![struct] => {
+        T![;] if kw == T![struct] => {
             p.bump(T![;]);
         }
         T!['{'] => record_field_def_list(p),
-        T!['('] if kind == T![struct] => {
+        T!['('] if kw == T![struct] => {
             tuple_field_def_list(p);
             // test tuple_struct_where
             // struct Test<T>(T) where T: Clone;
@@ -34,14 +43,14 @@ pub(super) fn struct_def(p: &mut Parser, m: Marker, kind: SyntaxKind) {
             type_params::opt_where_clause(p);
             p.expect(T![;]);
         }
-        _ if kind == T![struct] => {
+        _ if kw == T![struct] => {
             p.error("expected `;`, `{`, or `(`");
         }
         _ => {
             p.error("expected `{`");
         }
     }
-    m.complete(p, STRUCT_DEF);
+    m.complete(p, def);
 }
 
 pub(super) fn enum_def(p: &mut Parser, m: Marker) {
