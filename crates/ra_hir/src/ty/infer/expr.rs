@@ -137,8 +137,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
                     Substs(sig_tys.into()),
                 );
-                let closure_ty =
-                    Ty::apply_one(TypeCtor::Closure { def: self.owner, expr: tgt_expr }, sig_ty);
+                let closure_ty = Ty::apply_one(
+                    TypeCtor::Closure { def: self.owner.into(), expr: tgt_expr },
+                    sig_ty,
+                );
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to

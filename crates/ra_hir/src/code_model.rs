@@ -538,14 +538,6 @@ pub enum DefWithBody {
 impl_froms!(DefWithBody: Function, Const, Static);
 
 impl DefWithBody {
-    pub(crate) fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
-        match self {
-            DefWithBody::Const(c) => c.krate(db),
-            DefWithBody::Function(f) => f.krate(db),
-            DefWithBody::Static(s) => s.krate(db),
-        }
-    }
-
     pub fn module(self, db: &impl HirDatabase) -> Module {
         match self {
             DefWithBody::Const(c) => c.module(db),

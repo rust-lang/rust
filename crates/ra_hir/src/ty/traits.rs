@@ -2,13 +2,14 @@
 use std::sync::{Arc, Mutex};
 
 use chalk_ir::{cast::Cast, family::ChalkIr};
+use hir_def::DefWithBodyId;
 use log::debug;
 use ra_db::{impl_intern_key, salsa};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
-use crate::{db::HirDatabase, expr::ExprId, Crate, DefWithBody, ImplBlock, Trait, TypeAlias};
+use crate::{db::HirDatabase, expr::ExprId, Crate, ImplBlock, Trait, TypeAlias};
 
 use self::chalk::{from_chalk, ToChalk};
 
@@ -290,7 +291,7 @@ impl FnTrait {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ClosureFnTraitImplData {
-    def: DefWithBody,
+    def: DefWithBodyId,
     expr: ExprId,
     fn_trait: FnTrait,
 }

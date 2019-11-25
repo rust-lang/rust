@@ -17,12 +17,12 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
-use hir_def::{generics::GenericParams, AdtId, GenericDefId};
+use hir_def::{generics::GenericParams, AdtId, DefWithBodyId, GenericDefId};
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, FloatTy, IntTy,
-    Mutability, Name, Trait, TypeAlias, Uncertain,
+    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, FloatTy, IntTy, Mutability,
+    Name, Trait, TypeAlias, Uncertain,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -113,7 +113,7 @@ pub enum TypeCtor {
     ///
     /// The closure signature is stored in a `FnPtr` type in the first type
     /// parameter.
-    Closure { def: DefWithBody, expr: ExprId },
+    Closure { def: DefWithBodyId, expr: ExprId },
 }
 
 /// This exists just for Chalk, because Chalk just has a single `StructId` where
@@ -169,7 +169,8 @@ impl TypeCtor {
             | TypeCtor::Ref(_)
             | TypeCtor::FnPtr { .. }
             | TypeCtor::Tuple { .. } => None,
-            TypeCtor::Closure { def, .. } => def.krate(db),
+            // Closure's krate is irrelevant for coherence I would think?
+            TypeCtor::Closure { .. } => None,
             TypeCtor::Adt(adt) => adt.krate(db),
             TypeCtor::FnDef(callable) => Some(callable.krate(db).into()),
             TypeCtor::AssociatedType(type_alias) => type_alias.krate(db),
