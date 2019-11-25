@@ -10,14 +10,7 @@ LL |             => println!("one empty"),
 LL |         (&[hd1, ..], &[hd2, ..])
    |                        --- ...and here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/issue-12567.rs:8:17
-   |
-LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
-   |                 ^^
-LL |             => println!("one empty"),
-LL |         (&[hd1, ..], &[hd2, ..])
-   |                        ^^^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
   --> $DIR/issue-12567.rs:4:11
@@ -31,14 +24,7 @@ LL |             => println!("one empty"),
 LL |         (&[hd1, ..], &[hd2, ..])
    |            --- ...and here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/issue-12567.rs:8:17
-   |
-LL |         (&[], &[hd, ..]) | (&[hd, ..], &[])
-   |                 ^^
-LL |             => println!("one empty"),
-LL |         (&[hd1, ..], &[hd2, ..])
-   |            ^^^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error: aborting due to 2 previous errors
 
