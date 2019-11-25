@@ -1,6 +1,8 @@
 #![unstable(feature = "raw_vec_internals", reason = "implementation detail", issue = "0")]
 #![doc(hidden)]
 
+#![feature(const_if_match)]
+
 use core::cmp;
 use core::mem;
 use core::ops::Drop;
@@ -51,15 +53,24 @@ pub struct RawVec<T, A: Alloc = Global> {
 impl<T, A: Alloc> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
+    #[cfg(not(bootstrap))]
     pub const fn new_in(a: A) -> Self {
-        // `!0` is `usize::MAX`. This branch should be stripped at compile time.
-        // FIXME(mark-i-m): use this line when `if`s are allowed in `const`:
-        //let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
+        let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
         // `Unique::empty()` doubles as "unallocated" and "zero-sized allocation".
         RawVec {
             ptr: Unique::empty(),
-            // FIXME(mark-i-m): use `cap` when ifs are allowed in const
+            cap,
+            a,
+        }
+    }
+
+    /// Like `new`, but parameterized over the choice of allocator for
+    /// the returned `RawVec`.
+    #[cfg(bootstrap)]
+    pub const fn new_in(a: A) -> Self {
+        RawVec {
+            ptr: Unique::empty(),
             cap: [0, !0][(mem::size_of::<T>() == 0) as usize],
             a,
         }
@@ -131,17 +142,30 @@ impl<T> RawVec<T, Global> {
     /// `RawVec` with capacity `0`. If `T` is zero-sized, then it makes a
     /// `RawVec` with capacity `usize::MAX`. Useful for implementing
     /// delayed allocation.
+    #[cfg(not(bootstrap))]
     pub const fn new() -> Self {
         // FIXME(Centril): Reintegrate this with `fn new_in` when we can.
 
-        // `!0` is `usize::MAX`. This branch should be stripped at compile time.
-        // FIXME(mark-i-m): use this line when `if`s are allowed in `const`:
-        //let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
+        let cap = if mem::size_of::<T>() == 0 { !0 } else { 0 };
 
         // `Unique::empty()` doubles as "unallocated" and "zero-sized allocation".
         RawVec {
             ptr: Unique::empty(),
-            // FIXME(mark-i-m): use `cap` when ifs are allowed in const
+            cap,
+            a: Global,
+        }
+    }
+
+    /// Creates the biggest possible `RawVec` (on the system heap)
+    /// without allocating. If `T` has positive size, then this makes a
+    /// `RawVec` with capacity `0`. If `T` is zero-sized, then it makes a
+    /// `RawVec` with capacity `usize::MAX`. Useful for implementing
+    /// delayed allocation.
+    #[cfg(bootstrap)]
+    pub const fn new() -> Self {
+        // `Unique::empty()` doubles as "unallocated" and "zero-sized allocation".
+        RawVec {
+            ptr: Unique::empty(),
             cap: [0, !0][(mem::size_of::<T>() == 0) as usize],
             a: Global,
         }
