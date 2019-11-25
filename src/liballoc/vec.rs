@@ -629,6 +629,8 @@ impl<T> Vec<T> {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
+    /// # Panics
+    ///
     /// Panics if the current capacity is smaller than the supplied
     /// minimum capacity.
     ///
