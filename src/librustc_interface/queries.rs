@@ -316,8 +316,8 @@ impl Linker {
 }
 
 impl Compiler {
-    pub fn enter<'c, F, T>(&'c self, f: F) -> T
-        where F: for<'q> FnOnce(&'q Queries<'c>) -> T
+    pub fn enter<F, T>(&self, f: F) -> T
+        where F: for<'q> FnOnce(&'q Queries<'_>) -> T
     {
         let queries = Queries::new(&self);
         f(&queries)
