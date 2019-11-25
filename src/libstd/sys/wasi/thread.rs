@@ -4,22 +4,18 @@ use crate::mem;
 use crate::sys::{unsupported, Void};
 use crate::time::Duration;
 
-use ::wasi::wasi_unstable as wasi;
-
 pub struct Thread(Void);
 
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>)
-        -> io::Result<Thread>
-    {
+    pub unsafe fn new(_stack: usize, _p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         unsupported()
     }
 
     pub fn yield_now() {
-        let ret = wasi::sched_yield();
+        let ret = unsafe { wasi::sched_yield() };
         debug_assert_eq!(ret, Ok(()));
     }
 
@@ -33,32 +29,30 @@ impl Thread {
 
         const USERDATA: wasi::Userdata = 0x0123_45678;
 
-        let clock = wasi::raw::__wasi_subscription_u_clock_t {
-            identifier: 0,
-            clock_id: wasi::CLOCK_MONOTONIC,
+        let clock = wasi::SubscriptionClock {
+            id: wasi::CLOCKID_MONOTONIC,
             timeout: nanos as u64,
             precision: 0,
             flags: 0,
         };
 
-        let in_ = [wasi::Subscription {
+        let in_ = wasi::Subscription {
             userdata: USERDATA,
-            type_: wasi::EVENTTYPE_CLOCK,
-            u: wasi::raw::__wasi_subscription_u { clock: clock },
-        }];
-        let (res, event) = unsafe {
-            let mut out: [wasi::Event; 1] = mem::zeroed();
-            let res = wasi::poll_oneoff(&in_, &mut out);
-            (res, out[0])
+            r#type: wasi::EVENTTYPE_CLOCK,
+            u: wasi::SubscriptionU { clock },
         };
-        match (res, event) {
-            (Ok(1), wasi::Event {
-                userdata: USERDATA,
-                error: 0,
-                type_: wasi::EVENTTYPE_CLOCK,
-                ..
-            }) => {}
-            _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
+        unsafe {
+            let mut event: wasi::Event = mem::zeroed();
+            let res = wasi::poll_oneoff(&in_, &mut event, 1);
+            match (res, event) {
+                (
+                    Ok(1),
+                    wasi::Event {
+                        userdata: USERDATA, error: 0, r#type: wasi::EVENTTYPE_CLOCK, ..
+                    },
+                ) => {}
+                _ => panic!("thread::sleep(): unexpected result of poll_oneoff"),
+            }
         }
     }
 
@@ -69,6 +63,10 @@ impl Thread {
 
 pub mod guard {
     pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> { None }
-    pub unsafe fn init() -> Option<Guard> { None }
+    pub unsafe fn current() -> Option<Guard> {
+        None
+    }
+    pub unsafe fn init() -> Option<Guard> {
+        None
+    }
 }
