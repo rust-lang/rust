@@ -110,7 +110,7 @@ impl Command {
             ZX_HANDLE_INVALID,
             FDIO_SPAWN_CLONE_JOB | FDIO_SPAWN_CLONE_LDSVC | FDIO_SPAWN_CLONE_NAMESPACE
             | FDIO_SPAWN_CLONE_ENVIRON,  // this is ignored when envp is non-null
-            self.get_argv()[0], self.get_argv().as_ptr(), envp,
+            self.get_program().as_ptr(), self.get_argv().as_ptr(), envp,
             actions.len() as size_t, actions.as_ptr(),
             &mut process_handle,
             ptr::null_mut(),
