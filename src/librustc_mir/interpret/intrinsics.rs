@@ -96,13 +96,17 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
+        let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
 
-        // We currently do not handle any diverging intrinsics.
+        // We currently do not handle any intrinsics that are *allowed* to diverge,
+        // but `transmute` could lack a return place in case of UB.
         let (dest, ret) = match ret {
             Some(p) => p,
-            None => return Ok(false)
+            None => match intrinsic_name {
+                "transmute" => throw_ub!(Unreachable),
+                _ => return Ok(false),
+            }
         };
-        let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
 
         match intrinsic_name {
             "caller_location" => {
