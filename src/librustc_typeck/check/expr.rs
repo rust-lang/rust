@@ -238,8 +238,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Unary(unop, ref oprnd) => {
                 self.check_expr_unary(unop, oprnd, expected, needs, expr)
             }
-            ExprKind::AddrOf(mutbl, ref oprnd) => {
-                self.check_expr_addr_of(mutbl, oprnd, expected, expr)
+            ExprKind::AddrOf(kind, mutbl, ref oprnd) => {
+                self.check_expr_addr_of(kind, mutbl, oprnd, expected, expr)
             }
             ExprKind::Path(ref qpath) => {
                 self.check_expr_path(qpath, expr)
@@ -424,6 +424,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_expr_addr_of(
         &self,
+        kind: hir::BorrowKind,
         mutbl: hir::Mutability,
         oprnd: &'tcx hir::Expr,
         expected: Expectation<'tcx>,
@@ -432,7 +433,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hint = expected.only_has_type(self).map_or(NoExpectation, |ty| {
             match ty.kind {
                 ty::Ref(_, ty, _) | ty::RawPtr(ty::TypeAndMut { ty, .. }) => {
-                    if oprnd.is_place_expr() {
+                    if oprnd.is_syntactic_place_expr() {
                         // Places may legitimately have unsized types.
                         // For example, dereferences of a fat pointer and
                         // the last field of a struct can be unsized.
@@ -448,24 +449,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.check_expr_with_expectation_and_needs(&oprnd, hint, needs);
 
         let tm = ty::TypeAndMut { ty: ty, mutbl: mutbl };
-        if tm.ty.references_error() {
-            self.tcx.types.err
-        } else {
-            // Note: at this point, we cannot say what the best lifetime
-            // is to use for resulting pointer.  We want to use the
-            // shortest lifetime possible so as to avoid spurious borrowck
-            // errors.  Moreover, the longest lifetime will depend on the
-            // precise details of the value whose address is being taken
-            // (and how long it is valid), which we don't know yet until type
-            // inference is complete.
+        match kind {
+            _ if tm.ty.references_error() => self.tcx.types.err,
+            hir::BorrowKind::Raw => {
+                self.check_named_place_expr(oprnd);
+                self.tcx.mk_ptr(tm)
+            }
+            hir::BorrowKind::Ref => {
+                // Note: at this point, we cannot say what the best lifetime
+                // is to use for resulting pointer.  We want to use the
+                // shortest lifetime possible so as to avoid spurious borrowck
+                // errors.  Moreover, the longest lifetime will depend on the
+                // precise details of the value whose address is being taken
+                // (and how long it is valid), which we don't know yet until
+                // type inference is complete.
+                //
+                // Therefore, here we simply generate a region variable. The
+                // region inferencer will then select a suitable value.
+                // Finally, borrowck will infer the value of the region again,
+                // this time with enough precision to check that the value
+                // whose address was taken can actually be made to live as long
+                // as it needs to live.
+                let region = self.next_region_var(infer::AddrOfRegion(expr.span));
+                self.tcx.mk_ref(region, tm)
+            }
+        }
+    }
+
+    /// Does this expression refer to a place that either:
+    /// * Is based on a local or static.
+    /// * Contains a dereference
+    /// Note that the adjustments for the children of `expr` should already
+    /// have been resolved.
+    fn check_named_place_expr(&self, oprnd: &'tcx hir::Expr) {
+        let is_named = oprnd.is_place_expr(|base| {
+            // Allow raw borrows if there are any deref adjustments.
             //
-            // Therefore, here we simply generate a region variable.  The
-            // region inferencer will then select the ultimate value.
-            // Finally, borrowck is charged with guaranteeing that the
-            // value whose address was taken can actually be made to live
-            // as long as it needs to live.
-            let region = self.next_region_var(infer::AddrOfRegion(expr.span));
-            self.tcx.mk_ref(region, tm)
+            // const VAL: (i32,) = (0,);
+            // const REF: &(i32,) = &(0,);
+            //
+            // &raw const VAL.0;            // ERROR
+            // &raw const REF.0;            // OK, same as &raw const (*REF).0;
+            //
+            // This is maybe too permissive, since it allows
+            // `let u = &raw const Box::new((1,)).0`, which creates an
+            // immediately dangling raw pointer.
+            self.tables.borrow().adjustments().get(base.hir_id).map_or(false, |x| {
+                x.iter().any(|adj| if let Adjust::Deref(_) = adj.kind {
+                    true
+                } else {
+                    false
+                })
+            })
+        });
+        if !is_named {
+            struct_span_err!(self.tcx.sess, oprnd.span, E0745, "cannot take address of a temporary")
+                .span_label(oprnd.span, "temporary value")
+                .emit();
         }
     }
 
@@ -740,7 +780,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.help(msg);
             }
             err.emit();
-        } else if !lhs.is_place_expr() {
+        } else if !lhs.is_syntactic_place_expr() {
             struct_span_err!(self.tcx.sess, expr.span, E0070,
                                 "invalid left-hand side expression")
                 .span_label(expr.span, "left-hand of expression not valid")

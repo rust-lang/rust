@@ -500,7 +500,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             },
-            (hir::ExprKind::AddrOf(_, ref expr), _, &ty::Ref(_, checked, _)) if {
+            (
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
+                _,
+                &ty::Ref(_, checked, _)
+            ) if {
                 self.infcx.can_sub(self.param_env, checked, &expected).is_ok() && !is_macro
             } => {
                 // We have `&T`, check if what was expected was `T`. If so,

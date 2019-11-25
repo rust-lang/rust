@@ -984,16 +984,12 @@ impl<'a> State<'a> {
             }
             ast::TyKind::Ptr(ref mt) => {
                 self.s.word("*");
-                match mt.mutbl {
-                    ast::Mutability::Mutable => self.word_nbsp("mut"),
-                    ast::Mutability::Immutable => self.word_nbsp("const"),
-                }
-                self.print_type(&mt.ty);
+                self.print_mt(mt, true);
             }
             ast::TyKind::Rptr(ref lifetime, ref mt) => {
                 self.s.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt);
+                self.print_mt(mt, false);
             }
             ast::TyKind::Never => {
                 self.s.word("!");
@@ -1974,10 +1970,17 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_addr_of(&mut self,
+                          kind: ast::BorrowKind,
                           mutability: ast::Mutability,
                           expr: &ast::Expr) {
         self.s.word("&");
-        self.print_mutability(mutability);
+        match kind {
+            ast::BorrowKind::Ref => self.print_mutability(mutability, false),
+            ast::BorrowKind::Raw => {
+                self.word_nbsp("raw");
+                self.print_mutability(mutability, true);
+            }
+        }
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
@@ -2028,8 +2031,8 @@ impl<'a> State<'a> {
             ast::ExprKind::Unary(op, ref expr) => {
                 self.print_expr_unary(op, expr);
             }
-            ast::ExprKind::AddrOf(m, ref expr) => {
-                self.print_expr_addr_of(m, expr);
+            ast::ExprKind::AddrOf(k, m, ref expr) => {
+                self.print_expr_addr_of(k, m, expr);
             }
             ast::ExprKind::Lit(ref lit) => {
                 self.print_literal(lit);
@@ -2361,7 +2364,7 @@ impl<'a> State<'a> {
                 match binding_mode {
                     ast::BindingMode::ByRef(mutbl) => {
                         self.word_nbsp("ref");
-                        self.print_mutability(mutbl);
+                        self.print_mutability(mutbl, false);
                     }
                     ast::BindingMode::ByValue(ast::Mutability::Immutable) => {}
                     ast::BindingMode::ByValue(ast::Mutability::Mutable) => {
@@ -2504,17 +2507,17 @@ impl<'a> State<'a> {
     fn print_explicit_self(&mut self, explicit_self: &ast::ExplicitSelf) {
         match explicit_self.node {
             SelfKind::Value(m) => {
-                self.print_mutability(m);
+                self.print_mutability(m, false);
                 self.s.word("self")
             }
             SelfKind::Region(ref lt, m) => {
                 self.s.word("&");
                 self.print_opt_lifetime(lt);
-                self.print_mutability(m);
+                self.print_mutability(m, false);
                 self.s.word("self")
             }
             SelfKind::Explicit(ref typ, m) => {
-                self.print_mutability(m);
+                self.print_mutability(m, false);
                 self.s.word("self");
                 self.word_space(":");
                 self.print_type(typ)
@@ -2746,15 +2749,15 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_mutability(&mut self, mutbl: ast::Mutability) {
+    pub fn print_mutability(&mut self, mutbl: ast::Mutability, print_const: bool) {
         match mutbl {
             ast::Mutability::Mutable => self.word_nbsp("mut"),
-            ast::Mutability::Immutable => {},
+            ast::Mutability::Immutable => if print_const { self.word_nbsp("const"); },
         }
     }
 
-    crate fn print_mt(&mut self, mt: &ast::MutTy) {
-        self.print_mutability(mt.mutbl);
+    crate fn print_mt(&mut self, mt: &ast::MutTy, print_const: bool) {
+        self.print_mutability(mt.mutbl, print_const);
         self.print_type(&mt.ty)
     }
 

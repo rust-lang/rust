@@ -739,7 +739,7 @@ impl<'a> Parser<'a> {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
-                    s.print_mutability(mut_ty.mutbl);
+                    s.print_mutability(mut_ty.mutbl, false);
                     s.popen();
                     s.print_type(&mut_ty.ty);
                     s.print_type_bounds(" +", &bounds);

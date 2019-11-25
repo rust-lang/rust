@@ -442,11 +442,7 @@ impl<'a> Parser<'a> {
                 (lo.to(span), self.mk_unary(UnOp::Deref, e))
             }
             token::BinOp(token::And) | token::AndAnd => {
-                self.expect_and()?;
-                let m = self.parse_mutability();
-                let e = self.parse_prefix_expr(None);
-                let (span, e) = self.interpolated_or_expr_span(e)?;
-                (lo.to(span), ExprKind::AddrOf(m, e))
+                self.parse_address_of(lo)?
             }
             token::Ident(..) if self.token.is_keyword(kw::Box) => {
                 self.bump();
@@ -594,6 +590,25 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
+    fn parse_address_of(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
+        self.expect_and()?;
+        let (k, m) = if self.check_keyword(kw::Raw)
+            && self.look_ahead(1, Token::is_mutability)
+        {
+            let found_raw = self.eat_keyword(kw::Raw);
+            assert!(found_raw);
+            let mutability = self.parse_const_or_mut().unwrap();
+            self.sess.gated_spans.gate(sym::raw_ref_op, lo.to(self.prev_span));
+            (ast::BorrowKind::Raw, mutability)
+        } else {
+            (ast::BorrowKind::Ref, self.parse_mutability())
+        };
+        let e = self.parse_prefix_expr(None);
+        let (span, e) = self.interpolated_or_expr_span(e)?;
+        Ok((lo.to(span), ExprKind::AddrOf(k, m, e)))
     }
 
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.

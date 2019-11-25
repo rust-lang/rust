@@ -98,6 +98,7 @@ symbols! {
         Auto:               "auto",
         Catch:              "catch",
         Default:            "default",
+        Raw:                "raw",
         Union:              "union",
     }
 
@@ -546,6 +547,7 @@ symbols! {
         RangeToInclusive,
         raw_dylib,
         raw_identifiers,
+        raw_ref_op,
         Ready,
         reason,
         recursion_limit,
