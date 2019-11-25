@@ -377,8 +377,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             let global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-            Ok((resolver, global_ctxt))
-        }).unwrap();
+            (resolver, global_ctxt)
+        });
 
         global_ctxt.enter(|tcx| {
             tcx.analysis(LOCAL_CRATE).ok();

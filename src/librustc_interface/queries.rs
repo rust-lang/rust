@@ -278,7 +278,7 @@ impl<'comp> Queries<'comp> {
         })
     }
 
-    pub fn linker(self) -> Result<Linker> {
+    pub fn linker(&self) -> Result<Linker> {
         let dep_graph = self.dep_graph()?;
         let prepare_outputs = self.prepare_outputs()?;
         let ongoing_codegen = self.ongoing_codegen()?;
@@ -288,7 +288,7 @@ impl<'comp> Queries<'comp> {
 
         Ok(Linker {
             sess,
-            dep_graph: dep_graph.take(),
+            dep_graph: dep_graph.peek().clone(),
             prepare_outputs: prepare_outputs.take(),
             ongoing_codegen: ongoing_codegen.take(),
             codegen_backend,
@@ -316,11 +316,11 @@ impl Linker {
 }
 
 impl Compiler {
-    pub fn enter<'c, F, T>(&'c self, f: F) -> Result<T>
-        where F: FnOnce(Queries<'c>) -> Result<T>
+    pub fn enter<'c, F, T>(&'c self, f: F) -> T
+        where F: for<'q> FnOnce(&'q Queries<'c>) -> T
     {
         let queries = Queries::new(&self);
-        f(queries)
+        f(&queries)
     }
 
     // This method is different to all the other methods in `Compiler` because
