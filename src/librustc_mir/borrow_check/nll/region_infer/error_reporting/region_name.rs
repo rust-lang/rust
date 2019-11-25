@@ -77,17 +77,30 @@ impl RegionErrorNamingCtx {
         }
     }
 
+    /// Get the name of `region` if it has previously been named.
     crate fn get(&self, region: &RegionVid) -> Option<&RegionName> {
         self.renctx.get(region)
     }
 
+    /// Give `region` the name `name`.
     crate fn insert(&mut self, region: RegionVid, name: RegionName) {
         self.renctx.insert(region, name);
+    }
+
+    /// Creates a synthetic region named `'N`, where `N` is the next value of the counter. Then,
+    /// increment the counter.
+    ///
+    /// The name is not memoized. A separate call to `insert` should be made later. (Currently,
+    /// this happens at the end of `give_region_a_name`).
+    crate fn synthesize_region_name(&mut self) -> Symbol {
+        let c = self.counter;
+        self.counter += 1;
+
+        Symbol::intern(&format!("'{:?}", c))
     }
 }
 
 impl RegionName {
-    #[allow(dead_code)]
     crate fn was_named(&self) -> bool {
         match self.source {
             RegionNameSource::NamedEarlyBoundRegion(..) |
@@ -103,12 +116,6 @@ impl RegionName {
         }
     }
 
-    #[allow(dead_code)]
-    crate fn was_synthesized(&self) -> bool {
-        !self.was_named()
-    }
-
-    #[allow(dead_code)]
     crate fn name(&self) -> Symbol {
         self.name
     }
@@ -298,7 +305,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         } else {
                             bug!("Closure is not defined by a closure expr");
                         };
-                        let region_name = self.synthesize_region_name(renctx);
+                        let region_name = renctx.synthesize_region_name();
 
                         let closure_kind_ty = substs.as_closure().kind_ty(def_id, tcx);
                         let note = match closure_kind_ty.to_opt_closure_kind() {
@@ -478,7 +485,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // This counter value will already have been used, so this function will increment
                 // it so the next value will be used next and return the region name that would
                 // have been used.
-                name: self.synthesize_region_name(renctx),
+                name: renctx.synthesize_region_name(),
                 source: RegionNameSource::CannotMatchHirTy(span, type_name),
             })
         } else {
@@ -533,7 +540,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     hir::TyKind::Rptr(_lifetime, referent_hir_ty),
                 ) => {
                     if region.to_region_vid() == needle_fr {
-                        let region_name = self.synthesize_region_name(renctx);
+                        let region_name = renctx.synthesize_region_name();
 
                         // Just grab the first character, the `&`.
                         let source_map = tcx.sess.source_map();
@@ -621,7 +628,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | hir::LifetimeName::Error
             | hir::LifetimeName::Static
             | hir::LifetimeName::Underscore => {
-                let region_name = self.synthesize_region_name(renctx);
+                let region_name = renctx.synthesize_region_name();
                 let ampersand_span = lifetime.span;
                 Some(RegionName {
                     name: region_name,
@@ -713,7 +720,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let upvar_index = self.get_upvar_index_for_region(tcx, fr)?;
         let (upvar_name, upvar_span) =
             self.get_upvar_name_and_span_for_region(tcx, upvars, upvar_index);
-        let region_name = self.synthesize_region_name(renctx);
+        let region_name = renctx.synthesize_region_name();
 
         Some(RegionName {
             name: region_name,
@@ -776,7 +783,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // This counter value will already have been used, so this function will increment it
             // so the next value will be used next and return the region name that would have been
             // used.
-            name: self.synthesize_region_name(renctx),
+            name: renctx.synthesize_region_name(),
             source: RegionNameSource::AnonRegionFromOutput(
                 return_span,
                 mir_description.to_string(),
@@ -831,16 +838,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         Some(RegionName {
-            name: self.synthesize_region_name(renctx),
+            name: renctx.synthesize_region_name(),
             source: RegionNameSource::AnonRegionFromYieldTy(yield_span, type_name),
         })
-    }
-
-    /// Creates a synthetic region named `'1`, incrementing the counter.
-    fn synthesize_region_name(&self, renctx: &mut RegionErrorNamingCtx) -> Symbol {
-        let c = renctx.counter;
-        renctx.counter += 1;
-
-        Symbol::intern(&format!("'{:?}", c))
     }
 }
