@@ -14,7 +14,7 @@ use crate::{
     Adt, Mutability,
 };
 
-use super::{InferTy, InferenceContext, TypeVarValue};
+use super::{InEnvironment, InferTy, InferenceContext, TypeVarValue};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// Unify two types, but may coerce the first one to the second one
@@ -320,9 +320,14 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let canonicalized = self.canonicalizer().canonicalize_ty(from_ty.clone());
         let to_ty = self.resolve_ty_shallow(&to_ty);
         // FIXME: Auto DerefMut
-        for derefed_ty in
-            autoderef::autoderef(self.db, &self.resolver.clone(), canonicalized.value.clone())
-        {
+        for derefed_ty in autoderef::autoderef(
+            self.db,
+            self.resolver.krate(),
+            InEnvironment {
+                value: canonicalized.value.clone(),
+                environment: self.trait_env.clone(),
+            },
+        ) {
             let derefed_ty = canonicalized.decanonicalize_ty(derefed_ty.value);
             match (&*self.resolve_ty_shallow(&derefed_ty), &*to_ty) {
                 // Stop when constructor matches.

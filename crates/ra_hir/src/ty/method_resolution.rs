@@ -15,7 +15,7 @@ use crate::{
     AssocItem, Crate, Function, ImplBlock, Module, Mutability, Name, Trait,
 };
 
-use super::{autoderef, lower, Canonical, InEnvironment, TraitEnvironment, TraitRef};
+use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -179,8 +179,9 @@ pub(crate) fn iterate_method_candidates<T>(
             // Also note that when we've got a receiver like &S, even if the method we
             // find in the end takes &self, we still do the autoderef step (just as
             // rustc does an autoderef and then autoref again).
-
-            for derefed_ty in autoderef::autoderef(db, resolver, ty.clone()) {
+            let environment = TraitEnvironment::lower(db, resolver);
+            let ty = InEnvironment { value: ty.clone(), environment };
+            for derefed_ty in autoderef::autoderef(db, resolver.krate(), ty) {
                 if let Some(result) = iterate_inherent_methods(
                     &derefed_ty,
                     db,
@@ -230,7 +231,7 @@ fn iterate_trait_method_candidates<T>(
 ) -> Option<T> {
     let krate = resolver.krate()?;
     // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
-    let env = lower::trait_env(db, resolver);
+    let env = TraitEnvironment::lower(db, resolver);
     // if ty is `impl Trait` or `dyn Trait`, the trait doesn't need to be in scope
     let inherent_trait = ty.value.inherent_trait().into_iter();
     // if we have `T: Trait` in the param env, the trait doesn't need to be in scope
@@ -324,7 +325,7 @@ pub(crate) fn implements_trait(
         // anyway, but currently Chalk doesn't implement `dyn/impl Trait` yet
         return true;
     }
-    let env = lower::trait_env(db, resolver);
+    let env = TraitEnvironment::lower(db, resolver);
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
     let solution = db.trait_solve(krate, goal);
 

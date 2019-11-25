@@ -5,7 +5,7 @@
 
 use std::iter::successors;
 
-use hir_def::{lang_item::LangItemTarget, resolver::Resolver};
+use hir_def::lang_item::LangItemTarget;
 use hir_expand::name;
 use log::{info, warn};
 use ra_db::CrateId;
@@ -21,23 +21,25 @@ const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
 pub(crate) fn autoderef<'a>(
     db: &'a impl HirDatabase,
-    resolver: &'a Resolver,
-    ty: Canonical<Ty>,
+    krate: Option<CrateId>,
+    ty: InEnvironment<Canonical<Ty>>,
 ) -> impl Iterator<Item = Canonical<Ty>> + 'a {
-    successors(Some(ty), move |ty| deref(db, resolver, ty)).take(AUTODEREF_RECURSION_LIMIT)
+    let InEnvironment { value: ty, environment } = ty;
+    successors(Some(ty), move |ty| {
+        deref(db, krate?, InEnvironment { value: ty, environment: environment.clone() })
+    })
+    .take(AUTODEREF_RECURSION_LIMIT)
 }
 
 pub(crate) fn deref(
     db: &impl HirDatabase,
-    resolver: &Resolver,
-    ty: &Canonical<Ty>,
+    krate: CrateId,
+    ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
-    if let Some(derefed) = ty.value.builtin_deref() {
-        Some(Canonical { value: derefed, num_vars: ty.num_vars })
+    if let Some(derefed) = ty.value.value.builtin_deref() {
+        Some(Canonical { value: derefed, num_vars: ty.value.num_vars })
     } else {
-        let krate = resolver.krate()?;
-        let environment = super::lower::trait_env(db, resolver);
-        deref_by_trait(db, krate, InEnvironment { value: ty, environment })
+        deref_by_trait(db, krate, ty)
     }
 }
 

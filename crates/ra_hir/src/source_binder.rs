@@ -26,7 +26,10 @@ use ra_syntax::{
 use crate::{
     db::HirDatabase,
     expr::{BodySourceMap, ExprScopes, ScopeId},
-    ty::method_resolution::{self, implements_trait},
+    ty::{
+        method_resolution::{self, implements_trait},
+        TraitEnvironment,
+    },
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
     GenericParam, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Ty, TypeAlias,
 };
@@ -408,7 +411,10 @@ impl SourceAnalyzer {
         // There should be no inference vars in types passed here
         // FIXME check that?
         let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
-        crate::ty::autoderef(db, &self.resolver, canonical).map(|canonical| canonical.value)
+        let krate = self.resolver.krate();
+        let environment = TraitEnvironment::lower(db, &self.resolver);
+        let ty = crate::ty::InEnvironment { value: canonical, environment };
+        crate::ty::autoderef(db, krate, ty).map(|canonical| canonical.value)
     }
 
     /// Checks that particular type `ty` implements `std::future::Future`.
