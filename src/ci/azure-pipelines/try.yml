@@ -6,72 +6,19 @@ variables:
 - group: prod-credentials
 
 jobs:
-- job: Linux
+- job: Windows
   timeoutInMinutes: 600
   pool:
-    vmImage: ubuntu-16.04
+    vmImage: 'vs2017-win2016'
   steps:
   - template: steps/run.yml
   strategy:
     matrix:
-      dist-x86_64-linux:
-        IMAGE: dist-x86_64-linux
-        DEPLOY: 1
-
-      dist-x86_64-linux-alt:
-        IMAGE: dist-x86_64-linux
-        DEPLOY_ALT: 1
-
-# The macOS and Windows builds here are currently disabled due to them not being
-# overly necessary on `try` builds. We also don't actually have anything that
-# consumes the artifacts currently. Perhaps one day we can reenable, but for now
-# it helps free up capacity on Azure.
-# - job: macOS
-#   timeoutInMinutes: 600
-#   pool:
-#     vmImage: macos-10.13
-#   steps:
-#   - template: steps/run.yml
-#   strategy:
-#     matrix:
-#       dist-x86_64-apple:
-#         SCRIPT: ./x.py dist
-#         RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
-#         DEPLOY: 1
-#         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-#         MACOSX_DEPLOYMENT_TARGET: 10.7
-#         NO_LLVM_ASSERTIONS: 1
-#         NO_DEBUG_ASSERTIONS: 1
-#         DIST_REQUIRE_ALL_TOOLS: 1
-#
-#       dist-x86_64-apple-alt:
-#         SCRIPT: ./x.py dist
-#         RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
-#         DEPLOY_ALT: 1
-#         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
-#         MACOSX_DEPLOYMENT_TARGET: 10.7
-#         NO_LLVM_ASSERTIONS: 1
-#         NO_DEBUG_ASSERTIONS: 1
-#
-# - job: Windows
-#   timeoutInMinutes: 600
-#   pool:
-#     vmImage: 'vs2017-win2016'
-#   steps:
-#   - template: steps/run.yml
-#   strategy:
-#     matrix:
-#       dist-x86_64-msvc:
-#         RUST_CONFIGURE_ARGS: >
-#           --build=x86_64-pc-windows-msvc
-#           --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
-#           --enable-full-tools
-#           --enable-profiler
-#         SCRIPT: python x.py dist
-#         DIST_REQUIRE_ALL_TOOLS: 1
-#         DEPLOY: 1
-#
-#       dist-x86_64-msvc-alt:
-#         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
-#         SCRIPT: python x.py dist
-#         DEPLOY_ALT: 1
+      dist-x86_64-msvc:
+        RUST_CONFIGURE_ARGS: >-
+          --build=x86_64-pc-windows-msvc
+          --target=x86_64-pc-windows-msvc,aarch64-pc-windows-msvc
+          --enable-full-tools
+          --enable-profiler
+        SCRIPT: python x.py dist
+        DIST_REQUIRE_ALL_TOOLS: 1

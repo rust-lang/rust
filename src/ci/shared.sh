@@ -27,27 +27,66 @@ function retry {
 }
 
 function isCI {
-  [ "$CI" = "true" ] || [ "$TF_BUILD" = "True" ]
+    [[ "${CI-false}" = "true" ]] || isAzurePipelines || isGitHubActions
+}
+
+function isAzurePipelines {
+    [[ "${TF_BUILD-False}" = "True" ]]
+}
+
+function isGitHubActions {
+    [[ "${GITHUB_ACTIONS-false}" = "true" ]]
 }
 
 function isMacOS {
-  [ "$AGENT_OS" = "Darwin" ]
+    [[ "${OSTYPE}" = "darwin"* ]]
 }
 
 function isWindows {
-  [ "$AGENT_OS" = "Windows_NT" ]
+    [[ "${OSTYPE}" = "cygwin" ]] || [[ "${OSTYPE}" = "msys" ]]
 }
 
 function isLinux {
-  [ "$AGENT_OS" = "Linux" ]
+    [[ "${OSTYPE}" = "linux-gnu" ]]
 }
 
-function getCIBranch {
-  echo "$BUILD_SOURCEBRANCHNAME"
+function isCiBranch {
+    if [[ $# -ne 1 ]]; then
+        echo "usage: $0 <branch-name>"
+        exit 1
+    fi
+    name="$1"
+
+    if isAzurePipelines; then
+        [[ "${BUILD_SOURCEBRANCHNAME}" = "${name}" ]]
+    elif isGitHubActions; then
+        [[ "${GITHUB_REF}" = "refs/heads/${name}" ]]
+    else
+        echo "isCiBranch only works inside CI!"
+        exit 1
+    fi
 }
 
 function ciCommit {
-  echo "${BUILD_SOURCEVERSION}"
+    if isAzurePipelines; then
+        echo "${BUILD_SOURCEVERSION}"
+    elif isGitHubActions; then
+        echo "${GITHUB_SHA}"
+    else
+        echo "ciCommit only works inside CI!"
+        exit 1
+    fi
+}
+
+function ciCheckoutPath {
+    if isAzurePipelines; then
+        echo "${SYSTEM_WORKFOLDER}"
+    elif isGitHubActions; then
+        echo "${GITHUB_WORKSPACE}"
+    else
+        echo "ciCheckoutPath only works inside CI!"
+        exit 1
+    fi
 }
 
 function ciCommandAddPath {
@@ -57,7 +96,14 @@ function ciCommandAddPath {
     fi
     path="$1"
 
-    echo "##vso[task.prependpath]${path}"
+    if isAzurePipelines; then
+        echo "##vso[task.prependpath]${path}"
+    elif isGitHubActions; then
+        echo "::add-path::${value}"
+    else
+        echo "ciCommandAddPath only works inside CI!"
+        exit 1
+    fi
 }
 
 function ciCommandSetEnv {
@@ -68,5 +114,12 @@ function ciCommandSetEnv {
     name="$1"
     value="$2"
 
-    echo "##vso[task.setvariable variable=${name}]${value}"
+    if isAzurePipelines; then
+        echo "##vso[task.setvariable variable=${name}]${value}"
+    elif isGitHubActions; then
+        echo "::set-env name=${name}::${value}"
+    else
+        echo "ciCommandSetEnv only works inside CI!"
+        exit 1
+    fi
 }
