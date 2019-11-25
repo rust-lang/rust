@@ -9,7 +9,7 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 
-use hir_def::lang_item::LangItemTarget;
+use hir_def::{lang_item::LangItemTarget, GenericDefId};
 use hir_expand::name;
 
 use ra_db::salsa::{InternId, InternKey};
@@ -19,7 +19,7 @@ use crate::{
     db::HirDatabase,
     ty::display::HirDisplay,
     ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-    Crate, GenericDef, ImplBlock, Trait, TypeAlias,
+    Crate, ImplBlock, Trait, TypeAlias,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -402,7 +402,7 @@ fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
 
 fn convert_where_clauses(
     db: &impl HirDatabase,
-    def: GenericDef,
+    def: GenericDefId,
     substs: &Substs,
 ) -> Vec<chalk_ir::QuantifiedWhereClause<ChalkIr>> {
     let generic_predicates = db.generic_predicates(def);
@@ -561,7 +561,7 @@ pub(crate) fn trait_datum_query(
         marker: false,
         fundamental: false,
     };
-    let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
+    let where_clauses = convert_where_clauses(db, trait_.id.into(), &bound_vars);
     let associated_ty_ids = trait_
         .items(db)
         .into_iter()
@@ -643,7 +643,7 @@ fn impl_block_datum(
     } else {
         chalk_rust_ir::ImplType::External
     };
-    let where_clauses = convert_where_clauses(db, impl_block.into(), &bound_vars);
+    let where_clauses = convert_where_clauses(db, impl_block.id.into(), &bound_vars);
     let negative = impl_block.is_negative(db);
     debug!(
         "impl {:?}: {}{} where {:?}",
