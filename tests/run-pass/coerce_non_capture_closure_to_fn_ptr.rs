@@ -29,7 +29,8 @@ fn main() {
     // FIXME: This fails with "invalid use of NULL pointer"
     //let h: fn() -> ! = || std::process::exit(0);
     //h();
-    // FIXME: This does not even compile?!?
+    // FIXME: This does not even compile?!? <https://github.com/rust-lang/rust/issues/66738>
     //let h = magic0(|| std::process::exit(0)) as fn() -> !;
     //h();
+    // Once these tests pass, they should be in separate files as they terminate the process.
 }
