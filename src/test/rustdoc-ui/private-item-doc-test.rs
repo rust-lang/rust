@@ -6,6 +6,6 @@ mod foo {
     /// ```
     /// assert!(false);
     /// ```
-    //~^^^^^ ERROR Documentation test in private item
+    //~^^^^^ ERROR documentation test in private item
     fn bar() {}
 }
