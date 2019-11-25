@@ -15,9 +15,8 @@ use super::{
     AllocId, Allocation, InterpCx, Machine, MemoryKind, MPlaceTy, Scalar, ValueVisitor,
 };
 
-struct InternVisitor<'rt, 'mir, 'tcx, M>
-where
-    M: Machine<
+pub trait CompileTimeMachine<'mir, 'tcx> =
+    Machine<
         'mir,
         'tcx,
         MemoryKinds = !,
@@ -27,8 +26,9 @@ where
         MemoryExtra = (),
         AllocExtra = (),
         MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
-    >,
-{
+    >;
+
+struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// The ectx from which we intern.
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     /// Previously encountered safe references.
@@ -70,27 +70,14 @@ struct IsStaticOrFn;
 /// `immutable` things might become mutable if `ty` is not frozen.
 /// `ty` can be `None` if there is no potential interior mutability
 /// to account for (e.g. for vtables).
-fn intern_shallow<'rt, 'mir, 'tcx, M>(
+fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     leftover_allocations: &'rt mut FxHashSet<AllocId>,
     mode: InternMode,
     alloc_id: AllocId,
     mutability: Mutability,
     ty: Option<Ty<'tcx>>,
-) -> InterpResult<'tcx, Option<IsStaticOrFn>>
-where
-    M: Machine<
-        'mir,
-        'tcx,
-        MemoryKinds = !,
-        PointerTag = (),
-        ExtraFnVal = !,
-        FrameExtra = (),
-        MemoryExtra = (),
-        AllocExtra = (),
-        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
-    >,
-{
+) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
     trace!("InternVisitor::intern {:?} with {:?}", alloc_id, mutability,);
     // remove allocation
     let tcx = ecx.tcx;
@@ -152,20 +139,7 @@ where
     Ok(None)
 }
 
-impl<'rt, 'mir, 'tcx, M> InternVisitor<'rt, 'mir, 'tcx, M>
-where
-    M: Machine<
-        'mir,
-        'tcx,
-        MemoryKinds = !,
-        PointerTag = (),
-        ExtraFnVal = !,
-        FrameExtra = (),
-        MemoryExtra = (),
-        AllocExtra = (),
-        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
-    >,
-{
+impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir, 'tcx, M> {
     fn intern_shallow(
         &mut self,
         alloc_id: AllocId,
@@ -183,22 +157,10 @@ where
     }
 }
 
-impl<'rt, 'mir, 'tcx, M>
+impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>
     ValueVisitor<'mir, 'tcx, M>
 for
     InternVisitor<'rt, 'mir, 'tcx, M>
-where
-    M: Machine<
-        'mir,
-        'tcx,
-        MemoryKinds = !,
-        PointerTag = (),
-        ExtraFnVal = !,
-        FrameExtra = (),
-        MemoryExtra = (),
-        AllocExtra = (),
-        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
-    >,
 {
     type V = MPlaceTy<'tcx>;
 
@@ -312,25 +274,12 @@ where
     }
 }
 
-pub fn intern_const_alloc_recursive<M>(
+pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
     ecx: &mut InterpCx<'mir, 'tcx, M>,
     // The `mutability` of the place, ignoring the type.
     place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,
-) -> InterpResult<'tcx>
-where
-    M: Machine<
-        'mir,
-        'tcx,
-        MemoryKinds = !,
-        PointerTag = (),
-        ExtraFnVal = !,
-        FrameExtra = (),
-        MemoryExtra = (),
-        AllocExtra = (),
-        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
-    >,
-{
+) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
     let (base_mutability, base_intern_mode) = match place_mut {
         Some(hir::Mutability::Immutable) => (Mutability::Immutable, InternMode::Static),

@@ -649,31 +649,28 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     }
 
     fn should_const_prop(&mut self, op: OpTy<'tcx>) -> bool {
-        if self.tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
+        let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
+
+        if mir_opt_level == 0 {
             return false;
         }
 
-        let is_scalar = match *op {
+        match *op {
             interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Scalar(s))) =>
                 s.is_bits(),
             interpret::Operand::Immediate(Immediate::ScalarPair(ScalarMaybeUndef::Scalar(l),
                                                                 ScalarMaybeUndef::Scalar(r))) =>
                 l.is_bits() && r.is_bits(),
-            _ => false
-        };
-
-        if let interpret::Operand::Indirect(_) = *op {
-            if self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
+            interpret::Operand::Indirect(_) if mir_opt_level >= 2 => {
                 intern_const_alloc_recursive(
                     &mut self.ecx,
                     None,
                     op.assert_mem_place()
                 ).expect("failed to intern alloc");
-                return true;
-            }
+                true
+            },
+            _ => false
         }
-
-        return is_scalar;
     }
 }
 
