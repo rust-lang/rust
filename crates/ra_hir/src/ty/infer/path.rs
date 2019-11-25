@@ -203,7 +203,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     Container::ImplBlock(_) => self.find_self_types(&def, ty.clone()),
                     Container::Trait(t) => {
                         // we're picking this method
-                        let trait_substs = Substs::build_for_def(self.db, t)
+                        let trait_substs = Substs::build_for_def(self.db, t.id)
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.new_type_var()))
                             .build();

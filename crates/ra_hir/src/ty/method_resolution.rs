@@ -365,7 +365,7 @@ fn generic_implements_goal(
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::Obligation>> {
     let num_vars = self_ty.num_vars;
-    let substs = super::Substs::build_for_def(db, trait_)
+    let substs = super::Substs::build_for_def(db, trait_.id)
         .push(self_ty.value)
         .fill_with_bound_vars(num_vars as u32)
         .build();

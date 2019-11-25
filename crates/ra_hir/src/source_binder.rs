@@ -251,7 +251,7 @@ impl SourceAnalyzer {
         let types = self.resolver.resolve_path_in_type_ns_fully(db, &path).map(|ty| match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
             TypeNs::GenericParam(idx) => PathResolution::GenericParam(GenericParam {
-                parent: self.resolver.generic_def().unwrap().into(),
+                parent: self.resolver.generic_def().unwrap(),
                 idx,
             }),
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
@@ -326,7 +326,7 @@ impl SourceAnalyzer {
                 resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                 resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
                 resolver::ScopeDef::GenericParam(idx) => {
-                    let parent = self.resolver.generic_def().unwrap().into();
+                    let parent = self.resolver.generic_def().unwrap();
                     ScopeDef::GenericParam(GenericParam { parent, idx })
                 }
                 resolver::ScopeDef::Local(pat_id) => {

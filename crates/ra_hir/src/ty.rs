@@ -21,8 +21,8 @@ use hir_def::{generics::GenericParams, AdtId, GenericDefId};
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, FloatTy,
-    GenericDef, IntTy, Mutability, Name, Trait, TypeAlias, Uncertain,
+    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, FloatTy, IntTy,
+    Mutability, Name, Trait, TypeAlias, Uncertain,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -356,9 +356,9 @@ impl Substs {
         )
     }
 
-    pub fn build_for_def(db: &impl HirDatabase, def: impl Into<GenericDef>) -> SubstsBuilder {
+    pub fn build_for_def(db: &impl HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
         let def = def.into();
-        let params = db.generic_params(def.into());
+        let params = db.generic_params(def);
         let param_count = params.count_params_including_parent();
         Substs::builder(param_count)
     }
