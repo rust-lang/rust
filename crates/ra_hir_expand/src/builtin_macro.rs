@@ -46,6 +46,7 @@ macro_rules! register_builtin {
 
 register_builtin! {
     (COLUMN_MACRO, Column) => column_expand,
+    (COMPILE_ERROR_MACRO, CompileError) => compile_error_expand,
     (FILE_MACRO, File) => file_expand,
     (LINE_MACRO, Line) => line_expand,
     (STRINGIFY_MACRO, Stringify) => stringify_expand
@@ -183,6 +184,26 @@ fn file_expand(
     Ok(expanded)
 }
 
+fn compile_error_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    if tt.count() == 1 {
+        match &tt.token_trees[0] {
+            tt::TokenTree::Leaf(tt::Leaf::Literal(it)) => {
+                let s = it.text.as_str();
+                if s.contains(r#"""#) {
+                    return Ok(quote! { loop { #it }});
+                }
+            }
+            _ => {}
+        };
+    }
+
+    Err(mbe::ExpandError::BindingError("Must be a string".into()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -269,5 +290,22 @@ mod tests {
         );
 
         assert_eq!(expanded, "\"\"");
+    }
+
+    #[test]
+    fn test_compile_error_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+        #[rustc_builtin_macro]
+        macro_rules! compile_error {
+            ($msg:expr) => ({ /* compiler built-in */ });
+            ($msg:expr,) => ({ /* compiler built-in */ })
+        }
+        compile_error!("error!");
+"#,
+            BuiltinFnLikeExpander::CompileError,
+        );
+
+        assert_eq!(expanded, r#"loop{"error!"}"#);
     }
 }
