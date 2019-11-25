@@ -19,136 +19,46 @@ jobs:
   strategy:
     matrix:
       x86_64-gnu-llvm-6.0:
-        IMAGE: x86_64-gnu-llvm-6.0
         RUST_BACKTRACE: 1
-
-      dist-x86_64-linux:
-        IMAGE: dist-x86_64-linux
-        DEPLOY: 1
-
-      # "alternate" deployments, these are "nightlies" but have LLVM assertions
-      # turned on, they're deployed to a different location primarily for
-      # additional testing.
+      dist-x86_64-linux: {}
       dist-x86_64-linux-alt:
         IMAGE: dist-x86_64-linux
-        DEPLOY_ALT: 1
-
-      # Linux builders, remaining docker images
-      arm-android:
-        IMAGE: arm-android
-
-      armhf-gnu:
-        IMAGE: armhf-gnu
-
-      dist-various-1:
-        IMAGE: dist-various-1
-        DEPLOY: 1
-
-      dist-various-2:
-        IMAGE: dist-various-2
-        DEPLOY: 1
-
-      dist-aarch64-linux:
-        IMAGE: dist-aarch64-linux
-        DEPLOY: 1
-
-      dist-android:
-        IMAGE: dist-android
-        DEPLOY: 1
-
-      dist-arm-linux:
-        IMAGE: dist-arm-linux
-        DEPLOY: 1
-
-      dist-armhf-linux:
-        IMAGE: dist-armhf-linux
-        DEPLOY: 1
-
-      dist-armv7-linux:
-        IMAGE: dist-armv7-linux
-        DEPLOY: 1
-
-      dist-i586-gnu-i586-i686-musl:
-        IMAGE: dist-i586-gnu-i586-i686-musl
-        DEPLOY: 1
-
-      dist-i686-freebsd:
-        IMAGE: dist-i686-freebsd
-        DEPLOY: 1
-
-      dist-i686-linux:
-        IMAGE: dist-i686-linux
-        DEPLOY: 1
-
-      dist-mips-linux:
-        IMAGE: dist-mips-linux
-        DEPLOY: 1
-
-      dist-mips64-linux:
-        IMAGE: dist-mips64-linux
-        DEPLOY: 1
-
-      dist-mips64el-linux:
-        IMAGE: dist-mips64el-linux
-        DEPLOY: 1
-
-      dist-mipsel-linux:
-        IMAGE: dist-mipsel-linux
-        DEPLOY: 1
-
-      dist-powerpc-linux:
-        IMAGE: dist-powerpc-linux
-        DEPLOY: 1
-
-      dist-powerpc64-linux:
-        IMAGE: dist-powerpc64-linux
-        DEPLOY: 1
-
-      dist-powerpc64le-linux:
-        IMAGE: dist-powerpc64le-linux
-        DEPLOY: 1
-
-      dist-s390x-linux:
-        IMAGE: dist-s390x-linux
-        DEPLOY: 1
-
-      dist-x86_64-freebsd:
-        IMAGE: dist-x86_64-freebsd
-        DEPLOY: 1
-
-      dist-x86_64-musl:
-        IMAGE: dist-x86_64-musl
-        DEPLOY: 1
-
-      dist-x86_64-netbsd:
-        IMAGE: dist-x86_64-netbsd
-        DEPLOY: 1
-
-      i686-gnu:
-        IMAGE: i686-gnu
-      i686-gnu-nopt:
-        IMAGE: i686-gnu-nopt
-      test-various:
-        IMAGE: test-various
-      wasm32:
-        IMAGE: wasm32
-      x86_64-gnu:
-        IMAGE: x86_64-gnu
-      x86_64-gnu-full-bootstrap:
-        IMAGE: x86_64-gnu-full-bootstrap
-      x86_64-gnu-aux:
-        IMAGE: x86_64-gnu-aux
+      arm-android: {}
+      armhf-gnu: {}
+      dist-various-1: {}
+      dist-various-2: {}
+      dist-aarch64-linux: {}
+      dist-android: {}
+      dist-arm-linux: {}
+      dist-armhf-linux: {}
+      dist-armv7-linux: {}
+      dist-i586-gnu-i586-i686-musl: {}
+      dist-i686-freebsd: {}
+      dist-i686-linux: {}
+      dist-mips-linux: {}
+      dist-mips64-linux: {}
+      dist-mips64el-linux: {}
+      dist-mipsel-linux: {}
+      dist-powerpc-linux: {}
+      dist-powerpc64-linux: {}
+      dist-powerpc64le-linux: {}
+      dist-s390x-linux: {}
+      dist-x86_64-freebsd: {}
+      dist-x86_64-musl: {}
+      dist-x86_64-netbsd: {}
+      i686-gnu: {}
+      i686-gnu-nopt: {}
+      test-various: {}
+      wasm32: {}
+      x86_64-gnu: {}
+      x86_64-gnu-full-bootstrap: {}
+      x86_64-gnu-aux: {}
       x86_64-gnu-tools:
-        IMAGE: x86_64-gnu-tools
         DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-      x86_64-gnu-debug:
-        IMAGE: x86_64-gnu-debug
-      x86_64-gnu-nopt:
-        IMAGE: x86_64-gnu-nopt
-      x86_64-gnu-distcheck:
-        IMAGE: x86_64-gnu-distcheck
-      mingw-check:
-        IMAGE: mingw-check
+      x86_64-gnu-debug: {}
+      x86_64-gnu-nopt: {}
+      x86_64-gnu-distcheck: {}
+      mingw-check: {}
 
 - job: macOS
   timeoutInMinutes: 600
@@ -176,7 +86,6 @@ jobs:
       dist-x86_64-apple:
         SCRIPT: ./x.py dist
         RUST_CONFIGURE_ARGS: --target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc
-        DEPLOY: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1
@@ -186,7 +95,6 @@ jobs:
       dist-x86_64-apple-alt:
         SCRIPT: ./x.py dist
         RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc
-        DEPLOY_ALT: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1
@@ -204,7 +112,6 @@ jobs:
       dist-i686-apple:
         SCRIPT: ./x.py dist
         RUST_CONFIGURE_ARGS: --build=i686-apple-darwin --enable-full-tools --enable-profiler --set rust.jemalloc
-        DEPLOY: 1
         RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
         MACOSX_DEPLOYMENT_TARGET: 10.7
         NO_LLVM_ASSERTIONS: 1
@@ -304,7 +211,6 @@ jobs:
           --enable-profiler
         SCRIPT: python x.py dist
         DIST_REQUIRE_ALL_TOOLS: 1
-        DEPLOY: 1
       dist-i686-msvc:
         RUST_CONFIGURE_ARGS: >-
           --build=i686-pc-windows-msvc
@@ -313,22 +219,18 @@ jobs:
           --enable-profiler
         SCRIPT: python x.py dist
         DIST_REQUIRE_ALL_TOOLS: 1
-        DEPLOY: 1
       dist-i686-mingw:
         RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-full-tools --enable-profiler
         SCRIPT: python x.py dist
         CUSTOM_MINGW: 1
         DIST_REQUIRE_ALL_TOOLS: 1
-        DEPLOY: 1
       dist-x86_64-mingw:
         SCRIPT: python x.py dist
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-full-tools --enable-profiler
         CUSTOM_MINGW: 1
         DIST_REQUIRE_ALL_TOOLS: 1
-        DEPLOY: 1
 
       # "alternate" deployment, see .travis.yml for more info
       dist-x86_64-msvc-alt:
         RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended --enable-profiler
         SCRIPT: python x.py dist
-        DEPLOY_ALT: 1

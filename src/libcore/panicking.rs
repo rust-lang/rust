@@ -6,8 +6,7 @@
 //! interface for panicking is:
 //!
 //! ```
-//! # use std::fmt;
-//! fn panic_impl(fmt: fmt::Arguments, file_line_col: &(&'static str, u32, u32)) -> !
+//! fn panic_impl(pi: &core::panic::PanicInfo<'_>) -> !
 //! # { loop {} }
 //! ```
 //!
@@ -35,7 +34,7 @@ use crate::panic::{Location, PanicInfo};
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
-#[lang = "panic"]
+#[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
 pub fn panic(expr: &str, location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }
@@ -52,7 +51,7 @@ pub fn panic(expr: &str, location: &Location<'_>) -> ! {
 
 #[cold]
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
-#[lang = "panic_bounds_check"]
+#[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }

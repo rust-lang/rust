@@ -262,6 +262,8 @@ pub enum CiEnv {
     None,
     /// The Azure Pipelines environment, for Linux (including Docker), Windows, and macOS builds.
     AzurePipelines,
+    /// The GitHub Actions environment, for Linux (including Docker), Windows and macOS builds.
+    GitHubActions,
 }
 
 impl CiEnv {
@@ -269,6 +271,8 @@ impl CiEnv {
     pub fn current() -> CiEnv {
         if env::var("TF_BUILD").ok().map_or(false, |e| &*e == "True") {
             CiEnv::AzurePipelines
+        } else if env::var("GITHUB_ACTIONS").ok().map_or(false, |e| &*e == "true") {
+            CiEnv::GitHubActions
         } else {
             CiEnv::None
         }
