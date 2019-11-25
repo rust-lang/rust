@@ -219,7 +219,7 @@ impl Layout {
     #[inline]
     pub fn pad_to_align(&self) -> Layout {
         let pad = self.padding_needed_for(self.align());
-        // This cannot overflow: it is an invariant of Layout that
+        // This cannot overflow. Quoting from the invariant of Layout:
         // > `size`, when rounded up to the nearest multiple of `align`,
         // > must not overflow (i.e., the rounded value must be less than
         // > `usize::MAX`)
