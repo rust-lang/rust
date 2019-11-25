@@ -561,6 +561,7 @@ pub(crate) fn field_types_query(
 ) -> Arc<ArenaMap<LocalStructFieldId, Ty>> {
     let (resolver, var_data) = match variant_id {
         VariantId::StructId(it) => (it.resolver(db), db.struct_data(it).variant_data.clone()),
+        VariantId::UnionId(it) => (it.resolver(db), db.union_data(it).variant_data.clone()),
         VariantId::EnumVariantId(it) => (
             it.parent.resolver(db),
             db.enum_data(it.parent).variants[it.local_id].variant_data.clone(),

@@ -431,6 +431,7 @@ impl_froms!(
 pub enum VariantId {
     EnumVariantId(EnumVariantId),
     StructId(StructId),
+    UnionId(UnionId),
 }
 impl_froms!(VariantId: EnumVariantId, StructId);
 

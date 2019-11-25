@@ -150,6 +150,11 @@ impl HasChildSource for VariantId {
                 src.map(|map| map[it.local_id].kind())
             }
             VariantId::StructId(it) => it.source(db).map(|it| it.kind()),
+            VariantId::UnionId(it) => it.source(db).map(|it| {
+                it.record_field_def_list()
+                    .map(ast::StructKind::Record)
+                    .unwrap_or(ast::StructKind::Unit)
+            }),
         };
         let mut trace = Trace::new_for_map();
         lower_struct(&mut trace, &src.value);
