@@ -26,14 +26,17 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     );
     let (mut call_info, has_self) = match &calling_node {
         FnCallNode::CallExpr(expr) => {
-            //FIXME: apply subst
+            //FIXME: don't poke into Ty
             let (callable_def, _subst) = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
-                hir::CallableDef::Function(it) => {
-                    (CallInfo::with_fn(db, it), it.has_self_param(db))
+                hir::CallableDef::FunctionId(it) => {
+                    let fn_def = it.into();
+                    (CallInfo::with_fn(db, fn_def), fn_def.has_self_param(db))
                 }
-                hir::CallableDef::Struct(it) => (CallInfo::with_struct(db, it)?, false),
-                hir::CallableDef::EnumVariant(it) => (CallInfo::with_enum_variant(db, it)?, false),
+                hir::CallableDef::StructId(it) => (CallInfo::with_struct(db, it.into())?, false),
+                hir::CallableDef::EnumVariantId(it) => {
+                    (CallInfo::with_enum_variant(db, it.into())?, false)
+                }
             }
         }
         FnCallNode::MethodCallExpr(expr) => {

@@ -171,7 +171,7 @@ impl TypeCtor {
             | TypeCtor::Tuple { .. } => None,
             TypeCtor::Closure { def, .. } => def.krate(db),
             TypeCtor::Adt(adt) => adt.krate(db),
-            TypeCtor::FnDef(callable) => callable.krate(db),
+            TypeCtor::FnDef(callable) => Some(callable.krate(db).into()),
             TypeCtor::AssociatedType(type_alias) => type_alias.krate(db),
         }
     }
@@ -856,13 +856,20 @@ impl HirDisplay for ApplicationTy {
             TypeCtor::FnDef(def) => {
                 let sig = f.db.callable_item_signature(def);
                 let name = match def {
-                    CallableDef::Function(ff) => ff.name(f.db),
-                    CallableDef::Struct(s) => s.name(f.db).unwrap_or_else(Name::missing),
-                    CallableDef::EnumVariant(e) => e.name(f.db).unwrap_or_else(Name::missing),
+                    CallableDef::FunctionId(ff) => f.db.function_data(ff).name.clone(),
+                    CallableDef::StructId(s) => {
+                        f.db.struct_data(s.0).name.clone().unwrap_or_else(Name::missing)
+                    }
+                    CallableDef::EnumVariantId(e) => {
+                        let enum_data = f.db.enum_data(e.parent);
+                        enum_data.variants[e.local_id].name.clone().unwrap_or_else(Name::missing)
+                    }
                 };
                 match def {
-                    CallableDef::Function(_) => write!(f, "fn {}", name)?,
-                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => write!(f, "{}", name)?,
+                    CallableDef::FunctionId(_) => write!(f, "fn {}", name)?,
+                    CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {
+                        write!(f, "{}", name)?
+                    }
                 }
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;
