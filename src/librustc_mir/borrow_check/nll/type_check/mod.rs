@@ -1406,9 +1406,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     _ => ConstraintCategory::Assignment,
                 };
 
-                let place_ty = place.ty(body.body(), tcx).ty;
+                let place_ty = place.ty(&*body, tcx).ty;
                 let place_ty = self.normalize(place_ty, location);
-                let rv_ty = rv.ty(body.body(), tcx);
+                let rv_ty = rv.ty(&*body, tcx);
                 let rv_ty = self.normalize(rv_ty, location);
                 if let Err(terr) =
                     self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
@@ -1460,7 +1460,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ref place,
                 variant_index,
             } => {
-                let place_type = place.ty(body.body(), tcx).ty;
+                let place_type = place.ty(&*body, tcx).ty;
                 let adt = match place_type.kind {
                     ty::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
@@ -1482,7 +1482,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
             }
             StatementKind::AscribeUserType(box(ref place, ref projection), variance) => {
-                let place_ty = place.ty(body.body(), tcx).ty;
+                let place_ty = place.ty(&*body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
                     variance,
@@ -1998,7 +1998,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // While this is located in `nll::typeck` this error is not an NLL error, it's
                     // a required check to make sure that repeated elements implement `Copy`.
                     let span = body.source_info(location).span;
-                    let ty = operand.ty(body.body(), tcx);
+                    let ty = operand.ty(&*body, tcx);
                     if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
                         // To determine if `const_in_array_repeat_expressions` feature gate should
                         // be mentioned, need to check if the rvalue is promotable.
@@ -2052,7 +2052,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Cast(cast_kind, op, ty) => {
                 match cast_kind {
                     CastKind::Pointer(PointerCast::ReifyFnPointer) => {
-                        let fn_sig = op.ty(body.body(), tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(&*body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2081,7 +2081,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
-                        let sig = match op.ty(body.body(), tcx).kind {
+                        let sig = match op.ty(&*body, tcx).kind {
                             ty::Closure(def_id, substs) => {
                                 substs.as_closure().sig_ty(def_id, tcx).fn_sig(tcx)
                             }
@@ -2107,7 +2107,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
-                        let fn_sig = op.ty(body.body(), tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(&*body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2139,7 +2139,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef {
                             def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
-                            substs: tcx.mk_substs_trait(op.ty(body.body(), tcx), &[ty.into()]),
+                            substs: tcx.mk_substs_trait(op.ty(&*body, tcx), &[ty.into()]),
                         };
 
                         self.prove_trait_ref(
@@ -2150,7 +2150,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::MutToConstPointer) => {
-                        let ty_from = match op.ty(body.body(), tcx).kind {
+                        let ty_from = match op.ty(&*body, tcx).kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
                                 mutbl: hir::Mutability::Mutable,
@@ -2198,7 +2198,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ArrayToPointer)  => {
-                        let ty_from = op.ty(body.body(), tcx);
+                        let ty_from = op.ty(&*body, tcx);
 
                         let opt_ty_elem = match ty_from.kind {
                             ty::RawPtr(
@@ -2260,7 +2260,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Misc => {
-                        let ty_from = op.ty(body.body(), tcx);
+                        let ty_from = op.ty(&*body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2327,9 +2327,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(BinOp::Le, left, right)
             | Rvalue::BinaryOp(BinOp::Gt, left, right)
             | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
-                let ty_left = left.ty(body.body(), tcx);
+                let ty_left = left.ty(&*body, tcx);
                 if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.kind {
-                    let ty_right = right.ty(body.body(), tcx);
+                    let ty_right = right.ty(&*body, tcx);
                     let common_ty = self.infcx.next_ty_var(
                         TypeVariableOrigin {
                             kind: TypeVariableOriginKind::MiscVariable,

@@ -231,6 +231,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
         &rustc_peek::SanityCheck,
         &uniform_array_move_out::UniformArrayMoveOut,
     ]);
+    body.ensure_predecessors();
     tcx.alloc_steal_mir(body)
 }
 

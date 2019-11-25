@@ -365,7 +365,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 base: PlaceBase::Local(local),
                 projection: [ProjectionElem::Deref],
-            } if self.body_cache.local_decls[*local].is_user_variable.is_some() =>
+            } if self.body.local_decls[*local].is_user_variable() =>
             {
                 let local_decl = &self.body.local_decls[*local];
                 let suggestion = match local_decl.local_info {
