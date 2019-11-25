@@ -698,7 +698,9 @@ impl<'a> CrateLoader<'a> {
         let has_global_allocator = match &*global_allocator_spans(krate) {
             [span1, span2, ..] => {
                 self.sess.struct_span_err(*span2, "cannot define multiple global allocators")
-                         .span_note(*span1, "the previous global allocator is defined here").emit();
+                    .span_label(*span2, "cannot define a new global allocator")
+                    .span_label(*span1, "previous global allocator is defined here")
+                    .emit();
                 true
             }
             spans => !spans.is_empty()
