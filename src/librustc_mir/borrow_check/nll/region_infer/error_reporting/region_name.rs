@@ -57,8 +57,8 @@ crate enum RegionNameSource {
     AnonRegionFromOutput(Span, String, String),
     /// The region from a type yielded by a generator.
     AnonRegionFromYieldTy(Span, String),
-    /// An anonymous region from a trait object in an async fn.
-    AnonRegionFromTraitObjAsync(Span),
+    /// An anonymous region from an async fn.
+    AnonRegionFromAsyncFn(Span),
 }
 
 /// Records region names that have been assigned before so that we can use the same ones in later
@@ -117,7 +117,7 @@ impl RegionName {
             RegionNameSource::AnonRegionFromUpvar(..) |
             RegionNameSource::AnonRegionFromOutput(..) |
             RegionNameSource::AnonRegionFromYieldTy(..) |
-            RegionNameSource::AnonRegionFromTraitObjAsync(..) => false,
+            RegionNameSource::AnonRegionFromAsyncFn(..) => false,
         }
     }
 
@@ -142,7 +142,7 @@ impl RegionName {
                 diag.span_label(*span, format!("has type `{}`", type_name));
             }
             RegionNameSource::MatchedHirTy(span) |
-            RegionNameSource::AnonRegionFromTraitObjAsync(span) => {
+            RegionNameSource::AnonRegionFromAsyncFn(span) => {
                 diag.span_label(
                     *span,
                     format!("let's call the lifetime of this reference `{}`", self),
@@ -306,14 +306,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     } else {
                         // If we spuriously thought that the region is named, we should let the
                         // system generate a true name for error messages. Currently this can
-                        // happen if we have an elided name in a trait object used in an async fn
-                        // for example: the compiler will generate a region named `'_`, but
-                        // reporting such a name is not actually useful, so we synthesize a name
-                        // for it instead.
+                        // happen if we have an elided name in an async fn for example: the
+                        // compiler will generate a region named `'_`, but reporting such a name is
+                        // not actually useful, so we synthesize a name for it instead.
                         let name = self.synthesize_region_name(renctx);
                         Some(RegionName {
                             name,
-                            source: RegionNameSource::AnonRegionFromTraitObjAsync(span),
+                            source: RegionNameSource::AnonRegionFromAsyncFn(span),
                         })
                     }
                 }

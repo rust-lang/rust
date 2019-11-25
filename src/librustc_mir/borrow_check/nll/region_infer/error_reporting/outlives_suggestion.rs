@@ -89,7 +89,7 @@ impl OutlivesSuggestionBuilder<'a> {
             | RegionNameSource::AnonRegionFromUpvar(..)
             | RegionNameSource::AnonRegionFromOutput(..)
             | RegionNameSource::AnonRegionFromYieldTy(..)
-            | RegionNameSource::AnonRegionFromTraitObjAsync(..) => {
+            | RegionNameSource::AnonRegionFromAsyncFn(..) => {
                 debug!("Region {:?} is NOT suggestable", name);
                 false
             }
