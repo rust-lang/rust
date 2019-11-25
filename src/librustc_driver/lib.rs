@@ -284,6 +284,7 @@ pub fn run_compiler(
         }
 
         let linker = compiler.enter(|queries| {
+            let early_exit = || sess.compile_status().map(|_| None);
             queries.parse()?;
 
             if let Some(ppm) = &sess.opts.pretty {
@@ -309,20 +310,17 @@ pub fn run_compiler(
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
                 }
-                sess.compile_status()?;
-                return Ok(None);
+                return early_exit();
             }
 
             if callbacks.after_parsing(compiler) == Compilation::Stop {
-                sess.compile_status()?;
-                return Ok(None);
+                return early_exit();
             }
 
             if sess.opts.debugging_opts.parse_only ||
                sess.opts.debugging_opts.show_span.is_some() ||
                sess.opts.debugging_opts.ast_json_noexpand {
-                sess.compile_status()?;
-                return Ok(None);
+               return early_exit();
             }
 
             {
@@ -331,15 +329,13 @@ pub fn run_compiler(
                 // Lint plugins are registered; now we can process command line flags.
                 if sess.opts.describe_lints {
                     describe_lints(&sess, &lint_store, true);
-                    sess.compile_status()?;
-                    return Ok(None);
+                    return early_exit();
                 }
             }
 
             queries.expansion()?;
             if callbacks.after_expansion(compiler) == Compilation::Stop {
-                sess.compile_status()?;
-                return Ok(None);
+                return early_exit();
             }
 
             queries.prepare_outputs()?;
@@ -347,16 +343,14 @@ pub fn run_compiler(
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
-                sess.compile_status()?;
-                return Ok(None);
+                return early_exit();
             }
 
             queries.global_ctxt()?;
 
             if sess.opts.debugging_opts.no_analysis ||
                sess.opts.debugging_opts.ast_json {
-                sess.compile_status()?;
-                return Ok(None);
+                   return early_exit();
             }
 
             if sess.opts.debugging_opts.save_analysis {
@@ -390,8 +384,7 @@ pub fn run_compiler(
             queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
             if callbacks.after_analysis(compiler) == Compilation::Stop {
-                sess.compile_status()?;
-                return Ok(None);
+                return early_exit();
             }
 
             if sess.opts.debugging_opts.save_analysis {
