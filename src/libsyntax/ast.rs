@@ -33,6 +33,7 @@ use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP, ExpnId};
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_index::vec::Idx;
@@ -54,7 +55,7 @@ mod tests;
 /// ```
 ///
 /// `'outer` is a label.
-#[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Copy, HashStable_Generic)]
 pub struct Label {
     pub ident: Ident,
 }
@@ -108,6 +109,15 @@ impl PartialEq<Symbol> for Path {
     fn eq(&self, symbol: &Symbol) -> bool {
         self.segments.len() == 1 && {
             self.segments[0].ident.name == *symbol
+        }
+    }
+}
+
+impl<CTX> HashStable<CTX> for Path {
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.segments.len().hash_stable(hcx, hasher);
+        for segment in &self.segments {
+            segment.ident.name.hash_stable(hcx, hasher);
         }
     }
 }
@@ -473,7 +483,7 @@ pub struct Crate {
 /// Possible values inside of compile-time attribute lists.
 ///
 /// E.g., the '..' in `#[name(..)]`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum NestedMetaItem {
     /// A full MetaItem, for recursive meta items.
     MetaItem(MetaItem),
@@ -486,7 +496,7 @@ pub enum NestedMetaItem {
 /// A spanned compile-time attribute item.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct MetaItem {
     pub path: Path,
     pub kind: MetaItemKind,
@@ -496,7 +506,7 @@ pub struct MetaItem {
 /// A compile-time attribute item.
 ///
 /// E.g., `#[test]`, `#[derive(..)]` or `#[feature = "foo"]`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum MetaItemKind {
     /// Word meta item.
     ///
@@ -1426,7 +1436,7 @@ pub enum StrStyle {
 }
 
 /// An AST literal.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Lit {
     /// The original literal token as written in source code.
     pub token: token::Lit,
@@ -2286,7 +2296,7 @@ impl rustc_serialize::Decodable for AttrId {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,
     pub tokens: TokenStream,

@@ -304,18 +304,6 @@ struct FrameSnapshot<'a, 'tcx> {
     stmt: usize,
 }
 
-impl_stable_hash_for!(impl<> for struct Frame<'mir, 'tcx> {
-    body,
-    instance,
-    span,
-    return_to_block,
-    return_place -> (return_place.as_ref().map(|r| &**r)),
-    locals,
-    block,
-    stmt,
-    extra,
-});
-
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
     where Ctx: SnapshotContext<'a>,
 {

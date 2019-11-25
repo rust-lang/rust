@@ -5,7 +5,7 @@
 use arena::DroplessArena;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
-use rustc_macros::symbols;
+use rustc_macros::{symbols, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_serialize::{UseSpecializedDecodable, UseSpecializedEncodable};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
@@ -754,7 +754,7 @@ symbols! {
     }
 }
 
-#[derive(Copy, Clone, Eq)]
+#[derive(Copy, Clone, Eq, HashStable_Generic)]
 pub struct Ident {
     pub name: Symbol,
     pub span: Span,

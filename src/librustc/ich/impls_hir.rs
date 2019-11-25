@@ -9,7 +9,6 @@ use crate::ich::{StableHashingContext, NodeIdHashingMode, Fingerprint};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 use smallvec::SmallVec;
 use std::mem;
-use syntax::ast;
 use syntax::attr;
 
 impl<'a> HashStable<StableHashingContext<'a>> for DefId {
@@ -119,10 +118,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
     }
 }
 
-impl_stable_hash_for!(struct ast::Label {
-    ident
-});
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
@@ -137,10 +132,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
         })
     }
 }
-
-impl_stable_hash_for_spanned!(hir::BinOpKind);
-
-impl_stable_hash_for_spanned!(ast::Name);
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -158,13 +149,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
         })
     }
 }
-
-impl_stable_hash_for_spanned!(usize);
-
-impl_stable_hash_for!(struct ast::Ident {
-    name,
-    span,
-});
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
@@ -234,8 +218,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
     }
 }
 
-impl_stable_hash_for_spanned!(hir::VisibilityKind);
-
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Mod {
@@ -262,9 +244,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
         item_ids_hash.hash_stable(hcx, hasher);
     }
 }
-
-impl_stable_hash_for_spanned!(hir::Variant);
-
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {

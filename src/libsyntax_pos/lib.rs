@@ -18,6 +18,8 @@ use rustc_serialize::{Encodable, Decodable, Encoder, Decoder};
 use rustc_macros::HashStable_Generic;
 
 pub mod source_map;
+mod caching_source_map_view;
+pub use self::caching_source_map_view::CachingSourceMapView;
 
 pub mod edition;
 use edition::Edition;
@@ -34,11 +36,13 @@ pub use symbol::{Symbol, sym};
 mod analyze_source_file;
 pub mod fatal_error;
 
-use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sync::{Lrc, Lock};
+use rustc_data_structures::fx::FxHashMap;
 
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::cmp::{self, Ordering};
 use std::fmt;
 use std::hash::{Hasher, Hash};
@@ -1560,5 +1564,98 @@ fn lookup_line(lines: &[BytePos], pos: BytePos) -> isize {
     match lines.binary_search(&pos) {
         Ok(line) => line as isize,
         Err(line) => line as isize - 1
+    }
+}
+
+/// Requirements for a `StableHashingContext` to be used in this crate.
+/// This is a hack to allow using the `HashStable_Generic` derive macro
+/// instead of implementing everything in librustc.
+pub trait HashStableContext {
+    fn hash_spans(&self) -> bool;
+    fn byte_pos_to_line_and_col(&mut self, byte: BytePos)
+        -> Option<(Lrc<SourceFile>, usize, BytePos)>;
+}
+
+impl<CTX> HashStable<CTX> for Span
+    where CTX: HashStableContext
+{
+    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
+    /// fields (that would be similar to hashing pointers, since those are just
+    /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)
+    /// triple, which stays the same even if the containing `SourceFile` has moved
+    /// within the `SourceMap`.
+    /// Also note that we are hashing byte offsets for the column, not unicode
+    /// codepoint offsets. For the purpose of the hash that's sufficient.
+    /// Also, hashing filenames is expensive so we avoid doing it twice when the
+    /// span starts and ends in the same file, which is almost always the case.
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        const TAG_VALID_SPAN: u8 = 0;
+        const TAG_INVALID_SPAN: u8 = 1;
+        const TAG_EXPANSION: u8 = 0;
+        const TAG_NO_EXPANSION: u8 = 1;
+
+        if !ctx.hash_spans() {
+            return
+        }
+
+        if *self == DUMMY_SP {
+            return std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+        }
+
+        // If this is not an empty or invalid span, we want to hash the last
+        // position that belongs to it, as opposed to hashing the first
+        // position past it.
+        let span = self.data();
+        let (file_lo, line_lo, col_lo) = match ctx.byte_pos_to_line_and_col(span.lo) {
+            Some(pos) => pos,
+            None => {
+                return std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+            }
+        };
+
+        if !file_lo.contains(span.hi) {
+            return std::hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
+        }
+
+        std::hash::Hash::hash(&TAG_VALID_SPAN, hasher);
+        // We truncate the stable ID hash and line and column numbers. The chances
+        // of causing a collision this way should be minimal.
+        std::hash::Hash::hash(&(file_lo.name_hash as u64), hasher);
+
+        let col = (col_lo.0 as u64) & 0xFF;
+        let line = ((line_lo as u64) & 0xFF_FF_FF) << 8;
+        let len = ((span.hi - span.lo).0 as u64) << 32;
+        let line_col_len = col | line | len;
+        std::hash::Hash::hash(&line_col_len, hasher);
+
+        if span.ctxt == SyntaxContext::root() {
+            TAG_NO_EXPANSION.hash_stable(ctx, hasher);
+        } else {
+            TAG_EXPANSION.hash_stable(ctx, hasher);
+
+            // Since the same expansion context is usually referenced many
+            // times, we cache a stable hash of it and hash that instead of
+            // recursing every time.
+            thread_local! {
+                static CACHE: RefCell<FxHashMap<hygiene::ExpnId, u64>> = Default::default();
+            }
+
+            let sub_hash: u64 = CACHE.with(|cache| {
+                let expn_id = span.ctxt.outer_expn();
+
+                if let Some(&sub_hash) = cache.borrow().get(&expn_id) {
+                    return sub_hash;
+                }
+
+                let mut hasher = StableHasher::new();
+                expn_id.expn_data().hash_stable(ctx, &mut hasher);
+                let sub_hash: Fingerprint = hasher.finish();
+                let sub_hash = sub_hash.to_smaller_hash();
+                cache.borrow_mut().insert(expn_id, sub_hash);
+                sub_hash
+            });
+
+            sub_hash.hash_stable(ctx, hasher);
+        }
     }
 }

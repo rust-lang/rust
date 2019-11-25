@@ -14,10 +14,12 @@ use syntax_pos::{self, Span, DUMMY_SP};
 
 use std::fmt;
 use std::mem;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable_Generic;
 
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(HashStable_Generic)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -33,6 +35,7 @@ pub enum BinOpToken {
 
 /// A delimiter token.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+#[derive(HashStable_Generic)]
 pub enum DelimToken {
     /// A round parenthesis (i.e., `(` or `)`).
     Paren,
@@ -190,7 +193,7 @@ fn ident_can_begin_type(name: ast::Name, span: Span, is_raw: bool) -> bool {
     ].contains(&name)
 }
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum TokenKind {
     /* Expression-operator symbols. */
     Eq,
@@ -262,7 +265,7 @@ pub enum TokenKind {
 #[cfg(target_arch = "x86_64")]
 rustc_data_structures::static_assert_size!(TokenKind, 16);
 
-#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
@@ -723,5 +726,13 @@ impl fmt::Debug for Nonterminal {
             NtVis(..) => f.pad("NtVis(..)"),
             NtLifetime(..) => f.pad("NtLifetime(..)"),
         }
+    }
+}
+
+impl<CTX> HashStable<CTX> for Nonterminal
+    where CTX: crate::HashStableContext
+{
+    fn hash_stable(&self, _hcx: &mut CTX, _hasher: &mut StableHasher) {
+        panic!("interpolated tokens should not be present in the HIR")
     }
 }
