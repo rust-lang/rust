@@ -1,57 +1,59 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 
+use std::{fmt, iter, mem};
+use std::rc::Rc;
+
+use either::Either;
+
+use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
+use rustc::infer::canonical::QueryRegionConstraints;
+use rustc::infer::outlives::env::RegionBoundPairs;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::mir::*;
+use rustc::mir::interpret::PanicInfo;
+use rustc::mir::tcx::PlaceTy;
+use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc::traits::{self, ObligationCause, PredicateObligations};
+use rustc::traits::query::{Fallible, NoSolution};
+use rustc::traits::query::type_op;
+use rustc::traits::query::type_op::custom::CustomTypeOp;
+use rustc::ty::{
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
+    TyCtxt, UserType,
+    UserTypeAnnotationIndex,
+};
+use rustc::ty::adjustment::PointerCast;
+use rustc::ty::cast::CastTy;
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::layout::VariantIdx;
+use rustc::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_error_codes::*;
+use rustc_index::vec::{Idx, IndexVec};
+use syntax_pos::{DUMMY_SP, Span};
+
 use crate::borrow_check::borrow_set::BorrowSet;
 use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};
-use crate::borrow_check::nll::member_constraints::MemberConstraintSet;
+use crate::borrow_check::nll::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::borrow_check::nll::facts::AllFacts;
+use crate::borrow_check::nll::member_constraints::MemberConstraintSet;
+use crate::borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use crate::borrow_check::nll::region_infer::values::LivenessValues;
 use crate::borrow_check::nll::region_infer::values::PlaceholderIndex;
 use crate::borrow_check::nll::region_infer::values::PlaceholderIndices;
 use crate::borrow_check::nll::region_infer::values::RegionValueElements;
-use crate::borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use crate::borrow_check::nll::renumber;
+use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::nll::type_check::free_region_relations::{
     CreateResult, UniversalRegionRelations,
 };
 use crate::borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
-use crate::borrow_check::nll::ToRegionVid;
-use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
-use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
-use either::Either;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::mir::interpret::PanicInfo;
-use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{PlaceContext, Visitor, NonMutatingUseContext};
-use rustc::mir::*;
-use rustc::traits::query::type_op;
-use rustc::traits::query::type_op::custom::CustomTypeOp;
-use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{self, ObligationCause, PredicateObligations};
-use rustc::ty::adjustment::{PointerCast};
-use rustc::ty::cast::CastTy;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, SubstsRef, GenericArgKind, UserSubsts};
-use rustc::ty::{
-    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, UserType,
-    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    UserTypeAnnotationIndex,
-};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::vec::{IndexVec, Idx};
-use rustc::ty::layout::VariantIdx;
-use std::rc::Rc;
-use std::{fmt, iter, mem};
-use syntax_pos::{Span, DUMMY_SP};
-
-use rustc_error_codes::*;
+use crate::dataflow::move_paths::MoveData;
+use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -1374,7 +1376,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn check_stmt(&mut self, body: ReadOnlyBodyCache<'_, 'tcx>, stmt: &Statement<'tcx>, location: Location) {
+    fn check_stmt(
+        &mut self,
+        body: ReadOnlyBodyCache<'_, 'tcx>,
+        stmt: &Statement<'tcx>,
+        location: Location)
+    {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
@@ -1985,7 +1992,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_rvalue(&mut self, body: ReadOnlyBodyCache<'_, 'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn check_rvalue(
+        &mut self,
+        body: ReadOnlyBodyCache<'_, 'tcx>,
+        rvalue: &Rvalue<'tcx>,
+        location: Location)
+    {
         let tcx = self.tcx();
 
         match rvalue {
