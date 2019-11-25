@@ -68,16 +68,9 @@ error[E0277]: cannot add `std::string::String` to `std::string::String`
   --> $DIR/issue-39018.rs:29:15
    |
 LL |     let _ = a + b;
-<<<<<<< HEAD
-   |                 ^
-   |                 |
-   |                 expected `&str`, found struct `std::string::String`
-   |                 help: consider borrowing here: `&b`
-=======
    |               ^ no implementation for `std::string::String + std::string::String`
    |
    = help: the trait `std::ops::Add` is not implemented for `std::string::String`
->>>>>>> e6695f0a886... Edited src/test/ui/span/issue-39018.rs with the error code/string that compiler now produces.
 
 error[E0369]: binary operation `+` cannot be applied to type `&std::string::String`
   --> $DIR/issue-39018.rs:30:15
