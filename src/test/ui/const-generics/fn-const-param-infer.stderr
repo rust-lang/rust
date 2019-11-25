@@ -23,8 +23,8 @@ error[E0308]: mismatched types
 LL |     let _ = Checked::<{generic_arg::<u32>}>;
    |                        ^^^^^^^^^^^^^^^^^^ expected `usize`, found `u32`
    |
-   = note: expected fn pointer `fn(usize) -> bool`
-                 found fn item `fn(u32) -> bool {generic_arg::<u32>}`
+   = note: expected fn pointer `fn(usize) -> _`
+                 found fn item `fn(u32) -> _ {generic_arg::<u32>}`
 
 error[E0282]: type annotations needed
   --> $DIR/fn-const-param-infer.rs:22:23

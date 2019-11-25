@@ -17,6 +17,7 @@ use syntax::attr::{SignedInt, UnsignedInt};
 use syntax::symbol::{kw, Symbol};
 
 use std::cell::Cell;
+use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 use std::ops::{Deref, DerefMut};
 
@@ -1081,7 +1082,7 @@ impl<F> FmtPrinter<'a, 'tcx, F> {
     }
 }
 
-impl TyCtxt<'_> {
+impl TyCtxt<'t> {
     // HACK(eddyb) get rid of `def_path_str` and/or pass `Namespace` explicitly always
     // (but also some things just print a `DefId` generally so maybe we need this?)
     fn guess_def_namespace(self, def_id: DefId) -> Namespace {
@@ -1104,11 +1105,14 @@ impl TyCtxt<'_> {
     /// Returns a string identifying this `DefId`. This string is
     /// suitable for user output.
     pub fn def_path_str(self, def_id: DefId) -> String {
+        self.def_path_str_with_substs(def_id, &[])
+    }
+
+    pub fn def_path_str_with_substs(self, def_id: DefId, substs: &'t [GenericArg<'t>]) -> String {
         let ns = self.guess_def_namespace(def_id);
         debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
         let mut s = String::new();
-        let _ = FmtPrinter::new(self, &mut s, ns)
-            .print_def_path(def_id, &[]);
+        let _ = FmtPrinter::new(self, &mut s, ns).print_def_path(def_id, substs);
         s
     }
 }
@@ -1521,7 +1525,10 @@ impl<F: fmt::Write> FmtPrinter<'_, '_, F> {
 // HACK(eddyb) limited to `FmtPrinter` because of `binder_depth`,
 // `region_index` and `used_region_names`.
 impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
-    pub fn pretty_in_binder<T>(mut self, value: &ty::Binder<T>) -> Result<Self, fmt::Error>
+    pub fn name_all_regions<T>(
+        mut self,
+        value: &ty::Binder<T>,
+    ) -> Result<(Self, (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)), fmt::Error>
     where
         T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
     {
@@ -1554,8 +1561,7 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
 
         define_scoped_cx!(self);
 
-        let old_region_index = self.region_index;
-        let mut region_index = old_region_index;
+        let mut region_index = self.region_index;
         let new_value = self.tcx.replace_late_bound_regions(value, |br| {
             let _ = start_or_continue(&mut self, "for<", ", ");
             let br = match br {
@@ -1577,12 +1583,21 @@ impl<F: fmt::Write> FmtPrinter<'_, 'tcx, F> {
                 }
             };
             self.tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br))
-        }).0;
+        });
         start_or_continue(&mut self, "", "> ")?;
 
         self.binder_depth += 1;
         self.region_index = region_index;
-        let mut inner = new_value.print(self)?;
+        Ok((self, new_value))
+    }
+
+    pub fn pretty_in_binder<T>(self, value: &ty::Binder<T>) -> Result<Self, fmt::Error>
+    where
+        T: Print<'tcx, Self, Output = Self, Error = fmt::Error> + TypeFoldable<'tcx>,
+    {
+        let old_region_index = self.region_index;
+        let (new, new_value) = self.name_all_regions(value)?;
+        let mut inner = new_value.0.print(new)?;
         inner.region_index = old_region_index;
         inner.binder_depth -= 1;
         Ok(inner)

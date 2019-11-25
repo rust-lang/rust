@@ -12,8 +12,8 @@ impl<T> Foo for T { /* `foo` is still default here */ }
 fn main() {
     eq(foo::<u8>, bar::<u8>);
     //~^ ERROR mismatched types
-    //~|  expected fn item `fn(isize) -> isize {foo::<u8>}`
-    //~|  found fn item `fn(isize) -> isize {bar::<u8>}`
+    //~|  expected fn item `fn(_) -> _ {foo::<u8>}`
+    //~|  found fn item `fn(_) -> _ {bar::<u8>}`
     //~|  expected fn item, found a different fn item
 
     eq(foo::<u8>, foo::<i8>);
@@ -22,8 +22,8 @@ fn main() {
 
     eq(bar::<String>, bar::<Vec<u8>>);
     //~^ ERROR mismatched types
-    //~|  expected fn item `fn(isize) -> isize {bar::<std::string::String>}`
-    //~|  found fn item `fn(isize) -> isize {bar::<std::vec::Vec<u8>>}`
+    //~|  expected fn item `fn(_) -> _ {bar::<std::string::String>}`
+    //~|  found fn item `fn(_) -> _ {bar::<std::vec::Vec<u8>>}`
     //~|  expected struct `std::string::String`, found struct `std::vec::Vec`
 
     // Make sure we distinguish between trait methods correctly.
