@@ -1075,7 +1075,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```ignore
-    /// unsafe { (&() as *const ()).offest(1) };
+    /// unsafe { (&() as *const ()).offset(1) };
     /// ```
     pub ZST_OFFSET,
     correctness,
