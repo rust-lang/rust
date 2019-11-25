@@ -1617,11 +1617,18 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     ty::Param(_) => true,
                     _ => false,
                 };
-                if !substs.types().all(is_param) {
-                    self.tcx.sess.span_err(
-                        span,
-                        "defining opaque type use does not fully define opaque type",
-                    );
+                let bad_substs: Vec<_> = substs.types().enumerate()
+                    .filter(|(_, ty)| !is_param(ty)).collect();
+                if !bad_substs.is_empty() {
+                    let identity_substs = InternalSubsts::identity_for_item(self.tcx, self.def_id);
+                    for (i, bad_subst) in bad_substs {
+                        self.tcx.sess.span_err(
+                            span,
+                            &format!("defining opaque type use does not fully define opaque type: \
+                            generic parameter `{}` is specified as concrete type `{}`",
+                            identity_substs.type_at(i), bad_subst)
+                        );
+                    }
                 } else if let Some((prev_span, prev_ty, ref prev_indices)) = self.found {
                     let mut ty = concrete_type.walk().fuse();
                     let mut p_ty = prev_ty.walk().fuse();
@@ -2059,6 +2066,9 @@ fn explicit_predicates_of(
                 ty::print::with_no_queries(|| {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);
+                    debug!("explicit_predicates_of({:?}): created opaque type {:?}",
+                        def_id, opaque_ty);
+
 
                     // Collect the bounds, i.e., the `A + B + 'c` in `impl A + B + 'c`.
                     let bounds = AstConv::compute_bounds(
