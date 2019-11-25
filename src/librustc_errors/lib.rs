@@ -20,6 +20,7 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
 use syntax_pos::source_map::SourceMap;
 use syntax_pos::{Loc, Span, MultiSpan};
+use rustc_macros::HashStable_Generic;
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -993,3 +994,8 @@ macro_rules! pluralize {
         if $x != 1 { "s" } else { "" }
     };
 }
+
+// Useful type to use with `Result<>` indicate that an error has already
+// been reported to the user, so no need to continue checking.
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, HashStable_Generic)]
+pub struct ErrorReported;

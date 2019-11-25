@@ -7,7 +7,6 @@ use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
 use syntax::symbol::{Symbol, sym};
-use rustc_macros::HashStable;
 use crate::session::Session;
 
 #[cfg(test)]
@@ -16,10 +15,7 @@ mod tests;
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
-// Useful type to use with `Result<>` indicate that an error has already
-// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct ErrorReported;
+pub use errors::ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
 
