@@ -55,6 +55,10 @@ fn main() {
     f *= 2.0;
     f /= 2.0;
 
+    // no error, overflows are checked by `overflowing_literals`
+    -1.;
+    -(-1.);
+
     // No errors for the following items because they are constant expressions
     enum Foo {
         Bar = -2,
