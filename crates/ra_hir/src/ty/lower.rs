@@ -19,8 +19,8 @@ use hir_def::{
 use ra_arena::map::ArenaMap;
 
 use super::{
-    FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
-    TypeWalk,
+    FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef,
+    Ty, TypeCtor, TypeWalk,
 };
 use crate::{
     db::HirDatabase,
@@ -591,16 +591,15 @@ pub(crate) fn generic_predicates_for_param_query(
         .collect()
 }
 
-pub(crate) fn trait_env(
-    db: &impl HirDatabase,
-    resolver: &Resolver,
-) -> Arc<super::TraitEnvironment> {
-    let predicates = resolver
-        .where_predicates_in_scope()
-        .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
-        .collect::<Vec<_>>();
+impl TraitEnvironment {
+    pub(crate) fn lower(db: &impl HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
+        let predicates = resolver
+            .where_predicates_in_scope()
+            .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
+            .collect::<Vec<_>>();
 
-    Arc::new(super::TraitEnvironment { predicates })
+        Arc::new(TraitEnvironment { predicates })
+    }
 }
 
 /// Resolve the where clause(s) of an item with generics.

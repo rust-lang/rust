@@ -15,9 +15,9 @@ use crate::{
     db::HirDatabase,
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     ty::{
-        autoderef, method_resolution, op, CallableDef, InferTy, IntTy, Mutability, Namespace,
-        Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
-        Uncertain,
+        autoderef, method_resolution, op, traits::InEnvironment, CallableDef, InferTy, IntTy,
+        Mutability, Namespace, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
+        TypeCtor, TypeWalk, Uncertain,
     },
     Adt, Name,
 };
@@ -245,8 +245,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let canonicalized = self.canonicalizer().canonicalize_ty(receiver_ty);
                 let ty = autoderef::autoderef(
                     self.db,
-                    &self.resolver.clone(),
-                    canonicalized.value.clone(),
+                    self.resolver.krate(),
+                    InEnvironment {
+                        value: canonicalized.value.clone(),
+                        environment: self.trait_env.clone(),
+                    },
                 )
                 .find_map(|derefed_ty| match canonicalized.decanonicalize_ty(derefed_ty.value) {
                     Ty::Apply(a_ty) => match a_ty.ctor {
@@ -337,16 +340,25 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::UnaryOp { expr, op } => {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 match op {
-                    UnaryOp::Deref => {
-                        let canonicalized = self.canonicalizer().canonicalize_ty(inner_ty);
-                        if let Some(derefed_ty) =
-                            autoderef::deref(self.db, &self.resolver, &canonicalized.value)
-                        {
-                            canonicalized.decanonicalize_ty(derefed_ty.value)
-                        } else {
-                            Ty::Unknown
+                    UnaryOp::Deref => match self.resolver.krate() {
+                        Some(krate) => {
+                            let canonicalized = self.canonicalizer().canonicalize_ty(inner_ty);
+                            match autoderef::deref(
+                                self.db,
+                                krate,
+                                InEnvironment {
+                                    value: &canonicalized.value,
+                                    environment: self.trait_env.clone(),
+                                },
+                            ) {
+                                Some(derefed_ty) => {
+                                    canonicalized.decanonicalize_ty(derefed_ty.value)
+                                }
+                                None => Ty::Unknown,
+                            }
                         }
-                    }
+                        None => Ty::Unknown,
+                    },
                     UnaryOp::Neg => {
                         match &inner_ty {
                             Ty::Apply(a_ty) => match a_ty.ctor {
