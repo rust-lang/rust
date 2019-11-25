@@ -37,7 +37,7 @@ impl EarlyLintPass for DerefAddrOf {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if_chain! {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.kind;
-            if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).kind;
+            if let ExprKind::AddrOf(_, _, ref addrof_target) = without_parens(deref_target).kind;
             if !in_macro(addrof_target.span);
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -80,7 +80,7 @@ impl EarlyLintPass for RefInDeref {
         if_chain! {
             if let ExprKind::Field(ref object, _) = e.kind;
             if let ExprKind::Paren(ref parened) = object.kind;
-            if let ExprKind::AddrOf(_, ref inner) = parened.kind;
+            if let ExprKind::AddrOf(_, _, ref inner) = parened.kind;
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(

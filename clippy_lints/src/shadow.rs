@@ -313,7 +313,7 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
         return;
     }
     match expr.kind {
-        ExprKind::Unary(_, ref e) | ExprKind::Field(ref e, _) | ExprKind::AddrOf(_, ref e) | ExprKind::Box(ref e) => {
+        ExprKind::Unary(_, ref e) | ExprKind::Field(ref e, _) | ExprKind::AddrOf(_, _, ref e) | ExprKind::Box(ref e) => {
             check_expr(cx, e, bindings)
         },
         ExprKind::Block(ref block, _) | ExprKind::Loop(ref block, _, _) => check_block(cx, block, bindings),
@@ -365,7 +365,7 @@ fn check_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty, bindings: &mut V
 
 fn is_self_shadow(name: Name, expr: &Expr) -> bool {
     match expr.kind {
-        ExprKind::Box(ref inner) | ExprKind::AddrOf(_, ref inner) => is_self_shadow(name, inner),
+        ExprKind::Box(ref inner) | ExprKind::AddrOf(_, _, ref inner) => is_self_shadow(name, inner),
         ExprKind::Block(ref block, _) => {
             block.stmts.is_empty() && block.expr.as_ref().map_or(false, |e| is_self_shadow(name, e))
         },

@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                             let mut derefs_needed = ptr_depth;
                             let mut cur_expr = param;
                             while derefs_needed > 0  {
-                                if let ExprKind::AddrOf(_, ref inner_expr) = cur_expr.kind {
+                                if let ExprKind::AddrOf(_, _, ref inner_expr) = cur_expr.kind {
                                     derefs_needed -= 1;
                                     cur_expr = inner_expr;
                                 } else {

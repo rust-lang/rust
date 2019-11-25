@@ -73,7 +73,7 @@ fn span_useless_format<T: LintContext>(cx: &T, span: Span, help: &str, mut sugg:
 
 fn on_argumentv1_new<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, arms: &'tcx [Arm]) -> Option<String> {
     if_chain! {
-        if let ExprKind::AddrOf(_, ref format_args) = expr.kind;
+        if let ExprKind::AddrOf(_, _, ref format_args) = expr.kind;
         if let ExprKind::Array(ref elems) = arms[0].body.kind;
         if elems.len() == 1;
         if let Some(args) = match_function_call(cx, &elems[0], &paths::FMT_ARGUMENTV1_NEW);
@@ -115,13 +115,13 @@ fn on_new_v1<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Option<S
         if let Some(args) = match_function_call(cx, expr, &paths::FMT_ARGUMENTS_NEW_V1);
         if args.len() == 2;
         // Argument 1 in `new_v1()`
-        if let ExprKind::AddrOf(_, ref arr) = args[0].kind;
+        if let ExprKind::AddrOf(_, _, ref arr) = args[0].kind;
         if let ExprKind::Array(ref pieces) = arr.kind;
         if pieces.len() == 1;
         if let ExprKind::Lit(ref lit) = pieces[0].kind;
         if let LitKind::Str(ref s, _) = lit.node;
         // Argument 2 in `new_v1()`
-        if let ExprKind::AddrOf(_, ref arg1) = args[1].kind;
+        if let ExprKind::AddrOf(_, _, ref arg1) = args[1].kind;
         if let ExprKind::Match(ref matchee, ref arms, MatchSource::Normal) = arg1.kind;
         if arms.len() == 1;
         if let ExprKind::Tup(ref tup) = matchee.kind;
@@ -143,13 +143,13 @@ fn on_new_v1_fmt<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Opti
         if args.len() == 3;
         if check_unformatted(&args[2]);
         // Argument 1 in `new_v1_formatted()`
-        if let ExprKind::AddrOf(_, ref arr) = args[0].kind;
+        if let ExprKind::AddrOf(_, _, ref arr) = args[0].kind;
         if let ExprKind::Array(ref pieces) = arr.kind;
         if pieces.len() == 1;
         if let ExprKind::Lit(ref lit) = pieces[0].kind;
         if let LitKind::Str(..) = lit.node;
         // Argument 2 in `new_v1_formatted()`
-        if let ExprKind::AddrOf(_, ref arg1) = args[1].kind;
+        if let ExprKind::AddrOf(_, _, ref arg1) = args[1].kind;
         if let ExprKind::Match(ref matchee, ref arms, MatchSource::Normal) = arg1.kind;
         if arms.len() == 1;
         if let ExprKind::Tup(ref tup) = matchee.kind;
@@ -173,7 +173,7 @@ fn on_new_v1_fmt<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> Opti
 /// ```
 fn check_unformatted(expr: &Expr) -> bool {
     if_chain! {
-        if let ExprKind::AddrOf(_, ref expr) = expr.kind;
+        if let ExprKind::AddrOf(_, _, ref expr) = expr.kind;
         if let ExprKind::Array(ref exprs) = expr.kind;
         if exprs.len() == 1;
         // struct `core::fmt::rt::v1::Argument`

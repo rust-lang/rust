@@ -90,7 +90,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
                         // argument's type. All that's left is to get
                         // replacee's path.
                         let replaced_path = match func_args[0].kind {
-                            ExprKind::AddrOf(Mutability::Mutable, ref replaced) => {
+                            ExprKind::AddrOf(_, Mutability::Mutable, ref replaced) => {
                                 if let ExprKind::Path(QPath::Resolved(None, ref replaced_path)) = replaced.kind {
                                     replaced_path
                                 } else {

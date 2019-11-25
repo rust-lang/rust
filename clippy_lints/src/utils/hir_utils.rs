@@ -78,7 +78,7 @@ impl<'a, 'tcx> SpanlessEq<'a, 'tcx> {
         }
 
         match (&left.kind, &right.kind) {
-            (&ExprKind::AddrOf(l_mut, ref le), &ExprKind::AddrOf(r_mut, ref re)) => {
+            (&ExprKind::AddrOf(_, l_mut, ref le), &ExprKind::AddrOf(_, r_mut, ref re)) => {
                 l_mut == r_mut && self.eq_expr(le, re)
             },
             (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
@@ -398,7 +398,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
         std::mem::discriminant(&e.kind).hash(&mut self.s);
 
         match e.kind {
-            ExprKind::AddrOf(m, ref e) => {
+            ExprKind::AddrOf(_, m, ref e) => {
                 m.hash(&mut self.s);
                 self.hash_expr(e);
             },

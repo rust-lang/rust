@@ -77,14 +77,14 @@ fn extract_call<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, e: &'tcx Expr) -> Optio
                         if let ExprKind::Tup(ref conditions) = headerexpr.kind;
                         if conditions.len() == 2;
                         then {
-                            if let ExprKind::AddrOf(_, ref lhs) = conditions[0].kind {
+                            if let ExprKind::AddrOf(_, _, ref lhs) = conditions[0].kind {
                                 let mut visitor = MutArgVisitor::new(cx);
                                 visitor.visit_expr(lhs);
                                 if let Some(span) = visitor.expr_span() {
                                     return Some(span);
                                 }
                             }
-                            if let ExprKind::AddrOf(_, ref rhs) = conditions[1].kind {
+                            if let ExprKind::AddrOf(_, _, ref rhs) = conditions[1].kind {
                                 let mut visitor = MutArgVisitor::new(cx);
                                 visitor.visit_expr(rhs);
                                 if let Some(span) = visitor.expr_span() {
@@ -128,7 +128,7 @@ impl<'a, 'tcx> MutArgVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for MutArgVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         match expr.kind {
-            ExprKind::AddrOf(Mutability::Mutable, _) => {
+            ExprKind::AddrOf(_, Mutability::Mutable, _) => {
                 self.found = true;
                 return;
             },

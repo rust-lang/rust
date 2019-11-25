@@ -60,7 +60,7 @@ fn check_arguments<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arguments: &[Expr], typ
                         mutbl: Mutability::Immutable,
                         ..
                     }) => {
-                        if let ExprKind::AddrOf(Mutability::Mutable, _) = argument.kind {
+                        if let ExprKind::AddrOf(_, Mutability::Mutable, _) = argument.kind {
                             span_lint(
                                 cx,
                                 UNNECESSARY_MUT_PASSED,

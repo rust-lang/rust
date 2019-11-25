@@ -41,7 +41,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         if e.span.from_expansion() || self.derived_item.is_some() {
             return;
         }
-        if let ExprKind::AddrOf(Mutability::Immutable, ref inner) = e.kind {
+        if let ExprKind::AddrOf(_, Mutability::Immutable, ref inner) = e.kind {
             if let ty::Ref(..) = cx.tables.expr_ty(inner).kind {
                 for adj3 in cx.tables.expr_adjustments(e).windows(3) {
                     if let [Adjustment {

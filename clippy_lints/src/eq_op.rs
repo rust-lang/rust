@@ -86,7 +86,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                     // do not suggest to dereference literals
                     (&ExprKind::Lit(..), _) | (_, &ExprKind::Lit(..)) => {},
                     // &foo == &bar
-                    (&ExprKind::AddrOf(_, ref l), &ExprKind::AddrOf(_, ref r)) => {
+                    (&ExprKind::AddrOf(_, _, ref l), &ExprKind::AddrOf(_, _, ref r)) => {
                         let lty = cx.tables.expr_ty(l);
                         let rty = cx.tables.expr_ty(r);
                         let lcpy = is_copy(cx, lty);
@@ -143,7 +143,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         }
                     },
                     // &foo == bar
-                    (&ExprKind::AddrOf(_, ref l), _) => {
+                    (&ExprKind::AddrOf(_, _, ref l), _) => {
                         let lty = cx.tables.expr_ty(l);
                         let lcpy = is_copy(cx, lty);
                         if (requires_ref || lcpy)
@@ -161,7 +161,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         }
                     },
                     // foo == &bar
-                    (_, &ExprKind::AddrOf(_, ref r)) => {
+                    (_, &ExprKind::AddrOf(_, _, ref r)) => {
                         let rty = cx.tables.expr_ty(r);
                         let rcpy = is_copy(cx, rty);
                         if (requires_ref || rcpy)
