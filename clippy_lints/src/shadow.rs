@@ -313,9 +313,10 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
         return;
     }
     match expr.kind {
-        ExprKind::Unary(_, ref e) | ExprKind::Field(ref e, _) | ExprKind::AddrOf(_, _, ref e) | ExprKind::Box(ref e) => {
-            check_expr(cx, e, bindings)
-        },
+        ExprKind::Unary(_, ref e)
+        | ExprKind::Field(ref e, _)
+        | ExprKind::AddrOf(_, _, ref e)
+        | ExprKind::Box(ref e) => check_expr(cx, e, bindings),
         ExprKind::Block(ref block, _) | ExprKind::Loop(ref block, _, _) => check_block(cx, block, bindings),
         // ExprKind::Call
         // ExprKind::MethodCall

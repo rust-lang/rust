@@ -1504,7 +1504,9 @@ fn make_iterator_snippet(cx: &LateContext<'_, '_>, arg: &Expr, applic_ref: &mut 
         // (&x).into_iter() ==> x.iter()
         // (&mut x).into_iter() ==> x.iter_mut()
         match &arg.kind {
-            ExprKind::AddrOf(_, mutability, arg_inner) if has_iter_method(cx, cx.tables.expr_ty(&arg_inner)).is_some() => {
+            ExprKind::AddrOf(_, mutability, arg_inner)
+                if has_iter_method(cx, cx.tables.expr_ty(&arg_inner)).is_some() =>
+            {
                 let meth_name = match mutability {
                     Mutability::Mutable => "iter_mut",
                     Mutability::Immutable => "iter",
@@ -1514,7 +1516,7 @@ fn make_iterator_snippet(cx: &LateContext<'_, '_>, arg: &Expr, applic_ref: &mut 
                     sugg::Sugg::hir_with_applicability(cx, &arg_inner, "_", applic_ref).maybe_par(),
                     meth_name,
                 )
-            },
+            }
             _ => format!(
                 "{}.into_iter()",
                 sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
@@ -2090,7 +2092,9 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                         }
                     },
                     ExprKind::Assign(ref lhs, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
-                    ExprKind::AddrOf(_, mutability, _) if mutability == Mutability::Mutable => *state = VarState::DontWarn,
+                    ExprKind::AddrOf(_, mutability, _) if mutability == Mutability::Mutable => {
+                        *state = VarState::DontWarn
+                    },
                     _ => (),
                 }
             }
