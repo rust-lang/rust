@@ -47,9 +47,9 @@ impl Documentation {
                 }
             }
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => docs_from_ast(&it.0.source(db).value),
+                AdtId::StructId(it) => docs_from_ast(&it.source(db).value),
                 AdtId::EnumId(it) => docs_from_ast(&it.source(db).value),
-                AdtId::UnionId(it) => docs_from_ast(&it.0.source(db).value),
+                AdtId::UnionId(it) => docs_from_ast(&it.source(db).value),
             },
             AttrDefId::EnumVariantId(it) => {
                 let src = it.parent.child_source(db);

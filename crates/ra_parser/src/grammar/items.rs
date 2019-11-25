@@ -6,8 +6,8 @@ mod traits;
 mod use_item;
 
 pub(crate) use self::{
-    expressions::{match_arm_list, record_field_list},
     adt::{enum_variant_list, record_field_def_list},
+    expressions::{match_arm_list, record_field_list},
     traits::{impl_item_list, trait_item_list},
     use_item::use_tree_list,
 };

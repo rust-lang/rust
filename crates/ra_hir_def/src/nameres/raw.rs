@@ -176,7 +176,7 @@ pub(super) struct DefData {
 pub(super) enum DefKind {
     Function(FileAstId<ast::FnDef>),
     Struct(FileAstId<ast::StructDef>),
-    Union(FileAstId<ast::StructDef>),
+    Union(FileAstId<ast::UnionDef>),
     Enum(FileAstId<ast::EnumDef>),
     Const(FileAstId<ast::ConstDef>),
     Static(FileAstId<ast::StaticDef>),
@@ -246,11 +246,12 @@ impl RawItemsCollector {
             ast::ModuleItem::StructDef(it) => {
                 let id = self.source_ast_id_map.ast_id(&it);
                 let name = it.name();
-                if it.is_union() {
-                    (DefKind::Union(id), name)
-                } else {
-                    (DefKind::Struct(id), name)
-                }
+                (DefKind::Struct(id), name)
+            }
+            ast::ModuleItem::UnionDef(it) => {
+                let id = self.source_ast_id_map.ast_id(&it);
+                let name = it.name();
+                (DefKind::Union(id), name)
             }
             ast::ModuleItem::EnumDef(it) => {
                 (DefKind::Enum(self.source_ast_id_map.ast_id(&it)), it.name())

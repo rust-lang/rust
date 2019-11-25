@@ -51,13 +51,13 @@ impl HasSource for StructField {
 impl HasSource for Struct {
     type Ast = ast::StructDef;
     fn source(self, db: &impl DefDatabase) -> Source<ast::StructDef> {
-        self.id.0.source(db)
+        self.id.source(db)
     }
 }
 impl HasSource for Union {
-    type Ast = ast::StructDef;
-    fn source(self, db: &impl DefDatabase) -> Source<ast::StructDef> {
-        self.id.0.source(db)
+    type Ast = ast::UnionDef;
+    fn source(self, db: &impl DefDatabase) -> Source<ast::UnionDef> {
+        self.id.source(db)
     }
 }
 impl HasSource for Enum {

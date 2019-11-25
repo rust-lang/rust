@@ -82,6 +82,12 @@ fn crate_def_map_smoke_test() {
 
         //- /foo/bar.rs
         pub struct Baz;
+
+        union U {
+            to_be: bool,
+            not_to_be: u8,
+        }
+
         enum E { V }
         ",
     );
@@ -99,6 +105,7 @@ fn crate_def_map_smoke_test() {
         ⋮crate::foo::bar
         ⋮Baz: t v
         ⋮E: t
+        ⋮U: t v
     "###)
 }
 

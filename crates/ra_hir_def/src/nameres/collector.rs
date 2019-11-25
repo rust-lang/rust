@@ -25,7 +25,7 @@ use crate::{
     per_ns::PerNs,
     AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplId,
     Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
-    StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
+    TraitId, TypeAliasLoc, UnionId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -698,14 +698,12 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Struct(ast_id) => {
-                let id = StructOrUnionId::from_ast_id(ctx, ast_id).into();
-                let s = StructId(id).into();
-                PerNs::both(s, s)
+                let id = StructId::from_ast_id(ctx, ast_id).into();
+                PerNs::both(id, id)
             }
             raw::DefKind::Union(ast_id) => {
-                let id = StructOrUnionId::from_ast_id(ctx, ast_id).into();
-                let u = UnionId(id).into();
-                PerNs::both(u, u)
+                let id = UnionId::from_ast_id(ctx, ast_id).into();
+                PerNs::both(id, id)
             }
             raw::DefKind::Enum(ast_id) => PerNs::types(EnumId::from_ast_id(ctx, ast_id).into()),
             raw::DefKind::Const(ast_id) => {

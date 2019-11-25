@@ -18,8 +18,8 @@ use crate::{
         CrateDefMap,
     },
     AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, FunctionId, FunctionLoc, GenericDefId,
-    ImplId, ItemLoc, ModuleId, StaticId, StaticLoc, StructOrUnionId, TraitId, TypeAliasId,
-    TypeAliasLoc,
+    ImplId, ItemLoc, ModuleId, StaticId, StaticLoc, StructId, TraitId, TypeAliasId, TypeAliasLoc,
+    UnionId,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
@@ -27,7 +27,9 @@ pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
     fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
     #[salsa::interned]
-    fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> StructOrUnionId;
+    fn intern_struct(&self, loc: ItemLoc<ast::StructDef>) -> StructId;
+    #[salsa::interned]
+    fn intern_union(&self, loc: ItemLoc<ast::UnionDef>) -> UnionId;
     #[salsa::interned]
     fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> EnumId;
     #[salsa::interned]
@@ -57,7 +59,9 @@ pub trait DefDatabase: InternDatabase + AstDatabase {
     fn crate_def_map(&self, krate: CrateId) -> Arc<CrateDefMap>;
 
     #[salsa::invoke(StructData::struct_data_query)]
-    fn struct_data(&self, id: StructOrUnionId) -> Arc<StructData>;
+    fn struct_data(&self, id: StructId) -> Arc<StructData>;
+    #[salsa::invoke(StructData::union_data_query)]
+    fn union_data(&self, id: UnionId) -> Arc<StructData>;
 
     #[salsa::invoke(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;

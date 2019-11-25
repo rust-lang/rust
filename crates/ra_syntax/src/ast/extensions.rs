@@ -196,17 +196,6 @@ impl StructKind {
 }
 
 impl ast::StructDef {
-    pub fn is_union(&self) -> bool {
-        for child in self.syntax().children_with_tokens() {
-            match child.kind() {
-                T![struct] => return false,
-                T![union] => return true,
-                _ => (),
-            }
-        }
-        false
-    }
-
     pub fn kind(&self) -> StructKind {
         StructKind::from_node(self)
     }

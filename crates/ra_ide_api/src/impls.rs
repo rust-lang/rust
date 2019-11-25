@@ -49,6 +49,10 @@ fn impls_for_def(
             let src = hir::Source { file_id: position.file_id.into(), value: def.clone() };
             hir::Enum::from_source(db, src)?.ty(db)
         }
+        ast::NominalDef::UnionDef(def) => {
+            let src = hir::Source { file_id: position.file_id.into(), value: def.clone() };
+            hir::Union::from_source(db, src)?.ty(db)
+        }
     };
 
     let krate = module.krate();

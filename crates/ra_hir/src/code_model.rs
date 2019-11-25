@@ -320,7 +320,7 @@ pub struct Struct {
 
 impl Struct {
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.0.module(db) }
+        Module { id: self.id.module(db) }
     }
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
@@ -369,11 +369,11 @@ pub struct Union {
 
 impl Union {
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
-        db.struct_data(self.id.into()).name.clone()
+        db.union_data(self.id).name.clone()
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {
-        Module { id: self.id.0.module(db) }
+        Module { id: self.id.module(db) }
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {

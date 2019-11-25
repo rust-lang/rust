@@ -293,7 +293,8 @@ Grammar(
                 "TypeParamsOwner",
                 "AttrsOwner",
                 "DocCommentsOwner"
-            ]
+            ],
+            options: ["RecordFieldDefList"],
         ),
         "RecordFieldDefList": (collections: [("fields", "RecordFieldDef")]),
         "RecordFieldDef": (
@@ -398,7 +399,7 @@ Grammar(
         ]),
 
         "NominalDef": (
-            enum: ["StructDef", "EnumDef"],
+            enum: ["StructDef", "EnumDef", "UnionDef"],
             traits: [
                 "NameOwner",
                 "TypeParamsOwner",
@@ -406,9 +407,9 @@ Grammar(
             ],
         ),
         "ModuleItem": (
-            enum: ["StructDef", "EnumDef", "FnDef", "TraitDef", "TypeAliasDef", "ImplBlock",
+            enum: ["StructDef", "UnionDef", "EnumDef", "FnDef", "TraitDef", "TypeAliasDef", "ImplBlock",
                    "UseItem", "ExternCrateItem", "ConstDef", "StaticDef", "Module" ],
-            traits: ["AttrsOwner"]
+            traits: ["AttrsOwner"],
         ),
         "ImplItem": (
             enum: ["FnDef", "TypeAliasDef", "ConstDef"],
