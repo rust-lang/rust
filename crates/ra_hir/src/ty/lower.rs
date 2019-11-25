@@ -176,7 +176,7 @@ impl Ty {
                         Some(associated_ty) => {
                             // FIXME handle type parameters on the segment
                             Ty::Projection(ProjectionTy {
-                                associated_ty,
+                                associated_ty: associated_ty.id,
                                 parameters: trait_ref.substs,
                             })
                         }
@@ -268,7 +268,10 @@ impl Ty {
                     .fill_with_unknown()
                     .build();
                 // FIXME handle type parameters on the segment
-                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs });
+                return Ty::Projection(ProjectionTy {
+                    associated_ty: associated_ty.id,
+                    parameters: substs,
+                });
             }
         }
         Ty::Unknown
@@ -508,7 +511,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
             let associated_ty =
                 match trait_ref.trait_.associated_type_by_name_including_super_traits(db, &name) {
                     None => return GenericPredicate::Error,
-                    Some(t) => t,
+                    Some(t) => t.id,
                 };
             let projection_ty =
                 ProjectionTy { associated_ty, parameters: trait_ref.substs.clone() };

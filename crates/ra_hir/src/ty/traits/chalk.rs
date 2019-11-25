@@ -9,7 +9,7 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 
-use hir_def::{lang_item::LangItemTarget, GenericDefId};
+use hir_def::{lang_item::LangItemTarget, ContainerId, GenericDefId, Lookup, TypeAliasId};
 use hir_expand::name;
 
 use ra_db::salsa::{InternId, InternKey};
@@ -203,15 +203,15 @@ impl ToChalk for Impl {
     }
 }
 
-impl ToChalk for TypeAlias {
+impl ToChalk for TypeAliasId {
     type Chalk = chalk_ir::TypeId;
 
     fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TypeId {
-        chalk_ir::TypeId(id_to_chalk(self.id))
+        chalk_ir::TypeId(id_to_chalk(self))
     }
 
-    fn from_chalk(_db: &impl HirDatabase, type_alias_id: chalk_ir::TypeId) -> TypeAlias {
-        TypeAlias { id: id_from_chalk(type_alias_id.0) }
+    fn from_chalk(_db: &impl HirDatabase, type_alias_id: chalk_ir::TypeId) -> TypeAliasId {
+        id_from_chalk(type_alias_id.0)
     }
 }
 
@@ -504,21 +504,21 @@ pub(crate) fn associated_ty_data_query(
     id: TypeId,
 ) -> Arc<AssociatedTyDatum<ChalkIr>> {
     debug!("associated_ty_data {:?}", id);
-    let type_alias: TypeAlias = from_chalk(db, id);
-    let trait_ = match type_alias.container(db) {
-        Some(crate::Container::Trait(t)) => t,
+    let type_alias: TypeAliasId = from_chalk(db, id);
+    let trait_ = match type_alias.lookup(db).container {
+        ContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
     };
-    let generic_params = db.generic_params(type_alias.id.into());
+    let generic_params = db.generic_params(type_alias.into());
     let bound_data = chalk_rust_ir::AssociatedTyDatumBound {
         // FIXME add bounds and where clauses
         bounds: vec![],
         where_clauses: vec![],
     };
     let datum = AssociatedTyDatum {
-        trait_id: trait_.to_chalk(db),
+        trait_id: Trait::from(trait_).to_chalk(db),
         id,
-        name: lalrpop_intern::intern(&type_alias.name(db).to_string()),
+        name: lalrpop_intern::intern(&db.type_alias_data(type_alias).name.to_string()),
         binders: make_binders(bound_data, generic_params.count_params_including_parent()),
     };
     Arc::new(datum)
@@ -566,7 +566,7 @@ pub(crate) fn trait_datum_query(
         .items(db)
         .into_iter()
         .filter_map(|trait_item| match trait_item {
-            crate::AssocItem::TypeAlias(type_alias) => Some(type_alias),
+            crate::AssocItem::TypeAlias(type_alias) => Some(type_alias.id),
             _ => None,
         })
         .map(|type_alias| type_alias.to_chalk(db))
@@ -785,7 +785,8 @@ fn type_alias_associated_ty_value(
         .trait_;
     let assoc_ty = trait_
         .associated_type_by_name(db, &type_alias.name(db))
-        .expect("assoc ty value should not exist"); // validated when building the impl data as well
+        .expect("assoc ty value should not exist") // validated when building the impl data as well
+        .id;
     let generic_params = db.generic_params(impl_block.id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
     let ty = db.type_for_def(type_alias.into(), crate::ty::Namespace::Types).subst(&bound_vars);
@@ -820,7 +821,8 @@ fn closure_fn_trait_output_assoc_ty_value(
 
     let output_ty_id = fn_once_trait
         .associated_type_by_name(db, &name::OUTPUT_TYPE)
-        .expect("assoc ty value should not exist");
+        .expect("assoc ty value should not exist")
+        .id;
 
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: output_ty.to_chalk(db) };
 

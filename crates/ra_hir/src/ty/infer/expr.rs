@@ -101,7 +101,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: pat_ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: into_iter_item_alias,
+                                associated_ty: into_iter_item_alias.id,
                                 parameters: Substs::single(iterable_ty),
                             },
                         };
@@ -137,8 +137,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
                     Substs(sig_tys.into()),
                 );
-                let closure_ty =
-                    Ty::apply_one(TypeCtor::Closure { def: self.owner, expr: tgt_expr }, sig_ty);
+                let closure_ty = Ty::apply_one(
+                    TypeCtor::Closure { def: self.owner.into(), expr: tgt_expr },
+                    sig_ty,
+                );
 
                 // Eagerly try to relate the closure type with the expected
                 // type, otherwise we often won't have enough information to
@@ -281,7 +283,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: future_future_output_alias,
+                                associated_ty: future_future_output_alias.id,
                                 parameters: Substs::single(inner_ty),
                             },
                         };
@@ -300,7 +302,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: ops_try_ok_alias,
+                                associated_ty: ops_try_ok_alias.id,
                                 parameters: Substs::single(inner_ty),
                             },
                         };
