@@ -8,10 +8,14 @@ use std::iter::successors;
 use hir_def::{lang_item::LangItemTarget, resolver::Resolver};
 use hir_expand::name;
 use log::{info, warn};
+use ra_db::CrateId;
 
 use crate::{db::HirDatabase, Trait};
 
-use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
+use super::{
+    traits::{InEnvironment, Solution},
+    Canonical, Substs, Ty, TypeWalk,
+};
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
@@ -31,16 +35,17 @@ pub(crate) fn deref(
     if let Some(derefed) = ty.value.builtin_deref() {
         Some(Canonical { value: derefed, num_vars: ty.num_vars })
     } else {
-        deref_by_trait(db, resolver, ty)
+        let krate = resolver.krate()?;
+        let environment = super::lower::trait_env(db, resolver);
+        deref_by_trait(db, krate, InEnvironment { value: ty, environment })
     }
 }
 
 fn deref_by_trait(
     db: &impl HirDatabase,
-    resolver: &Resolver,
-    ty: &Canonical<Ty>,
+    krate: CrateId,
+    ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
-    let krate = resolver.krate()?;
     let deref_trait = match db.lang_item(krate.into(), "deref".into())? {
         LangItemTarget::TraitId(t) => Trait::from(t),
         _ => return None,
@@ -56,10 +61,8 @@ fn deref_by_trait(
 
     // FIXME make the Canonical handling nicer
 
-    let env = super::lower::trait_env(db, resolver);
-
     let parameters = Substs::build_for_generics(&generic_params)
-        .push(ty.value.clone().shift_bound_vars(1))
+        .push(ty.value.value.clone().shift_bound_vars(1))
         .build();
 
     let projection = super::traits::ProjectionPredicate {
@@ -69,9 +72,9 @@ fn deref_by_trait(
 
     let obligation = super::Obligation::Projection(projection);
 
-    let in_env = super::traits::InEnvironment { value: obligation, environment: env };
+    let in_env = InEnvironment { value: obligation, environment: ty.environment };
 
-    let canonical = super::Canonical { num_vars: 1 + ty.num_vars, value: in_env };
+    let canonical = super::Canonical { num_vars: 1 + ty.value.num_vars, value: in_env };
 
     let solution = db.trait_solve(krate.into(), canonical)?;
 
@@ -89,14 +92,14 @@ fn deref_by_trait(
             // the case.
             for i in 1..vars.0.num_vars {
                 if vars.0.value[i] != Ty::Bound((i - 1) as u32) {
-                    warn!("complex solution for derefing {:?}: {:?}, ignoring", ty, solution);
+                    warn!("complex solution for derefing {:?}: {:?}, ignoring", ty.value, solution);
                     return None;
                 }
             }
             Some(Canonical { value: vars.0.value[0].clone(), num_vars: vars.0.num_vars })
         }
         Solution::Ambig(_) => {
-            info!("Ambiguous solution for derefing {:?}: {:?}", ty, solution);
+            info!("Ambiguous solution for derefing {:?}: {:?}", ty.value, solution);
             None
         }
     }
