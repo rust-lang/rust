@@ -455,7 +455,9 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
         match HOOK {
             // Some platforms know that printing to stderr won't ever actually
             // print anything, and if that's the case we can skip the default
-            // hook.
+            // hook. Since string formatting happens lazily when calling `payload`
+            // methods, this means that with libpanic_abort, we don't format
+            // the string at all!
             Hook::Default if panic_output().is_none() => {}
             Hook::Default => {
                 info.set_payload(payload.get());
