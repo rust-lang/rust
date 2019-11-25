@@ -72,17 +72,11 @@ error: use of `unwrap_or` followed by a function call
 LL |     let _ = stringy.unwrap_or("".to_owned());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
 
-error: use of `ok_or` followed by a function call
-  --> $DIR/or_fun_call.rs:74:17
-   |
-LL |     let _ = opt.ok_or(format!("{} world.", hello));
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `ok_or_else(|| format!("{} world.", hello))`
-
 error: use of `or` followed by a function call
   --> $DIR/or_fun_call.rs:95:35
    |
 LL |     let _ = Some("a".to_string()).or(Some("b".to_string()));
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `or_else(|| Some("b".to_string()))`
 
-error: aborting due to 14 previous errors
+error: aborting due to 13 previous errors
 
