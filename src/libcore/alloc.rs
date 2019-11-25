@@ -225,9 +225,7 @@ impl Layout {
         // > `usize::MAX`)
         let new_size = self.size() + pad;
 
-        // SAFETY: This necessarily respects the from_size_align
-        // prerequisites per the above.
-        unsafe { Layout::from_size_align_unchecked(new_size, self.align()) }
+        Layout::from_size_align(new_size, self.align()).unwrap()
     }
 
     /// Creates a layout describing the record for `n` instances of
