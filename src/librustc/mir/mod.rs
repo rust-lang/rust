@@ -3048,6 +3048,16 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
     }
 }
 
+impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
+    }
+}
+
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
         Place {
