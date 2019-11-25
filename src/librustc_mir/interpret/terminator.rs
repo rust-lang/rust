@@ -59,11 +59,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ref cleanup,
                 ..
             } => {
-                let (dest, ret) = match *destination {
-                    Some((ref lv, target)) => (Some(self.eval_place(lv)?), Some(target)),
-                    None => (None, None),
-                };
-
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -81,12 +76,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 };
                 let args = self.eval_operands(args)?;
+                let ret = match destination {
+                    Some((dest, ret)) => Some((self.eval_place(dest)?, *ret)),
+                    None => None,
+                };
                 self.eval_fn_call(
                     fn_val,
                     terminator.source_info.span,
                     abi,
                     &args[..],
-                    dest,
                     ret,
                     *cleanup
                 )?;
@@ -238,8 +236,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         span: Span,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
-        dest: Option<PlaceTy<'tcx, M::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
@@ -247,7 +244,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
-                return M::call_extra_fn(self, extra, args, dest, ret);
+                return M::call_extra_fn(self, extra, args, ret, unwind);
             }
         };
 
@@ -278,7 +275,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
                 assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
-                return M::call_intrinsic(self, span, instance, args, dest, ret, unwind);
+                return M::call_intrinsic(self, span, instance, args, ret, unwind);
             }
             ty::InstanceDef::VtableShim(..) |
             ty::InstanceDef::ReifyShim(..) |
@@ -288,7 +285,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
                 // We need MIR for this fn
-                let body = match M::find_fn(self, instance, args, dest, ret, unwind)? {
+                let body = match M::find_fn(self, instance, args, ret, unwind)? {
                     Some(body) => body,
                     None => return Ok(()),
                 };
@@ -297,8 +294,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     instance,
                     span,
                     body,
-                    dest,
-                    StackPopCleanup::Goto { ret, unwind }
+                    ret.map(|p| p.0),
+                    StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind }
                 )?;
 
                 // We want to pop this frame again in case there was an error, to put
@@ -381,7 +378,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         throw_unsup!(FunctionArgCountMismatch)
                     }
                     // Don't forget to check the return type!
-                    if let Some(caller_ret) = dest {
+                    if let Some((caller_ret, _)) = ret {
                         let callee_ret = self.eval_place(
                             &mir::Place::return_place()
                         )?;
@@ -447,7 +444,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, span, caller_abi, &args, dest, ret, unwind)
+                self.eval_fn_call(drop_fn, span, caller_abi, &args, ret, unwind)
             }
         }
     }
@@ -487,8 +484,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             span,
             Abi::Rust,
             &[arg.into()],
-            Some(dest.into()),
-            Some(target),
+            Some((dest.into(), target)),
             unwind
         )
     }

@@ -150,9 +150,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
-        unwind: Option<mir::BasicBlock>
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
     /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
@@ -161,8 +160,8 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
     /// Directly process an intrinsic without pushing a stack frame. It is the hook's
@@ -172,8 +171,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
