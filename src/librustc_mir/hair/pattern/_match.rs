@@ -400,7 +400,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.
-    fn expand_or_pat(&self) -> Option<Vec<PatStack<'p, 'tcx>>> {
+    fn expand_or_pat(&self) -> Option<Vec<Self>> {
         if self.is_empty() {
             None
         } else if let PatKind::Or { pats } = &*self.head().kind {
@@ -1838,7 +1838,7 @@ fn pat_constructor<'tcx>(
                 if slice.is_some() { VarLen(prefix, suffix) } else { FixedLen(prefix + suffix) };
             Some(Slice(Slice { array_len, kind }))
         }
-        PatKind::Or { .. } => bug!(), // Should have been expanded earlier on.
+        PatKind::Or { .. } => bug!("Or-pattern hould have been expanded earlier on."),
     }
 }
 
@@ -2444,7 +2444,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
         },
 
-        PatKind::Or { .. } => bug!(), // Should have been expanded earlier on.
+        PatKind::Or { .. } => bug!("Or-pattern hould have been expanded earlier on."),
     };
     debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
 

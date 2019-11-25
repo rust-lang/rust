@@ -1,6 +1,7 @@
 // should-ice
-#![allow(incomplete_features)]
 #![feature(or_patterns)]
+#![feature(slice_patterns)]
+#![allow(incomplete_features)]
 #![deny(unreachable_patterns)]
 
 // The ice will get removed once or-patterns are correctly implemented
@@ -52,5 +53,9 @@ fn main() {
         ((1 | 2,) | (3 | 4,),) => {},
         ((1..=4,),) => {}, //~ ERROR unreachable pattern
         ((_,),) => {},
+    }
+    match (&[0u8][..],) {
+        ([] | [0 | 1..=255] | [_, ..],) => {},
+        (_,) => {}, //~ ERROR unreachable pattern
     }
 }
