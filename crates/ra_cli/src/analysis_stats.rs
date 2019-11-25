@@ -3,7 +3,7 @@
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
 use ra_db::SourceDatabaseExt;
-use ra_hir::{AssocItem, Crate, HasBodySource, HasSource, HirDisplay, ModuleDef, Ty, TypeWalk};
+use ra_hir::{AssocItem, Crate, HasSource, HirDisplay, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
 use crate::{Result, Verbosity};
@@ -109,7 +109,7 @@ pub fn run(
         }
         let body = f.body(db);
         let inference_result = f.infer(db);
-        for (expr_id, _) in body.exprs() {
+        for (expr_id, _) in body.exprs.iter() {
             let ty = &inference_result[expr_id];
             num_exprs += 1;
             if let Ty::Unknown = ty {
@@ -128,15 +128,16 @@ pub fn run(
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                 num_type_mismatches += 1;
                 if verbosity.is_verbose() {
-                    let src = f.expr_source(db, expr_id);
+                    let src = f.body_source_map(db).expr_syntax(expr_id);
                     if let Some(src) = src {
                         // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
                         let original_file = src.file_id.original_file(db);
                         let path = db.file_relative_path(original_file);
                         let line_index = host.analysis().file_line_index(original_file).unwrap();
-                        let text_range = src
-                            .value
-                            .either(|it| it.syntax().text_range(), |it| it.syntax().text_range());
+                        let text_range = src.value.either(
+                            |it| it.syntax_node_ptr().range(),
+                            |it| it.syntax_node_ptr().range(),
+                        );
                         let (start, end) = (
                             line_index.line_col(text_range.start()),
                             line_index.line_col(text_range.end()),

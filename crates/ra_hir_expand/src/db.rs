@@ -9,14 +9,14 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, Parse, SyntaxNode};
 
 use crate::{
-    ast_id_map::AstIdMap, BuiltinExpander, HirFileId, HirFileIdRepr, MacroCallId, MacroCallLoc,
-    MacroDefId, MacroDefKind, MacroFile, MacroFileKind,
+    ast_id_map::AstIdMap, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId,
+    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, MacroFileKind,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
     MacroRules(mbe::MacroRules),
-    Builtin(BuiltinExpander),
+    Builtin(BuiltinFnLikeExpander),
 }
 
 impl TokenExpander {

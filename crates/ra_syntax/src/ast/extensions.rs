@@ -178,15 +178,15 @@ impl ast::ImplBlock {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StructKind {
+    Record(ast::RecordFieldDefList),
     Tuple(ast::TupleFieldDefList),
-    Named(ast::RecordFieldDefList),
     Unit,
 }
 
 impl StructKind {
     fn from_node<N: AstNode>(node: &N) -> StructKind {
         if let Some(nfdl) = child_opt::<_, ast::RecordFieldDefList>(node) {
-            StructKind::Named(nfdl)
+            StructKind::Record(nfdl)
         } else if let Some(pfl) = child_opt::<_, ast::TupleFieldDefList>(node) {
             StructKind::Tuple(pfl)
         } else {

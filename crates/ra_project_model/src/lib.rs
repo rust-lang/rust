@@ -13,7 +13,7 @@ use std::{
 };
 
 use ra_cfg::CfgOptions;
-use ra_db::{CrateGraph, CrateId, Edition, FileId};
+use ra_db::{CrateGraph, CrateId, Edition, Env, FileId};
 use rustc_hash::FxHashMap;
 use serde_json::from_reader;
 
@@ -146,7 +146,12 @@ impl ProjectWorkspace {
                         };
                         crates.insert(
                             crate_id,
-                            crate_graph.add_crate_root(file_id, edition, cfg_options),
+                            crate_graph.add_crate_root(
+                                file_id,
+                                edition,
+                                cfg_options,
+                                Env::default(),
+                            ),
                         );
                     }
                 }
@@ -180,8 +185,12 @@ impl ProjectWorkspace {
                             opts
                         };
 
-                        let crate_id =
-                            crate_graph.add_crate_root(file_id, Edition::Edition2018, cfg_options);
+                        let crate_id = crate_graph.add_crate_root(
+                            file_id,
+                            Edition::Edition2018,
+                            cfg_options,
+                            Env::default(),
+                        );
                         sysroot_crates.insert(krate, crate_id);
                         names.insert(crate_id, krate.name(&sysroot).to_string());
                     }
@@ -200,7 +209,10 @@ impl ProjectWorkspace {
                 }
 
                 let libcore = sysroot.core().and_then(|it| sysroot_crates.get(&it).copied());
+                let liballoc = sysroot.alloc().and_then(|it| sysroot_crates.get(&it).copied());
                 let libstd = sysroot.std().and_then(|it| sysroot_crates.get(&it).copied());
+                let libproc_macro =
+                    sysroot.proc_macro().and_then(|it| sysroot_crates.get(&it).copied());
 
                 let mut pkg_to_lib_crate = FxHashMap::default();
                 let mut pkg_crates = FxHashMap::default();
@@ -216,13 +228,32 @@ impl ProjectWorkspace {
                                 opts.insert_features(pkg.features(&cargo).iter().map(Into::into));
                                 opts
                             };
-                            let crate_id =
-                                crate_graph.add_crate_root(file_id, edition, cfg_options);
+                            let crate_id = crate_graph.add_crate_root(
+                                file_id,
+                                edition,
+                                cfg_options,
+                                Env::default(),
+                            );
                             names.insert(crate_id, pkg.name(&cargo).to_string());
                             if tgt.kind(&cargo) == TargetKind::Lib {
                                 lib_tgt = Some(crate_id);
                                 pkg_to_lib_crate.insert(pkg, crate_id);
                             }
+                            if tgt.is_proc_macro(&cargo) {
+                                if let Some(proc_macro) = libproc_macro {
+                                    if let Err(_) = crate_graph.add_dep(
+                                        crate_id,
+                                        "proc_macro".into(),
+                                        proc_macro,
+                                    ) {
+                                        log::error!(
+                                            "cyclic dependency on proc_macro for {}",
+                                            pkg.name(&cargo)
+                                        )
+                                    }
+                                }
+                            }
+
                             pkg_crates.entry(pkg).or_insert_with(Vec::new).push(crate_id);
                         }
                     }
@@ -246,6 +277,11 @@ impl ProjectWorkspace {
                         if let Some(core) = libcore {
                             if let Err(_) = crate_graph.add_dep(from, "core".into(), core) {
                                 log::error!("cyclic dependency on core for {}", pkg.name(&cargo))
+                            }
+                        }
+                        if let Some(alloc) = liballoc {
+                            if let Err(_) = crate_graph.add_dep(from, "alloc".into(), alloc) {
+                                log::error!("cyclic dependency on alloc for {}", pkg.name(&cargo))
                             }
                         }
                         if let Some(std) = libstd {

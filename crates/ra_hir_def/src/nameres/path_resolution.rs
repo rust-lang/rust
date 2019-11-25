@@ -15,10 +15,11 @@ use ra_db::Edition;
 use test_utils::tested_by;
 
 use crate::{
-    db::DefDatabase2,
-    nameres::{per_ns::PerNs, CrateDefMap},
+    db::DefDatabase,
+    nameres::CrateDefMap,
     path::{Path, PathKind},
-    AdtId, CrateModuleId, EnumVariantId, ModuleDefId, ModuleId,
+    per_ns::PerNs,
+    AdtId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -63,9 +64,9 @@ impl CrateDefMap {
     // the result.
     pub(super) fn resolve_path_fp_with_macro(
         &self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         mode: ResolveMode,
-        original_module: CrateModuleId,
+        original_module: LocalModuleId,
         path: &Path,
     ) -> ResolvePathResult {
         let mut segments = path.segments.iter().enumerate();
@@ -216,8 +217,8 @@ impl CrateDefMap {
 
     fn resolve_name_in_module(
         &self,
-        db: &impl DefDatabase2,
-        module: CrateModuleId,
+        db: &impl DefDatabase,
+        module: LocalModuleId,
         name: &Name,
     ) -> PerNs {
         // Resolve in:
@@ -243,7 +244,7 @@ impl CrateDefMap {
         from_crate_root.or(from_extern_prelude)
     }
 
-    fn resolve_in_prelude(&self, db: &impl DefDatabase2, name: &Name) -> PerNs {
+    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs {
         if let Some(prelude) = self.prelude {
             let keep;
             let def_map = if prelude.krate == self.krate {

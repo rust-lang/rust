@@ -2,7 +2,7 @@
 
 use std::{panic, sync::Arc};
 
-use hir_def::{db::DefDatabase2, ModuleId};
+use hir_def::{db::DefDatabase, ModuleId};
 use hir_expand::diagnostics::DiagnosticSink;
 use parking_lot::Mutex;
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase};
@@ -15,7 +15,6 @@ use crate::{db, debug::HirDebugHelper};
     db::InternDatabaseStorage,
     db::AstDatabaseStorage,
     db::DefDatabaseStorage,
-    db::DefDatabase2Storage,
     db::HirDatabaseStorage
 )]
 #[derive(Debug, Default)]
@@ -81,7 +80,7 @@ impl TestDB {
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter().next() {
             let crate_def_map = self.crate_def_map(krate);
-            for module_id in crate_def_map.modules() {
+            for (module_id, _) in crate_def_map.modules.iter() {
                 let module_id = ModuleId { krate, module_id };
                 let module = crate::Module::from(module_id);
                 module.diagnostics(

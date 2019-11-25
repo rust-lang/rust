@@ -55,7 +55,7 @@ impl FunctionSignature {
     pub(crate) fn from_struct(db: &db::RootDatabase, st: hir::Struct) -> Option<Self> {
         let node: ast::StructDef = st.source(db).value;
         match node.kind() {
-            ast::StructKind::Named(_) => return None,
+            ast::StructKind::Record(_) => return None,
             _ => (),
         };
 
@@ -89,7 +89,7 @@ impl FunctionSignature {
     ) -> Option<Self> {
         let node: ast::EnumVariant = variant.source(db).value;
         match node.kind() {
-            ast::StructKind::Named(_) | ast::StructKind::Unit => return None,
+            ast::StructKind::Record(_) | ast::StructKind::Unit => return None,
             _ => (),
         };
 

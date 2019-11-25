@@ -1,4 +1,5 @@
-//! FIXME: write short doc here
+//! Defines `Body`: a lowered representation of bodies of functions, statics and
+//! consts.
 mod lower;
 pub mod scope;
 
@@ -13,14 +14,14 @@ use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
 
 use crate::{
-    db::DefDatabase2,
+    db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
     nameres::CrateDefMap,
     path::Path,
-    AstItemDef, DefWithBodyId, HasModule, HasSource, Lookup, ModuleId,
+    DefWithBodyId, HasModule, HasSource, Lookup, ModuleId,
 };
 
-pub struct Expander {
+struct Expander {
     crate_def_map: Arc<CrateDefMap>,
     current_file_id: HirFileId,
     hygiene: Hygiene,
@@ -28,7 +29,7 @@ pub struct Expander {
 }
 
 impl Expander {
-    pub fn new(db: &impl DefDatabase2, current_file_id: HirFileId, module: ModuleId) -> Expander {
+    fn new(db: &impl DefDatabase, current_file_id: HirFileId, module: ModuleId) -> Expander {
         let crate_def_map = db.crate_def_map(module.krate);
         let hygiene = Hygiene::new(db, current_file_id);
         Expander { crate_def_map, current_file_id, hygiene, module }
@@ -36,7 +37,7 @@ impl Expander {
 
     fn enter_expand(
         &mut self,
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         macro_call: ast::MacroCall,
     ) -> Option<(Mark, ast::Expr)> {
         let ast_id = AstId::new(
@@ -67,7 +68,7 @@ impl Expander {
         None
     }
 
-    fn exit(&mut self, db: &impl DefDatabase2, mark: Mark) {
+    fn exit(&mut self, db: &impl DefDatabase, mark: Mark) {
         self.hygiene = Hygiene::new(db, mark.file_id);
         self.current_file_id = mark.file_id;
         std::mem::forget(mark);
@@ -81,8 +82,8 @@ impl Expander {
         Path::from_src(path, &self.hygiene)
     }
 
-    fn resolve_path_as_macro(&self, db: &impl DefDatabase2, path: &Path) -> Option<MacroDefId> {
-        self.crate_def_map.resolve_path(db, self.module.module_id, path).0.get_macros()
+    fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
+        self.crate_def_map.resolve_path(db, self.module.module_id, path).0.take_macros()
     }
 }
 
@@ -101,17 +102,17 @@ impl Drop for Mark {
 /// The body of an item (function, const etc.).
 #[derive(Debug, Eq, PartialEq)]
 pub struct Body {
-    exprs: Arena<ExprId, Expr>,
-    pats: Arena<PatId, Pat>,
+    pub exprs: Arena<ExprId, Expr>,
+    pub pats: Arena<PatId, Pat>,
     /// The patterns for the function's parameters. While the parameter types are
     /// part of the function signature, the patterns are not (they don't change
     /// the external type of the function).
     ///
     /// If this `Body` is for the body of a constant, this will just be
     /// empty.
-    params: Vec<PatId>,
+    pub params: Vec<PatId>,
     /// The `ExprId` of the actual body expression.
-    body_expr: ExprId,
+    pub body_expr: ExprId,
 }
 
 pub type ExprPtr = Either<AstPtr<ast::Expr>, AstPtr<ast::RecordField>>;
@@ -142,7 +143,7 @@ pub struct BodySourceMap {
 
 impl Body {
     pub(crate) fn body_with_source_map_query(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         def: DefWithBodyId,
     ) -> (Arc<Body>, Arc<BodySourceMap>) {
         let mut params = None;
@@ -160,6 +161,7 @@ impl Body {
                 (src.file_id, c.module(db), src.value.body())
             }
             DefWithBodyId::StaticId(s) => {
+                let s = s.lookup(db);
                 let src = s.source(db);
                 (src.file_id, s.module(db), src.value.body())
             }
@@ -169,33 +171,17 @@ impl Body {
         (Arc::new(body), Arc::new(source_map))
     }
 
-    pub(crate) fn body_query(db: &impl DefDatabase2, def: DefWithBodyId) -> Arc<Body> {
+    pub(crate) fn body_query(db: &impl DefDatabase, def: DefWithBodyId) -> Arc<Body> {
         db.body_with_source_map(def).0
     }
 
     fn new(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         expander: Expander,
         params: Option<ast::ParamList>,
         body: Option<ast::Expr>,
     ) -> (Body, BodySourceMap) {
         lower::lower(db, expander, params, body)
-    }
-
-    pub fn params(&self) -> &[PatId] {
-        &self.params
-    }
-
-    pub fn body_expr(&self) -> ExprId {
-        self.body_expr
-    }
-
-    pub fn exprs(&self) -> impl Iterator<Item = (ExprId, &Expr)> {
-        self.exprs.iter()
-    }
-
-    pub fn pats(&self) -> impl Iterator<Item = (PatId, &Pat)> {
-        self.pats.iter()
     }
 }
 

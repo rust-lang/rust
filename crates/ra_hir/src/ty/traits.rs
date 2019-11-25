@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use chalk_ir::{cast::Cast, family::ChalkIr};
 use log::debug;
-use ra_db::salsa;
+use ra_db::{impl_intern_key, salsa};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
@@ -304,6 +304,10 @@ pub enum Impl {
     /// Closure types implement the Fn traits synthetically.
     ClosureFnTraitImpl(ClosureFnTraitImplData),
 }
+/// This exists just for Chalk, because our ImplIds are only unique per module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GlobalImplId(salsa::InternId);
+impl_intern_key!(GlobalImplId);
 
 /// An associated type value. Usually this comes from a `type` declaration
 /// inside an impl block, but for built-in impls we have to synthesize it.
@@ -315,3 +319,8 @@ pub enum AssocTyValue {
     /// The output type of the Fn trait implementation.
     ClosureFnTraitImplOutput(ClosureFnTraitImplData),
 }
+/// This exists just for Chalk, because it needs a unique ID for each associated
+/// type value in an impl (even synthetic ones).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct AssocTyValueId(salsa::InternId);
+impl_intern_key!(AssocTyValueId);

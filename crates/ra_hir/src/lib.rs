@@ -31,12 +31,8 @@ pub mod debug;
 pub mod db;
 pub mod source_binder;
 
-mod ids;
-mod type_alias;
 mod ty;
-mod impl_block;
 mod expr;
-mod lang_item;
 pub mod diagnostics;
 mod util;
 
@@ -52,17 +48,13 @@ mod marks;
 
 pub use crate::{
     code_model::{
-        attrs::{AttrDef, Attrs},
-        docs::{DocDef, Docs, Documentation},
-        src::{HasBodySource, HasSource},
-        Adt, AssocItem, Const, ConstData, Container, Crate, CrateDependency, DefWithBody, Enum,
-        EnumVariant, FieldSource, FnData, Function, GenericDef, GenericParam, HasBody, ImplBlock,
-        Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef, Static, Struct, StructField,
-        Trait, TypeAlias, Union, VariantDef,
+        src::HasSource, Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency,
+        DefWithBody, Docs, Enum, EnumVariant, FieldSource, Function, GenericDef, GenericParam,
+        HasAttrs, ImplBlock, Import, Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef,
+        Static, Struct, StructField, Trait, TypeAlias, Union, VariantDef,
     },
     expr::ExprScopes,
     from_source::FromSource,
-    ids::{HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile},
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
         display::HirDisplay,
@@ -73,8 +65,10 @@ pub use crate::{
 
 pub use hir_def::{
     builtin_type::BuiltinType,
-    nameres::{per_ns::PerNs, raw::ImportId},
+    docs::Documentation,
     path::{Path, PathKind},
     type_ref::Mutability,
 };
-pub use hir_expand::{either::Either, name::Name, Source};
+pub use hir_expand::{
+    either::Either, name::Name, HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Source,
+};

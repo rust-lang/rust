@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! In rust, it is possible to have a value, a type and a macro with the same
+//! name without conflicts.
+//!
+//! `PerNs` (per namespace) captures this.
 
 use hir_expand::MacroDefId;
 
@@ -44,10 +47,6 @@ impl PerNs {
         self.types.is_none() && self.values.is_none() && self.macros.is_none()
     }
 
-    pub fn is_all(&self) -> bool {
-        self.types.is_some() && self.values.is_some() && self.macros.is_some()
-    }
-
     pub fn take_types(self) -> Option<ModuleDefId> {
         self.types
     }
@@ -56,12 +55,8 @@ impl PerNs {
         self.values
     }
 
-    pub fn get_macros(&self) -> Option<MacroDefId> {
+    pub fn take_macros(self) -> Option<MacroDefId> {
         self.macros
-    }
-
-    pub fn only_macros(&self) -> PerNs {
-        PerNs { types: None, values: None, macros: self.macros }
     }
 
     pub fn or(self, other: PerNs) -> PerNs {

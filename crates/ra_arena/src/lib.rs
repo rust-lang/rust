@@ -37,7 +37,7 @@ impl fmt::Display for RawId {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct Arena<ID: ArenaId, T> {
+pub struct Arena<ID, T> {
     data: Vec<T>,
     _ty: PhantomData<ID>,
 }
@@ -67,6 +67,12 @@ pub trait ArenaId {
     fn into_raw(self) -> RawId;
 }
 
+impl<ID, T> Arena<ID, T> {
+    pub const fn new() -> Arena<ID, T> {
+        Arena { data: Vec::new(), _ty: PhantomData }
+    }
+}
+
 impl<ID: ArenaId, T> Arena<ID, T> {
     pub fn len(&self) -> usize {
         self.data.len()
@@ -79,7 +85,7 @@ impl<ID: ArenaId, T> Arena<ID, T> {
         self.data.push(value);
         ID::from_raw(id)
     }
-    pub fn iter(&self) -> impl Iterator<Item = (ID, &T)> + ExactSizeIterator {
+    pub fn iter(&self) -> impl Iterator<Item = (ID, &T)> + ExactSizeIterator + DoubleEndedIterator {
         self.data.iter().enumerate().map(|(idx, value)| (ID::from_raw(RawId(idx as u32)), value))
     }
 }

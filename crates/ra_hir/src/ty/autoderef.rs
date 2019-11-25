@@ -5,12 +5,13 @@
 
 use std::iter::successors;
 
-use hir_def::resolver::Resolver;
+use hir_def::{lang_item::LangItemTarget, resolver::Resolver};
 use hir_expand::name;
 use log::{info, warn};
 
+use crate::{db::HirDatabase, Trait};
+
 use super::{traits::Solution, Canonical, Substs, Ty, TypeWalk};
-use crate::db::HirDatabase;
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
@@ -41,7 +42,7 @@ fn deref_by_trait(
 ) -> Option<Canonical<Ty>> {
     let krate = resolver.krate()?;
     let deref_trait = match db.lang_item(krate.into(), "deref".into())? {
-        crate::lang_item::LangItemTarget::Trait(t) => t,
+        LangItemTarget::TraitId(t) => Trait::from(t),
         _ => return None,
     };
     let target = deref_trait.associated_type_by_name(db, &name::TARGET_TYPE)?;

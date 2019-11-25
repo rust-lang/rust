@@ -1,6 +1,6 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{db::HirDatabase, Attrs, Docs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
+use hir::{db::HirDatabase, Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
@@ -199,14 +199,17 @@ impl Completions {
         name: Option<String>,
         func: hir::Function,
     ) {
-        let data = func.data(ctx.db);
-        let name = name.unwrap_or_else(|| data.name().to_string());
+        let func_name = func.name(ctx.db);
+        let has_self_param = func.has_self_param(ctx.db);
+        let params = func.params(ctx.db);
+
+        let name = name.unwrap_or_else(|| func_name.to_string());
         let ast_node = func.source(ctx.db).value;
         let detail = function_label(&ast_node);
 
         let mut builder =
             CompletionItem::new(CompletionKind::Reference, ctx.source_range(), name.clone())
-                .kind(if data.has_self_param() {
+                .kind(if has_self_param {
                     CompletionItemKind::Method
                 } else {
                     CompletionItemKind::Function
@@ -221,12 +224,11 @@ impl Completions {
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
         {
             tested_by!(inserts_parens_for_function_calls);
-            let (snippet, label) =
-                if data.params().is_empty() || data.has_self_param() && data.params().len() == 1 {
-                    (format!("{}()$0", data.name()), format!("{}()", name))
-                } else {
-                    (format!("{}($0)", data.name()), format!("{}(…)", name))
-                };
+            let (snippet, label) = if params.is_empty() || has_self_param && params.len() == 1 {
+                (format!("{}()$0", func_name), format!("{}()", name))
+            } else {
+                (format!("{}($0)", func_name), format!("{}(…)", name))
+            };
             builder = builder.lookup_by(name).label(label).insert_snippet(snippet);
         }
 
@@ -285,11 +287,8 @@ impl Completions {
     }
 }
 
-fn is_deprecated(node: impl Attrs, db: &impl HirDatabase) -> bool {
-    match node.attrs(db) {
-        None => false,
-        Some(attrs) => attrs.iter().any(|x| x.is_simple_atom("deprecated")),
-    }
+fn is_deprecated(node: impl HasAttrs, db: &impl HirDatabase) -> bool {
+    node.attrs(db).by_key("deprecated").exists()
 }
 
 fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> bool {

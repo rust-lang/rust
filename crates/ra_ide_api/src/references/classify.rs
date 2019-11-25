@@ -1,6 +1,6 @@
 //! Functions that are used to classify an element from its definition or reference.
 
-use hir::{FromSource, Module, ModuleSource, Path, PathResolution, Source, SourceAnalyzer};
+use hir::{FromSource, Module, ModuleSource, PathResolution, Source, SourceAnalyzer};
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode};
 use test_utils::tested_by;
@@ -140,12 +140,8 @@ pub(crate) fn classify_name_ref(
 
     if let Some(record_field) = ast::RecordField::cast(parent.clone()) {
         tested_by!(goto_definition_works_for_record_fields);
-        if let Some(record_lit) = record_field.syntax().ancestors().find_map(ast::RecordLit::cast) {
-            let variant_def = analyzer.resolve_record_literal(&record_lit)?;
-            let hir_path = Path::from_name_ref(name_ref.value);
-            let hir_name = hir_path.as_ident()?;
-            let field = variant_def.field(db, hir_name)?;
-            return Some(from_struct_field(db, field));
+        if let Some(field_def) = analyzer.resolve_record_field(&record_field) {
+            return Some(from_struct_field(db, field_def));
         }
     }
 

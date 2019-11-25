@@ -1,3 +1,5 @@
+//! XXX: This does not work at the moment.
+//!
 //! printf debugging infrastructure for rust-analyzer.
 //!
 //! When you print a hir type, like a module, using `eprintln!("{:?}", module)`,
@@ -20,9 +22,10 @@
 
 use std::fmt;
 
+use hir_expand::HirFileId;
 use ra_db::{CrateId, FileId};
 
-use crate::{db::HirDatabase, Crate, HirFileId, Module, Name};
+use crate::{db::HirDatabase, Crate, Module, Name};
 
 impl Crate {
     pub fn debug(self, db: &impl HirDebugDatabase) -> impl fmt::Debug + '_ {

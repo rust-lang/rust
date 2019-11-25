@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, Either, PathResolution};
+use hir::{Adt, Either, HasSource, PathResolution};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -27,7 +27,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 }
                 if Some(module) == ctx.module {
                     if let Some(import) = import {
-                        if let Either::A(use_tree) = module.import_source(ctx.db, import) {
+                        if let Either::A(use_tree) = import.source(ctx.db).value {
                             if use_tree.syntax().text_range().contains_inclusive(ctx.offset) {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
                                 tested_by!(dont_complete_current_use);
@@ -53,8 +53,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             ctx.analyzer.iterate_path_candidates(ctx.db, ty.clone(), None, |_ty, item| {
                 match item {
                     hir::AssocItem::Function(func) => {
-                        let data = func.data(ctx.db);
-                        if !data.has_self_param() {
+                        if !func.has_self_param(ctx.db) {
                             acc.add_function(ctx, func);
                         }
                     }
@@ -80,8 +79,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
             for item in t.items(ctx.db) {
                 match item {
                     hir::AssocItem::Function(func) => {
-                        let data = func.data(ctx.db);
-                        if !data.has_self_param() {
+                        if !func.has_self_param(ctx.db) {
                             acc.add_function(ctx, func);
                         }
                     }

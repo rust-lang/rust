@@ -2550,8 +2550,6 @@ fn test() {
     [233; 246) 'GLOBAL_STATIC': u32
     [256; 257) 'w': u32
     [260; 277) 'GLOBAL...IC_MUT': u32
-    [118; 120) '99': u32
-    [161; 163) '99': u32
     "###
     );
 }
@@ -4854,6 +4852,44 @@ fn main() {
     ![0; 1) '6': i32
     [64; 88) '{     ...!(); }': ()
     [74; 75) 'x': i32
+    "###
+    );
+}
+
+#[test]
+fn infer_builtin_macros_file() {
+    assert_snapshot!(
+        infer(r#"
+#[rustc_builtin_macro]
+macro_rules! file {() => {}}
+
+fn main() {
+    let x = file!();
+}
+"#),
+        @r###"
+    ![0; 2) '""': &str
+    [64; 88) '{     ...!(); }': ()
+    [74; 75) 'x': &str
+    "###
+    );
+}
+
+#[test]
+fn infer_builtin_macros_column() {
+    assert_snapshot!(
+        infer(r#"
+#[rustc_builtin_macro]
+macro_rules! column {() => {}}
+
+fn main() {
+    let x = column!();
+}
+"#),
+        @r###"
+    ![0; 2) '13': i32
+    [66; 92) '{     ...!(); }': ()
+    [76; 77) 'x': i32
     "###
     );
 }

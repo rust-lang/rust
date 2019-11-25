@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{generics::GenericParams, AdtId};
+use ra_db::{impl_intern_key, salsa};
 
 use crate::{
     db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, DefWithBody, FloatTy,
@@ -29,8 +30,9 @@ pub(crate) use autoderef::autoderef;
 pub(crate) use infer::{infer_query, InferTy, InferenceResult};
 pub use lower::CallableDef;
 pub(crate) use lower::{
-    callable_item_sig, generic_defaults_query, generic_predicates_for_param_query,
-    generic_predicates_query, type_for_def, type_for_field, Namespace, TypableDef,
+    callable_item_sig, field_types_query, generic_defaults_query,
+    generic_predicates_for_param_query, generic_predicates_query, type_for_def, Namespace,
+    TypableDef,
 };
 pub(crate) use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
@@ -113,6 +115,13 @@ pub enum TypeCtor {
     /// parameter.
     Closure { def: DefWithBody, expr: ExprId },
 }
+
+/// This exists just for Chalk, because Chalk just has a single `StructId` where
+/// we have different kinds of ADTs, primitive types and special type
+/// constructors like tuples and function pointers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct TypeCtorId(salsa::InternId);
+impl_intern_key!(TypeCtorId);
 
 impl TypeCtor {
     pub fn num_ty_params(self, db: &impl HirDatabase) -> usize {

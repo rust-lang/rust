@@ -13,7 +13,9 @@ use hir_def::{
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
     DefWithBodyId,
 };
-use hir_expand::{name::AsName, AstId, MacroCallId, MacroCallLoc, MacroFileKind, Source};
+use hir_expand::{
+    name::AsName, AstId, HirFileId, MacroCallId, MacroCallLoc, MacroFileKind, Source,
+};
 use ra_syntax::{
     ast::{self, AstNode},
     match_ast, AstPtr,
@@ -24,11 +26,9 @@ use ra_syntax::{
 use crate::{
     db::HirDatabase,
     expr::{BodySourceMap, ExprScopes, ScopeId},
-    ids::LocationCtx,
     ty::method_resolution::{self, implements_trait},
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
-    GenericParam, HasBody, HirFileId, Local, MacroDef, Module, Name, Path, ScopeDef, Static,
-    Struct, Trait, Ty, TypeAlias,
+    GenericParam, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Ty, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
@@ -67,16 +67,12 @@ fn def_with_body_from_child_node(
     db: &impl HirDatabase,
     child: Source<&SyntaxNode>,
 ) -> Option<DefWithBody> {
-    let module_source = crate::ModuleSource::from_child_node(db, child);
-    let module = Module::from_definition(db, Source::new(child.file_id, module_source))?;
-    let ctx = LocationCtx::new(db, module.id, child.file_id);
-
     child.value.ancestors().find_map(|node| {
         match_ast! {
             match node {
                 ast::FnDef(def)  => { return Function::from_source(db, child.with_value(def)).map(DefWithBody::from); },
                 ast::ConstDef(def) => { return Const::from_source(db, child.with_value(def)).map(DefWithBody::from); },
-                ast::StaticDef(def) => { Some(Static { id: ctx.to_def(&def) }.into()) },
+                ast::StaticDef(def) => { return Static::from_source(db, child.with_value(def)).map(DefWithBody::from); },
                 _ => { None },
             }
         }
@@ -158,8 +154,8 @@ impl SourceAnalyzer {
     ) -> SourceAnalyzer {
         let def_with_body = def_with_body_from_child_node(db, node);
         if let Some(def) = def_with_body {
-            let source_map = def.body_source_map(db);
-            let scopes = def.expr_scopes(db);
+            let (_body, source_map) = db.body_with_source_map(def.into());
+            let scopes = db.expr_scopes(def.into());
             let scope = match offset {
                 None => scope_for(&scopes, &source_map, node),
                 Some(offset) => scope_for_offset(&scopes, &source_map, node.with_value(offset)),
@@ -169,7 +165,7 @@ impl SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
                 body_source_map: Some(source_map),
-                infer: Some(def.infer(db)),
+                infer: Some(db.infer(def)),
                 scopes: Some(scopes),
                 file_id: node.file_id,
             }
@@ -217,6 +213,11 @@ impl SourceAnalyzer {
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
         let expr_id = self.expr_id(&field.clone().into())?;
         self.infer.as_ref()?.field_resolution(expr_id)
+    }
+
+    pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<crate::StructField> {
+        let expr_id = self.expr_id(&field.expr()?)?;
+        self.infer.as_ref()?.record_field_resolution(expr_id)
     }
 
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<crate::VariantDef> {
@@ -544,7 +545,7 @@ fn adjust(
 }
 
 /// Given a `ast::MacroCall`, return what `MacroKindFile` it belongs to.
-/// FIXME: Not completed  
+/// FIXME: Not completed
 fn to_macro_file_kind(macro_call: &ast::MacroCall) -> MacroFileKind {
     let syn = macro_call.syntax();
     let parent = match syn.parent() {

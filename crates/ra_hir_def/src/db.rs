@@ -3,43 +3,47 @@ use std::sync::Arc;
 
 use hir_expand::{db::AstDatabase, HirFileId};
 use ra_db::{salsa, CrateId, SourceDatabase};
-use ra_syntax::ast;
+use ra_syntax::{ast, SmolStr};
 
 use crate::{
     adt::{EnumData, StructData},
+    attr::Attrs,
     body::{scope::ExprScopes, Body, BodySourceMap},
+    data::{ConstData, FunctionData, ImplData, TraitData, TypeAliasData},
+    docs::Documentation,
     generics::GenericParams,
-    impls::ImplData,
+    lang_item::{LangItemTarget, LangItems},
     nameres::{
         raw::{ImportSourceMap, RawItems},
         CrateDefMap,
     },
-    traits::TraitData,
-    DefWithBodyId, EnumId, GenericDefId, ImplId, ItemLoc, StructOrUnionId, TraitId,
+    AttrDefId, ConstId, ConstLoc, DefWithBodyId, EnumId, FunctionId, FunctionLoc, GenericDefId,
+    ImplId, ItemLoc, ModuleId, StaticId, StaticLoc, StructOrUnionId, TraitId, TypeAliasId,
+    TypeAliasLoc,
 };
 
 #[salsa::query_group(InternDatabaseStorage)]
 pub trait InternDatabase: SourceDatabase {
     #[salsa::interned]
-    fn intern_function(&self, loc: crate::FunctionLoc) -> crate::FunctionId;
+    fn intern_function(&self, loc: FunctionLoc) -> FunctionId;
     #[salsa::interned]
-    fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> crate::StructOrUnionId;
+    fn intern_struct_or_union(&self, loc: ItemLoc<ast::StructDef>) -> StructOrUnionId;
     #[salsa::interned]
-    fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> crate::EnumId;
+    fn intern_enum(&self, loc: ItemLoc<ast::EnumDef>) -> EnumId;
     #[salsa::interned]
-    fn intern_const(&self, loc: crate::ConstLoc) -> crate::ConstId;
+    fn intern_const(&self, loc: ConstLoc) -> ConstId;
     #[salsa::interned]
-    fn intern_static(&self, loc: ItemLoc<ast::StaticDef>) -> crate::StaticId;
+    fn intern_static(&self, loc: StaticLoc) -> StaticId;
     #[salsa::interned]
-    fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> crate::TraitId;
+    fn intern_trait(&self, loc: ItemLoc<ast::TraitDef>) -> TraitId;
     #[salsa::interned]
-    fn intern_type_alias(&self, loc: crate::TypeAliasLoc) -> crate::TypeAliasId;
+    fn intern_type_alias(&self, loc: TypeAliasLoc) -> TypeAliasId;
     #[salsa::interned]
-    fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> crate::ImplId;
+    fn intern_impl(&self, loc: ItemLoc<ast::ImplBlock>) -> ImplId;
 }
 
-#[salsa::query_group(DefDatabase2Storage)]
-pub trait DefDatabase2: InternDatabase + AstDatabase {
+#[salsa::query_group(DefDatabaseStorage)]
+pub trait DefDatabase: InternDatabase + AstDatabase {
     #[salsa::invoke(RawItems::raw_items_with_source_map_query)]
     fn raw_items_with_source_map(
         &self,
@@ -64,6 +68,18 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
     #[salsa::invoke(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
 
+    #[salsa::invoke(TypeAliasData::type_alias_data_query)]
+    fn type_alias_data(&self, e: TypeAliasId) -> Arc<TypeAliasData>;
+
+    #[salsa::invoke(FunctionData::fn_data_query)]
+    fn function_data(&self, func: FunctionId) -> Arc<FunctionData>;
+
+    #[salsa::invoke(ConstData::const_data_query)]
+    fn const_data(&self, konst: ConstId) -> Arc<ConstData>;
+
+    #[salsa::invoke(ConstData::static_data_query)]
+    fn static_data(&self, konst: StaticId) -> Arc<ConstData>;
+
     #[salsa::invoke(Body::body_with_source_map_query)]
     fn body_with_source_map(&self, def: DefWithBodyId) -> (Arc<Body>, Arc<BodySourceMap>);
 
@@ -75,4 +91,21 @@ pub trait DefDatabase2: InternDatabase + AstDatabase {
 
     #[salsa::invoke(GenericParams::generic_params_query)]
     fn generic_params(&self, def: GenericDefId) -> Arc<GenericParams>;
+
+    #[salsa::invoke(Attrs::attrs_query)]
+    fn attrs(&self, def: AttrDefId) -> Attrs;
+
+    #[salsa::invoke(LangItems::module_lang_items_query)]
+    fn module_lang_items(&self, module: ModuleId) -> Option<Arc<LangItems>>;
+
+    #[salsa::invoke(LangItems::crate_lang_items_query)]
+    fn crate_lang_items(&self, krate: CrateId) -> Arc<LangItems>;
+
+    #[salsa::invoke(LangItems::lang_item_query)]
+    fn lang_item(&self, start_crate: CrateId, item: SmolStr) -> Option<LangItemTarget>;
+
+    // FIXME(https://github.com/rust-analyzer/rust-analyzer/issues/2148#issuecomment-550519102)
+    // Remove this query completely, in favor of `Attrs::docs` method
+    #[salsa::invoke(Documentation::documentation_query)]
+    fn documentation(&self, def: AttrDefId) -> Option<Documentation>;
 }

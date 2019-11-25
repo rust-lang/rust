@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! The core of the module-level name resolution algorithm.
+//!
+//! `DefCollector::collect` contains the fixed-point iteration loop which
+//! resolves imports and expands macros.
 
 use hir_expand::{
     builtin_macro::find_builtin_macro,
@@ -7,24 +10,25 @@ use hir_expand::{
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
-use ra_syntax::{ast, SmolStr};
-use rustc_hash::FxHashMap;
+use ra_syntax::ast;
+use rustc_hash::{FxHashMap, FxHashSet};
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attr,
-    db::DefDatabase2,
+    attr::Attrs,
+    db::DefDatabase,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        per_ns::PerNs, raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
+        raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
-    AdtId, AstId, AstItemDef, ConstLoc, ContainerId, CrateModuleId, EnumId, EnumVariantId,
-    FunctionLoc, ImplId, Intern, LocationCtx, ModuleDefId, ModuleId, StaticId, StructId,
+    per_ns::PerNs,
+    AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplId,
+    Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
     StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
 };
 
-pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> CrateDefMap {
+pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
     let crate_graph = db.crate_graph();
 
     // populate external prelude
@@ -56,6 +60,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase2, mut def_map: CrateDefMap) -> 
         unexpanded_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         macro_stack_monitor: MacroStackMonitor::default(),
+        poison_macros: FxHashSet::default(),
         cfg_options,
     };
     collector.collect();
@@ -94,21 +99,32 @@ impl MacroStackMonitor {
 struct DefCollector<'a, DB> {
     db: &'a DB,
     def_map: CrateDefMap,
-    glob_imports: FxHashMap<CrateModuleId, Vec<(CrateModuleId, raw::ImportId)>>,
-    unresolved_imports: Vec<(CrateModuleId, raw::ImportId, raw::ImportData)>,
-    unexpanded_macros: Vec<(CrateModuleId, AstId<ast::MacroCall>, Path)>,
-    mod_dirs: FxHashMap<CrateModuleId, ModDir>,
+    glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, LocalImportId)>>,
+    unresolved_imports: Vec<(LocalModuleId, LocalImportId, raw::ImportData)>,
+    unexpanded_macros: Vec<(LocalModuleId, AstId<ast::MacroCall>, Path)>,
+    mod_dirs: FxHashMap<LocalModuleId, ModDir>,
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
     /// To prevent stack overflow, we add a deep counter here for prevent that.
     macro_stack_monitor: MacroStackMonitor,
+    /// Some macros are not well-behavior, which leads to infinite loop
+    /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
+    /// We mark it down and skip it in collector
+    ///
+    /// FIXME:
+    /// Right now it only handle a poison macro in a single crate,
+    /// such that if other crate try to call that macro,
+    /// the whole process will do again until it became poisoned in that crate.
+    /// We should handle this macro set globally
+    /// However, do we want to put it as a global variable?
+    poison_macros: FxHashSet<MacroDefId>,
 
     cfg_options: &'a CfgOptions,
 }
 
 impl<DB> DefCollector<'_, DB>
 where
-    DB: DefDatabase2,
+    DB: DefDatabase,
 {
     fn collect(&mut self) {
         let crate_graph = self.db.crate_graph();
@@ -173,7 +189,7 @@ where
     /// ```
     fn define_macro(
         &mut self,
-        module_id: CrateModuleId,
+        module_id: LocalModuleId,
         name: Name,
         macro_: MacroDefId,
         export: bool,
@@ -200,7 +216,7 @@ where
     /// the definition of current module.
     /// And also, `macro_use` on a module will import all legacy macros visable inside to
     /// current legacy scope, with possible shadowing.
-    fn define_legacy_macro(&mut self, module_id: CrateModuleId, name: Name, macro_: MacroDefId) {
+    fn define_legacy_macro(&mut self, module_id: LocalModuleId, name: Name, macro_: MacroDefId) {
         // Always shadowing
         self.def_map.modules[module_id].scope.legacy_macros.insert(name, macro_);
     }
@@ -208,7 +224,7 @@ where
     /// Import macros from `#[macro_use] extern crate`.
     fn import_macros_from_extern_crate(
         &mut self,
-        current_module_id: CrateModuleId,
+        current_module_id: LocalModuleId,
         import: &raw::ImportData,
     ) {
         log::debug!(
@@ -235,7 +251,7 @@ where
     /// Exported macros are just all macros in the root module scope.
     /// Note that it contains not only all `#[macro_export]` macros, but also all aliases
     /// created by `use` in the root module, ignoring the visibility of `use`.
-    fn import_all_macros_exported(&mut self, current_module_id: CrateModuleId, krate: CrateId) {
+    fn import_all_macros_exported(&mut self, current_module_id: LocalModuleId, krate: CrateId) {
         let def_map = self.db.crate_def_map(krate);
         for (name, def) in def_map[def_map.root].scope.macros() {
             // `macro_use` only bring things into legacy scope.
@@ -265,7 +281,7 @@ where
 
     fn resolve_import(
         &self,
-        module_id: CrateModuleId,
+        module_id: LocalModuleId,
         import: &raw::ImportData,
     ) -> (PerNs, ReachedFixedPoint) {
         log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
@@ -291,9 +307,9 @@ where
 
     fn record_resolved_import(
         &mut self,
-        module_id: CrateModuleId,
+        module_id: LocalModuleId,
         def: PerNs,
-        import_id: raw::ImportId,
+        import_id: LocalImportId,
         import: &raw::ImportData,
     ) {
         if import.is_glob {
@@ -387,8 +403,8 @@ where
 
     fn update(
         &mut self,
-        module_id: CrateModuleId,
-        import: Option<raw::ImportId>,
+        module_id: LocalModuleId,
+        import: Option<LocalImportId>,
         resolutions: &[(Name, Resolution)],
     ) {
         self.update_recursive(module_id, import, resolutions, 0)
@@ -396,8 +412,8 @@ where
 
     fn update_recursive(
         &mut self,
-        module_id: CrateModuleId,
-        import: Option<raw::ImportId>,
+        module_id: LocalModuleId,
+        import: Option<LocalImportId>,
         resolutions: &[(Name, Resolution)],
         depth: usize,
     ) {
@@ -463,7 +479,7 @@ where
                 path,
             );
 
-            if let Some(def) = resolved_res.resolved_def.get_macros() {
+            if let Some(def) = resolved_res.resolved_def.take_macros() {
                 let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id: *ast_id });
                 resolved.push((*module_id, call_id, def));
                 res = ReachedFixedPoint::No;
@@ -484,11 +500,11 @@ where
 
     fn collect_macro_expansion(
         &mut self,
-        module_id: CrateModuleId,
+        module_id: LocalModuleId,
         macro_call_id: MacroCallId,
         macro_def_id: MacroDefId,
     ) {
-        if self.def_map.poison_macros.contains(&macro_def_id) {
+        if self.poison_macros.contains(&macro_def_id) {
             return;
         }
 
@@ -508,7 +524,7 @@ where
             .collect(raw_items.items());
         } else {
             log::error!("Too deep macro expansion: {:?}", macro_call_id);
-            self.def_map.poison_macros.insert(macro_def_id);
+            self.poison_macros.insert(macro_def_id);
         }
 
         self.macro_stack_monitor.decrease(macro_def_id);
@@ -522,7 +538,7 @@ where
 /// Walks a single module, populating defs, imports and macros
 struct ModCollector<'a, D> {
     def_collector: D,
-    module_id: CrateModuleId,
+    module_id: LocalModuleId,
     file_id: HirFileId,
     raw_items: &'a raw::RawItems,
     mod_dir: ModDir,
@@ -530,7 +546,7 @@ struct ModCollector<'a, D> {
 
 impl<DB> ModCollector<'_, &'_ mut DefCollector<'_, DB>>
 where
-    DB: DefDatabase2,
+    DB: DefDatabase,
 {
     fn collect(&mut self, items: &[raw::RawItem]) {
         // Note: don't assert that inserted value is fresh: it's simply not true
@@ -549,7 +565,7 @@ where
         // `#[macro_use] extern crate` is hoisted to imports macros before collecting
         // any other items.
         for item in items {
-            if self.is_cfg_enabled(item.attrs()) {
+            if self.is_cfg_enabled(&item.attrs) {
                 if let raw::RawItemKind::Import(import_id) = item.kind {
                     let import = self.raw_items[import_id].clone();
                     if import.is_extern_crate && import.is_macro_use {
@@ -560,10 +576,10 @@ where
         }
 
         for item in items {
-            if self.is_cfg_enabled(item.attrs()) {
+            if self.is_cfg_enabled(&item.attrs) {
                 match item.kind {
                     raw::RawItemKind::Module(m) => {
-                        self.collect_module(&self.raw_items[m], item.attrs())
+                        self.collect_module(&self.raw_items[m], &item.attrs)
                     }
                     raw::RawItemKind::Import(import_id) => self
                         .def_collector
@@ -585,9 +601,9 @@ where
         }
     }
 
-    fn collect_module(&mut self, module: &raw::ModuleData, attrs: &[Attr]) {
-        let path_attr = self.path_attr(attrs);
-        let is_macro_use = self.is_macro_use(attrs);
+    fn collect_module(&mut self, module: &raw::ModuleData, attrs: &Attrs) {
+        let path_attr = attrs.by_key("path").string_value();
+        let is_macro_use = attrs.by_key("macro_use").exists();
         match module {
             // inline module, just recurse
             raw::ModuleData::Definition { name, items, ast_id } => {
@@ -647,7 +663,7 @@ where
         name: Name,
         declaration: AstId<ast::Module>,
         definition: Option<FileId>,
-    ) -> CrateModuleId {
+    ) -> LocalModuleId {
         let modules = &mut self.def_collector.def_map.modules;
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
@@ -702,7 +718,10 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Static(ast_id) => {
-                PerNs::values(StaticId::from_ast_id(ctx, ast_id).into())
+                let def = StaticLoc { container: module, ast_id: AstId::new(self.file_id, ast_id) }
+                    .intern(self.def_collector.db);
+
+                PerNs::values(def.into())
             }
             raw::DefKind::Trait(ast_id) => PerNs::types(TraitId::from_ast_id(ctx, ast_id).into()),
             raw::DefKind::TypeAlias(ast_id) => {
@@ -772,23 +791,19 @@ where
         self.def_collector.unexpanded_macros.push((self.module_id, ast_id, path));
     }
 
-    fn import_all_legacy_macros(&mut self, module_id: CrateModuleId) {
+    fn import_all_legacy_macros(&mut self, module_id: LocalModuleId) {
         let macros = self.def_collector.def_map[module_id].scope.legacy_macros.clone();
         for (name, macro_) in macros {
             self.def_collector.define_legacy_macro(self.module_id, name.clone(), macro_);
         }
     }
 
-    fn is_cfg_enabled(&self, attrs: &[Attr]) -> bool {
-        attrs.iter().all(|attr| attr.is_cfg_enabled(&self.def_collector.cfg_options) != Some(false))
-    }
-
-    fn path_attr<'a>(&self, attrs: &'a [Attr]) -> Option<&'a SmolStr> {
-        attrs.iter().find_map(|attr| attr.as_path())
-    }
-
-    fn is_macro_use<'a>(&self, attrs: &'a [Attr]) -> bool {
-        attrs.iter().any(|attr| attr.is_simple_atom("macro_use"))
+    fn is_cfg_enabled(&self, attrs: &Attrs) -> bool {
+        // FIXME: handle cfg_attr :-)
+        attrs
+            .by_key("cfg")
+            .tt_values()
+            .all(|tt| self.def_collector.cfg_options.is_cfg_enabled(tt) != Some(false))
     }
 }
 
@@ -802,15 +817,15 @@ mod tests {
     use ra_db::{fixture::WithFixture, SourceDatabase};
     use rustc_hash::FxHashSet;
 
-    use crate::{db::DefDatabase2, test_db::TestDB};
+    use crate::{db::DefDatabase, test_db::TestDB};
 
     use super::*;
 
     fn do_collect_defs(
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         def_map: CrateDefMap,
         monitor: MacroStackMonitor,
-    ) -> CrateDefMap {
+    ) -> (CrateDefMap, FxHashSet<MacroDefId>) {
         let mut collector = DefCollector {
             db,
             def_map,
@@ -819,19 +834,24 @@ mod tests {
             unexpanded_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             macro_stack_monitor: monitor,
+            poison_macros: FxHashSet::default(),
             cfg_options: &CfgOptions::default(),
         };
         collector.collect();
-        collector.finish()
+        (collector.def_map, collector.poison_macros)
     }
 
-    fn do_limited_resolve(code: &str, limit: u32, poison_limit: u32) -> CrateDefMap {
+    fn do_limited_resolve(
+        code: &str,
+        limit: u32,
+        poison_limit: u32,
+    ) -> (CrateDefMap, FxHashSet<MacroDefId>) {
         let (db, _file_id) = TestDB::with_single_file(&code);
         let krate = db.test_crate();
 
         let def_map = {
             let edition = db.crate_graph().edition(krate);
-            let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
+            let mut modules: Arena<LocalModuleId, ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {
                 krate,
@@ -840,7 +860,6 @@ mod tests {
                 prelude: None,
                 root,
                 modules,
-                poison_macros: FxHashSet::default(),
                 diagnostics: Vec::new(),
             }
         };
@@ -870,7 +889,7 @@ foo!(KABOOM);
 
     #[test]
     fn test_macro_expand_poisoned() {
-        let def = do_limited_resolve(
+        let (_, poison_macros) = do_limited_resolve(
             r#"
         macro_rules! foo {
             ($ty:ty) => { foo!($ty); }
@@ -881,12 +900,12 @@ foo!(KABOOM);
             16,
         );
 
-        assert_eq!(def.poison_macros.len(), 1);
+        assert_eq!(poison_macros.len(), 1);
     }
 
     #[test]
     fn test_macro_expand_normal() {
-        let def = do_limited_resolve(
+        let (_, poison_macros) = do_limited_resolve(
             r#"
         macro_rules! foo {
             ($ident:ident) => { struct $ident {} }
@@ -897,6 +916,6 @@ foo!(Bar);
             16,
         );
 
-        assert_eq!(def.poison_macros.len(), 0);
+        assert_eq!(poison_macros.len(), 0);
     }
 }

@@ -1,4 +1,9 @@
-//! FIXME: write short doc here
+//! Lowers syntax tree of a rust file into a raw representation of containing
+//! items, *without* attaching them to a module structure.
+//!
+//! That is, raw items don't have semantics, just as syntax, but, unlike syntax,
+//! they don't change with trivial source code edits, making them a great tool
+//! for building salsa recomputation firewalls.
 
 use std::{ops::Index, sync::Arc};
 
@@ -12,11 +17,14 @@ use hir_expand::{
 use ra_arena::{impl_arena_id, map::ArenaMap, Arena, RawId};
 use ra_syntax::{
     ast::{self, AttrsOwner, NameOwner},
-    AstNode, AstPtr, SourceFile,
+    AstNode, AstPtr,
 };
 use test_utils::tested_by;
 
-use crate::{attr::Attr, db::DefDatabase2, path::Path, FileAstId, HirFileId, ModuleSource, Source};
+use crate::{
+    attr::Attrs, db::DefDatabase, path::Path, trace::Trace, FileAstId, HirFileId, LocalImportId,
+    Source,
+};
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
 ///
@@ -25,7 +33,7 @@ use crate::{attr::Attr, db::DefDatabase2, path::Path, FileAstId, HirFileId, Modu
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct RawItems {
     modules: Arena<Module, ModuleData>,
-    imports: Arena<ImportId, ImportData>,
+    imports: Arena<LocalImportId, ImportData>,
     defs: Arena<Def, DefData>,
     macros: Arena<Macro, MacroData>,
     impls: Arena<Impl, ImplData>,
@@ -35,47 +43,33 @@ pub struct RawItems {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct ImportSourceMap {
-    map: ArenaMap<ImportId, ImportSourcePtr>,
+    map: ArenaMap<LocalImportId, ImportSourcePtr>,
 }
 
 type ImportSourcePtr = Either<AstPtr<ast::UseTree>, AstPtr<ast::ExternCrateItem>>;
-type ImportSource = Either<ast::UseTree, ast::ExternCrateItem>;
-
-fn to_node(ptr: ImportSourcePtr, file: &SourceFile) -> ImportSource {
-    ptr.map(|ptr| ptr.to_node(file.syntax()), |ptr| ptr.to_node(file.syntax()))
-}
 
 impl ImportSourceMap {
-    fn insert(&mut self, import: ImportId, ptr: ImportSourcePtr) {
-        self.map.insert(import, ptr)
-    }
-
-    pub fn get(&self, source: &ModuleSource, import: ImportId) -> ImportSource {
-        let file = match source {
-            ModuleSource::SourceFile(file) => file.clone(),
-            ModuleSource::Module(m) => m.syntax().ancestors().find_map(SourceFile::cast).unwrap(),
-        };
-
-        to_node(self.map[import], &file)
+    pub fn get(&self, import: LocalImportId) -> ImportSourcePtr {
+        self.map[import].clone()
     }
 }
 
 impl RawItems {
     pub(crate) fn raw_items_query(
-        db: &(impl DefDatabase2 + AstDatabase),
+        db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> Arc<RawItems> {
         db.raw_items_with_source_map(file_id).0
     }
 
     pub(crate) fn raw_items_with_source_map_query(
-        db: &(impl DefDatabase2 + AstDatabase),
+        db: &(impl DefDatabase + AstDatabase),
         file_id: HirFileId,
     ) -> (Arc<RawItems>, Arc<ImportSourceMap>) {
         let mut collector = RawItemsCollector {
             raw_items: RawItems::default(),
             source_ast_id_map: db.ast_id_map(file_id),
-            source_map: ImportSourceMap::default(),
+            imports: Trace::new(),
             file_id,
             hygiene: Hygiene::new(db, file_id),
         };
@@ -86,7 +80,11 @@ impl RawItems {
                 collector.process_module(None, item_list);
             }
         }
-        (Arc::new(collector.raw_items), Arc::new(collector.source_map))
+        let mut raw_items = collector.raw_items;
+        let (arena, map) = collector.imports.into_arena_and_map();
+        raw_items.imports = arena;
+        let source_map = ImportSourceMap { map };
+        (Arc::new(raw_items), Arc::new(source_map))
     }
 
     pub(super) fn items(&self) -> &[RawItem] {
@@ -101,9 +99,9 @@ impl Index<Module> for RawItems {
     }
 }
 
-impl Index<ImportId> for RawItems {
+impl Index<LocalImportId> for RawItems {
     type Output = ImportData;
-    fn index(&self, idx: ImportId) -> &ImportData {
+    fn index(&self, idx: LocalImportId) -> &ImportData {
         &self.imports[idx]
     }
 }
@@ -129,25 +127,16 @@ impl Index<Impl> for RawItems {
     }
 }
 
-// Avoid heap allocation on items without attributes.
-type Attrs = Option<Arc<[Attr]>>;
-
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub(super) struct RawItem {
-    attrs: Attrs,
+    pub(super) attrs: Attrs,
     pub(super) kind: RawItemKind,
-}
-
-impl RawItem {
-    pub(super) fn attrs(&self) -> &[Attr] {
-        self.attrs.as_ref().map_or(&[], |it| &*it)
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(super) enum RawItemKind {
     Module(Module),
-    Import(ImportId),
+    Import(LocalImportId),
     Def(Def),
     Macro(Macro),
     Impl(Impl),
@@ -162,10 +151,6 @@ pub(super) enum ModuleData {
     Declaration { name: Name, ast_id: FileAstId<ast::Module> },
     Definition { name: Name, ast_id: FileAstId<ast::Module>, items: Vec<RawItem> },
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct ImportId(RawId);
-impl_arena_id!(ImportId);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ImportData {
@@ -223,8 +208,8 @@ pub(super) struct ImplData {
 
 struct RawItemsCollector {
     raw_items: RawItems,
+    imports: Trace<LocalImportId, ImportData, ImportSourcePtr>,
     source_ast_id_map: Arc<AstIdMap>,
-    source_map: ImportSourceMap,
     file_id: HirFileId,
     hygiene: Hygiene,
 }
@@ -408,8 +393,7 @@ impl RawItemsCollector {
         data: ImportData,
         source: ImportSourcePtr,
     ) {
-        let import = self.raw_items.imports.alloc(data);
-        self.source_map.insert(import, source);
+        let import = self.imports.alloc(|| source, || data);
         self.push_item(current_module, attrs, RawItemKind::Import(import))
     }
 
@@ -425,6 +409,6 @@ impl RawItemsCollector {
     }
 
     fn parse_attrs(&self, item: &impl ast::AttrsOwner) -> Attrs {
-        Attr::from_attrs_owner(item, &self.hygiene)
+        Attrs::new(item, &self.hygiene)
     }
 }

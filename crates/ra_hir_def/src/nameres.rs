@@ -47,8 +47,7 @@
 //! path and, upon success, we run macro expansion and "collect module" phase on
 //! the result
 
-pub mod raw;
-pub mod per_ns;
+pub(crate) mod raw;
 mod collector;
 mod mod_resolution;
 mod path_resolution;
@@ -58,70 +57,63 @@ mod tests;
 
 use std::sync::Arc;
 
-use hir_expand::{ast_id_map::FileAstId, diagnostics::DiagnosticSink, name::Name, MacroDefId};
+use hir_expand::{
+    ast_id_map::FileAstId, diagnostics::DiagnosticSink, either::Either, name::Name, MacroDefId,
+    Source,
+};
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
 use ra_db::{CrateId, Edition, FileId};
 use ra_prof::profile;
 use ra_syntax::ast;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     builtin_type::BuiltinType,
-    db::DefDatabase2,
-    nameres::{
-        diagnostics::DefDiagnostic, path_resolution::ResolveMode, per_ns::PerNs, raw::ImportId,
-    },
+    db::DefDatabase,
+    nameres::{diagnostics::DefDiagnostic, path_resolution::ResolveMode},
     path::Path,
-    AstId, CrateModuleId, FunctionId, ImplId, ModuleDefId, ModuleId, TraitId,
+    per_ns::PerNs,
+    AstId, FunctionId, ImplId, LocalImportId, LocalModuleId, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Contains all top-level defs from a macro-expanded crate
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateDefMap {
-    krate: CrateId,
-    edition: Edition,
+    pub root: LocalModuleId,
+    pub modules: Arena<LocalModuleId, ModuleData>,
+    pub(crate) krate: CrateId,
     /// The prelude module for this crate. This either comes from an import
     /// marked with the `prelude_import` attribute, or (in the normal case) from
     /// a dependency (`std` or `core`).
-    prelude: Option<ModuleId>,
-    extern_prelude: FxHashMap<Name, ModuleDefId>,
-    root: CrateModuleId,
-    modules: Arena<CrateModuleId, ModuleData>,
+    pub(crate) prelude: Option<ModuleId>,
+    pub(crate) extern_prelude: FxHashMap<Name, ModuleDefId>,
 
-    /// Some macros are not well-behavior, which leads to infinite loop
-    /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
-    /// We mark it down and skip it in collector
-    ///
-    /// FIXME:
-    /// Right now it only handle a poison macro in a single crate,
-    /// such that if other crate try to call that macro,
-    /// the whole process will do again until it became poisoned in that crate.
-    /// We should handle this macro set globally
-    /// However, do we want to put it as a global variable?
-    poison_macros: FxHashSet<MacroDefId>,
-
+    edition: Edition,
     diagnostics: Vec<DefDiagnostic>,
 }
 
-impl std::ops::Index<CrateModuleId> for CrateDefMap {
+impl std::ops::Index<LocalModuleId> for CrateDefMap {
     type Output = ModuleData;
-    fn index(&self, id: CrateModuleId) -> &ModuleData {
+    fn index(&self, id: LocalModuleId) -> &ModuleData {
         &self.modules[id]
     }
 }
 
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ModuleData {
-    pub parent: Option<CrateModuleId>,
-    pub children: FxHashMap<Name, CrateModuleId>,
+    pub parent: Option<LocalModuleId>,
+    pub children: FxHashMap<Name, LocalModuleId>,
     pub scope: ModuleScope,
+
+    //  FIXME: these can't be both null, we need a three-state enum here.
     /// None for root
     pub declaration: Option<AstId<ast::Module>>,
     /// None for inline modules.
     ///
     /// Note that non-inline modules, by definition, live inside non-macro file.
     pub definition: Option<FileId>,
+
     pub impls: Vec<ImplId>,
 }
 
@@ -177,7 +169,7 @@ impl ModuleScope {
     pub fn macros<'a>(&'a self) -> impl Iterator<Item = (&'a Name, MacroDefId)> + 'a {
         self.items
             .iter()
-            .filter_map(|(name, res)| res.def.get_macros().map(|macro_| (name, macro_)))
+            .filter_map(|(name, res)| res.def.take_macros().map(|macro_| (name, macro_)))
     }
 
     /// Iterate over all legacy textual scoped macros visable at the end of the module
@@ -207,21 +199,21 @@ pub struct Resolution {
     /// None for unresolved
     pub def: PerNs,
     /// ident by which this is imported into local scope.
-    pub import: Option<ImportId>,
+    pub import: Option<LocalImportId>,
 }
 
 impl CrateDefMap {
     pub(crate) fn crate_def_map_query(
         // Note that this doesn't have `+ AstDatabase`!
         // This gurantess that `CrateDefMap` is stable across reparses.
-        db: &impl DefDatabase2,
+        db: &impl DefDatabase,
         krate: CrateId,
     ) -> Arc<CrateDefMap> {
         let _p = profile("crate_def_map_query");
         let def_map = {
             let crate_graph = db.crate_graph();
             let edition = crate_graph.edition(krate);
-            let mut modules: Arena<CrateModuleId, ModuleData> = Arena::default();
+            let mut modules: Arena<LocalModuleId, ModuleData> = Arena::default();
             let root = modules.alloc(ModuleData::default());
             CrateDefMap {
                 krate,
@@ -230,7 +222,6 @@ impl CrateDefMap {
                 prelude: None,
                 root,
                 modules,
-                poison_macros: FxHashSet::default(),
                 diagnostics: Vec::new(),
             }
         };
@@ -238,50 +229,53 @@ impl CrateDefMap {
         Arc::new(def_map)
     }
 
-    pub fn krate(&self) -> CrateId {
-        self.krate
-    }
-
-    pub fn root(&self) -> CrateModuleId {
-        self.root
-    }
-
-    pub fn prelude(&self) -> Option<ModuleId> {
-        self.prelude
-    }
-
-    pub fn extern_prelude(&self) -> &FxHashMap<Name, ModuleDefId> {
-        &self.extern_prelude
-    }
-
     pub fn add_diagnostics(
         &self,
-        db: &impl DefDatabase2,
-        module: CrateModuleId,
+        db: &impl DefDatabase,
+        module: LocalModuleId,
         sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, module, sink))
     }
 
-    pub fn resolve_path(
+    pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
+        self.modules
+            .iter()
+            .filter(move |(_id, data)| data.definition == Some(file_id))
+            .map(|(id, _data)| id)
+    }
+
+    pub(crate) fn resolve_path(
         &self,
-        db: &impl DefDatabase2,
-        original_module: CrateModuleId,
+        db: &impl DefDatabase,
+        original_module: LocalModuleId,
         path: &Path,
     ) -> (PerNs, Option<usize>) {
         let res = self.resolve_path_fp_with_macro(db, ResolveMode::Other, original_module, path);
         (res.resolved_def, res.segment_index)
     }
+}
 
-    pub fn modules(&self) -> impl Iterator<Item = CrateModuleId> + '_ {
-        self.modules.iter().map(|(id, _data)| id)
+impl ModuleData {
+    /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
+    pub fn definition_source(
+        &self,
+        db: &impl DefDatabase,
+    ) -> Source<Either<ast::SourceFile, ast::Module>> {
+        if let Some(file_id) = self.definition {
+            let sf = db.parse(file_id).tree();
+            return Source::new(file_id.into(), Either::A(sf));
+        }
+        let decl = self.declaration.unwrap();
+        Source::new(decl.file_id(), Either::B(decl.to_node(db)))
     }
 
-    pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = CrateModuleId> + '_ {
-        self.modules
-            .iter()
-            .filter(move |(_id, data)| data.definition == Some(file_id))
-            .map(|(id, _data)| id)
+    /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
+    /// `None` for the crate root.
+    pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<Source<ast::Module>> {
+        let decl = self.declaration?;
+        let value = decl.to_node(db);
+        Some(Source { file_id: decl.file_id(), value })
     }
 }
 
@@ -290,12 +284,12 @@ mod diagnostics {
     use ra_db::RelativePathBuf;
     use ra_syntax::{ast, AstPtr};
 
-    use crate::{db::DefDatabase2, diagnostics::UnresolvedModule, nameres::CrateModuleId, AstId};
+    use crate::{db::DefDatabase, diagnostics::UnresolvedModule, nameres::LocalModuleId, AstId};
 
     #[derive(Debug, PartialEq, Eq)]
     pub(super) enum DefDiagnostic {
         UnresolvedModule {
-            module: CrateModuleId,
+            module: LocalModuleId,
             declaration: AstId<ast::Module>,
             candidate: RelativePathBuf,
         },
@@ -304,8 +298,8 @@ mod diagnostics {
     impl DefDiagnostic {
         pub(super) fn add_to(
             &self,
-            db: &impl DefDatabase2,
-            target_module: CrateModuleId,
+            db: &impl DefDatabase,
+            target_module: LocalModuleId,
             sink: &mut DiagnosticSink,
         ) {
             match self {

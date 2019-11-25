@@ -214,19 +214,24 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.unify(&ty, &expected.ty);
 
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
+                let field_types =
+                    def_id.map(|it| self.db.field_types(it.into())).unwrap_or_default();
                 for (field_idx, field) in fields.iter().enumerate() {
-                    let field_ty = def_id
-                        .and_then(|it| match it.field(self.db, &field.name) {
-                            Some(field) => Some(field),
-                            None => {
-                                self.push_diagnostic(InferenceDiagnostic::NoSuchField {
-                                    expr: tgt_expr,
-                                    field: field_idx,
-                                });
-                                None
-                            }
-                        })
-                        .map_or(Ty::Unknown, |field| field.ty(self.db))
+                    let field_def = def_id.and_then(|it| match it.field(self.db, &field.name) {
+                        Some(field) => Some(field),
+                        None => {
+                            self.push_diagnostic(InferenceDiagnostic::NoSuchField {
+                                expr: tgt_expr,
+                                field: field_idx,
+                            });
+                            None
+                        }
+                    });
+                    if let Some(field_def) = field_def {
+                        self.result.record_field_resolutions.insert(field.expr, field_def);
+                    }
+                    let field_ty = field_def
+                        .map_or(Ty::Unknown, |it| field_types[it.id].clone())
                         .subst(&substs);
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }
@@ -250,7 +255,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             .and_then(|idx| a_ty.parameters.0.get(idx).cloned()),
                         TypeCtor::Adt(Adt::Struct(s)) => s.field(self.db, name).map(|field| {
                             self.write_field_resolution(tgt_expr, field);
-                            field.ty(self.db).subst(&a_ty.parameters)
+                            self.db.field_types(s.id.into())[field.id]
+                                .clone()
+                                .subst(&a_ty.parameters)
                         }),
                         _ => None,
                     },

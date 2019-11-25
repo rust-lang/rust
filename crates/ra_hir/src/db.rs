@@ -2,79 +2,46 @@
 
 use std::sync::Arc;
 
-use hir_def::attr::Attr;
+use ra_arena::map::ArenaMap;
 use ra_db::salsa;
-use ra_syntax::SmolStr;
 
 use crate::{
-    debug::HirDebugDatabase,
-    ids,
-    lang_item::{LangItemTarget, LangItems},
     ty::{
         method_resolution::CrateImplBlocks,
         traits::{AssocTyValue, Impl},
         CallableDef, FnSig, GenericPredicate, InferenceResult, Namespace, Substs, Ty, TypableDef,
         TypeCtor,
     },
-    type_alias::TypeAliasData,
-    Const, ConstData, Crate, DefWithBody, FnData, Function, GenericDef, ImplBlock, Module, Static,
-    StructField, Trait, TypeAlias,
+    Crate, DefWithBody, GenericDef, ImplBlock, Trait,
 };
 
-pub use hir_def::db::{
-    BodyQuery, BodyWithSourceMapQuery, CrateDefMapQuery, DefDatabase2, DefDatabase2Storage,
-    EnumDataQuery, ExprScopesQuery, GenericParamsQuery, ImplDataQuery, InternDatabase,
-    InternDatabaseStorage, RawItemsQuery, RawItemsWithSourceMapQuery, StructDataQuery,
-    TraitDataQuery,
+pub use hir_def::{
+    db::{
+        BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, CrateLangItemsQuery,
+        DefDatabase, DefDatabaseStorage, DocumentationQuery, EnumDataQuery, ExprScopesQuery,
+        FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternDatabase,
+        InternDatabaseStorage, LangItemQuery, ModuleLangItemsQuery, RawItemsQuery,
+        RawItemsWithSourceMapQuery, StaticDataQuery, StructDataQuery, TraitDataQuery,
+        TypeAliasDataQuery,
+    },
+    LocalStructFieldId, VariantId,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
     ParseMacroQuery,
 };
 
-// This database uses `AstDatabase` internally,
-#[salsa::query_group(DefDatabaseStorage)]
-#[salsa::requires(AstDatabase)]
-pub trait DefDatabase: HirDebugDatabase + DefDatabase2 {
-    #[salsa::invoke(FnData::fn_data_query)]
-    fn fn_data(&self, func: Function) -> Arc<FnData>;
-
-    #[salsa::invoke(TypeAliasData::type_alias_data_query)]
-    fn type_alias_data(&self, typ: TypeAlias) -> Arc<TypeAliasData>;
-
-    #[salsa::invoke(ConstData::const_data_query)]
-    fn const_data(&self, konst: Const) -> Arc<ConstData>;
-
-    #[salsa::invoke(ConstData::static_data_query)]
-    fn static_data(&self, konst: Static) -> Arc<ConstData>;
-
-    #[salsa::invoke(LangItems::module_lang_items_query)]
-    fn module_lang_items(&self, module: Module) -> Option<Arc<LangItems>>;
-
-    #[salsa::invoke(LangItems::crate_lang_items_query)]
-    fn crate_lang_items(&self, krate: Crate) -> Arc<LangItems>;
-
-    #[salsa::invoke(LangItems::lang_item_query)]
-    fn lang_item(&self, start_crate: Crate, item: SmolStr) -> Option<LangItemTarget>;
-
-    #[salsa::invoke(crate::code_model::docs::documentation_query)]
-    fn documentation(&self, def: crate::DocDef) -> Option<crate::Documentation>;
-
-    #[salsa::invoke(crate::code_model::attrs::attributes_query)]
-    fn attrs(&self, def: crate::AttrDef) -> Option<Arc<[Attr]>>;
-}
-
 #[salsa::query_group(HirDatabaseStorage)]
 #[salsa::requires(salsa::Database)]
-pub trait HirDatabase: DefDatabase + AstDatabase {
+pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::infer_query)]
     fn infer(&self, def: DefWithBody) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::ty::type_for_def)]
     fn type_for_def(&self, def: TypableDef, ns: Namespace) -> Ty;
 
-    #[salsa::invoke(crate::ty::type_for_field)]
-    fn type_for_field(&self, field: StructField) -> Ty;
+    #[salsa::invoke(crate::ty::field_types_query)]
+    fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalStructFieldId, Ty>>;
 
     #[salsa::invoke(crate::ty::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDef) -> FnSig;
@@ -108,11 +75,14 @@ pub trait HirDatabase: DefDatabase + AstDatabase {
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
-    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> ids::TypeCtorId;
+    fn intern_type_ctor(&self, type_ctor: TypeCtor) -> crate::ty::TypeCtorId;
     #[salsa::interned]
-    fn intern_chalk_impl(&self, impl_: Impl) -> ids::GlobalImplId;
+    fn intern_chalk_impl(&self, impl_: Impl) -> crate::ty::traits::GlobalImplId;
     #[salsa::interned]
-    fn intern_assoc_ty_value(&self, assoc_ty_value: AssocTyValue) -> ids::AssocTyValueId;
+    fn intern_assoc_ty_value(
+        &self,
+        assoc_ty_value: AssocTyValue,
+    ) -> crate::ty::traits::AssocTyValueId;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_data_query)]
     fn associated_ty_data(

@@ -22,6 +22,7 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use hir_def::{
+    data::{ConstData, FunctionData},
     path::known,
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
@@ -43,8 +44,7 @@ use crate::{
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, ConstData, DefWithBody, FloatTy, FnData, Function, HasBody, IntTy, Path,
-    StructField, Trait, VariantDef,
+    Adt, AssocItem, DefWithBody, FloatTy, Function, IntTy, Path, StructField, Trait, VariantDef,
 };
 
 macro_rules! ty_app {
@@ -68,10 +68,10 @@ pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResu
     let resolver = DefWithBodyId::from(def).resolver(db);
     let mut ctx = InferenceContext::new(db, def, resolver);
 
-    match def {
-        DefWithBody::Const(ref c) => ctx.collect_const(&c.data(db)),
-        DefWithBody::Function(ref f) => ctx.collect_fn(&f.data(db)),
-        DefWithBody::Static(ref s) => ctx.collect_const(&s.data(db)),
+    match &def {
+        DefWithBody::Const(c) => ctx.collect_const(&db.const_data(c.id)),
+        DefWithBody::Function(f) => ctx.collect_fn(&db.function_data(f.id)),
+        DefWithBody::Static(s) => ctx.collect_const(&db.static_data(s.id)),
     }
 
     ctx.infer_body();
@@ -125,6 +125,8 @@ pub struct InferenceResult {
     method_resolutions: FxHashMap<ExprId, Function>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, StructField>,
+    /// For each field in record literal, records the field it resolves to.
+    record_field_resolutions: FxHashMap<ExprId, StructField>,
     /// For each struct literal, records the variant it resolves to.
     variant_resolutions: FxHashMap<ExprOrPatId, VariantDef>,
     /// For each associated item record what it resolves to
@@ -141,6 +143,9 @@ impl InferenceResult {
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
         self.field_resolutions.get(&expr).copied()
+    }
+    pub fn record_field_resolution(&self, expr: ExprId) -> Option<StructField> {
+        self.record_field_resolutions.get(&expr).copied()
     }
     pub fn variant_resolution_for_expr(&self, id: ExprId) -> Option<VariantDef> {
         self.variant_resolutions.get(&id.into()).copied()
@@ -215,7 +220,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             coerce_unsized_map: Self::init_coerce_unsized_map(db, &resolver),
             db,
             owner,
-            body: owner.body(db),
+            body: db.body(owner.into()),
             resolver,
         }
     }
@@ -559,21 +564,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     }
 
     fn collect_const(&mut self, data: &ConstData) {
-        self.return_ty = self.make_ty(data.type_ref());
+        self.return_ty = self.make_ty(&data.type_ref);
     }
 
-    fn collect_fn(&mut self, data: &FnData) {
+    fn collect_fn(&mut self, data: &FunctionData) {
         let body = Arc::clone(&self.body); // avoid borrow checker problem
-        for (type_ref, pat) in data.params().iter().zip(body.params()) {
+        for (type_ref, pat) in data.params.iter().zip(body.params.iter()) {
             let ty = self.make_ty(type_ref);
 
             self.infer_pat(*pat, &ty, BindingMode::default());
         }
-        self.return_ty = self.make_ty(data.ret_type());
+        self.return_ty = self.make_ty(&data.ret_type);
     }
 
     fn infer_body(&mut self) {
-        self.infer_expr(self.body.body_expr(), &Expectation::has_type(self.return_ty.clone()));
+        self.infer_expr(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
     }
 
     fn resolve_into_iter_item(&self) -> Option<TypeAlias> {

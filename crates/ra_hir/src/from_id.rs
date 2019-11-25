@@ -4,14 +4,14 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId, GenericDefId,
-    ModuleDefId, StaticId, StructId, TypeAliasId, UnionId,
+    AdtId, AssocItemId, AttrDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
+    GenericDefId, ModuleDefId, StaticId, StructFieldId, StructId, TypeAliasId, UnionId, VariantId,
 };
 
 use crate::{
     ty::{CallableDef, TypableDef},
-    Adt, AssocItem, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef, ModuleDef,
-    Static, TypeAlias,
+    Adt, AssocItem, AttrDef, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef,
+    ModuleDef, Static, StructField, TypeAlias, VariantDef,
 };
 
 impl From<ra_db::CrateId> for Crate {
@@ -67,6 +67,12 @@ impl From<Adt> for AdtId {
 impl From<EnumVariantId> for EnumVariant {
     fn from(id: EnumVariantId) -> Self {
         EnumVariant { parent: id.parent.into(), id: id.local_id }
+    }
+}
+
+impl From<EnumVariant> for EnumVariantId {
+    fn from(def: EnumVariant) -> Self {
+        EnumVariantId { parent: def.parent.id, local_id: def.id }
     }
 }
 
@@ -216,6 +222,38 @@ impl From<CallableDef> for GenericDefId {
             CallableDef::EnumVariant(it) => {
                 EnumVariantId { parent: it.parent.id, local_id: it.id }.into()
             }
+        }
+    }
+}
+
+impl From<VariantDef> for VariantId {
+    fn from(def: VariantDef) -> Self {
+        match def {
+            VariantDef::Struct(it) => VariantId::StructId(it.id),
+            VariantDef::EnumVariant(it) => VariantId::EnumVariantId(it.into()),
+        }
+    }
+}
+
+impl From<StructField> for StructFieldId {
+    fn from(def: StructField) -> Self {
+        StructFieldId { parent: def.parent.into(), local_id: def.id }
+    }
+}
+
+impl From<AttrDef> for AttrDefId {
+    fn from(def: AttrDef) -> Self {
+        match def {
+            AttrDef::Module(it) => AttrDefId::ModuleId(it.id),
+            AttrDef::StructField(it) => AttrDefId::StructFieldId(it.into()),
+            AttrDef::Adt(it) => AttrDefId::AdtId(it.into()),
+            AttrDef::Function(it) => AttrDefId::FunctionId(it.id),
+            AttrDef::EnumVariant(it) => AttrDefId::EnumVariantId(it.into()),
+            AttrDef::Static(it) => AttrDefId::StaticId(it.id),
+            AttrDef::Const(it) => AttrDefId::ConstId(it.id),
+            AttrDef::Trait(it) => AttrDefId::TraitId(it.id),
+            AttrDef::TypeAlias(it) => AttrDefId::TypeAliasId(it.id),
+            AttrDef::MacroDef(it) => AttrDefId::MacroDefId(it.id),
         }
     }
 }

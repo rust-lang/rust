@@ -10,7 +10,7 @@ use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, SourceDatabase};
 use test_utils::covers;
 
-use crate::{db::DefDatabase2, nameres::*, test_db::TestDB, CrateModuleId};
+use crate::{db::DefDatabase, nameres::*, test_db::TestDB, LocalModuleId};
 
 fn def_map(fixtute: &str) -> String {
     let dm = compute_crate_def_map(fixtute);
@@ -25,10 +25,10 @@ fn compute_crate_def_map(fixture: &str) -> Arc<CrateDefMap> {
 
 fn render_crate_def_map(map: &CrateDefMap) -> String {
     let mut buf = String::new();
-    go(&mut buf, map, "\ncrate", map.root());
+    go(&mut buf, map, "\ncrate", map.root);
     return buf.trim().to_string();
 
-    fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: CrateModuleId) {
+    fn go(buf: &mut String, map: &CrateDefMap, path: &str, module: LocalModuleId) {
         *buf += path;
         *buf += "\n";
 
