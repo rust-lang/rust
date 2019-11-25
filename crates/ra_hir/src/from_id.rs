@@ -137,20 +137,6 @@ impl From<GenericDef> for GenericDefId {
     }
 }
 
-impl From<GenericDefId> for GenericDef {
-    fn from(def: GenericDefId) -> Self {
-        match def {
-            GenericDefId::FunctionId(it) => GenericDef::Function(it.into()),
-            GenericDefId::AdtId(it) => GenericDef::Adt(it.into()),
-            GenericDefId::TraitId(it) => GenericDef::Trait(it.into()),
-            GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
-            GenericDefId::ImplId(it) => GenericDef::ImplBlock(it.into()),
-            GenericDefId::EnumVariantId(it) => GenericDef::EnumVariant(it.into()),
-            GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
-        }
-    }
-}
-
 impl From<AdtId> for TypableDef {
     fn from(id: AdtId) -> Self {
         Adt::from(id).into()
@@ -241,6 +227,16 @@ impl From<AttrDef> for AttrDefId {
             AttrDef::Trait(it) => AttrDefId::TraitId(it.id),
             AttrDef::TypeAlias(it) => AttrDefId::TypeAliasId(it.id),
             AttrDef::MacroDef(it) => AttrDefId::MacroDefId(it.id),
+        }
+    }
+}
+
+impl From<AssocItem> for GenericDefId {
+    fn from(item: AssocItem) -> Self {
+        match item {
+            AssocItem::Function(f) => f.id.into(),
+            AssocItem::Const(c) => c.id.into(),
+            AssocItem::TypeAlias(t) => t.id.into(),
         }
     }
 }

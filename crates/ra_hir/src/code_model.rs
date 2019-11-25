@@ -11,9 +11,9 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    AstItemDef, ConstId, ContainerId, EnumId, FunctionId, HasModule, ImplId, LocalEnumVariantId,
-    LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId, StaticId, StructId,
-    TraitId, TypeAliasId, UnionId,
+    AstItemDef, ConstId, ContainerId, EnumId, FunctionId, GenericDefId, HasModule, ImplId,
+    LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -897,16 +897,6 @@ impl_froms!(
     Const
 );
 
-impl From<AssocItem> for GenericDef {
-    fn from(item: AssocItem) -> Self {
-        match item {
-            AssocItem::Function(f) => f.into(),
-            AssocItem::Const(c) => c.into(),
-            AssocItem::TypeAlias(t) => t.into(),
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Local {
     pub(crate) parent: DefWithBody,
@@ -960,7 +950,7 @@ impl Local {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GenericParam {
-    pub(crate) parent: GenericDef,
+    pub(crate) parent: GenericDefId,
     pub(crate) idx: u32,
 }
 

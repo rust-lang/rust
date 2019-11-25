@@ -29,8 +29,8 @@ use crate::{
         Adt,
     },
     util::make_mut_slice,
-    Const, Enum, EnumVariant, Function, GenericDef, ImplBlock, ModuleDef, Path, Static, Struct,
-    Trait, TypeAlias, Union,
+    Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, Trait,
+    TypeAlias, Union,
 };
 
 // FIXME: this is only really used in `type_for_def`, which contains a bunch of
@@ -261,8 +261,10 @@ impl Ty {
         let traits = traits_from_env.flat_map(|t| t.all_super_traits(db));
         for t in traits {
             if let Some(associated_ty) = t.associated_type_by_name(db, &segment.name) {
-                let substs =
-                    Substs::build_for_def(db, t).push(self_ty.clone()).fill_with_unknown().build();
+                let substs = Substs::build_for_def(db, t.id)
+                    .push(self_ty.clone())
+                    .fill_with_unknown()
+                    .build();
                 // FIXME handle type parameters on the segment
                 return Ty::Projection(ProjectionTy { associated_ty, parameters: substs });
             }
@@ -287,11 +289,11 @@ impl Ty {
         segment: &PathSegment,
         resolved: TypableDef,
     ) -> Substs {
-        let def_generic: Option<GenericDef> = match resolved {
-            TypableDef::Function(func) => Some(func.into()),
+        let def_generic: Option<GenericDefId> = match resolved {
+            TypableDef::Function(func) => Some(func.id.into()),
             TypableDef::Adt(adt) => Some(adt.into()),
-            TypableDef::EnumVariant(var) => Some(var.parent_enum(db).into()),
-            TypableDef::TypeAlias(t) => Some(t.into()),
+            TypableDef::EnumVariant(var) => Some(var.parent_enum(db).id.into()),
+            TypableDef::TypeAlias(t) => Some(t.id.into()),
             TypableDef::Const(_) | TypableDef::Static(_) | TypableDef::BuiltinType(_) => None,
         };
         substs_from_path_segment(db, resolver, segment, def_generic, false)
@@ -338,7 +340,7 @@ pub(super) fn substs_from_path_segment(
     db: &impl HirDatabase,
     resolver: &Resolver,
     segment: &PathSegment,
-    def_generic: Option<GenericDef>,
+    def_generic: Option<GenericDefId>,
     add_self_param: bool,
 ) -> Substs {
     let mut substs = Vec::new();
@@ -376,7 +378,7 @@ pub(super) fn substs_from_path_segment(
 
     // handle defaults
     if let Some(def_generic) = def_generic {
-        let default_substs = db.generic_defaults(def_generic);
+        let default_substs = db.generic_defaults(def_generic.into());
         assert_eq!(substs.len(), default_substs.len());
 
         for (i, default_ty) in default_substs.iter().enumerate() {
@@ -439,7 +441,7 @@ impl TraitRef {
     ) -> Substs {
         let has_self_param =
             segment.args_and_bindings.as_ref().map(|a| a.has_self_type).unwrap_or(false);
-        substs_from_path_segment(db, resolver, segment, Some(resolved.into()), !has_self_param)
+        substs_from_path_segment(db, resolver, segment, Some(resolved.id.into()), !has_self_param)
     }
 
     pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {
@@ -579,10 +581,10 @@ pub(crate) fn field_types_query(
 /// these are fine: `T: Foo<U::Item>, U: Foo<()>`.
 pub(crate) fn generic_predicates_for_param_query(
     db: &impl HirDatabase,
-    def: GenericDef,
+    def: GenericDefId,
     param_idx: u32,
 ) -> Arc<[GenericPredicate]> {
-    let resolver = GenericDefId::from(def).resolver(db);
+    let resolver = def.resolver(db);
     resolver
         .where_predicates_in_scope()
         // we have to filter out all other predicates *first*, before attempting to lower them
@@ -615,8 +617,8 @@ pub(crate) fn generic_predicates_query(
 }
 
 /// Resolve the default type params from generics
-pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDef) -> Substs {
-    let resolver = GenericDefId::from(def).resolver(db);
+pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDefId) -> Substs {
+    let resolver = def.resolver(db);
     let generic_params = db.generic_params(def.into());
 
     let defaults = generic_params

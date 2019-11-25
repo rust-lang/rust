@@ -736,7 +736,7 @@ fn closure_fn_trait_impl_datum(
 
     let trait_ref = TraitRef {
         trait_,
-        substs: Substs::build_for_def(db, trait_).push(self_ty).push(arg_ty).build(),
+        substs: Substs::build_for_def(db, trait_.id).push(self_ty).push(arg_ty).build(),
     };
 
     let output_ty_id = AssocTyValue::ClosureFnTraitImplOutput(data.clone()).to_chalk(db);

@@ -292,7 +292,7 @@ fn is_deprecated(node: impl HasAttrs, db: &impl HirDatabase) -> bool {
 }
 
 fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> bool {
-    let subst = db.generic_defaults(def);
+    let subst = db.generic_defaults(def.into());
     subst.iter().any(|ty| ty == &Ty::Unknown)
 }
 
