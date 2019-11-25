@@ -344,9 +344,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
     };
 
     interface::run_compiler_in_existing_thread_pool(config, |compiler| {
-        let sess = compiler.session();
+        compiler.enter(|queries| {
+            let sess = compiler.session();
 
-        let (resolver, mut global_ctxt) = compiler.enter(|queries| {
             // We need to hold on to the complete resolver, so we cause everything to be
             // cloned for the analysis passes to use. Suboptimal, but necessary in the
             // current architecture.
@@ -375,121 +375,119 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 sess.fatal("Compilation failed, aborting rustdoc");
             }
 
-            let global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
+            let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
-            (resolver, global_ctxt)
-        });
+            global_ctxt.enter(|tcx| {
+                tcx.analysis(LOCAL_CRATE).ok();
 
-        global_ctxt.enter(|tcx| {
-            tcx.analysis(LOCAL_CRATE).ok();
+                // Abort if there were any errors so far
+                sess.abort_if_errors();
 
-            // Abort if there were any errors so far
-            sess.abort_if_errors();
+                let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
+                // Convert from a HirId set to a DefId set since we don't always have easy access
+                // to the map from defid -> hirid
+                let access_levels = AccessLevels {
+                    map: access_levels.map.iter()
+                                        .map(|(&k, &v)| (tcx.hir().local_def_id(k), v))
+                                        .collect()
+                };
 
-            let access_levels = tcx.privacy_access_levels(LOCAL_CRATE);
-            // Convert from a HirId set to a DefId set since we don't always have easy access
-            // to the map from defid -> hirid
-            let access_levels = AccessLevels {
-                map: access_levels.map.iter()
-                                    .map(|(&k, &v)| (tcx.hir().local_def_id(k), v))
-                                    .collect()
-            };
+                let mut renderinfo = RenderInfo::default();
+                renderinfo.access_levels = access_levels;
 
-            let mut renderinfo = RenderInfo::default();
-            renderinfo.access_levels = access_levels;
+                let mut ctxt = DocContext {
+                    tcx,
+                    resolver,
+                    external_traits: Default::default(),
+                    active_extern_traits: Default::default(),
+                    renderinfo: RefCell::new(renderinfo),
+                    ty_substs: Default::default(),
+                    lt_substs: Default::default(),
+                    ct_substs: Default::default(),
+                    impl_trait_bounds: Default::default(),
+                    fake_def_ids: Default::default(),
+                    all_fake_def_ids: Default::default(),
+                    generated_synthetics: Default::default(),
+                    auto_traits: tcx.all_traits(LOCAL_CRATE).iter().cloned().filter(|trait_def_id| {
+                        tcx.trait_is_auto(*trait_def_id)
+                    }).collect(),
+                };
+                debug!("crate: {:?}", tcx.hir().krate());
 
-            let mut ctxt = DocContext {
-                tcx,
-                resolver,
-                external_traits: Default::default(),
-                active_extern_traits: Default::default(),
-                renderinfo: RefCell::new(renderinfo),
-                ty_substs: Default::default(),
-                lt_substs: Default::default(),
-                ct_substs: Default::default(),
-                impl_trait_bounds: Default::default(),
-                fake_def_ids: Default::default(),
-                all_fake_def_ids: Default::default(),
-                generated_synthetics: Default::default(),
-                auto_traits: tcx.all_traits(LOCAL_CRATE).iter().cloned().filter(|trait_def_id| {
-                    tcx.trait_is_auto(*trait_def_id)
-                }).collect(),
-            };
-            debug!("crate: {:?}", tcx.hir().krate());
+                let mut krate = clean::krate(&mut ctxt);
 
-            let mut krate = clean::krate(&mut ctxt);
+                fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
+                    let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
+                                                             considered deprecated", name));
+                    msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
 
-            fn report_deprecated_attr(name: &str, diag: &errors::Handler) {
-                let mut msg = diag.struct_warn(&format!("the `#![doc({})]` attribute is \
-                                                         considered deprecated", name));
-                msg.warn("please see https://github.com/rust-lang/rust/issues/44136");
+                    if name == "no_default_passes" {
+                        msg.help("you may want to use `#![doc(document_private_items)]`");
+                    }
 
-                if name == "no_default_passes" {
-                    msg.help("you may want to use `#![doc(document_private_items)]`");
+                    msg.emit();
                 }
 
-                msg.emit();
-            }
+                // Process all of the crate attributes, extracting plugin metadata along
+                // with the passes which we are supposed to run.
+                for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
+                    let diag = ctxt.sess().diagnostic();
 
-            // Process all of the crate attributes, extracting plugin metadata along
-            // with the passes which we are supposed to run.
-            for attr in krate.module.as_ref().unwrap().attrs.lists(sym::doc) {
-                let diag = ctxt.sess().diagnostic();
-
-                let name = attr.name_or_empty();
-                if attr.is_word() {
-                    if name == sym::no_default_passes {
-                        report_deprecated_attr("no_default_passes", diag);
-                        if default_passes == passes::DefaultPassOption::Default {
-                            default_passes = passes::DefaultPassOption::None;
+                    let name = attr.name_or_empty();
+                    if attr.is_word() {
+                        if name == sym::no_default_passes {
+                            report_deprecated_attr("no_default_passes", diag);
+                            if default_passes == passes::DefaultPassOption::Default {
+                                default_passes = passes::DefaultPassOption::None;
+                            }
+                        }
+                    } else if let Some(value) = attr.value_str() {
+                        let sink = match name {
+                            sym::passes => {
+                                report_deprecated_attr("passes = \"...\"", diag);
+                                &mut manual_passes
+                            },
+                            sym::plugins => {
+                                report_deprecated_attr("plugins = \"...\"", diag);
+                                eprintln!("WARNING: `#![doc(plugins = \"...\")]` \
+                                          no longer functions; see CVE-2018-1000622");
+                                continue
+                            },
+                            _ => continue,
+                        };
+                        for name in value.as_str().split_whitespace() {
+                            sink.push(name.to_string());
                         }
                     }
-                } else if let Some(value) = attr.value_str() {
-                    let sink = match name {
-                        sym::passes => {
-                            report_deprecated_attr("passes = \"...\"", diag);
-                            &mut manual_passes
-                        },
-                        sym::plugins => {
-                            report_deprecated_attr("plugins = \"...\"", diag);
-                            eprintln!("WARNING: `#![doc(plugins = \"...\")]` no longer functions; \
-                                      see CVE-2018-1000622");
-                            continue
-                        },
-                        _ => continue,
-                    };
-                    for name in value.as_str().split_whitespace() {
-                        sink.push(name.to_string());
+
+                    if attr.is_word() && name == sym::document_private_items {
+                        if default_passes == passes::DefaultPassOption::Default {
+                            default_passes = passes::DefaultPassOption::Private;
+                        }
                     }
                 }
 
-                if attr.is_word() && name == sym::document_private_items {
-                    if default_passes == passes::DefaultPassOption::Default {
-                        default_passes = passes::DefaultPassOption::Private;
-                    }
+                let passes = passes::defaults(default_passes).iter().chain(manual_passes.into_iter()
+                    .flat_map(|name| {
+                        if let Some(pass) = passes::find_pass(&name) {
+                            Some(pass)
+                        } else {
+                            error!("unknown pass {}, skipping", name);
+                            None
+                        }
+                    }));
+
+                info!("Executing passes");
+
+                for pass in passes {
+                    debug!("running pass {}", pass.name);
+                    krate = (pass.pass)(krate, &ctxt);
                 }
-            }
 
-            let passes = passes::defaults(default_passes).iter().chain(manual_passes.into_iter()
-                .flat_map(|name| {
-                    if let Some(pass) = passes::find_pass(&name) {
-                        Some(pass)
-                    } else {
-                        error!("unknown pass {}, skipping", name);
-                        None
-                    }
-                }));
+                ctxt.sess().abort_if_errors();
 
-            info!("Executing passes");
-
-            for pass in passes {
-                debug!("running pass {}", pass.name);
-                krate = (pass.pass)(krate, &ctxt);
-            }
-
-            ctxt.sess().abort_if_errors();
-
-            (krate, ctxt.renderinfo.into_inner(), render_options)
+                (krate, ctxt.renderinfo.into_inner(), render_options)
+            })
         })
     })
 }

@@ -86,13 +86,13 @@ pub fn run(options: Options) -> i32 {
     let display_warnings = options.display_warnings;
 
     let tests = interface::run_compiler(config, |compiler| -> Result<_, ErrorReported> {
-        let (mut collector, mut global_ctxt) = compiler.enter(|queries| {
+        compiler.enter(|queries| {
             let lower_to_hir = queries.lower_to_hir()?;
 
             let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
             opts.display_warnings |= options.display_warnings;
             let enable_per_target_ignores = options.enable_per_target_ignores;
-            let collector = Collector::new(
+            let mut collector = Collector::new(
                 queries.crate_name()?.peek().to_string(),
                 options,
                 false,
@@ -102,24 +102,24 @@ pub fn run(options: Options) -> i32 {
                 enable_per_target_ignores,
             );
 
-            let global_ctxt = queries.global_ctxt()?.take();
-            Ok((collector, global_ctxt))
-        })?;
-        global_ctxt.enter(|tcx| {
-            let krate = tcx.hir().krate();
-            let mut hir_collector = HirCollector {
-                sess: compiler.session(),
-                collector: &mut collector,
-                map: tcx.hir(),
-                codes: ErrorCodes::from(compiler.session().opts
-                                                .unstable_features.is_nightly_build()),
-            };
-            hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
-                intravisit::walk_crate(this, krate);
-            });
-        });
+            let mut global_ctxt = queries.global_ctxt()?.take();
 
-        Ok(collector.tests)
+            global_ctxt.enter(|tcx| {
+                let krate = tcx.hir().krate();
+                let mut hir_collector = HirCollector {
+                    sess: compiler.session(),
+                    collector: &mut collector,
+                    map: tcx.hir(),
+                    codes: ErrorCodes::from(compiler.session().opts
+                                                    .unstable_features.is_nightly_build()),
+                };
+                hir_collector.visit_testable("".to_string(), &krate.attrs, |this| {
+                    intravisit::walk_crate(this, krate);
+                });
+            });
+
+            Ok(collector.tests)
+        })
     }).expect("compiler aborted in rustdoc!");
 
     test_args.insert(0, "rustdoctest".to_string());
