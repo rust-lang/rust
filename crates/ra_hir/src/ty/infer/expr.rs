@@ -8,6 +8,7 @@ use hir_def::{
     generics::GenericParams,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
+    ContainerId, Lookup,
 };
 use hir_expand::name;
 
@@ -660,18 +661,21 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 // add obligation for trait implementation, if this is a trait method
                 match def {
-                    CallableDef::Function(f) => {
-                        if let Some(trait_) = f.parent_trait(self.db) {
+                    CallableDef::FunctionId(f) => {
+                        if let ContainerId::TraitId(trait_) = f.lookup(self.db).container {
                             // construct a TraitDef
                             let substs = a_ty.parameters.prefix(
                                 self.db
-                                    .generic_params(trait_.id.into())
+                                    .generic_params(trait_.into())
                                     .count_params_including_parent(),
                             );
-                            self.obligations.push(Obligation::Trait(TraitRef { trait_, substs }));
+                            self.obligations.push(Obligation::Trait(TraitRef {
+                                trait_: trait_.into(),
+                                substs,
+                            }));
                         }
                     }
-                    CallableDef::Struct(_) | CallableDef::EnumVariant(_) => {}
+                    CallableDef::StructId(_) | CallableDef::EnumVariantId(_) => {}
                 }
             }
         }

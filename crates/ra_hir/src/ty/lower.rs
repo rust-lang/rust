@@ -14,9 +14,11 @@ use hir_def::{
     path::{GenericArg, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, EnumVariantId, GenericDefId, LocalStructFieldId, VariantId,
+    AdtId, AstItemDef, EnumVariantId, FunctionId, GenericDefId, HasModule, LocalStructFieldId,
+    Lookup, StructId, VariantId,
 };
 use ra_arena::map::ArenaMap;
+use ra_db::CrateId;
 
 use super::{
     FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef,
@@ -546,9 +548,9 @@ pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace
 /// Build the signature of a callable item (function, struct or enum variant).
 pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSig {
     match def {
-        CallableDef::Function(f) => fn_sig_for_fn(db, f),
-        CallableDef::Struct(s) => fn_sig_for_struct_constructor(db, s),
-        CallableDef::EnumVariant(e) => fn_sig_for_enum_variant_constructor(db, e),
+        CallableDef::FunctionId(f) => fn_sig_for_fn(db, f),
+        CallableDef::StructId(s) => fn_sig_for_struct_constructor(db, s),
+        CallableDef::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e),
     }
 }
 
@@ -630,9 +632,9 @@ pub(crate) fn generic_defaults_query(db: &impl HirDatabase, def: GenericDefId) -
     Substs(defaults)
 }
 
-fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
-    let data = db.function_data(def.id);
-    let resolver = def.id.resolver(db);
+fn fn_sig_for_fn(db: &impl HirDatabase, def: FunctionId) -> FnSig {
+    let data = db.function_data(def);
+    let resolver = def.resolver(db);
     let params = data.params.iter().map(|tr| Ty::from_hir(db, &resolver, tr)).collect::<Vec<_>>();
     let ret = Ty::from_hir(db, &resolver, &data.ret_type);
     FnSig::from_params_and_return(params, ret)
@@ -643,7 +645,7 @@ fn fn_sig_for_fn(db: &impl HirDatabase, def: Function) -> FnSig {
 fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
     let generics = db.generic_params(def.id.into());
     let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(def.into()), substs)
+    Ty::apply(TypeCtor::FnDef(def.id.into()), substs)
 }
 
 /// Build the declared type of a const.
@@ -703,15 +705,15 @@ impl From<Option<BuiltinFloat>> for Uncertain<FloatTy> {
     }
 }
 
-fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> FnSig {
-    let struct_data = db.struct_data(def.id.into());
+fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> FnSig {
+    let struct_data = db.struct_data(def.into());
     let fields = struct_data.variant_data.fields();
-    let resolver = def.id.resolver(db);
+    let resolver = def.resolver(db);
     let params = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let ret = type_for_adt(db, def);
+    let ret = type_for_adt(db, Struct::from(def));
     FnSig::from_params_and_return(params, ret)
 }
 
@@ -723,20 +725,21 @@ fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
     }
     let generics = db.generic_params(def.id.into());
     let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(def.into()), substs)
+    Ty::apply(TypeCtor::FnDef(def.id.into()), substs)
 }
 
-fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> FnSig {
-    let var_data = def.variant_data(db);
-    let fields = var_data.fields();
-    let resolver = def.parent.id.resolver(db);
+fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> FnSig {
+    let enum_data = db.enum_data(def.parent);
+    let var_data = &enum_data.variants[def.local_id];
+    let fields = var_data.variant_data.fields();
+    let resolver = def.parent.resolver(db);
     let params = fields
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let generics = db.generic_params(def.parent_enum(db).id.into());
+    let generics = db.generic_params(def.parent.into());
     let substs = Substs::identity(&generics);
-    let ret = type_for_adt(db, def.parent_enum(db)).subst(&substs);
+    let ret = type_for_adt(db, Enum::from(def.parent)).subst(&substs);
     FnSig::from_params_and_return(params, ret)
 }
 
@@ -748,7 +751,7 @@ fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) ->
     }
     let generics = db.generic_params(def.parent_enum(db).id.into());
     let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(def.into()), substs)
+    Ty::apply(TypeCtor::FnDef(EnumVariantId::from(def).into()), substs)
 }
 
 fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt>) -> Ty {
@@ -805,18 +808,18 @@ impl From<ModuleDef> for Option<TypableDef> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum CallableDef {
-    Function(Function),
-    Struct(Struct),
-    EnumVariant(EnumVariant),
+    FunctionId(FunctionId),
+    StructId(StructId),
+    EnumVariantId(EnumVariantId),
 }
-impl_froms!(CallableDef: Function, Struct, EnumVariant);
+impl_froms!(CallableDef: FunctionId, StructId, EnumVariantId);
 
 impl CallableDef {
-    pub fn krate(self, db: &impl HirDatabase) -> Option<crate::Crate> {
+    pub fn krate(self, db: &impl HirDatabase) -> CrateId {
         match self {
-            CallableDef::Function(f) => f.krate(db),
-            CallableDef::Struct(s) => s.krate(db),
-            CallableDef::EnumVariant(e) => e.parent_enum(db).krate(db),
+            CallableDef::FunctionId(f) => f.lookup(db).module(db).krate,
+            CallableDef::StructId(s) => s.0.module(db).krate,
+            CallableDef::EnumVariantId(e) => e.parent.module(db).krate,
         }
     }
 }
@@ -824,9 +827,9 @@ impl CallableDef {
 impl From<CallableDef> for GenericDefId {
     fn from(def: CallableDef) -> GenericDefId {
         match def {
-            CallableDef::Function(f) => f.id.into(),
-            CallableDef::Struct(s) => s.id.into(),
-            CallableDef::EnumVariant(e) => EnumVariantId::from(e).into(),
+            CallableDef::FunctionId(f) => f.into(),
+            CallableDef::StructId(s) => s.into(),
+            CallableDef::EnumVariantId(e) => e.into(),
         }
     }
 }
