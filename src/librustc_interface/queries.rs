@@ -316,11 +316,6 @@ impl Linker {
 }
 
 impl Compiler {
-    // This method is different to all the other methods in `Compiler` because
-    // it lacks a `Queries` entry. It's also not currently used. It does serve
-    // as an example of how `Compiler` can be used, with additional steps added
-    // between some passes. And see `rustc_driver::run_compiler` for a more
-    // complex example.
     pub fn enter<'c, F, T>(&'c self, f: F) -> Result<T>
         where F: FnOnce(Queries<'c>) -> Result<T>
     {
