@@ -17,7 +17,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 use std::{fmt, iter, mem};
 
-use hir_def::{generics::GenericParams, AdtId};
+use hir_def::{generics::GenericParams, AdtId, GenericDefId};
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
@@ -176,7 +176,7 @@ impl TypeCtor {
         }
     }
 
-    pub fn as_generic_def(self) -> Option<crate::GenericDef> {
+    pub fn as_generic_def(self) -> Option<GenericDefId> {
         match self {
             TypeCtor::Bool
             | TypeCtor::Char
@@ -193,7 +193,7 @@ impl TypeCtor {
             | TypeCtor::Closure { .. } => None,
             TypeCtor::Adt(adt) => Some(adt.into()),
             TypeCtor::FnDef(callable) => Some(callable.into()),
-            TypeCtor::AssociatedType(type_alias) => Some(type_alias.into()),
+            TypeCtor::AssociatedType(type_alias) => Some(type_alias.id.into()),
         }
     }
 }

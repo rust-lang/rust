@@ -14,7 +14,7 @@ use hir_def::{
     path::{GenericArg, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, GenericDefId, LocalStructFieldId, VariantId,
+    AdtId, EnumVariantId, GenericDefId, LocalStructFieldId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 
@@ -605,9 +605,9 @@ impl TraitEnvironment {
 /// Resolve the where clause(s) of an item with generics.
 pub(crate) fn generic_predicates_query(
     db: &impl HirDatabase,
-    def: GenericDef,
+    def: GenericDefId,
 ) -> Arc<[GenericPredicate]> {
-    let resolver = GenericDefId::from(def).resolver(db);
+    let resolver = def.resolver(db);
     resolver
         .where_predicates_in_scope()
         .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
@@ -819,12 +819,12 @@ impl CallableDef {
     }
 }
 
-impl From<CallableDef> for GenericDef {
-    fn from(def: CallableDef) -> GenericDef {
+impl From<CallableDef> for GenericDefId {
+    fn from(def: CallableDef) -> GenericDefId {
         match def {
-            CallableDef::Function(f) => f.into(),
-            CallableDef::Struct(s) => s.into(),
-            CallableDef::EnumVariant(e) => e.into(),
+            CallableDef::Function(f) => f.id.into(),
+            CallableDef::Struct(s) => s.id.into(),
+            CallableDef::EnumVariant(e) => EnumVariantId::from(e).into(),
         }
     }
 }

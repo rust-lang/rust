@@ -24,7 +24,7 @@ pub use hir_def::{
         RawItemsWithSourceMapQuery, StaticDataQuery, StructDataQuery, TraitDataQuery,
         TypeAliasDataQuery,
     },
-    LocalStructFieldId, VariantId,
+    GenericDefId, LocalStructFieldId, VariantId,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -54,7 +54,7 @@ pub trait HirDatabase: DefDatabase {
     ) -> Arc<[GenericPredicate]>;
 
     #[salsa::invoke(crate::ty::generic_predicates_query)]
-    fn generic_predicates(&self, def: GenericDef) -> Arc<[GenericPredicate]>;
+    fn generic_predicates(&self, def: GenericDefId) -> Arc<[GenericPredicate]>;
 
     #[salsa::invoke(crate::ty::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDef) -> Substs;
