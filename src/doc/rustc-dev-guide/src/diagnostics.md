@@ -60,7 +60,7 @@ let mut err = sess.struct_span_err(sp, "oh no! this is an error!");
 
 if let Ok(snippet) = sess.source_map().span_to_snippet(sp) {
     // Use the snippet to generate a suggested fix
-    err.span_suggestion(suggestion_sp, "try using a qux here", format!("qux {}", snip));
+    err.span_suggestion(suggestion_sp, "try using a qux here", format!("qux {}", snippet));
 } else {
     // If we weren't able to generate a snippet, then emit a "help" message
     // instead of a concrete "suggestion". In practice this is unlikely to be
@@ -100,7 +100,7 @@ if let Ok(snippet) = sess.source_map().span_to_snippet(sp) {
     err.span_suggestion(
         suggestion_sp,
         "try using a qux here",
-        format!("qux {}", snip),
+        format!("qux {}", snippet),
         Applicability::MachineApplicable,
     );
 } else {
