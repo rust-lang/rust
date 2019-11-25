@@ -6,7 +6,7 @@
 
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
-use crate::hir;
+use crate::hir::GeneratorKind;
 use crate::mir::interpret::{GlobalAlloc, PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
@@ -117,6 +117,10 @@ pub struct Body<'tcx> {
     /// The layout of a generator. Produced by the state transformation.
     pub generator_layout: Option<GeneratorLayout<'tcx>>,
 
+    /// If this is a generator then record the type of source expression that caused this generator
+    /// to be created.
+    pub generator_kind: Option<GeneratorKind>,
+
     /// Declarations of locals.
     ///
     /// The first local is the return value pointer, followed by `arg_count`
@@ -170,6 +174,7 @@ impl<'tcx> Body<'tcx> {
         var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         control_flow_destroyed: Vec<(Span, String)>,
+        generator_kind : Option<GeneratorKind>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
@@ -187,6 +192,7 @@ impl<'tcx> Body<'tcx> {
             yield_ty: None,
             generator_drop: None,
             generator_layout: None,
+            generator_kind,
             local_decls,
             user_type_annotations,
             arg_count,
@@ -2975,7 +2981,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                             index: index.fold_with(folder),
                         },
                     Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
-                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic |
+                    AsyncResumedAfterReturn | AsyncResumedAfterPanic =>
                         msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
@@ -3021,7 +3028,8 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                             len.visit_with(visitor) || index.visit_with(visitor),
                         Panic { .. } | Overflow(_) | OverflowNeg |
                         DivisionByZero | RemainderByZero |
-                        GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                        GeneratorResumedAfterReturn | GeneratorResumedAfterPanic |
+                        AsyncResumedAfterReturn | AsyncResumedAfterPanic =>
                             false
                     }
                 } else {

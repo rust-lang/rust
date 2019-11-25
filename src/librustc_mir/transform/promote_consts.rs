@@ -1104,6 +1104,7 @@ pub fn promote_candidates<'tcx>(
                 vec![],
                 body.span,
                 vec![],
+                body.generator_kind,
             ),
             tcx,
             source: body,

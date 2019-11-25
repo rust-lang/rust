@@ -91,6 +91,7 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc_data_structures::fx::FxHashMap;
 use std::collections::hash_map::Entry;
 use std::mem;
+use rustc::hir::GeneratorKind;
 
 #[derive(Debug)]
 struct Scope {
@@ -219,7 +220,12 @@ impl Scope {
     /// `storage_only` controls whether to invalidate only drop paths that run `StorageDead`.
     /// `this_scope_only` controls whether to invalidate only drop paths that refer to the current
     /// top-of-scope (as opposed to dependent scopes).
-    fn invalidate_cache(&mut self, storage_only: bool, is_generator: bool, this_scope_only: bool) {
+    fn invalidate_cache(
+        &mut self,
+        storage_only: bool,
+        generator_kind: Option<GeneratorKind>,
+        this_scope_only: bool
+    ) {
         // FIXME: maybe do shared caching of `cached_exits` etc. to handle functions
         // with lots of `try!`?
 
@@ -229,7 +235,7 @@ impl Scope {
         // the current generator drop and unwind refer to top-of-scope
         self.cached_generator_drop = None;
 
-        let ignore_unwinds = storage_only && !is_generator;
+        let ignore_unwinds = storage_only && generator_kind.is_none();
         if !ignore_unwinds {
             self.cached_unwind.invalidate();
         }
@@ -481,7 +487,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         unpack!(block = build_scope_drops(
             &mut self.cfg,
-            self.is_generator,
+            self.generator_kind,
             &scope,
             block,
             unwind_to,
@@ -574,7 +580,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             unpack!(block = build_scope_drops(
                 &mut self.cfg,
-                self.is_generator,
+                self.generator_kind,
                 scope,
                 block,
                 unwind_to,
@@ -625,7 +631,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             unpack!(block = build_scope_drops(
                 &mut self.cfg,
-                self.is_generator,
+                self.generator_kind,
                 scope,
                 block,
                 unwind_to,
@@ -809,7 +815,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // invalidating caches of each scope visited. This way bare minimum of the
             // caches gets invalidated. i.e., if a new drop is added into the middle scope, the
             // cache of outer scope stays intact.
-            scope.invalidate_cache(!needs_drop, self.is_generator, this_scope);
+            scope.invalidate_cache(!needs_drop, self.generator_kind, this_scope);
             if this_scope {
                 let region_scope_span = region_scope.span(self.hir.tcx(),
                                                           &self.hir.region_scope_tree);
@@ -958,7 +964,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     }
 
-                    top_scope.invalidate_cache(true, self.is_generator, true);
+                    top_scope.invalidate_cache(true, self.generator_kind, true);
                 } else {
                     bug!("Expected as_local_operand to produce a temporary");
                 }
@@ -1016,7 +1022,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         for scope in self.scopes.top_scopes(first_uncached) {
             target = build_diverge_scope(&mut self.cfg, scope.region_scope_span,
-                                         scope, target, generator_drop, self.is_generator);
+                                         scope, target, generator_drop, self.generator_kind);
         }
 
         target
@@ -1079,14 +1085,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert_eq!(top_scope.region_scope, region_scope);
 
         top_scope.drops.clear();
-        top_scope.invalidate_cache(false, self.is_generator, true);
+        top_scope.invalidate_cache(false, self.generator_kind, true);
     }
 }
 
 /// Builds drops for pop_scope and exit_scope.
 fn build_scope_drops<'tcx>(
     cfg: &mut CFG<'tcx>,
-    is_generator: bool,
+    generator_kind: Option<GeneratorKind>,
     scope: &Scope,
     mut block: BasicBlock,
     last_unwind_to: BasicBlock,
@@ -1130,7 +1136,7 @@ fn build_scope_drops<'tcx>(
                     continue;
                 }
 
-                let unwind_to = get_unwind_to(scope, is_generator, drop_idx, generator_drop)
+                let unwind_to = get_unwind_to(scope, generator_kind, drop_idx, generator_drop)
                     .unwrap_or(last_unwind_to);
 
                 let next = cfg.start_new_block();
@@ -1156,19 +1162,19 @@ fn build_scope_drops<'tcx>(
 
 fn get_unwind_to(
     scope: &Scope,
-    is_generator: bool,
+    generator_kind: Option<GeneratorKind>,
     unwind_from: usize,
     generator_drop: bool,
 ) -> Option<BasicBlock> {
     for drop_idx in (0..unwind_from).rev() {
         let drop_data = &scope.drops[drop_idx];
-        match (is_generator, &drop_data.kind) {
-            (true, DropKind::Storage) => {
+        match (generator_kind, &drop_data.kind) {
+            (Some(_), DropKind::Storage) => {
                 return Some(drop_data.cached_block.get(generator_drop).unwrap_or_else(|| {
                     span_bug!(drop_data.span, "cached block not present for {:?}", drop_data)
                 }));
             }
-            (false, DropKind::Value) => {
+            (None, DropKind::Value) => {
                 return Some(drop_data.cached_block.get(generator_drop).unwrap_or_else(|| {
                     span_bug!(drop_data.span, "cached block not present for {:?}", drop_data)
                 }));
@@ -1184,7 +1190,7 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
                              scope: &mut Scope,
                              mut target: BasicBlock,
                              generator_drop: bool,
-                             is_generator: bool)
+                             generator_kind: Option<GeneratorKind>)
                              -> BasicBlock
 {
     // Build up the drops in **reverse** order. The end result will
@@ -1224,7 +1230,7 @@ fn build_diverge_scope<'tcx>(cfg: &mut CFG<'tcx>,
         // match the behavior of clang, but on inspection eddyb says
         // this is not what clang does.
         match drop_data.kind {
-            DropKind::Storage if is_generator => {
+            DropKind::Storage if generator_kind.is_some() => {
                 storage_deads.push(Statement {
                     source_info: source_info(drop_data.span),
                     kind: StatementKind::StorageDead(drop_data.local)

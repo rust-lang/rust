@@ -266,6 +266,8 @@ pub enum PanicInfo<O> {
     RemainderByZero,
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
+    AsyncResumedAfterReturn,
+    AsyncResumedAfterPanic,
 }
 
 /// Type for MIR `Assert` terminator error messages.
@@ -304,6 +306,10 @@ impl<O> PanicInfo<O> {
                 "generator resumed after completion",
             GeneratorResumedAfterPanic =>
                 "generator resumed after panicking",
+            AsyncResumedAfterReturn =>
+                "`async fn` resumed after completion",
+            AsyncResumedAfterPanic =>
+                "`async fn` resumed after panic",
             Panic { .. } | BoundsCheck { .. } =>
                 bug!("Unexpected PanicInfo"),
         }

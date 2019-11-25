@@ -208,6 +208,7 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
         vec![],
         span,
         vec![],
+        None,
     );
 
     if let Some(..) = ty {
@@ -374,6 +375,7 @@ impl CloneShimBuilder<'tcx> {
             vec![],
             self.span,
             vec![],
+            None,
         )
     }
 
@@ -834,6 +836,7 @@ fn build_call_shim<'tcx>(
         vec![],
         span,
         vec![],
+        None,
     );
     if let Abi::RustCall = sig.abi {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
@@ -920,6 +923,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
         vec![],
         span,
         vec![],
+        None,
     );
 
     crate::util::dump_mir(
