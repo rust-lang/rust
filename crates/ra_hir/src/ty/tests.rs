@@ -4832,7 +4832,8 @@ fn no_such_field_diagnostics() {
 
     assert_snapshot!(diagnostics, @r###"
     "baz: 62": no such field
-    "{\n            foo: 92,\n            baz: 62,\n        }": fill structure fields
+    "{\n            foo: 92,\n            baz: 62,\n        }": Missing structure fields:
+    - bar
     "###
     );
 }
