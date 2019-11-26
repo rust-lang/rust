@@ -2,7 +2,7 @@ use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, BoxedGlobalCtxt};
 
 use rustc_incremental::DepGraphFuture;
-use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::sync::{Lrc, Once};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::util::common::{time, ErrorReported};
@@ -12,7 +12,7 @@ use rustc::session::Session;
 use rustc::lint::LintStore;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::ty::steal::Steal;
-use rustc::ty::ResolverOutputs;
+use rustc::ty::{AllArenas, ResolverOutputs, GlobalCtxt};
 use rustc::dep_graph::DepGraph;
 use std::cell::{Ref, RefMut, RefCell};
 use std::rc::Rc;
@@ -70,6 +70,9 @@ impl<T> Default for Query<T> {
 
 pub struct Queries<'comp> {
     compiler: &'comp Compiler,
+    gcx: Once<GlobalCtxt<'comp>>,
+    arenas: Once<AllArenas>,
+    forest: Once<hir::map::Forest>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
@@ -77,9 +80,9 @@ pub struct Queries<'comp> {
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(Steal<hir::map::Forest>, Steal<ResolverOutputs>)>,
+    lower_to_hir: Query<(&'comp hir::map::Forest, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
-    global_ctxt: Query<BoxedGlobalCtxt>,
+    global_ctxt: Query<BoxedGlobalCtxt<'comp>>,
     ongoing_codegen: Query<Box<dyn Any>>,
 }
 
@@ -87,6 +90,9 @@ impl<'comp> Queries<'comp> {
     pub fn new(compiler: &'comp Compiler) -> Queries<'comp> {
         Queries {
             compiler,
+            gcx: Once::new(),
+            arenas: Once::new(),
+            forest: Once::new(),
             dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
@@ -209,15 +215,15 @@ impl<'comp> Queries<'comp> {
     }
 
     pub fn lower_to_hir(
-        &self,
-    ) -> Result<&Query<(Steal<hir::map::Forest>, Steal<ResolverOutputs>)>> {
+        &'comp self,
+    ) -> Result<&Query<(&'comp hir::map::Forest, Steal<ResolverOutputs>)>> {
         self.lower_to_hir.compute(|| {
             let expansion_result = self.expansion()?;
             let peeked = expansion_result.peek();
             let krate = &peeked.0;
             let resolver = peeked.1.steal();
             let lint_store = &peeked.2;
-            let hir = Steal::new(resolver.borrow_mut().access(|resolver| {
+            let hir = resolver.borrow_mut().access(|resolver| {
                 passes::lower_to_hir(
                     self.session(),
                     lint_store,
@@ -225,7 +231,8 @@ impl<'comp> Queries<'comp> {
                     &*self.dep_graph()?.peek(),
                     &krate
                 )
-            })?);
+            })?;
+            let hir = self.forest.init_locking(|| hir);
             Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }
@@ -242,25 +249,27 @@ impl<'comp> Queries<'comp> {
         })
     }
 
-    pub fn global_ctxt(&self) -> Result<&Query<BoxedGlobalCtxt>> {
+    pub fn global_ctxt(&'comp self) -> Result<&Query<BoxedGlobalCtxt<'comp>>> {
         self.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
             let lint_store = self.expansion()?.peek().2.clone();
-            let hir = self.lower_to_hir()?;
-            let hir = hir.peek();
-            let (hir_forest, resolver_outputs) = &*hir;
+            let hir = self.lower_to_hir()?.peek();
+            let (ref hir_forest, ref resolver_outputs) = &*hir;
             Ok(passes::create_global_ctxt(
                 self.compiler,
                 lint_store,
-                hir_forest.steal(),
+                hir_forest,
                 resolver_outputs.steal(),
                 outputs,
-                &crate_name))
+                &crate_name,
+                &self.gcx,
+                &self.arenas,
+            ))
         })
     }
 
-    pub fn ongoing_codegen(&self) -> Result<&Query<Box<dyn Any>>> {
+    pub fn ongoing_codegen(&'comp self) -> Result<&Query<Box<dyn Any>>> {
         self.ongoing_codegen.compute(|| {
             let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
@@ -278,7 +287,7 @@ impl<'comp> Queries<'comp> {
         })
     }
 
-    pub fn linker(&self) -> Result<Linker> {
+    pub fn linker(&'comp self) -> Result<Linker> {
         let dep_graph = self.dep_graph()?;
         let prepare_outputs = self.prepare_outputs()?;
         let ongoing_codegen = self.ongoing_codegen()?;
@@ -317,10 +326,18 @@ impl Linker {
 
 impl Compiler {
     pub fn enter<F, T>(&self, f: F) -> T
-        where F: FnOnce(&Queries<'_>) -> T
+        where F: for<'tcx> FnOnce(&'tcx Queries<'tcx>) -> T
     {
         let queries = Queries::new(&self);
-        f(&queries)
+        let ret = f(&queries);
+
+        if self.session().opts.debugging_opts.query_stats {
+            if let Ok(gcx) = queries.global_ctxt() {
+                gcx.peek().print_stats();
+            }
+        }
+
+        ret
     }
 
     // This method is different to all the other methods in `Compiler` because

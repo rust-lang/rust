@@ -88,7 +88,7 @@ pub fn run(options: Options) -> i32 {
     let tests = interface::run_compiler(config, |compiler| compiler.enter(|queries| {
         let lower_to_hir = queries.lower_to_hir()?;
 
-        let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
+        let mut opts = scrape_test_config(lower_to_hir.peek().0.krate());
         opts.display_warnings |= options.display_warnings;
         let enable_per_target_ignores = options.enable_per_target_ignores;
         let mut collector = Collector::new(
