@@ -84,17 +84,16 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
         match ty_res {
             Res::Def(DefKind::Enum, did) => {
-                let item = cx.tcx.inherent_impls(did)
-                                 .iter()
-                                 .flat_map(|imp| cx.tcx.associated_items(*imp))
-                                 .find(|item| item.ident.name == variant_name);
-                if item.is_some() {
+                if cx.tcx.inherent_impls(did)
+                         .iter()
+                         .flat_map(|imp| cx.tcx.associated_items(*imp))
+                         .any(|item| item.ident.name == variant_name) {
                     return Err(());
                 }
                 match cx.tcx.type_of(did).kind {
                     ty::Adt(def, _) if def.is_enum() => {
                         if def.all_fields()
-                              .find(|item| item.ident.name == variant_field_name).is_some() {
+                              .any(|item| item.ident.name == variant_field_name) {
                             Ok((ty_res,
                                 Some(format!("variant.{}.field.{}",
                                              variant_name, variant_field_name))))
