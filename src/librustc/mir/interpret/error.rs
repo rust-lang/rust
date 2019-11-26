@@ -302,12 +302,10 @@ impl<O> PanicInfo<O> {
                 "attempt to calculate the remainder with a divisor of zero",
             ResumedAfterReturn(GeneratorKind::Gen) =>
                 "generator resumed after completion",
-            // FIXME: Do we want a separate message for each Async variant (Block, Closure, Fn)?
             ResumedAfterReturn(GeneratorKind::Async(_)) =>
                 "`async fn` resumed after completion",
             ResumedAfterPanic(GeneratorKind::Gen) =>
                 "generator resumed after panicking",
-            // FIXME: Do we want a separate message for each Async variant (Block, Closure, Fn)?
             ResumedAfterPanic(GeneratorKind::Async(_)) =>
                 "`async fn` resumed after panicking",
             Panic { .. } | BoundsCheck { .. } =>
