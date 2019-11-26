@@ -28,6 +28,7 @@ use crate::{
     db::HirDatabase,
     ty::{
         primitive::{FloatTy, IntTy},
+        utils::all_super_traits,
         Adt,
     },
     util::make_mut_slice,
@@ -260,7 +261,7 @@ impl Ty {
             GenericPredicate::Implemented(tr) if tr.self_ty() == &self_ty => Some(tr.trait_),
             _ => None,
         });
-        let traits = traits_from_env.flat_map(|t| t.all_super_traits(db));
+        let traits = traits_from_env.flat_map(|t| all_super_traits(db, t.id)).map(Trait::from);
         for t in traits {
             if let Some(associated_ty) = t.associated_type_by_name(db, &segment.name) {
                 let substs = Substs::build_for_def(db, t.id)

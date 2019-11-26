@@ -9,7 +9,7 @@ use hir_def::{
     builtin_type::BuiltinType,
     docs::Documentation,
     per_ns::PerNs,
-    resolver::{HasResolver, TypeNs},
+    resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
     AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, GenericDefId,
     HasModule, ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId,
@@ -28,8 +28,8 @@ use crate::{
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     ty::display::HirFormatter,
     ty::{
-        self, InEnvironment, InferenceResult, Namespace, TraitEnvironment, TraitRef, Ty, TypeCtor,
-        TypeWalk,
+        self, utils::all_super_traits, InEnvironment, InferenceResult, Namespace, TraitEnvironment,
+        TraitRef, Ty, TypeCtor, TypeWalk,
     },
     CallableDef, Either, HirDisplay, Name, Source,
 };
@@ -740,48 +740,6 @@ impl Trait {
         db.trait_data(self.id).items.iter().map(|it| (*it).into()).collect()
     }
 
-    fn direct_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
-        let resolver = self.id.resolver(db);
-        // returning the iterator directly doesn't easily work because of
-        // lifetime problems, but since there usually shouldn't be more than a
-        // few direct traits this should be fine (we could even use some kind of
-        // SmallVec if performance is a concern)
-        db.generic_params(self.id.into())
-            .where_predicates
-            .iter()
-            .filter_map(|pred| match &pred.type_ref {
-                TypeRef::Path(p) if p.as_ident() == Some(&name::SELF_TYPE) => pred.bound.as_path(),
-                _ => None,
-            })
-            .filter_map(|path| match resolver.resolve_path_in_type_ns_fully(db, path) {
-                Some(TypeNs::TraitId(t)) => Some(t),
-                _ => None,
-            })
-            .map(Trait::from)
-            .collect()
-    }
-
-    /// Returns an iterator over the whole super trait hierarchy (including the
-    /// trait itself).
-    pub fn all_super_traits(self, db: &impl HirDatabase) -> Vec<Trait> {
-        // we need to take care a bit here to avoid infinite loops in case of cycles
-        // (i.e. if we have `trait A: B; trait B: A;`)
-        let mut result = vec![self];
-        let mut i = 0;
-        while i < result.len() {
-            let t = result[i];
-            // yeah this is quadratic, but trait hierarchies should be flat
-            // enough that this doesn't matter
-            for tt in t.direct_super_traits(db) {
-                if !result.contains(&tt) {
-                    result.push(tt);
-                }
-            }
-            i += 1;
-        }
-        result
-    }
-
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
         let trait_data = db.trait_data(self.id);
         let res =
@@ -794,7 +752,10 @@ impl Trait {
         db: &impl HirDatabase,
         name: &Name,
     ) -> Option<TypeAlias> {
-        self.all_super_traits(db).into_iter().find_map(|t| t.associated_type_by_name(db, name))
+        all_super_traits(db, self.id)
+            .into_iter()
+            .map(Trait::from)
+            .find_map(|t| t.associated_type_by_name(db, name))
     }
 
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {

@@ -16,7 +16,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     db::HirDatabase,
     ty::primitive::{FloatBitness, Uncertain},
-    ty::{Ty, TypeCtor},
+    ty::{utils::all_super_traits, Ty, TypeCtor},
     AssocItem, Crate, Function, Mutability, Name, Trait,
 };
 
@@ -249,7 +249,8 @@ fn iterate_trait_method_candidates<T>(
     let traits_from_env = env
         .trait_predicates_for_self_ty(&ty.value)
         .map(|tr| tr.trait_)
-        .flat_map(|t| t.all_super_traits(db));
+        .flat_map(|t| all_super_traits(db, t.id))
+        .map(Trait::from);
     let traits = inherent_trait
         .chain(traits_from_env)
         .chain(resolver.traits_in_scope(db).into_iter().map(Trait::from));
