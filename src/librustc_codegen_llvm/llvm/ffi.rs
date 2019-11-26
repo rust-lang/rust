@@ -1670,6 +1670,11 @@ extern "C" {
 
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
+    pub fn LLVMRustCreateAddressSanitizerFunctionPass(Recover: bool) -> &'static mut Pass;
+    pub fn LLVMRustCreateModuleAddressSanitizerPass(Recover: bool) -> &'static mut Pass;
+    pub fn LLVMRustCreateMemorySanitizerPass(TrackOrigins: c_int,
+                                             Recover: bool) -> &'static mut Pass;
+    pub fn LLVMRustCreateThreadSanitizerPass() -> &'static mut Pass;
     pub fn LLVMRustAddPass(PM: &PassManager<'_>, Pass: &'static mut Pass);
     pub fn LLVMRustAddLastExtensionPasses(PMB: &PassManagerBuilder,
                                           Passes: *const &'static mut Pass,

@@ -59,6 +59,10 @@ pub struct ModuleConfig {
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
 
+    pub sanitizer: Option<Sanitizer>,
+    pub sanitizer_recover: Vec<Sanitizer>,
+    pub sanitizer_memory_track_origins: usize,
+
     // Flags indicating which outputs to produce.
     pub emit_pre_lto_bc: bool,
     pub emit_no_opt_bc: bool,
@@ -96,6 +100,10 @@ impl ModuleConfig {
 
             pgo_gen: SwitchWithOptPath::Disabled,
             pgo_use: None,
+
+            sanitizer: None,
+            sanitizer_recover: Default::default(),
+            sanitizer_memory_track_origins: 0,
 
             emit_no_opt_bc: false,
             emit_pre_lto_bc: false,
@@ -345,29 +353,16 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let mut metadata_config = ModuleConfig::new(vec![]);
     let mut allocator_config = ModuleConfig::new(vec![]);
 
-    if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
-        match *sanitizer {
-            Sanitizer::Address => {
-                modules_config.passes.push("asan".to_owned());
-                modules_config.passes.push("asan-module".to_owned());
-            }
-            Sanitizer::Memory => {
-                modules_config.passes.push("msan".to_owned())
-            }
-            Sanitizer::Thread => {
-                modules_config.passes.push("tsan".to_owned())
-            }
-            _ => {}
-        }
-    }
-
     if sess.opts.debugging_opts.profile {
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
     modules_config.pgo_gen = sess.opts.cg.profile_generate.clone();
     modules_config.pgo_use = sess.opts.cg.profile_use.clone();
-
+    modules_config.sanitizer = sess.opts.debugging_opts.sanitizer.clone();
+    modules_config.sanitizer_recover = sess.opts.debugging_opts.sanitizer_recover.clone();
+    modules_config.sanitizer_memory_track_origins =
+        sess.opts.debugging_opts.sanitizer_memory_track_origins;
     modules_config.opt_level = Some(sess.opts.optimize);
     modules_config.opt_size = Some(sess.opts.optimize);
 
