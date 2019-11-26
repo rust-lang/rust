@@ -5,14 +5,19 @@
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
-use hir_def::{lang_item::LangItemTarget, resolver::Resolver, AstItemDef, HasModule};
+use hir_def::{
+    lang_item::LangItemTarget, resolver::HasResolver, resolver::Resolver, AssocItemId, AstItemDef,
+    HasModule, ImplId, TraitId,
+};
+use ra_db::CrateId;
+use ra_prof::profile;
 use rustc_hash::FxHashMap;
 
 use crate::{
     db::HirDatabase,
     ty::primitive::{FloatBitness, Uncertain},
     ty::{Ty, TypeCtor},
-    AssocItem, Crate, Function, ImplBlock, Module, Mutability, Name, Trait,
+    AssocItem, Crate, Function, Mutability, Name, Trait,
 };
 
 use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
@@ -37,53 +42,57 @@ impl TyFingerprint {
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct CrateImplBlocks {
-    impls: FxHashMap<TyFingerprint, Vec<ImplBlock>>,
-    impls_by_trait: FxHashMap<Trait, Vec<ImplBlock>>,
+    impls: FxHashMap<TyFingerprint, Vec<ImplId>>,
+    impls_by_trait: FxHashMap<TraitId, Vec<ImplId>>,
 }
 
 impl CrateImplBlocks {
     pub(crate) fn impls_in_crate_query(
         db: &impl HirDatabase,
-        krate: Crate,
+        krate: CrateId,
     ) -> Arc<CrateImplBlocks> {
-        let mut crate_impl_blocks =
+        let _p = profile("impls_in_crate_query");
+        let mut res =
             CrateImplBlocks { impls: FxHashMap::default(), impls_by_trait: FxHashMap::default() };
-        if let Some(module) = krate.root_module(db) {
-            crate_impl_blocks.collect_recursive(db, module);
-        }
-        Arc::new(crate_impl_blocks)
-    }
-    pub fn lookup_impl_blocks(&self, ty: &Ty) -> impl Iterator<Item = ImplBlock> + '_ {
-        let fingerprint = TyFingerprint::for_impl(ty);
-        fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flatten().copied()
-    }
 
-    pub fn lookup_impl_blocks_for_trait(&self, tr: Trait) -> impl Iterator<Item = ImplBlock> + '_ {
-        self.impls_by_trait.get(&tr).into_iter().flatten().copied()
-    }
+        let crate_def_map = db.crate_def_map(krate);
+        for (_module_id, module_data) in crate_def_map.modules.iter() {
+            for &impl_id in module_data.impls.iter() {
+                let impl_data = db.impl_data(impl_id);
+                let resolver = impl_id.resolver(db);
 
-    pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplBlock> + 'a {
-        self.impls.values().chain(self.impls_by_trait.values()).flatten().copied()
-    }
+                let target_ty = { Ty::from_hir(db, &resolver, &impl_data.target_type) };
 
-    fn collect_recursive(&mut self, db: &impl HirDatabase, module: Module) {
-        for impl_block in module.impl_blocks(db) {
-            let target_ty = impl_block.target_ty(db);
-
-            if impl_block.target_trait(db).is_some() {
-                if let Some(tr) = impl_block.target_trait_ref(db) {
-                    self.impls_by_trait.entry(tr.trait_).or_default().push(impl_block);
-                }
-            } else {
-                if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
-                    self.impls.entry(target_ty_fp).or_default().push(impl_block);
+                match &impl_data.target_trait {
+                    Some(trait_ref) => {
+                        if let Some(tr) =
+                            TraitRef::from_hir(db, &resolver, &trait_ref, Some(target_ty))
+                        {
+                            res.impls_by_trait.entry(tr.trait_.id).or_default().push(impl_id);
+                        }
+                    }
+                    None => {
+                        if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
+                            res.impls.entry(target_ty_fp).or_default().push(impl_id);
+                        }
+                    }
                 }
             }
         }
 
-        for child in module.children(db) {
-            self.collect_recursive(db, child);
-        }
+        Arc::new(res)
+    }
+    pub fn lookup_impl_blocks(&self, ty: &Ty) -> impl Iterator<Item = ImplId> + '_ {
+        let fingerprint = TyFingerprint::for_impl(ty);
+        fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flatten().copied()
+    }
+
+    pub fn lookup_impl_blocks_for_trait(&self, tr: Trait) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls_by_trait.get(&tr.id).into_iter().flatten().copied()
+    }
+
+    pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplId> + 'a {
+        self.impls.values().chain(self.impls_by_trait.values()).flatten().copied()
     }
 }
 
@@ -279,14 +288,14 @@ fn iterate_inherent_methods<T>(
     mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
 ) -> Option<T> {
     for krate in def_crates(db, krate, &ty.value)? {
-        let impls = db.impls_in_crate(krate);
+        let impls = db.impls_in_crate(krate.crate_id);
 
         for impl_block in impls.lookup_impl_blocks(&ty.value) {
-            for item in impl_block.items(db) {
+            for &item in db.impl_data(impl_block).items.iter() {
                 if !is_valid_candidate(db, name, mode, item) {
                     continue;
                 }
-                if let Some(result) = callback(&ty.value, item) {
+                if let Some(result) = callback(&ty.value, item.into()) {
                     return Some(result);
                 }
             }
@@ -299,17 +308,17 @@ fn is_valid_candidate(
     db: &impl HirDatabase,
     name: Option<&Name>,
     mode: LookupMode,
-    item: AssocItem,
+    item: AssocItemId,
 ) -> bool {
     match item {
-        AssocItem::Function(m) => {
-            let data = db.function_data(m.id);
-            name.map_or(true, |name| data.name == *name)
+        AssocItemId::FunctionId(m) => {
+            let data = db.function_data(m);
+            name.map_or(true, |name| &data.name == name)
                 && (data.has_self_param || mode == LookupMode::Path)
         }
-        AssocItem::Const(c) => {
-            name.map_or(true, |name| Some(name) == c.name(db).as_ref())
-                && (mode == LookupMode::Path)
+        AssocItemId::ConstId(c) => {
+            let data = db.const_data(c);
+            name.map_or(true, |name| data.name.as_ref() == Some(name)) && (mode == LookupMode::Path)
         }
         _ => false,
     }
@@ -344,11 +353,11 @@ impl Ty {
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
         for krate in def_crates(db, krate, &self)? {
-            let impls = db.impls_in_crate(krate);
+            let impls = db.impls_in_crate(krate.crate_id);
 
             for impl_block in impls.lookup_impl_blocks(&self) {
-                for item in impl_block.items(db) {
-                    if let Some(result) = callback(item) {
+                for &item in db.impl_data(impl_block).items.iter() {
+                    if let Some(result) = callback(item.into()) {
                         return Some(result);
                     }
                 }

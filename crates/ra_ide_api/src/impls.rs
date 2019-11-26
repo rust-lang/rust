@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{db::HirDatabase, ApplicationTy, FromSource, Ty, TypeCtor};
+use hir::{ApplicationTy, FromSource, ImplBlock, Ty, TypeCtor};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
@@ -56,11 +56,11 @@ fn impls_for_def(
     };
 
     let krate = module.krate();
-    let impls = db.impls_in_crate(krate);
+    let impls = ImplBlock::all_in_crate(db, krate);
 
     Some(
         impls
-            .all_impls()
+            .into_iter()
             .filter(|impl_block| is_equal_for_find_impls(&ty, &impl_block.target_ty(db)))
             .map(|imp| imp.to_nav(db))
             .collect(),
@@ -77,9 +77,9 @@ fn impls_for_trait(
     let tr = hir::Trait::from_source(db, src)?;
 
     let krate = module.krate();
-    let impls = db.impls_in_crate(krate);
+    let impls = ImplBlock::for_trait(db, krate, tr);
 
-    Some(impls.lookup_impl_blocks_for_trait(tr).map(|imp| imp.to_nav(db)).collect())
+    Some(impls.into_iter().map(|imp| imp.to_nav(db)).collect())
 }
 
 fn is_equal_for_find_impls(original_ty: &Ty, impl_ty: &Ty) -> bool {

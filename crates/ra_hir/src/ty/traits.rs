@@ -88,8 +88,8 @@ pub(crate) fn impls_for_trait_query(
     for dep in krate.dependencies(db) {
         impls.extend(db.impls_for_trait(dep.krate, trait_).iter());
     }
-    let crate_impl_blocks = db.impls_in_crate(krate);
-    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_));
+    let crate_impl_blocks = db.impls_in_crate(krate.crate_id);
+    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_).map(ImplBlock::from));
     impls.into_iter().collect()
 }
 

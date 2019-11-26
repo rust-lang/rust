@@ -997,6 +997,15 @@ pub struct ImplBlock {
 }
 
 impl ImplBlock {
+    pub fn all_in_crate(db: &impl HirDatabase, krate: Crate) -> Vec<ImplBlock> {
+        let impls = db.impls_in_crate(krate.crate_id);
+        impls.all_impls().map(Self::from).collect()
+    }
+    pub fn for_trait(db: &impl HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplBlock> {
+        let impls = db.impls_in_crate(krate.crate_id);
+        impls.lookup_impl_blocks_for_trait(trait_).map(Self::from).collect()
+    }
+
     pub fn target_trait(&self, db: &impl DefDatabase) -> Option<TypeRef> {
         db.impl_data(self.id).target_trait.clone()
     }

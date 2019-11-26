@@ -9,7 +9,7 @@ use std::iter;
 use std::sync::Arc;
 
 use hir_def::{
-    builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType},
+    builtin_type::BuiltinType,
     generics::WherePredicate,
     path::{GenericArg, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
@@ -27,7 +27,7 @@ use super::{
 use crate::{
     db::HirDatabase,
     ty::{
-        primitive::{FloatTy, IntTy, Uncertain},
+        primitive::{FloatTy, IntTy},
         Adt,
     },
     util::make_mut_slice,
@@ -677,36 +677,6 @@ fn type_for_builtin(def: BuiltinType) -> Ty {
         BuiltinType::Int(t) => TypeCtor::Int(IntTy::from(t).into()),
         BuiltinType::Float(t) => TypeCtor::Float(FloatTy::from(t).into()),
     })
-}
-
-impl From<BuiltinInt> for IntTy {
-    fn from(t: BuiltinInt) -> Self {
-        IntTy { signedness: t.signedness, bitness: t.bitness }
-    }
-}
-
-impl From<BuiltinFloat> for FloatTy {
-    fn from(t: BuiltinFloat) -> Self {
-        FloatTy { bitness: t.bitness }
-    }
-}
-
-impl From<Option<BuiltinInt>> for Uncertain<IntTy> {
-    fn from(t: Option<BuiltinInt>) -> Self {
-        match t {
-            None => Uncertain::Unknown,
-            Some(t) => Uncertain::Known(t.into()),
-        }
-    }
-}
-
-impl From<Option<BuiltinFloat>> for Uncertain<FloatTy> {
-    fn from(t: Option<BuiltinFloat>) -> Self {
-        match t {
-            None => Uncertain::Unknown,
-            Some(t) => Uncertain::Known(t.into()),
-        }
-    }
 }
 
 fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> FnSig {
