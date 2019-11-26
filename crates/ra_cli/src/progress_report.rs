@@ -4,10 +4,9 @@
 use std::io::Write;
 
 /// A Simple ASCII Progress Bar
-pub struct ProgressBar {
+pub struct ProgressReport {
     curr: f32,
     text: String,
-    anim: usize,
     hidden: bool,
 
     len: u64,
@@ -15,15 +14,11 @@ pub struct ProgressBar {
     msg: String,
 }
 
-impl ProgressBar {
-    const ANIMATION: &'static str = r#"|/-\"#;
-    const BLOCK_COUNT: usize = 20;
-
-    pub fn new(len: u64) -> ProgressBar {
-        ProgressBar {
+impl ProgressReport {
+    pub fn new(len: u64) -> ProgressReport {
+        ProgressReport {
             curr: 0.0,
             text: String::new(),
-            anim: 0,
             hidden: false,
             len,
             pos: 0,
@@ -31,11 +26,10 @@ impl ProgressBar {
         }
     }
 
-    pub fn hidden() -> ProgressBar {
-        ProgressBar {
+    pub fn hidden() -> ProgressReport {
+        ProgressReport {
             curr: 0.0,
             text: String::new(),
-            anim: 0,
             hidden: true,
             len: 0,
             pos: 0,
@@ -72,19 +66,8 @@ impl ProgressBar {
         if self.hidden {
             return;
         }
-
-        let progress_block: usize = (self.curr * Self::BLOCK_COUNT as f32) as usize;
         let percent = (self.curr * 100.0) as u32;
-        let text = format!(
-            "[{}{}] {:3>}% {} {}",
-            "#".repeat(progress_block),
-            "-".repeat(Self::BLOCK_COUNT - progress_block),
-            percent,
-            Self::ANIMATION.chars().nth(self.anim).unwrap(),
-            self.msg,
-        );
-
-        self.anim = (self.anim + 1) % Self::ANIMATION.len();
+        let text = format!("{}/{} {:3>}% {}", self.pos, self.len, percent, self.msg);
         self.update_text(&text);
     }
 
@@ -124,7 +107,7 @@ impl ProgressBar {
     }
 
     fn clear(&mut self) {
-        print!("{}", "\x08".repeat(self.text.len()));
+        print!("{}{}", " ".repeat(self.text.len()), "\x08".repeat(self.text.len()));
         self.text = String::new();
     }
 }
