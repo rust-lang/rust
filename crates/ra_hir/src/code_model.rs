@@ -28,7 +28,8 @@ use crate::{
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     ty::display::HirFormatter,
     ty::{
-        self, InEnvironment, InferenceResult, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
+        self, InEnvironment, InferenceResult, TraitEnvironment, TraitRef, Ty, TyDefId, TypeCtor,
+        TypeWalk,
     },
     CallableDef, Either, HirDisplay, Name, Source,
 };
@@ -498,12 +499,9 @@ impl Adt {
         let subst = db.generic_defaults(self.into());
         subst.iter().any(|ty| ty == &Ty::Unknown)
     }
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        match self {
-            Adt::Struct(it) => it.ty(db),
-            Adt::Union(it) => it.ty(db),
-            Adt::Enum(it) => it.ty(db),
-        }
+    pub fn ty(self, db: &impl HirDatabase) -> Type {
+        let id = AdtId::from(self);
+        Type::from_def(db, id.module(db).krate, id)
     }
 
     pub fn module(self, db: &impl DefDatabase) -> Module {
@@ -795,8 +793,8 @@ impl TypeAlias {
         db.type_alias_data(self.id).type_ref.clone()
     }
 
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.ty(self.id.into())
+    pub fn ty(self, db: &impl HirDatabase) -> Type {
+        Type::from_def(db, self.id.lookup(db).module(db).krate, self.id)
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Name {
@@ -989,6 +987,17 @@ pub struct Type {
 }
 
 impl Type {
+    fn from_def(
+        db: &impl HirDatabase,
+        krate: CrateId,
+        def: impl HasResolver + Into<TyDefId>,
+    ) -> Type {
+        let resolver = def.resolver(db);
+        let environment = TraitEnvironment::lower(db, &resolver);
+        let ty = db.ty(def.into());
+        Type { krate, ty: InEnvironment { value: ty, environment } }
+    }
+
     pub fn is_bool(&self) -> bool {
         match &self.ty.value {
             Ty::Apply(a_ty) => match a_ty.ctor {
@@ -1095,6 +1104,28 @@ impl Type {
         ty::autoderef(db, Some(self.krate), ty)
             .map(|canonical| canonical.value)
             .map(move |ty| self.derived(ty))
+    }
+
+    // This would be nicer if it just returned an iterator, but that runs into
+    // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
+    pub fn iterate_impl_items<T>(
+        self,
+        db: &impl HirDatabase,
+        krate: Crate,
+        mut callback: impl FnMut(AssocItem) -> Option<T>,
+    ) -> Option<T> {
+        for krate in self.ty.value.def_crates(db, krate.crate_id)? {
+            let impls = db.impls_in_crate(krate);
+
+            for impl_block in impls.lookup_impl_blocks(&self.ty.value) {
+                for &item in db.impl_data(impl_block).items.iter() {
+                    if let Some(result) = callback(item.into()) {
+                        return Some(result);
+                    }
+                }
+            }
+        }
+        None
     }
 
     // FIXME: remove

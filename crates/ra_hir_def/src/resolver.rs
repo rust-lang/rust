@@ -484,7 +484,7 @@ impl Resolver {
     }
 }
 
-pub trait HasResolver {
+pub trait HasResolver: Copy {
     /// Builds a resolver for type references inside this def.
     fn resolver(self, db: &impl DefDatabase) -> Resolver;
 }
@@ -502,7 +502,7 @@ impl HasResolver for TraitId {
     }
 }
 
-impl<T: Into<AdtId>> HasResolver for T {
+impl<T: Into<AdtId> + Copy> HasResolver for T {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         let def = self.into();
         def.module(db)
