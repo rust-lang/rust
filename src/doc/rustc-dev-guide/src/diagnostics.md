@@ -3,6 +3,90 @@
 A lot of effort has been put into making `rustc` have great error messages.
 This chapter is about how to emit compile errors and lints from the compiler.
 
+## Diagnostic output style guide
+
+The main parts of a diagnostic error are the following:
+
+```
+error[E0000]: main error message
+  --> file.rs:LL:CC
+   |
+LL | <code>
+   | -^^^^- secondary label
+   |  |
+   |  primary label
+   |
+   = note: note without a `Span`, created with `.note`
+note: sub-diagnostic message for `.span_note`
+  --> file.rs:LL:CC
+   |
+LL | more code
+   |      ^^^^
+```
+
+- Description (`error`, `warning`, etc.).
+- Code (for example, for "mismatched types", it is `E0308`). It helps
+  users get more information about the current error through an extended
+  description of the problem in the error code index.
+- Message. It is the main description of the problem. It should be general and
+  able to stand on its own, so that it can make sense even in isolation.
+- Diagnostic window. This contains several things:
+  - The path, line number and column of the beginning of the primary span.
+  - The users' affected code and its surroundings.
+  - Primary and secondary spans underlying the users' code. These spans can
+    optionally contain one or more labels.
+    - Primary spans should have enough text to descrive the problem in such a
+      way that if it where the only thing being displayed (for example, in an
+      IDE) it would still make sense. Because it is "spatially aware" (it
+      points at the code), it can generally be more succinct than the error
+      message.
+    - If cluttered output can be foreseen in cases when multiple span labels
+      overlap, it is a good idea to tweak the output appropriately. For
+      example, the `if/else arms have incompatible types` error uses different
+      spans depending on whether the arms are all in the same line, if one of
+      the arms is empty and if none of those cases applies.
+- Sub-diagnostics. Any error can have multiple sub-diagnostics that look
+  similar to the main part of the error. These are used for cases where the
+  order of the explanation might not correspond with the order of the code. If
+  the order of the explanation can be "order free", leveraging secondary labels
+  in the main diagnostic is preferred, as it is typically less verbose.
+
+The text should be matter of fact and avoid capitalization and periods, unless
+multiple sentences are _needed_:
+
+```
+error: the fobrulator needs to be krontrificated
+```
+
+When code or an identifier must appear in an message or label, it should be
+surrounded with single acute accents \`.
+
+## Helpful tips and options
+
+### Finding the source of errors
+
+There are two main ways to find where a given error is emitted:
+
+- `grep` for either a sub-part of the error message/label or error code. This
+  usually works well and is straightforward, but there are some cases where
+  the error emitting code is removed from the code where the error is
+  constructed behind a relatively deep call-stack. Even then, it is a good way
+  to get your bearings.
+- Invoking `rustc` with the nightly-only flag `-Ztreat-err-as-bug=1`, which
+  will treat the first error being emitted as an Internal Compiler Error, which
+  allows you to use the environment variable `RUST_BACKTRACE=full` to get a
+  stack trace at the point the error has been emitted. Change the `1` to
+  something else if you whish to trigger on a later error. Some limitations
+  with this approach is that some calls get elided from the stack trace because
+  they get inlined in the compiled `rustc`, and the same problem we faced with
+  the prior approach, where the _construction_ of the error is far away from
+  where it is _emitted_. In some cases we buffer multiple errors in order to
+  emit them in order.
+
+The regular development practices apply: judicious use of `debug!()` statements
+and use of a debugger to trigger break points in order to figure out in what
+order things are happening.
+
 ## `Span`
 
 [`Span`][span] is the primary data structure in `rustc` used to represent a
@@ -84,10 +168,28 @@ Server][rls] and [`rustfix`][rustfix].
 [rls]: https://github.com/rust-lang/rls
 [rustfix]: https://github.com/rust-lang/rustfix
 
-Not all suggestions should be applied mechanically. Use the
+Not all suggestions should be applied mechanically, they have a degree of
+confidence in the suggested code, from high
+(`Applicability::MachineApplicable`) to low (`Applicability::MaybeIncorrect`).
+Be conservative when choosing the level. Use the
 [`span_suggestion`][span_suggestion] method of `DiagnosticBuilder` to
 make a suggestion. The last argument provides a hint to tools whether
 the suggestion is mechanically applicable or not.
+
+Suggestions point to one or more spans with corresponding code that will
+replace their current content.
+
+The message that accompanies them should be understandable in the following
+contexts:
+
+- shown as an independent sug-diagnostic (this is the default output)
+- shown as a label pointing at the affected span (this is done automatically if
+the some heuristics for verbosity are met)
+- shown as a `help` sub-diagnostic with no content (used for cases where the
+suggestion is obvious from the text, but we still want to let tools to apply
+them))
+- not shown (used for _very_ obvious cases, but we still want to allow tools to
+apply them)
 
 [span_suggestion]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.DiagnosticBuilder.html#method.span_suggestion
 
