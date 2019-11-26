@@ -5,9 +5,9 @@ use hir_def::{
     db::DefDatabase,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    TraitId,
+    TraitId, TypeAliasId,
 };
-use hir_expand::name;
+use hir_expand::name::{self, Name};
 
 // FIXME: this is wrong, b/c it can't express `trait T: PartialEq<()>`.
 // We should return a `TraitREf` here.
@@ -50,4 +50,14 @@ pub(crate) fn all_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<Tr
         i += 1;
     }
     result
+}
+
+pub(crate) fn associated_type_by_name_including_super_traits(
+    db: &impl DefDatabase,
+    trait_: TraitId,
+    name: &Name,
+) -> Option<TypeAliasId> {
+    all_super_traits(db, trait_)
+        .into_iter()
+        .find_map(|t| db.trait_data(t).associated_type_by_name(name))
 }

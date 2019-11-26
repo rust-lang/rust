@@ -28,7 +28,7 @@ use crate::{
     db::HirDatabase,
     ty::{
         primitive::{FloatTy, IntTy},
-        utils::all_super_traits,
+        utils::{all_super_traits, associated_type_by_name_including_super_traits},
         Adt,
     },
     util::make_mut_slice,
@@ -170,14 +170,16 @@ impl Ty {
                 );
                 return if remaining_segments.len() == 1 {
                     let segment = &remaining_segments[0];
-                    match trait_ref
-                        .trait_
-                        .associated_type_by_name_including_super_traits(db, &segment.name)
-                    {
+                    let associated_ty = associated_type_by_name_including_super_traits(
+                        db,
+                        trait_ref.trait_.id,
+                        &segment.name,
+                    );
+                    match associated_ty {
                         Some(associated_ty) => {
                             // FIXME handle type parameters on the segment
                             Ty::Projection(ProjectionTy {
-                                associated_ty: associated_ty.id,
+                                associated_ty,
                                 parameters: trait_ref.substs,
                             })
                         }
@@ -508,10 +510,11 @@ fn assoc_type_bindings_from_type_bound<'a>(
         .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
         .map(move |(name, type_ref)| {
             let associated_ty =
-                match trait_ref.trait_.associated_type_by_name_including_super_traits(db, &name) {
-                    None => return GenericPredicate::Error,
-                    Some(t) => t.id,
-                };
+                associated_type_by_name_including_super_traits(db, trait_ref.trait_.id, &name);
+            let associated_ty = match associated_ty {
+                None => return GenericPredicate::Error,
+                Some(t) => t,
+            };
             let projection_ty =
                 ProjectionTy { associated_ty, parameters: trait_ref.substs.clone() };
             let ty = Ty::from_hir(db, resolver, type_ref);

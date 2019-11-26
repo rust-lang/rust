@@ -28,8 +28,8 @@ use crate::{
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     ty::display::HirFormatter,
     ty::{
-        self, utils::all_super_traits, InEnvironment, InferenceResult, Namespace, TraitEnvironment,
-        TraitRef, Ty, TypeCtor, TypeWalk,
+        self, InEnvironment, InferenceResult, Namespace, TraitEnvironment, TraitRef, Ty, TypeCtor,
+        TypeWalk,
     },
     CallableDef, Either, HirDisplay, Name, Source,
 };
@@ -738,17 +738,6 @@ impl Trait {
 
     pub fn items(self, db: &impl DefDatabase) -> Vec<AssocItem> {
         db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
-    }
-
-    pub fn associated_type_by_name_including_super_traits(
-        self,
-        db: &impl HirDatabase,
-        name: &Name,
-    ) -> Option<TypeAlias> {
-        all_super_traits(db, self.id)
-            .into_iter()
-            .find_map(|t| db.trait_data(t).associated_type_by_name(name))
-            .map(TypeAlias::from)
     }
 
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
