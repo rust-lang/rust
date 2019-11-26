@@ -26,9 +26,11 @@ hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
 test_utils = { path = "../test_utils" }
 ra_prof = { path = "../ra_prof" }
 
-chalk-solve = { git = "https://github.com/rust-lang/chalk.git", rev = "a88cad7f0a69e05ba8f40b74c58a1c229c1b2478" }
-chalk-rust-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "a88cad7f0a69e05ba8f40b74c58a1c229c1b2478" }
-chalk-ir = { git = "https://github.com/rust-lang/chalk.git", rev = "a88cad7f0a69e05ba8f40b74c58a1c229c1b2478" }
+# https://github.com/rust-lang/chalk/pull/294
+chalk-solve =   { git = "https://github.com/jackh726/chalk.git", rev = "095cd38a4f16337913bba487f2055b9ca0179f30" }
+chalk-rust-ir = { git = "https://github.com/jackh726/chalk.git", rev = "095cd38a4f16337913bba487f2055b9ca0179f30" }
+chalk-ir =      { git = "https://github.com/jackh726/chalk.git", rev = "095cd38a4f16337913bba487f2055b9ca0179f30" }
+
 lalrpop-intern = "0.15.1"
 
 [dev-dependencies]
