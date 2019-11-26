@@ -149,17 +149,6 @@ pub struct Validator<'a, 'mir, 'tcx> {
 
     /// The span of the current statement.
     span: Span,
-
-    /// True if the local was assigned the result of an illegal borrow (`ops::MutBorrow`).
-    ///
-    /// This is used to hide errors from {re,}borrowing the newly-assigned local, instead pointing
-    /// the user to the place where the illegal borrow occurred. This set is only populated once an
-    /// error has been emitted, so it will never cause an erroneous `mir::Body` to pass validation.
-    ///
-    /// FIXME(ecstaticmorse): assert at the end of checking that if `tcx.has_errors() == false`,
-    /// this set is empty. Note that if we start removing locals from
-    /// `derived_from_illegal_borrow`, just checking at the end won't be enough.
-    derived_from_illegal_borrow: BitSet<Local>,
 }
 
 impl Deref for Validator<'_, 'mir, 'tcx> {
@@ -213,7 +202,6 @@ impl Validator<'a, 'mir, 'tcx> {
             span: item.body.span,
             item,
             qualifs,
-            derived_from_illegal_borrow: BitSet::new_empty(item.body.local_decls.len()),
         }
     }
 
@@ -406,35 +394,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    let src_derived_from_illegal_borrow = borrowed_place
-                        .as_local()
-                        .map_or(false, |local| self.derived_from_illegal_borrow.contains(local));
-
-                    // Don't emit errors for borrows of values that are *themselves* the result of
-                    // an illegal borrow (e.g., the outermost `&` in `&&Cell::new(42)`). We want to
-                    // point the user to the place where the original illegal borrow occurred, not
-                    // to subsequent borrows of the resulting value.
-                    let dest_derived_from_illegal_borrow = if !src_derived_from_illegal_borrow {
-                        self.check_op(ops::MutBorrow(kind)) == CheckOpResult::Forbidden
-                    } else {
-                        true
-                    };
-
-                    // When the target of the assignment is a local with no projections, it will be
-                    // marked as derived from an illegal borrow if necessary.
-                    //
-                    // FIXME: should we also clear `derived_from_illegal_borrow` when a local is
-                    // assigned a new value?
-
-                    if dest_derived_from_illegal_borrow {
-                        let block = &self.body[location.block];
-                        let statement = &block.statements[location.statement_index];
-                        if let StatementKind::Assign(box (dest, _)) = &statement.kind {
-                            if let Some(dest) = dest.as_local() {
-                                self.derived_from_illegal_borrow.insert(dest);
-                            }
-                        }
-                    }
+                    self.check_op(ops::MutBorrow(kind));
                 }
             }
 
