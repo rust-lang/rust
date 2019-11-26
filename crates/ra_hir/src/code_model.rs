@@ -737,14 +737,11 @@ impl Trait {
     }
 
     pub fn items(self, db: &impl DefDatabase) -> Vec<AssocItem> {
-        db.trait_data(self.id).items.iter().map(|it| (*it).into()).collect()
+        db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
     }
 
     pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
-        let trait_data = db.trait_data(self.id);
-        let res =
-            trait_data.associated_types().map(TypeAlias::from).find(|t| &t.name(db) == name)?;
-        Some(res)
+        db.trait_data(self.id).associated_type_by_name(name).map(TypeAlias::from)
     }
 
     pub fn associated_type_by_name_including_super_traits(

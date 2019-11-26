@@ -87,7 +87,7 @@ impl TypeAliasData {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
     pub name: Option<Name>,
-    pub items: Vec<AssocItemId>,
+    pub items: Vec<(Name, AssocItemId)>,
     pub auto: bool,
 }
 
@@ -97,28 +97,42 @@ impl TraitData {
         let name = src.value.name().map(|n| n.as_name());
         let auto = src.value.is_auto();
         let ast_id_map = db.ast_id_map(src.file_id);
+
+        let container = ContainerId::TraitId(tr);
         let items = if let Some(item_list) = src.value.item_list() {
             item_list
                 .impl_items()
                 .map(|item_node| match item_node {
-                    ast::ImplItem::FnDef(it) => FunctionLoc {
-                        container: ContainerId::TraitId(tr),
-                        ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                    ast::ImplItem::FnDef(it) => {
+                        let name = it.name().map(|it| it.as_name()).unwrap_or_else(Name::missing);
+                        let def = FunctionLoc {
+                            container,
+                            ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                        }
+                        .intern(db)
+                        .into();
+                        (name, def)
                     }
-                    .intern(db)
-                    .into(),
-                    ast::ImplItem::ConstDef(it) => ConstLoc {
-                        container: ContainerId::TraitId(tr),
-                        ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                    ast::ImplItem::ConstDef(it) => {
+                        let name = it.name().map(|it| it.as_name()).unwrap_or_else(Name::missing);
+                        let def = ConstLoc {
+                            container,
+                            ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                        }
+                        .intern(db)
+                        .into();
+                        (name, def)
                     }
-                    .intern(db)
-                    .into(),
-                    ast::ImplItem::TypeAliasDef(it) => TypeAliasLoc {
-                        container: ContainerId::TraitId(tr),
-                        ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                    ast::ImplItem::TypeAliasDef(it) => {
+                        let name = it.name().map(|it| it.as_name()).unwrap_or_else(Name::missing);
+                        let def = TypeAliasLoc {
+                            container,
+                            ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
+                        }
+                        .intern(db)
+                        .into();
+                        (name, def)
                     }
-                    .intern(db)
-                    .into(),
                 })
                 .collect()
         } else {
@@ -128,8 +142,15 @@ impl TraitData {
     }
 
     pub fn associated_types(&self) -> impl Iterator<Item = TypeAliasId> + '_ {
-        self.items.iter().filter_map(|item| match item {
+        self.items.iter().filter_map(|(_name, item)| match item {
             AssocItemId::TypeAliasId(t) => Some(*t),
+            _ => None,
+        })
+    }
+
+    pub fn associated_type_by_name(&self, name: &Name) -> Option<TypeAliasId> {
+        self.items.iter().find_map(|(item_name, item)| match item {
+            AssocItemId::TypeAliasId(t) if item_name == name => Some(*t),
             _ => None,
         })
     }
