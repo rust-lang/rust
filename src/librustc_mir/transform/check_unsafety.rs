@@ -214,7 +214,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if context.is_borrow() {
                 if util::is_disaligned(self.tcx, self.body, self.param_env, place) {
                     let source_info = self.source_info;
-                    let lint_root = self.body.source_scope_local_data[source_info.scope]
+                    let lint_root = self.body.source_scopes[source_info.scope]
+                        .local_data
                         .as_ref()
                         .assert_crate_local()
                         .lint_root;
@@ -343,7 +344,8 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(hir::HirId, bool)]) {
-        let safety = self.body.source_scope_local_data[self.source_info.scope]
+        let safety = self.body.source_scopes[self.source_info.scope]
+            .local_data
             .as_ref()
             .assert_crate_local()
             .safety;

@@ -104,10 +104,6 @@ pub struct Body<'tcx> {
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
 
-    /// Crate-local information for each source scope, that can't (and
-    /// needn't) be tracked across crates.
-    pub source_scope_local_data: IndexVec<SourceScope, ClearCrossCrate<SourceScopeLocalData>>,
-
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
@@ -163,7 +159,6 @@ impl<'tcx> Body<'tcx> {
     pub fn new(
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
-        source_scope_local_data: IndexVec<SourceScope, ClearCrossCrate<SourceScopeLocalData>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
@@ -183,7 +178,6 @@ impl<'tcx> Body<'tcx> {
             phase: MirPhase::Build,
             basic_blocks,
             source_scopes,
-            source_scope_local_data,
             yield_ty: None,
             generator_drop: None,
             generator_layout: None,
@@ -2028,6 +2022,10 @@ rustc_index::newtype_index! {
 pub struct SourceScopeData {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
+
+    /// Crate-local information for this source scope, that can't (and
+    /// needn't) be tracked across crates.
+    pub local_data: ClearCrossCrate<SourceScopeLocalData>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]

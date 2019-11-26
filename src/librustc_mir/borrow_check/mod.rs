@@ -301,7 +301,7 @@ fn do_mir_borrowck<'a, 'tcx>(
             mbcx.report_conflicting_borrow(location, (&place, span), bk, &borrow);
 
         let scope = mbcx.body.source_info(location).scope;
-        let lint_root = match &mbcx.body.source_scope_local_data[scope] {
+        let lint_root = match &mbcx.body.source_scopes[scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
             _ => id,
         };
@@ -338,7 +338,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     let used_mut = mbcx.used_mut;
     for local in mbcx.body.mut_vars_and_args_iter().filter(|local| !used_mut.contains(local)) {
         let local_decl = &mbcx.body.local_decls[local];
-        let lint_root = match &mbcx.body.source_scope_local_data[local_decl.source_info.scope] {
+        let lint_root = match &mbcx.body.source_scopes[local_decl.source_info.scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
             _ => continue,
         };
