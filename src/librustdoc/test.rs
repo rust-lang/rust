@@ -85,7 +85,7 @@ pub fn run(options: Options) -> i32 {
     let mut test_args = options.test_args.clone();
     let display_warnings = options.display_warnings;
 
-    let tests = interface::run_compiler(config, |compiler| { compiler.enter(|queries| {
+    let tests = interface::run_compiler(config, |compiler| compiler.enter(|queries| {
         let lower_to_hir = queries.lower_to_hir()?;
 
         let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
@@ -119,7 +119,7 @@ pub fn run(options: Options) -> i32 {
 
         let ret : Result<_, ErrorReported> = Ok(collector.tests);
         ret
-    }) }).expect("compiler aborted in rustdoc!");
+    })).expect("compiler aborted in rustdoc!");
 
     test_args.insert(0, "rustdoctest".to_string());
 

@@ -393,9 +393,6 @@ pub fn run_compiler(
 
             queries.ongoing_codegen()?;
 
-            // Drop GlobalCtxt after starting codegen to free memory
-            mem::drop(queries.global_ctxt()?.take());
-
             if sess.opts.debugging_opts.print_type_sizes {
                 sess.code_stats.print_type_sizes();
             }

@@ -317,7 +317,7 @@ impl Linker {
 
 impl Compiler {
     pub fn enter<F, T>(&self, f: F) -> T
-        where F: for<'q> FnOnce(&'q Queries<'_>) -> T
+        where F: FnOnce(&Queries<'_>) -> T
     {
         let queries = Queries::new(&self);
         f(&queries)
@@ -344,9 +344,6 @@ impl Compiler {
             mem::drop(queries.expansion()?.take());
 
             queries.ongoing_codegen()?;
-
-            // Drop GlobalCtxt after starting codegen to free memory.
-            mem::drop(queries.global_ctxt()?.take());
 
             let linker = queries.linker()?;
             Ok(Some(linker))

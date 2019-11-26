@@ -343,7 +343,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         registry: rustc_driver::diagnostics_registry(),
     };
 
-    interface::run_compiler_in_existing_thread_pool(config, |compiler| { compiler.enter(|queries| {
+    interface::run_compiler_in_existing_thread_pool(config, |compiler| compiler.enter(|queries| {
         let sess = compiler.session();
 
         // We need to hold on to the complete resolver, so we cause everything to be
@@ -487,7 +487,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             (krate, ctxt.renderinfo.into_inner(), render_options)
         })
-    }) })
+    }))
 }
 
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter
