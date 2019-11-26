@@ -291,7 +291,7 @@ declare_clippy_lint! {
     /// **What it does:** Checks for usage of `result.map(_).unwrap_or_else(_)`.
     ///
     /// **Why is this bad?** Readability, this can be written more concisely as
-    /// `result.ok().map_or_else(_, _)`.
+    /// `result.map_or_else(_, _)`.
     ///
     /// **Known problems:** None.
     ///
@@ -303,7 +303,7 @@ declare_clippy_lint! {
     /// ```
     pub RESULT_MAP_UNWRAP_OR_ELSE,
     pedantic,
-    "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.ok().map_or_else(g, f)`"
+    "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.map_or_else(g, f)`"
 }
 
 declare_clippy_lint! {
@@ -2217,7 +2217,7 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
              `map_or_else(g, f)` instead"
         } else {
             "called `map(f).unwrap_or_else(g)` on a Result value. This can be done more directly by calling \
-             `ok().map_or_else(g, f)` instead"
+             `.map_or_else(g, f)` instead"
         };
         // get snippets for args to map() and unwrap_or_else()
         let map_snippet = snippet(cx, map_args[1].span, "..");
@@ -2238,10 +2238,8 @@ fn lint_map_unwrap_or_else<'a, 'tcx>(
                 msg,
                 expr.span,
                 &format!(
-                    "replace `map({0}).unwrap_or_else({1})` with `{2}map_or_else({1}, {0})`",
-                    map_snippet,
-                    unwrap_snippet,
-                    if is_result { "ok()." } else { "" }
+                    "replace `map({0}).unwrap_or_else({1})` with `map_or_else({1}, {0})`",
+                    map_snippet, unwrap_snippet,
                 ),
             );
         } else if same_span && multiline {
