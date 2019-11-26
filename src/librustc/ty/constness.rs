@@ -36,11 +36,46 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
+    /// Returns `true` if the `def_id` refers to an intrisic which we've whitelisted
+    /// for being called from stable `const fn`s (`min_const_fn`).
+    ///
+    /// Adding more intrinsics requires sign-off from @rust-lang/lang.
+    fn is_intrinsic_min_const_fn(self, def_id: DefId) -> bool {
+        match self.item_name(def_id) {
+            | sym::size_of
+            | sym::min_align_of
+            | sym::needs_drop
+            // Arithmetic:
+            | sym::add_with_overflow // ~> .overflowing_add
+            | sym::sub_with_overflow // ~> .overflowing_sub
+            | sym::mul_with_overflow // ~> .overflowing_mul
+            | sym::wrapping_add // ~> .wrapping_add
+            | sym::wrapping_sub // ~> .wrapping_sub
+            | sym::wrapping_mul // ~> .wrapping_mul
+            | sym::saturating_add // ~> .saturating_add
+            | sym::saturating_sub // ~> .saturating_sub
+            | sym::unchecked_shl // ~> .wrapping_shl
+            | sym::unchecked_shr // ~> .wrapping_shr
+            | sym::rotate_left // ~> .rotate_left
+            | sym::rotate_right // ~> .rotate_right
+            | sym::ctpop // ~> .count_ones
+            | sym::ctlz // ~> .leading_zeros
+            | sym::cttz // ~> .trailing_zeros
+            | sym::bswap // ~> .swap_bytes
+            | sym::bitreverse // ~> .reverse_bits
+            => true,
+            _ => false,
+        }
+    }
+
     /// Returns `true` if this function must conform to `min_const_fn`
     pub fn is_min_const_fn(self, def_id: DefId) -> bool {
         // Bail out if the signature doesn't contain `const`
         if !self.is_const_fn_raw(def_id) {
             return false;
+        }
+        if let Abi::RustIntrinsic = self.fn_sig(def_id).abi() {
+            return self.is_intrinsic_min_const_fn(def_id);
         }
 
         if self.features().staged_api {

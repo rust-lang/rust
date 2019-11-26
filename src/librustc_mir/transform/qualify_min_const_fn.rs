@@ -2,7 +2,6 @@ use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, Predicate, Ty, TyCtxt, adjustment::{PointerCast}};
-use rustc_target::spec::abi;
 use std::borrow::Cow;
 use syntax_pos::Span;
 use syntax::symbol::{sym, Symbol};
@@ -356,18 +355,8 @@ fn check_terminator(
         } => {
             let fn_ty = func.ty(body, tcx);
             if let ty::FnDef(def_id, _) = fn_ty.kind {
-
-                // some intrinsics are waved through if called inside the
-                // standard library. Users never need to call them directly
-                match tcx.fn_sig(def_id).abi() {
-                    abi::Abi::RustIntrinsic => if !is_intrinsic_whitelisted(tcx, def_id) {
-                        return Err((
-                            span,
-                            "can only call a curated list of intrinsics in `min_const_fn`".into(),
-                        ))
-                    },
-                    abi::Abi::Rust if tcx.is_min_const_fn(def_id) => {},
-                    abi::Abi::Rust => return Err((
+                if !tcx.is_min_const_fn(def_id) {
+                    return Err((
                         span,
                         format!(
                             "can only call other `const fn` within a `const fn`, \
@@ -375,14 +364,7 @@ fn check_terminator(
                             func,
                         )
                         .into(),
-                    )),
-                    abi => return Err((
-                        span,
-                        format!(
-                            "cannot call functions with `{}` abi in `min_const_fn`",
-                            abi,
-                        ).into(),
-                    )),
+                    ));
                 }
 
                 check_operand(tcx, func, span, def_id, body)?;
@@ -410,34 +392,3 @@ fn check_terminator(
     }
 }
 
-/// Returns `true` if the `def_id` refers to an intrisic which we've whitelisted
-/// for being called from stable `const fn`s (`min_const_fn`).
-///
-/// Adding more intrinsics requires sign-off from @rust-lang/lang.
-fn is_intrinsic_whitelisted(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
-    match tcx.item_name(def_id) {
-        | sym::size_of
-        | sym::min_align_of
-        | sym::needs_drop
-        // Arithmetic:
-        | sym::add_with_overflow // ~> .overflowing_add
-        | sym::sub_with_overflow // ~> .overflowing_sub
-        | sym::mul_with_overflow // ~> .overflowing_mul
-        | sym::wrapping_add // ~> .wrapping_add
-        | sym::wrapping_sub // ~> .wrapping_sub
-        | sym::wrapping_mul // ~> .wrapping_mul
-        | sym::saturating_add // ~> .saturating_add
-        | sym::saturating_sub // ~> .saturating_sub
-        | sym::unchecked_shl // ~> .wrapping_shl
-        | sym::unchecked_shr // ~> .wrapping_shr
-        | sym::rotate_left // ~> .rotate_left
-        | sym::rotate_right // ~> .rotate_right
-        | sym::ctpop // ~> .count_ones
-        | sym::ctlz // ~> .leading_zeros
-        | sym::cttz // ~> .trailing_zeros
-        | sym::bswap // ~> .swap_bytes
-        | sym::bitreverse // ~> .reverse_bits
-        => true,
-        _ => false,
-    }
-}
