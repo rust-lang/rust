@@ -2,13 +2,13 @@
 use std::sync::{Arc, Mutex};
 
 use chalk_ir::{cast::Cast, family::ChalkIr};
-use hir_def::{expr::ExprId, DefWithBodyId};
+use hir_def::{expr::ExprId, DefWithBodyId, TraitId};
 use log::debug;
-use ra_db::{impl_intern_key, salsa};
+use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, Crate, ImplBlock, Trait, TypeAlias};
+use crate::{db::HirDatabase, Crate, ImplBlock, TypeAlias};
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
@@ -77,8 +77,8 @@ pub(crate) fn trait_solver_query(
 /// Collects impls for the given trait in the whole dependency tree of `krate`.
 pub(crate) fn impls_for_trait_query(
     db: &impl HirDatabase,
-    krate: Crate,
-    trait_: Trait,
+    krate: CrateId,
+    trait_: TraitId,
 ) -> Arc<[ImplBlock]> {
     let mut impls = FxHashSet::default();
     // We call the query recursively here. On the one hand, this means we can
@@ -86,10 +86,10 @@ pub(crate) fn impls_for_trait_query(
     // will only ever get called for a few crates near the root of the tree (the
     // ones the user is editing), so this may actually be a waste of memory. I'm
     // doing it like this mainly for simplicity for now.
-    for dep in krate.dependencies(db) {
-        impls.extend(db.impls_for_trait(dep.krate, trait_).iter());
+    for dep in db.crate_graph().dependencies(krate) {
+        impls.extend(db.impls_for_trait(dep.crate_id, trait_).iter());
     }
-    let crate_impl_blocks = db.impls_in_crate(krate.crate_id);
+    let crate_impl_blocks = db.impls_in_crate(krate);
     impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_).map(ImplBlock::from));
     impls.into_iter().collect()
 }

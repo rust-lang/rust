@@ -50,7 +50,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 hir::ModuleDef::TypeAlias(a) => a.ty(ctx.db),
                 _ => unreachable!(),
             };
-            ctx.analyzer.iterate_path_candidates(ctx.db, ty.clone(), None, |_ty, item| {
+            ctx.analyzer.iterate_path_candidates(ctx.db, &ty, None, |_ty, item| {
                 match item {
                     hir::AssocItem::Function(func) => {
                         if !func.has_self_param(ctx.db) {

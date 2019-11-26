@@ -6,9 +6,10 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use hir_def::{
-    lang_item::LangItemTarget, resolver::HasResolver, resolver::Resolver, AssocItemId, AstItemDef,
-    HasModule, ImplId, TraitId,
+    lang_item::LangItemTarget, resolver::HasResolver, resolver::Resolver, type_ref::Mutability,
+    AssocItemId, AstItemDef, HasModule, ImplId, TraitId,
 };
+use hir_expand::name::Name;
 use ra_db::CrateId;
 use ra_prof::profile;
 use rustc_hash::FxHashMap;
@@ -17,7 +18,7 @@ use crate::{
     db::HirDatabase,
     ty::primitive::{FloatBitness, Uncertain},
     ty::{utils::all_super_traits, Ty, TypeCtor},
-    AssocItem, Crate, Function, Mutability, Name, Trait,
+    AssocItem, Function,
 };
 
 use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
@@ -87,8 +88,8 @@ impl CrateImplBlocks {
         fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flatten().copied()
     }
 
-    pub fn lookup_impl_blocks_for_trait(&self, tr: Trait) -> impl Iterator<Item = ImplId> + '_ {
-        self.impls_by_trait.get(&tr.id).into_iter().flatten().copied()
+    pub fn lookup_impl_blocks_for_trait(&self, tr: TraitId) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls_by_trait.get(&tr).into_iter().flatten().copied()
     }
 
     pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplId> + 'a {
@@ -96,51 +97,56 @@ impl CrateImplBlocks {
     }
 }
 
-fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayVec<[Crate; 2]>> {
-    // Types like slice can have inherent impls in several crates, (core and alloc).
-    // The corresponding impls are marked with lang items, so we can use them to find the required crates.
-    macro_rules! lang_item_crate {
+impl Ty {
+    pub(crate) fn def_crates(
+        &self,
+        db: &impl HirDatabase,
+        cur_crate: CrateId,
+    ) -> Option<ArrayVec<[CrateId; 2]>> {
+        // Types like slice can have inherent impls in several crates, (core and alloc).
+        // The corresponding impls are marked with lang items, so we can use them to find the required crates.
+        macro_rules! lang_item_crate {
         ($($name:expr),+ $(,)?) => {{
             let mut v = ArrayVec::<[LangItemTarget; 2]>::new();
             $(
-                v.extend(db.lang_item(cur_crate.crate_id, $name.into()));
+                v.extend(db.lang_item(cur_crate, $name.into()));
             )+
             v
         }};
     }
 
-    let lang_item_targets = match ty {
-        Ty::Apply(a_ty) => match a_ty.ctor {
-            TypeCtor::Adt(def_id) => {
-                return Some(std::iter::once(def_id.module(db).krate.into()).collect())
-            }
-            TypeCtor::Bool => lang_item_crate!("bool"),
-            TypeCtor::Char => lang_item_crate!("char"),
-            TypeCtor::Float(Uncertain::Known(f)) => match f.bitness {
-                // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
-                FloatBitness::X32 => lang_item_crate!("f32", "f32_runtime"),
-                FloatBitness::X64 => lang_item_crate!("f64", "f64_runtime"),
+        let lang_item_targets = match self {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::Adt(def_id) => {
+                    return Some(std::iter::once(def_id.module(db).krate).collect())
+                }
+                TypeCtor::Bool => lang_item_crate!("bool"),
+                TypeCtor::Char => lang_item_crate!("char"),
+                TypeCtor::Float(Uncertain::Known(f)) => match f.bitness {
+                    // There are two lang items: one in libcore (fXX) and one in libstd (fXX_runtime)
+                    FloatBitness::X32 => lang_item_crate!("f32", "f32_runtime"),
+                    FloatBitness::X64 => lang_item_crate!("f64", "f64_runtime"),
+                },
+                TypeCtor::Int(Uncertain::Known(i)) => lang_item_crate!(i.ty_to_string()),
+                TypeCtor::Str => lang_item_crate!("str_alloc", "str"),
+                TypeCtor::Slice => lang_item_crate!("slice_alloc", "slice"),
+                TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!("const_ptr"),
+                TypeCtor::RawPtr(Mutability::Mut) => lang_item_crate!("mut_ptr"),
+                _ => return None,
             },
-            TypeCtor::Int(Uncertain::Known(i)) => lang_item_crate!(i.ty_to_string()),
-            TypeCtor::Str => lang_item_crate!("str_alloc", "str"),
-            TypeCtor::Slice => lang_item_crate!("slice_alloc", "slice"),
-            TypeCtor::RawPtr(Mutability::Shared) => lang_item_crate!("const_ptr"),
-            TypeCtor::RawPtr(Mutability::Mut) => lang_item_crate!("mut_ptr"),
             _ => return None,
-        },
-        _ => return None,
-    };
-    let res = lang_item_targets
-        .into_iter()
-        .filter_map(|it| match it {
-            LangItemTarget::ImplBlockId(it) => Some(it),
-            _ => None,
-        })
-        .map(|it| it.module(db).krate.into())
-        .collect();
-    Some(res)
+        };
+        let res = lang_item_targets
+            .into_iter()
+            .filter_map(|it| match it {
+                LangItemTarget::ImplBlockId(it) => Some(it),
+                _ => None,
+            })
+            .map(|it| it.module(db).krate)
+            .collect();
+        Some(res)
+    }
 }
-
 /// Look up the method with the given name, returning the actual autoderefed
 /// receiver type (but without autoref applied yet).
 pub(crate) fn lookup_method(
@@ -193,14 +199,9 @@ pub(crate) fn iterate_method_candidates<T>(
             let environment = TraitEnvironment::lower(db, resolver);
             let ty = InEnvironment { value: ty.clone(), environment };
             for derefed_ty in autoderef::autoderef(db, resolver.krate(), ty) {
-                if let Some(result) = iterate_inherent_methods(
-                    &derefed_ty,
-                    db,
-                    name,
-                    mode,
-                    krate.into(),
-                    &mut callback,
-                ) {
+                if let Some(result) =
+                    iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
+                {
                     return Some(result);
                 }
                 if let Some(result) = iterate_trait_method_candidates(
@@ -283,11 +284,11 @@ fn iterate_inherent_methods<T>(
     db: &impl HirDatabase,
     name: Option<&Name>,
     mode: LookupMode,
-    krate: Crate,
+    krate: CrateId,
     mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
 ) -> Option<T> {
-    for krate in def_crates(db, krate, &ty.value)? {
-        let impls = db.impls_in_crate(krate.crate_id);
+    for krate in ty.value.def_crates(db, krate)? {
+        let impls = db.impls_in_crate(krate);
 
         for impl_block in impls.lookup_impl_blocks(&ty.value) {
             for &item in db.impl_data(impl_block).items.iter() {
@@ -327,7 +328,7 @@ pub(crate) fn implements_trait(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     resolver: &Resolver,
-    krate: Crate,
+    krate: CrateId,
     trait_: TraitId,
 ) -> bool {
     if ty.value.inherent_trait() == Some(trait_) {
@@ -337,33 +338,9 @@ pub(crate) fn implements_trait(
     }
     let env = TraitEnvironment::lower(db, resolver);
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal);
+    let solution = db.trait_solve(krate.into(), goal);
 
     solution.is_some()
-}
-
-impl Ty {
-    // This would be nicer if it just returned an iterator, but that runs into
-    // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
-    pub fn iterate_impl_items<T>(
-        self,
-        db: &impl HirDatabase,
-        krate: Crate,
-        mut callback: impl FnMut(AssocItem) -> Option<T>,
-    ) -> Option<T> {
-        for krate in def_crates(db, krate, &self)? {
-            let impls = db.impls_in_crate(krate.crate_id);
-
-            for impl_block in impls.lookup_impl_blocks(&self) {
-                for &item in db.impl_data(impl_block).items.iter() {
-                    if let Some(result) = callback(item.into()) {
-                        return Some(result);
-                    }
-                }
-            }
-        }
-        None
-    }
 }
 
 /// This creates Substs for a trait with the given Self type and type variables

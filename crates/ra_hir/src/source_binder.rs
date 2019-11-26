@@ -389,14 +389,14 @@ impl SourceAnalyzer {
     pub fn iterate_path_candidates<T>(
         &self,
         db: &impl HirDatabase,
-        ty: Ty,
+        ty: &Type,
         name: Option<&Name>,
         callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
+        let canonical = crate::ty::Canonical { value: ty.ty.value.clone(), num_vars: 0 };
         method_resolution::iterate_method_candidates(
             &canonical,
             db,
