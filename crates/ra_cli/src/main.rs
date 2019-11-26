@@ -3,6 +3,7 @@
 mod analysis_stats;
 mod analysis_bench;
 mod help;
+mod progress_report;
 
 use std::{error::Error, fmt::Write, io::Read};
 
