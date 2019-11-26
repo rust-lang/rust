@@ -1,4 +1,7 @@
-//! FIXME: write short doc here
+//! Defines primitive types, which have a couple of peculiarities:
+//!
+//! * during type inference, they can be uncertain (ie, `let x = 92;`)
+//! * they don't belong to any particular crate.
 
 use std::fmt;
 

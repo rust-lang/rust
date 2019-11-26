@@ -1,3 +1,4 @@
-//! FIXME: write short doc here
+//! Work in Progress: everything related to types, type inference and trait
+//! solving.
 
 pub mod primitive;
