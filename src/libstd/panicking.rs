@@ -20,6 +20,7 @@ use crate::sys_common::rwlock::RWLock;
 use crate::sys_common::{thread_info, util};
 use crate::sys_common::backtrace::{self, RustBacktrace};
 use crate::thread;
+use crate::process;
 
 #[cfg(not(test))]
 use crate::io::set_panic;
@@ -414,7 +415,7 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
         fn take_box(&mut self) -> *mut (dyn Any + Send) {
             let data = match self.inner.take() {
                 Some(a) => Box::new(a) as Box<dyn Any + Send>,
-                None => Box::new(()), // this should never happen: we got called twice
+                None => process::abort(),
             };
             Box::into_raw(data)
         }
@@ -422,7 +423,7 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
         fn get(&mut self) -> &(dyn Any + Send) {
             match self.inner {
                 Some(ref a) => a,
-                None => &(),
+                None => process::abort(),
             }
         }
     }
