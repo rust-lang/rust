@@ -9,8 +9,8 @@ use crate::{
     ty::{
         method_resolution::CrateImplBlocks,
         traits::{AssocTyValue, Impl},
-        CallableDef, FnSig, GenericPredicate, InferenceResult, Namespace, Substs, Ty, TypableDef,
-        TypeCtor,
+        CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, Ty, TyDefId, TypeCtor,
+        ValueTyDefId,
     },
     Crate, DefWithBody, ImplBlock, Trait,
 };
@@ -37,8 +37,11 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::infer_query)]
     fn infer(&self, def: DefWithBody) -> Arc<InferenceResult>;
 
-    #[salsa::invoke(crate::ty::type_for_def)]
-    fn type_for_def(&self, def: TypableDef, ns: Namespace) -> Ty;
+    #[salsa::invoke(crate::ty::ty_query)]
+    fn ty(&self, def: TyDefId) -> Ty;
+
+    #[salsa::invoke(crate::ty::value_ty_query)]
+    fn value_ty(&self, def: ValueTyDefId) -> Ty;
 
     #[salsa::invoke(crate::ty::field_types_query)]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalStructFieldId, Ty>>;

@@ -786,7 +786,7 @@ fn type_alias_associated_ty_value(
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let generic_params = db.generic_params(impl_block.id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
-    let ty = db.type_for_def(type_alias.into(), crate::ty::Namespace::Types).subst(&bound_vars);
+    let ty = db.ty(type_alias.id.into()).subst(&bound_vars);
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) };
     let value = chalk_rust_ir::AssociatedTyValue {
         impl_id,

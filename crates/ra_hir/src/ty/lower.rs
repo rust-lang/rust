@@ -14,8 +14,8 @@ use hir_def::{
     path::{GenericArg, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, EnumVariantId, FunctionId, GenericDefId, HasModule, LocalStructFieldId,
-    Lookup, StructId, TraitId, VariantId,
+    AdtId, AstItemDef, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
+    LocalStructFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
@@ -34,17 +34,6 @@ use crate::{
     Adt, Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, Trait,
     TypeAlias, Union,
 };
-
-// FIXME: this is only really used in `type_for_def`, which contains a bunch of
-// impossible cases. Perhaps we should recombine `TypeableDef` and `Namespace`
-// into a `AsTypeDef`, `AsValueDef` enums?
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Namespace {
-    Types,
-    Values,
-    // Note that only type inference uses this enum, and it doesn't care about macros.
-    // Macro,
-}
 
 impl Ty {
     pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {
@@ -281,27 +270,15 @@ impl Ty {
         db: &impl HirDatabase,
         resolver: &Resolver,
         segment: &PathSegment,
-        typable: TypableDef,
+        typable: TyDefId,
     ) -> Ty {
-        let ty = db.type_for_def(typable, Namespace::Types);
-        let substs = Ty::substs_from_path_segment(db, resolver, segment, typable);
-        ty.subst(&substs)
-    }
-
-    pub(super) fn substs_from_path_segment(
-        db: &impl HirDatabase,
-        resolver: &Resolver,
-        segment: &PathSegment,
-        resolved: TypableDef,
-    ) -> Substs {
-        let def_generic: Option<GenericDefId> = match resolved {
-            TypableDef::Function(func) => Some(func.id.into()),
-            TypableDef::Adt(adt) => Some(adt.into()),
-            TypableDef::EnumVariant(var) => Some(var.parent_enum(db).id.into()),
-            TypableDef::TypeAlias(t) => Some(t.id.into()),
-            TypableDef::Const(_) | TypableDef::Static(_) | TypableDef::BuiltinType(_) => None,
+        let generic_def = match typable {
+            TyDefId::BuiltinType(_) => None,
+            TyDefId::AdtId(it) => Some(it.into()),
+            TyDefId::TypeAliasId(it) => Some(it.into()),
         };
-        substs_from_path_segment(db, resolver, segment, def_generic, false)
+        let substs = substs_from_path_segment(db, resolver, segment, generic_def, false);
+        db.ty(typable).subst(&substs)
     }
 
     /// Collect generic arguments from a path into a `Substs`. See also
@@ -310,17 +287,18 @@ impl Ty {
         db: &impl HirDatabase,
         resolver: &Resolver,
         path: &Path,
-        resolved: TypableDef,
+        // Note that we don't call `db.value_type(resolved)` here,
+        // `ValueTyDefId` is just a convenient way to pass generics and
+        // special-case enum variants
+        resolved: ValueTyDefId,
     ) -> Substs {
         let last = path.segments.last().expect("path should have at least one segment");
-        let segment = match resolved {
-            TypableDef::Function(_)
-            | TypableDef::Adt(_)
-            | TypableDef::Const(_)
-            | TypableDef::Static(_)
-            | TypableDef::TypeAlias(_)
-            | TypableDef::BuiltinType(_) => last,
-            TypableDef::EnumVariant(_) => {
+        let (segment, generic_def) = match resolved {
+            ValueTyDefId::FunctionId(it) => (last, Some(it.into())),
+            ValueTyDefId::StructId(it) => (last, Some(it.into())),
+            ValueTyDefId::ConstId(it) => (last, Some(it.into())),
+            ValueTyDefId::StaticId(_) => (last, None),
+            ValueTyDefId::EnumVariantId(var) => {
                 // the generic args for an enum variant may be either specified
                 // on the segment referring to the enum, or on the segment
                 // referring to the variant. So `Option::<T>::None` and
@@ -334,10 +312,10 @@ impl Ty {
                     // Option::None::<T>
                     last
                 };
-                segment
+                (segment, Some(var.parent.into()))
             }
         };
-        Ty::substs_from_path_segment(db, resolver, segment, resolved)
+        substs_from_path_segment(db, resolver, segment, generic_def, false)
     }
 }
 
@@ -522,33 +500,6 @@ fn assoc_type_bindings_from_type_bound<'a>(
         })
 }
 
-/// Build the declared type of an item. This depends on the namespace; e.g. for
-/// `struct Foo(usize)`, we have two types: The type of the struct itself, and
-/// the constructor function `(usize) -> Foo` which lives in the values
-/// namespace.
-pub(crate) fn type_for_def(db: &impl HirDatabase, def: TypableDef, ns: Namespace) -> Ty {
-    match (def, ns) {
-        (TypableDef::Function(f), Namespace::Values) => type_for_fn(db, f),
-        (TypableDef::Adt(Adt::Struct(s)), Namespace::Values) => type_for_struct_constructor(db, s),
-        (TypableDef::Adt(adt), Namespace::Types) => type_for_adt(db, adt),
-        (TypableDef::EnumVariant(v), Namespace::Values) => type_for_enum_variant_constructor(db, v),
-        (TypableDef::TypeAlias(t), Namespace::Types) => type_for_type_alias(db, t),
-        (TypableDef::Const(c), Namespace::Values) => type_for_const(db, c),
-        (TypableDef::Static(c), Namespace::Values) => type_for_static(db, c),
-        (TypableDef::BuiltinType(t), Namespace::Types) => type_for_builtin(t),
-
-        // 'error' cases:
-        (TypableDef::Function(_), Namespace::Types) => Ty::Unknown,
-        (TypableDef::Adt(Adt::Union(_)), Namespace::Values) => Ty::Unknown,
-        (TypableDef::Adt(Adt::Enum(_)), Namespace::Values) => Ty::Unknown,
-        (TypableDef::EnumVariant(_), Namespace::Types) => Ty::Unknown,
-        (TypableDef::TypeAlias(_), Namespace::Values) => Ty::Unknown,
-        (TypableDef::Const(_), Namespace::Types) => Ty::Unknown,
-        (TypableDef::Static(_), Namespace::Types) => Ty::Unknown,
-        (TypableDef::BuiltinType(_), Namespace::Values) => Ty::Unknown,
-    }
-}
-
 /// Build the signature of a callable item (function, struct or enum variant).
 pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSig {
     match def {
@@ -647,24 +598,24 @@ fn fn_sig_for_fn(db: &impl HirDatabase, def: FunctionId) -> FnSig {
 
 /// Build the declared type of a function. This should not need to look at the
 /// function body.
-fn type_for_fn(db: &impl HirDatabase, def: Function) -> Ty {
-    let generics = db.generic_params(def.id.into());
+fn type_for_fn(db: &impl HirDatabase, def: FunctionId) -> Ty {
+    let generics = db.generic_params(def.into());
     let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(def.id.into()), substs)
+    Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
 /// Build the declared type of a const.
-fn type_for_const(db: &impl HirDatabase, def: Const) -> Ty {
-    let data = db.const_data(def.id);
-    let resolver = def.id.resolver(db);
+fn type_for_const(db: &impl HirDatabase, def: ConstId) -> Ty {
+    let data = db.const_data(def);
+    let resolver = def.resolver(db);
 
     Ty::from_hir(db, &resolver, &data.type_ref)
 }
 
 /// Build the declared type of a static.
-fn type_for_static(db: &impl HirDatabase, def: Static) -> Ty {
-    let data = db.static_data(def.id);
-    let resolver = def.id.resolver(db);
+fn type_for_static(db: &impl HirDatabase, def: StaticId) -> Ty {
+    let data = db.static_data(def);
+    let resolver = def.resolver(db);
 
     Ty::from_hir(db, &resolver, &data.type_ref)
 }
@@ -688,19 +639,19 @@ fn fn_sig_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> FnSig 
         .iter()
         .map(|(_, field)| Ty::from_hir(db, &resolver, &field.type_ref))
         .collect::<Vec<_>>();
-    let ret = type_for_adt(db, Struct::from(def));
+    let ret = type_for_adt(db, def.into());
     FnSig::from_params_and_return(params, ret)
 }
 
 /// Build the type of a tuple struct constructor.
-fn type_for_struct_constructor(db: &impl HirDatabase, def: Struct) -> Ty {
-    let struct_data = db.struct_data(def.id.into());
+fn type_for_struct_constructor(db: &impl HirDatabase, def: StructId) -> Ty {
+    let struct_data = db.struct_data(def.into());
     if struct_data.variant_data.is_unit() {
-        return type_for_adt(db, def); // Unit struct
+        return type_for_adt(db, def.into()); // Unit struct
     }
-    let generics = db.generic_params(def.id.into());
+    let generics = db.generic_params(def.into());
     let substs = Substs::identity(&generics);
-    Ty::apply(TypeCtor::FnDef(def.id.into()), substs)
+    Ty::apply(TypeCtor::FnDef(def.into()), substs)
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> FnSig {
@@ -714,34 +665,33 @@ fn fn_sig_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId
         .collect::<Vec<_>>();
     let generics = db.generic_params(def.parent.into());
     let substs = Substs::identity(&generics);
-    let ret = type_for_adt(db, Enum::from(def.parent)).subst(&substs);
+    let ret = type_for_adt(db, def.parent.into()).subst(&substs);
     FnSig::from_params_and_return(params, ret)
 }
 
 /// Build the type of a tuple enum variant constructor.
-fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariant) -> Ty {
-    let var_data = def.variant_data(db);
+fn type_for_enum_variant_constructor(db: &impl HirDatabase, def: EnumVariantId) -> Ty {
+    let enum_data = db.enum_data(def.parent);
+    let var_data = &enum_data.variants[def.local_id].variant_data;
     if var_data.is_unit() {
-        return type_for_adt(db, def.parent_enum(db)); // Unit variant
+        return type_for_adt(db, def.parent.into()); // Unit variant
     }
-    let generics = db.generic_params(def.parent_enum(db).id.into());
+    let generics = db.generic_params(def.parent.into());
     let substs = Substs::identity(&generics);
     Ty::apply(TypeCtor::FnDef(EnumVariantId::from(def).into()), substs)
 }
 
-fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt>) -> Ty {
-    let adt = adt.into();
-    let adt_id: AdtId = adt.into();
-    let generics = db.generic_params(adt_id.into());
-    Ty::apply(TypeCtor::Adt(adt_id), Substs::identity(&generics))
+fn type_for_adt(db: &impl HirDatabase, adt: AdtId) -> Ty {
+    let generics = db.generic_params(adt.into());
+    Ty::apply(TypeCtor::Adt(adt), Substs::identity(&generics))
 }
 
-fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {
-    let generics = db.generic_params(t.id.into());
-    let resolver = t.id.resolver(db);
-    let type_ref = t.type_ref(db);
+fn type_for_type_alias(db: &impl HirDatabase, t: TypeAliasId) -> Ty {
+    let generics = db.generic_params(t.into());
+    let resolver = t.resolver(db);
+    let type_ref = &db.type_alias_data(t).type_ref;
     let substs = Substs::identity(&generics);
-    let inner = Ty::from_hir(db, &resolver, &type_ref.unwrap_or(TypeRef::Error));
+    let inner = Ty::from_hir(db, &resolver, type_ref.as_ref().unwrap_or(&TypeRef::Error));
     inner.subst(&substs)
 }
 
@@ -806,5 +756,44 @@ impl From<CallableDef> for GenericDefId {
             CallableDef::StructId(s) => s.into(),
             CallableDef::EnumVariantId(e) => e.into(),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum TyDefId {
+    BuiltinType(BuiltinType),
+    AdtId(AdtId),
+    TypeAliasId(TypeAliasId),
+}
+impl_froms!(TyDefId: BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ValueTyDefId {
+    FunctionId(FunctionId),
+    StructId(StructId),
+    EnumVariantId(EnumVariantId),
+    ConstId(ConstId),
+    StaticId(StaticId),
+}
+impl_froms!(ValueTyDefId: FunctionId, StructId, EnumVariantId, ConstId, StaticId);
+
+/// Build the declared type of an item. This depends on the namespace; e.g. for
+/// `struct Foo(usize)`, we have two types: The type of the struct itself, and
+/// the constructor function `(usize) -> Foo` which lives in the values
+/// namespace.
+pub(crate) fn ty_query(db: &impl HirDatabase, def: TyDefId) -> Ty {
+    match def {
+        TyDefId::BuiltinType(it) => type_for_builtin(it),
+        TyDefId::AdtId(it) => type_for_adt(db, it),
+        TyDefId::TypeAliasId(it) => type_for_type_alias(db, it),
+    }
+}
+pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Ty {
+    match def {
+        ValueTyDefId::FunctionId(it) => type_for_fn(db, it),
+        ValueTyDefId::StructId(it) => type_for_struct_constructor(db, it),
+        ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
+        ValueTyDefId::ConstId(it) => type_for_const(db, it),
+        ValueTyDefId::StaticId(it) => type_for_static(db, it),
     }
 }

@@ -7,7 +7,7 @@ use hir_def::{
 
 use crate::{
     db::HirDatabase,
-    ty::{method_resolution, Namespace, Substs, Ty, TypableDef, TypeWalk},
+    ty::{method_resolution, Substs, Ty, TypeWalk, ValueTyDefId},
     AssocItem, Container, Function, Name, Path,
 };
 
@@ -56,7 +56,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
         };
 
-        let typable: TypableDef = match value {
+        let typable: ValueTyDefId = match value {
             ValueNs::LocalBinding(pat) => {
                 let ty = self.result.type_of_pat.get(pat)?.clone();
                 let ty = self.resolve_ty_as_possible(&mut vec![], ty);
@@ -69,11 +69,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             ValueNs::EnumVariantId(it) => it.into(),
         };
 
-        let mut ty = self.db.type_for_def(typable, Namespace::Values);
+        let mut ty = self.db.value_ty(typable);
         if let Some(self_subst) = self_subst {
             ty = ty.subst(&self_subst);
         }
-
         let substs = Ty::substs_from_path(self.db, &self.resolver, path, typable);
         let ty = ty.subst(&substs);
         Some(ty)
