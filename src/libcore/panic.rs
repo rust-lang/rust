@@ -1,8 +1,6 @@
 //! Panic support in the standard library.
 
-#![unstable(feature = "core_panic_info",
-            reason = "newly available in libcore",
-            issue = "44489")]
+#![stable(feature = "core_panic_info", since = "1.41.0")]
 
 use crate::any::Any;
 use crate::fmt;
