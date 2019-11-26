@@ -252,12 +252,7 @@ fn lint_int_literal<'a, 'tcx>(
     t: ast::IntTy,
     v: u128,
 ) {
-    let int_type = if let ast::IntTy::Isize = t {
-        cx.sess().target.isize_ty
-    } else {
-        t
-    };
-
+    let int_type = t.normalize(cx.sess().target.ptr_width);
     let (_, max) = int_ty_range(int_type);
     let max = max as u128;
     let negative = type_limits.negated_expr_id == e.hir_id;
@@ -303,11 +298,7 @@ fn lint_uint_literal<'a, 'tcx>(
     lit: &hir::Lit,
     t: ast::UintTy,
 ) {
-    let uint_type = if let ast::UintTy::Usize = t {
-        cx.sess().target.usize_ty
-    } else {
-        t
-    };
+    let uint_type = t.normalize(cx.sess().target.ptr_width);
     let (min, max) = uint_ty_range(uint_type);
     let lit_val: u128 = match lit.node {
         // _v is u8, within range by definition

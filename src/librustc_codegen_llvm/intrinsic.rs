@@ -1926,7 +1926,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
     match ty.kind {
         ty::Int(t) => Some((match t {
-            ast::IntTy::Isize => cx.tcx.sess.target.isize_ty.bit_width().unwrap() as u64,
+            ast::IntTy::Isize => cx.tcx.sess.target.ptr_width as u64,
             ast::IntTy::I8 => 8,
             ast::IntTy::I16 => 16,
             ast::IntTy::I32 => 32,
@@ -1934,7 +1934,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
             ast::IntTy::I128 => 128,
         }, true)),
         ty::Uint(t) => Some((match t {
-            ast::UintTy::Usize => cx.tcx.sess.target.usize_ty.bit_width().unwrap() as u64,
+            ast::UintTy::Usize => cx.tcx.sess.target.ptr_width as u64,
             ast::UintTy::U8 => 8,
             ast::UintTy::U16 => 16,
             ast::UintTy::U32 => 32,

@@ -1718,6 +1718,18 @@ impl IntTy {
             IntTy::I128 => 128,
         })
     }
+
+    pub fn normalize(&self, target_width: u32) -> Self {
+        match self {
+            IntTy::Isize => match target_width {
+                16 => IntTy::I16,
+                32 => IntTy::I32,
+                64 => IntTy::I64,
+                _ => unreachable!(),
+            },
+            _ => *self,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable_Generic,
@@ -1767,6 +1779,18 @@ impl UintTy {
             UintTy::U64 => 64,
             UintTy::U128 => 128,
         })
+    }
+
+    pub fn normalize(&self, target_width: u32) -> Self {
+        match self {
+            UintTy::Usize => match target_width {
+                16 => UintTy::U16,
+                32 => UintTy::U32,
+                64 => UintTy::U64,
+                _ => unreachable!(),
+            },
+            _ => *self,
+        }
     }
 }
 
