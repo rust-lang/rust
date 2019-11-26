@@ -107,7 +107,14 @@ impl ProgressReport {
     }
 
     fn clear(&mut self) {
-        print!("{}{}", " ".repeat(self.text.len()), "\x08".repeat(self.text.len()));
+        if self.hidden {
+            return;
+        }
+
+        // Fill all last text to space and return the cursor
+        let spaces = " ".repeat(self.text.len());
+        let backspaces = "\x08".repeat(self.text.len());
+        print!("{}{}{}", backspaces, spaces, backspaces);
         self.text = String::new();
     }
 }
