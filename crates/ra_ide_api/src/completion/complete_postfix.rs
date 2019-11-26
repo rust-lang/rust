@@ -1,6 +1,5 @@
 //! FIXME: write short doc here
 
-use hir::{Ty, TypeCtor};
 use ra_syntax::{ast::AstNode, TextRange, TextUnit};
 use ra_text_edit::TextEdit;
 
@@ -30,9 +29,12 @@ pub(super) fn complete_postfix(acc: &mut Completions, ctx: &CompletionContext) {
         dot_receiver.syntax().text().to_string()
     };
 
-    let receiver_ty = ctx.analyzer.type_of(ctx.db, &dot_receiver);
+    let receiver_ty = match ctx.analyzer.type_of(ctx.db, &dot_receiver) {
+        Some(it) => it,
+        None => return,
+    };
 
-    if is_bool_or_unknown(receiver_ty) {
+    if receiver_ty.is_bool() || receiver_ty.is_unknown() {
         postfix_snippet(ctx, "if", "if expr {}", &format!("if {} {{$0}}", receiver_text))
             .add_to(acc);
         postfix_snippet(
@@ -73,14 +75,6 @@ fn postfix_snippet(ctx: &CompletionContext, label: &str, detail: &str, snippet: 
     CompletionItem::new(CompletionKind::Postfix, ctx.source_range(), label)
         .detail(detail)
         .snippet_edit(edit)
-}
-
-fn is_bool_or_unknown(ty: Option<Ty>) -> bool {
-    match &ty {
-        Some(Ty::Apply(app)) if app.ctor == TypeCtor::Bool => true,
-        Some(Ty::Unknown) | None => true,
-        Some(_) => false,
-    }
 }
 
 #[cfg(test)]

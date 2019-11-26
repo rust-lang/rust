@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, Ty, TypeCtor};
+use hir::Type;
 
 use crate::completion::completion_item::CompletionKind;
 use crate::{
@@ -22,12 +22,12 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     };
 
     if !ctx.is_call {
-        complete_fields(acc, ctx, receiver_ty.clone());
+        complete_fields(acc, ctx, &receiver_ty);
     }
-    complete_methods(acc, ctx, receiver_ty.clone());
+    complete_methods(acc, ctx, &receiver_ty);
 
     // Suggest .await syntax for types that implement Future trait
-    if ctx.analyzer.impls_future(ctx.db, receiver_ty) {
+    if ctx.analyzer.impls_future(ctx.db, receiver_ty.into_ty()) {
         CompletionItem::new(CompletionKind::Keyword, ctx.source_range(), "await")
             .detail("expr.await")
             .insert_text("await")
@@ -35,28 +35,18 @@ pub(super) fn complete_dot(acc: &mut Completions, ctx: &CompletionContext) {
     }
 }
 
-fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
-    for receiver in ctx.analyzer.autoderef(ctx.db, receiver) {
-        if let Ty::Apply(a_ty) = receiver {
-            match a_ty.ctor {
-                TypeCtor::Adt(Adt::Struct(s)) => {
-                    for field in s.fields(ctx.db) {
-                        acc.add_field(ctx, field, &a_ty.parameters);
-                    }
-                }
-                // FIXME unions
-                TypeCtor::Tuple { .. } => {
-                    for (i, ty) in a_ty.parameters.iter().enumerate() {
-                        acc.add_tuple_field(ctx, i, ty);
-                    }
-                }
-                _ => {}
-            }
-        };
+fn complete_fields(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
+    for receiver in receiver.autoderef(ctx.db) {
+        for (field, ty) in receiver.fields(ctx.db) {
+            acc.add_field(ctx, field, &ty);
+        }
+        for (i, ty) in receiver.tuple_fields(ctx.db).into_iter().enumerate() {
+            acc.add_tuple_field(ctx, i, &ty);
+        }
     }
 }
 
-fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: Ty) {
+fn complete_methods(acc: &mut Completions, ctx: &CompletionContext, receiver: &Type) {
     let mut seen_methods = FxHashSet::default();
     ctx.analyzer.iterate_method_candidates(ctx.db, receiver, None, |_ty, func| {
         if func.has_self_param(ctx.db) && seen_methods.insert(func.name(ctx.db)) {

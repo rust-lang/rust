@@ -10,9 +10,9 @@ use hir_def::{
     docs::Documentation,
     per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
-    type_ref::TypeRef,
-    AstItemDef, ConstId, ContainerId, EnumId, FunctionId, GenericDefId, HasModule, ImplId,
-    LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId,
+    type_ref::{Mutability, TypeRef},
+    AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
+    ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId,
     StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use hir_expand::{
@@ -26,8 +26,12 @@ use ra_syntax::{ast, AstNode, SyntaxNode};
 use crate::{
     db::{DefDatabase, HirDatabase},
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
-    ty::{InferenceResult, Namespace, TraitRef},
-    Either, Name, Source, Ty,
+    ty::display::HirFormatter,
+    ty::{
+        self, InEnvironment, InferenceResult, Namespace, TraitEnvironment, TraitRef, Ty, TypeCtor,
+        TypeWalk,
+    },
+    CallableDef, Either, HirDisplay, Name, Source,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -469,6 +473,10 @@ pub enum Adt {
 impl_froms!(Adt: Struct, Union, Enum);
 
 impl Adt {
+    pub fn has_non_default_type_params(self, db: &impl HirDatabase) -> bool {
+        let subst = db.generic_defaults(self.into());
+        subst.iter().any(|ty| ty == &Ty::Unknown)
+    }
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
         match self {
             Adt::Struct(it) => it.ty(db),
@@ -777,6 +785,11 @@ pub struct TypeAlias {
 }
 
 impl TypeAlias {
+    pub fn has_non_default_type_params(self, db: &impl HirDatabase) -> bool {
+        let subst = db.generic_defaults(self.id.into());
+        subst.iter().any(|ty| ty == &Ty::Unknown)
+    }
+
     pub fn module(self, db: &impl DefDatabase) -> Module {
         Module { id: self.id.lookup(db).module(db) }
     }
@@ -927,9 +940,14 @@ impl Local {
         self.parent.module(db)
     }
 
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
+    pub fn ty(self, db: &impl HirDatabase) -> Type {
         let infer = db.infer(self.parent);
-        infer[self.pat_id].clone()
+        let ty = infer[self.pat_id].clone();
+        let def = DefWithBodyId::from(self.parent);
+        let resolver = def.resolver(db);
+        let krate = def.module(db).krate;
+        let environment = TraitEnvironment::lower(db, &resolver);
+        Type { krate, ty: InEnvironment { value: ty, environment } }
     }
 
     pub fn source(self, db: &impl HirDatabase) -> Source<Either<ast::BindPat, ast::SelfParam>> {
@@ -983,6 +1001,140 @@ impl ImplBlock {
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {
         Crate { crate_id: self.module(db).id.krate }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub struct Type {
+    pub(crate) krate: CrateId,
+    pub(crate) ty: InEnvironment<Ty>,
+}
+
+impl Type {
+    pub fn is_bool(&self) -> bool {
+        match &self.ty.value {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::Bool => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn is_mutable_reference(&self) -> bool {
+        match &self.ty.value {
+            Ty::Apply(a_ty) => match a_ty.ctor {
+                TypeCtor::Ref(Mutability::Mut) => true,
+                _ => false,
+            },
+            _ => false,
+        }
+    }
+
+    pub fn is_unknown(&self) -> bool {
+        match &self.ty.value {
+            Ty::Unknown => true,
+            _ => false,
+        }
+    }
+
+    // FIXME: this method is broken, as it doesn't take closures into account.
+    pub fn as_callable(&self) -> Option<CallableDef> {
+        Some(self.ty.value.as_callable()?.0)
+    }
+
+    pub fn contains_unknown(&self) -> bool {
+        return go(&self.ty.value);
+
+        fn go(ty: &Ty) -> bool {
+            match ty {
+                Ty::Unknown => true,
+                Ty::Apply(a_ty) => a_ty.parameters.iter().any(go),
+                _ => false,
+            }
+        }
+    }
+
+    pub fn fields(&self, db: &impl HirDatabase) -> Vec<(StructField, Type)> {
+        let mut res = Vec::new();
+        if let Ty::Apply(a_ty) = &self.ty.value {
+            match a_ty.ctor {
+                ty::TypeCtor::Adt(Adt::Struct(s)) => {
+                    for field in s.fields(db) {
+                        let ty = field.ty(db).subst(&a_ty.parameters);
+                        res.push((field, self.derived(ty)));
+                    }
+                }
+                _ => {}
+            }
+        };
+        res
+    }
+
+    pub fn tuple_fields(&self, _db: &impl HirDatabase) -> Vec<Type> {
+        let mut res = Vec::new();
+        if let Ty::Apply(a_ty) = &self.ty.value {
+            match a_ty.ctor {
+                ty::TypeCtor::Tuple { .. } => {
+                    for ty in a_ty.parameters.iter() {
+                        let ty = ty.clone().subst(&a_ty.parameters);
+                        res.push(self.derived(ty));
+                    }
+                }
+                _ => {}
+            }
+        };
+        res
+    }
+
+    pub fn variant_fields(
+        &self,
+        db: &impl HirDatabase,
+        def: VariantDef,
+    ) -> Vec<(StructField, Type)> {
+        // FIXME: check that ty and def match
+        match &self.ty.value {
+            Ty::Apply(a_ty) => def
+                .fields(db)
+                .into_iter()
+                .map(|it| (it, self.derived(it.ty(db).subst(&a_ty.parameters))))
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    pub fn autoderef<'a>(&'a self, db: &'a impl HirDatabase) -> impl Iterator<Item = Type> + 'a {
+        // There should be no inference vars in types passed here
+        // FIXME check that?
+        let canonical = crate::ty::Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        let environment = self.ty.environment.clone();
+        let ty = InEnvironment { value: canonical, environment: environment.clone() };
+        ty::autoderef(db, Some(self.krate), ty)
+            .map(|canonical| canonical.value)
+            .map(move |ty| self.derived(ty))
+    }
+
+    // FIXME: remove
+    pub fn into_ty(self) -> Ty {
+        self.ty.value
+    }
+
+    pub fn as_adt(&self) -> Option<Adt> {
+        let (adt, _subst) = self.ty.value.as_adt()?;
+        Some(adt)
+    }
+
+    fn derived(&self, ty: Ty) -> Type {
+        Type {
+            krate: self.krate,
+            ty: InEnvironment { value: ty, environment: self.ty.environment.clone() },
+        }
+    }
+}
+
+impl HirDisplay for Type {
+    fn hir_fmt(&self, f: &mut HirFormatter<impl HirDatabase>) -> std::fmt::Result {
+        self.ty.value.hir_fmt(f)
     }
 }
 

@@ -2,7 +2,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use hir::{Mutability, Name, Source};
+use hir::{Name, Source};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T};
@@ -230,11 +230,10 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
         Local(local) => {
             if local.is_mut(db) {
                 "variable.mut"
+            } else if local.ty(db).is_mutable_reference() {
+                "variable.mut"
             } else {
-                match local.ty(db).as_reference() {
-                    Some((_, Mutability::Mut)) => "variable.mut",
-                    _ => "variable",
-                }
+                "variable"
             }
         }
     }
