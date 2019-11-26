@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// **Known problems:**
     /// - Recommends a signed suffix, even though the number might be too big and an unsigned
     ///   suffix is required
-    /// - Does not match on `_128` since that is a valid grouping for decimal and hexadecimal numbers
+    /// - Does not match on `_128` since that is a valid grouping for decimal numbers
     ///
     /// **Example:**
     ///
