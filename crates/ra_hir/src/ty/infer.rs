@@ -598,10 +598,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         trait_.associated_type_by_name(self.db, &name::OUTPUT_TYPE)
     }
 
-    fn resolve_boxed_box(&self) -> Option<Adt> {
+    fn resolve_boxed_box(&self) -> Option<AdtId> {
         let path = known::std_boxed_box();
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
-        Some(Adt::Struct(struct_.into()))
+        Some(struct_.into())
     }
 }
 

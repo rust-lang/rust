@@ -199,11 +199,22 @@ impl From<Adt> for GenericDefId {
     }
 }
 
+impl From<VariantId> for VariantDef {
+    fn from(def: VariantId) -> Self {
+        match def {
+            VariantId::StructId(it) => VariantDef::Struct(it.into()),
+            VariantId::EnumVariantId(it) => VariantDef::EnumVariant(it.into()),
+            VariantId::UnionId(it) => VariantDef::Union(it.into()),
+        }
+    }
+}
+
 impl From<VariantDef> for VariantId {
     fn from(def: VariantDef) -> Self {
         match def {
             VariantDef::Struct(it) => VariantId::StructId(it.id),
             VariantDef::EnumVariant(it) => VariantId::EnumVariantId(it.into()),
+            VariantDef::Union(it) => VariantId::UnionId(it.id),
         }
     }
 }
@@ -211,6 +222,12 @@ impl From<VariantDef> for VariantId {
 impl From<StructField> for StructFieldId {
     fn from(def: StructField) -> Self {
         StructFieldId { parent: def.parent.into(), local_id: def.id }
+    }
+}
+
+impl From<StructFieldId> for StructField {
+    fn from(def: StructFieldId) -> Self {
+        StructField { parent: def.parent.into(), id: def.local_id }
     }
 }
 

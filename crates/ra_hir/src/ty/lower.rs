@@ -762,7 +762,7 @@ fn type_for_adt(db: &impl HirDatabase, adt: impl Into<Adt>) -> Ty {
     let adt = adt.into();
     let adt_id: AdtId = adt.into();
     let generics = db.generic_params(adt_id.into());
-    Ty::apply(TypeCtor::Adt(adt), Substs::identity(&generics))
+    Ty::apply(TypeCtor::Adt(adt_id), Substs::identity(&generics))
 }
 
 fn type_for_type_alias(db: &impl HirDatabase, t: TypeAlias) -> Ty {

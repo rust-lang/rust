@@ -11,9 +11,9 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, GenericDefId, HasModule,
-    ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId,
-    StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, GenericDefId,
+    HasModule, ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId,
+    Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -383,6 +383,28 @@ impl Union {
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
         db.type_for_def(self.into(), Namespace::Types)
     }
+
+    pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
+        db.union_data(self.id)
+            .variant_data
+            .fields()
+            .iter()
+            .map(|(id, _)| StructField { parent: self.into(), id })
+            .collect()
+    }
+
+    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
+        db.union_data(self.id)
+            .variant_data
+            .fields()
+            .iter()
+            .find(|(_id, data)| data.name == *name)
+            .map(|(id, _)| StructField { parent: self.into(), id })
+    }
+
+    fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
+        db.union_data(self.id).variant_data.clone()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -501,14 +523,16 @@ impl Adt {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum VariantDef {
     Struct(Struct),
+    Union(Union),
     EnumVariant(EnumVariant),
 }
-impl_froms!(VariantDef: Struct, EnumVariant);
+impl_froms!(VariantDef: Struct, Union, EnumVariant);
 
 impl VariantDef {
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
         match self {
             VariantDef::Struct(it) => it.fields(db),
+            VariantDef::Union(it) => it.fields(db),
             VariantDef::EnumVariant(it) => it.fields(db),
         }
     }
@@ -516,6 +540,7 @@ impl VariantDef {
     pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
         match self {
             VariantDef::Struct(it) => it.field(db, name),
+            VariantDef::Union(it) => it.field(db, name),
             VariantDef::EnumVariant(it) => it.field(db, name),
         }
     }
@@ -523,6 +548,7 @@ impl VariantDef {
     pub fn module(self, db: &impl HirDatabase) -> Module {
         match self {
             VariantDef::Struct(it) => it.module(db),
+            VariantDef::Union(it) => it.module(db),
             VariantDef::EnumVariant(it) => it.module(db),
         }
     }
@@ -530,6 +556,7 @@ impl VariantDef {
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
         match self {
             VariantDef::Struct(it) => it.variant_data(db),
+            VariantDef::Union(it) => it.variant_data(db),
             VariantDef::EnumVariant(it) => it.variant_data(db),
         }
     }
@@ -1056,19 +1083,24 @@ impl Type {
     }
 
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<(StructField, Type)> {
-        let mut res = Vec::new();
         if let Ty::Apply(a_ty) = &self.ty.value {
             match a_ty.ctor {
-                ty::TypeCtor::Adt(Adt::Struct(s)) => {
-                    for field in s.fields(db) {
-                        let ty = field.ty(db).subst(&a_ty.parameters);
-                        res.push((field, self.derived(ty)));
-                    }
+                ty::TypeCtor::Adt(AdtId::StructId(s)) => {
+                    let var_def = s.into();
+                    return db
+                        .field_types(var_def)
+                        .iter()
+                        .map(|(local_id, ty)| {
+                            let def = StructField { parent: var_def.into(), id: local_id };
+                            let ty = ty.clone().subst(&a_ty.parameters);
+                            (def, self.derived(ty))
+                        })
+                        .collect();
                 }
                 _ => {}
             }
         };
-        res
+        Vec::new()
     }
 
     pub fn tuple_fields(&self, _db: &impl HirDatabase) -> Vec<Type> {

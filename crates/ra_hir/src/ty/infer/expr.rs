@@ -8,7 +8,7 @@ use hir_def::{
     generics::GenericParams,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
-    ContainerId, Lookup,
+    AdtId, ContainerId, Lookup, StructFieldId,
 };
 use hir_expand::name;
 
@@ -20,7 +20,7 @@ use crate::{
         Mutability, Namespace, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
         TypeCtor, TypeWalk, Uncertain,
     },
-    Adt, Name,
+    Name,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};
@@ -259,14 +259,17 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         TypeCtor::Tuple { .. } => name
                             .as_tuple_index()
                             .and_then(|idx| a_ty.parameters.0.get(idx).cloned()),
-                        TypeCtor::Adt(Adt::Struct(s)) => s.field(self.db, name).map(|field| {
-                            self.write_field_resolution(tgt_expr, field);
-                            self.db.field_types(s.id.into())[field.id]
-                                .clone()
-                                .subst(&a_ty.parameters)
-                        }),
+                        TypeCtor::Adt(AdtId::StructId(s)) => {
+                            self.db.struct_data(s).variant_data.field(name).map(|local_id| {
+                                let field = StructFieldId { parent: s.into(), local_id }.into();
+                                self.write_field_resolution(tgt_expr, field);
+                                self.db.field_types(s.into())[field.id]
+                                    .clone()
+                                    .subst(&a_ty.parameters)
+                            })
+                        }
                         // FIXME:
-                        TypeCtor::Adt(Adt::Union(_)) => None,
+                        TypeCtor::Adt(AdtId::UnionId(_)) => None,
                         _ => None,
                     },
                     _ => None,

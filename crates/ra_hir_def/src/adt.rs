@@ -129,6 +129,10 @@ impl VariantData {
         }
     }
 
+    pub fn field(&self, name: &Name) -> Option<LocalStructFieldId> {
+        self.fields().iter().find_map(|(id, data)| if &data.name == name { Some(id) } else { None })
+    }
+
     pub fn is_unit(&self) -> bool {
         match self {
             VariantData::Unit => true,

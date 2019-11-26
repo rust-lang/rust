@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use arrayvec::ArrayVec;
-use hir_def::{lang_item::LangItemTarget, resolver::Resolver, AstItemDef};
+use hir_def::{lang_item::LangItemTarget, resolver::Resolver, AstItemDef, HasModule};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -102,7 +102,9 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
 
     let lang_item_targets = match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
-            TypeCtor::Adt(def_id) => return Some(std::iter::once(def_id.krate(db)?).collect()),
+            TypeCtor::Adt(def_id) => {
+                return Some(std::iter::once(def_id.module(db).krate.into()).collect())
+            }
             TypeCtor::Bool => lang_item_crate!("bool"),
             TypeCtor::Char => lang_item_crate!("char"),
             TypeCtor::Float(Uncertain::Known(f)) => match f.bitness {

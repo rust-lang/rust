@@ -4,14 +4,14 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
-use hir_def::{lang_item::LangItemTarget, resolver::Resolver};
+use hir_def::{lang_item::LangItemTarget, resolver::Resolver, AdtId};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
     db::HirDatabase,
     ty::{autoderef, Substs, Ty, TypeCtor, TypeWalk},
-    Adt, Mutability,
+    Mutability,
 };
 
 use super::{InEnvironment, InferTy, InferenceContext, TypeVarValue};
@@ -242,11 +242,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             // - T is not part of the type of any other fields
             // - Bar<T>: Unsize<Bar<U>>, if the last field of Foo has type Bar<T>
             (
-                ty_app!(TypeCtor::Adt(Adt::Struct(struct1)), st1),
-                ty_app!(TypeCtor::Adt(Adt::Struct(struct2)), st2),
+                ty_app!(TypeCtor::Adt(AdtId::StructId(struct1)), st1),
+                ty_app!(TypeCtor::Adt(AdtId::StructId(struct2)), st2),
             ) if struct1 == struct2 => {
-                let field_tys = self.db.field_types(struct1.id.into());
-                let struct_data = self.db.struct_data(struct1.id);
+                let field_tys = self.db.field_types((*struct1).into());
+                let struct_data = self.db.struct_data(*struct1);
 
                 let mut fields = struct_data.variant_data.fields().iter();
                 let (last_field_id, _data) = fields.next_back()?;
