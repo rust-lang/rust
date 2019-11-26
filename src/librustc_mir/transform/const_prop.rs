@@ -9,7 +9,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local, UnOp,
     StatementKind, Statement, LocalKind, TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo,
-    BinOp, SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock, RETURN_PLACE,
+    BinOp, SourceScope, SourceScopeData, LocalDecl, BasicBlock, RETURN_PLACE,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
@@ -77,8 +77,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         let dummy_body =
             &Body::new(
                 body.basic_blocks().clone(),
-                Default::default(),
-                body.source_scope_local_data.clone(),
+                body.source_scopes.clone(),
                 body.local_decls.clone(),
                 Default::default(),
                 body.arg_count,
@@ -254,7 +253,7 @@ struct ConstPropagator<'mir, 'tcx> {
     param_env: ParamEnv<'tcx>,
     // FIXME(eddyb) avoid cloning these two fields more than once,
     // by accessing them through `ecx` instead.
-    source_scope_local_data: IndexVec<SourceScope, ClearCrossCrate<SourceScopeLocalData>>,
+    source_scopes: IndexVec<SourceScope, SourceScopeData>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     ret: Option<OpTy<'tcx, ()>>,
 }
@@ -325,7 +324,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             can_const_prop,
             // FIXME(eddyb) avoid cloning these two fields more than once,
             // by accessing them through `ecx` instead.
-            source_scope_local_data: body.source_scope_local_data.clone(),
+            source_scopes: body.source_scopes.clone(),
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
             ret: ret.map(Into::into),
@@ -362,9 +361,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     {
         self.ecx.tcx.span = source_info.span;
         // FIXME(eddyb) move this to the `Panic(_)` error case, so that
-        // `f(self)` is always called, and that the only difference when
-        // `source_scope_local_data` is missing, is that the lint isn't emitted.
-        let lint_root = match &self.source_scope_local_data[source_info.scope] {
+        // `f(self)` is always called, and that the only difference when the
+        // scope's `local_data` is missing, is that the lint isn't emitted.
+        let lint_root = match &self.source_scopes[source_info.scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
             ClearCrossCrate::Clear => return None,
         };
@@ -489,7 +488,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let right_size = r.layout.size;
                     let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
                     if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
-                        let lint_root = match &self.source_scope_local_data[source_info.scope] {
+                        let lint_root = match &self.source_scopes[source_info.scope].local_data {
                             ClearCrossCrate::Set(data) => data.lint_root,
                             ClearCrossCrate::Clear => return None,
                         };

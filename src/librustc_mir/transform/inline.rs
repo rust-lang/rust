@@ -388,8 +388,7 @@ impl Inliner<'tcx> {
                 let mut local_map = IndexVec::with_capacity(callee_body.local_decls.len());
                 let mut scope_map = IndexVec::with_capacity(callee_body.source_scopes.len());
 
-                for (callee_idx, scope) in callee_body.source_scopes.iter_enumerated() {
-                    let mut scope = scope.clone();
+                for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.location.scope);
                         // FIXME(eddyb) is this really needed?
@@ -404,9 +403,6 @@ impl Inliner<'tcx> {
 
                     let idx = caller_body.source_scopes.push(scope);
                     scope_map.push(idx);
-
-                    let local_data = callee_body.source_scope_local_data[callee_idx].clone();
-                    assert_eq!(idx, caller_body.source_scope_local_data.push(local_data));
                 }
 
                 for loc in callee_body.vars_and_temps_iter() {
