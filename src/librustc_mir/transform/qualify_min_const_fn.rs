@@ -225,7 +225,7 @@ fn check_statement(
         StatementKind::FakeRead(_, place) => check_place(tcx, place, span, def_id, body),
 
         // just an assignment
-        StatementKind::SetDiscriminant { .. } => Ok(()),
+        StatementKind::SetDiscriminant { place, .. } => check_place(tcx, place, span, def_id, body),
 
         | StatementKind::InlineAsm { .. } => {
             Err((span, "cannot use inline assembly in const fn".into()))

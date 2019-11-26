@@ -566,9 +566,12 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
                 self.check_op(ops::IfOrMatch);
             }
+            StatementKind::SetDiscriminant { ref place, .. } => {
+                let ctx = PlaceContext::MutatingUse(MutatingUseContext::Projection);
+                self.visit_place(&place, ctx, location)
+            }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
-            StatementKind::SetDiscriminant { .. } |
             StatementKind::StorageLive(_) |
             StatementKind::StorageDead(_) |
             StatementKind::InlineAsm {..} |
