@@ -123,7 +123,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "chalk-derive"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478#a88cad7f0a69e05ba8f40b74c58a1c229c1b2478"
+source = "git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30#095cd38a4f16337913bba487f2055b9ca0179f30"
 dependencies = [
  "proc-macro2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -133,9 +133,9 @@ dependencies = [
 [[package]]
 name = "chalk-engine"
 version = "0.9.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478#a88cad7f0a69e05ba8f40b74c58a1c229c1b2478"
+source = "git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30#095cd38a4f16337913bba487f2055b9ca0179f30"
 dependencies = [
- "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
+ "chalk-macros 0.1.1 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "stacker 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -143,18 +143,18 @@ dependencies = [
 [[package]]
 name = "chalk-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478#a88cad7f0a69e05ba8f40b74c58a1c229c1b2478"
+source = "git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30#095cd38a4f16337913bba487f2055b9ca0179f30"
 dependencies = [
- "chalk-derive 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
+ "chalk-derive 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-engine 0.9.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-macros 0.1.1 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
  "lalrpop-intern 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "chalk-macros"
 version = "0.1.1"
-source = "git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478#a88cad7f0a69e05ba8f40b74c58a1c229c1b2478"
+source = "git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30#095cd38a4f16337913bba487f2055b9ca0179f30"
 dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -162,24 +162,24 @@ dependencies = [
 [[package]]
 name = "chalk-rust-ir"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478#a88cad7f0a69e05ba8f40b74c58a1c229c1b2478"
+source = "git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30#095cd38a4f16337913bba487f2055b9ca0179f30"
 dependencies = [
- "chalk-derive 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
+ "chalk-derive 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-engine 0.9.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-macros 0.1.1 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
 ]
 
 [[package]]
 name = "chalk-solve"
 version = "0.1.0"
-source = "git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478#a88cad7f0a69e05ba8f40b74c58a1c229c1b2478"
+source = "git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30#095cd38a4f16337913bba487f2055b9ca0179f30"
 dependencies = [
- "chalk-derive 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-rust-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
+ "chalk-derive 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-engine 0.9.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-macros 0.1.1 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-rust-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
  "ena 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.8.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "petgraph 0.4.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -954,7 +954,7 @@ dependencies = [
  "ra_hir 0.1.0",
  "ra_ide_api 0.1.0",
  "ra_project_model 0.1.0",
- "ra_vfs 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_vfs_glob 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -1010,9 +1010,9 @@ name = "ra_hir"
 version = "0.1.0"
 dependencies = [
  "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-rust-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
- "chalk-solve 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)",
+ "chalk-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-rust-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
+ "chalk-solve 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
  "ena 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lalrpop-intern 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1109,7 +1109,7 @@ dependencies = [
  "ra_project_model 0.1.0",
  "ra_syntax 0.1.0",
  "ra_text_edit 0.1.0",
- "ra_vfs 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_vfs_glob 0.1.0",
  "relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1200,14 +1200,14 @@ dependencies = [
 
 [[package]]
 name = "ra_vfs"
-version = "0.5.1"
+version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "crossbeam-channel 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "jod-thread 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "notify 4.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.9 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1218,7 +1218,7 @@ name = "ra_vfs_glob"
 version = "0.1.0"
 dependencies = [
  "globset 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "ra_vfs 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_vfs 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1872,12 +1872,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cargo_metadata 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "8d2d1617e838936c0d2323a65cc151e03ae19a7678dd24f72bccf27119b90a5d"
 "checksum cc 1.0.47 (registry+https://github.com/rust-lang/crates.io-index)" = "aa87058dce70a3ff5621797f1506cb837edd02ac4c0ae642b4542dce802908b8"
 "checksum cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "4785bdd1c96b2a846b2bd7cc02e86b6b3dbf14e7e53446c4f54c92a361040822"
-"checksum chalk-derive 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)" = "<none>"
-"checksum chalk-engine 0.9.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)" = "<none>"
-"checksum chalk-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)" = "<none>"
-"checksum chalk-macros 0.1.1 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)" = "<none>"
-"checksum chalk-rust-ir 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)" = "<none>"
-"checksum chalk-solve 0.1.0 (git+https://github.com/rust-lang/chalk.git?rev=a88cad7f0a69e05ba8f40b74c58a1c229c1b2478)" = "<none>"
+"checksum chalk-derive 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)" = "<none>"
+"checksum chalk-engine 0.9.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)" = "<none>"
+"checksum chalk-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)" = "<none>"
+"checksum chalk-macros 0.1.1 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)" = "<none>"
+"checksum chalk-rust-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)" = "<none>"
+"checksum chalk-solve 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)" = "<none>"
 "checksum chrono 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "31850b4a4d6bae316f7a09e691c944c28299298837edc0a03f755618c23cbc01"
 "checksum clicolors-control 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "90082ee5dcdd64dc4e9e0d37fbf3ee325419e39c0092191e0393df65518f741e"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
@@ -1966,7 +1966,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum psm 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "b14fc68b454f875abc8354c2555e1d56596f74833ddc0f77f87f4871ed6a30e0"
 "checksum quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "9274b940887ce9addde99c4eee6b5c44cc494b182b97e73dc8ffdcb3397fd3f0"
 "checksum quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "053a8c8bcc71fcce321828dc897a98ab9760bef03a4fc36693c231e5b3216cfe"
-"checksum ra_vfs 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7a95d3d1edc70a98d9e42f145bc92c2071dfdc532571591c9eac407c0e4feb89"
+"checksum ra_vfs 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "bc898f237e4b4498959ae0100c688793a23e77624d44ef710ba70094217f98e0"
 "checksum rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "6d71dacdc3c88c1fde3885a3be3fbab9f35724e6ce99467f7d9c5026132184ca"
 "checksum rand 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)" = "3ae1b169243eaf61759b8475a998f0a385e42042370f3a7dbaf35246eacc8412"
 "checksum rand_chacha 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "556d3a1ca6600bfcbab7c7c91ccb085ac7fbbcd70e008a98742e7847f4f7bcef"
