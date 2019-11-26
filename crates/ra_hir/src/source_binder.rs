@@ -448,8 +448,6 @@ impl SourceAnalyzer {
             db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
         );
         let macro_call_loc = MacroCallLoc { def, ast_id };
-        let kind = to_macro_file_kind(macro_call.value);
-        dbg!(kind);
         Some(Expansion {
             macro_call_id: db.intern_macro(macro_call_loc),
             macro_file_kind: to_macro_file_kind(macro_call.value),
