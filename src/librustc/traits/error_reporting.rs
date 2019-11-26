@@ -38,6 +38,7 @@ use std::fmt;
 use syntax::ast;
 use syntax::symbol::{sym, kw};
 use syntax_pos::{DUMMY_SP, Span, ExpnKind, MultiSpan};
+use rustc::hir::def_id::LOCAL_CRATE;
 
 use rustc_error_codes::*;
 
@@ -799,6 +800,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         self.suggest_fn_call(&obligation, &mut err, &trait_ref, points_at_arg);
                         self.suggest_remove_reference(&obligation, &mut err, &trait_ref);
                         self.suggest_semicolon_removal(&obligation, &mut err, span, &trait_ref);
+                        self.note_version_mismatch(&mut err, &trait_ref);
 
                         // Try to report a help message
                         if !trait_ref.has_infer_types() &&
@@ -1050,6 +1052,43 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         err.emit();
     }
 
+    /// If the `Self` type of the unsatisfied trait `trait_ref` implements a trait
+    /// with the same path as `trait_ref`, a help message about
+    /// a probable version mismatch is added to `err`
+    fn note_version_mismatch(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        trait_ref: &ty::PolyTraitRef<'tcx>,
+    ) {
+        let get_trait_impl = |trait_def_id| {
+            let mut trait_impl = None;
+            self.tcx.for_each_relevant_impl(trait_def_id, trait_ref.self_ty(), |impl_def_id| {
+                if trait_impl.is_none() {
+                    trait_impl = Some(impl_def_id);
+                }
+            });
+            trait_impl
+        };
+        let required_trait_path = self.tcx.def_path_str(trait_ref.def_id());
+        let all_traits = self.tcx.all_traits(LOCAL_CRATE);
+        let traits_with_same_path: std::collections::BTreeSet<_> = all_traits
+            .iter()
+            .filter(|trait_def_id| **trait_def_id != trait_ref.def_id())
+            .filter(|trait_def_id| self.tcx.def_path_str(**trait_def_id) == required_trait_path)
+            .collect();
+        for trait_with_same_path in traits_with_same_path {
+            if let Some(impl_def_id) = get_trait_impl(*trait_with_same_path) {
+                let impl_span = self.tcx.def_span(impl_def_id);
+                err.span_help(impl_span, "trait impl with same name found");
+                let trait_crate = self.tcx.crate_name(trait_with_same_path.krate);
+                let crate_msg = format!(
+                    "Perhaps two different versions of crate `{}` are being used?",
+                    trait_crate
+                );
+                err.note(&crate_msg);
+            }
+        }
+    }
     fn suggest_restricting_param_bound(
         &self,
         err: &mut DiagnosticBuilder<'_>,
