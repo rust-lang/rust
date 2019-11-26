@@ -196,13 +196,14 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
 
-    let mut body = new_body(blocks,
-                            IndexVec::from_elem_n(
-                                SourceScopeData { span, parent_scope: None }, 1
-                            ),
-                            local_decls_for_sig(&sig, span),
-                            sig.inputs().len(),
-                            span);
+    let mut body = new_body(
+        blocks,
+        IndexVec::from_elem_n(
+            SourceScopeData { span, parent_scope: None }, 1
+        ),
+        local_decls_for_sig(&sig, span),
+        sig.inputs().len(),
+        span);
 
     if let Some(..) = ty {
         // The first argument (index 0), but add 1 for the return value.
@@ -241,11 +242,12 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     body
 }
 
-fn new_body<'tcx>(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-                  source_scopes: IndexVec<SourceScope, SourceScopeData>,
-                  local_decls: IndexVec<Local, LocalDecl<'tcx>>,
-                  arg_count: usize,
-                  span: Span,
+fn new_body<'tcx>(
+    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    source_scopes: IndexVec<SourceScope, SourceScopeData>,
+    local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    arg_count: usize,
+    span: Span,
 ) -> Body<'tcx> {
     Body::new(
         basic_blocks,
@@ -377,13 +379,14 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn into_mir(self) -> Body<'tcx> {
-        new_body(self.blocks,
-                 IndexVec::from_elem_n(
-                     SourceScopeData { span: self.span, parent_scope: None }, 1
-                 ),
-                 self.local_decls,
-                 self.sig.inputs().len(),
-                 self.span,
+        new_body(
+            self.blocks,
+            IndexVec::from_elem_n(
+                SourceScopeData { span: self.span, parent_scope: None }, 1
+            ),
+            self.local_decls,
+            self.sig.inputs().len(),
+            self.span,
         )
     }
 
