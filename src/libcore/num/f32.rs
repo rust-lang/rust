@@ -78,7 +78,7 @@ pub mod consts {
     /// The full circle constant (τ)
     ///
     /// Equal to 2π.
-    #[unstable(feature = "tau_constant", issue = "0")]
+    #[unstable(feature = "tau_constant", issue = "66770")]
     pub const TAU: f32 = 6.28318530717958647692528676655900577_f32;
 
     /// π/2
