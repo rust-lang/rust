@@ -39,10 +39,10 @@ pub struct PanicInfo<'a> {
 }
 
 impl<'a> PanicInfo<'a> {
-    #![unstable(feature = "panic_internals",
-                reason = "internal details of the implementation of the `panic!` \
-                          and related macros",
-                issue = "0")]
+    #[unstable(feature = "panic_internals",
+               reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+               issue = "0")]
     #[doc(hidden)]
     #[inline]
     pub fn internal_constructor(
@@ -57,6 +57,10 @@ impl<'a> PanicInfo<'a> {
         }
     }
 
+    #[unstable(feature = "panic_internals",
+               reason = "internal details of the implementation of the `panic!` \
+                         and related macros",
+               issue = "0")]
     #[doc(hidden)]
     #[inline]
     pub fn set_payload(&mut self, info: &'a (dyn Any + Send)) {
