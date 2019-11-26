@@ -9,8 +9,10 @@ use rustc::ty::layout::{LayoutOf, Primitive, Size};
 use rustc::ty::subst::SubstsRef;
 use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
-use rustc::mir::BinOp;
-use rustc::mir::interpret::{InterpResult, Scalar, GlobalId, ConstValue};
+use rustc::mir::{
+    self, BinOp,
+    interpret::{InterpResult, Scalar, GlobalId, ConstValue}
+};
 
 use super::{
     Machine, PlaceTy, OpTy, InterpCx, ImmTy,
@@ -91,16 +93,20 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        dest: Option<PlaceTy<'tcx, M::PointerTag>>,
+        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx, bool> {
         let substs = instance.substs;
-
-        // We currently do not handle any diverging intrinsics.
-        let dest = match dest {
-            Some(dest) => dest,
-            None => return Ok(false)
-        };
         let intrinsic_name = &*self.tcx.item_name(instance.def_id()).as_str();
+
+        // We currently do not handle any intrinsics that are *allowed* to diverge,
+        // but `transmute` could lack a return place in case of UB.
+        let (dest, ret) = match ret {
+            Some(p) => p,
+            None => match intrinsic_name {
+                "transmute" => throw_ub!(Unreachable),
+                _ => return Ok(false),
+            }
+        };
 
         match intrinsic_name {
             "caller_location" => {
@@ -268,34 +274,39 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // exception from the exception.)
                 // This is the dual to the special exception for offset-by-0
                 // in the inbounds pointer offset operation (see the Miri code, `src/operator.rs`).
-                if a.is_bits() && b.is_bits() {
+                //
+                // Control flow is weird because we cannot early-return (to reach the
+                // `go_to_block` at the end).
+                let done = if a.is_bits() && b.is_bits() {
                     let a = a.to_machine_usize(self)?;
                     let b = b.to_machine_usize(self)?;
                     if a == b && a != 0 {
                         self.write_scalar(Scalar::from_int(0, isize_layout.size), dest)?;
-                        return Ok(true);
-                    }
-                }
+                        true
+                    } else { false }
+                } else { false };
 
-                // General case: we need two pointers.
-                let a = self.force_ptr(a)?;
-                let b = self.force_ptr(b)?;
-                if a.alloc_id != b.alloc_id {
-                    throw_ub_format!(
-                        "ptr_offset_from cannot compute offset of pointers into different \
-                        allocations.",
-                    );
+                if !done {
+                    // General case: we need two pointers.
+                    let a = self.force_ptr(a)?;
+                    let b = self.force_ptr(b)?;
+                    if a.alloc_id != b.alloc_id {
+                        throw_ub_format!(
+                            "ptr_offset_from cannot compute offset of pointers into different \
+                            allocations.",
+                        );
+                    }
+                    let usize_layout = self.layout_of(self.tcx.types.usize)?;
+                    let a_offset = ImmTy::from_uint(a.offset.bytes(), usize_layout);
+                    let b_offset = ImmTy::from_uint(b.offset.bytes(), usize_layout);
+                    let (val, _overflowed, _ty) = self.overflowing_binary_op(
+                        BinOp::Sub, a_offset, b_offset,
+                    )?;
+                    let pointee_layout = self.layout_of(substs.type_at(0))?;
+                    let val = ImmTy::from_scalar(val, isize_layout);
+                    let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
+                    self.exact_div(val, size, dest)?;
                 }
-                let usize_layout = self.layout_of(self.tcx.types.usize)?;
-                let a_offset = ImmTy::from_uint(a.offset.bytes(), usize_layout);
-                let b_offset = ImmTy::from_uint(b.offset.bytes(), usize_layout);
-                let (val, _overflowed, _ty) = self.overflowing_binary_op(
-                    BinOp::Sub, a_offset, b_offset,
-                )?;
-                let pointee_layout = self.layout_of(substs.type_at(0))?;
-                let val = ImmTy::from_scalar(val, isize_layout);
-                let size = ImmTy::from_int(pointee_layout.size.bytes(), isize_layout);
-                self.exact_div(val, size, dest)?;
             }
 
             "transmute" => {
@@ -350,6 +361,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             _ => return Ok(false),
         }
 
+        self.dump_place(*dest);
+        self.go_to_block(ret);
         Ok(true)
     }
 
@@ -360,7 +373,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, M::PointerTag>],
-        _dest: Option<PlaceTy<'tcx, M::PointerTag>>,
+        _ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
     ) -> InterpResult<'tcx, bool> {
         let def_id = instance.def_id();
         if Some(def_id) == self.tcx.lang_items().panic_fn() {

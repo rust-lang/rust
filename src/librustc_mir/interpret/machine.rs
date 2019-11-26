@@ -141,7 +141,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Returns either the mir to use for the call, or `None` if execution should
     /// just proceed (which usually means this hook did all the work that the
     /// called function should usually have done). In the latter case, it is
-    /// this hook's responsibility to call `goto_block(ret)` to advance the instruction pointer!
+    /// this hook's responsibility to advance the instruction pointer!
     /// (This is to support functions like `__rust_maybe_catch_panic` that neither find a MIR
     /// nor just jump to `ret`, but instead push their own stack frame.)
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
@@ -150,30 +150,28 @@ pub trait Machine<'mir, 'tcx>: Sized {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
-        unwind: Option<mir::BasicBlock>
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
-    /// Execute `fn_val`.  it is the hook's responsibility to advance the instruction
+    /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
-    /// Directly process an intrinsic without pushing a stack frame.
-    /// If this returns successfully, the engine will take care of jumping to the next block.
+    /// Directly process an intrinsic without pushing a stack frame. It is the hook's
+    /// responsibility to advance the instruction pointer as appropriate.
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 

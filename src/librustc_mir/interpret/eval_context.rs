@@ -555,6 +555,37 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
+    /// Jump to the given block.
+    #[inline]
+    pub fn go_to_block(&mut self, target: mir::BasicBlock) {
+        let frame = self.frame_mut();
+        frame.block = Some(target);
+        frame.stmt = 0;
+    }
+
+    /// *Return* to the given `target` basic block.
+    /// Do *not* use for unwinding! Use `unwind_to_block` instead.
+    ///
+    /// If `target` is `None`, that indicates the function cannot return, so we raise UB.
+    pub fn return_to_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
+        if let Some(target) = target {
+            Ok(self.go_to_block(target))
+        } else {
+            throw_ub!(Unreachable)
+        }
+    }
+
+    /// *Unwind* to the given `target` basic block.
+    /// Do *not* use for returning! Use `return_to_block` instead.
+    ///
+    /// If `target` is `None`, that indicates the function does not need cleanup during
+    /// unwinding, and we will just keep propagating that upwards.
+    pub fn unwind_to_block(&mut self, target: Option<mir::BasicBlock>) {
+        let frame = self.frame_mut();
+        frame.block = target;
+        frame.stmt = 0;
+    }
+
     /// Pops the current frame from the stack, deallocating the
     /// memory for allocated locals.
     ///
@@ -630,10 +661,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if cur_unwinding {
             // Follow the unwind edge.
             let unwind = next_block.expect("Encounted StackPopCleanup::None when unwinding!");
-            let next_frame = self.frame_mut();
-            // If `unwind` is `None`, we'll leave that function immediately again.
-            next_frame.block = unwind;
-            next_frame.stmt = 0;
+            self.unwind_to_block(unwind);
         } else {
             // Follow the normal return edge.
             // Validate the return value. Do this after deallocating so that we catch dangling
@@ -660,7 +688,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // Jump to new block -- *after* validation so that the spans make more sense.
             if let Some(ret) = next_block {
-                self.goto_block(ret)?;
+                self.return_to_block(ret)?;
             }
         }
 

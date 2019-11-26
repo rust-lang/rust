@@ -323,8 +323,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock> // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("eval_fn_call: {:?}", instance);
@@ -337,8 +336,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!  We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
-                return if ecx.hook_panic_fn(instance, args, dest)? {
-                    ecx.goto_block(ret)?; // fully evaluated and done
+                return if ecx.hook_panic_fn(instance, args, ret)? {
                     Ok(None)
                 } else {
                     throw_unsup_format!("calling non-const function `{}`", instance)
@@ -364,8 +362,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: !,
         _args: &[OpTy<'tcx>],
-        _dest: Option<PlaceTy<'tcx>>,
-        _ret: Option<mir::BasicBlock>,
+        _ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         match fn_val {}
     }
@@ -375,11 +373,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
-        _ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
-        if ecx.emulate_intrinsic(span, instance, args, dest)? {
+        if ecx.emulate_intrinsic(span, instance, args, ret)? {
             return Ok(());
         }
         // An intrinsic that we do not support
