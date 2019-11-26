@@ -1,7 +1,5 @@
 //! FIXME: write short doc here
 
-use hir::Substs;
-
 use crate::completion::{CompletionContext, Completions};
 
 pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionContext) {
@@ -14,10 +12,9 @@ pub(super) fn complete_record_pattern(acc: &mut Completions, ctx: &CompletionCon
         Some(it) => it,
         _ => return,
     };
-    let substs = &ty.substs().unwrap_or_else(Substs::empty);
 
-    for field in variant.fields(ctx.db) {
-        acc.add_field(ctx, field, substs);
+    for (field, field_ty) in ty.variant_fields(ctx.db, variant) {
+        acc.add_field(ctx, field, &field_ty);
     }
 }
 

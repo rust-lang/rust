@@ -489,6 +489,16 @@ impl HasModule for AdtId {
     }
 }
 
+impl HasModule for DefWithBodyId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        match self {
+            DefWithBodyId::FunctionId(it) => it.lookup(db).module(db),
+            DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
+            DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
+        }
+    }
+}
+
 impl HasModule for StaticLoc {
     fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
         self.container

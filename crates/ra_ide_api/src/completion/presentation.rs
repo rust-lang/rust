@@ -1,12 +1,12 @@
 //! This modules takes care of rendering various definitions as completion items.
 
-use hir::{db::HirDatabase, Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, Ty, TypeWalk};
+use hir::{db::HirDatabase, Docs, HasAttrs, HasSource, HirDisplay, ScopeDef, Type};
 use join_to_string::join;
 use ra_syntax::ast::NameOwner;
 use test_utils::tested_by;
 
 use crate::completion::{
-    db, CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionKind, Completions,
 };
 
 use crate::display::{const_label, function_label, macro_label, type_label};
@@ -16,7 +16,7 @@ impl Completions {
         &mut self,
         ctx: &CompletionContext,
         field: hir::StructField,
-        substs: &hir::Substs,
+        ty: &Type,
     ) {
         let is_deprecated = is_deprecated(field, ctx.db);
         CompletionItem::new(
@@ -25,13 +25,13 @@ impl Completions {
             field.name(ctx.db).to_string(),
         )
         .kind(CompletionItemKind::Field)
-        .detail(field.ty(ctx.db).subst(substs).display(ctx.db).to_string())
+        .detail(ty.display(ctx.db).to_string())
         .set_documentation(field.docs(ctx.db))
         .set_deprecated(is_deprecated)
         .add_to(self);
     }
 
-    pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &hir::Ty) {
+    pub(crate) fn add_tuple_field(&mut self, ctx: &CompletionContext, field: usize, ty: &Type) {
         CompletionItem::new(CompletionKind::Reference, ctx.source_range(), field.to_string())
             .kind(CompletionItemKind::Field)
             .detail(ty.display(ctx.db).to_string())
@@ -98,7 +98,7 @@ impl Completions {
             CompletionItem::new(completion_kind, ctx.source_range(), local_name.clone());
         if let ScopeDef::Local(local) = resolution {
             let ty = local.ty(ctx.db);
-            if ty != Ty::Unknown {
+            if !ty.is_unknown() {
                 completion_item = completion_item.detail(ty.display(ctx.db).to_string());
             }
         };
@@ -108,19 +108,17 @@ impl Completions {
             && !ctx.has_type_args
             && ctx.db.feature_flags.get("completion.insertion.add-call-parenthesis")
         {
-            let generic_def: Option<hir::GenericDef> = match resolution {
-                ScopeDef::ModuleDef(Adt(it)) => Some((*it).into()),
-                ScopeDef::ModuleDef(TypeAlias(it)) => Some((*it).into()),
-                _ => None,
+            let has_non_default_type_params = match resolution {
+                ScopeDef::ModuleDef(Adt(it)) => it.has_non_default_type_params(ctx.db),
+                ScopeDef::ModuleDef(TypeAlias(it)) => it.has_non_default_type_params(ctx.db),
+                _ => false,
             };
-            if let Some(def) = generic_def {
-                if has_non_default_type_params(def, ctx.db) {
-                    tested_by!(inserts_angle_brackets_for_generics);
-                    completion_item = completion_item
-                        .lookup_by(local_name.clone())
-                        .label(format!("{}<…>", local_name))
-                        .insert_snippet(format!("{}<$0>", local_name));
-                }
+            if has_non_default_type_params {
+                tested_by!(inserts_angle_brackets_for_generics);
+                completion_item = completion_item
+                    .lookup_by(local_name.clone())
+                    .label(format!("{}<…>", local_name))
+                    .insert_snippet(format!("{}<$0>", local_name));
             }
         }
 
@@ -289,11 +287,6 @@ impl Completions {
 
 fn is_deprecated(node: impl HasAttrs, db: &impl HirDatabase) -> bool {
     node.attrs(db).by_key("deprecated").exists()
-}
-
-fn has_non_default_type_params(def: hir::GenericDef, db: &db::RootDatabase) -> bool {
-    let subst = db.generic_defaults(def.into());
-    subst.iter().any(|ty| ty == &Ty::Unknown)
 }
 
 #[cfg(test)]

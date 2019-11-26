@@ -26,8 +26,8 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     );
     let (mut call_info, has_self) = match &calling_node {
         FnCallNode::CallExpr(expr) => {
-            //FIXME: don't poke into Ty
-            let (callable_def, _subst) = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
+            //FIXME: Type::as_callable is broken
+            let callable_def = analyzer.type_of(db, &expr.expr()?)?.as_callable()?;
             match callable_def {
                 hir::CallableDef::FunctionId(it) => {
                     let fn_def = it.into();

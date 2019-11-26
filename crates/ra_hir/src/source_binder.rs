@@ -28,10 +28,10 @@ use crate::{
     expr::{BodySourceMap, ExprScopes, ScopeId},
     ty::{
         method_resolution::{self, implements_trait},
-        TraitEnvironment,
+        InEnvironment, TraitEnvironment, Ty,
     },
     Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
-    GenericParam, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Ty, TypeAlias,
+    GenericParam, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
@@ -198,14 +198,18 @@ impl SourceAnalyzer {
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
-    pub fn type_of(&self, _db: &impl HirDatabase, expr: &ast::Expr) -> Option<crate::Ty> {
+    pub fn type_of(&self, db: &impl HirDatabase, expr: &ast::Expr) -> Option<Type> {
         let expr_id = self.expr_id(expr)?;
-        Some(self.infer.as_ref()?[expr_id].clone())
+        let ty = self.infer.as_ref()?[expr_id].clone();
+        let environment = TraitEnvironment::lower(db, &self.resolver);
+        Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })
     }
 
-    pub fn type_of_pat(&self, _db: &impl HirDatabase, pat: &ast::Pat) -> Option<crate::Ty> {
+    pub fn type_of_pat(&self, db: &impl HirDatabase, pat: &ast::Pat) -> Option<Type> {
         let pat_id = self.pat_id(pat)?;
-        Some(self.infer.as_ref()?[pat_id].clone())
+        let ty = self.infer.as_ref()?[pat_id].clone();
+        let environment = TraitEnvironment::lower(db, &self.resolver);
+        Some(Type { krate: self.resolver.krate()?, ty: InEnvironment { value: ty, environment } })
     }
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
@@ -361,14 +365,14 @@ impl SourceAnalyzer {
     pub fn iterate_method_candidates<T>(
         &self,
         db: &impl HirDatabase,
-        ty: Ty,
+        ty: &Type,
         name: Option<&Name>,
         mut callback: impl FnMut(&Ty, Function) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
+        let canonical = crate::ty::Canonical { value: ty.ty.value.clone(), num_vars: 0 };
         method_resolution::iterate_method_candidates(
             &canonical,
             db,
@@ -403,19 +407,19 @@ impl SourceAnalyzer {
         )
     }
 
-    pub fn autoderef<'a>(
-        &'a self,
-        db: &'a impl HirDatabase,
-        ty: Ty,
-    ) -> impl Iterator<Item = Ty> + 'a {
-        // There should be no inference vars in types passed here
-        // FIXME check that?
-        let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
-        let krate = self.resolver.krate();
-        let environment = TraitEnvironment::lower(db, &self.resolver);
-        let ty = crate::ty::InEnvironment { value: canonical, environment };
-        crate::ty::autoderef(db, krate, ty).map(|canonical| canonical.value)
-    }
+    // pub fn autoderef<'a>(
+    //     &'a self,
+    //     db: &'a impl HirDatabase,
+    //     ty: Ty,
+    // ) -> impl Iterator<Item = Ty> + 'a {
+    //     // There should be no inference vars in types passed here
+    //     // FIXME check that?
+    //     let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
+    //     let krate = self.resolver.krate();
+    //     let environment = TraitEnvironment::lower(db, &self.resolver);
+    //     let ty = crate::ty::InEnvironment { value: canonical, environment };
+    //     crate::ty::autoderef(db, krate, ty).map(|canonical| canonical.value)
+    // }
 
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.

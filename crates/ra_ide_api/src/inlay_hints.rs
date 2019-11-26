@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::{db::RootDatabase, FileId};
-use hir::{HirDisplay, SourceAnalyzer, Ty};
+use hir::{HirDisplay, SourceAnalyzer};
 use ra_syntax::{
     ast::{self, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
@@ -100,8 +100,11 @@ fn get_pat_type_hints(
         .into_iter()
         .filter(|pat| !skip_root_pat_hint || pat != original_pat)
         .filter_map(|pat| {
-            get_node_displayable_type(db, &analyzer, &pat)
-                .map(|pat_type| (pat.syntax().text_range(), pat_type))
+            let ty = analyzer.type_of_pat(db, &pat)?;
+            if ty.is_unknown() {
+                return None;
+            }
+            Some((pat.syntax().text_range(), ty))
         })
         .map(|(range, pat_type)| InlayHint {
             range,
@@ -156,20 +159,6 @@ fn get_leaf_pats(root_pat: ast::Pat) -> Vec<ast::Pat> {
         }
     }
     leaf_pats
-}
-
-fn get_node_displayable_type(
-    db: &RootDatabase,
-    analyzer: &SourceAnalyzer,
-    node_pat: &ast::Pat,
-) -> Option<Ty> {
-    analyzer.type_of_pat(db, node_pat).and_then(|resolved_type| {
-        if let Ty::Apply(_) = resolved_type {
-            Some(resolved_type)
-        } else {
-            None
-        }
-    })
 }
 
 #[cfg(test)]

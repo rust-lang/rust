@@ -24,7 +24,7 @@ pub(crate) fn goto_type_definition(
 
     let analyzer = hir::SourceAnalyzer::new(db, token.with_value(&node), None);
 
-    let ty: hir::Ty = if let Some(ty) =
+    let ty: hir::Type = if let Some(ty) =
         ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
     {
         ty
@@ -35,7 +35,7 @@ pub(crate) fn goto_type_definition(
         return None;
     };
 
-    let adt_def = analyzer.autoderef(db, ty).find_map(|ty| ty.as_adt().map(|adt| adt.0))?;
+    let adt_def = ty.autoderef(db).find_map(|ty| ty.as_adt())?;
 
     let nav = adt_def.to_nav(db);
     Some(RangeInfo::new(node.text_range(), vec![nav]))
