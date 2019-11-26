@@ -1104,7 +1104,7 @@ impl Type {
 
     pub fn as_adt(&self) -> Option<Adt> {
         let (adt, _subst) = self.ty.value.as_adt()?;
-        Some(adt)
+        Some(adt.into())
     }
 
     fn derived(&self, ty: Ty) -> Type {

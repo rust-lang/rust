@@ -12,7 +12,7 @@ use crate::{
     db::HirDatabase,
     diagnostics::{MissingFields, MissingOkInTailExpr},
     ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    Adt, Function, Name, Path,
+    Function, Name, Path, Struct,
 };
 
 pub use hir_def::{
@@ -69,7 +69,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
 
         let struct_def = match self.infer[id].as_adt() {
-            Some((Adt::Struct(s), _)) => s,
+            Some((AdtId::StructId(s), _)) => Struct::from(s),
             _ => return,
         };
 
