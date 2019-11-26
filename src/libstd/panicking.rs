@@ -491,8 +491,9 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
     rust_panic(payload)
 }
 
-/// Shim around rust_panic. Called by resume_unwind.
-pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
+/// This is the entry point for `resume_unwind`.
+/// It just forwards the payload to the panic runtime.
+pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
     update_panic_count(1);
 
     struct RewrapBox(Box<dyn Any + Send>);
@@ -507,7 +508,7 @@ pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
         }
     }
 
-    rust_panic(&mut RewrapBox(msg))
+    rust_panic(&mut RewrapBox(payload))
 }
 
 /// An unmangled function (through `rustc_std_internal_symbol`) on which to slap
