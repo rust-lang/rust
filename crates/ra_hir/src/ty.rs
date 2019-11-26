@@ -19,14 +19,16 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{
-    generics::GenericParams, AdtId, ContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup,
-    TraitId, TypeAliasId,
+    expr::ExprId, generics::GenericParams, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId,
+    GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
 };
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, FloatTy, IntTy, Mutability,
-    Name, Uncertain,
+    db::HirDatabase,
+    ty::primitive::{FloatTy, IntTy, Uncertain},
+    util::make_mut_slice,
+    Adt, Crate, Name,
 };
 use display::{HirDisplay, HirFormatter};
 

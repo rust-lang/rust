@@ -29,10 +29,9 @@ use crate::{
     ty::{
         primitive::{FloatTy, IntTy},
         utils::{all_super_traits, associated_type_by_name_including_super_traits},
-        Adt,
     },
     util::make_mut_slice,
-    Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, Trait,
+    Adt, Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, Trait,
     TypeAlias, Union,
 };
 
