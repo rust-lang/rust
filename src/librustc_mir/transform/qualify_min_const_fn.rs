@@ -337,6 +337,9 @@ fn check_terminator(
             check_operand(tcx, discr, span, def_id, body)
         }
 
+        // FIXME(ecstaticmorse): We probably want to allow `Unreachable` unconditionally.
+        TerminatorKind::Unreachable if tcx.features().const_if_match => Ok(()),
+
         | TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))
         }
