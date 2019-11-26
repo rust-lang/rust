@@ -80,9 +80,6 @@ pub fn run(
         Verbosity::Quiet => ProgressBar::hidden(),
     };
 
-    // bar.set_style(
-    //     indicatif::ProgressStyle::default_bar().template("{wide_bar} {pos}/{len}\n{msg}"),
-    // );
     bar.tick();
     let mut num_exprs = 0;
     let mut num_exprs_unknown = 0;
