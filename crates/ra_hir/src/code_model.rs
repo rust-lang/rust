@@ -740,10 +740,6 @@ impl Trait {
         db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
     }
 
-    pub fn associated_type_by_name(self, db: &impl DefDatabase, name: &Name) -> Option<TypeAlias> {
-        db.trait_data(self.id).associated_type_by_name(name).map(TypeAlias::from)
-    }
-
     pub fn associated_type_by_name_including_super_traits(
         self,
         db: &impl HirDatabase,
@@ -751,8 +747,8 @@ impl Trait {
     ) -> Option<TypeAlias> {
         all_super_traits(db, self.id)
             .into_iter()
-            .map(Trait::from)
-            .find_map(|t| t.associated_type_by_name(db, name))
+            .find_map(|t| db.trait_data(t).associated_type_by_name(name))
+            .map(TypeAlias::from)
     }
 
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {

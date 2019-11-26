@@ -263,16 +263,14 @@ impl Ty {
         });
         let traits = traits_from_env.flat_map(|t| all_super_traits(db, t.id)).map(Trait::from);
         for t in traits {
-            if let Some(associated_ty) = t.associated_type_by_name(db, &segment.name) {
+            if let Some(associated_ty) = db.trait_data(t.id).associated_type_by_name(&segment.name)
+            {
                 let substs = Substs::build_for_def(db, t.id)
                     .push(self_ty.clone())
                     .fill_with_unknown()
                     .build();
                 // FIXME handle type parameters on the segment
-                return Ty::Projection(ProjectionTy {
-                    associated_ty: associated_ty.id,
-                    parameters: substs,
-                });
+                return Ty::Projection(ProjectionTy { associated_ty, parameters: substs });
             }
         }
         Ty::Unknown

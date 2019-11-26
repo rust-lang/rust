@@ -10,7 +10,7 @@ use hir_expand::name;
 use log::{info, warn};
 use ra_db::CrateId;
 
-use crate::{db::HirDatabase, Trait};
+use crate::db::HirDatabase;
 
 use super::{
     traits::{InEnvironment, Solution},
@@ -49,12 +49,12 @@ fn deref_by_trait(
     ty: InEnvironment<&Canonical<Ty>>,
 ) -> Option<Canonical<Ty>> {
     let deref_trait = match db.lang_item(krate.into(), "deref".into())? {
-        LangItemTarget::TraitId(t) => Trait::from(t),
+        LangItemTarget::TraitId(it) => it,
         _ => return None,
     };
-    let target = deref_trait.associated_type_by_name(db, &name::TARGET_TYPE)?;
+    let target = db.trait_data(deref_trait).associated_type_by_name(&name::TARGET_TYPE)?;
 
-    let generic_params = db.generic_params(target.id.into());
+    let generic_params = db.generic_params(target.into());
     if generic_params.count_params_including_parent() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
         // namely Deref's Self type
@@ -69,7 +69,7 @@ fn deref_by_trait(
 
     let projection = super::traits::ProjectionPredicate {
         ty: Ty::Bound(0),
-        projection_ty: super::ProjectionTy { associated_ty: target.id, parameters },
+        projection_ty: super::ProjectionTy { associated_ty: target, parameters },
     };
 
     let obligation = super::Obligation::Projection(projection);
