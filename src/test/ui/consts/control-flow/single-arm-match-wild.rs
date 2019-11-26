@@ -15,5 +15,7 @@ const fn f(e: E) -> usize {
 }
 
 fn main() {
+    const X: usize = f(E::C);
+    assert_eq!(X, 0);
     assert_eq!(f(E::A), 0);
 }
