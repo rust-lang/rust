@@ -54,7 +54,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     pub const fn new_in(a: A) -> Self {
         let cap = {
             #[cfg(not(bootstrap))]
-            { if mem::size_of::<T>() == 0 { usize::MAX } else { 0 } }
+            { if mem::size_of::<T>() == 0 { core::usize::MAX } else { 0 } }
 
             #[cfg(bootstrap)]
             [0, !0][(mem::size_of::<T>() == 0) as usize]
