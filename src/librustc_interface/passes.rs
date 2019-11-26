@@ -3,6 +3,7 @@ use crate::util;
 use crate::proc_macro_decls;
 
 use log::{info, warn, log_enabled};
+use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
@@ -22,7 +23,7 @@ use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
-use rustc_data_structures::sync::{Lrc, Once, ParallelIterator, par_iter};
+use rustc_data_structures::sync::{Lrc, Once, ParallelIterator, par_iter, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_incremental;
 use rustc_metadata::cstore;
@@ -764,6 +765,7 @@ pub fn create_global_ctxt<'gcx>(
     crate_name: &str,
     global_ctxt: &'gcx Once<GlobalCtxt<'gcx>>,
     arenas: &'gcx Once<AllArenas>,
+    local_arena: &'gcx WorkerLocal<Arena<'gcx>>,
 ) -> BoxedGlobalCtxt<'gcx> {
     let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
@@ -798,6 +800,7 @@ pub fn create_global_ctxt<'gcx>(
         local_providers,
         extern_providers,
         &arenas,
+        local_arena,
         resolver_outputs,
         hir_map,
         query_result_on_disk_cache,

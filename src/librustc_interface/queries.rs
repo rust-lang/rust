@@ -2,10 +2,11 @@ use crate::interface::{Compiler, Result};
 use crate::passes::{self, BoxedResolver, BoxedGlobalCtxt};
 
 use rustc_incremental::DepGraphFuture;
-use rustc_data_structures::sync::{Lrc, Once};
+use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::util::common::{time, ErrorReported};
+use rustc::arena::Arena;
 use rustc::hir;
 use rustc::lint;
 use rustc::session::Session;
@@ -74,6 +75,8 @@ pub struct Queries<'comp> {
     arenas: Once<AllArenas>,
     forest: Once<hir::map::Forest>,
 
+    local_arena: WorkerLocal<Arena<'comp>>,
+
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
     crate_name: Query<String>,
@@ -93,6 +96,7 @@ impl<'comp> Queries<'comp> {
             gcx: Once::new(),
             arenas: Once::new(),
             forest: Once::new(),
+            local_arena: WorkerLocal::new(|_| Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
@@ -265,6 +269,7 @@ impl<'comp> Queries<'comp> {
                 &crate_name,
                 &self.gcx,
                 &self.arenas,
+                &self.local_arena,
             ))
         })
     }
