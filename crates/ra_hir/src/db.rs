@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use ra_arena::map::ArenaMap;
-use ra_db::salsa;
+use ra_db::{salsa, CrateId};
 
 use crate::{
     ty::{
@@ -60,7 +60,7 @@ pub trait HirDatabase: DefDatabase {
     fn generic_defaults(&self, def: GenericDefId) -> Substs;
 
     #[salsa::invoke(crate::ty::method_resolution::CrateImplBlocks::impls_in_crate_query)]
-    fn impls_in_crate(&self, krate: Crate) -> Arc<CrateImplBlocks>;
+    fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplBlocks>;
 
     #[salsa::invoke(crate::ty::traits::impls_for_trait_query)]
     fn impls_for_trait(&self, krate: Crate, trait_: Trait) -> Arc<[ImplBlock]>;
