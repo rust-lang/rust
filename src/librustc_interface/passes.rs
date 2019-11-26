@@ -777,7 +777,7 @@ pub fn create_global_ctxt(
 
         // Construct the HIR map.
         let hir_map = time(sess, "indexing HIR", || {
-            hir::map::map_crate(sess, &*resolver_outputs.cstore, &mut hir_forest, &defs)
+            hir::map::map_crate(sess, &*resolver_outputs.cstore, &mut hir_forest, defs)
         });
 
         let query_result_on_disk_cache = time(sess, "load query result cache", || {
