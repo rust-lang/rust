@@ -138,13 +138,9 @@ error: duplicate argument named `foo`
   --> $DIR/ifmt-bad-arg.rs:40:33
    |
 LL |     format!("{foo}", foo=1, foo=2);
-   |                                 ^
-   |
-note: previously here
-  --> $DIR/ifmt-bad-arg.rs:40:26
-   |
-LL |     format!("{foo}", foo=1, foo=2);
-   |                          ^
+   |                          -      ^ duplicate argument
+   |                          |
+   |                          previously here
 
 error: positional arguments cannot follow named arguments
   --> $DIR/ifmt-bad-arg.rs:41:35

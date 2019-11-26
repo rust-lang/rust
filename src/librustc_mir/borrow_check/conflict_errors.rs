@@ -1264,23 +1264,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             Applicability::MachineApplicable,
         );
 
-        match category {
-            ConstraintCategory::Return => {
-                err.span_note(constraint_span, "closure is returned here");
-            }
-            ConstraintCategory::OpaqueType => {
-                err.span_note(constraint_span, "generator is returned here");
-            }
+        let msg = match category {
+            ConstraintCategory::Return => "closure is returned here".to_string(),
+            ConstraintCategory::OpaqueType => "generator is returned here".to_string(),
             ConstraintCategory::CallArgument => {
                 fr_name.highlight_region_name(&mut err);
-                err.span_note(
-                    constraint_span,
-                    &format!("function requires argument type to outlive `{}`", fr_name),
-                );
+                format!("function requires argument type to outlive `{}`", fr_name)
             }
             _ => bug!("report_escaping_closure_capture called with unexpected constraint \
                        category: `{:?}`", category),
-        }
+        };
+        err.span_note(constraint_span, &msg);
         err
     }
 

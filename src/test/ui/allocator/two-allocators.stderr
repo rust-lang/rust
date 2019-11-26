@@ -1,14 +1,11 @@
 error: cannot define multiple global allocators
   --> $DIR/two-allocators.rs:6:1
    |
-LL | static B: System = System;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-note: the previous global allocator is defined here
-  --> $DIR/two-allocators.rs:4:1
-   |
 LL | static A: System = System;
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | -------------------------- previous global allocator is defined here
+LL | #[global_allocator]
+LL | static B: System = System;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot define a new global allocator
 
 error: aborting due to previous error
 

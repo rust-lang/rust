@@ -1,4 +1,4 @@
-error: Documentation test in private item
+error: documentation test in private item
   --> $DIR/private-item-doc-test.rs:4:5
    |
 LL | /     /// private doc test

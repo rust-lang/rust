@@ -463,7 +463,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         terr: &TypeError<'tcx>,
-        sp: Span,
     ) {
         use hir::def_id::CrateNum;
         use hir::map::DisambiguatedDefPathData;
@@ -577,14 +576,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 };
                 if same_path().unwrap_or(false) {
                     let crate_name = self.tcx.crate_name(did1.krate);
-                    err.span_note(
-                        sp,
-                        &format!(
-                            "Perhaps two different versions \
-                             of crate `{}` are being used?",
-                            crate_name
-                        ),
-                    );
+                    err.note(&format!(
+                        "perhaps two different versions of crate `{}` are being used?",
+                        crate_name
+                    ));
                 }
             }
         };
@@ -1434,7 +1429,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .unwrap_or_else(|| {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
-        self.check_and_note_conflicting_crates(diag, terr, span);
+        self.check_and_note_conflicting_crates(diag, terr);
         self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id);
 
         // It reads better to have the error origin as the final

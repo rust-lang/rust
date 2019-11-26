@@ -269,7 +269,8 @@ fn check_binders(
                 // for nested macro definitions.
                 sess.span_diagnostic
                     .struct_span_err(span, "duplicate matcher binding")
-                    .span_note(prev_info.span, "previous declaration was here")
+                    .span_label(span, "duplicate binding")
+                    .span_label(prev_info.span, "previous binding")
                     .emit();
                 *valid = false;
             } else {
