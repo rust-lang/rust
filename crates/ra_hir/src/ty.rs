@@ -22,13 +22,14 @@ use hir_def::{
     expr::ExprId, generics::GenericParams, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId,
     GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
 };
+use hir_expand::name::Name;
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
     db::HirDatabase,
     ty::primitive::{FloatTy, IntTy, Uncertain},
     util::make_mut_slice,
-    Adt, Crate, Name,
+    Crate,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -598,10 +599,10 @@ impl Ty {
         }
     }
 
-    pub fn as_adt(&self) -> Option<(Adt, &Substs)> {
+    pub fn as_adt(&self) -> Option<(AdtId, &Substs)> {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_def), parameters }) => {
-                Some(((*adt_def).into(), parameters))
+                Some((*adt_def, parameters))
             }
             _ => None,
         }

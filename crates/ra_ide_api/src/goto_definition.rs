@@ -71,10 +71,11 @@ pub(crate) fn reference_definition(
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
         },
-        Some(SelfType(ty)) => {
-            if let Some((adt, _)) = ty.as_adt() {
-                return Exact(adt.to_nav(db));
-            }
+        Some(SelfType(imp)) => {
+            // FIXME: ideally, this should point to the type in the impl, and
+            // not at the whole impl. And goto **type** definition should bring
+            // us to the actual type
+            return Exact(imp.to_nav(db));
         }
         Some(Local(local)) => return Exact(local.to_nav(db)),
         Some(GenericParam(_)) => {
@@ -503,7 +504,7 @@ mod tests {
                 }
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "impl IMPL_BLOCK FileId(1) [12; 73)",
         );
 
         check_goto(
@@ -516,7 +517,7 @@ mod tests {
                 }
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "impl IMPL_BLOCK FileId(1) [12; 73)",
         );
 
         check_goto(
@@ -529,7 +530,7 @@ mod tests {
                 }
             }
             ",
-            "Foo ENUM_DEF FileId(1) [0; 14) [5; 8)",
+            "impl IMPL_BLOCK FileId(1) [15; 75)",
         );
 
         check_goto(
@@ -541,7 +542,7 @@ mod tests {
                 }
             }
             ",
-            "Foo ENUM_DEF FileId(1) [0; 14) [5; 8)",
+            "impl IMPL_BLOCK FileId(1) [15; 62)",
         );
     }
 
@@ -560,7 +561,7 @@ mod tests {
                 }
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "impl IMPL_BLOCK FileId(1) [49; 115)",
         );
 
         check_goto(
@@ -572,11 +573,11 @@ mod tests {
             }
             impl Make for Foo {
                 fn new() -> Self<|> {
-                    Self{}
+                    Self {}
                 }
             }
             ",
-            "Foo STRUCT_DEF FileId(1) [0; 11) [7; 10)",
+            "impl IMPL_BLOCK FileId(1) [49; 115)",
         );
     }
 

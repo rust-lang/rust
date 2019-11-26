@@ -83,10 +83,7 @@ pub(crate) fn find_all_refs(
         NameKind::Field(field) => field.to_nav(db),
         NameKind::AssocItem(assoc) => assoc.to_nav(db),
         NameKind::Def(def) => NavigationTarget::from_def(db, def)?,
-        NameKind::SelfType(ref ty) => match ty.as_adt() {
-            Some((adt, _)) => adt.to_nav(db),
-            None => return None,
-        },
+        NameKind::SelfType(imp) => imp.to_nav(db),
         NameKind::Local(local) => local.to_nav(db),
         NameKind::GenericParam(_) => return None,
     };
