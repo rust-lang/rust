@@ -945,7 +945,7 @@ impl ImplBlock {
     }
     pub fn for_trait(db: &impl HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplBlock> {
         let impls = db.impls_in_crate(krate.crate_id);
-        impls.lookup_impl_blocks_for_trait(trait_).map(Self::from).collect()
+        impls.lookup_impl_blocks_for_trait(trait_.id).map(Self::from).collect()
     }
 
     pub fn target_trait(&self, db: &impl DefDatabase) -> Option<TypeRef> {

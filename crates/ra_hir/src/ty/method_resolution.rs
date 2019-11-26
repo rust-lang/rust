@@ -6,9 +6,10 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use hir_def::{
-    lang_item::LangItemTarget, resolver::HasResolver, resolver::Resolver, AssocItemId, AstItemDef,
-    HasModule, ImplId, TraitId,
+    lang_item::LangItemTarget, resolver::HasResolver, resolver::Resolver, type_ref::Mutability,
+    AssocItemId, AstItemDef, HasModule, ImplId, TraitId,
 };
+use hir_expand::name::Name;
 use ra_db::CrateId;
 use ra_prof::profile;
 use rustc_hash::FxHashMap;
@@ -17,7 +18,7 @@ use crate::{
     db::HirDatabase,
     ty::primitive::{FloatBitness, Uncertain},
     ty::{utils::all_super_traits, Ty, TypeCtor},
-    AssocItem, Crate, Function, Mutability, Name, Trait,
+    AssocItem, Function,
 };
 
 use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
@@ -87,8 +88,8 @@ impl CrateImplBlocks {
         fingerprint.and_then(|f| self.impls.get(&f)).into_iter().flatten().copied()
     }
 
-    pub fn lookup_impl_blocks_for_trait(&self, tr: Trait) -> impl Iterator<Item = ImplId> + '_ {
-        self.impls_by_trait.get(&tr.id).into_iter().flatten().copied()
+    pub fn lookup_impl_blocks_for_trait(&self, tr: TraitId) -> impl Iterator<Item = ImplId> + '_ {
+        self.impls_by_trait.get(&tr).into_iter().flatten().copied()
     }
 
     pub fn all_impls<'a>(&'a self) -> impl Iterator<Item = ImplId> + 'a {
@@ -96,14 +97,18 @@ impl CrateImplBlocks {
     }
 }
 
-fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayVec<[Crate; 2]>> {
+fn def_crates(
+    db: &impl HirDatabase,
+    cur_crate: CrateId,
+    ty: &Ty,
+) -> Option<ArrayVec<[CrateId; 2]>> {
     // Types like slice can have inherent impls in several crates, (core and alloc).
     // The corresponding impls are marked with lang items, so we can use them to find the required crates.
     macro_rules! lang_item_crate {
         ($($name:expr),+ $(,)?) => {{
             let mut v = ArrayVec::<[LangItemTarget; 2]>::new();
             $(
-                v.extend(db.lang_item(cur_crate.crate_id, $name.into()));
+                v.extend(db.lang_item(cur_crate, $name.into()));
             )+
             v
         }};
@@ -112,7 +117,7 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
     let lang_item_targets = match ty {
         Ty::Apply(a_ty) => match a_ty.ctor {
             TypeCtor::Adt(def_id) => {
-                return Some(std::iter::once(def_id.module(db).krate.into()).collect())
+                return Some(std::iter::once(def_id.module(db).krate).collect())
             }
             TypeCtor::Bool => lang_item_crate!("bool"),
             TypeCtor::Char => lang_item_crate!("char"),
@@ -136,7 +141,7 @@ fn def_crates(db: &impl HirDatabase, cur_crate: Crate, ty: &Ty) -> Option<ArrayV
             LangItemTarget::ImplBlockId(it) => Some(it),
             _ => None,
         })
-        .map(|it| it.module(db).krate.into())
+        .map(|it| it.module(db).krate)
         .collect();
     Some(res)
 }
@@ -193,14 +198,9 @@ pub(crate) fn iterate_method_candidates<T>(
             let environment = TraitEnvironment::lower(db, resolver);
             let ty = InEnvironment { value: ty.clone(), environment };
             for derefed_ty in autoderef::autoderef(db, resolver.krate(), ty) {
-                if let Some(result) = iterate_inherent_methods(
-                    &derefed_ty,
-                    db,
-                    name,
-                    mode,
-                    krate.into(),
-                    &mut callback,
-                ) {
+                if let Some(result) =
+                    iterate_inherent_methods(&derefed_ty, db, name, mode, krate, &mut callback)
+                {
                     return Some(result);
                 }
                 if let Some(result) = iterate_trait_method_candidates(
@@ -283,11 +283,11 @@ fn iterate_inherent_methods<T>(
     db: &impl HirDatabase,
     name: Option<&Name>,
     mode: LookupMode,
-    krate: Crate,
+    krate: CrateId,
     mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
 ) -> Option<T> {
     for krate in def_crates(db, krate, &ty.value)? {
-        let impls = db.impls_in_crate(krate.crate_id);
+        let impls = db.impls_in_crate(krate);
 
         for impl_block in impls.lookup_impl_blocks(&ty.value) {
             for &item in db.impl_data(impl_block).items.iter() {
@@ -327,7 +327,7 @@ pub(crate) fn implements_trait(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     resolver: &Resolver,
-    krate: Crate,
+    krate: CrateId,
     trait_: TraitId,
 ) -> bool {
     if ty.value.inherent_trait() == Some(trait_) {
@@ -337,7 +337,7 @@ pub(crate) fn implements_trait(
     }
     let env = TraitEnvironment::lower(db, resolver);
     let goal = generic_implements_goal(db, env, trait_, ty.clone());
-    let solution = db.trait_solve(krate, goal);
+    let solution = db.trait_solve(krate.into(), goal);
 
     solution.is_some()
 }
@@ -348,11 +348,11 @@ impl Ty {
     pub fn iterate_impl_items<T>(
         self,
         db: &impl HirDatabase,
-        krate: Crate,
+        krate: CrateId,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
         for krate in def_crates(db, krate, &self)? {
-            let impls = db.impls_in_crate(krate.crate_id);
+            let impls = db.impls_in_crate(krate);
 
             for impl_block in impls.lookup_impl_blocks(&self) {
                 for &item in db.impl_data(impl_block).items.iter() {

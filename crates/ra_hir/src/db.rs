@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 
+use hir_def::{GenericDefId, LocalStructFieldId, TraitId, VariantId};
 use ra_arena::map::ArenaMap;
 use ra_db::{salsa, CrateId};
 
@@ -12,19 +13,15 @@ use crate::{
         CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, Ty, TyDefId, TypeCtor,
         ValueTyDefId,
     },
-    Crate, DefWithBody, ImplBlock, Trait,
+    Crate, DefWithBody, ImplBlock,
 };
 
-pub use hir_def::{
-    db::{
-        BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, CrateLangItemsQuery,
-        DefDatabase, DefDatabaseStorage, DocumentationQuery, EnumDataQuery, ExprScopesQuery,
-        FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternDatabase,
-        InternDatabaseStorage, LangItemQuery, ModuleLangItemsQuery, RawItemsQuery,
-        RawItemsWithSourceMapQuery, StaticDataQuery, StructDataQuery, TraitDataQuery,
-        TypeAliasDataQuery,
-    },
-    GenericDefId, LocalStructFieldId, VariantId,
+pub use hir_def::db::{
+    BodyQuery, BodyWithSourceMapQuery, ConstDataQuery, CrateDefMapQuery, CrateLangItemsQuery,
+    DefDatabase, DefDatabaseStorage, DocumentationQuery, EnumDataQuery, ExprScopesQuery,
+    FunctionDataQuery, GenericParamsQuery, ImplDataQuery, InternDatabase, InternDatabaseStorage,
+    LangItemQuery, ModuleLangItemsQuery, RawItemsQuery, RawItemsWithSourceMapQuery,
+    StaticDataQuery, StructDataQuery, TraitDataQuery, TypeAliasDataQuery,
 };
 pub use hir_expand::db::{
     AstDatabase, AstDatabaseStorage, AstIdMapQuery, MacroArgQuery, MacroDefQuery, MacroExpandQuery,
@@ -66,7 +63,7 @@ pub trait HirDatabase: DefDatabase {
     fn impls_in_crate(&self, krate: CrateId) -> Arc<CrateImplBlocks>;
 
     #[salsa::invoke(crate::ty::traits::impls_for_trait_query)]
-    fn impls_for_trait(&self, krate: Crate, trait_: Trait) -> Arc<[ImplBlock]>;
+    fn impls_for_trait(&self, krate: CrateId, trait_: TraitId) -> Arc<[ImplBlock]>;
 
     /// This provides the Chalk trait solver instance. Because Chalk always
     /// works from a specific crate, this query is keyed on the crate; and

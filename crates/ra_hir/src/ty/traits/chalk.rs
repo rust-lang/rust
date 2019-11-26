@@ -448,7 +448,7 @@ where
         let trait_: TraitId = from_chalk(self.db, trait_id);
         let mut result: Vec<_> = self
             .db
-            .impls_for_trait(self.krate, trait_.into())
+            .impls_for_trait(self.krate.crate_id, trait_.into())
             .iter()
             .copied()
             .map(Impl::ImplBlock)
