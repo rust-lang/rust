@@ -2981,8 +2981,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                             index: index.fold_with(folder),
                         },
                     Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
-                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic |
-                    AsyncResumedAfterReturn | AsyncResumedAfterPanic =>
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_)  =>
                         msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
@@ -3028,8 +3027,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                             len.visit_with(visitor) || index.visit_with(visitor),
                         Panic { .. } | Overflow(_) | OverflowNeg |
                         DivisionByZero | RemainderByZero |
-                        GeneratorResumedAfterReturn | GeneratorResumedAfterPanic |
-                        AsyncResumedAfterReturn | AsyncResumedAfterPanic =>
+                        ResumedAfterReturn(_) | ResumedAfterPanic(_) =>
                             false
                     }
                 } else {

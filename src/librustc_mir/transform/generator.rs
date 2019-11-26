@@ -50,7 +50,7 @@
 //! Otherwise it drops all the values in scope at the last suspension point.
 
 use rustc::hir;
-use rustc::hir::{def_id::DefId, GeneratorKind};
+use rustc::hir::def_id::DefId;
 use rustc::mir::*;
 use rustc::mir::visit::{PlaceContext, Visitor, MutVisitor};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty};
@@ -1056,28 +1056,17 @@ fn create_generator_resume_function<'tcx>(
     let mut cases = create_cases(body, &transform, |point| Some(point.resume));
 
     use rustc::mir::interpret::PanicInfo::{
-        GeneratorResumedAfterPanic,
-        GeneratorResumedAfterReturn,
-        AsyncResumedAfterReturn,
-        AsyncResumedAfterPanic,
+        ResumedAfterPanic,
+        ResumedAfterReturn,
     };
 
     // Jump to the entry point on the unresumed
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
 
     // Panic when resumed on the returned or poisoned state
-    match body.generator_kind {
-        Some(GeneratorKind::Async(_)) => {
-            cases.insert(1, (RETURNED, insert_panic_block(tcx, body, AsyncResumedAfterReturn)));
-            cases.insert(2, (POISONED, insert_panic_block(tcx, body, AsyncResumedAfterPanic)));
-        },
-        Some(GeneratorKind::Gen) => {
-            cases.insert(1, (RETURNED, insert_panic_block(tcx, body, GeneratorResumedAfterReturn)));
-            cases.insert(2, (POISONED, insert_panic_block(tcx, body, GeneratorResumedAfterPanic)));
-        },
-        None => {
-            // N/A because we would never create a resume function if there was no generator_kind
-        }
+    if let Some(generator_kind) = body.generator_kind {
+        cases.insert(1, (RETURNED, insert_panic_block(tcx, body, ResumedAfterReturn(generator_kind))));
+        cases.insert(2, (POISONED, insert_panic_block(tcx, body, ResumedAfterPanic(generator_kind))));
     };
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
