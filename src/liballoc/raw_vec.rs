@@ -52,6 +52,7 @@ impl<T, A: Alloc> RawVec<T, A> {
     /// Like `new`, but parameterized over the choice of allocator for
     /// the returned `RawVec`.
     pub const fn new_in(a: A) -> Self {
+        // FIXME(mark-i-m): remove bootstrapping cfgs these after a cycle
         let cap = {
             #[cfg(not(bootstrap))]
             { if mem::size_of::<T>() == 0 { core::usize::MAX } else { 0 } }
