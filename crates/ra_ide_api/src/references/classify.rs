@@ -178,8 +178,7 @@ pub(crate) fn classify_name_ref(
             Some(NameDefinition { kind, container, visibility })
         }
         PathResolution::SelfType(impl_block) => {
-            let ty = impl_block.target_ty(db);
-            let kind = NameKind::SelfType(ty);
+            let kind = NameKind::SelfType(impl_block);
             let container = impl_block.module(db);
             Some(NameDefinition { kind, container, visibility })
         }

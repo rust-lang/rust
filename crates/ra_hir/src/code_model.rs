@@ -982,7 +982,7 @@ impl ImplBlock {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Type {
     pub(crate) krate: CrateId,
     pub(crate) ty: InEnvironment<Ty>,

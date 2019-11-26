@@ -4,8 +4,8 @@
 //! Note that the reference search is possible for not all of the classified items.
 
 use hir::{
-    Adt, AssocItem, GenericParam, HasSource, Local, MacroDef, Module, ModuleDef, StructField, Ty,
-    VariantDef,
+    Adt, AssocItem, GenericParam, HasSource, ImplBlock, Local, MacroDef, Module, ModuleDef,
+    StructField, VariantDef,
 };
 use ra_syntax::{ast, ast::VisibilityOwner};
 
@@ -17,7 +17,7 @@ pub enum NameKind {
     Field(StructField),
     AssocItem(AssocItem),
     Def(ModuleDef),
-    SelfType(Ty),
+    SelfType(ImplBlock),
     Local(Local),
     GenericParam(GenericParam),
 }
