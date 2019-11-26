@@ -766,51 +766,49 @@ pub fn create_global_ctxt<'gcx>(
     arenas: &'gcx Once<AllArenas>,
 ) -> BoxedGlobalCtxt<'gcx> {
     let sess = &compiler.session();
-    let codegen_backend = compiler.codegen_backend().clone();
     let defs = mem::take(&mut resolver_outputs.definitions);
+
+    // Construct the HIR map.
+    let hir_map = time(sess, "indexing HIR", || {
+        hir::map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
+    });
+
+    let query_result_on_disk_cache = time(sess, "load query result cache", || {
+        rustc_incremental::load_query_result_cache(sess)
+    });
+
+    let codegen_backend = compiler.codegen_backend();
+    let mut local_providers = ty::query::Providers::default();
+    default_provide(&mut local_providers);
+    codegen_backend.provide(&mut local_providers);
+
+    let mut extern_providers = local_providers;
+    default_provide_extern(&mut extern_providers);
+    codegen_backend.provide_extern(&mut extern_providers);
+
     let override_queries = compiler.override_queries;
+    if let Some(callback) = override_queries {
+        callback(sess, &mut local_providers, &mut extern_providers);
+    }
 
-        let arenas = arenas.init_locking(|| AllArenas::new());
+    let arenas = arenas.init_locking(|| AllArenas::new());
+    let gcx = global_ctxt.init_locking(|| TyCtxt::create_global_ctxt(
+        sess,
+        lint_store,
+        local_providers,
+        extern_providers,
+        &arenas,
+        resolver_outputs,
+        hir_map,
+        query_result_on_disk_cache,
+        &crate_name,
+        &outputs
+    ));
 
-        // Construct the HIR map.
-        let hir_map = time(sess, "indexing HIR", || {
-            hir::map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
-        });
-
-        let query_result_on_disk_cache = time(sess, "load query result cache", || {
-            rustc_incremental::load_query_result_cache(sess)
-        });
-
-        let mut local_providers = ty::query::Providers::default();
-        default_provide(&mut local_providers);
-        codegen_backend.provide(&mut local_providers);
-
-        let mut extern_providers = local_providers;
-        default_provide_extern(&mut extern_providers);
-        codegen_backend.provide_extern(&mut extern_providers);
-
-        if let Some(callback) = override_queries {
-            callback(sess, &mut local_providers, &mut extern_providers);
-        }
-
-        let gcx = global_ctxt.init_locking(move || TyCtxt::create_global_ctxt(
-            sess,
-            lint_store,
-            local_providers,
-            extern_providers,
-            &arenas,
-            resolver_outputs,
-            hir_map,
-            query_result_on_disk_cache,
-            &crate_name,
-            &outputs
-        ));
-
-        ty::tls::enter_global(&gcx, |tcx| {
-            // Do some initialization of the DepGraph that can only be done with the
-            // tcx available.
-            time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
-        });
+    // Do some initialization of the DepGraph that can only be done with the tcx available.
+    ty::tls::enter_global(&gcx, |tcx| {
+        time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
+    });
 
     BoxedGlobalCtxt(gcx)
 }
