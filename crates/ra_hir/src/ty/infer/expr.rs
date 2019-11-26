@@ -17,8 +17,8 @@ use crate::{
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     ty::{
         autoderef, method_resolution, op, traits::InEnvironment, CallableDef, InferTy, IntTy,
-        Mutability, Namespace, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
-        TypeCtor, TypeWalk, Uncertain,
+        Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
+        TypeWalk, Uncertain,
     },
     Name,
 };
@@ -558,11 +558,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
-                (
-                    ty,
-                    self.db.type_for_def(func.into(), Namespace::Values),
-                    Some(self.db.generic_params(func.id.into())),
-                )
+                (ty, self.db.value_ty(func.id.into()), Some(self.db.generic_params(func.id.into())))
             }
             None => (receiver_ty, Ty::Unknown, None),
         };

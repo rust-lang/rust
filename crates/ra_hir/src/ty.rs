@@ -19,14 +19,16 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{
-    generics::GenericParams, AdtId, ContainerId, DefWithBodyId, GenericDefId, HasModule, Lookup,
-    TraitId, TypeAliasId,
+    expr::ExprId, generics::GenericParams, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId,
+    GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
 };
 use ra_db::{impl_intern_key, salsa};
 
 use crate::{
-    db::HirDatabase, expr::ExprId, util::make_mut_slice, Adt, Crate, FloatTy, IntTy, Mutability,
-    Name, Trait, Uncertain,
+    db::HirDatabase,
+    ty::primitive::{FloatTy, IntTy, Uncertain},
+    util::make_mut_slice,
+    Adt, Crate, Name,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -35,8 +37,8 @@ pub(crate) use infer::{infer_query, InferTy, InferenceResult};
 pub use lower::CallableDef;
 pub(crate) use lower::{
     callable_item_sig, field_types_query, generic_defaults_query,
-    generic_predicates_for_param_query, generic_predicates_query, type_for_def, Namespace,
-    TypableDef,
+    generic_predicates_for_param_query, generic_predicates_query, ty_query, value_ty_query,
+    TyDefId, TypableDef, ValueTyDefId,
 };
 pub(crate) use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 
@@ -445,7 +447,7 @@ impl Deref for Substs {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct TraitRef {
     /// FIXME name?
-    pub trait_: Trait,
+    pub trait_: TraitId,
     pub substs: Substs,
 }
 
@@ -676,7 +678,7 @@ impl Ty {
     }
 
     /// If this is an `impl Trait` or `dyn Trait`, returns that trait.
-    pub fn inherent_trait(&self) -> Option<Trait> {
+    pub fn inherent_trait(&self) -> Option<TraitId> {
         match self {
             Ty::Dyn(predicates) | Ty::Opaque(predicates) => {
                 predicates.iter().find_map(|pred| match pred {
@@ -988,7 +990,10 @@ impl HirDisplay for Ty {
                             write!(
                                 f,
                                 "{}",
-                                trait_ref.trait_.name(f.db).unwrap_or_else(Name::missing)
+                                f.db.trait_data(trait_ref.trait_)
+                                    .name
+                                    .clone()
+                                    .unwrap_or_else(Name::missing)
                             )?;
                             if trait_ref.substs.len() > 1 {
                                 write!(f, "<")?;
@@ -1049,7 +1054,7 @@ impl TraitRef {
         } else {
             write!(f, ": ")?;
         }
-        write!(f, "{}", self.trait_.name(f.db).unwrap_or_else(Name::missing))?;
+        write!(f, "{}", f.db.trait_data(self.trait_).name.clone().unwrap_or_else(Name::missing))?;
         if self.substs.len() > 1 {
             write!(f, "<")?;
             f.write_joined(&self.substs[1..], ", ")?;

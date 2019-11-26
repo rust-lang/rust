@@ -323,7 +323,8 @@ impl RootDatabase {
             hir::db::DocumentationQuery
             hir::db::ExprScopesQuery
             hir::db::InferQuery
-            hir::db::TypeForDefQuery
+            hir::db::TyQuery
+            hir::db::ValueTyQuery
             hir::db::FieldTypesQuery
             hir::db::CallableItemSignatureQuery
             hir::db::GenericPredicatesQuery

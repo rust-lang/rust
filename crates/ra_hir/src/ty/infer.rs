@@ -35,15 +35,15 @@ use test_utils::tested_by;
 
 use super::{
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypableDef,
-    TypeCtor, TypeWalk, Uncertain,
+    ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    TypeWalk, Uncertain,
 };
 use crate::{
     code_model::TypeAlias,
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, DefWithBody, FloatTy, Function, IntTy, Path, StructField, VariantDef,
+    AssocItem, DefWithBody, FloatTy, Function, IntTy, Path, StructField, VariantDef,
 };
 
 macro_rules! ty_app {
@@ -520,45 +520,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             None => return (Ty::Unknown, None),
         };
         let resolver = &self.resolver;
-        let def: TypableDef =
-            // FIXME: this should resolve assoc items as well, see this example:
-            // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
-            match resolver.resolve_path_in_type_ns_fully(self.db, &path) {
-                Some(TypeNs::AdtId(AdtId::StructId(it))) => it.into(),
-                Some(TypeNs::AdtId(AdtId::UnionId(it))) => it.into(),
-                Some(TypeNs::AdtSelfType(adt)) => adt.into(),
-                Some(TypeNs::EnumVariantId(it)) => it.into(),
-                Some(TypeNs::TypeAliasId(it)) => it.into(),
-
-                Some(TypeNs::SelfType(_)) |
-                Some(TypeNs::GenericParam(_)) |
-                Some(TypeNs::BuiltinType(_)) |
-                Some(TypeNs::TraitId(_)) |
-                Some(TypeNs::AdtId(AdtId::EnumId(_))) |
-                None => {
-                    return (Ty::Unknown, None)
-                }
-            };
-        // FIXME remove the duplication between here and `Ty::from_path`?
-        let substs = Ty::substs_from_path(self.db, resolver, path, def);
-        match def {
-            TypableDef::Adt(Adt::Struct(s)) => {
-                let ty = s.ty(self.db);
+        // FIXME: this should resolve assoc items as well, see this example:
+        // https://play.rust-lang.org/?gist=087992e9e22495446c01c0d4e2d69521
+        match resolver.resolve_path_in_type_ns_fully(self.db, &path) {
+            Some(TypeNs::AdtId(AdtId::StructId(strukt))) => {
+                let substs = Ty::substs_from_path(self.db, resolver, path, strukt.into());
+                let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
-                (ty, Some(s.into()))
+                (ty, Some(VariantDef::Struct(strukt.into())))
             }
-            TypableDef::EnumVariant(var) => {
-                let ty = var.parent_enum(self.db).ty(self.db);
+            Some(TypeNs::EnumVariantId(var)) => {
+                let substs = Ty::substs_from_path(self.db, resolver, path, var.into());
+                let ty = self.db.ty(var.parent.into());
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
-                (ty, Some(var.into()))
+                (ty, Some(VariantDef::EnumVariant(var.into())))
             }
-            TypableDef::Adt(Adt::Enum(_))
-            | TypableDef::Adt(Adt::Union(_))
-            | TypableDef::TypeAlias(_)
-            | TypableDef::Function(_)
-            | TypableDef::Const(_)
-            | TypableDef::Static(_)
-            | TypableDef::BuiltinType(_) => (Ty::Unknown, None),
+            Some(_) | None => (Ty::Unknown, None),
         }
     }
 

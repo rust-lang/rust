@@ -9,7 +9,9 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 
-use hir_def::{lang_item::LangItemTarget, ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId};
+use hir_def::{
+    lang_item::LangItemTarget, AstItemDef, ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId,
+};
 use hir_expand::name;
 
 use ra_db::salsa::{InternId, InternKey};
@@ -19,7 +21,7 @@ use crate::{
     db::HirDatabase,
     ty::display::HirDisplay,
     ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-    Crate, ImplBlock, Trait, TypeAlias,
+    Crate, ImplBlock, TypeAlias,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -167,15 +169,15 @@ impl ToChalk for TraitRef {
     }
 }
 
-impl ToChalk for Trait {
+impl ToChalk for TraitId {
     type Chalk = chalk_ir::TraitId;
 
     fn to_chalk(self, _db: &impl HirDatabase) -> chalk_ir::TraitId {
-        chalk_ir::TraitId(id_to_chalk(self.id))
+        chalk_ir::TraitId(id_to_chalk(self))
     }
 
-    fn from_chalk(_db: &impl HirDatabase, trait_id: chalk_ir::TraitId) -> Trait {
-        Trait { id: id_from_chalk(trait_id.0) }
+    fn from_chalk(_db: &impl HirDatabase, trait_id: chalk_ir::TraitId) -> TraitId {
+        id_from_chalk(trait_id.0)
     }
 }
 
@@ -443,10 +445,10 @@ where
         if trait_id == UNKNOWN_TRAIT {
             return Vec::new();
         }
-        let trait_: Trait = from_chalk(self.db, trait_id);
+        let trait_: TraitId = from_chalk(self.db, trait_id);
         let mut result: Vec<_> = self
             .db
-            .impls_for_trait(self.krate, trait_)
+            .impls_for_trait(self.krate, trait_.into())
             .iter()
             .copied()
             .map(Impl::ImplBlock)
@@ -459,7 +461,7 @@ where
                 [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter()
             {
                 if let Some(actual_trait) = get_fn_trait(self.db, self.krate, fn_trait) {
-                    if trait_.id == actual_trait {
+                    if trait_ == actual_trait {
                         let impl_ = super::ClosureFnTraitImplData { def, expr, fn_trait };
                         result.push(Impl::ClosureFnTraitImpl(impl_).to_chalk(self.db));
                     }
@@ -516,7 +518,7 @@ pub(crate) fn associated_ty_data_query(
         where_clauses: vec![],
     };
     let datum = AssociatedTyDatum {
-        trait_id: Trait::from(trait_).to_chalk(db),
+        trait_id: trait_.to_chalk(db),
         id,
         name: lalrpop_intern::intern(&db.type_alias_data(type_alias).name.to_string()),
         binders: make_binders(bound_data, generic_params.count_params_including_parent()),
@@ -548,29 +550,23 @@ pub(crate) fn trait_datum_query(
             associated_ty_ids: vec![],
         });
     }
-    let trait_: Trait = from_chalk(db, trait_id);
-    debug!("trait {:?} = {:?}", trait_id, trait_.name(db));
-    let generic_params = db.generic_params(trait_.id.into());
+    let trait_: TraitId = from_chalk(db, trait_id);
+    let trait_data = db.trait_data(trait_);
+    debug!("trait {:?} = {:?}", trait_id, trait_data.name);
+    let generic_params = db.generic_params(trait_.into());
     let bound_vars = Substs::bound_vars(&generic_params);
     let flags = chalk_rust_ir::TraitFlags {
-        auto: trait_.is_auto(db),
-        upstream: trait_.module(db).krate() != krate,
+        auto: trait_data.auto,
+        upstream: trait_.module(db).krate != krate.crate_id,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME set these flags correctly
         marker: false,
         fundamental: false,
     };
-    let where_clauses = convert_where_clauses(db, trait_.id.into(), &bound_vars);
-    let associated_ty_ids = trait_
-        .items(db)
-        .into_iter()
-        .filter_map(|trait_item| match trait_item {
-            crate::AssocItem::TypeAlias(type_alias) => Some(type_alias.id),
-            _ => None,
-        })
-        .map(|type_alias| type_alias.to_chalk(db))
-        .collect();
+    let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
+    let associated_ty_ids =
+        trait_data.associated_types().map(|type_alias| type_alias.to_chalk(db)).collect();
     let trait_datum_bound = chalk_rust_ir::TraitDatumBound { where_clauses };
     let trait_datum = TraitDatum {
         id: trait_id,
@@ -661,7 +657,7 @@ fn impl_block_datum(
     };
 
     let impl_datum_bound = chalk_rust_ir::ImplDatumBound { trait_ref, where_clauses };
-    let trait_data = db.trait_data(trait_.id);
+    let trait_data = db.trait_data(trait_);
     let associated_ty_value_ids = impl_block
         .items(db)
         .into_iter()
@@ -785,12 +781,12 @@ fn type_alias_associated_ty_value(
         .expect("assoc ty value should not exist") // we don't return any assoc ty values if the impl'd trait can't be resolved
         .trait_;
     let assoc_ty = db
-        .trait_data(trait_.id)
+        .trait_data(trait_)
         .associated_type_by_name(&type_alias.name(db))
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let generic_params = db.generic_params(impl_block.id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
-    let ty = db.type_for_def(type_alias.into(), crate::ty::Namespace::Types).subst(&bound_vars);
+    let ty = db.ty(type_alias.id.into()).subst(&bound_vars);
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) };
     let value = chalk_rust_ir::AssociatedTyValue {
         impl_id,

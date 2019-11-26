@@ -28,8 +28,7 @@ use crate::{
     expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     ty::display::HirFormatter,
     ty::{
-        self, InEnvironment, InferenceResult, Namespace, TraitEnvironment, TraitRef, Ty, TypeCtor,
-        TypeWalk,
+        self, InEnvironment, InferenceResult, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
     },
     CallableDef, Either, HirDisplay, Name, Source,
 };
@@ -354,11 +353,11 @@ impl Struct {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def(self.into(), Namespace::Types)
+        db.ty(self.id.into())
     }
 
     pub fn constructor_ty(self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def(self.into(), Namespace::Values)
+        db.value_ty(self.id.into())
     }
 
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -381,7 +380,7 @@ impl Union {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def(self.into(), Namespace::Types)
+        db.ty(self.id.into())
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
@@ -442,7 +441,7 @@ impl Enum {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def(self.into(), Namespace::Types)
+        db.ty(self.id.into())
     }
 }
 
@@ -617,7 +616,7 @@ impl Function {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def(self.into(), Namespace::Values)
+        db.value_ty(self.id.into())
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
@@ -741,7 +740,7 @@ impl Trait {
     }
 
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
-        TraitRef::for_trait(db, self)
+        TraitRef::for_trait(db, self.id)
     }
 
     pub fn is_auto(self, db: &impl DefDatabase) -> bool {
@@ -797,7 +796,7 @@ impl TypeAlias {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.type_for_def(self.into(), Namespace::Types)
+        db.ty(self.id.into())
     }
 
     pub fn name(self, db: &impl DefDatabase) -> Name {
