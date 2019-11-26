@@ -1,3 +1,6 @@
+//! Helper functions for working with def, which don't need to be a separate
+//! query, but can't be computed directly from `*Data` (ie, which need a `db`).
+
 use hir_def::{
     db::DefDatabase,
     resolver::{HasResolver, TypeNs},
