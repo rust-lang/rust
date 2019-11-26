@@ -6,7 +6,7 @@ use ra_db::SourceDatabaseExt;
 use ra_hir::{AssocItem, Crate, HasSource, HirDisplay, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
-use crate::{Result, Verbosity};
+use crate::{progress_bar::ProgressBar, Result, Verbosity};
 
 pub fn run(
     verbosity: Verbosity,
@@ -75,17 +75,14 @@ pub fn run(
     println!("Item Collection: {:?}, {}", analysis_time.elapsed(), ra_prof::memory_usage());
 
     let inference_time = Instant::now();
-    let bar = match verbosity {
-        Verbosity::Verbose | Verbosity::Normal => indicatif::ProgressBar::with_draw_target(
-            funcs.len() as u64,
-            indicatif::ProgressDrawTarget::stderr_nohz(),
-        ),
-        Verbosity::Quiet => indicatif::ProgressBar::hidden(),
+    let mut bar = match verbosity {
+        Verbosity::Verbose | Verbosity::Normal => ProgressBar::new(funcs.len() as u64),
+        Verbosity::Quiet => ProgressBar::hidden(),
     };
 
-    bar.set_style(
-        indicatif::ProgressStyle::default_bar().template("{wide_bar} {pos}/{len}\n{msg}"),
-    );
+    // bar.set_style(
+    //     indicatif::ProgressStyle::default_bar().template("{wide_bar} {pos}/{len}\n{msg}"),
+    // );
     bar.tick();
     let mut num_exprs = 0;
     let mut num_exprs_unknown = 0;
