@@ -201,7 +201,7 @@ impl Validator<'a, 'mir, 'tcx> {
         let Item { tcx, body, def_id, const_kind, ..  } = *self.item;
 
         let use_min_const_fn_checks =
-            tcx.is_min_const_fn(def_id)
+            (const_kind == Some(ConstKind::ConstFn) && tcx.is_min_const_fn(def_id))
             && !tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you;
 
         if use_min_const_fn_checks {
