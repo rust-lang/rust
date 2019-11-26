@@ -316,16 +316,17 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>,
         unsafe { intrinsics::abort() }
     }
 
+    // Just package everything into a `PanicInfo` and continue like libcore panics.
     let (file, line, col) = *file_line_col;
     let location = Location::internal_constructor(file, line, col);
     let info = PanicInfo::internal_constructor(Some(msg), &location);
-    panic_handler(&info)
+    begin_panic_handler(&info)
 }
 
-/// Entry point of panic from the libcore crate (`panic_impl` lang item).
+/// Entry point of panics from the libcore crate (`panic_impl` lang item).
 #[cfg_attr(not(test), panic_handler)]
 #[unwind(allowed)]
-fn panic_handler(info: &PanicInfo<'_>) -> ! {
+pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
         string: Option<String>,
@@ -374,7 +375,9 @@ fn panic_handler(info: &PanicInfo<'_>) -> ! {
         &file_line_col);
 }
 
-/// This is the entry point of panicking for panic!() and assert!().
+/// This is the entry point of panicking for the non-format-string variants of
+/// panic!() and assert!(). In particular, this is the only entry point that supports
+/// arbitrary payloads, not just format strings.
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
            issue = "0")]
