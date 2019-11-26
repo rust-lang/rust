@@ -219,6 +219,9 @@ tests to run before handing them off to the libtest test runner. One notable
 location in `test.rs` is the function `make_test`, which is where hand-written
 doctests get transformed into something that can be executed.
 
+Some extra reading about `make_test` can be found
+[here](https://quietmisdreavus.net/code/2018/02/23/how-the-doctests-get-made/).
+
 ## Dotting i's and crossing t's
 
 So that's rustdoc's code in a nutshell, but there's more things in the repo
