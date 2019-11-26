@@ -3814,7 +3814,8 @@ impl str {
     pub fn strip_prefix<'a, P: Pattern<'a>>(&'a self, prefix: P) -> Option<&'a str> {
         let mut matcher = prefix.into_searcher(self);
         if let SearchStep::Match(start, len) = matcher.next() {
-            debug_assert_eq!(start, 0, "The first search step from Searcher must start from the front");
+            debug_assert_eq!(start, 0, "The first search step from Searcher \
+                must include the first character");
             unsafe {
                 // Searcher is known to return valid indices.
                 Some(self.get_unchecked(len..))
@@ -3850,7 +3851,8 @@ impl str {
     {
         let mut matcher = suffix.into_searcher(self);
         if let SearchStep::Match(start, end) = matcher.next_back() {
-            debug_assert_eq!(end, self.len(), "The first search step from ReverseSearcher must include the last character");
+            debug_assert_eq!(end, self.len(), "The first search step from ReverseSearcher \
+                must include the last character");
             unsafe {
                 // Searcher is known to return valid indices.
                 Some(self.get_unchecked(..start))
