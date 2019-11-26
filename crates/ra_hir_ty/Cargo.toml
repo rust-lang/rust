@@ -1,6 +1,6 @@
 [package]
 edition = "2018"
-name = "ra_hir"
+name = "ra_hir_ty"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
@@ -8,22 +8,16 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
-arrayvec = "0.5.1"
 log = "0.4.5"
 rustc-hash = "1.0"
 parking_lot = "0.9.0"
 ena = "0.13"
-once_cell = "1.0.1"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_arena = { path = "../ra_arena" }
-ra_cfg = { path = "../ra_cfg" }
 ra_db = { path = "../ra_db" }
-mbe = { path = "../ra_mbe", package = "ra_mbe" }
-tt = { path = "../ra_tt", package = "ra_tt" }
 hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
 hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
-hir_ty = { path = "../ra_hir_ty", package = "ra_hir_ty" }
 test_utils = { path = "../test_utils" }
 ra_prof = { path = "../ra_prof" }
 
