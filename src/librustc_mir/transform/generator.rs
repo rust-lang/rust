@@ -1064,14 +1064,15 @@ fn create_generator_resume_function<'tcx>(
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
 
     // Panic when resumed on the returned or poisoned state
-    if let Some(generator_kind) = body.generator_kind {
-        cases.insert(1, (RETURNED, insert_panic_block(tcx,
-                                                      body,
-                                                      ResumedAfterReturn(generator_kind))));
-        cases.insert(2, (POISONED, insert_panic_block(tcx,
-                                                      body,
-                                                      ResumedAfterPanic(generator_kind))));
-    };
+    let generator_kind = body.generator_kind.unwrap();
+    cases.insert(1, (RETURNED, insert_panic_block(
+        tcx,
+        body,
+        ResumedAfterReturn(generator_kind))));
+    cases.insert(2, (POISONED, insert_panic_block(
+        tcx,
+        body,
+        ResumedAfterPanic(generator_kind))));
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
 
