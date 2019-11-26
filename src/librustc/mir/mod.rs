@@ -106,7 +106,7 @@ pub struct Body<'tcx> {
 
     /// Crate-local information for each source scope, that can't (and
     /// needn't) be tracked across crates.
-    pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
+    pub source_scope_local_data: IndexVec<SourceScope, ClearCrossCrate<SourceScopeLocalData>>,
 
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
@@ -167,7 +167,7 @@ impl<'tcx> Body<'tcx> {
     pub fn new(
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
-        source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
+        source_scope_local_data: IndexVec<SourceScope, ClearCrossCrate<SourceScopeLocalData>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
@@ -435,6 +435,13 @@ pub enum ClearCrossCrate<T> {
 }
 
 impl<T> ClearCrossCrate<T> {
+    pub fn as_ref(&'a self) -> ClearCrossCrate<&'a T> {
+        match self {
+            ClearCrossCrate::Clear => ClearCrossCrate::Clear,
+            ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
+        }
+    }
+
     pub fn assert_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),

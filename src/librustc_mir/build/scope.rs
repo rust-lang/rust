@@ -436,7 +436,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // We estimate the true lint roots here to avoid creating a lot of source scopes.
 
             let parent_root = tcx.maybe_lint_level_root_bounded(
-                self.source_scope_local_data[source_scope].lint_root,
+                self.source_scope_local_data[source_scope]
+                    .as_ref()
+                    .assert_crate_local()
+                    .lint_root,
                 self.hir.root_lint_level,
             );
             let current_root = tcx.maybe_lint_level_root_bounded(
@@ -663,13 +666,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             lint_root: if let LintLevel::Explicit(lint_root) = lint_level {
                 lint_root
             } else {
-                self.source_scope_local_data[parent].lint_root
+                self.source_scope_local_data[parent].as_ref().assert_crate_local().lint_root
             },
             safety: safety.unwrap_or_else(|| {
-                self.source_scope_local_data[parent].safety
+                self.source_scope_local_data[parent].as_ref().assert_crate_local().safety
             })
         };
-        self.source_scope_local_data.push(scope_local_data);
+        self.source_scope_local_data.push(ClearCrossCrate::Set(scope_local_data));
         scope
     }
 
