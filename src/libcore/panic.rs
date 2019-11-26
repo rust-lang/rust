@@ -94,7 +94,7 @@ impl<'a> PanicInfo<'a> {
     /// returns that message ready to be used for example with [`fmt::write`]
     ///
     /// [`fmt::write`]: ../fmt/fn.write.html
-    #[unstable(feature = "panic_info_message", issue = "44489")]
+    #[unstable(feature = "panic_info_message", issue = "66745")]
     pub fn message(&self) -> Option<&fmt::Arguments<'_>> {
         self.message
     }
