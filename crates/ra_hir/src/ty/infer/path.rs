@@ -143,24 +143,27 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         let trait_ = trait_ref.trait_;
-        let item = trait_.items(self.db).iter().copied().find_map(|item| match item {
-            AssocItem::Function(func) => {
-                if segment.name == func.name(self.db) {
-                    Some(AssocItem::Function(func))
-                } else {
-                    None
-                }
-            }
+        let item =
+            self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id).into()).find_map(
+                |item| match item {
+                    AssocItem::Function(func) => {
+                        if segment.name == func.name(self.db) {
+                            Some(AssocItem::Function(func))
+                        } else {
+                            None
+                        }
+                    }
 
-            AssocItem::Const(konst) => {
-                if konst.name(self.db).map_or(false, |n| n == segment.name) {
-                    Some(AssocItem::Const(konst))
-                } else {
-                    None
-                }
-            }
-            AssocItem::TypeAlias(_) => None,
-        })?;
+                    AssocItem::Const(konst) => {
+                        if konst.name(self.db).map_or(false, |n| n == segment.name) {
+                            Some(AssocItem::Const(konst))
+                        } else {
+                            None
+                        }
+                    }
+                    AssocItem::TypeAlias(_) => None,
+                },
+            )?;
         let def = match item {
             AssocItem::Function(f) => ValueNs::FunctionId(f.id),
             AssocItem::Const(c) => ValueNs::ConstId(c.id),
@@ -212,7 +215,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             .fill_with_params()
                             .build();
                         self.obligations.push(super::Obligation::Trait(TraitRef {
-                            trait_: t,
+                            trait_: t.id,
                             substs: trait_substs,
                         }));
                         Some(substs)

@@ -15,7 +15,7 @@ use hir_def::{
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, AstItemDef, EnumVariantId, FunctionId, GenericDefId, HasModule, LocalStructFieldId,
-    Lookup, StructId, VariantId,
+    Lookup, StructId, TraitId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
@@ -172,7 +172,7 @@ impl Ty {
                     let segment = &remaining_segments[0];
                     let associated_ty = associated_type_by_name_including_super_traits(
                         db,
-                        trait_ref.trait_.id,
+                        trait_ref.trait_,
                         &segment.name,
                     );
                     match associated_ty {
@@ -263,7 +263,7 @@ impl Ty {
             GenericPredicate::Implemented(tr) if tr.self_ty() == &self_ty => Some(tr.trait_),
             _ => None,
         });
-        let traits = traits_from_env.flat_map(|t| all_super_traits(db, t.id)).map(Trait::from);
+        let traits = traits_from_env.flat_map(|t| all_super_traits(db, t)).map(Trait::from);
         for t in traits {
             if let Some(associated_ty) = db.trait_data(t.id).associated_type_by_name(&segment.name)
             {
@@ -423,7 +423,7 @@ impl TraitRef {
         if let Some(self_ty) = explicit_self_ty {
             make_mut_slice(&mut substs.0)[0] = self_ty;
         }
-        TraitRef { trait_: resolved, substs }
+        TraitRef { trait_: resolved.id, substs }
     }
 
     pub(crate) fn from_hir(
@@ -450,8 +450,8 @@ impl TraitRef {
         substs_from_path_segment(db, resolver, segment, Some(resolved.id.into()), !has_self_param)
     }
 
-    pub(crate) fn for_trait(db: &impl HirDatabase, trait_: Trait) -> TraitRef {
-        let substs = Substs::identity(&db.generic_params(trait_.id.into()));
+    pub(crate) fn for_trait(db: &impl HirDatabase, trait_: TraitId) -> TraitRef {
+        let substs = Substs::identity(&db.generic_params(trait_.into()));
         TraitRef { trait_, substs }
     }
 
@@ -510,7 +510,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
         .flat_map(|args_and_bindings| args_and_bindings.bindings.iter())
         .map(move |(name, type_ref)| {
             let associated_ty =
-                associated_type_by_name_including_super_traits(db, trait_ref.trait_.id, &name);
+                associated_type_by_name_including_super_traits(db, trait_ref.trait_, &name);
             let associated_ty = match associated_ty {
                 None => return GenericPredicate::Error,
                 Some(t) => t,

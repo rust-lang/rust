@@ -68,7 +68,7 @@ impl CrateImplBlocks {
                         if let Some(tr) =
                             TraitRef::from_hir(db, &resolver, &trait_ref, Some(target_ty))
                         {
-                            res.impls_by_trait.entry(tr.trait_.id).or_default().push(impl_id);
+                            res.impls_by_trait.entry(tr.trait_).or_default().push(impl_id);
                         }
                     }
                     None => {
@@ -249,13 +249,11 @@ fn iterate_trait_method_candidates<T>(
     let traits_from_env = env
         .trait_predicates_for_self_ty(&ty.value)
         .map(|tr| tr.trait_)
-        .flat_map(|t| all_super_traits(db, t.id))
-        .map(Trait::from);
-    let traits = inherent_trait
-        .chain(traits_from_env)
-        .chain(resolver.traits_in_scope(db).into_iter().map(Trait::from));
+        .flat_map(|t| all_super_traits(db, t));
+    let traits =
+        inherent_trait.chain(traits_from_env).chain(resolver.traits_in_scope(db).into_iter());
     'traits: for t in traits {
-        let data = db.trait_data(t.id);
+        let data = db.trait_data(t);
 
         // we'll be lazy about checking whether the type implements the
         // trait, but if we find out it doesn't, we'll skip the rest of the
@@ -330,7 +328,7 @@ pub(crate) fn implements_trait(
     db: &impl HirDatabase,
     resolver: &Resolver,
     krate: Crate,
-    trait_: Trait,
+    trait_: TraitId,
 ) -> bool {
     if ty.value.inherent_trait() == Some(trait_) {
         // FIXME this is a bit of a hack, since Chalk should say the same thing
@@ -373,11 +371,11 @@ impl Ty {
 fn generic_implements_goal(
     db: &impl HirDatabase,
     env: Arc<TraitEnvironment>,
-    trait_: Trait,
+    trait_: TraitId,
     self_ty: Canonical<Ty>,
 ) -> Canonical<InEnvironment<super::Obligation>> {
     let num_vars = self_ty.num_vars;
-    let substs = super::Substs::build_for_def(db, trait_.id)
+    let substs = super::Substs::build_for_def(db, trait_)
         .push(self_ty.value)
         .fill_with_bound_vars(num_vars as u32)
         .build();

@@ -741,7 +741,7 @@ impl Trait {
     }
 
     pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
-        TraitRef::for_trait(db, self)
+        TraitRef::for_trait(db, self.id)
     }
 
     pub fn is_auto(self, db: &impl DefDatabase) -> bool {
