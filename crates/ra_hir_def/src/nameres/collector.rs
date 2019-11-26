@@ -6,7 +6,7 @@
 use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{self, AsName, Name},
-    HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFileKind,
+    HirFileId, MacroCallId, MacroDefId, MacroDefKind, MacroFileKind,
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
@@ -480,7 +480,7 @@ where
             );
 
             if let Some(def) = resolved_res.resolved_def.take_macros() {
-                let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id: *ast_id });
+                let call_id = def.as_call_id(self.db, *ast_id);
                 resolved.push((*module_id, call_id, def));
                 res = ReachedFixedPoint::No;
                 return false;
@@ -773,8 +773,7 @@ where
         if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
             self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
         }) {
-            let macro_call_id =
-                self.def_collector.db.intern_macro(MacroCallLoc { def: macro_def, ast_id });
+            let macro_call_id = macro_def.as_call_id(self.def_collector.db, ast_id);
 
             self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_def);
             return;

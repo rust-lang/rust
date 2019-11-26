@@ -14,8 +14,7 @@ use hir_def::{
     DefWithBodyId,
 };
 use hir_expand::{
-    hygiene::Hygiene, name::AsName, AstId, HirFileId, MacroCallId, MacroCallLoc, MacroFileKind,
-    Source,
+    hygiene::Hygiene, name::AsName, AstId, HirFileId, MacroCallId, MacroFileKind, Source,
 };
 use ra_syntax::{
     ast::{self, AstNode},
@@ -451,9 +450,8 @@ impl SourceAnalyzer {
             macro_call.file_id,
             db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
         );
-        let macro_call_loc = MacroCallLoc { def, ast_id };
         Some(Expansion {
-            macro_call_id: db.intern_macro(macro_call_loc),
+            macro_call_id: def.as_call_id(db, ast_id),
             macro_file_kind: to_macro_file_kind(macro_call.value),
         })
     }

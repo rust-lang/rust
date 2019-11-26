@@ -135,6 +135,16 @@ pub struct MacroDefId {
     pub kind: MacroDefKind,
 }
 
+impl MacroDefId {
+    pub fn as_call_id(
+        self,
+        db: &dyn db::AstDatabase,
+        ast_id: AstId<ast::MacroCall>,
+    ) -> MacroCallId {
+        db.intern_macro(MacroCallLoc { def: self, ast_id })
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MacroDefKind {
     Declarative,
@@ -143,8 +153,8 @@ pub enum MacroDefKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
-    pub def: MacroDefId,
-    pub ast_id: AstId<ast::MacroCall>,
+    pub(crate) def: MacroDefId,
+    pub(crate) ast_id: AstId<ast::MacroCall>,
 }
 
 impl MacroCallId {
