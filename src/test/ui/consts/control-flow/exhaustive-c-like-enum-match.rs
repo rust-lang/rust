@@ -18,10 +18,4 @@ const fn f(e: E) {
     }
 }
 
-const fn g(e: E) {
-    match e {
-        _ => {}
-    }
-}
-
 fn main() {}
