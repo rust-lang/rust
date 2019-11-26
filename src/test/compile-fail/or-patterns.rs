@@ -1,16 +1,19 @@
-// should-ice
 #![feature(or_patterns)]
 #![feature(slice_patterns)]
 #![allow(incomplete_features)]
 #![deny(unreachable_patterns)]
 
-// The ice will get removed once or-patterns are correctly implemented
 fn main() {
     // We wrap patterns in a tuple because top-level or-patterns are special-cased for now.
+
+    // Get the fatal error out of the way
+    match (0u8,) {
+        (0 | _,) => {}
+        //~^ ERROR or-patterns are not fully implemented yet
+    }
+
     match (0u8,) {
         (1 | 2,) => {}
-        //~^ ERROR simplifyable pattern found
-        // This above is the ICE error message
         _ => {}
     }
 
