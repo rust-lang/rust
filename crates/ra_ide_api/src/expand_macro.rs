@@ -269,4 +269,27 @@ fn some_thing() -> u32 {
         assert_eq!(res.name, "foo");
         assert_snapshot!(res.expansion, @r###"bar!()"###);
     }
+
+    #[test]
+    fn macro_expand_with_dollar_crate() {
+        let res = check_expand_macro(
+            r#"
+        //- /lib.rs
+        #[macro_export]
+        macro_rules! bar {
+            () => {0};
+        }
+        macro_rules! foo {
+            () => {$crate::bar!()};
+        }        
+
+        fn main() {        
+            let res = fo<|>o!();
+        }
+        "#,
+        );
+
+        assert_eq!(res.name, "foo");
+        assert_snapshot!(res.expansion, @r###"0"###);
+    }
 }

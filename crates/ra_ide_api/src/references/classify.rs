@@ -152,7 +152,7 @@ pub(crate) fn classify_name_ref(
 
     if let Some(macro_call) = parent.ancestors().find_map(ast::MacroCall::cast) {
         tested_by!(goto_definition_works_for_macros);
-        if let Some(macro_def) = analyzer.resolve_macro_call(db, &macro_call) {
+        if let Some(macro_def) = analyzer.resolve_macro_call(db, name_ref.with_value(&macro_call)) {
             let kind = NameKind::Macro(macro_def);
             return Some(NameDefinition { kind, container, visibility });
         }

@@ -97,7 +97,7 @@ impl Path {
 
     /// Converts an `ast::Path` to `Path`. Works with use trees.
     /// It correctly handles `$crate` based path from macro call.
-    pub(crate) fn from_src(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
+    pub fn from_src(mut path: ast::Path, hygiene: &Hygiene) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
         loop {
