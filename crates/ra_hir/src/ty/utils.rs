@@ -33,7 +33,7 @@ fn direct_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
 
 /// Returns an iterator over the whole super trait hierarchy (including the
 /// trait itself).
-pub(crate) fn all_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
+pub(super) fn all_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<TraitId> {
     // we need to take care a bit here to avoid infinite loops in case of cycles
     // (i.e. if we have `trait A: B; trait B: A;`)
     let mut result = vec![trait_];
@@ -52,7 +52,7 @@ pub(crate) fn all_super_traits(db: &impl DefDatabase, trait_: TraitId) -> Vec<Tr
     result
 }
 
-pub(crate) fn associated_type_by_name_including_super_traits(
+pub(super) fn associated_type_by_name_including_super_traits(
     db: &impl DefDatabase,
     trait_: TraitId,
     name: &Name,

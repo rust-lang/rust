@@ -2,14 +2,15 @@
 use std::sync::{Arc, Mutex};
 
 use chalk_ir::{cast::Cast, family::ChalkIr};
-use hir_def::DefWithBodyId;
+use hir_def::{expr::ExprId, DefWithBodyId};
 use log::debug;
 use ra_db::{impl_intern_key, salsa};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
+use crate::{db::HirDatabase, Crate, ImplBlock, Trait, TypeAlias};
+
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
-use crate::{db::HirDatabase, expr::ExprId, Crate, ImplBlock, Trait, TypeAlias};
 
 use self::chalk::{from_chalk, ToChalk};
 
