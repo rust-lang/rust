@@ -391,4 +391,3 @@ fn check_terminator(
         },
     }
 }
-
