@@ -956,6 +956,13 @@ impl AsRef<OsStr> for String {
     }
 }
 
+#[stable(feature = "cow_asref_osstr", since = "1.41.0")]
+impl AsRef<OsStr> for Cow<'_, str> {
+    fn as_ref(&self) -> &OsStr {
+        (&**self).as_ref()
+    }
+}
+
 impl FromInner<Buf> for OsString {
     fn from_inner(buf: Buf) -> OsString {
         OsString { inner: buf }
