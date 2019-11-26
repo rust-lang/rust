@@ -120,13 +120,13 @@ itself to reflect the course of the discussion (e.g. new alternatives or prior
 work may be added or you may decide to change parts of the proposal itself).
 
 In the end, when the discussion seems to reach a consensus and die down a bit,
-a rust team member may propose to move to FCP with one of three possible dispositions.
-This means that they want the other members of the appropriate teams to review
-and comment on the RFC. More discussion may ensue, which may result in more changes
-or unresolved questions being added. At some point, when everyone is
-satisfied, the RFC enters the "final comment period" (FCP), which is the last
-chance for people to bring up objections. When the FCP is over, the disposition is
-adopted. Here are the three possible dispositions:
+a rust team member may propose to move to "final comment period" (FCP) with one
+of three possible dispositions.  This means that they want the other members of
+the appropriate teams to review and comment on the RFC. More discussion may
+ensue, which may result in more changes or unresolved questions being added. At
+some point, when everyone is satisfied, the RFC enters the FCP, which is the
+last chance for people to bring up objections. When the FCP is over, the
+disposition is adopted. Here are the three possible dispositions:
 
 - _Merge_: accept the feature. Here is the proposal to merge for our [`?` macro
   feature][rfcmerge].
