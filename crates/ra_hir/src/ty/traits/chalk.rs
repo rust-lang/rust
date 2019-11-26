@@ -9,7 +9,7 @@ use chalk_ir::{
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 
-use hir_def::{lang_item::LangItemTarget, ContainerId, GenericDefId, Lookup, TypeAliasId};
+use hir_def::{lang_item::LangItemTarget, ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId};
 use hir_expand::name;
 
 use ra_db::salsa::{InternId, InternKey};
@@ -459,7 +459,7 @@ where
                 [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter()
             {
                 if let Some(actual_trait) = get_fn_trait(self.db, self.krate, fn_trait) {
-                    if trait_ == actual_trait {
+                    if trait_.id == actual_trait {
                         let impl_ = super::ClosureFnTraitImplData { def, expr, fn_trait };
                         result.push(Impl::ClosureFnTraitImpl(impl_).to_chalk(self.db));
                     }
@@ -661,6 +661,7 @@ fn impl_block_datum(
     };
 
     let impl_datum_bound = chalk_rust_ir::ImplDatumBound { trait_ref, where_clauses };
+    let trait_data = db.trait_data(trait_.id);
     let associated_ty_value_ids = impl_block
         .items(db)
         .into_iter()
@@ -670,7 +671,7 @@ fn impl_block_datum(
         })
         .filter(|type_alias| {
             // don't include associated types that don't exist in the trait
-            trait_.associated_type_by_name(db, &type_alias.name(db)).is_some()
+            trait_data.associated_type_by_name(&type_alias.name(db)).is_some()
         })
         .map(|type_alias| AssocTyValue::TypeAlias(type_alias).to_chalk(db))
         .collect();
@@ -713,7 +714,7 @@ fn closure_fn_trait_impl_datum(
     // and don't want to return a valid value only to find out later that FnOnce
     // is broken
     let fn_once_trait = get_fn_trait(db, krate, super::FnTrait::FnOnce)?;
-    fn_once_trait.associated_type_by_name(db, &name::OUTPUT_TYPE)?;
+    let _output = db.trait_data(fn_once_trait).associated_type_by_name(&name::OUTPUT_TYPE)?;
 
     let num_args: u16 = match &db.body(data.def.into())[data.expr] {
         crate::expr::Expr::Lambda { args, .. } => args.len() as u16,
@@ -735,8 +736,8 @@ fn closure_fn_trait_impl_datum(
     let self_ty = Ty::apply_one(TypeCtor::Closure { def: data.def, expr: data.expr }, sig_ty);
 
     let trait_ref = TraitRef {
-        trait_,
-        substs: Substs::build_for_def(db, trait_.id).push(self_ty).push(arg_ty).build(),
+        trait_: trait_.into(),
+        substs: Substs::build_for_def(db, trait_).push(self_ty).push(arg_ty).build(),
     };
 
     let output_ty_id = AssocTyValue::ClosureFnTraitImplOutput(data.clone()).to_chalk(db);
@@ -783,10 +784,10 @@ fn type_alias_associated_ty_value(
         .target_trait_ref(db)
         .expect("assoc ty value should not exist") // we don't return any assoc ty values if the impl'd trait can't be resolved
         .trait_;
-    let assoc_ty = trait_
-        .associated_type_by_name(db, &type_alias.name(db))
-        .expect("assoc ty value should not exist") // validated when building the impl data as well
-        .id;
+    let assoc_ty = db
+        .trait_data(trait_.id)
+        .associated_type_by_name(&type_alias.name(db))
+        .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let generic_params = db.generic_params(impl_block.id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
     let ty = db.type_for_def(type_alias.into(), crate::ty::Namespace::Types).subst(&bound_vars);
@@ -819,10 +820,10 @@ fn closure_fn_trait_output_assoc_ty_value(
     let fn_once_trait =
         get_fn_trait(db, krate, super::FnTrait::FnOnce).expect("assoc ty value should not exist");
 
-    let output_ty_id = fn_once_trait
-        .associated_type_by_name(db, &name::OUTPUT_TYPE)
-        .expect("assoc ty value should not exist")
-        .id;
+    let output_ty_id = db
+        .trait_data(fn_once_trait)
+        .associated_type_by_name(&name::OUTPUT_TYPE)
+        .expect("assoc ty value should not exist");
 
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: output_ty.to_chalk(db) };
 
@@ -834,10 +835,10 @@ fn closure_fn_trait_output_assoc_ty_value(
     Arc::new(value)
 }
 
-fn get_fn_trait(db: &impl HirDatabase, krate: Crate, fn_trait: super::FnTrait) -> Option<Trait> {
+fn get_fn_trait(db: &impl HirDatabase, krate: Crate, fn_trait: super::FnTrait) -> Option<TraitId> {
     let target = db.lang_item(krate.crate_id, fn_trait.lang_item_name().into())?;
     match target {
-        LangItemTarget::TraitId(t) => Some(t.into()),
+        LangItemTarget::TraitId(t) => Some(t),
         _ => None,
     }
 }

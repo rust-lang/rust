@@ -9,6 +9,7 @@ mod op;
 mod lower;
 mod infer;
 pub(crate) mod display;
+pub(crate) mod utils;
 
 #[cfg(test)]
 mod tests;

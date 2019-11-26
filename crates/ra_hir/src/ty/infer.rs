@@ -43,7 +43,7 @@ use crate::{
     db::HirDatabase,
     expr::{BindingAnnotation, Body, ExprId, PatId},
     ty::infer::diagnostics::InferenceDiagnostic,
-    Adt, AssocItem, DefWithBody, FloatTy, Function, IntTy, Path, StructField, Trait, VariantDef,
+    Adt, AssocItem, DefWithBody, FloatTy, Function, IntTy, Path, StructField, VariantDef,
 };
 
 macro_rules! ty_app {
@@ -582,20 +582,20 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn resolve_into_iter_item(&self) -> Option<TypeAlias> {
         let path = known::std_iter_into_iterator();
-        let trait_: Trait = self.resolver.resolve_known_trait(self.db, &path)?.into();
-        trait_.associated_type_by_name(self.db, &name::ITEM_TYPE)
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name::ITEM_TYPE).map(TypeAlias::from)
     }
 
     fn resolve_ops_try_ok(&self) -> Option<TypeAlias> {
         let path = known::std_ops_try();
-        let trait_: Trait = self.resolver.resolve_known_trait(self.db, &path)?.into();
-        trait_.associated_type_by_name(self.db, &name::OK_TYPE)
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE).map(TypeAlias::from)
     }
 
     fn resolve_future_future_output(&self) -> Option<TypeAlias> {
         let path = known::std_future_future();
-        let trait_: Trait = self.resolver.resolve_known_trait(self.db, &path)?.into();
-        trait_.associated_type_by_name(self.db, &name::OUTPUT_TYPE)
+        let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
+        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE).map(TypeAlias::from)
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
