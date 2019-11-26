@@ -4,6 +4,13 @@ error[E0017]: references in constants may only refer to immutable values
 LL |     let p = &mut a;
    |             ^^^^^^ constants require immutable values
 
-error: aborting due to previous error
+error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
+  --> $DIR/const-multi-ref.rs:16:13
+   |
+LL |     let p = &a;
+   |             ^^
 
-For more information about this error, try `rustc --explain E0017`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0017, E0492.
+For more information about an error, try `rustc --explain E0017`.
