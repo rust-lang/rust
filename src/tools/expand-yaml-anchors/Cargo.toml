@@ -1,0 +1,9 @@
+[package]
+name = "expand-yaml-anchors"
+version = "0.1.0"
+authors = ["Pietro Albini <pietro@pietroalbini.org>"]
+edition = "2018"
+
+[dependencies]
+yaml-rust = "0.4.3"
+yaml-merge-keys = "0.4.0"

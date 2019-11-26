@@ -21,6 +21,7 @@ use crate::doc;
 use crate::flags::Subcommand;
 use crate::install;
 use crate::native;
+use crate::run;
 use crate::test;
 use crate::tool;
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir};
@@ -313,6 +314,7 @@ pub enum Kind {
     Dist,
     Doc,
     Install,
+    Run,
 }
 
 impl<'a> Builder<'a> {
@@ -353,6 +355,7 @@ impl<'a> Builder<'a> {
             }
             Kind::Test => describe!(
                 crate::toolstate::ToolStateCheck,
+                test::ExpandYamlAnchors,
                 test::Tidy,
                 test::Ui,
                 test::CompileFail,
@@ -454,6 +457,7 @@ impl<'a> Builder<'a> {
                 install::Src,
                 install::Rustc
             ),
+            Kind::Run => describe!(run::ExpandYamlAnchors,),
         }
     }
 
@@ -507,6 +511,7 @@ impl<'a> Builder<'a> {
             Subcommand::Bench { ref paths, .. } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
+            Subcommand::Run { ref paths } => (Kind::Run, &paths[..]),
             Subcommand::Format { .. } | Subcommand::Clean { .. } => panic!(),
         };
 
