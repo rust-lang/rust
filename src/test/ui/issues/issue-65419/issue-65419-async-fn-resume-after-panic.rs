@@ -2,7 +2,7 @@
 // be talking about `async fn`s instead. Should also test what happens when it panics.
 
 // run-fail
-// error-pattern: thread 'main' panicked at '`async fn` resumed after panic'
+// error-pattern: thread 'main' panicked at '`async fn` resumed after panicking'
 // compile-flags: --edition 2018
 
 #![feature(generators, generator_trait)]
