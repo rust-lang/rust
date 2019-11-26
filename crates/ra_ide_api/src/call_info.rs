@@ -18,12 +18,9 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     // Find the calling expression and it's NameRef
     let calling_node = FnCallNode::with_node(&syntax, position.offset)?;
     let name_ref = calling_node.name_ref()?;
+    let name_ref = hir::Source::new(position.file_id.into(), name_ref.syntax());
 
-    let analyzer = hir::SourceAnalyzer::new(
-        db,
-        hir::Source::new(position.file_id.into(), name_ref.syntax()),
-        None,
-    );
+    let analyzer = hir::SourceAnalyzer::new(db, name_ref, None);
     let (mut call_info, has_self) = match &calling_node {
         FnCallNode::CallExpr(expr) => {
             //FIXME: Type::as_callable is broken
@@ -44,7 +41,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
             (CallInfo::with_fn(db, function), function.has_self_param(db))
         }
         FnCallNode::MacroCallExpr(expr) => {
-            let macro_def = analyzer.resolve_macro_call(db, &expr)?;
+            let macro_def = analyzer.resolve_macro_call(db, name_ref.with_value(&expr))?;
             (CallInfo::with_macro(db, macro_def)?, false)
         }
     };

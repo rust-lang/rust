@@ -14,7 +14,8 @@ use hir_def::{
     DefWithBodyId,
 };
 use hir_expand::{
-    name::AsName, AstId, HirFileId, MacroCallId, MacroCallLoc, MacroFileKind, Source,
+    hygiene::Hygiene, name::AsName, AstId, HirFileId, MacroCallId, MacroCallLoc, MacroFileKind,
+    Source,
 };
 use ra_syntax::{
     ast::{self, AstNode},
@@ -240,10 +241,10 @@ impl SourceAnalyzer {
     pub fn resolve_macro_call(
         &self,
         db: &impl HirDatabase,
-        macro_call: &ast::MacroCall,
+        macro_call: Source<&ast::MacroCall>,
     ) -> Option<MacroDef> {
-        // This must be a normal source file rather than macro file.
-        let path = macro_call.path().and_then(Path::from_ast)?;
+        let hygiene = Hygiene::new(db, macro_call.file_id);
+        let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &hygiene))?;
         self.resolver.resolve_path_as_macro(db, &path).map(|it| it.into())
     }
 
@@ -445,7 +446,7 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         macro_call: Source<&ast::MacroCall>,
     ) -> Option<Expansion> {
-        let def = self.resolve_macro_call(db, macro_call.value)?.id;
+        let def = self.resolve_macro_call(db, macro_call)?.id;
         let ast_id = AstId::new(
             macro_call.file_id,
             db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
