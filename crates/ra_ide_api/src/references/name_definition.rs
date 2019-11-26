@@ -46,6 +46,7 @@ pub(super) fn from_struct_field(db: &RootDatabase, field: StructField) -> NameDe
     let container = parent.module(db);
     let visibility = match parent {
         VariantDef::Struct(s) => s.source(db).value.visibility(),
+        VariantDef::Union(e) => e.source(db).value.visibility(),
         VariantDef::EnumVariant(e) => e.source(db).value.parent_enum().visibility(),
     };
     NameDefinition { kind, container, visibility }

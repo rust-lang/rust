@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use hir_def::{path::known, resolver::HasResolver};
+use hir_def::{path::known, resolver::HasResolver, AdtId};
 use hir_expand::diagnostics::DiagnosticSink;
 use ra_syntax::ast;
 use ra_syntax::AstPtr;
@@ -127,7 +127,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
             _ => return,
         };
 
-        let std_result_ctor = TypeCtor::Adt(Adt::Enum(std_result_enum.into()));
+        let std_result_ctor = TypeCtor::Adt(AdtId::EnumId(std_result_enum));
         let params = match &mismatch.expected {
             Ty::Apply(ApplicationTy { ctor, parameters }) if ctor == &std_result_ctor => parameters,
             _ => return,

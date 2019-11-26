@@ -58,7 +58,7 @@ pub enum TypeCtor {
     Float(Uncertain<FloatTy>),
 
     /// Structures, enumerations and unions.
-    Adt(Adt),
+    Adt(AdtId),
 
     /// The pointee of a string slice. Written as `str`.
     Str,
@@ -174,7 +174,7 @@ impl TypeCtor {
             | TypeCtor::Tuple { .. } => None,
             // Closure's krate is irrelevant for coherence I would think?
             TypeCtor::Closure { .. } => None,
-            TypeCtor::Adt(adt) => adt.krate(db),
+            TypeCtor::Adt(adt) => Some(adt.module(db).krate.into()),
             TypeCtor::FnDef(callable) => Some(callable.krate(db).into()),
             TypeCtor::AssociatedType(type_alias) => {
                 Some(type_alias.lookup(db).module(db).krate.into())
@@ -598,7 +598,7 @@ impl Ty {
     pub fn as_adt(&self) -> Option<(Adt, &Substs)> {
         match self {
             Ty::Apply(ApplicationTy { ctor: TypeCtor::Adt(adt_def), parameters }) => {
-                Some((*adt_def, parameters))
+                Some(((*adt_def).into(), parameters))
             }
             _ => None,
         }
@@ -889,9 +889,9 @@ impl HirDisplay for ApplicationTy {
             }
             TypeCtor::Adt(def_id) => {
                 let name = match def_id {
-                    Adt::Struct(s) => s.name(f.db),
-                    Adt::Union(u) => u.name(f.db),
-                    Adt::Enum(e) => e.name(f.db),
+                    AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
+                    AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
+                    AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
                 }
                 .unwrap_or_else(Name::missing);
                 write!(f, "{}", name)?;
