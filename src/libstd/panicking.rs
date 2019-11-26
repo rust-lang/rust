@@ -47,6 +47,8 @@ extern {
                                 vtable_ptr: *mut usize) -> u32;
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
+    /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
+    /// on liballoc, and thus cannot use `Box`.
     #[unwind(allowed)]
     fn __rust_start_panic(payload: usize) -> u32;
 }
