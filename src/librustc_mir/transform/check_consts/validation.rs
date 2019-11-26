@@ -360,7 +360,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 };
 
                 if !is_allowed {
-                    self.check_op(ops::MutBorrow(kind));
+                    if let BorrowKind::Mut{ .. } = kind {
+                        self.check_op(ops::MutBorrow);
+                    } else {
+                        self.check_op(ops::CellBorrow);
+                    }
                 }
             }
 
@@ -385,7 +389,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 );
 
                 if borrowed_place_has_mut_interior {
-                    self.check_op(ops::MutBorrow(kind));
+                    if let BorrowKind::Mut{ .. } = kind {
+                        self.check_op(ops::MutBorrow);
+                    } else {
+                        self.check_op(ops::CellBorrow);
+                    }
                 }
             }
 
@@ -452,7 +460,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
         }
     }
-
     fn visit_projection_elem(
         &mut self,
         place_base: &PlaceBase<'tcx>,
