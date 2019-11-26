@@ -635,7 +635,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// For debugging, print an allocation and all allocations it points to, recursively.
+    /// Print an allocation and all allocations it points to, recursively.
+    /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
+    /// control for this.
     pub fn dump_alloc(&self, id: AllocId) {
         self.dump_allocs(vec![id]);
     }
@@ -674,7 +676,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        trace!(
+        eprintln!(
             "{}({} bytes, alignment {}){}",
             msg,
             alloc.size.bytes(),
@@ -695,15 +697,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 write!(msg, "└{0:─^1$}┘ ", target, relocation_width as usize).unwrap();
                 pos = i + self.pointer_size();
             }
-            trace!("{}", msg);
+            eprintln!("{}", msg);
         }
     }
 
-    /// For debugging, print a list of allocations and all allocations they point to, recursively.
+    /// Print a list of allocations and all allocations they point to, recursively.
+    /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
+    /// control for this.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
-        if !log_enabled!(::log::Level::Trace) {
-            return;
-        }
         allocs.sort();
         allocs.dedup();
         let mut allocs_to_print = VecDeque::from(allocs);
@@ -735,13 +736,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                             );
                         }
                         Some(GlobalAlloc::Function(func)) => {
-                            trace!("{} {}", msg, func);
+                            eprintln!("{} {}", msg, func);
                         }
                         Some(GlobalAlloc::Static(did)) => {
-                            trace!("{} {:?}", msg, did);
+                            eprintln!("{} {:?}", msg, did);
                         }
                         None => {
-                            trace!("{} (deallocated)", msg);
+                            eprintln!("{} (deallocated)", msg);
                         }
                     }
                 },
@@ -751,12 +752,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     pub fn leak_report(&self) -> usize {
-        trace!("### LEAK REPORT ###");
         let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
             if kind.may_leak() { None } else { Some(id) }
         });
         let n = leaks.len();
-        self.dump_allocs(leaks);
+        if n > 0 {
+            eprintln!("### LEAK REPORT ###");
+            self.dump_allocs(leaks);
+        }
         n
     }
 
