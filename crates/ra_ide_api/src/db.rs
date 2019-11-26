@@ -65,6 +65,9 @@ impl salsa::Database for RootDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
     }
+    fn salsa_runtime_mut(&mut self) -> &mut salsa::Runtime<Self> {
+        &mut self.runtime
+    }
     fn on_propagated_panic(&self) -> ! {
         Canceled::throw()
     }

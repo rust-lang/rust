@@ -171,7 +171,7 @@ impl RootDatabase {
         log::info!("apply_change {:?}", change);
         {
             let _p = profile("RootDatabase::apply_change/cancellation");
-            self.salsa_runtime().synthetic_write(Durability::LOW);
+            self.salsa_runtime_mut().synthetic_write(Durability::LOW);
         }
         if !change.new_roots.is_empty() {
             let mut local_roots = Vec::clone(&self.local_roots());

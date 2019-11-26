@@ -292,16 +292,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derive-new"
-version = "0.5.8"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "proc-macro2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "quote 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "syn 1.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "difference"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -800,6 +790,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "parking_lot"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "lock_api 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot_core 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "parking_lot_core"
 version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -810,6 +809,19 @@ dependencies = [
  "redox_syscall 0.1.56 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "smallvec 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "parking_lot_core"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "cfg-if 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.65 (registry+https://github.com/rust-lang/crates.io-index)",
+ "redox_syscall 0.1.56 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -981,7 +993,7 @@ dependencies = [
  "ra_syntax 0.1.0",
  "relative-path 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "salsa 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "salsa 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
 ]
 
@@ -1472,23 +1484,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "salsa"
-version = "0.13.2"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "crossbeam 0.7.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "derive-new 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "indexmap 1.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "salsa-macros 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "smallvec 0.6.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "salsa-macros 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "smallvec 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "salsa-macros"
-version = "0.13.2"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "heck 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1877,7 +1888,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum crossbeam-epoch 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "5064ebdbf05ce3cb95e45c8b086f72263f4166b29b97f6baff7ef7fe047b55ac"
 "checksum crossbeam-queue 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "dfd6515864a82d2f877b42813d4553292c6659498c9a2aa31bab5a15243c2700"
 "checksum crossbeam-utils 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ce446db02cdc3165b94ae73111e570793400d0794e46125cc4056c81cbb039f4"
-"checksum derive-new 0.5.8 (registry+https://github.com/rust-lang/crates.io-index)" = "71f31892cd5c62e414316f2963c5689242c43d8e7bbcaaeca97e5e28c95d91d9"
 "checksum difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 "checksum drop_bomb 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "69b26e475fd29098530e709294e94e661974c851aed42512793f120fed4e199f"
 "checksum dtoa 0.4.4 (registry+https://github.com/rust-lang/crates.io-index)" = "ea57b42383d091c85abcc2706240b94ab2a8fa1fc81c10ff23c4de06e2a90b5e"
@@ -1940,8 +1950,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum number_prefix 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "17b02fc0ff9a9e4b35b3342880f48e896ebf69f2967921fe8646bf5b7125956a"
 "checksum once_cell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "891f486f630e5c5a4916c7e16c4b24a53e78c860b646e9f8e005e4f16847bfed"
 "checksum ordermap 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "a86ed3f5f244b372d6b1a00b72ef7f8876d0bc6a78a4c9985c53614041512063"
+"checksum parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "92e98c49ab0b7ce5b222f2cc9193fc4efe11c6d0bd4f648e374684a6857b1cfc"
 "checksum parking_lot 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f842b1982eb6c2fe34036a4fbfb06dd185a3f5c8edfaacdf7d1ea10b07de6252"
 "checksum parking_lot_core 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "b876b1b9e7ac6e1a74a6da34d25c42e17e8862aa409cbbbdcfc8d86c6f3bc62b"
+"checksum parking_lot_core 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7582838484df45743c8434fbff785e8edf260c28748353d44bc0da32e0ceabf1"
 "checksum paste 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "423a519e1c6e828f1e73b720f9d9ed2fa643dce8a7737fb43235ce0b41eeaa49"
 "checksum paste-impl 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "4214c9e912ef61bf42b81ba9a47e8aad1b2ffaf739ab162bf96d1e011f54e6c5"
 "checksum percent-encoding 2.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
@@ -1985,8 +1997,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum rustc_lexer 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "c86aae0c77166108c01305ee1a36a1e77289d7dc6ca0a3cd91ff4992de2d16a5"
 "checksum rustc_version 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)" = "138e3e0acb6c9fb258b19b67cb8abd63c00679d2851805ea151465464fe9030a"
 "checksum ryu 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "bfa8506c1de11c9c4e4c38863ccbe02a305c8188e85a05a784c9e11e1c3910c8"
-"checksum salsa 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)" = "ec0865bdd9d8e614686a0cbb76979c735810131d287eb1683e91e4e64a58c387"
-"checksum salsa-macros 0.13.2 (registry+https://github.com/rust-lang/crates.io-index)" = "cac182212d3a1db75ddc42399ff1461b258a694b8318ee7e0baf6c976e39efee"
+"checksum salsa 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)" = "4a006c56096acaaa5e82e5974c28d05ff1e84aa70615f19c53fecf8a1afb2fd2"
+"checksum salsa-macros 0.14.1 (registry+https://github.com/rust-lang/crates.io-index)" = "038a09b6271446f1123f142fe7e5bef6d4687c4cf82e6986be574c2af3745530"
 "checksum same-file 1.0.5 (registry+https://github.com/rust-lang/crates.io-index)" = "585e8ddcedc187886a30fa705c47985c3fa88d06624095856b36ca0b82ff4421"
 "checksum scopeguard 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b42e15e59b18a828bbf5c58ea01debb36b9b096346de35d941dcb89009f24a0d"
 "checksum semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "1d7eb9ef2c18661902cc47e535f9bc51b78acd254da71d375c2f6720d9a40403"

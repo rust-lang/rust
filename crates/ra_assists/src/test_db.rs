@@ -21,6 +21,9 @@ impl salsa::Database for TestDB {
     fn salsa_runtime(&self) -> &salsa::Runtime<Self> {
         &self.runtime
     }
+    fn salsa_runtime_mut(&mut self) -> &mut salsa::Runtime<Self> {
+        &mut self.runtime
+    }
 }
 
 impl std::panic::RefUnwindSafe for TestDB {}
