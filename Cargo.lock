@@ -1701,13 +1701,10 @@ dependencies = [
 
 [[package]]
 name = "jobserver"
-version = "0.1.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f74e73053eaf95399bf926e48fc7a2a3ce50bd0eaaa2357d391e95b2dcdd4f10"
+version = "0.1.17"
+source = "git+https://github.com/Mark-Simulacrum/jobserver-rs?branch=sem#3ec169d99340c3c41fd383a537f225d44f99e374"
 dependencies = [
  "libc",
- "log",
- "rand 0.7.0",
 ]
 
 [[package]]
