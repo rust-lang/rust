@@ -1,3 +1,5 @@
+//! Borrow checker diagnostics.
+
 use rustc::hir;
 use rustc::hir::def::Namespace;
 use rustc::hir::def_id::DefId;
@@ -16,6 +18,10 @@ use syntax_pos::Span;
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
 use crate::dataflow::move_paths::{InitLocation, LookupResult};
+
+crate mod conflict_errors;
+crate mod move_errors;
+crate mod mutability_errors;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 

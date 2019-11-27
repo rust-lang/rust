@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::borrow_check::borrow_set::BorrowData;
-use crate::borrow_check::error_reporting::UseSpans;
+use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::nll::region_infer::{Cause, RegionName};
 use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::{MirBorrowckCtxt, WriteKind};
