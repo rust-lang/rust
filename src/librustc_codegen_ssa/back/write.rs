@@ -347,7 +347,21 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
                 subsystem
             ));
         }
-        subsystem.to_string()
+        let t = &sess.target.target;
+        if t.target_vendor == "xp" {
+            // For Windows XP the subsystem version needs to be set appropriately.
+            let version = match t.arch.as_str() {
+                "x86" => "5.01",
+                "x86_64" => "5.02",
+                arch => tcx.sess.fatal(&format!("invalid Windows XP arch `{}`, only \
+                                     `x86` and `x86_64` are supported",
+                                    arch))
+            };
+            format!("{},{}", subsystem, version)
+        }
+        else {
+            subsystem.to_string()
+        }
     });
 
     let linker_info = LinkerInfo::new(tcx);
