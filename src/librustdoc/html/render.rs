@@ -644,10 +644,9 @@ themePicker.onblur = handleThemeButtonsBlur;
     themes.appendChild(but);
 }});"#,
                  as_json(&themes));
-    write(cx.dst.join(&format!("theme{}.js", cx.shared.resource_suffix)),
-          theme_js.as_bytes()
-    )?;
-
+    write_minify(&cx.shared.fs, cx.path("theme.js"),
+                 &theme_js,
+                 options.enable_minification)?;
     write_minify(&cx.shared.fs, cx.path("main.js"),
                  static_files::MAIN_JS,
                  options.enable_minification)?;
