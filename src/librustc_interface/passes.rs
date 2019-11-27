@@ -764,7 +764,7 @@ pub fn create_global_ctxt<'tcx>(
     outputs: OutputFilenames,
     crate_name: &str,
     global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
-    arenas: &'tcx Once<AllArenas>,
+    all_arenas: &'tcx AllArenas,
     local_arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
@@ -793,13 +793,12 @@ pub fn create_global_ctxt<'tcx>(
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
-    let arenas = arenas.init_locking(|| AllArenas::new());
     let gcx = global_ctxt.init_locking(|| TyCtxt::create_global_ctxt(
         sess,
         lint_store,
         local_providers,
         extern_providers,
-        &arenas,
+        &all_arenas,
         local_arena,
         resolver_outputs,
         hir_map,

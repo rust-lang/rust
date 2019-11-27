@@ -72,9 +72,9 @@ impl<T> Default for Query<T> {
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx: Once<GlobalCtxt<'tcx>>,
-    arenas: Once<AllArenas>,
     forest: Once<hir::map::Forest>,
 
+    all_arenas: AllArenas,
     local_arena: WorkerLocal<Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
@@ -94,8 +94,8 @@ impl<'tcx> Queries<'tcx> {
         Queries {
             compiler,
             gcx: Once::new(),
-            arenas: Once::new(),
             forest: Once::new(),
+            all_arenas: AllArenas::new(),
             local_arena: WorkerLocal::new(|_| Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
@@ -268,7 +268,7 @@ impl<'tcx> Queries<'tcx> {
                 outputs,
                 &crate_name,
                 &self.gcx,
-                &self.arenas,
+                &self.all_arenas,
                 &self.local_arena,
             ))
         })
