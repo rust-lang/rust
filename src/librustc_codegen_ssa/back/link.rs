@@ -1109,7 +1109,8 @@ fn link_args<'a, B: ArchiveBuilder<'a>>(
 
     if crate_type == config::CrateType::Executable && sess.target.target.options.is_like_windows {
         if let Some(ref s) = codegen_results.windows_subsystem {
-            cmd.subsystem(s);
+            let version = s.version.as_ref().map(|v| &**v);
+            cmd.subsystem(&s.name, version);
         }
     }
 

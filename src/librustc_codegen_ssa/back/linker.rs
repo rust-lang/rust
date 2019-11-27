@@ -111,7 +111,7 @@ pub trait Linker {
     fn build_static_executable(&mut self);
     fn args(&mut self, args: &[String]);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
-    fn subsystem(&mut self, subsystem: &str);
+    fn subsystem(&mut self, subsystem: &str, version: Option<&str>);
     fn group_start(&mut self);
     fn group_end(&mut self);
     fn linker_plugin_lto(&mut self);
@@ -494,9 +494,13 @@ impl<'a> Linker for GccLinker<'a> {
         self.cmd.arg(arg);
     }
 
-    fn subsystem(&mut self, subsystem: &str) {
+    fn subsystem(&mut self, subsystem: &str, version: Option<&str>) {
         self.linker_arg("--subsystem");
-        self.linker_arg(&subsystem);
+        if let Some(ver) = version {
+            self.linker_arg(&format!("{}:{}", subsystem, ver));
+        } else {
+            self.linker_arg(&subsystem);
+        }
     }
 
     fn finalize(&mut self) -> Command {
@@ -724,10 +728,14 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg(&arg);
     }
 
-    fn subsystem(&mut self, subsystem: &str) {
+    fn subsystem(&mut self, subsystem: &str, version: Option<&str>) {
         // Note that previous passes of the compiler validated this subsystem,
         // so we just blindly pass it to the linker.
-        self.cmd.arg(&format!("/SUBSYSTEM:{}", subsystem));
+        let arg = match version {
+            Some(ver) => format!("/SUBSYSTEM:{},{}", subsystem, ver),
+            None => format!("/SUBSYSTEM:{}", subsystem),
+        };
+        self.cmd.arg(&arg);
 
         // Windows has two subsystems we're interested in right now, the console
         // and windows subsystems. These both implicitly have different entry
@@ -910,7 +918,7 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg(arg);
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {
+    fn subsystem(&mut self, _subsystem: &str, _version: Option<&str>) {
         // noop
     }
 
@@ -1076,7 +1084,7 @@ impl<'a> Linker for WasmLd<'a> {
         self.cmd.arg("--export=__data_end");
     }
 
-    fn subsystem(&mut self, _subsystem: &str) {}
+    fn subsystem(&mut self, _subsystem: &str, _version: Option<&str>) {}
 
     fn no_position_independent_executable(&mut self) {}
 
@@ -1237,7 +1245,7 @@ impl<'a> Linker for PtxLinker<'a> {
 
     fn export_symbols(&mut self, _tmpdir: &Path, _crate_type: CrateType) {}
 
-    fn subsystem(&mut self, _subsystem: &str) {}
+    fn subsystem(&mut self, _subsystem: &str, _version: Option<&str>) {}
 
     fn no_position_independent_executable(&mut self) {}
 

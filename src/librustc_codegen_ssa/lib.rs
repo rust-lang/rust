@@ -138,6 +138,12 @@ pub struct CrateInfo {
     pub dependency_formats: Lrc<Dependencies>,
 }
 
+#[derive(Debug)]
+pub struct WindowsSubsystem {
+    pub name: String,
+    pub version: Option<String>
+}
+
 pub struct CodegenResults {
     pub crate_name: Symbol,
     pub modules: Vec<CompiledModule>,
@@ -145,7 +151,7 @@ pub struct CodegenResults {
     pub metadata_module: Option<CompiledModule>,
     pub crate_hash: Svh,
     pub metadata: rustc::middle::cstore::EncodedMetadata,
-    pub windows_subsystem: Option<String>,
+    pub windows_subsystem: Option<WindowsSubsystem>,
     pub linker_info: back::linker::LinkerInfo,
     pub crate_info: CrateInfo,
 }

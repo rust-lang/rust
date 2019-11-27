@@ -5,7 +5,7 @@ use super::lto::{self, SerializedModule};
 use super::symbol_export::ExportedSymbols;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
-    RLIB_BYTECODE_EXTENSION,
+    RLIB_BYTECODE_EXTENSION, WindowsSubsystem
 };
 
 use crate::traits::*;
@@ -339,16 +339,33 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let no_builtins = attr::contains_name(&tcx.hir().krate().attrs, sym::no_builtins);
     let subsystem =
         attr::first_attr_value_str_by_name(&tcx.hir().krate().attrs, sym::windows_subsystem);
-    let windows_subsystem = subsystem.map(|subsystem| {
-        if subsystem != sym::windows && subsystem != sym::console {
-            tcx.sess.fatal(&format!(
-                "invalid windows subsystem `{}`, only \
-                                     `windows` and `console` are allowed",
-                subsystem
-            ));
+    let windows_subsystem = {
+        let name = subsystem.map(|subsystem| {
+            if subsystem != sym::windows && subsystem != sym::console {
+                tcx.sess.fatal(&format!("invalid windows subsystem `{}`, only \
+                                         `windows` and `console` are allowed",
+                                        subsystem));
+            }
+            subsystem.to_string()
+        });
+        let t = &sess.target.target;
+        if t.target_vendor == "xp" && t.target_os == "windows" {
+            // For Windows XP the subsystem version needs to be set.
+            let name = name.unwrap_or("console".to_string());
+            let version = match t.arch.as_str() {
+                "x86" => Some("5.01".to_string()),
+                "x86_64" => Some("5.02".to_string()),
+                arch => tcx.sess.fatal(&format!("invalid Windows XP arch `{}`, only \
+                                     `x86` and `x86_64` are supported",
+                                    arch))
+            };
+            Some(WindowsSubsystem { name, version })
+        } else {
+            name.and_then(|name| Some(WindowsSubsystem {
+                name, version: None
+            }))
         }
-        subsystem.to_string()
-    });
+    };
 
     let linker_info = LinkerInfo::new(tcx);
     let crate_info = CrateInfo::new(tcx);
@@ -1716,7 +1733,7 @@ pub struct OngoingCodegen<B: ExtraBackendMethods> {
     pub crate_name: Symbol,
     pub crate_hash: Svh,
     pub metadata: EncodedMetadata,
-    pub windows_subsystem: Option<String>,
+    pub windows_subsystem: Option<WindowsSubsystem>,
     pub linker_info: LinkerInfo,
     pub crate_info: CrateInfo,
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
