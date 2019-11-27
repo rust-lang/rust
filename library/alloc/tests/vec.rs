@@ -812,7 +812,14 @@ fn test_from_iter_specialization_with_iterator_adapters() {
     fn assert_in_place_trait<T: InPlaceIterable>(_: &T) {};
     let src: Vec<usize> = vec![0usize; 65535];
     let srcptr = src.as_ptr();
-    let iter = src.into_iter().enumerate().map(|i| i.0 + i.1).peekable().skip(1);
+    let iter = src
+        .into_iter()
+        .enumerate()
+        .map(|i| i.0 + i.1)
+        .zip(std::iter::repeat(1usize))
+        .map(|(a, b)| a + b)
+        .peekable()
+        .skip(1);
     assert_in_place_trait(&iter);
     let sink = iter.collect::<Vec<_>>();
     let sinkptr = sink.as_ptr();
