@@ -705,6 +705,19 @@ fn place_as_reborrow(
                 return None;
             }
 
+            // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
+            // that points to the allocation for the static. Don't treat these as reborrows.
+            if let PlaceBase::Local(local) = place.base {
+                let decl = &body.local_decls[local];
+                if let LocalInfo::StaticRef { .. } = decl.local_info {
+                    return None;
+                }
+            }
+
+            // Ensure the type being derefed is a reference and not a raw pointer.
+            //
+            // This is sufficient to prevent an access to a `static mut` from being marked as a
+            // reborrow, even if the check above were to disappear.
             let inner_ty = Place::ty_from(&place.base, inner, body, tcx).ty;
             match inner_ty.kind {
                 ty::Ref(..) => Some(inner),
