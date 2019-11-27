@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_ide_api::{FileId, RunnableKind};
+use ra_ide::{FileId, RunnableKind};
 use ra_project_model::{self, ProjectWorkspace, TargetKind};
 
 use crate::{world::WorldSnapshot, Result};

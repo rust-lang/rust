@@ -9,7 +9,7 @@ use std::{error::Error, fmt::Write, io::Read};
 
 use flexi_logger::Logger;
 use pico_args::Arguments;
-use ra_ide_api::{file_structure, Analysis};
+use ra_ide::{file_structure, Analysis};
 use ra_prof::profile;
 use ra_syntax::{AstNode, SourceFile};
 

@@ -9,7 +9,7 @@ use std::{error::Error, fmt, panic, path::PathBuf, sync::Arc, time::Instant};
 use crossbeam_channel::{select, unbounded, RecvError, Sender};
 use lsp_server::{Connection, ErrorCode, Message, Notification, Request, RequestId, Response};
 use lsp_types::{ClientCapabilities, NumberOrString};
-use ra_ide_api::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
+use ra_ide::{Canceled, FeatureFlags, FileId, LibraryData, SourceRootId};
 use ra_prof::profile;
 use ra_vfs::{VfsTask, Watch};
 use relative_path::RelativePathBuf;

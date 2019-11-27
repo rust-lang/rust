@@ -106,7 +106,7 @@ guessing a HIR for a particular source position.
 
 Underneath, HIR works on top of salsa, using a `HirDatabase` trait.
 
-### `crates/ra_ide_api`
+### `crates/ra_ide`
 
 A stateful library for analyzing many Rust files as they change. `AnalysisHost`
 is a mutable entity (clojure's atom) which holds the current state, incorporates
@@ -124,11 +124,11 @@ offsets and strings as output. This works on top of rich code model powered by
 
 ### `crates/ra_lsp_server`
 
-An LSP implementation which wraps `ra_ide_api` into a language server protocol.
+An LSP implementation which wraps `ra_ide` into a language server protocol.
 
 ### `ra_vfs`
 
-Although `hir` and `ra_ide_api` don't do any IO, we need to be able to read
+Although `hir` and `ra_ide` don't do any IO, we need to be able to read
 files from disk at the end of the day. This is what `ra_vfs` does. It also
 manages overlays: "dirty" files in the editor, whose "true" contents is
 different from data on disk. This is more or less the single really
@@ -162,13 +162,13 @@ disk. For this reason, we try to avoid writing too many tests on this boundary:
 in a statically typed language, it's hard to make an error in the protocol
 itself if messages are themselves typed.
 
-The middle, and most important, boundary is `ra_ide_api`. Unlike
-`ra_lsp_server`, which exposes API, `ide_api` uses Rust API and is intended to
+The middle, and most important, boundary is `ra_ide`. Unlike
+`ra_lsp_server`, which exposes API, `ide` uses Rust API and is intended to
 use by various tools. Typical test creates an `AnalysisHost`, calls some
 `Analysis` functions and compares the results against expectation.
 
 The innermost and most elaborate boundary is `hir`. It has a much richer
-vocabulary of types than `ide_api`, but the basic testing setup is the same: we
+vocabulary of types than `ide`, but the basic testing setup is the same: we
 create a database, run some queries, assert result.
 
 For comparisons, we use [insta](https://github.com/mitsuhiko/insta/) library for

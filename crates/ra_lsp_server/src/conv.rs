@@ -6,7 +6,7 @@ use lsp_types::{
     SymbolKind, TextDocumentEdit, TextDocumentIdentifier, TextDocumentItem,
     TextDocumentPositionParams, Url, VersionedTextDocumentIdentifier, WorkspaceEdit,
 };
-use ra_ide_api::{
+use ra_ide::{
     translate_offset_with_edit, CompletionItem, CompletionItemKind, FileId, FilePosition,
     FileRange, FileSystemEdit, Fold, FoldKind, InsertTextFormat, LineCol, LineIndex,
     NavigationTarget, RangeInfo, Severity, SourceChange, SourceFileEdit,
@@ -173,7 +173,7 @@ impl ConvWith<&LineIndex> for Range {
     }
 }
 
-impl Conv for ra_ide_api::Documentation {
+impl Conv for ra_ide::Documentation {
     type Output = lsp_types::Documentation;
     fn conv(self) -> Documentation {
         Documentation::MarkupContent(MarkupContent {
@@ -183,7 +183,7 @@ impl Conv for ra_ide_api::Documentation {
     }
 }
 
-impl Conv for ra_ide_api::FunctionSignature {
+impl Conv for ra_ide::FunctionSignature {
     type Output = lsp_types::SignatureInformation;
     fn conv(self) -> Self::Output {
         use lsp_types::{ParameterInformation, ParameterLabel, SignatureInformation};

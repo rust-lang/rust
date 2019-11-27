@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_ide_api::FileId;
+use ra_ide::FileId;
 use rustc_hash::FxHashSet;
 
 #[derive(Default, Debug)]

@@ -906,7 +906,7 @@ dependencies = [
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_db 0.1.0",
  "ra_hir 0.1.0",
- "ra_ide_api 0.1.0",
+ "ra_ide 0.1.0",
  "ra_project_model 0.1.0",
  "ra_vfs 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_vfs_glob 0.1.0",
@@ -932,7 +932,7 @@ dependencies = [
  "ra_batch 0.1.0",
  "ra_db 0.1.0",
  "ra_hir 0.1.0",
- "ra_ide_api 0.1.0",
+ "ra_ide 0.1.0",
  "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
 ]
@@ -1027,7 +1027,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ra_ide_api"
+name = "ra_ide"
 version = "0.1.0"
 dependencies = [
  "format-buf 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1065,7 +1065,7 @@ dependencies = [
  "lsp-server 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lsp-types 0.61.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ra_ide_api 0.1.0",
+ "ra_ide 0.1.0",
  "ra_prof 0.1.0",
  "ra_project_model 0.1.0",
  "ra_syntax 0.1.0",

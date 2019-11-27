@@ -306,7 +306,7 @@ fn main() {
 "#
             .trim(),
         );
-        let dst_file = project_dir().join("crates/ra_ide_api/src/snapshots/highlighting.html");
+        let dst_file = project_dir().join("crates/ra_ide/src/snapshots/highlighting.html");
         let actual_html = &analysis.highlight_as_html(file_id, false).unwrap();
         let expected_html = &read_text(&dst_file);
         std::fs::write(dst_file, &actual_html).unwrap();
@@ -333,7 +333,7 @@ fn bar() {
             .trim(),
         );
         let dst_file =
-            project_dir().join("crates/ra_ide_api/src/snapshots/rainbow_highlighting.html");
+            project_dir().join("crates/ra_ide/src/snapshots/rainbow_highlighting.html");
         let actual_html = &analysis.highlight_as_html(file_id, true).unwrap();
         let expected_html = &read_text(&dst_file);
         std::fs::write(dst_file, &actual_html).unwrap();
