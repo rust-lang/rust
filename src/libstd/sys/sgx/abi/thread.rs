@@ -6,6 +6,8 @@ use fortanix_sgx_abi::Tcs;
 /// is a one-to-one correspondence of the ID to the address of the TCS.
 #[unstable(feature = "sgx_platform", issue = "56975")]
 pub fn current() -> Tcs {
-    extern "C" { fn get_tcs_addr() -> Tcs; }
+    extern "C" {
+        fn get_tcs_addr() -> Tcs;
+    }
     unsafe { get_tcs_addr() }
 }

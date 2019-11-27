@@ -2,12 +2,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::fs::{self, Permissions, OpenOptions};
+use crate::fs::{self, OpenOptions, Permissions};
 use crate::io;
 use crate::path::Path;
 use crate::sys;
-use crate::sys_common::{FromInner, AsInner, AsInnerMut};
 use crate::sys::platform::fs::MetadataExt as UnixMetadataExt;
+use crate::sys_common::{AsInner, AsInnerMut, FromInner};
 
 /// Unix-specific extensions to [`File`].
 ///
@@ -112,8 +112,7 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() {
-            Err(io::Error::new(io::ErrorKind::UnexpectedEof,
-                               "failed to fill whole buffer"))
+            Err(io::Error::new(io::ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
         } else {
             Ok(())
         }
@@ -195,8 +194,12 @@ pub trait FileExt {
     fn write_all_at(&self, mut buf: &[u8], mut offset: u64) -> io::Result<()> {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
-                Ok(0) => return Err(io::Error::new(io::ErrorKind::WriteZero,
-                                                   "failed to write whole buffer")),
+                Ok(0) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::WriteZero,
+                        "failed to write whole buffer",
+                    ));
+                }
                 Ok(n) => {
                     buf = &buf[n..];
                     offset += n as u64
@@ -356,11 +359,13 @@ pub trait OpenOptionsExt {
 #[stable(feature = "fs_ext", since = "1.1.0")]
 impl OpenOptionsExt for OpenOptions {
     fn mode(&mut self, mode: u32) -> &mut OpenOptions {
-        self.as_inner_mut().mode(mode); self
+        self.as_inner_mut().mode(mode);
+        self
     }
 
     fn custom_flags(&mut self, flags: i32) -> &mut OpenOptions {
-        self.as_inner_mut().custom_flags(flags); self
+        self.as_inner_mut().custom_flags(flags);
+        self
     }
 }
 
@@ -657,22 +662,54 @@ pub trait MetadataExt {
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for fs::Metadata {
-    fn dev(&self) -> u64 { self.st_dev() }
-    fn ino(&self) -> u64 { self.st_ino() }
-    fn mode(&self) -> u32 { self.st_mode() }
-    fn nlink(&self) -> u64 { self.st_nlink() }
-    fn uid(&self) -> u32 { self.st_uid() }
-    fn gid(&self) -> u32 { self.st_gid() }
-    fn rdev(&self) -> u64 { self.st_rdev() }
-    fn size(&self) -> u64 { self.st_size() }
-    fn atime(&self) -> i64 { self.st_atime() }
-    fn atime_nsec(&self) -> i64 { self.st_atime_nsec() }
-    fn mtime(&self) -> i64 { self.st_mtime() }
-    fn mtime_nsec(&self) -> i64 { self.st_mtime_nsec() }
-    fn ctime(&self) -> i64 { self.st_ctime() }
-    fn ctime_nsec(&self) -> i64 { self.st_ctime_nsec() }
-    fn blksize(&self) -> u64 { self.st_blksize() }
-    fn blocks(&self) -> u64 { self.st_blocks() }
+    fn dev(&self) -> u64 {
+        self.st_dev()
+    }
+    fn ino(&self) -> u64 {
+        self.st_ino()
+    }
+    fn mode(&self) -> u32 {
+        self.st_mode()
+    }
+    fn nlink(&self) -> u64 {
+        self.st_nlink()
+    }
+    fn uid(&self) -> u32 {
+        self.st_uid()
+    }
+    fn gid(&self) -> u32 {
+        self.st_gid()
+    }
+    fn rdev(&self) -> u64 {
+        self.st_rdev()
+    }
+    fn size(&self) -> u64 {
+        self.st_size()
+    }
+    fn atime(&self) -> i64 {
+        self.st_atime()
+    }
+    fn atime_nsec(&self) -> i64 {
+        self.st_atime_nsec()
+    }
+    fn mtime(&self) -> i64 {
+        self.st_mtime()
+    }
+    fn mtime_nsec(&self) -> i64 {
+        self.st_mtime_nsec()
+    }
+    fn ctime(&self) -> i64 {
+        self.st_ctime()
+    }
+    fn ctime_nsec(&self) -> i64 {
+        self.st_ctime_nsec()
+    }
+    fn blksize(&self) -> u64 {
+        self.st_blksize()
+    }
+    fn blocks(&self) -> u64 {
+        self.st_blocks()
+    }
 }
 
 /// Unix-specific extensions for [`FileType`].
@@ -759,10 +796,18 @@ pub trait FileTypeExt {
 
 #[stable(feature = "file_type_ext", since = "1.5.0")]
 impl FileTypeExt for fs::FileType {
-    fn is_block_device(&self) -> bool { self.as_inner().is(libc::S_IFBLK) }
-    fn is_char_device(&self) -> bool { self.as_inner().is(libc::S_IFCHR) }
-    fn is_fifo(&self) -> bool { self.as_inner().is(libc::S_IFIFO) }
-    fn is_socket(&self) -> bool { self.as_inner().is(libc::S_IFSOCK) }
+    fn is_block_device(&self) -> bool {
+        self.as_inner().is(libc::S_IFBLK)
+    }
+    fn is_char_device(&self) -> bool {
+        self.as_inner().is(libc::S_IFCHR)
+    }
+    fn is_fifo(&self) -> bool {
+        self.as_inner().is(libc::S_IFIFO)
+    }
+    fn is_socket(&self) -> bool {
+        self.as_inner().is(libc::S_IFSOCK)
+    }
 }
 
 /// Unix-specific extension methods for [`fs::DirEntry`].
@@ -794,7 +839,9 @@ pub trait DirEntryExt {
 
 #[stable(feature = "dir_entry_ext", since = "1.1.0")]
 impl DirEntryExt for fs::DirEntry {
-    fn ino(&self) -> u64 { self.as_inner().ino() }
+    fn ino(&self) -> u64 {
+        self.as_inner().ino()
+    }
 }
 
 /// Creates a new symbolic link on the filesystem.
@@ -821,8 +868,7 @@ impl DirEntryExt for fs::DirEntry {
 /// }
 /// ```
 #[stable(feature = "symlink", since = "1.1.0")]
-pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
-{
+pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
     sys::fs::symlink(src.as_ref(), dst.as_ref())
 }
 

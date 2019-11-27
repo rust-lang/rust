@@ -1,9 +1,9 @@
 use fortanix_sgx_abi::Fd;
 
+use super::abi::usercalls;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::mem;
 use crate::sys::{AsInner, FromInner, IntoInner};
-use super::abi::usercalls;
 
 #[derive(Debug)]
 pub struct FileDesc {
@@ -15,7 +15,9 @@ impl FileDesc {
         FileDesc { fd: fd }
     }
 
-    pub fn raw(&self) -> Fd { self.fd }
+    pub fn raw(&self) -> Fd {
+        self.fd
+    }
 
     /// Extracts the actual filedescriptor without closing it.
     pub fn into_raw(self) -> Fd {
@@ -46,7 +48,9 @@ impl FileDesc {
 }
 
 impl AsInner<Fd> for FileDesc {
-    fn as_inner(&self) -> &Fd { &self.fd }
+    fn as_inner(&self) -> &Fd {
+        &self.fd
+    }
 }
 
 impl IntoInner<Fd> for FileDesc {

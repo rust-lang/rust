@@ -7,9 +7,7 @@ impl Handler {
 }
 
 #[inline]
-pub unsafe fn init() {
-}
+pub unsafe fn init() {}
 
 #[inline]
-pub unsafe fn cleanup() {
-}
+pub unsafe fn cleanup() {}

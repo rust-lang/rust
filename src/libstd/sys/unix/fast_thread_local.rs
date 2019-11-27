@@ -10,25 +10,34 @@
 // fallback implementation to use as well.
 //
 // Due to rust-lang/rust#18804, make sure this is not generic!
-#[cfg(any(target_os = "linux", target_os = "fuchsia", target_os = "redox",
-          target_os = "emscripten"))]
-pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+#[cfg(any(
+    target_os = "linux",
+    target_os = "fuchsia",
+    target_os = "redox",
+    target_os = "emscripten"
+))]
+pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::mem;
     use crate::sys_common::thread_local::register_dtor_fallback;
 
-    extern {
+    extern "C" {
         #[linkage = "extern_weak"]
         static __dso_handle: *mut u8;
         #[linkage = "extern_weak"]
         static __cxa_thread_atexit_impl: *const libc::c_void;
     }
     if !__cxa_thread_atexit_impl.is_null() {
-        type F = unsafe extern fn(dtor: unsafe extern fn(*mut u8),
-                                  arg: *mut u8,
-                                  dso_handle: *mut u8) -> libc::c_int;
-        mem::transmute::<*const libc::c_void, F>(__cxa_thread_atexit_impl)
-            (dtor, t, &__dso_handle as *const _ as *mut _);
-        return
+        type F = unsafe extern "C" fn(
+            dtor: unsafe extern "C" fn(*mut u8),
+            arg: *mut u8,
+            dso_handle: *mut u8,
+        ) -> libc::c_int;
+        mem::transmute::<*const libc::c_void, F>(__cxa_thread_atexit_impl)(
+            dtor,
+            t,
+            &__dso_handle as *const _ as *mut _,
+        );
+        return;
     }
     register_dtor_fallback(t, dtor);
 }
@@ -44,7 +53,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
 // thread. thread_local dtors are pushed to the DTOR list without calling
 // _tlv_atexit.
 #[cfg(target_os = "macos")]
-pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::cell::Cell;
     use crate::ptr;
 
@@ -55,7 +64,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         REGISTERED.set(true);
     }
 
-    type List = Vec<(*mut u8, unsafe extern fn(*mut u8))>;
+    type List = Vec<(*mut u8, unsafe extern "C" fn(*mut u8))>;
 
     #[thread_local]
     static DTORS: Cell<*mut List> = Cell::new(ptr::null_mut());
@@ -64,15 +73,14 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
         DTORS.set(Box::into_raw(v));
     }
 
-    extern {
-        fn _tlv_atexit(dtor: unsafe extern fn(*mut u8),
-                       arg: *mut u8);
+    extern "C" {
+        fn _tlv_atexit(dtor: unsafe extern "C" fn(*mut u8), arg: *mut u8);
     }
 
     let list: &mut List = &mut *DTORS.get();
     list.push((t, dtor));
 
-    unsafe extern fn run_dtors(_: *mut u8) {
+    unsafe extern "C" fn run_dtors(_: *mut u8) {
         let mut ptr = DTORS.replace(ptr::null_mut());
         while !ptr.is_null() {
             let list = Box::from_raw(ptr);

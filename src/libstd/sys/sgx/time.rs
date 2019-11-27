@@ -1,5 +1,5 @@
-use crate::time::Duration;
 use super::abi::usercalls;
+use crate::time::Duration;
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 pub struct Instant(Duration);
@@ -40,8 +40,7 @@ impl SystemTime {
         SystemTime(usercalls::insecure_time())
     }
 
-    pub fn sub_time(&self, other: &SystemTime)
-                    -> Result<Duration, Duration> {
+    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
     }
 

@@ -3,8 +3,8 @@
 
 use crate::io::ErrorKind;
 
-pub use crate::os::vxworks as platform;
 pub use self::rand::hashmap_random_keys;
+pub use crate::os::vxworks as platform;
 pub use libc::strlen;
 
 pub mod alloc;
@@ -16,8 +16,8 @@ pub mod ext;
 pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
-pub mod memchr;
 pub mod io;
+pub mod memchr;
 pub mod mutex;
 pub mod net;
 pub mod os;
@@ -27,10 +27,10 @@ pub mod process;
 pub mod rand;
 pub mod rwlock;
 pub mod stack_overflow;
+pub mod stdio;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod stdio;
 
 pub use crate::sys_common::os_str_bytes as os_str;
 
@@ -47,7 +47,7 @@ pub fn init() {
         reset_sigpipe();
     }
 
-    unsafe fn reset_sigpipe() { }
+    unsafe fn reset_sigpipe() {}
 }
 
 pub use libc::signal;
@@ -71,8 +71,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
         // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-            ErrorKind::WouldBlock,
+        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK => ErrorKind::WouldBlock,
 
         _ => ErrorKind::Other,
     }
@@ -94,16 +93,13 @@ macro_rules! impl_is_minus_one {
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 pub fn cvt<T: IsMinusOne>(t: T) -> crate::io::Result<T> {
-    if t.is_minus_one() {
-        Err(crate::io::Error::last_os_error())
-    } else {
-        Ok(t)
-    }
+    if t.is_minus_one() { Err(crate::io::Error::last_os_error()) } else { Ok(t) }
 }
 
 pub fn cvt_r<T, F>(mut f: F) -> crate::io::Result<T>
-    where T: IsMinusOne,
-          F: FnMut() -> T
+where
+    T: IsMinusOne,
+    F: FnMut() -> T,
 {
     loop {
         match cvt(f()) {
