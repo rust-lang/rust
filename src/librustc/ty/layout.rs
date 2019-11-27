@@ -2441,7 +2441,7 @@ where
 
         use rustc_target::spec::abi::Abi::*;
         let conv = match cx.tcx().sess.target.target.adjust_abi(sig.abi) {
-            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::C,
+            RustIntrinsic | PlatformIntrinsic | Rust | RustCall => Conv::Rust,
 
             // It's the ABI's job to select this, not ours.
             System => bug!("system abi should be selected elsewhere"),

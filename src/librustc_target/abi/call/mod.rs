@@ -492,7 +492,12 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Conv {
+    // General language calling conventions, for which every target
+    // should have its own backend (e.g. LLVM) support.
     C,
+    Rust,
+
+    // Target-specific calling conventions.
 
     ArmAapcs,
 
