@@ -1,4 +1,4 @@
-error: Documentation test in private item
+error: documentation test in private item
   --> $DIR/lint-group.rs:19:1
    |
 LL | / /// wait, this *does* have a doctest?
@@ -29,7 +29,7 @@ LL | #![deny(rustdoc)]
    = note: `#[deny(intra_doc_link_resolution_failure)]` implied by `#[deny(rustdoc)]`
    = help: to escape `[` and `]` characters, just add '\' before them like `\[` or `\]`
 
-error: Missing code example in this documentation
+error: missing code example in this documentation
   --> $DIR/lint-group.rs:16:1
    |
 LL | /// wait, this doesn't have a doctest?

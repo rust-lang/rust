@@ -14,11 +14,11 @@
 pub fn link_error() {} //~^^^^^ ERROR cannot be resolved, ignoring it
 
 /// wait, this doesn't have a doctest?
-pub fn no_doctest() {} //~^ ERROR Missing code example in this documentation
+pub fn no_doctest() {} //~^ ERROR missing code example in this documentation
 
 /// wait, this *does* have a doctest?
 ///
 /// ```
 /// println!("sup");
 /// ```
-fn private_doctest() {} //~^^^^^ ERROR Documentation test in private item
+fn private_doctest() {} //~^^^^^ ERROR documentation test in private item

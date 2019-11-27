@@ -344,7 +344,7 @@ pub fn look_for_tests<'tcx>(
             lint::builtin::MISSING_DOC_CODE_EXAMPLES,
             hir_id,
             sp,
-            "Missing code example in this documentation");
+            "missing code example in this documentation");
         diag.emit();
     } else if check_missing_code == false &&
               tests.found_tests > 0 &&
@@ -353,7 +353,7 @@ pub fn look_for_tests<'tcx>(
             lint::builtin::PRIVATE_DOC_TESTS,
             hir_id,
             span_of_attrs(&item.attrs).unwrap_or(item.source.span()),
-            "Documentation test in private item");
+            "documentation test in private item");
         diag.emit();
     }
 }
@@ -367,7 +367,7 @@ crate fn span_of_attrs(attrs: &clean::Attributes) -> Option<Span> {
     if start == DUMMY_SP {
         return None;
     }
-    let end = attrs.doc_strings.last().expect("No doc strings provided").span();
+    let end = attrs.doc_strings.last().expect("no doc strings provided").span();
     Some(start.to(end))
 }
 

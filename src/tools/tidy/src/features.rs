@@ -397,7 +397,8 @@ fn map_lib_features(base_src_path: &Path,
         }
 
         let mut becoming_feature: Option<(&str, Feature)> = None;
-        for (i, line) in contents.lines().enumerate() {
+        let mut iter_lines = contents.lines().enumerate().peekable();
+        while let Some((i, line)) = iter_lines.next() {
             macro_rules! err {
                 ($msg:expr) => {{
                     mf(Err($msg), file, i + 1);
@@ -411,7 +412,7 @@ fn map_lib_features(base_src_path: &Path,
                 }
                 if line.ends_with(']') {
                     mf(Ok((name, f.clone())), file, i + 1);
-                } else if !line.ends_with(',') && !line.ends_with('\\') {
+                } else if !line.ends_with(',') && !line.ends_with('\\') && !line.ends_with('"') {
                     // We need to bail here because we might have missed the
                     // end of a stability attribute above because the ']'
                     // might not have been at the end of the line.
@@ -450,7 +451,9 @@ fn map_lib_features(base_src_path: &Path,
             } else {
                 continue;
             };
-            let feature_name = match find_attr_val(line, "feature") {
+            let feature_name = match find_attr_val(line, "feature")
+                .or_else(|| iter_lines.peek().and_then(|next| find_attr_val(next.1, "feature")))
+            {
                 Some(name) => name,
                 None => err!("malformed stability attribute: missing `feature` key"),
             };

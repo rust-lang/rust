@@ -733,7 +733,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
-            self.memory.dump_alloc(ptr.alloc_id);
+            if log_enabled!(::log::Level::Trace) {
+                self.memory.dump_alloc(ptr.alloc_id);
+            }
             self.memory.deallocate_local(ptr)?;
         };
         Ok(())

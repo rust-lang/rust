@@ -1,4 +1,4 @@
-error: Missing code example in this documentation
+error: missing code example in this documentation
   --> $DIR/doc-without-codeblock.rs:1:1
    |
 LL | / #![deny(missing_doc_code_examples)]
@@ -16,19 +16,19 @@ note: lint level defined here
 LL | #![deny(missing_doc_code_examples)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Missing code example in this documentation
+error: missing code example in this documentation
   --> $DIR/doc-without-codeblock.rs:3:1
    |
 LL | /// Some docs.
    | ^^^^^^^^^^^^^^
 
-error: Missing code example in this documentation
+error: missing code example in this documentation
   --> $DIR/doc-without-codeblock.rs:7:1
    |
 LL | /// And then, the princess died.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Missing code example in this documentation
+error: missing code example in this documentation
   --> $DIR/doc-without-codeblock.rs:10:5
    |
 LL |     /// Or maybe not because she saved herself!
