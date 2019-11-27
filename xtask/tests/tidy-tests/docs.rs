@@ -83,6 +83,7 @@ fn no_docs_comments() {
         "ra_syntax",
         "ra_text_edit",
         "ra_tt",
+        "ra_hir_ty",
     ];
 
     let mut has_fixmes = whitelist.iter().map(|it| (*it, false)).collect::<HashMap<&str, bool>>();

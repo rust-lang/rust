@@ -4,20 +4,20 @@ mod coercion;
 use std::fmt::Write;
 use std::sync::Arc;
 
+use hir_def::{
+    body::BodySourceMap, db::DefDatabase, nameres::CrateDefMap, AssocItemId, DefWithBodyId,
+    LocalModuleId, Lookup, ModuleDefId,
+};
+use hir_expand::Source;
 use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, salsa::Database, FilePosition, SourceDatabase};
 use ra_syntax::{
     algo,
     ast::{self, AstNode},
-    SyntaxKind::*,
 };
-use rustc_hash::FxHashSet;
 use test_utils::covers;
 
-use crate::{
-    expr::BodySourceMap, test_db::TestDB, ty::display::HirDisplay, ty::InferenceResult, Source,
-    SourceAnalyzer,
-};
+use crate::{db::HirDatabase, display::HirDisplay, test_db::TestDB, InferenceResult};
 
 // These tests compare the inference results for all expressions in a file
 // against snapshots of the expected results using insta. Use cargo-insta to
@@ -4674,10 +4674,20 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
 fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
-    let analyzer =
-        SourceAnalyzer::new(db, Source::new(pos.file_id.into(), expr.syntax()), Some(pos.offset));
-    let ty = analyzer.type_of(db, &expr).unwrap();
-    ty.display(db).to_string()
+
+    let module = db.module_for_file(pos.file_id);
+    let crate_def_map = db.crate_def_map(module.krate);
+    for decl in crate_def_map[module.module_id].scope.declarations() {
+        if let ModuleDefId::FunctionId(func) = decl {
+            let (_body, source_map) = db.body_with_source_map(func.into());
+            if let Some(expr_id) = source_map.node_expr(Source::new(pos.file_id.into(), &expr)) {
+                let infer = db.infer(func.into());
+                let ty = &infer[expr_id];
+                return ty.display(db).to_string();
+            }
+        }
+    }
+    panic!("Can't find expression")
 }
 
 fn type_at(content: &str) -> String {
@@ -4687,7 +4697,6 @@ fn type_at(content: &str) -> String {
 
 fn infer(content: &str) -> String {
     let (db, file_id) = TestDB::with_single_file(content);
-    let source_file = db.parse(file_id).ok().unwrap();
 
     let mut acc = String::new();
 
@@ -4740,18 +4749,67 @@ fn infer(content: &str) -> String {
         }
     };
 
-    let mut analyzed = FxHashSet::default();
-    for node in source_file.syntax().descendants() {
-        if node.kind() == FN_DEF || node.kind() == CONST_DEF || node.kind() == STATIC_DEF {
-            let analyzer = SourceAnalyzer::new(&db, Source::new(file_id.into(), &node), None);
-            if analyzed.insert(analyzer.analyzed_declaration()) {
-                infer_def(analyzer.inference_result(), analyzer.body_source_map());
-            }
+    let module = db.module_for_file(file_id);
+    let crate_def_map = db.crate_def_map(module.krate);
+
+    let mut defs: Vec<DefWithBodyId> = Vec::new();
+    visit_module(&db, &crate_def_map, module.module_id, &mut |it| defs.push(it));
+    defs.sort_by_key(|def| match def {
+        DefWithBodyId::FunctionId(it) => {
+            it.lookup(&db).ast_id.to_node(&db).syntax().text_range().start()
         }
+        DefWithBodyId::ConstId(it) => {
+            it.lookup(&db).ast_id.to_node(&db).syntax().text_range().start()
+        }
+        DefWithBodyId::StaticId(it) => {
+            it.lookup(&db).ast_id.to_node(&db).syntax().text_range().start()
+        }
+    });
+    for def in defs {
+        let (_body, source_map) = db.body_with_source_map(def);
+        let infer = db.infer(def);
+        infer_def(infer, source_map);
     }
 
     acc.truncate(acc.trim_end().len());
     acc
+}
+
+fn visit_module(
+    db: &TestDB,
+    crate_def_map: &CrateDefMap,
+    module_id: LocalModuleId,
+    cb: &mut dyn FnMut(DefWithBodyId),
+) {
+    for decl in crate_def_map[module_id].scope.declarations() {
+        match decl {
+            ModuleDefId::FunctionId(it) => cb(it.into()),
+            ModuleDefId::ConstId(it) => cb(it.into()),
+            ModuleDefId::StaticId(it) => cb(it.into()),
+            ModuleDefId::TraitId(it) => {
+                let trait_data = db.trait_data(it);
+                for &(_, item) in trait_data.items.iter() {
+                    match item {
+                        AssocItemId::FunctionId(it) => cb(it.into()),
+                        AssocItemId::ConstId(it) => cb(it.into()),
+                        AssocItemId::TypeAliasId(_) => (),
+                    }
+                }
+            }
+            ModuleDefId::ModuleId(it) => visit_module(db, crate_def_map, it.module_id, cb),
+            _ => (),
+        }
+    }
+    for &impl_id in crate_def_map[module_id].impls.iter() {
+        let impl_data = db.impl_data(impl_id);
+        for &item in impl_data.items.iter() {
+            match item {
+                AssocItemId::FunctionId(it) => cb(it.into()),
+                AssocItemId::ConstId(it) => cb(it.into()),
+                AssocItemId::TypeAliasId(_) => (),
+            }
+        }
+    }
 }
 
 fn ellipsize(mut text: String, max_len: usize) -> String {
@@ -4783,10 +4841,12 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     ",
     );
     {
-        let file = db.parse(pos.file_id).ok().unwrap();
-        let node = file.syntax().token_at_offset(pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            SourceAnalyzer::new(&db, Source::new(pos.file_id.into(), &node), None);
+            let module = db.module_for_file(pos.file_id);
+            let crate_def_map = db.crate_def_map(module.krate);
+            visit_module(&db, &crate_def_map, module.module_id, &mut |def| {
+                db.infer(def);
+            });
         });
         assert!(format!("{:?}", events).contains("infer"))
     }
@@ -4803,10 +4863,12 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
     db.query_mut(ra_db::FileTextQuery).set(pos.file_id, Arc::new(new_text));
 
     {
-        let file = db.parse(pos.file_id).ok().unwrap();
-        let node = file.syntax().token_at_offset(pos.offset).right_biased().unwrap().parent();
         let events = db.log_executed(|| {
-            SourceAnalyzer::new(&db, Source::new(pos.file_id.into(), &node), None);
+            let module = db.module_for_file(pos.file_id);
+            let crate_def_map = db.crate_def_map(module.krate);
+            visit_module(&db, &crate_def_map, module.module_id, &mut |def| {
+                db.infer(def);
+            });
         });
         assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
     }

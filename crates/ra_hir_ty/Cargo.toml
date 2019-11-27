@@ -8,6 +8,7 @@ authors = ["rust-analyzer developers"]
 doctest = false
 
 [dependencies]
+arrayvec = "0.5.1"
 log = "0.4.5"
 rustc-hash = "1.0"
 parking_lot = "0.10.0"

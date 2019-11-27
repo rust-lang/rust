@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{ApplicationTy, FromSource, ImplBlock, Ty, TypeCtor};
+use hir::{FromSource, ImplBlock};
 use ra_db::SourceDatabase;
 use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
 
@@ -61,7 +61,7 @@ fn impls_for_def(
     Some(
         impls
             .into_iter()
-            .filter(|impl_block| is_equal_for_find_impls(&ty, &impl_block.target_ty(db)))
+            .filter(|impl_block| ty.is_equal_for_find_impls(&impl_block.target_ty(db)))
             .map(|imp| imp.to_nav(db))
             .collect(),
     )
@@ -80,19 +80,6 @@ fn impls_for_trait(
     let impls = ImplBlock::for_trait(db, krate, tr);
 
     Some(impls.into_iter().map(|imp| imp.to_nav(db)).collect())
-}
-
-fn is_equal_for_find_impls(original_ty: &Ty, impl_ty: &Ty) -> bool {
-    match (original_ty, impl_ty) {
-        (Ty::Apply(a_original_ty), Ty::Apply(ApplicationTy { ctor, parameters })) => match ctor {
-            TypeCtor::Ref(..) => match parameters.as_single() {
-                Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
-                _ => false,
-            },
-            _ => a_original_ty.ctor == *ctor,
-        },
-        _ => false,
-    }
 }
 
 #[cfg(test)]

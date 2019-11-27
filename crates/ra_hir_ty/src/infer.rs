@@ -41,11 +41,11 @@ use super::{
     ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
     TypeWalk, Uncertain,
 };
-use crate::{db::HirDatabase, ty::infer::diagnostics::InferenceDiagnostic};
+use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
 
 macro_rules! ty_app {
     ($ctor:pat, $param:pat) => {
-        crate::ty::Ty::Apply(crate::ty::ApplicationTy { ctor: $ctor, parameters: $param })
+        crate::Ty::Apply(crate::ApplicationTy { ctor: $ctor, parameters: $param })
     };
     ($ctor:pat) => {
         ty_app!($ctor, _)
@@ -128,8 +128,8 @@ pub struct InferenceResult {
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, AssocItemId>,
     diagnostics: Vec<InferenceDiagnostic>,
-    pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
-    pub(super) type_of_pat: ArenaMap<PatId, Ty>,
+    pub type_of_expr: ArenaMap<ExprId, Ty>,
+    pub type_of_pat: ArenaMap<PatId, Ty>,
     pub(super) type_mismatches: ArenaMap<ExprId, TypeMismatch>,
 }
 
@@ -158,7 +158,7 @@ impl InferenceResult {
     pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch> {
         self.type_mismatches.get(expr)
     }
-    pub(crate) fn add_diagnostics(
+    pub fn add_diagnostics(
         &self,
         db: &impl HirDatabase,
         owner: FunctionId,

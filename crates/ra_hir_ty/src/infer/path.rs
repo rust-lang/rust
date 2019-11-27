@@ -1,16 +1,13 @@
 //! Path expression resolution.
 
 use hir_def::{
-    path::{Path, PathSegment},
+    path::{Path, PathKind, PathSegment},
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
     AssocItemId, ContainerId, Lookup,
 };
 use hir_expand::name::Name;
 
-use crate::{
-    db::HirDatabase,
-    ty::{method_resolution, Substs, Ty, TypeWalk, ValueTyDefId},
-};
+use crate::{db::HirDatabase, method_resolution, Substs, Ty, TypeWalk, ValueTyDefId};
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
 
@@ -33,7 +30,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         path: &Path,
         id: ExprOrPatId,
     ) -> Option<Ty> {
-        let (value, self_subst) = if let crate::PathKind::Type(type_ref) = &path.kind {
+        let (value, self_subst) = if let PathKind::Type(type_ref) = &path.kind {
             if path.segments.is_empty() {
                 // This can't actually happen syntax-wise
                 return None;

@@ -1023,6 +1023,7 @@ dependencies = [
 name = "ra_hir_ty"
 version = "0.1.0"
 dependencies = [
+ "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "chalk-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
  "chalk-rust-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
  "chalk-solve 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",

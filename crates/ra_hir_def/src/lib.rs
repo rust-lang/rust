@@ -27,7 +27,7 @@ pub mod body;
 pub mod resolver;
 
 mod trace;
-mod nameres;
+pub mod nameres;
 
 #[cfg(test)]
 mod test_db;

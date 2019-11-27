@@ -11,7 +11,7 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::BuiltinType,
     generics::WherePredicate,
-    path::{GenericArg, Path, PathSegment},
+    path::{GenericArg, Path, PathKind, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, AstItemDef, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
@@ -26,15 +26,13 @@ use super::{
 };
 use crate::{
     db::HirDatabase,
-    ty::{
-        primitive::{FloatTy, IntTy},
-        utils::{all_super_traits, associated_type_by_name_including_super_traits, variant_data},
-    },
-    util::make_mut_slice,
+    primitive::{FloatTy, IntTy},
+    utils::make_mut_slice,
+    utils::{all_super_traits, associated_type_by_name_including_super_traits, variant_data},
 };
 
 impl Ty {
-    pub(crate) fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {
+    pub fn from_hir(db: &impl HirDatabase, resolver: &Resolver, type_ref: &TypeRef) -> Self {
         match type_ref {
             TypeRef::Never => Ty::simple(TypeCtor::Never),
             TypeRef::Tuple(inner) => {
@@ -103,7 +101,7 @@ impl Ty {
             TypeRef::Path(path) => path,
             _ => return None,
         };
-        if let crate::PathKind::Type(_) = &path.kind {
+        if let PathKind::Type(_) = &path.kind {
             return None;
         }
         if path.segments.len() > 1 {
@@ -204,7 +202,7 @@ impl Ty {
 
     pub(crate) fn from_hir_path(db: &impl HirDatabase, resolver: &Resolver, path: &Path) -> Ty {
         // Resolve the path (in type namespace)
-        if let crate::PathKind::Type(type_ref) = &path.kind {
+        if let PathKind::Type(type_ref) = &path.kind {
             let ty = Ty::from_hir(db, resolver, &type_ref);
             let remaining_segments = &path.segments[..];
             return Ty::from_type_relative_path(db, resolver, ty, remaining_segments);
@@ -421,7 +419,7 @@ impl TraitRef {
         substs_from_path_segment(db, resolver, segment, Some(resolved.into()), !has_self_param)
     }
 
-    pub(crate) fn for_trait(db: &impl HirDatabase, trait_: TraitId) -> TraitRef {
+    pub fn for_trait(db: &impl HirDatabase, trait_: TraitId) -> TraitRef {
         let substs = Substs::identity(&db.generic_params(trait_.into()));
         TraitRef { trait_, substs }
     }
@@ -495,7 +493,7 @@ fn assoc_type_bindings_from_type_bound<'a>(
 }
 
 /// Build the signature of a callable item (function, struct or enum variant).
-pub(crate) fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSig {
+pub fn callable_item_sig(db: &impl HirDatabase, def: CallableDef) -> FnSig {
     match def {
         CallableDef::FunctionId(f) => fn_sig_for_fn(db, f),
         CallableDef::StructId(s) => fn_sig_for_struct_constructor(db, s),
@@ -544,7 +542,7 @@ pub(crate) fn generic_predicates_for_param_query(
 }
 
 impl TraitEnvironment {
-    pub(crate) fn lower(db: &impl HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
+    pub fn lower(db: &impl HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
         let predicates = resolver
             .where_predicates_in_scope()
             .flat_map(|pred| GenericPredicate::from_where_predicate(db, &resolver, pred))
