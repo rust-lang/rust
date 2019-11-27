@@ -8,7 +8,7 @@ use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, ImplBlock};
+use crate::db::HirDatabase;
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
@@ -302,7 +302,7 @@ pub struct ClosureFnTraitImplData {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Impl {
     /// A normal impl from an impl block.
-    ImplBlock(ImplBlock),
+    ImplBlock(ImplId),
     /// Closure types implement the Fn traits synthetically.
     ClosureFnTraitImpl(ClosureFnTraitImplData),
 }
