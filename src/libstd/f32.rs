@@ -14,15 +14,15 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{MIN_EXP, MAX_EXP, MIN_10_EXP};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f32::{MIN, MIN_POSITIVE, MAX};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f32::consts;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{DIGITS, EPSILON, MANTISSA_DIGITS, RADIX};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{INFINITY, MAX_10_EXP, NAN, NEG_INFINITY};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{MAX, MIN, MIN_POSITIVE};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f32::{MAX_EXP, MIN_10_EXP, MIN_EXP};
 
 #[cfg(not(test))]
 #[lang = "f32_runtime"]
@@ -142,7 +142,9 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn fract(self) -> f32 { self - self.trunc() }
+    pub fn fract(self) -> f32 {
+        self - self.trunc()
+    }
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
@@ -192,11 +194,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn signum(self) -> f32 {
-        if self.is_nan() {
-            NAN
-        } else {
-            1.0_f32.copysign(self)
-        }
+        if self.is_nan() { NAN } else { 1.0_f32.copysign(self) }
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
@@ -277,7 +275,7 @@ impl f32 {
     pub fn div_euclid(self, rhs: f32) -> f32 {
         let q = (self / rhs).trunc();
         if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 }
+            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
         }
         q
     }
@@ -310,13 +308,8 @@ impl f32 {
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn rem_euclid(self, rhs: f32) -> f32 {
         let r = self % rhs;
-        if r < 0.0 {
-            r + rhs.abs()
-        } else {
-            r
-        }
+        if r < 0.0 { r + rhs.abs() } else { r }
     }
-
 
     /// Raises a number to an integer power.
     ///
@@ -383,11 +376,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f32 {
-        if self < 0.0 {
-            NAN
-        } else {
-            unsafe { intrinsics::sqrtf32(self) }
-        }
+        if self < 0.0 { NAN } else { unsafe { intrinsics::sqrtf32(self) } }
     }
 
     /// Returns `e^(self)`, (the exponential function).
@@ -486,7 +475,9 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log(self, base: f32) -> f32 { self.ln() / base.ln() }
+    pub fn log(self, base: f32) -> f32 {
+        self.ln() / base.ln()
+    }
 
     /// Returns the base 2 logarithm of the number.
     ///
@@ -559,14 +550,16 @@ impl f32 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_deprecated(since = "1.10.0",
-                       reason = "you probably meant `(self - other).abs()`: \
-                                 this operation is `(self - other).max(0.0)` \
-                                 except that `abs_sub` also propagates NaNs (also \
-                                 known as `fdimf` in C). If you truly need the positive \
-                                 difference, consider using that expression or the C function \
-                                 `fdimf`, depending on how you wish to handle NaN (please consider \
-                                 filing an issue describing your use-case too).")]
+    #[rustc_deprecated(
+        since = "1.10.0",
+        reason = "you probably meant `(self - other).abs()`: \
+                  this operation is `(self - other).max(0.0)` \
+                  except that `abs_sub` also propagates NaNs (also \
+                  known as `fdimf` in C). If you truly need the positive \
+                  difference, consider using that expression or the C function \
+                  `fdimf`, depending on how you wish to handle NaN (please consider \
+                  filing an issue describing your use-case too)."
+    )]
     pub fn abs_sub(self, other: f32) -> f32 {
         unsafe { cmath::fdimf(self, other) }
     }
@@ -967,11 +960,7 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f32 {
-        if self < 1.0 {
-            crate::f32::NAN
-        } else {
-            (self + ((self * self) - 1.0).sqrt()).ln()
-        }
+        if self < 1.0 { crate::f32::NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
     }
 
     /// Inverse hyperbolic tangent function.
@@ -1022,19 +1011,22 @@ impl f32 {
     pub fn clamp(self, min: f32, max: f32) -> f32 {
         assert!(min <= max);
         let mut x = self;
-        if x < min { x = min; }
-        if x > max { x = max; }
+        if x < min {
+            x = min;
+        }
+        if x > max {
+            x = max;
+        }
         x
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use crate::f32;
     use crate::f32::*;
-    use crate::num::*;
     use crate::num::FpCategory as Fp;
+    use crate::num::*;
 
     #[test]
     fn test_num_f32() {
@@ -1279,7 +1271,7 @@ mod tests {
         assert_eq!((-0f32).abs(), 0f32);
         assert_eq!((-1f32).abs(), 1f32);
         assert_eq!(NEG_INFINITY.abs(), INFINITY);
-        assert_eq!((1f32/NEG_INFINITY).abs(), 0f32);
+        assert_eq!((1f32 / NEG_INFINITY).abs(), 0f32);
         assert!(NAN.abs().is_nan());
     }
 
@@ -1291,7 +1283,7 @@ mod tests {
         assert_eq!((-0f32).signum(), -1f32);
         assert_eq!((-1f32).signum(), -1f32);
         assert_eq!(NEG_INFINITY.signum(), -1f32);
-        assert_eq!((1f32/NEG_INFINITY).signum(), -1f32);
+        assert_eq!((1f32 / NEG_INFINITY).signum(), -1f32);
         assert!(NAN.signum().is_nan());
     }
 
@@ -1303,7 +1295,7 @@ mod tests {
         assert!(!(-0f32).is_sign_positive());
         assert!(!(-1f32).is_sign_positive());
         assert!(!NEG_INFINITY.is_sign_positive());
-        assert!(!(1f32/NEG_INFINITY).is_sign_positive());
+        assert!(!(1f32 / NEG_INFINITY).is_sign_positive());
         assert!(NAN.is_sign_positive());
         assert!(!(-NAN).is_sign_positive());
     }
@@ -1316,7 +1308,7 @@ mod tests {
         assert!((-0f32).is_sign_negative());
         assert!((-1f32).is_sign_negative());
         assert!(NEG_INFINITY.is_sign_negative());
-        assert!((1f32/NEG_INFINITY).is_sign_negative());
+        assert!((1f32 / NEG_INFINITY).is_sign_negative());
         assert!(!NAN.is_sign_negative());
         assert!((-NAN).is_sign_negative());
     }
