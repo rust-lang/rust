@@ -26,7 +26,7 @@ use crate::value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-pub fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
+fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint   => Attribute::InlineHint.apply_llfn(Function, val),
@@ -58,7 +58,7 @@ fn unwind(val: &'ll Value, can_unwind: bool) {
 
 /// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
 #[inline]
-pub fn naked(val: &'ll Value, is_naked: bool) {
+fn naked(val: &'ll Value, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
@@ -72,7 +72,7 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
 
 /// Tell LLVM what instrument function to insert.
 #[inline]
-pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().instrument_mcount() {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
@@ -88,7 +88,7 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 }
 
-pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
     if !cx.sess().target.target.options.stack_probes {
