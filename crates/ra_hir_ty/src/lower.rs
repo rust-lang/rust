@@ -14,21 +14,21 @@ use hir_def::{
     path::{GenericArg, Path, PathKind, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
+    AdtId, AstItemDef, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule, ImplId,
     LocalStructFieldId, Lookup, StaticId, StructId, TraitId, TypeAliasId, UnionId, VariantId,
 };
 use ra_arena::map::ArenaMap;
 use ra_db::CrateId;
 
-use super::{
-    FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef,
-    Ty, TypeCtor, TypeWalk,
-};
 use crate::{
     db::HirDatabase,
     primitive::{FloatTy, IntTy},
-    utils::make_mut_slice,
-    utils::{all_super_traits, associated_type_by_name_including_super_traits, variant_data},
+    utils::{
+        all_super_traits, associated_type_by_name_including_super_traits, make_mut_slice,
+        variant_data,
+    },
+    FnSig, GenericPredicate, ImplTy, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment,
+    TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 impl Ty {
@@ -179,11 +179,7 @@ impl Ty {
                 let name = resolved_segment.name.clone();
                 Ty::Param { idx, name }
             }
-            TypeNs::SelfType(impl_id) => {
-                let impl_data = db.impl_data(impl_id);
-                let resolver = impl_id.resolver(db);
-                Ty::from_hir(db, &resolver, &impl_data.target_type)
-            }
+            TypeNs::SelfType(impl_id) => db.impl_ty(impl_id).self_type().clone(),
             TypeNs::AdtSelfType(adt) => db.ty(adt.into()),
 
             TypeNs::AdtId(it) => Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into()),
@@ -749,5 +745,20 @@ pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Ty {
         ValueTyDefId::EnumVariantId(it) => type_for_enum_variant_constructor(db, it),
         ValueTyDefId::ConstId(it) => type_for_const(db, it),
         ValueTyDefId::StaticId(it) => type_for_static(db, it),
+    }
+}
+
+pub(crate) fn impl_ty_query(db: &impl HirDatabase, impl_id: ImplId) -> ImplTy {
+    let impl_data = db.impl_data(impl_id);
+    let resolver = impl_id.resolver(db);
+    let self_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
+    match impl_data.target_trait.as_ref() {
+        Some(trait_ref) => {
+            match TraitRef::from_hir(db, &resolver, trait_ref, Some(self_ty.clone())) {
+                Some(it) => ImplTy::TraitRef(it),
+                None => ImplTy::Inherent(self_ty),
+            }
+        }
+        None => ImplTy::Inherent(self_ty),
     }
 }

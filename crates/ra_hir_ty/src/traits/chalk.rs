@@ -11,8 +11,8 @@ use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum
 use ra_db::CrateId;
 
 use hir_def::{
-    expr::Expr, lang_item::LangItemTarget, resolver::HasResolver, AssocItemId, AstItemDef,
-    ContainerId, GenericDefId, ImplId, Lookup, TraitId, TypeAliasId,
+    expr::Expr, lang_item::LangItemTarget, AssocItemId, AstItemDef, ContainerId, GenericDefId,
+    ImplId, Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name;
 
@@ -20,9 +20,8 @@ use ra_db::salsa::{InternId, InternKey};
 
 use super::{AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
-    db::HirDatabase,
-    display::HirDisplay,
-    {ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
+    db::HirDatabase, display::HirDisplay, ApplicationTy, GenericPredicate, ImplTy, ProjectionTy,
+    Substs, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -631,13 +630,11 @@ fn impl_block_datum(
     chalk_id: chalk_ir::ImplId,
     impl_id: ImplId,
 ) -> Option<Arc<ImplDatum<ChalkIr>>> {
+    let trait_ref = match db.impl_ty(impl_id) {
+        ImplTy::TraitRef(it) => it,
+        ImplTy::Inherent(_) => return None,
+    };
     let impl_data = db.impl_data(impl_id);
-    let resolver = impl_id.resolver(db);
-    let target_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
-
-    // `CoerseUnsized` has one generic parameter for the target type.
-    let trait_ref =
-        TraitRef::from_hir(db, &resolver, impl_data.target_trait.as_ref()?, Some(target_ty))?;
 
     let generic_params = db.generic_params(impl_id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
@@ -790,17 +787,14 @@ fn type_alias_associated_ty_value(
         _ => panic!("assoc ty value should be in impl"),
     };
 
-    let impl_data = db.impl_data(impl_id);
-    let resolver = impl_id.resolver(db);
-    let target_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
-    let target_trait = impl_data
-        .target_trait
-        .as_ref()
-        .and_then(|trait_ref| TraitRef::from_hir(db, &resolver, &trait_ref, Some(target_ty)))
-        .expect("assoc ty value should not exist"); // we don't return any assoc ty values if the impl'd trait can't be resolved
+    let trait_ref = match db.impl_ty(impl_id) {
+        ImplTy::TraitRef(it) => it,
+        // we don't return any assoc ty values if the impl'd trait can't be resolved
+        ImplTy::Inherent(_) => panic!("assoc ty value should not exist"),
+    };
 
     let assoc_ty = db
-        .trait_data(target_trait.trait_)
+        .trait_data(trait_ref.trait_)
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
     let generic_params = db.generic_params(impl_id.into());
