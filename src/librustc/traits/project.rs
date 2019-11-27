@@ -1079,12 +1079,10 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 if !is_default {
                     true
                 } else if obligation.param_env.reveal == Reveal::All {
-                    debug_assert!(!poly_trait_ref.needs_infer());
-                    if !poly_trait_ref.needs_subst() {
-                        true
-                    } else {
-                        false
-                    }
+                    // NOTE(eddyb) inference variables can resolve to parameters, so
+                    // assume `poly_trait_ref` isn't monomorphic, if it contains any.
+                    let poly_trait_ref = selcx.infcx().resolve_vars_if_possible(&poly_trait_ref);
+                    !poly_trait_ref.needs_infer() && !poly_trait_ref.needs_subst()
                 } else {
                     false
                 }
