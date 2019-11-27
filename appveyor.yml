@@ -18,7 +18,7 @@ cache:
   - '%USERPROFILE%\.cargo'
 # before cache
 after_test:
-  - cargo install -Z install-upgrade cargo-cache --debug
+  - cargo install cargo-cache --debug
   - cargo cache --autoclean
 
 install:
@@ -27,7 +27,7 @@ install:
   - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
   - rustup component add rustfmt --toolchain nightly & exit 0 # Format test handles missing rustfmt
   - del rust-toolchain
-  - cargo install -Z install-upgrade rustup-toolchain-install-master
+  - cargo install rustup-toolchain-install-master
   - rustup-toolchain-install-master -f -n master -c rustc-dev
   - rustup override set master
   - rustc -V

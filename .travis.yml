@@ -12,7 +12,7 @@ cache:
   directories:
     - $HOME/.cargo
 before_cache:
-  - cargo install -Z install-upgrade cargo-cache --debug
+  - cargo install cargo-cache --debug
   - find $HOME/.cargo/bin/ ! -type d -exec strip {} \;
   - cargo cache --autoclean
 
@@ -28,7 +28,7 @@ install:
   - |
     if [[ -z ${INTEGRATION} ]]; then
       if ! rustup component add rustfmt; then
-        cargo install -Z install-upgrade --git https://github.com/rust-lang/rustfmt --bin rustfmt
+        cargo install --git https://github.com/rust-lang/rustfmt --bin rustfmt
       fi
       if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
         . $HOME/.nvm/nvm.sh
