@@ -16,9 +16,9 @@ use hir_expand::name::{self, Name};
 use crate::{
     db::HirDatabase,
     ty::{
-        autoderef, method_resolution, op, traits::InEnvironment, CallableDef, InferTy, IntTy,
-        Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
-        TypeWalk, Uncertain,
+        autoderef, method_resolution, op, traits::InEnvironment, utils::variant_data, CallableDef,
+        InferTy, IntTy, Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs,
+        TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
     },
 };
 
@@ -218,22 +218,26 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let substs = ty.substs().unwrap_or_else(Substs::empty);
                 let field_types =
                     def_id.map(|it| self.db.field_types(it.into())).unwrap_or_default();
+                let variant_data = def_id.map(|it| variant_data(self.db, it));
                 for (field_idx, field) in fields.iter().enumerate() {
-                    let field_def = def_id.and_then(|it| match it.field(self.db, &field.name) {
-                        Some(field) => Some(field),
-                        None => {
-                            self.push_diagnostic(InferenceDiagnostic::NoSuchField {
-                                expr: tgt_expr,
-                                field: field_idx,
-                            });
-                            None
-                        }
-                    });
+                    let field_def =
+                        variant_data.as_ref().and_then(|it| match it.field(&field.name) {
+                            Some(local_id) => {
+                                Some(StructFieldId { parent: def_id.unwrap(), local_id })
+                            }
+                            None => {
+                                self.push_diagnostic(InferenceDiagnostic::NoSuchField {
+                                    expr: tgt_expr,
+                                    field: field_idx,
+                                });
+                                None
+                            }
+                        });
                     if let Some(field_def) = field_def {
-                        self.result.record_field_resolutions.insert(field.expr, field_def.into());
+                        self.result.record_field_resolutions.insert(field.expr, field_def);
                     }
                     let field_ty = field_def
-                        .map_or(Ty::Unknown, |it| field_types[it.id].clone())
+                        .map_or(Ty::Unknown, |it| field_types[it.local_id].clone())
                         .subst(&substs);
                     self.infer_expr_coerce(field.expr, &Expectation::has_type(field_ty));
                 }

@@ -28,7 +28,7 @@ use crate::{
     db::HirDatabase,
     ty::{
         primitive::{FloatTy, IntTy},
-        utils::{all_super_traits, associated_type_by_name_including_super_traits},
+        utils::{all_super_traits, associated_type_by_name_including_super_traits, variant_data},
     },
     util::make_mut_slice,
     Adt, Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, Trait,
@@ -514,13 +514,11 @@ pub(crate) fn field_types_query(
     db: &impl HirDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalStructFieldId, Ty>> {
-    let (resolver, var_data) = match variant_id {
-        VariantId::StructId(it) => (it.resolver(db), db.struct_data(it).variant_data.clone()),
-        VariantId::UnionId(it) => (it.resolver(db), db.union_data(it).variant_data.clone()),
-        VariantId::EnumVariantId(it) => (
-            it.parent.resolver(db),
-            db.enum_data(it.parent).variants[it.local_id].variant_data.clone(),
-        ),
+    let var_data = variant_data(db, variant_id);
+    let resolver = match variant_id {
+        VariantId::StructId(it) => it.resolver(db),
+        VariantId::UnionId(it) => it.resolver(db),
+        VariantId::EnumVariantId(it) => it.parent.resolver(db),
     };
     let mut res = ArenaMap::default();
     for (field_id, field_data) in var_data.fields().iter() {

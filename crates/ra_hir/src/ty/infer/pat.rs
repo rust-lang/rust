@@ -14,7 +14,7 @@ use test_utils::tested_by;
 use super::{BindingMode, InferenceContext};
 use crate::{
     db::HirDatabase,
-    ty::{Substs, Ty, TypeCtor, TypeWalk},
+    ty::{utils::variant_data, Substs, Ty, TypeCtor, TypeWalk},
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
@@ -26,16 +26,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         default_bm: BindingMode,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
-
+        let var_data = def.map(|it| variant_data(self.db, it));
         self.unify(&ty, expected);
 
         let substs = ty.substs().unwrap_or_else(Substs::empty);
 
         let field_tys = def.map(|it| self.db.field_types(it.into())).unwrap_or_default();
+
         for (i, &subpat) in subpats.iter().enumerate() {
-            let expected_ty = def
-                .and_then(|d| d.field(self.db, &Name::new_tuple_field(i)))
-                .map_or(Ty::Unknown, |field| field_tys[field.id].clone())
+            let expected_ty = var_data
+                .as_ref()
+                .and_then(|d| d.field(&Name::new_tuple_field(i)))
+                .map_or(Ty::Unknown, |field| field_tys[field].clone())
                 .subst(&substs);
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat, &expected_ty, default_bm);
@@ -53,6 +55,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         id: PatId,
     ) -> Ty {
         let (ty, def) = self.resolve_variant(path);
+        let var_data = def.map(|it| variant_data(self.db, it));
         if let Some(variant) = def {
             self.write_variant_resolution(id.into(), variant);
         }
@@ -63,10 +66,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         let field_tys = def.map(|it| self.db.field_types(it.into())).unwrap_or_default();
         for subpat in subpats {
-            let matching_field = def.and_then(|it| it.field(self.db, &subpat.name));
-            let expected_ty = matching_field
-                .map_or(Ty::Unknown, |field| field_tys[field.id].clone())
-                .subst(&substs);
+            let matching_field = var_data.as_ref().and_then(|it| it.field(&subpat.name));
+            let expected_ty =
+                matching_field.map_or(Ty::Unknown, |field| field_tys[field].clone()).subst(&substs);
             let expected_ty = self.normalize_associated_types_in(expected_ty);
             self.infer_pat(subpat.pat, &expected_ty, default_bm);
         }

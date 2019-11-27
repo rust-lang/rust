@@ -229,12 +229,12 @@ impl SourceAnalyzer {
 
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<crate::VariantDef> {
         let expr_id = self.expr_id(&record_lit.clone().into())?;
-        self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+        self.infer.as_ref()?.variant_resolution_for_expr(expr_id).map(|it| it.into())
     }
 
     pub fn resolve_record_pattern(&self, record_pat: &ast::RecordPat) -> Option<crate::VariantDef> {
         let pat_id = self.pat_id(&record_pat.clone().into())?;
-        self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
+        self.infer.as_ref()?.variant_resolution_for_pat(pat_id).map(|it| it.into())
     }
 
     pub fn resolve_macro_call(

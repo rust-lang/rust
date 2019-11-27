@@ -1,11 +1,13 @@
 //! Helper functions for working with def, which don't need to be a separate
 //! query, but can't be computed directly from `*Data` (ie, which need a `db`).
+use std::sync::Arc;
 
 use hir_def::{
+    adt::VariantData,
     db::DefDatabase,
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    TraitId, TypeAliasId,
+    TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{self, Name};
 
@@ -60,4 +62,14 @@ pub(super) fn associated_type_by_name_including_super_traits(
     all_super_traits(db, trait_)
         .into_iter()
         .find_map(|t| db.trait_data(t).associated_type_by_name(name))
+}
+
+pub(super) fn variant_data(db: &impl DefDatabase, var: VariantId) -> Arc<VariantData> {
+    match var {
+        VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
+        VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
+        VariantId::EnumVariantId(it) => {
+            db.enum_data(it.parent).variants[it.local_id].variant_data.clone()
+        }
+    }
 }

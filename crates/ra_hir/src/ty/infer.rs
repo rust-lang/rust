@@ -28,7 +28,7 @@ use hir_def::{
     path::{known, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TypeAliasId,
+    AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TypeAliasId, VariantId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name};
 use ra_arena::map::ArenaMap;
@@ -41,7 +41,7 @@ use super::{
     ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
     TypeWalk, Uncertain,
 };
-use crate::{db::HirDatabase, ty::infer::diagnostics::InferenceDiagnostic, VariantDef};
+use crate::{db::HirDatabase, ty::infer::diagnostics::InferenceDiagnostic};
 
 macro_rules! ty_app {
     ($ctor:pat, $param:pat) => {
@@ -124,7 +124,7 @@ pub struct InferenceResult {
     /// For each field in record literal, records the field it resolves to.
     record_field_resolutions: FxHashMap<ExprId, StructFieldId>,
     /// For each struct literal, records the variant it resolves to.
-    variant_resolutions: FxHashMap<ExprOrPatId, VariantDef>,
+    variant_resolutions: FxHashMap<ExprOrPatId, VariantId>,
     /// For each associated item record what it resolves to
     assoc_resolutions: FxHashMap<ExprOrPatId, AssocItemId>,
     diagnostics: Vec<InferenceDiagnostic>,
@@ -143,10 +143,10 @@ impl InferenceResult {
     pub fn record_field_resolution(&self, expr: ExprId) -> Option<StructFieldId> {
         self.record_field_resolutions.get(&expr).copied()
     }
-    pub fn variant_resolution_for_expr(&self, id: ExprId) -> Option<VariantDef> {
+    pub fn variant_resolution_for_expr(&self, id: ExprId) -> Option<VariantId> {
         self.variant_resolutions.get(&id.into()).copied()
     }
-    pub fn variant_resolution_for_pat(&self, id: PatId) -> Option<VariantDef> {
+    pub fn variant_resolution_for_pat(&self, id: PatId) -> Option<VariantId> {
         self.variant_resolutions.get(&id.into()).copied()
     }
     pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<AssocItemId> {
@@ -248,7 +248,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.result.field_resolutions.insert(expr, field);
     }
 
-    fn write_variant_resolution(&mut self, id: ExprOrPatId, variant: VariantDef) {
+    fn write_variant_resolution(&mut self, id: ExprOrPatId, variant: VariantId) {
         self.result.variant_resolutions.insert(id, variant);
     }
 
@@ -511,7 +511,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         })
     }
 
-    fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<VariantDef>) {
+    fn resolve_variant(&mut self, path: Option<&Path>) -> (Ty, Option<VariantId>) {
         let path = match path {
             Some(path) => path,
             None => return (Ty::Unknown, None),
@@ -524,13 +524,13 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let substs = Ty::substs_from_path(self.db, resolver, path, strukt.into());
                 let ty = self.db.ty(strukt.into());
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
-                (ty, Some(VariantDef::Struct(strukt.into())))
+                (ty, Some(strukt.into()))
             }
             Some(TypeNs::EnumVariantId(var)) => {
                 let substs = Ty::substs_from_path(self.db, resolver, path, var.into());
                 let ty = self.db.ty(var.parent.into());
                 let ty = self.insert_type_vars(ty.apply_substs(substs));
-                (ty, Some(VariantDef::EnumVariant(var.into())))
+                (ty, Some(var.into()))
             }
             Some(_) | None => (Ty::Unknown, None),
         }
