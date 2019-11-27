@@ -4,13 +4,17 @@
 //!
 //! See: https://doc.rust-lang.org/nomicon/coercions.html
 
-use hir_def::{lang_item::LangItemTarget, resolver::Resolver, AdtId};
+use hir_def::{
+    lang_item::LangItemTarget,
+    resolver::{HasResolver, Resolver},
+    AdtId,
+};
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
     db::HirDatabase,
-    ty::{autoderef, Substs, Ty, TypeCtor, TypeWalk},
+    ty::{autoderef, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
     Mutability,
 };
 
@@ -57,9 +61,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
         impls
             .iter()
-            .filter_map(|impl_block| {
+            .filter_map(|&impl_id| {
+                let impl_data = db.impl_data(impl_id);
+                let resolver = impl_id.resolver(db);
+                let target_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
+
                 // `CoerseUnsized` has one generic parameter for the target type.
-                let trait_ref = impl_block.target_trait_ref(db)?;
+                let trait_ref = TraitRef::from_hir(
+                    db,
+                    &resolver,
+                    impl_data.target_trait.as_ref()?,
+                    Some(target_ty),
+                )?;
                 let cur_from_ty = trait_ref.substs.0.get(0)?;
                 let cur_to_ty = trait_ref.substs.0.get(1)?;
 

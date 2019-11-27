@@ -11,7 +11,8 @@ use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum
 use ra_db::CrateId;
 
 use hir_def::{
-    lang_item::LangItemTarget, AstItemDef, ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId,
+    lang_item::LangItemTarget, resolver::HasResolver, AstItemDef, ContainerId, GenericDefId,
+    Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name;
 
@@ -22,7 +23,7 @@ use crate::{
     db::HirDatabase,
     ty::display::HirDisplay,
     ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-    ImplBlock, TypeAlias,
+    ImplBlock,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -452,7 +453,7 @@ where
             .impls_for_trait(self.krate, trait_.into())
             .iter()
             .copied()
-            .map(Impl::ImplBlock)
+            .map(|it| Impl::ImplBlock(it.into()))
             .map(|impl_| impl_.to_chalk(self.db))
             .collect();
 
@@ -670,7 +671,7 @@ fn impl_block_datum(
             // don't include associated types that don't exist in the trait
             trait_data.associated_type_by_name(&type_alias.name(db)).is_some()
         })
-        .map(|type_alias| AssocTyValue::TypeAlias(type_alias).to_chalk(db))
+        .map(|type_alias| AssocTyValue::TypeAlias(type_alias.id).to_chalk(db))
         .collect();
     debug!("impl_datum: {:?}", impl_datum_bound);
     let impl_datum = ImplDatum {
@@ -773,24 +774,33 @@ pub(crate) fn associated_ty_value_query(
 fn type_alias_associated_ty_value(
     db: &impl HirDatabase,
     _krate: CrateId,
-    type_alias: TypeAlias,
+    type_alias: TypeAliasId,
 ) -> Arc<AssociatedTyValue<ChalkIr>> {
-    let impl_block = type_alias.impl_block(db).expect("assoc ty value should be in impl");
-    let impl_id = Impl::ImplBlock(impl_block).to_chalk(db);
-    let trait_ = impl_block
-        .target_trait_ref(db)
-        .expect("assoc ty value should not exist") // we don't return any assoc ty values if the impl'd trait can't be resolved
-        .trait_;
+    let type_alias_data = db.type_alias_data(type_alias);
+    let impl_id = match type_alias.lookup(db).container {
+        ContainerId::ImplId(it) => it,
+        _ => panic!("assoc ty value should be in impl"),
+    };
+
+    let impl_data = db.impl_data(impl_id);
+    let resolver = impl_id.resolver(db);
+    let target_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
+    let target_trait = impl_data
+        .target_trait
+        .as_ref()
+        .and_then(|trait_ref| TraitRef::from_hir(db, &resolver, &trait_ref, Some(target_ty)))
+        .expect("assoc ty value should not exist"); // we don't return any assoc ty values if the impl'd trait can't be resolved
+
     let assoc_ty = db
-        .trait_data(trait_)
-        .associated_type_by_name(&type_alias.name(db))
+        .trait_data(target_trait.trait_)
+        .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
-    let generic_params = db.generic_params(impl_block.id.into());
+    let generic_params = db.generic_params(impl_id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
-    let ty = db.ty(type_alias.id.into()).subst(&bound_vars);
+    let ty = db.ty(type_alias.into()).subst(&bound_vars);
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) };
     let value = chalk_rust_ir::AssociatedTyValue {
-        impl_id,
+        impl_id: Impl::ImplBlock(impl_id.into()).to_chalk(db),
         associated_ty_id: assoc_ty.to_chalk(db),
         value: make_binders(value_bound, bound_vars.len()),
     };

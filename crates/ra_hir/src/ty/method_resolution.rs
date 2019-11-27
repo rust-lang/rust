@@ -62,7 +62,7 @@ impl CrateImplBlocks {
                 let impl_data = db.impl_data(impl_id);
                 let resolver = impl_id.resolver(db);
 
-                let target_ty = { Ty::from_hir(db, &resolver, &impl_data.target_type) };
+                let target_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
 
                 match &impl_data.target_trait {
                     Some(trait_ref) => {
