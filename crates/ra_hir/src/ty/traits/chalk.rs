@@ -4,15 +4,15 @@ use std::sync::Arc;
 use log::debug;
 
 use chalk_ir::{
-    cast::Cast, family::ChalkIr, Identifier, ImplId, Parameter, PlaceholderIndex, TypeId,
-    TypeKindId, TypeName, UniverseIndex,
+    cast::Cast, family::ChalkIr, Identifier, Parameter, PlaceholderIndex, TypeId, TypeKindId,
+    TypeName, UniverseIndex,
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
 use ra_db::CrateId;
 
 use hir_def::{
-    lang_item::LangItemTarget, resolver::HasResolver, AstItemDef, ContainerId, GenericDefId,
-    Lookup, TraitId, TypeAliasId,
+    lang_item::LangItemTarget, resolver::HasResolver, AssocItemId, AstItemDef, ContainerId,
+    GenericDefId, ImplId, Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name;
 
@@ -23,7 +23,6 @@ use crate::{
     db::HirDatabase,
     ty::display::HirDisplay,
     ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-    ImplBlock,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -435,14 +434,14 @@ where
     fn struct_datum(&self, struct_id: chalk_ir::StructId) -> Arc<StructDatum<ChalkIr>> {
         self.db.struct_datum(self.krate, struct_id)
     }
-    fn impl_datum(&self, impl_id: ImplId) -> Arc<ImplDatum<ChalkIr>> {
+    fn impl_datum(&self, impl_id: chalk_ir::ImplId) -> Arc<ImplDatum<ChalkIr>> {
         self.db.impl_datum(self.krate, impl_id)
     }
     fn impls_for_trait(
         &self,
         trait_id: chalk_ir::TraitId,
         parameters: &[Parameter<ChalkIr>],
-    ) -> Vec<ImplId> {
+    ) -> Vec<chalk_ir::ImplId> {
         debug!("impls_for_trait {:?}", trait_id);
         if trait_id == UNKNOWN_TRAIT {
             return Vec::new();
@@ -614,7 +613,7 @@ pub(crate) fn struct_datum_query(
 pub(crate) fn impl_datum_query(
     db: &impl HirDatabase,
     krate: CrateId,
-    impl_id: ImplId,
+    impl_id: chalk_ir::ImplId,
 ) -> Arc<ImplDatum<ChalkIr>> {
     let _p = ra_prof::profile("impl_datum");
     debug!("impl_datum {:?}", impl_id);
@@ -629,23 +628,31 @@ pub(crate) fn impl_datum_query(
 fn impl_block_datum(
     db: &impl HirDatabase,
     krate: CrateId,
+    chalk_id: chalk_ir::ImplId,
     impl_id: ImplId,
-    impl_block: ImplBlock,
 ) -> Option<Arc<ImplDatum<ChalkIr>>> {
-    let generic_params = db.generic_params(impl_block.id.into());
+    let impl_data = db.impl_data(impl_id);
+    let resolver = impl_id.resolver(db);
+    let target_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
+
+    // `CoerseUnsized` has one generic parameter for the target type.
+    let trait_ref =
+        TraitRef::from_hir(db, &resolver, impl_data.target_trait.as_ref()?, Some(target_ty))?;
+
+    let generic_params = db.generic_params(impl_id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
-    let trait_ref = impl_block.target_trait_ref(db)?.subst(&bound_vars);
+    let trait_ref = trait_ref.subst(&bound_vars);
     let trait_ = trait_ref.trait_;
-    let impl_type = if impl_block.krate(db).crate_id == krate {
+    let impl_type = if impl_id.module(db).krate == krate {
         chalk_rust_ir::ImplType::Local
     } else {
         chalk_rust_ir::ImplType::External
     };
-    let where_clauses = convert_where_clauses(db, impl_block.id.into(), &bound_vars);
-    let negative = impl_block.is_negative(db);
+    let where_clauses = convert_where_clauses(db, impl_id.into(), &bound_vars);
+    let negative = impl_data.is_negative;
     debug!(
         "impl {:?}: {}{} where {:?}",
-        impl_id,
+        chalk_id,
         if negative { "!" } else { "" },
         trait_ref.display(db),
         where_clauses
@@ -660,18 +667,19 @@ fn impl_block_datum(
 
     let impl_datum_bound = chalk_rust_ir::ImplDatumBound { trait_ref, where_clauses };
     let trait_data = db.trait_data(trait_);
-    let associated_ty_value_ids = impl_block
-        .items(db)
-        .into_iter()
+    let associated_ty_value_ids = impl_data
+        .items
+        .iter()
         .filter_map(|item| match item {
-            crate::AssocItem::TypeAlias(type_alias) => Some(type_alias),
+            AssocItemId::TypeAliasId(type_alias) => Some(*type_alias),
             _ => None,
         })
-        .filter(|type_alias| {
+        .filter(|&type_alias| {
             // don't include associated types that don't exist in the trait
-            trait_data.associated_type_by_name(&type_alias.name(db)).is_some()
+            let name = &db.type_alias_data(type_alias).name;
+            trait_data.associated_type_by_name(name).is_some()
         })
-        .map(|type_alias| AssocTyValue::TypeAlias(type_alias.id).to_chalk(db))
+        .map(|type_alias| AssocTyValue::TypeAlias(type_alias).to_chalk(db))
         .collect();
     debug!("impl_datum: {:?}", impl_datum_bound);
     let impl_datum = ImplDatum {
