@@ -17,13 +17,13 @@ use crate::llvm_util;
 use crate::value::Value;
 
 use rustc_codegen_ssa::traits::*;
+use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def::CtorKind;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ich::NodeIdHashingMode;
-use rustc::mir::Field;
-use rustc::mir::GeneratorLayout;
+use rustc::mir::{self, Field, GeneratorLayout};
 use rustc::mir::interpret::truncate;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
@@ -1316,6 +1316,45 @@ fn use_enum_fallback(cx: &CodegenCx<'_, '_>) -> bool {
         || llvm_util::get_major_version() < 8;
 }
 
+// FIXME(eddyb) maybe precompute this? Right now it's computed once
+// per generator monomorphization, but it doesn't depend on substs.
+fn generator_layout_and_saved_local_names(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+) -> (&'tcx GeneratorLayout<'tcx>, IndexVec<mir::GeneratorSavedLocal, Option<ast::Name>>) {
+    let body = tcx.optimized_mir(def_id);
+    let generator_layout = body.generator_layout.as_ref().unwrap();
+    let mut generator_saved_local_names =
+        IndexVec::from_elem(None, &generator_layout.field_tys);
+
+    let state_arg = mir::PlaceBase::Local(mir::Local::new(1));
+    for var in &body.var_debug_info {
+        if var.place.base != state_arg {
+            continue;
+        }
+        match var.place.projection[..] {
+            [
+                // Deref of the `Pin<&mut Self>` state argument.
+                mir::ProjectionElem::Field(..),
+                mir::ProjectionElem::Deref,
+
+                // Field of a variant of the state.
+                mir::ProjectionElem::Downcast(_, variant),
+                mir::ProjectionElem::Field(field, _),
+            ] => {
+                let name = &mut generator_saved_local_names[
+                    generator_layout.variant_fields[variant][field]
+                ];
+                if name.is_none() {
+                    name.replace(var.name);
+                }
+            }
+            _ => {}
+        }
+    }
+    (generator_layout, generator_saved_local_names)
+}
+
 /// Describes the members of an enum value; an enum is described as a union of
 /// structs in DWARF. This `MemberDescriptionFactory` provides the description for
 /// the members of this union; so for every variant of the given enum, this
@@ -1332,12 +1371,25 @@ struct EnumMemberDescriptionFactory<'ll, 'tcx> {
 impl EnumMemberDescriptionFactory<'ll, 'tcx> {
     fn create_member_descriptions(&self, cx: &CodegenCx<'ll, 'tcx>)
                                   -> Vec<MemberDescription<'ll>> {
+        let generator_variant_info_data = match self.enum_type.kind {
+            ty::Generator(def_id, ..) => {
+                Some(generator_layout_and_saved_local_names(cx.tcx, def_id))
+            }
+            _ => None,
+        };
+
         let variant_info_for = |index: VariantIdx| {
-            match &self.enum_type.kind {
+            match self.enum_type.kind {
                 ty::Adt(adt, _) => VariantInfo::Adt(&adt.variants[index]),
-                ty::Generator(def_id, substs, _) => {
-                    let generator_layout = cx.tcx.generator_layout(*def_id);
-                    VariantInfo::Generator(substs, generator_layout, index)
+                ty::Generator(_, substs, _) => {
+                    let (generator_layout, generator_saved_local_names) =
+                        generator_variant_info_data.as_ref().unwrap();
+                    VariantInfo::Generator {
+                        substs,
+                        generator_layout: *generator_layout,
+                        generator_saved_local_names,
+                        variant_index: index,
+                    }
                 }
                 _ => bug!(),
             }
@@ -1608,16 +1660,21 @@ enum EnumDiscriminantInfo<'ll> {
 }
 
 #[derive(Copy, Clone)]
-enum VariantInfo<'tcx> {
+enum VariantInfo<'a, 'tcx> {
     Adt(&'tcx ty::VariantDef),
-    Generator(SubstsRef<'tcx>, &'tcx GeneratorLayout<'tcx>, VariantIdx),
+    Generator {
+        substs: SubstsRef<'tcx>,
+        generator_layout: &'tcx GeneratorLayout<'tcx>,
+        generator_saved_local_names: &'a IndexVec<mir::GeneratorSavedLocal, Option<ast::Name>>,
+        variant_index: VariantIdx,
+    },
 }
 
-impl<'tcx> VariantInfo<'tcx> {
+impl<'tcx> VariantInfo<'_, 'tcx> {
     fn map_struct_name<R>(&self, f: impl FnOnce(&str) -> R) -> R {
         match self {
             VariantInfo::Adt(variant) => f(&variant.ident.as_str()),
-            VariantInfo::Generator(substs, _, variant_index) =>
+            VariantInfo::Generator { substs, variant_index, .. } =>
                 f(&substs.as_generator().variant_name(*variant_index)),
         }
     }
@@ -1625,7 +1682,7 @@ impl<'tcx> VariantInfo<'tcx> {
     fn variant_name(&self) -> String {
         match self {
             VariantInfo::Adt(variant) => variant.ident.to_string(),
-            VariantInfo::Generator(_, _, variant_index) => {
+            VariantInfo::Generator { variant_index, .. } => {
                 // Since GDB currently prints out the raw discriminant along
                 // with every variant, make each variant name be just the value
                 // of the discriminant. The struct name for the variant includes
@@ -1636,17 +1693,20 @@ impl<'tcx> VariantInfo<'tcx> {
     }
 
     fn field_name(&self, i: usize) -> String {
-        let field_name = match self {
+        let field_name = match *self {
             VariantInfo::Adt(variant) if variant.ctor_kind != CtorKind::Fn =>
-                Some(variant.fields[i].ident.to_string()),
-            VariantInfo::Generator(_, generator_layout, variant_index) => {
-                let field = generator_layout.variant_fields[*variant_index][i.into()];
-                let decl = &generator_layout.__local_debuginfo_codegen_only_do_not_use[field];
-                decl.name.map(|name| name.to_string())
-            }
+                Some(variant.fields[i].ident.name),
+            VariantInfo::Generator {
+                generator_layout,
+                generator_saved_local_names,
+                variant_index,
+                ..
+            } => generator_saved_local_names[
+                generator_layout.variant_fields[variant_index][i.into()]
+            ],
             _ => None,
         };
-        field_name.unwrap_or_else(|| format!("__{}", i))
+        field_name.map(|name| name.to_string()).unwrap_or_else(|| format!("__{}", i))
     }
 }
 
@@ -1657,7 +1717,7 @@ impl<'tcx> VariantInfo<'tcx> {
 fn describe_enum_variant(
     cx: &CodegenCx<'ll, 'tcx>,
     layout: layout::TyLayout<'tcx>,
-    variant: VariantInfo<'tcx>,
+    variant: VariantInfo<'_, 'tcx>,
     discriminant_info: EnumDiscriminantInfo<'ll>,
     containing_scope: &'ll DIScope,
     span: Span,

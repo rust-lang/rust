@@ -74,7 +74,9 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// notably `expect`.
     locals: IndexVec<mir::Local, LocalRef<'tcx, Bx::Value>>,
 
-    per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<debuginfo::VarDebugInfo<'tcx>>>>,
+    /// All `VarDebuginfo` from the MIR body, partitioned by `Local`.
+    /// This is `None` if no variable debuginfo/names are needed.
+    per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<&'a mir::VarDebugInfo<'tcx>>>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

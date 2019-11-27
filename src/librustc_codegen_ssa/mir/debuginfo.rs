@@ -1,12 +1,12 @@
-use rustc_index::vec::{Idx, IndexVec};
+use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
 use rustc::session::config::DebugInfo;
-use rustc::ty::{self, TyCtxt};
-use rustc::ty::layout::{LayoutOf, Size, VariantIdx};
+use rustc::ty::TyCtxt;
+use rustc::ty::layout::{LayoutOf, Size};
 use crate::traits::*;
 
-use syntax_pos::{BytePos, Span, Symbol};
+use syntax_pos::{BytePos, Span};
 use syntax::symbol::kw;
 
 use super::{FunctionCx, LocalRef};
@@ -113,7 +113,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             Some(per_local) => &per_local[local],
             None => return,
         };
-        let whole_local_var = vars.iter().find(|var| {
+        let whole_local_var = vars.iter().copied().find(|var| {
             var.place.projection.is_empty()
         });
         let has_proj = || vars.iter().any(|var| {
@@ -131,7 +131,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // be offset to account for the hidden environment?
                 None
             } else {
-                Some(VarDebugInfo {
+                Some(mir::VarDebugInfo {
                     name: kw::Invalid,
                     source_info: self.mir.local_decls[local].source_info,
                     place: local.into(),
@@ -185,7 +185,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             _ => return,
         };
 
-        let vars = vars.iter().chain(if whole_local_var.is_none() {
+        let vars = vars.iter().copied().chain(if whole_local_var.is_none() {
             fallback_var.as_ref()
         } else {
             None
@@ -253,133 +253,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
+/// Partition all `VarDebuginfo` in `body`, by their base `Local`.
 pub fn per_local_var_debug_info(
     tcx: TyCtxt<'tcx>,
-    body: &mir::Body<'tcx>,
-) -> Option<IndexVec<mir::Local, Vec<VarDebugInfo<'tcx>>>> {
+    body: &'a mir::Body<'tcx>,
+) -> Option<IndexVec<mir::Local, Vec<&'a mir::VarDebugInfo<'tcx>>>> {
     if tcx.sess.opts.debuginfo == DebugInfo::Full || !tcx.sess.fewer_names() {
         let mut per_local = IndexVec::from_elem(vec![], &body.local_decls);
-        for (local, decl) in body.local_decls.iter_enumerated() {
-            if let Some(name) = decl.name {
-                per_local[local].push(VarDebugInfo {
-                    name,
-                    source_info: mir::SourceInfo {
-                        span: decl.source_info.span,
-                        scope: decl.visibility_scope,
-                    },
-                    place: local.into(),
-                });
+        for var in &body.var_debug_info {
+            if let mir::PlaceBase::Local(local) = var.place.base {
+                per_local[local].push(var);
             }
         }
-
-        let upvar_debuginfo = &body.__upvar_debuginfo_codegen_only_do_not_use;
-        if !upvar_debuginfo.is_empty() {
-
-            let env_arg = mir::Local::new(1);
-            let mut env_projs = vec![];
-
-            let pin_did = tcx.lang_items().pin_type();
-            match body.local_decls[env_arg].ty.kind {
-                ty::RawPtr(_) |
-                ty::Ref(..)  => {
-                    env_projs.push(mir::ProjectionElem::Deref);
-                }
-                ty::Adt(def, substs) if Some(def.did) == pin_did => {
-                    if let ty::Ref(..) = substs.type_at(0).kind {
-                        env_projs.push(mir::ProjectionElem::Field(
-                            mir::Field::new(0),
-                            // HACK(eddyb) field types aren't used or needed here.
-                            tcx.types.err,
-                        ));
-                        env_projs.push(mir::ProjectionElem::Deref);
-                    }
-                }
-                _ => {}
-            }
-
-            let extra_locals = {
-                let upvars = upvar_debuginfo
-                    .iter()
-                    .enumerate()
-                    .map(|(i, upvar)| {
-                        let source_info = mir::SourceInfo {
-                            span: body.span,
-                            scope: mir::OUTERMOST_SOURCE_SCOPE,
-                        };
-                        (None, i, upvar.debug_name, upvar.by_ref, source_info)
-                    });
-
-                let generator_fields = body.generator_layout.as_ref().map(|generator_layout| {
-                    generator_layout.variant_fields.iter()
-                        .enumerate()
-                        .flat_map(move |(variant_idx, fields)| {
-                            let variant_idx = Some(VariantIdx::from(variant_idx));
-                            fields.iter()
-                                .enumerate()
-                                .filter_map(move |(i, field)| {
-                                    let decl = &generator_layout.
-                                        __local_debuginfo_codegen_only_do_not_use[*field];
-                                    if let Some(name) = decl.name {
-                                        let source_info = mir::SourceInfo {
-                                            span: decl.source_info.span,
-                                            scope: decl.visibility_scope,
-                                        };
-                                        Some((variant_idx, i, name, false, source_info))
-                                    } else {
-                                        None
-                                    }
-                            })
-                        })
-                }).into_iter().flatten();
-
-                upvars.chain(generator_fields)
-            };
-
-            for (variant_idx, field, name, by_ref, source_info) in extra_locals {
-                let mut projs = env_projs.clone();
-
-                if let Some(variant_idx) = variant_idx {
-                    projs.push(mir::ProjectionElem::Downcast(None, variant_idx));
-                }
-
-                projs.push(mir::ProjectionElem::Field(
-                    mir::Field::new(field),
-                    // HACK(eddyb) field types aren't used or needed here.
-                    tcx.types.err,
-                ));
-
-                if by_ref {
-                    projs.push(mir::ProjectionElem::Deref);
-                }
-
-                per_local[env_arg].push(VarDebugInfo {
-                    name,
-                    source_info,
-                    place: mir::Place {
-                        base: mir::PlaceBase::Local(env_arg),
-                        projection: tcx.intern_place_elems(&projs),
-                    },
-                });
-            }
-        }
-
         Some(per_local)
     } else {
         None
     }
-}
-
-/// Debug information relatating to an user variable.
-// FIXME(eddyb) move this to the MIR bodies themselves.
-#[derive(Clone)]
-pub struct VarDebugInfo<'tcx> {
-    pub name: Symbol,
-
-    /// Source info of the user variable, including the scope
-    /// within which the variable is visible (to debuginfo)
-    /// (see `LocalDecl`'s `source_info` field for more details).
-    pub source_info: mir::SourceInfo,
-
-    /// Where the data for this user variable is to be found.
-    pub place: mir::Place<'tcx>,
 }

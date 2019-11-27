@@ -4,9 +4,12 @@
 use std::collections::BTreeMap;
 
 use log::debug;
-use rustc::{hir::def_id::DefId, infer::InferCtxt, mir::Body, ty::RegionVid};
+use rustc::{hir::def_id::DefId, infer::InferCtxt, ty::RegionVid};
+use rustc::mir::{Body, Local};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
+use rustc_index::vec::IndexVec;
+use syntax_pos::symbol::Symbol;
 
 use smallvec::SmallVec;
 
@@ -34,9 +37,11 @@ enum SuggestedConstraint {
 /// corresponding to a function definition.
 ///
 /// Adds a help note suggesting adding a where clause with the needed constraints.
-pub struct OutlivesSuggestionBuilder {
+pub struct OutlivesSuggestionBuilder<'a> {
     /// The MIR DefId of the fn with the lifetime error.
     mir_def_id: DefId,
+
+    local_names: &'a IndexVec<Local, Option<Symbol>>,
 
     /// The list of outlives constraints that need to be added. Specifically, we map each free
     /// region to all other regions that it must outlive. I will use the shorthand `fr:
@@ -46,10 +51,17 @@ pub struct OutlivesSuggestionBuilder {
     constraints_to_add: BTreeMap<RegionVid, Vec<RegionVid>>,
 }
 
-impl OutlivesSuggestionBuilder {
+impl OutlivesSuggestionBuilder<'a> {
     /// Create a new builder for the given MIR node representing a fn definition.
-    crate fn new(mir_def_id: DefId) -> Self {
-        OutlivesSuggestionBuilder { mir_def_id, constraints_to_add: BTreeMap::default() }
+    crate fn new(
+        mir_def_id: DefId,
+        local_names: &'a IndexVec<Local, Option<Symbol>>,
+    ) -> Self {
+        OutlivesSuggestionBuilder {
+            mir_def_id,
+            local_names,
+            constraints_to_add: BTreeMap::default(),
+        }
     }
 
     /// Returns `true` iff the `RegionNameSource` is a valid source for an outlives
@@ -125,6 +137,7 @@ impl OutlivesSuggestionBuilder {
             infcx,
             body,
             mir_def_id: self.mir_def_id,
+            local_names: self.local_names,
 
             // We should not be suggesting naming upvars, so we pass in a dummy set of upvars that
             // should never be used.

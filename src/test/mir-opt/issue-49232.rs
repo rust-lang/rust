@@ -24,6 +24,7 @@ fn main() {
 //     let _5: ();
 //     let mut _6: &i32;
 //     scope 1 {
+//         debug beacon => _2;
 //     }
 //     bb0: {
 //         goto -> bb1;

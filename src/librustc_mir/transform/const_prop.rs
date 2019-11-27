@@ -85,7 +85,6 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
                 body.basic_blocks().clone(),
                 Default::default(),
                 ClearCrossCrate::Clear,
-                None,
                 body.local_decls.clone(),
                 Default::default(),
                 body.arg_count,

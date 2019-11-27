@@ -1098,7 +1098,6 @@ pub fn promote_candidates<'tcx>(
                 // memory usage?
                 body.source_scopes.clone(),
                 body.source_scope_local_data.clone(),
-                None,
                 initial_locals,
                 IndexVec::new(),
                 0,

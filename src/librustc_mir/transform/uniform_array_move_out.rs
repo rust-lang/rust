@@ -362,6 +362,7 @@ impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
         match context {
             PlaceContext::NonUse(NonUseContext::StorageLive) => local_use.alive = Some(location),
             PlaceContext::NonUse(NonUseContext::StorageDead) => local_use.dead = Some(location),
+            PlaceContext::NonUse(NonUseContext::VarDebugInfo) => {}
             _ => {
                 local_use.use_count += 1;
                 if local_use.first_use.is_none() {

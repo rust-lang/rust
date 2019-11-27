@@ -3,7 +3,7 @@ use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::Upvar;
 use rustc::mir::{Local, Body};
 use rustc::ty::{RegionVid, TyCtxt};
-use rustc_index::vec::Idx;
+use rustc_index::vec::{Idx, IndexVec};
 use syntax::source_map::Span;
 use syntax_pos::symbol::Symbol;
 
@@ -12,6 +12,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         fr: RegionVid,
     ) -> Option<(Option<Symbol>, Span)> {
@@ -27,8 +28,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             })
             .or_else(|| {
                 debug!("get_var_name_and_span_for_region: attempting argument");
-                self.get_argument_index_for_region(tcx, fr)
-                    .map(|index| self.get_argument_name_and_span_for_region(body, index))
+                self.get_argument_index_for_region(tcx, fr).map(|index| {
+                    self.get_argument_name_and_span_for_region(body, local_names, index)
+                })
             })
     }
 
@@ -117,13 +119,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     crate fn get_argument_name_and_span_for_region(
         &self,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         argument_index: usize,
     ) -> (Option<Symbol>, Span) {
         let implicit_inputs = self.universal_regions.defining_ty.implicit_inputs();
         let argument_local = Local::new(implicit_inputs + argument_index + 1);
         debug!("get_argument_name_and_span_for_region: argument_local={:?}", argument_local);
 
-        let argument_name = body.local_decls[argument_local].name;
+        let argument_name = local_names[argument_local];
         let argument_span = body.local_decls[argument_local].source_info.span;
         debug!("get_argument_name_and_span_for_region: argument_name={:?} argument_span={:?}",
                argument_name, argument_span);

@@ -148,9 +148,7 @@ fn temp_decl(mutability: Mutability, ty: Ty<'_>, span: Span) -> LocalDecl<'_> {
         mutability,
         ty,
         user_ty: UserTypeProjections::none(),
-        name: None,
         source_info,
-        visibility_scope: source_info.scope,
         internal: false,
         local_info: LocalInfo::Other,
         is_block_tail: None,
@@ -204,7 +202,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
             SourceScopeData { span: span, parent_scope: None }, 1
         ),
         ClearCrossCrate::Clear,
-        None,
         local_decls_for_sig(&sig, span),
         IndexVec::new(),
         sig.inputs().len(),
@@ -371,7 +368,6 @@ impl CloneShimBuilder<'tcx> {
                 SourceScopeData { span: self.span, parent_scope: None }, 1
             ),
             ClearCrossCrate::Clear,
-            None,
             self.local_decls,
             IndexVec::new(),
             self.sig.inputs().len(),
@@ -832,7 +828,6 @@ fn build_call_shim<'tcx>(
             SourceScopeData { span: span, parent_scope: None }, 1
         ),
         ClearCrossCrate::Clear,
-        None,
         local_decls,
         IndexVec::new(),
         sig.inputs().len(),
@@ -919,7 +914,6 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
             SourceScopeData { span: span, parent_scope: None }, 1
         ),
         ClearCrossCrate::Clear,
-        None,
         local_decls,
         IndexVec::new(),
         sig.inputs().len(),

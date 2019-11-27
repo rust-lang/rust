@@ -183,6 +183,9 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
 
         PlaceContext::MutatingUse(MutatingUseContext::Drop) =>
             Some(DefUse::Drop),
+
+        // Debug info is neither def nor use.
+        PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,
     }
 }
 

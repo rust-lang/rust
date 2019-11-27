@@ -62,7 +62,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_index::bit_set::{BitSet, BitMatrix};
 use std::borrow::Cow;
 use std::iter;
-use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
@@ -427,9 +426,7 @@ fn replace_result_variable<'tcx>(
         mutability: Mutability::Mut,
         ty: ret_ty,
         user_ty: UserTypeProjections::none(),
-        name: None,
         source_info,
-        visibility_scope: source_info.scope,
         internal: false,
         is_block_tail: None,
         local_info: LocalInfo::Other
@@ -788,18 +785,12 @@ fn compute_layout<'tcx>(
         }
     }
 
-    let dummy_local = LocalDecl::new_internal(tcx.mk_unit(), body.span);
-
-    // Gather live locals and their indices replacing values in body.local_decls
-    // with a dummy to avoid changing local indices.
+    // Gather live local types and their indices.
     let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
     let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
-    let mut decls = IndexVec::<GeneratorSavedLocal, _>::new();
     for (idx, local) in live_locals.iter().enumerate() {
-        let var = mem::replace(&mut body.local_decls[local], dummy_local.clone());
         locals.push(local);
-        tys.push(var.ty);
-        decls.push(var);
+        tys.push(body.local_decls[local].ty);
         debug!("generator saved local {:?} => {:?}", GeneratorSavedLocal::from(idx), local);
     }
 
@@ -831,7 +822,6 @@ fn compute_layout<'tcx>(
         field_tys: tys,
         variant_fields,
         storage_conflicts,
-        __local_debuginfo_codegen_only_do_not_use: decls,
     };
 
     (remap, layout, storage_liveness)
@@ -962,9 +952,7 @@ fn create_generator_drop_shim<'tcx>(
         mutability: Mutability::Mut,
         ty: tcx.mk_unit(),
         user_ty: UserTypeProjections::none(),
-        name: None,
         source_info,
-        visibility_scope: source_info.scope,
         internal: false,
         is_block_tail: None,
         local_info: LocalInfo::Other
@@ -980,9 +968,7 @@ fn create_generator_drop_shim<'tcx>(
             mutbl: hir::Mutability::Mutable,
         }),
         user_ty: UserTypeProjections::none(),
-        name: None,
         source_info,
-        visibility_scope: source_info.scope,
         internal: false,
         is_block_tail: None,
         local_info: LocalInfo::Other

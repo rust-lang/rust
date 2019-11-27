@@ -141,14 +141,8 @@ pub struct Body<'tcx> {
     /// This is used for the "rust-call" ABI.
     pub spread_arg: Option<Local>,
 
-    /// Names and capture modes of all the closure upvars, assuming
-    /// the first argument is either the closure or a reference to it.
-    //
-    // NOTE(eddyb) This is *strictly* a temporary hack for codegen
-    // debuginfo generation, and will be removed at some point.
-    // Do **NOT** use it for anything else; upvar information should not be
-    // in the MIR, so please rely on local crate HIR or other side-channels.
-    pub __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
+    /// Debug information pertaining to user variables, including captures.
+    pub var_debug_info: Vec<VarDebugInfo<'tcx>>,
 
     /// Mark this MIR of a const context other than const functions as having converted a `&&` or
     /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
@@ -170,11 +164,10 @@ impl<'tcx> Body<'tcx> {
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
         source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-        yield_ty: Option<Ty<'tcx>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
-        __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
+        var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         control_flow_destroyed: Vec<(Span, String)>,
     ) -> Self {
@@ -191,14 +184,14 @@ impl<'tcx> Body<'tcx> {
             basic_blocks,
             source_scopes,
             source_scope_local_data,
-            yield_ty,
+            yield_ty: None,
             generator_drop: None,
             generator_layout: None,
             local_decls,
             user_type_annotations,
             arg_count,
-            __upvar_debuginfo_codegen_only_do_not_use,
             spread_arg: None,
+            var_debug_info,
             span,
             cache: cache::Cache::new(),
             control_flow_destroyed,
@@ -280,7 +273,7 @@ impl<'tcx> Body<'tcx> {
             LocalKind::ReturnPointer
         } else if index < self.arg_count + 1 {
             LocalKind::Arg
-        } else if self.local_decls[local].name.is_some() {
+        } else if self.local_decls[local].is_user_variable() {
             LocalKind::Var
         } else {
             LocalKind::Temp
@@ -728,12 +721,6 @@ pub struct LocalDecl<'tcx> {
     // FIXME(matthewjasper) Don't store in this in `Body`
     pub user_ty: UserTypeProjections,
 
-    /// The name of the local, used in debuginfo and pretty-printing.
-    ///
-    /// Note that function arguments can also have this set to `Some(_)`
-    /// to generate better debuginfo.
-    pub name: Option<Name>,
-
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
@@ -785,9 +772,9 @@ pub struct LocalDecl<'tcx> {
     /// `drop(x)`, we want it to refer to `x: u32`.
     ///
     /// To allow both uses to work, we need to have more than a single scope
-    /// for a local. We have the `source_info.scope` represent the
-    /// "syntactic" lint scope (with a variable being under its let
-    /// block) while the `visibility_scope` represents the "local variable"
+    /// for a local. We have the `source_info.scope` represent the "syntactic"
+    /// lint scope (with a variable being under its let block) while the
+    /// `var_debug_info.source_info.scope` represents the "local variable"
     /// scope (where the "rest" of a block is under all prior let-statements).
     ///
     /// The end result looks like this:
@@ -806,18 +793,14 @@ pub struct LocalDecl<'tcx> {
     ///  │ │
     ///  │ │ │{ let y: u32 }
     ///  │ │ │
-    ///  │ │ │← y.visibility_scope
+    ///  │ │ │← y.var_debug_info.source_info.scope
     ///  │ │ │← `y + 2`
     ///  │
     ///  │ │{ let x: u32 }
-    ///  │ │← x.visibility_scope
+    ///  │ │← x.var_debug_info.source_info.scope
     ///  │ │← `drop(x)` // This accesses `x: u32`.
     /// ```
     pub source_info: SourceInfo,
-
-    /// Source scope within which the local is visible (for debuginfo)
-    /// (see `source_info` for more details).
-    pub visibility_scope: SourceScope,
 }
 
 /// Extra information about a local that's used for diagnostics.
@@ -955,9 +938,7 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability,
             ty,
             user_ty: UserTypeProjections::none(),
-            name: None,
             source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal,
             local_info: LocalInfo::Other,
             is_block_tail: None,
@@ -974,22 +955,27 @@ impl<'tcx> LocalDecl<'tcx> {
             ty: return_ty,
             user_ty: UserTypeProjections::none(),
             source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             is_block_tail: None,
-            name: None, // FIXME maybe we do want some name here?
             local_info: LocalInfo::Other,
         }
     }
 }
 
-/// A closure capture, with its name and mode.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct UpvarDebuginfo {
-    pub debug_name: Name,
+/// Debug information pertaining to a user variable.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub struct VarDebugInfo<'tcx> {
+    pub name: Name,
 
-    /// If true, the capture is behind a reference.
-    pub by_ref: bool,
+    /// Source info of the user variable, including the scope
+    /// within which the variable is visible (to debuginfo)
+    /// (see `LocalDecl`'s `source_info` field for more details).
+    pub source_info: SourceInfo,
+
+    /// Where the data for this user variable is to be found.
+    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
+    /// based on a `Local`, not a `Static`, and contains no indexing.
+    pub place: Place<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2758,16 +2744,6 @@ pub struct GeneratorLayout<'tcx> {
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
     pub storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
-
-    /// The names and scopes of all the stored generator locals.
-    ///
-    /// N.B., this is *strictly* a temporary hack for codegen
-    /// debuginfo generation, and will be removed at some point.
-    /// Do **NOT** use it for anything else, local information should not be
-    /// in the MIR, please rely on local crate HIR or other side-channels.
-    //
-    // FIXME(tmandry): see above.
-    pub __local_debuginfo_codegen_only_do_not_use: IndexVec<GeneratorSavedLocal, LocalDecl<'tcx>>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -2946,7 +2922,6 @@ CloneTypeFoldableAndLiftImpls! {
     MirPhase,
     Mutability,
     SourceInfo,
-    UpvarDebuginfo,
     FakeReadCause,
     RetagKind,
     SourceScope,

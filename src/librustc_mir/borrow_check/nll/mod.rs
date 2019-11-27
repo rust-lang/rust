@@ -16,6 +16,7 @@ use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_index::vec::IndexVec;
 use rustc_errors::Diagnostic;
+use syntax_pos::symbol::Symbol;
 use std::fmt::Debug;
 use std::env;
 use std::io;
@@ -158,6 +159,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     universal_regions: UniversalRegions<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexVec<Promoted, Body<'tcx>>,
+    local_names: &IndexVec<Local, Option<Symbol>>,
     upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
@@ -281,7 +283,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let closure_region_requirements =
-        regioncx.solve(infcx, &body, upvars, def_id, errors_buffer);
+        regioncx.solve(infcx, body, local_names, upvars, def_id, errors_buffer);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.

@@ -36,6 +36,7 @@ use rustc_data_structures::graph::vec_graph::VecGraph;
 use rustc_index::vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
 use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 
 crate use self::error_reporting::{RegionName, RegionNameSource, RegionErrorNamingCtx};
 use self::values::{LivenessValues, RegionValueElements, RegionValues};
@@ -471,6 +472,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &mut self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         errors_buffer: &mut Vec<Diagnostic>,
@@ -502,6 +504,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         self.check_universal_regions(
             infcx,
             body,
+            local_names,
             upvars,
             mir_def_id,
             outlives_requirements.as_mut(),
@@ -1321,13 +1324,14 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
         errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) {
-        let mut outlives_suggestion = OutlivesSuggestionBuilder::new(mir_def_id);
+        let mut outlives_suggestion = OutlivesSuggestionBuilder::new(mir_def_id, local_names);
 
         for (fr, fr_definition) in self.definitions.iter_enumerated() {
             match fr_definition.origin {
@@ -1338,6 +1342,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     self.check_universal_region(
                         infcx,
                         body,
+                        local_names,
                         upvars,
                         mir_def_id,
                         fr,
@@ -1374,11 +1379,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         longer_fr: RegionVid,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
-        outlives_suggestion: &mut OutlivesSuggestionBuilder,
+        outlives_suggestion: &mut OutlivesSuggestionBuilder<'_>,
         errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) {
@@ -1404,6 +1410,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 representative,
                 infcx,
                 body,
+                local_names,
                 upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
@@ -1422,6 +1429,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 shorter_fr,
                 infcx,
                 body,
+                local_names,
                 upvars,
                 mir_def_id,
                 propagated_outlives_requirements,
@@ -1445,10 +1453,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         shorter_fr: RegionVid,
         infcx: &InferCtxt<'_, 'tcx>,
         body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
         upvars: &[Upvar],
         mir_def_id: DefId,
         propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
-        outlives_suggestion: &mut OutlivesSuggestionBuilder,
+        outlives_suggestion: &mut OutlivesSuggestionBuilder<'_>,
         errors_buffer: &mut Vec<Diagnostic>,
         region_naming: &mut RegionErrorNamingCtx,
     ) -> Option<ErrorReported> {
@@ -1502,6 +1511,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // error. This gives better error messages in some cases.
         let db = self.report_error(
             body,
+            local_names,
             upvars,
             infcx,
             mir_def_id,

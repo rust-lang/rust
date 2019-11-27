@@ -322,7 +322,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if decl.is_ref_for_guard() {
                 let mut err = self.cannot_move_out_of(
                     span,
-                    &format!("`{}` in pattern guard", decl.name.unwrap()),
+                    &format!("`{}` in pattern guard", self.local_names[*local].unwrap()),
                 );
                 err.note(
                     "variables bound in patterns cannot be moved from \
@@ -571,7 +571,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             if binds_to.len() == 1 {
                 self.note_type_does_not_implement_copy(
                     err,
-                    &format!("`{}`", bind_to.name.unwrap()),
+                    &format!("`{}`", self.local_names[*local].unwrap()),
                     bind_to.ty,
                     Some(binding_span)
                 );

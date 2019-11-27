@@ -50,8 +50,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if access_place.as_local().is_some() {
                     reason = ", as it is not declared as mutable".to_string();
                 } else {
-                    let name = self.body.local_decls[*local]
-                        .name
+                    let name = self.local_names[*local]
                         .expect("immutable unnamed local");
                     reason = format!(", as `{}` is not declared as mutable", name);
                 }
@@ -253,7 +252,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         // Deliberately fall into this case for all implicit self types,
                         // so that we don't fall in to the next case with them.
                         kind == mir::ImplicitSelfKind::MutRef
-                    } else if Some(kw::SelfLower) == local_decl.name {
+                    } else if Some(kw::SelfLower) == self.local_names[*local] {
                         // Otherwise, check if the name is the self kewyord - in which case
                         // we have an explicit self. Do the same thing in this case and check
                         // for a `self: &mut Self` to suggest removing the `&mut`.
@@ -290,7 +289,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 err.span_suggestion(
                     local_decl.source_info.span,
                     "consider changing this to be mutable",
-                    format!("mut {}", local_decl.name.unwrap()),
+                    format!("mut {}", self.local_names[*local].unwrap()),
                     Applicability::MachineApplicable,
                 );
             }
@@ -415,7 +414,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     );
                 }
 
-                match local_decl.name {
+                match self.local_names[*local] {
                     Some(name) if !local_decl.from_compiler_desugaring() => {
                         err.span_label(
                             span,
