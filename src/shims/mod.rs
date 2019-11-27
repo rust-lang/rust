@@ -16,25 +16,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
-        dest: Option<PlaceTy<'tcx, Tag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
         trace!(
             "eval_fn_call: {:#?}, {:?}",
             instance,
-            dest.map(|place| *place)
+            ret.map(|p| *p.0)
         );
 
         // There are some more lang items we want to hook that CTFE does not hook (yet).
         if this.tcx.lang_items().align_offset_fn() == Some(instance.def.def_id()) {
-            let dest = dest.unwrap();
+            let (dest, ret) = ret.unwrap();
             let n = this
                 .align_offset(args[0], args[1])?
                 .unwrap_or_else(|| this.truncate(u128::max_value(), dest.layout));
             this.write_scalar(Scalar::from_uint(n, dest.layout.size), dest)?;
-            this.goto_block(ret)?;
+            this.go_to_block(ret);
             return Ok(None);
         }
 
@@ -46,7 +45,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // to run extra MIR), and Ok(Some(body)) if we found MIR to run for the
             // foreign function
             // Any needed call to `goto_block` will be performed by `emulate_foreign_item`.
-            return this.emulate_foreign_item(instance.def_id(), args, dest, ret, unwind);
+            return this.emulate_foreign_item(instance.def_id(), args, ret, unwind);
         }
 
         // Otherwise, load the MIR.

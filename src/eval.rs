@@ -201,16 +201,18 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     // Process the result.
     match res {
         Ok(return_code) => {
-            let leaks = ecx.memory.leak_report();
             // Disable the leak test on some platforms where we do not
             // correctly implement TLS destructors.
             let target_os = ecx.tcx.tcx.sess.target.target.target_os.to_lowercase();
             let ignore_leaks = target_os == "windows" || target_os == "macos";
-            if !ignore_leaks && leaks != 0 {
-                tcx.sess.err("the evaluated program leaked memory");
-                // Ignore the provided return code - let the reported error
-                // determine the return code.
-                return None;
+            if !ignore_leaks {
+                let leaks = ecx.memory.leak_report();
+                if leaks != 0 {
+                    tcx.sess.err("the evaluated program leaked memory");
+                    // Ignore the provided return code - let the reported error
+                    // determine the return code.
+                    return None;
+                }
             }
             return Some(return_code)
         }

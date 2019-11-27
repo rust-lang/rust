@@ -53,10 +53,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.machine.panic_payload = Some(scalar);
 
         // Jump to the unwind block to begin unwinding.
-        // We don't use `goto_block` as that is just meant for normal returns.
-        let next_frame = this.frame_mut();
-        next_frame.block = unwind;
-        next_frame.stmt = 0;
+        this.unwind_to_block(unwind);
         return Ok(())
     }
 

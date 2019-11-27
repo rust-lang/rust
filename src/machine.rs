@@ -186,11 +186,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
-        dest: Option<PlaceTy<'tcx, Tag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
-        ecx.find_fn(instance, args, dest, ret, unwind)
+        ecx.find_fn(instance, args, ret, unwind)
     }
 
     #[inline(always)]
@@ -198,10 +197,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Dlsym,
         args: &[OpTy<'tcx, Tag>],
-        dest: Option<PlaceTy<'tcx, Tag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
+        _unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        ecx.call_dlsym(fn_val, args, dest, ret)
+        ecx.call_dlsym(fn_val, args, ret)
     }
 
     #[inline(always)]
@@ -210,11 +209,10 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
-        dest: Option<PlaceTy<'tcx, Tag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        ecx.call_intrinsic(span, instance, args, dest, ret, unwind)
+        ecx.call_intrinsic(span, instance, args, ret, unwind)
     }
 
     #[inline(always)]

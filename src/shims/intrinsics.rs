@@ -16,12 +16,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
-        dest: Option<PlaceTy<'tcx, Tag>>,
-        _ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
-        if this.emulate_intrinsic(span, instance, args, dest)? {
+        if this.emulate_intrinsic(span, instance, args, ret)? {
             return Ok(());
         }
         let tcx = &{this.tcx.tcx};
@@ -32,23 +31,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // that might still hang around!
         let intrinsic_name = &*tcx.item_name(instance.def_id()).as_str();
 
-        // Handle diverging intrinsics
-        match intrinsic_name {
+        // Handle diverging intrinsics.
+        let (dest, ret) = match intrinsic_name {
             "abort" => {
                 // FIXME: Add a better way of indicating 'abnormal' termination,
                 // since this is not really an 'unsupported' behavior
                 throw_unsup_format!("the evaluated program aborted!");
             }
             "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
-            _ => {}
-        }
-
-        // Handle non-diverging intrinsics
-        // The intrinsic itself cannot diverge (otherwise, we would have handled it above),
-        // so if we got here without a return place that's UB (can happen e.g., for transmute returning `!`).
-        let dest = match dest {
-            Some(dest) => dest,
-            None => throw_ub!(Unreachable)
+            _ => {
+                if let Some(p) = ret {
+                    p
+                } else {
+                    throw_unsup_format!("unimplemented (diverging) intrinsic: {}", intrinsic_name);
+                }
+            }
         };
 
         match intrinsic_name {
@@ -581,6 +578,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             name => throw_unsup_format!("unimplemented intrinsic: {}", name),
         }
 
+        this.dump_place(*dest);
+        this.go_to_block(ret);
         Ok(())
     }
 }

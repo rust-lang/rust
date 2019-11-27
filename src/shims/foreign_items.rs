@@ -114,8 +114,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         &mut self,
         def_id: DefId,
         args: &[OpTy<'tcx, Tag>],
-        dest: Option<PlaceTy<'tcx, Tag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Tag>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         let this = self.eval_context_mut();
@@ -129,7 +128,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tcx = &{ this.tcx.tcx };
 
         // First: functions that diverge.
-        match link_name {
+        let (dest, ret) = match link_name {
             // Note that this matches calls to the *foreign* item `__rust_start_panic* -
             // that is, calls to `extern "Rust" { fn __rust_start_panic(...) }`.
             // We forward this to the underlying *implementation* in the panic runtime crate.
@@ -154,15 +153,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 return Err(InterpError::Exit(code).into());
             }
             _ => {
-                if dest.is_none() {
+                if let Some(p) = ret {
+                    p
+                } else {
                     throw_unsup_format!("can't call (diverging) foreign function: {}", link_name);
                 }
             }
-        }
+        };
 
-        // Next: functions that assume a ret and dest.
-        let dest = dest.expect("we already checked for a dest");
-        let ret = ret.expect("dest is `Some` but ret is `None`");
+        // Next: functions that return.
         match link_name {
             "malloc" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
@@ -928,8 +927,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             _ => throw_unsup_format!("can't call foreign function: {}", link_name),
         }
 
-        this.goto_block(Some(ret))?;
         this.dump_place(*dest);
+        this.go_to_block(ret);
         Ok(None)
     }
 
