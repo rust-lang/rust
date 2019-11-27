@@ -42,7 +42,11 @@ pub enum InstanceDef<'tcx> {
     /// `DefId` is `FnTrait::call_*`.
     FnPtrShim(DefId, Ty<'tcx>),
 
-    /// `<dyn Trait as Trait>::fn`
+    /// `<dyn Trait as Trait>::fn`, "direct calls" of which are implicitly
+    /// codegen'd as virtual calls.
+    ///
+    /// NB: if this is reified to a `fn` pointer, a `ReifyShim` is used
+    /// (see `ReifyShim` above for more details on that).
     Virtual(DefId, usize),
 
     /// `<[mut closure] as FnOnce>::call_once`
