@@ -1,5 +1,14 @@
+error[E0277]: the trait bound `T: TraitWithAssoc` is not satisfied
+  --> $DIR/bound_reduction2.rs:10:1
+   |
+LL | type Foo<V> = impl Trait<V>;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `TraitWithAssoc` is not implemented for `T`
+...
+LL | fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
+   |                  -- help: consider further restricting this bound: `T: TraitWithAssoc +`
+
 error: defining opaque type use does not fully define opaque type: generic parameter `V` is specified as concrete type `<T as TraitWithAssoc>::Assoc`
-  --> $DIR/bound_reduction2.rs:17:1
+  --> $DIR/bound_reduction2.rs:18:1
    |
 LL | / fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {
 LL | |     ()
@@ -12,5 +21,6 @@ error: could not find defining uses
 LL | type Foo<V> = impl Trait<V>;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0277`.
