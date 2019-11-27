@@ -1,5 +1,5 @@
 use crate::interface::{Compiler, Result};
-use crate::passes::{self, BoxedResolver, BoxedGlobalCtxt};
+use crate::passes::{self, BoxedResolver, QueryContext};
 
 use rustc_incremental::DepGraphFuture;
 use rustc_data_structures::sync::{Lrc, Once, WorkerLocal};
@@ -85,7 +85,7 @@ pub struct Queries<'tcx> {
     dep_graph: Query<DepGraph>,
     lower_to_hir: Query<(&'tcx hir::map::Forest, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
-    global_ctxt: Query<BoxedGlobalCtxt<'tcx>>,
+    global_ctxt: Query<QueryContext<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
 }
 
@@ -253,7 +253,7 @@ impl<'tcx> Queries<'tcx> {
         })
     }
 
-    pub fn global_ctxt(&'tcx self) -> Result<&Query<BoxedGlobalCtxt<'tcx>>> {
+    pub fn global_ctxt(&'tcx self) -> Result<&Query<QueryContext<'tcx>>> {
         self.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();

@@ -741,9 +741,9 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
     rustc_codegen_ssa::provide_extern(providers);
 }
 
-pub struct BoxedGlobalCtxt<'tcx>(&'tcx GlobalCtxt<'tcx>);
+pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
 
-impl<'tcx> BoxedGlobalCtxt<'tcx> {
+impl<'tcx> QueryContext<'tcx> {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(TyCtxt<'tcx>) -> R,
@@ -766,7 +766,7 @@ pub fn create_global_ctxt<'tcx>(
     global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
     arenas: &'tcx Once<AllArenas>,
     local_arena: &'tcx WorkerLocal<Arena<'tcx>>,
-) -> BoxedGlobalCtxt<'tcx> {
+) -> QueryContext<'tcx> {
     let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
 
@@ -813,7 +813,7 @@ pub fn create_global_ctxt<'tcx>(
         time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
     });
 
-    BoxedGlobalCtxt(gcx)
+    QueryContext(gcx)
 }
 
 /// Runs the resolution, type-checking, region checking and other
