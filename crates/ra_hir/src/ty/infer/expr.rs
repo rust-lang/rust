@@ -100,7 +100,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: pat_ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: into_iter_item_alias.id,
+                                associated_ty: into_iter_item_alias,
                                 parameters: Substs::single(iterable_ty),
                             },
                         };
@@ -230,7 +230,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         }
                     });
                     if let Some(field_def) = field_def {
-                        self.result.record_field_resolutions.insert(field.expr, field_def);
+                        self.result.record_field_resolutions.insert(field.expr, field_def.into());
                     }
                     let field_ty = field_def
                         .map_or(Ty::Unknown, |it| field_types[it.id].clone())
@@ -262,7 +262,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             self.db.struct_data(s).variant_data.field(name).map(|local_id| {
                                 let field = StructFieldId { parent: s.into(), local_id }.into();
                                 self.write_field_resolution(tgt_expr, field);
-                                self.db.field_types(s.into())[field.id]
+                                self.db.field_types(s.into())[field.local_id]
                                     .clone()
                                     .subst(&a_ty.parameters)
                             })
@@ -285,7 +285,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: future_future_output_alias.id,
+                                associated_ty: future_future_output_alias,
                                 parameters: Substs::single(inner_ty),
                             },
                         };
@@ -304,7 +304,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
-                                associated_ty: ops_try_ok_alias.id,
+                                associated_ty: ops_try_ok_alias,
                                 parameters: Substs::single(inner_ty),
                             },
                         };
@@ -557,7 +557,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
-                (ty, self.db.value_ty(func.id.into()), Some(self.db.generic_params(func.id.into())))
+                (ty, self.db.value_ty(func.into()), Some(self.db.generic_params(func.into())))
             }
             None => (receiver_ty, Ty::Unknown, None),
         };

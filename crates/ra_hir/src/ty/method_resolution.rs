@@ -7,7 +7,7 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use hir_def::{
     lang_item::LangItemTarget, resolver::HasResolver, resolver::Resolver, type_ref::Mutability,
-    AssocItemId, AstItemDef, HasModule, ImplId, TraitId,
+    AssocItemId, AstItemDef, FunctionId, HasModule, ImplId, TraitId,
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
@@ -18,7 +18,6 @@ use crate::{
     db::HirDatabase,
     ty::primitive::{FloatBitness, Uncertain},
     ty::{utils::all_super_traits, Ty, TypeCtor},
-    Function,
 };
 
 use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
@@ -154,10 +153,10 @@ pub(crate) fn lookup_method(
     db: &impl HirDatabase,
     name: &Name,
     resolver: &Resolver,
-) -> Option<(Ty, Function)> {
+) -> Option<(Ty, FunctionId)> {
     iterate_method_candidates(ty, db, resolver, Some(name), LookupMode::MethodCall, |ty, f| match f
     {
-        AssocItemId::FunctionId(f) => Some((ty.clone(), f.into())),
+        AssocItemId::FunctionId(f) => Some((ty.clone(), f)),
         _ => None,
     })
 }

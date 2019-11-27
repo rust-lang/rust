@@ -214,17 +214,17 @@ impl SourceAnalyzer {
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         let expr_id = self.expr_id(&call.clone().into())?;
-        self.infer.as_ref()?.method_resolution(expr_id)
+        self.infer.as_ref()?.method_resolution(expr_id).map(Function::from)
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
         let expr_id = self.expr_id(&field.clone().into())?;
-        self.infer.as_ref()?.field_resolution(expr_id)
+        self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
     }
 
     pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<crate::StructField> {
         let expr_id = self.expr_id(&field.expr()?)?;
-        self.infer.as_ref()?.record_field_resolution(expr_id)
+        self.infer.as_ref()?.record_field_resolution(expr_id).map(|it| it.into())
     }
 
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<crate::VariantDef> {

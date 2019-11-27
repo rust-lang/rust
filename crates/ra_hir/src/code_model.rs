@@ -647,7 +647,7 @@ impl Function {
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         let infer = self.infer(db);
-        infer.add_diagnostics(db, self, sink);
+        infer.add_diagnostics(db, self.id, sink);
         let mut validator = ExprValidator::new(self, infer, sink);
         validator.validate_body(db);
     }

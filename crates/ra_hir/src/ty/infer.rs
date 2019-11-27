@@ -22,11 +22,13 @@ use ena::unify::{InPlaceUnificationTable, NoError, UnifyKey, UnifyValue};
 use rustc_hash::FxHashMap;
 
 use hir_def::{
+    body::Body,
     data::{ConstData, FunctionData},
-    path::known,
+    expr::{BindingAnnotation, ExprId, PatId},
+    path::{known, Path},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AdtId, AssocItemId, DefWithBodyId,
+    AdtId, AssocItemId, DefWithBodyId, FunctionId, StructFieldId, TypeAliasId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name};
 use ra_arena::map::ArenaMap;
@@ -34,16 +36,14 @@ use ra_prof::profile;
 use test_utils::tested_by;
 
 use super::{
+    primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
     ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
     TypeWalk, Uncertain,
 };
 use crate::{
-    code_model::TypeAlias,
-    db::HirDatabase,
-    expr::{BindingAnnotation, Body, ExprId, PatId},
-    ty::infer::diagnostics::InferenceDiagnostic,
-    AssocItem, DefWithBody, FloatTy, Function, IntTy, Path, StructField, VariantDef,
+    db::HirDatabase, ty::infer::diagnostics::InferenceDiagnostic, AssocItem, DefWithBody,
+    VariantDef,
 };
 
 macro_rules! ty_app {
@@ -121,11 +121,11 @@ pub struct TypeMismatch {
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct InferenceResult {
     /// For each method call expr, records the function it resolves to.
-    method_resolutions: FxHashMap<ExprId, Function>,
+    method_resolutions: FxHashMap<ExprId, FunctionId>,
     /// For each field access expr, records the field it resolves to.
-    field_resolutions: FxHashMap<ExprId, StructField>,
+    field_resolutions: FxHashMap<ExprId, StructFieldId>,
     /// For each field in record literal, records the field it resolves to.
-    record_field_resolutions: FxHashMap<ExprId, StructField>,
+    record_field_resolutions: FxHashMap<ExprId, StructFieldId>,
     /// For each struct literal, records the variant it resolves to.
     variant_resolutions: FxHashMap<ExprOrPatId, VariantDef>,
     /// For each associated item record what it resolves to
@@ -137,13 +137,13 @@ pub struct InferenceResult {
 }
 
 impl InferenceResult {
-    pub fn method_resolution(&self, expr: ExprId) -> Option<Function> {
+    pub fn method_resolution(&self, expr: ExprId) -> Option<FunctionId> {
         self.method_resolutions.get(&expr).copied()
     }
-    pub fn field_resolution(&self, expr: ExprId) -> Option<StructField> {
+    pub fn field_resolution(&self, expr: ExprId) -> Option<StructFieldId> {
         self.field_resolutions.get(&expr).copied()
     }
-    pub fn record_field_resolution(&self, expr: ExprId) -> Option<StructField> {
+    pub fn record_field_resolution(&self, expr: ExprId) -> Option<StructFieldId> {
         self.record_field_resolutions.get(&expr).copied()
     }
     pub fn variant_resolution_for_expr(&self, id: ExprId) -> Option<VariantDef> {
@@ -164,7 +164,7 @@ impl InferenceResult {
     pub(crate) fn add_diagnostics(
         &self,
         db: &impl HirDatabase,
-        owner: Function,
+        owner: FunctionId,
         sink: &mut DiagnosticSink,
     ) {
         self.diagnostics.iter().for_each(|it| it.add_to(db, owner, sink))
@@ -243,11 +243,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.result.type_of_expr.insert(expr, ty);
     }
 
-    fn write_method_resolution(&mut self, expr: ExprId, func: Function) {
+    fn write_method_resolution(&mut self, expr: ExprId, func: FunctionId) {
         self.result.method_resolutions.insert(expr, func);
     }
 
-    fn write_field_resolution(&mut self, expr: ExprId, field: StructField) {
+    fn write_field_resolution(&mut self, expr: ExprId, field: StructFieldId) {
         self.result.field_resolutions.insert(expr, field);
     }
 
@@ -557,22 +557,22 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.infer_expr(self.body.body_expr, &Expectation::has_type(self.return_ty.clone()));
     }
 
-    fn resolve_into_iter_item(&self) -> Option<TypeAlias> {
+    fn resolve_into_iter_item(&self) -> Option<TypeAliasId> {
         let path = known::std_iter_into_iterator();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::ITEM_TYPE).map(TypeAlias::from)
+        self.db.trait_data(trait_).associated_type_by_name(&name::ITEM_TYPE)
     }
 
-    fn resolve_ops_try_ok(&self) -> Option<TypeAlias> {
+    fn resolve_ops_try_ok(&self) -> Option<TypeAliasId> {
         let path = known::std_ops_try();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE).map(TypeAlias::from)
+        self.db.trait_data(trait_).associated_type_by_name(&name::OK_TYPE)
     }
 
-    fn resolve_future_future_output(&self) -> Option<TypeAlias> {
+    fn resolve_future_future_output(&self) -> Option<TypeAliasId> {
         let path = known::std_future_future();
         let trait_ = self.resolver.resolve_known_trait(self.db, &path)?;
-        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE).map(TypeAlias::from)
+        self.db.trait_data(trait_).associated_type_by_name(&name::OUTPUT_TYPE)
     }
 
     fn resolve_boxed_box(&self) -> Option<AdtId> {
@@ -696,9 +696,10 @@ impl Expectation {
 }
 
 mod diagnostics {
+    use hir_def::{expr::ExprId, FunctionId, HasSource, Lookup};
     use hir_expand::diagnostics::DiagnosticSink;
 
-    use crate::{db::HirDatabase, diagnostics::NoSuchField, expr::ExprId, Function, HasSource};
+    use crate::{db::HirDatabase, diagnostics::NoSuchField};
 
     #[derive(Debug, PartialEq, Eq, Clone)]
     pub(super) enum InferenceDiagnostic {
@@ -709,13 +710,14 @@ mod diagnostics {
         pub(super) fn add_to(
             &self,
             db: &impl HirDatabase,
-            owner: Function,
+            owner: FunctionId,
             sink: &mut DiagnosticSink,
         ) {
             match self {
                 InferenceDiagnostic::NoSuchField { expr, field } => {
-                    let file = owner.source(db).file_id;
-                    let field = owner.body_source_map(db).field_syntax(*expr, *field);
+                    let file = owner.lookup(db).source(db).file_id;
+                    let (_, source_map) = db.body_with_source_map(owner.into());
+                    let field = source_map.field_syntax(*expr, *field);
                     sink.push(NoSuchField { file, field })
                 }
             }
