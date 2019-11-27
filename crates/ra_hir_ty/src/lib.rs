@@ -901,12 +901,10 @@ impl HirDisplay for ApplicationTy {
                 let sig = f.db.callable_item_signature(def);
                 let name = match def {
                     CallableDef::FunctionId(ff) => f.db.function_data(ff).name.clone(),
-                    CallableDef::StructId(s) => {
-                        f.db.struct_data(s).name.clone().unwrap_or_else(Name::missing)
-                    }
+                    CallableDef::StructId(s) => f.db.struct_data(s).name.clone(),
                     CallableDef::EnumVariantId(e) => {
                         let enum_data = f.db.enum_data(e.parent);
-                        enum_data.variants[e.local_id].name.clone().unwrap_or_else(Name::missing)
+                        enum_data.variants[e.local_id].name.clone()
                     }
                 };
                 match def {
@@ -929,8 +927,7 @@ impl HirDisplay for ApplicationTy {
                     AdtId::StructId(it) => f.db.struct_data(it).name.clone(),
                     AdtId::UnionId(it) => f.db.union_data(it).name.clone(),
                     AdtId::EnumId(it) => f.db.enum_data(it).name.clone(),
-                }
-                .unwrap_or_else(Name::missing);
+                };
                 write!(f, "{}", name)?;
                 if self.parameters.len() > 0 {
                     write!(f, "<")?;
@@ -943,7 +940,7 @@ impl HirDisplay for ApplicationTy {
                     ContainerId::TraitId(it) => it,
                     _ => panic!("not an associated type"),
                 };
-                let trait_name = f.db.trait_data(trait_).name.clone().unwrap_or_else(Name::missing);
+                let trait_name = f.db.trait_data(trait_).name.clone();
                 let name = f.db.type_alias_data(type_alias).name.clone();
                 write!(f, "{}::{}", trait_name, name)?;
                 if self.parameters.len() > 0 {
@@ -971,8 +968,7 @@ impl HirDisplay for ProjectionTy {
             return write!(f, "…");
         }
 
-        let trait_name =
-            f.db.trait_data(self.trait_(f.db)).name.clone().unwrap_or_else(Name::missing);
+        let trait_name = f.db.trait_data(self.trait_(f.db)).name.clone();
         write!(f, "<{} as {}", self.parameters[0].display(f.db), trait_name,)?;
         if self.parameters.len() > 1 {
             write!(f, "<")?;
@@ -1021,14 +1017,7 @@ impl HirDisplay for Ty {
                             // We assume that the self type is $0 (i.e. the
                             // existential) here, which is the only thing that's
                             // possible in actual Rust, and hence don't print it
-                            write!(
-                                f,
-                                "{}",
-                                f.db.trait_data(trait_ref.trait_)
-                                    .name
-                                    .clone()
-                                    .unwrap_or_else(Name::missing)
-                            )?;
+                            write!(f, "{}", f.db.trait_data(trait_ref.trait_).name.clone())?;
                             if trait_ref.substs.len() > 1 {
                                 write!(f, "<")?;
                                 f.write_joined(&trait_ref.substs[1..], ", ")?;
@@ -1088,7 +1077,7 @@ impl TraitRef {
         } else {
             write!(f, ": ")?;
         }
-        write!(f, "{}", f.db.trait_data(self.trait_).name.clone().unwrap_or_else(Name::missing))?;
+        write!(f, "{}", f.db.trait_data(self.trait_).name.clone())?;
         if self.substs.len() > 1 {
             write!(f, "<")?;
             f.write_joined(&self.substs[1..], ", ")?;

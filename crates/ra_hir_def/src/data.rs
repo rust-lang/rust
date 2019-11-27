@@ -86,7 +86,7 @@ impl TypeAliasData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitData {
-    pub name: Option<Name>,
+    pub name: Name,
     pub items: Vec<(Name, AssocItemId)>,
     pub auto: bool,
 }
@@ -94,7 +94,7 @@ pub struct TraitData {
 impl TraitData {
     pub(crate) fn trait_data_query(db: &impl DefDatabase, tr: TraitId) -> Arc<TraitData> {
         let src = tr.source(db);
-        let name = src.value.name().map(|n| n.as_name());
+        let name = src.value.name().map_or_else(Name::missing, |n| n.as_name());
         let auto = src.value.is_auto();
         let ast_id_map = db.ast_id_map(src.file_id);
 
@@ -104,7 +104,7 @@ impl TraitData {
                 .impl_items()
                 .map(|item_node| match item_node {
                     ast::ImplItem::FnDef(it) => {
-                        let name = it.name().map(|it| it.as_name()).unwrap_or_else(Name::missing);
+                        let name = it.name().map_or_else(Name::missing, |it| it.as_name());
                         let def = FunctionLoc {
                             container,
                             ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
@@ -114,7 +114,7 @@ impl TraitData {
                         (name, def)
                     }
                     ast::ImplItem::ConstDef(it) => {
-                        let name = it.name().map(|it| it.as_name()).unwrap_or_else(Name::missing);
+                        let name = it.name().map_or_else(Name::missing, |it| it.as_name());
                         let def = ConstLoc {
                             container,
                             ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
@@ -124,7 +124,7 @@ impl TraitData {
                         (name, def)
                     }
                     ast::ImplItem::TypeAliasDef(it) => {
-                        let name = it.name().map(|it| it.as_name()).unwrap_or_else(Name::missing);
+                        let name = it.name().map_or_else(Name::missing, |it| it.as_name());
                         let def = TypeAliasLoc {
                             container,
                             ast_id: AstId::new(src.file_id, ast_id_map.ast_id(&it)),
@@ -214,6 +214,7 @@ impl ImplData {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConstData {
+    /// const _: () = ();
     pub name: Option<Name>,
     pub type_ref: TypeRef,
 }

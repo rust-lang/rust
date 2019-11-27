@@ -93,12 +93,9 @@ impl FunctionSignature {
             _ => (),
         };
 
-        let parent_name = match variant.parent_enum(db).name(db) {
-            Some(name) => name.to_string(),
-            None => "missing".into(),
-        };
+        let parent_name = variant.parent_enum(db).name(db).to_string();
 
-        let name = format!("{}::{}", parent_name, variant.name(db).unwrap());
+        let name = format!("{}::{}", parent_name, variant.name(db));
 
         let params = variant
             .fields(db)

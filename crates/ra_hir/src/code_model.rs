@@ -330,7 +330,7 @@ impl Struct {
         Some(self.module(db).krate())
     }
 
-    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Name {
         db.struct_data(self.id.into()).name.clone()
     }
 
@@ -371,7 +371,7 @@ pub struct Union {
 }
 
 impl Union {
-    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Name {
         db.union_data(self.id).name.clone()
     }
 
@@ -420,7 +420,7 @@ impl Enum {
         Some(self.module(db).krate())
     }
 
-    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Name {
         db.enum_data(self.id).name.clone()
     }
 
@@ -433,11 +433,8 @@ impl Enum {
     }
 
     pub fn variant(self, db: &impl DefDatabase, name: &Name) -> Option<EnumVariant> {
-        db.enum_data(self.id)
-            .variants
-            .iter()
-            .find(|(_id, data)| data.name.as_ref() == Some(name))
-            .map(|(id, _)| EnumVariant { parent: self, id })
+        let id = db.enum_data(self.id).variant(name)?;
+        Some(EnumVariant { parent: self, id })
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
@@ -459,7 +456,7 @@ impl EnumVariant {
         self.parent
     }
 
-    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Name {
         db.enum_data(self.parent.id).variants[self.id].name.clone()
     }
 
@@ -720,7 +717,7 @@ impl Trait {
         Module { id: self.id.module(db) }
     }
 
-    pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
+    pub fn name(self, db: &impl DefDatabase) -> Name {
         db.trait_data(self.id).name.clone()
     }
 
