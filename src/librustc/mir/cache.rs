@@ -114,7 +114,7 @@ impl Cache {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, TypeFoldable)]
+#[derive(Clone, Debug, HashStable, RustcEncodable, RustcDecodable, TypeFoldable)]
 pub struct BodyCache<'tcx> {
     cache: Cache,
     body: Body<'tcx>,
@@ -297,8 +297,3 @@ impl Index<BasicBlock> for ReadOnlyBodyCache<'a, 'tcx> {
 CloneTypeFoldableAndLiftImpls! {
     Cache,
 }
-
-impl_stable_hash_for!(struct BodyCache<'tcx> {
-    cache,
-    body,
-});
