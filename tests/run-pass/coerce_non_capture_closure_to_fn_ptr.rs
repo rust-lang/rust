@@ -31,12 +31,4 @@ fn main() {
     g(2);
     let g = force_mut1(|i| assert_eq!(i, 2)) as fn(i32);
     g(2);
-
-    // FIXME: This fails with "invalid use of NULL pointer" <https://github.com/rust-lang/miri/issues/1075>
-    //let h: fn() -> ! = || std::process::exit(0);
-    //h();
-    // FIXME: This does not even compile?!? <https://github.com/rust-lang/rust/issues/66738>
-    //let h = magic0(|| std::process::exit(0)) as fn() -> !;
-    //h();
-    // Once these tests pass, they should be in separate files as they terminate the process.
 }
