@@ -23,13 +23,12 @@ use hir_def::{
     GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name::Name;
-use ra_db::{impl_intern_key, salsa};
+use ra_db::{impl_intern_key, salsa, CrateId};
 
 use crate::{
     db::HirDatabase,
     ty::primitive::{FloatTy, IntTy, Uncertain},
     util::make_mut_slice,
-    Crate,
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -162,7 +161,7 @@ impl TypeCtor {
         }
     }
 
-    pub fn krate(self, db: &impl HirDatabase) -> Option<Crate> {
+    pub fn krate(self, db: &impl HirDatabase) -> Option<CrateId> {
         match self {
             TypeCtor::Bool
             | TypeCtor::Char
@@ -178,11 +177,9 @@ impl TypeCtor {
             | TypeCtor::Tuple { .. } => None,
             // Closure's krate is irrelevant for coherence I would think?
             TypeCtor::Closure { .. } => None,
-            TypeCtor::Adt(adt) => Some(adt.module(db).krate.into()),
-            TypeCtor::FnDef(callable) => Some(callable.krate(db).into()),
-            TypeCtor::AssociatedType(type_alias) => {
-                Some(type_alias.lookup(db).module(db).krate.into())
-            }
+            TypeCtor::Adt(adt) => Some(adt.module(db).krate),
+            TypeCtor::FnDef(callable) => Some(callable.krate(db)),
+            TypeCtor::AssociatedType(type_alias) => Some(type_alias.lookup(db).module(db).krate),
         }
     }
 
