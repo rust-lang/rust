@@ -1,8 +1,8 @@
 //! FIXME: write short doc here
+use hir_def::expr::{BinaryOp, CmpOp};
 
 use super::{InferTy, Ty, TypeCtor};
 use crate::{
-    expr::{BinaryOp, CmpOp},
     ty::ApplicationTy,
 };
 

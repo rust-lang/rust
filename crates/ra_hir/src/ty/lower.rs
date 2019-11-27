@@ -11,7 +11,7 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::BuiltinType,
     generics::WherePredicate,
-    path::{GenericArg, PathSegment},
+    path::{GenericArg, Path, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, AstItemDef, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
@@ -31,7 +31,7 @@ use crate::{
         utils::{all_super_traits, associated_type_by_name_including_super_traits, variant_data},
     },
     util::make_mut_slice,
-    Adt, Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, Trait,
+    Adt, Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Static, Struct, Trait,
     TypeAlias, Union,
 };
 
