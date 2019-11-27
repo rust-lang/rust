@@ -4,13 +4,13 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, AttrDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, ModuleDefId, StaticId, StructFieldId, StructId, TypeAliasId, UnionId, VariantId,
+    AdtId, AssocItemId, AttrDefId, DefWithBodyId, EnumVariantId, GenericDefId, ModuleDefId,
+    StructFieldId, VariantId,
 };
 
 use crate::{
-    ty::TypableDef, Adt, AssocItem, AttrDef, Const, Crate, DefWithBody, EnumVariant, Function,
-    GenericDef, ModuleDef, Static, StructField, TypeAlias, VariantDef,
+    Adt, AssocItem, AttrDef, Crate, DefWithBody, EnumVariant, GenericDef, ModuleDef, StructField,
+    VariantDef,
 };
 
 impl From<ra_db::CrateId> for Crate {
@@ -134,58 +134,6 @@ impl From<GenericDef> for GenericDefId {
             }
             GenericDef::Const(it) => GenericDefId::ConstId(it.id),
         }
-    }
-}
-
-impl From<AdtId> for TypableDef {
-    fn from(id: AdtId) -> Self {
-        Adt::from(id).into()
-    }
-}
-
-impl From<StructId> for TypableDef {
-    fn from(id: StructId) -> Self {
-        AdtId::StructId(id).into()
-    }
-}
-
-impl From<UnionId> for TypableDef {
-    fn from(id: UnionId) -> Self {
-        AdtId::UnionId(id).into()
-    }
-}
-
-impl From<EnumId> for TypableDef {
-    fn from(id: EnumId) -> Self {
-        AdtId::EnumId(id).into()
-    }
-}
-
-impl From<EnumVariantId> for TypableDef {
-    fn from(id: EnumVariantId) -> Self {
-        EnumVariant::from(id).into()
-    }
-}
-
-impl From<TypeAliasId> for TypableDef {
-    fn from(id: TypeAliasId) -> Self {
-        TypeAlias::from(id).into()
-    }
-}
-
-impl From<FunctionId> for TypableDef {
-    fn from(id: FunctionId) -> Self {
-        Function::from(id).into()
-    }
-}
-impl From<ConstId> for TypableDef {
-    fn from(id: ConstId) -> Self {
-        Const::from(id).into()
-    }
-}
-impl From<StaticId> for TypableDef {
-    fn from(id: StaticId) -> Self {
-        Static::from(id).into()
     }
 }
 

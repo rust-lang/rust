@@ -38,7 +38,7 @@ pub use lower::CallableDef;
 pub(crate) use lower::{
     callable_item_sig, field_types_query, generic_defaults_query,
     generic_predicates_for_param_query, generic_predicates_query, ty_query, value_ty_query,
-    TyDefId, TypableDef, ValueTyDefId,
+    TyDefId, ValueTyDefId,
 };
 pub(crate) use traits::{InEnvironment, Obligation, ProjectionPredicate, TraitEnvironment};
 

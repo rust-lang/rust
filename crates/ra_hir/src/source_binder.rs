@@ -168,7 +168,7 @@ impl SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
                 body_source_map: Some(source_map),
-                infer: Some(db.infer(def)),
+                infer: Some(db.infer(def.into())),
                 scopes: Some(scopes),
                 file_id: node.file_id,
             }
@@ -214,27 +214,27 @@ impl SourceAnalyzer {
 
     pub fn resolve_method_call(&self, call: &ast::MethodCallExpr) -> Option<Function> {
         let expr_id = self.expr_id(&call.clone().into())?;
-        self.infer.as_ref()?.method_resolution(expr_id)
+        self.infer.as_ref()?.method_resolution(expr_id).map(Function::from)
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<crate::StructField> {
         let expr_id = self.expr_id(&field.clone().into())?;
-        self.infer.as_ref()?.field_resolution(expr_id)
+        self.infer.as_ref()?.field_resolution(expr_id).map(|it| it.into())
     }
 
     pub fn resolve_record_field(&self, field: &ast::RecordField) -> Option<crate::StructField> {
         let expr_id = self.expr_id(&field.expr()?)?;
-        self.infer.as_ref()?.record_field_resolution(expr_id)
+        self.infer.as_ref()?.record_field_resolution(expr_id).map(|it| it.into())
     }
 
     pub fn resolve_record_literal(&self, record_lit: &ast::RecordLit) -> Option<crate::VariantDef> {
         let expr_id = self.expr_id(&record_lit.clone().into())?;
-        self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+        self.infer.as_ref()?.variant_resolution_for_expr(expr_id).map(|it| it.into())
     }
 
     pub fn resolve_record_pattern(&self, record_pat: &ast::RecordPat) -> Option<crate::VariantDef> {
         let pat_id = self.pat_id(&record_pat.clone().into())?;
-        self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
+        self.infer.as_ref()?.variant_resolution_for_pat(pat_id).map(|it| it.into())
     }
 
     pub fn resolve_macro_call(
@@ -297,13 +297,13 @@ impl SourceAnalyzer {
         if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
             let expr_id = self.expr_id(&path_expr.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
-                return Some(PathResolution::AssocItem(assoc));
+                return Some(PathResolution::AssocItem(assoc.into()));
             }
         }
         if let Some(path_pat) = path.syntax().parent().and_then(ast::PathPat::cast) {
             let pat_id = self.pat_id(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
-                return Some(PathResolution::AssocItem(assoc));
+                return Some(PathResolution::AssocItem(assoc.into()));
             }
         }
         // This must be a normal source file rather than macro file.

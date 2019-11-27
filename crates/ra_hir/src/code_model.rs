@@ -534,14 +534,6 @@ impl VariantDef {
         }
     }
 
-    pub(crate) fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        match self {
-            VariantDef::Struct(it) => it.field(db, name),
-            VariantDef::Union(it) => it.field(db, name),
-            VariantDef::EnumVariant(it) => it.field(db, name),
-        }
-    }
-
     pub fn module(self, db: &impl HirDatabase) -> Module {
         match self {
             VariantDef::Struct(it) => it.module(db),
@@ -618,7 +610,7 @@ impl Function {
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.into())
+        db.infer(self.id.into())
     }
 
     /// The containing impl block, if this is a method.
@@ -647,7 +639,7 @@ impl Function {
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         let infer = self.infer(db);
-        infer.add_diagnostics(db, self, sink);
+        infer.add_diagnostics(db, self.id, sink);
         let mut validator = ExprValidator::new(self, infer, sink);
         validator.validate_body(db);
     }
@@ -672,7 +664,7 @@ impl Const {
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.into())
+        db.infer(self.id.into())
     }
 
     /// The containing impl block, if this is a type alias.
@@ -715,7 +707,7 @@ impl Static {
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.into())
+        db.infer(self.id.into())
     }
 }
 
@@ -908,9 +900,9 @@ impl Local {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        let infer = db.infer(self.parent);
-        let ty = infer[self.pat_id].clone();
         let def = DefWithBodyId::from(self.parent);
+        let infer = db.infer(def);
+        let ty = infer[self.pat_id].clone();
         let resolver = def.resolver(db);
         let krate = def.module(db).krate;
         let environment = TraitEnvironment::lower(db, &resolver);

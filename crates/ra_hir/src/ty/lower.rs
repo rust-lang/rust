@@ -11,7 +11,7 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::BuiltinType,
     generics::WherePredicate,
-    path::{GenericArg, PathSegment},
+    path::{GenericArg, Path, PathSegment},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{TypeBound, TypeRef},
     AdtId, AstItemDef, ConstId, EnumId, EnumVariantId, FunctionId, GenericDefId, HasModule,
@@ -28,11 +28,10 @@ use crate::{
     db::HirDatabase,
     ty::{
         primitive::{FloatTy, IntTy},
-        utils::{all_super_traits, associated_type_by_name_including_super_traits},
+        utils::{all_super_traits, associated_type_by_name_including_super_traits, variant_data},
     },
     util::make_mut_slice,
-    Adt, Const, Enum, EnumVariant, Function, ImplBlock, ModuleDef, Path, Static, Struct, Trait,
-    TypeAlias, Union,
+    ImplBlock, Trait,
 };
 
 impl Ty {
@@ -514,13 +513,11 @@ pub(crate) fn field_types_query(
     db: &impl HirDatabase,
     variant_id: VariantId,
 ) -> Arc<ArenaMap<LocalStructFieldId, Ty>> {
-    let (resolver, var_data) = match variant_id {
-        VariantId::StructId(it) => (it.resolver(db), db.struct_data(it).variant_data.clone()),
-        VariantId::UnionId(it) => (it.resolver(db), db.union_data(it).variant_data.clone()),
-        VariantId::EnumVariantId(it) => (
-            it.parent.resolver(db),
-            db.enum_data(it.parent).variants[it.local_id].variant_data.clone(),
-        ),
+    let var_data = variant_data(db, variant_id);
+    let resolver = match variant_id {
+        VariantId::StructId(it) => it.resolver(db),
+        VariantId::UnionId(it) => it.resolver(db),
+        VariantId::EnumVariantId(it) => it.parent.resolver(db),
     };
     let mut res = ArenaMap::default();
     for (field_id, field_data) in var_data.fields().iter() {
@@ -693,42 +690,6 @@ fn type_for_type_alias(db: &impl HirDatabase, t: TypeAliasId) -> Ty {
     let substs = Substs::identity(&generics);
     let inner = Ty::from_hir(db, &resolver, type_ref.as_ref().unwrap_or(&TypeRef::Error));
     inner.subst(&substs)
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum TypableDef {
-    Function(Function),
-    Adt(Adt),
-    EnumVariant(EnumVariant),
-    TypeAlias(TypeAlias),
-    Const(Const),
-    Static(Static),
-    BuiltinType(BuiltinType),
-}
-impl_froms!(
-    TypableDef: Function,
-    Adt(Struct, Enum, Union),
-    EnumVariant,
-    TypeAlias,
-    Const,
-    Static,
-    BuiltinType
-);
-
-impl From<ModuleDef> for Option<TypableDef> {
-    fn from(def: ModuleDef) -> Option<TypableDef> {
-        let res = match def {
-            ModuleDef::Function(f) => f.into(),
-            ModuleDef::Adt(adt) => adt.into(),
-            ModuleDef::EnumVariant(v) => v.into(),
-            ModuleDef::TypeAlias(t) => t.into(),
-            ModuleDef::Const(v) => v.into(),
-            ModuleDef::Static(v) => v.into(),
-            ModuleDef::BuiltinType(t) => t.into(),
-            ModuleDef::Module(_) | ModuleDef::Trait(_) => return None,
-        };
-        Some(res)
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

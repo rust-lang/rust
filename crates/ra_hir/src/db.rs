@@ -2,18 +2,15 @@
 
 use std::sync::Arc;
 
-use hir_def::{GenericDefId, ImplId, LocalStructFieldId, TraitId, VariantId};
+use hir_def::{DefWithBodyId, GenericDefId, ImplId, LocalStructFieldId, TraitId, VariantId};
 use ra_arena::map::ArenaMap;
 use ra_db::{salsa, CrateId};
 
-use crate::{
-    ty::{
-        method_resolution::CrateImplBlocks,
-        traits::{AssocTyValue, Impl},
-        CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, Ty, TyDefId, TypeCtor,
-        ValueTyDefId,
-    },
-    DefWithBody,
+use crate::ty::{
+    method_resolution::CrateImplBlocks,
+    traits::{AssocTyValue, Impl},
+    CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, Ty, TyDefId, TypeCtor,
+    ValueTyDefId,
 };
 
 pub use hir_def::db::{
@@ -32,7 +29,7 @@ pub use hir_expand::db::{
 #[salsa::requires(salsa::Database)]
 pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::infer_query)]
-    fn infer(&self, def: DefWithBody) -> Arc<InferenceResult>;
+    fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::ty::ty_query)]
     fn ty(&self, def: TyDefId) -> Ty;
