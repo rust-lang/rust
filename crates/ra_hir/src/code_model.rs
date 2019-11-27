@@ -6,8 +6,10 @@ use std::sync::Arc;
 
 use hir_def::{
     adt::VariantData,
+    body::{Body, BodySourceMap},
     builtin_type::BuiltinType,
     docs::Documentation,
+    expr::{BindingAnnotation, Pat, PatId},
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
@@ -20,12 +22,12 @@ use hir_expand::{
     name::{self, AsName},
     AstId, MacroDefId,
 };
+use hir_ty::expr::ExprValidator;
 use ra_db::{CrateId, Edition, FileId, FilePosition};
 use ra_syntax::{ast, AstNode, SyntaxNode};
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    expr::{BindingAnnotation, Body, BodySourceMap, ExprValidator, Pat, PatId},
     ty::display::HirFormatter,
     ty::{
         self, InEnvironment, InferenceResult, TraitEnvironment, TraitRef, Ty, TyDefId, TypeCtor,
@@ -353,8 +355,8 @@ impl Struct {
             .map(|(id, _)| StructField { parent: self.into(), id })
     }
 
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.ty(self.id.into())
+    pub fn ty(self, db: &impl HirDatabase) -> Type {
+        Type::from_def(db, self.id.module(db).krate, self.id)
     }
 
     pub fn constructor_ty(self, db: &impl HirDatabase) -> Ty {
@@ -380,8 +382,8 @@ impl Union {
         Module { id: self.id.module(db) }
     }
 
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.ty(self.id.into())
+    pub fn ty(self, db: &impl HirDatabase) -> Type {
+        Type::from_def(db, self.id.module(db).krate, self.id)
     }
 
     pub fn fields(self, db: &impl HirDatabase) -> Vec<StructField> {
@@ -441,8 +443,8 @@ impl Enum {
             .map(|(id, _)| EnumVariant { parent: self, id })
     }
 
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.ty(self.id.into())
+    pub fn ty(self, db: &impl HirDatabase) -> Type {
+        Type::from_def(db, self.id.module(db).krate, self.id)
     }
 }
 
@@ -640,7 +642,7 @@ impl Function {
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         let infer = self.infer(db);
         infer.add_diagnostics(db, self.id, sink);
-        let mut validator = ExprValidator::new(self, infer, sink);
+        let mut validator = ExprValidator::new(self.id, infer, sink);
         validator.validate_body(db);
     }
 }
@@ -946,13 +948,12 @@ impl ImplBlock {
         db.impl_data(self.id).target_type.clone()
     }
 
-    pub fn target_ty(&self, db: &impl HirDatabase) -> Ty {
-        Ty::from_hir(db, &self.id.resolver(db), &self.target_type(db))
-    }
-
-    pub fn target_trait_ref(&self, db: &impl HirDatabase) -> Option<TraitRef> {
-        let target_ty = self.target_ty(db);
-        TraitRef::from_hir(db, &self.id.resolver(db), &self.target_trait(db)?, Some(target_ty))
+    pub fn target_ty(&self, db: &impl HirDatabase) -> Type {
+        let impl_data = db.impl_data(self.id);
+        let resolver = self.id.resolver(db);
+        let environment = TraitEnvironment::lower(db, &resolver);
+        let ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
+        Type { krate: self.id.module(db).krate, ty: InEnvironment { value: ty, environment } }
     }
 
     pub fn items(&self, db: &impl DefDatabase) -> Vec<AssocItem> {
@@ -1128,6 +1129,22 @@ impl Type {
     pub fn as_adt(&self) -> Option<Adt> {
         let (adt, _subst) = self.ty.value.as_adt()?;
         Some(adt.into())
+    }
+
+    // FIXME: provide required accessors such that it becomes implementable from outside.
+    pub fn is_equal_for_find_impls(&self, other: &Type) -> bool {
+        match (&self.ty.value, &other.ty.value) {
+            (Ty::Apply(a_original_ty), Ty::Apply(ty::ApplicationTy { ctor, parameters })) => {
+                match ctor {
+                    TypeCtor::Ref(..) => match parameters.as_single() {
+                        Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
+                        _ => false,
+                    },
+                    _ => a_original_ty.ctor == *ctor,
+                }
+            }
+            _ => false,
+        }
     }
 
     fn derived(&self, ty: Ty) -> Type {

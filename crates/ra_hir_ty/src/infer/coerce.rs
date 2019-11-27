@@ -13,10 +13,7 @@ use hir_def::{
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
-use crate::{
-    db::HirDatabase,
-    ty::{autoderef, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-};
+use crate::{autoderef, db::HirDatabase, Substs, TraitRef, Ty, TypeCtor, TypeWalk};
 
 use super::{InEnvironment, InferTy, InferenceContext, TypeVarValue};
 

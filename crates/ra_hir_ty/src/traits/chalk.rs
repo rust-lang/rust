@@ -11,8 +11,8 @@ use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum
 use ra_db::CrateId;
 
 use hir_def::{
-    lang_item::LangItemTarget, resolver::HasResolver, AssocItemId, AstItemDef, ContainerId,
-    GenericDefId, ImplId, Lookup, TraitId, TypeAliasId,
+    expr::Expr, lang_item::LangItemTarget, resolver::HasResolver, AssocItemId, AstItemDef,
+    ContainerId, GenericDefId, ImplId, Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name;
 
@@ -21,8 +21,8 @@ use ra_db::salsa::{InternId, InternKey};
 use super::{AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
     db::HirDatabase,
-    ty::display::HirDisplay,
-    ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
+    display::HirDisplay,
+    {ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -723,7 +723,7 @@ fn closure_fn_trait_impl_datum(
     let _output = db.trait_data(fn_once_trait).associated_type_by_name(&name::OUTPUT_TYPE)?;
 
     let num_args: u16 = match &db.body(data.def.into())[data.expr] {
-        crate::expr::Expr::Lambda { args, .. } => args.len() as u16,
+        Expr::Lambda { args, .. } => args.len() as u16,
         _ => {
             log::warn!("closure for closure type {:?} not found", data);
             0
@@ -823,7 +823,7 @@ fn closure_fn_trait_output_assoc_ty_value(
     let impl_id = Impl::ClosureFnTraitImpl(data.clone()).to_chalk(db);
 
     let num_args: u16 = match &db.body(data.def.into())[data.expr] {
-        crate::expr::Expr::Lambda { args, .. } => args.len() as u16,
+        Expr::Lambda { args, .. } => args.len() as u16,
         _ => {
             log::warn!("closure for closure type {:?} not found", data);
             0
@@ -869,38 +869,38 @@ fn id_to_chalk<T: InternKey>(salsa_id: T) -> chalk_ir::RawId {
     chalk_ir::RawId { index: salsa_id.as_intern_id().as_u32() }
 }
 
-impl From<chalk_ir::StructId> for crate::ty::TypeCtorId {
+impl From<chalk_ir::StructId> for crate::TypeCtorId {
     fn from(struct_id: chalk_ir::StructId) -> Self {
         id_from_chalk(struct_id.0)
     }
 }
 
-impl From<crate::ty::TypeCtorId> for chalk_ir::StructId {
-    fn from(type_ctor_id: crate::ty::TypeCtorId) -> Self {
+impl From<crate::TypeCtorId> for chalk_ir::StructId {
+    fn from(type_ctor_id: crate::TypeCtorId) -> Self {
         chalk_ir::StructId(id_to_chalk(type_ctor_id))
     }
 }
 
-impl From<chalk_ir::ImplId> for crate::ty::traits::GlobalImplId {
+impl From<chalk_ir::ImplId> for crate::traits::GlobalImplId {
     fn from(impl_id: chalk_ir::ImplId) -> Self {
         id_from_chalk(impl_id.0)
     }
 }
 
-impl From<crate::ty::traits::GlobalImplId> for chalk_ir::ImplId {
-    fn from(impl_id: crate::ty::traits::GlobalImplId) -> Self {
+impl From<crate::traits::GlobalImplId> for chalk_ir::ImplId {
+    fn from(impl_id: crate::traits::GlobalImplId) -> Self {
         chalk_ir::ImplId(id_to_chalk(impl_id))
     }
 }
 
-impl From<chalk_rust_ir::AssociatedTyValueId> for crate::ty::traits::AssocTyValueId {
+impl From<chalk_rust_ir::AssociatedTyValueId> for crate::traits::AssocTyValueId {
     fn from(id: chalk_rust_ir::AssociatedTyValueId) -> Self {
         id_from_chalk(id.0)
     }
 }
 
-impl From<crate::ty::traits::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId {
-    fn from(assoc_ty_value_id: crate::ty::traits::AssocTyValueId) -> Self {
+impl From<crate::traits::AssocTyValueId> for chalk_rust_ir::AssociatedTyValueId {
+    fn from(assoc_ty_value_id: crate::traits::AssocTyValueId) -> Self {
         chalk_rust_ir::AssociatedTyValueId(id_to_chalk(assoc_ty_value_id))
     }
 }

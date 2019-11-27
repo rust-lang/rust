@@ -8,6 +8,10 @@
 use std::sync::Arc;
 
 use hir_def::{
+    body::{
+        scope::{ExprScopes, ScopeId},
+        BodySourceMap,
+    },
     expr::{ExprId, PatId},
     path::known,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
@@ -25,7 +29,6 @@ use ra_syntax::{
 
 use crate::{
     db::HirDatabase,
-    expr::{BodySourceMap, ExprScopes, ScopeId},
     ty::{
         method_resolution::{self, implements_trait},
         InEnvironment, TraitEnvironment, Ty,
@@ -91,7 +94,7 @@ pub struct SourceAnalyzer {
     body_owner: Option<DefWithBody>,
     body_source_map: Option<Arc<BodySourceMap>>,
     infer: Option<Arc<crate::ty::InferenceResult>>,
-    scopes: Option<Arc<crate::expr::ExprScopes>>,
+    scopes: Option<Arc<ExprScopes>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -454,21 +457,6 @@ impl SourceAnalyzer {
             macro_call_id: def.as_call_id(db, ast_id),
             macro_file_kind: to_macro_file_kind(macro_call.value),
         })
-    }
-
-    #[cfg(test)]
-    pub(crate) fn body_source_map(&self) -> Arc<BodySourceMap> {
-        self.body_source_map.clone().unwrap()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn inference_result(&self) -> Arc<crate::ty::InferenceResult> {
-        self.infer.clone().unwrap()
-    }
-
-    #[cfg(test)]
-    pub(crate) fn analyzed_declaration(&self) -> Option<DefWithBody> {
-        self.body_owner
     }
 }
 

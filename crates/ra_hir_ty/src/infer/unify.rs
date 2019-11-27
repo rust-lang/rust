@@ -2,12 +2,8 @@
 
 use super::{InferenceContext, Obligation};
 use crate::{
-    db::HirDatabase,
-    ty::{
-        Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
-        TypeWalk,
-    },
-    util::make_mut_slice,
+    db::HirDatabase, utils::make_mut_slice, Canonical, InEnvironment, InferTy, ProjectionPredicate,
+    ProjectionTy, Substs, TraitRef, Ty, TypeWalk,
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {

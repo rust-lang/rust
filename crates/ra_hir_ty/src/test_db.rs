@@ -1,21 +1,23 @@
 //! Database used for testing `hir`.
 
-use std::{panic, sync::Arc};
+use std::{
+    panic,
+    sync::{Arc, Mutex},
+};
 
-use hir_def::{db::DefDatabase, ModuleId};
+use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId, ModuleId};
 use hir_expand::diagnostics::DiagnosticSink;
-use parking_lot::Mutex;
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase};
 
-use crate::{db, debug::HirDebugHelper};
+use crate::{db::HirDatabase, expr::ExprValidator};
 
 #[salsa::database(
     ra_db::SourceDatabaseExtStorage,
     ra_db::SourceDatabaseStorage,
-    db::InternDatabaseStorage,
-    db::AstDatabaseStorage,
-    db::DefDatabaseStorage,
-    db::HirDatabaseStorage
+    hir_expand::db::AstDatabaseStorage,
+    hir_def::db::InternDatabaseStorage,
+    hir_def::db::DefDatabaseStorage,
+    crate::db::HirDatabaseStorage
 )]
 #[derive(Debug, Default)]
 pub struct TestDB {
@@ -33,7 +35,7 @@ impl salsa::Database for TestDB {
     }
 
     fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
-        let mut events = self.events.lock();
+        let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {
             events.push(event());
         }
@@ -67,32 +69,53 @@ impl FileLoader for TestDB {
     }
 }
 
-// FIXME: improve `WithFixture` to bring useful hir debugging back
-impl HirDebugHelper for TestDB {
-    fn crate_name(&self, _krate: CrateId) -> Option<String> {
-        None
-    }
-
-    fn file_path(&self, _file_id: FileId) -> Option<String> {
-        None
-    }
-}
-
 impl TestDB {
+    pub fn module_for_file(&self, file_id: FileId) -> ModuleId {
+        for &krate in self.relevant_crates(file_id).iter() {
+            let crate_def_map = self.crate_def_map(krate);
+            for (module_id, data) in crate_def_map.modules.iter() {
+                if data.definition == Some(file_id) {
+                    return ModuleId { krate, module_id };
+                }
+            }
+        }
+        panic!("Can't find module for file")
+    }
+
+    // FIXME: don't duplicate this
     pub fn diagnostics(&self) -> String {
         let mut buf = String::new();
         let crate_graph = self.crate_graph();
         for krate in crate_graph.iter().next() {
             let crate_def_map = self.crate_def_map(krate);
+
+            let mut fns = Vec::new();
             for (module_id, _) in crate_def_map.modules.iter() {
-                let module_id = ModuleId { krate, module_id };
-                let module = crate::Module::from(module_id);
-                module.diagnostics(
-                    self,
-                    &mut DiagnosticSink::new(|d| {
-                        buf += &format!("{:?}: {}\n", d.syntax_node(self).text(), d.message());
-                    }),
-                )
+                for decl in crate_def_map[module_id].scope.declarations() {
+                    match decl {
+                        ModuleDefId::FunctionId(f) => fns.push(f),
+                        _ => (),
+                    }
+                }
+
+                for &impl_id in crate_def_map[module_id].impls.iter() {
+                    let impl_data = self.impl_data(impl_id);
+                    for item in impl_data.items.iter() {
+                        if let AssocItemId::FunctionId(f) = item {
+                            fns.push(*f)
+                        }
+                    }
+                }
+            }
+
+            for f in fns {
+                let infer = self.infer(f.into());
+                let mut sink = DiagnosticSink::new(|d| {
+                    buf += &format!("{:?}: {}\n", d.syntax_node(self).text(), d.message());
+                });
+                infer.add_diagnostics(self, f, &mut sink);
+                let mut validator = ExprValidator::new(f, infer, &mut sink);
+                validator.validate_body(self);
             }
         }
         buf
@@ -101,9 +124,9 @@ impl TestDB {
 
 impl TestDB {
     pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<TestDB>> {
-        *self.events.lock() = Some(Vec::new());
+        *self.events.lock().unwrap() = Some(Vec::new());
         f();
-        self.events.lock().take().unwrap()
+        self.events.lock().unwrap().take().unwrap()
     }
 
     pub fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {

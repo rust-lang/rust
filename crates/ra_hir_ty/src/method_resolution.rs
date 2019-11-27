@@ -16,8 +16,9 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::HirDatabase,
-    ty::primitive::{FloatBitness, Uncertain},
-    ty::{utils::all_super_traits, Ty, TypeCtor},
+    primitive::{FloatBitness, Uncertain},
+    utils::all_super_traits,
+    Ty, TypeCtor,
 };
 
 use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
@@ -97,7 +98,7 @@ impl CrateImplBlocks {
 }
 
 impl Ty {
-    pub(crate) fn def_crates(
+    pub fn def_crates(
         &self,
         db: &impl HirDatabase,
         cur_crate: CrateId,
@@ -176,7 +177,7 @@ pub enum LookupMode {
 // This would be nicer if it just returned an iterator, but that runs into
 // lifetime problems, because we need to borrow temp `CrateImplBlocks`.
 // FIXME add a context type here?
-pub(crate) fn iterate_method_candidates<T>(
+pub fn iterate_method_candidates<T>(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     resolver: &Resolver,
@@ -323,7 +324,7 @@ fn is_valid_candidate(
     }
 }
 
-pub(crate) fn implements_trait(
+pub fn implements_trait(
     ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     resolver: &Resolver,

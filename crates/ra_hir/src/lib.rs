@@ -32,19 +32,12 @@ pub mod db;
 pub mod source_binder;
 
 mod ty;
-mod expr;
 pub mod diagnostics;
-mod util;
 
 mod from_id;
 mod code_model;
 
 pub mod from_source;
-
-#[cfg(test)]
-mod test_db;
-#[cfg(test)]
-mod marks;
 
 pub use crate::{
     code_model::{
@@ -53,7 +46,6 @@ pub use crate::{
         HasAttrs, ImplBlock, Import, Local, MacroDef, Module, ModuleDef, ModuleSource, ScopeDef,
         Static, Struct, StructField, Trait, Type, TypeAlias, Union, VariantDef,
     },
-    expr::ExprScopes,
     from_source::FromSource,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
     ty::{
@@ -64,6 +56,7 @@ pub use crate::{
 };
 
 pub use hir_def::{
+    body::scope::ExprScopes,
     builtin_type::BuiltinType,
     docs::Documentation,
     path::{Path, PathKind},

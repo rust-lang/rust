@@ -12,10 +12,7 @@ use hir_expand::name::Name;
 use test_utils::tested_by;
 
 use super::{BindingMode, InferenceContext};
-use crate::{
-    db::HirDatabase,
-    ty::{utils::variant_data, Substs, Ty, TypeCtor, TypeWalk},
-};
+use crate::{db::HirDatabase, utils::variant_data, Substs, Ty, TypeCtor, TypeWalk};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     fn infer_tuple_struct_pat(

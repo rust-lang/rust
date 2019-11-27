@@ -19,7 +19,7 @@ use super::{
 
 const AUTODEREF_RECURSION_LIMIT: usize = 10;
 
-pub(crate) fn autoderef<'a>(
+pub fn autoderef<'a>(
     db: &'a impl HirDatabase,
     krate: Option<CrateId>,
     ty: InEnvironment<Canonical<Ty>>,

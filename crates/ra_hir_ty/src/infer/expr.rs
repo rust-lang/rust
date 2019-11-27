@@ -14,12 +14,9 @@ use hir_def::{
 use hir_expand::name::{self, Name};
 
 use crate::{
-    db::HirDatabase,
-    ty::{
-        autoderef, method_resolution, op, traits::InEnvironment, utils::variant_data, CallableDef,
-        InferTy, IntTy, Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs,
-        TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
-    },
+    autoderef, db::HirDatabase, method_resolution, op, traits::InEnvironment, utils::variant_data,
+    CallableDef, InferTy, IntTy, Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs,
+    TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};

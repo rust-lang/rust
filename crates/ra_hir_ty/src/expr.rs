@@ -2,8 +2,12 @@
 
 use std::sync::Arc;
 
-use hir_def::{path::known, resolver::HasResolver, AdtId};
-use hir_expand::diagnostics::DiagnosticSink;
+use hir_def::{
+    path::{known, Path},
+    resolver::HasResolver,
+    AdtId, FunctionId,
+};
+use hir_expand::{diagnostics::DiagnosticSink, name::Name};
 use ra_syntax::ast;
 use ra_syntax::AstPtr;
 use rustc_hash::FxHashSet;
@@ -11,8 +15,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     db::HirDatabase,
     diagnostics::{MissingFields, MissingOkInTailExpr},
-    ty::{ApplicationTy, InferenceResult, Ty, TypeCtor},
-    Function, Name, Path, Struct,
+    ApplicationTy, InferenceResult, Ty, TypeCtor,
 };
 
 pub use hir_def::{
@@ -26,23 +29,23 @@ pub use hir_def::{
     },
 };
 
-pub(crate) struct ExprValidator<'a, 'b: 'a> {
-    func: Function,
+pub struct ExprValidator<'a, 'b: 'a> {
+    func: FunctionId,
     infer: Arc<InferenceResult>,
     sink: &'a mut DiagnosticSink<'b>,
 }
 
 impl<'a, 'b> ExprValidator<'a, 'b> {
-    pub(crate) fn new(
-        func: Function,
+    pub fn new(
+        func: FunctionId,
         infer: Arc<InferenceResult>,
         sink: &'a mut DiagnosticSink<'b>,
     ) -> ExprValidator<'a, 'b> {
         ExprValidator { func, infer, sink }
     }
 
-    pub(crate) fn validate_body(&mut self, db: &impl HirDatabase) {
-        let body = self.func.body(db);
+    pub fn validate_body(&mut self, db: &impl HirDatabase) {
+        let body = db.body(self.func.into());
 
         for e in body.exprs.iter() {
             if let (id, Expr::RecordLit { path, fields, spread }) = e {
@@ -69,16 +72,18 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         }
 
         let struct_def = match self.infer[id].as_adt() {
-            Some((AdtId::StructId(s), _)) => Struct::from(s),
+            Some((AdtId::StructId(s), _)) => s,
             _ => return,
         };
+        let struct_data = db.struct_data(struct_def);
 
         let lit_fields: FxHashSet<_> = fields.iter().map(|f| &f.name).collect();
-        let missed_fields: Vec<Name> = struct_def
-            .fields(db)
+        let missed_fields: Vec<Name> = struct_data
+            .variant_data
+            .fields()
             .iter()
-            .filter_map(|f| {
-                let name = f.name(db);
+            .filter_map(|(_f, d)| {
+                let name = d.name.clone();
                 if lit_fields.contains(&name) {
                     None
                 } else {
@@ -89,7 +94,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         if missed_fields.is_empty() {
             return;
         }
-        let source_map = self.func.body_source_map(db);
+        let (_, source_map) = db.body_with_source_map(self.func.into());
 
         if let Some(source_ptr) = source_map.expr_syntax(id) {
             if let Some(expr) = source_ptr.value.a() {
@@ -121,7 +126,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
 
         let std_result_path = known::std_result_result();
 
-        let resolver = self.func.id.resolver(db);
+        let resolver = self.func.resolver(db);
         let std_result_enum = match resolver.resolve_known_enum(db, &std_result_path) {
             Some(it) => it,
             _ => return,
@@ -134,7 +139,7 @@ impl<'a, 'b> ExprValidator<'a, 'b> {
         };
 
         if params.len() == 2 && &params[0] == &mismatch.actual {
-            let source_map = self.func.body_source_map(db);
+            let (_, source_map) = db.body_with_source_map(self.func.into());
 
             if let Some(source_ptr) = source_map.expr_syntax(id) {
                 if let Some(expr) = source_ptr.value.a() {
