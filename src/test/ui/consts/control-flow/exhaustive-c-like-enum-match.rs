@@ -18,4 +18,14 @@ const fn f(e: E) {
     }
 }
 
-fn main() {}
+const fn g(e: E) -> usize {
+    match e {
+        _ => 0
+    }
+}
+
+fn main() {
+    const X: usize = g(E::C);
+    assert_eq!(X, 0);
+    assert_eq!(g(E::A), 0);
+}
