@@ -204,7 +204,10 @@ struct TraitObligationStack<'prev, 'tcx> {
 #[derive(Clone, Default)]
 pub struct SelectionCache<'tcx> {
     hashmap: Lock<
-        FxHashMap<ty::TraitRef<'tcx>, WithDepNode<SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
+        FxHashMap<
+            ty::ParamEnvAnd<'tcx, ty::TraitRef<'tcx>>,
+            WithDepNode<SelectionResult<'tcx, SelectionCandidate<'tcx>>>,
+        >,
     >,
 }
 
@@ -490,7 +493,9 @@ impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
 
 #[derive(Clone, Default)]
 pub struct EvaluationCache<'tcx> {
-    hashmap: Lock<FxHashMap<ty::PolyTraitRef<'tcx>, WithDepNode<EvaluationResult>>>,
+    hashmap: Lock<
+        FxHashMap<ty::ParamEnvAnd<'tcx, ty::PolyTraitRef<'tcx>>, WithDepNode<EvaluationResult>>,
+    >,
 }
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
@@ -1143,7 +1148,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let tcx = self.tcx();
         if self.can_use_global_caches(param_env) {
             let cache = tcx.evaluation_cache.hashmap.borrow();
-            if let Some(cached) = cache.get(&trait_ref) {
+            if let Some(cached) = cache.get(&param_env.and(trait_ref)) {
                 return Some(cached.get(tcx));
             }
         }
@@ -1151,7 +1156,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .evaluation_cache
             .hashmap
             .borrow()
-            .get(&trait_ref)
+            .get(&param_env.and(trait_ref))
             .map(|v| v.get(tcx))
     }
 
@@ -1182,7 +1187,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .evaluation_cache
                     .hashmap
                     .borrow_mut()
-                    .insert(trait_ref, WithDepNode::new(dep_node, result));
+                    .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, result));
                 return;
             }
         }
@@ -1195,7 +1200,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .evaluation_cache
             .hashmap
             .borrow_mut()
-            .insert(trait_ref, WithDepNode::new(dep_node, result));
+            .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, result));
     }
 
     /// For various reasons, it's possible for a subobligation
@@ -1575,7 +1580,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // rule seems to be pretty clearly safe and also still retains
         // a very high hit rate (~95% when compiling rustc).
         if !param_env.caller_bounds.is_empty() {
-            return false;
+            //return false;
         }
 
         // Avoid using the master cache during coherence and just rely
@@ -1602,7 +1607,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let trait_ref = &cache_fresh_trait_pred.skip_binder().trait_ref;
         if self.can_use_global_caches(param_env) {
             let cache = tcx.selection_cache.hashmap.borrow();
-            if let Some(cached) = cache.get(&trait_ref) {
+            if let Some(cached) = cache.get(&param_env.and(*trait_ref)) {
                 return Some(cached.get(tcx));
             }
         }
@@ -1610,7 +1615,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .selection_cache
             .hashmap
             .borrow()
-            .get(trait_ref)
+            .get(&param_env.and(*trait_ref))
             .map(|v| v.get(tcx))
     }
 
@@ -1671,7 +1676,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     tcx.selection_cache
                         .hashmap
                         .borrow_mut()
-                        .insert(trait_ref, WithDepNode::new(dep_node, candidate));
+                        .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, candidate));
                     return;
                 }
             }
@@ -1685,7 +1690,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .selection_cache
             .hashmap
             .borrow_mut()
-            .insert(trait_ref, WithDepNode::new(dep_node, candidate));
+            .insert(param_env.and(trait_ref), WithDepNode::new(dep_node, candidate));
     }
 
     fn assemble_candidates<'o>(
