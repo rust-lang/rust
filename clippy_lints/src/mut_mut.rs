@@ -57,8 +57,8 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             // Let's ignore the generated code.
             intravisit::walk_expr(self, arg);
             intravisit::walk_expr(self, body);
-        } else if let hir::ExprKind::AddrOf(hir::Mutability::Mutable, ref e) = expr.kind {
-            if let hir::ExprKind::AddrOf(hir::Mutability::Mutable, _) = e.kind {
+        } else if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mutable, ref e) = expr.kind {
+            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mutable, _) = e.kind {
                 span_lint(
                     self.cx,
                     MUT_MUT,

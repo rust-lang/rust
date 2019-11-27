@@ -105,7 +105,7 @@ fn check_cond<'a, 'tcx, 'b>(
         if let ExprKind::MethodCall(ref path, _, ref params) = check.kind;
         if params.len() >= 2;
         if path.ident.name == sym!(contains_key);
-        if let ExprKind::AddrOf(_, ref key) = params[1].kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref key) = params[1].kind;
         then {
             let map = &params[0];
             let obj_ty = walk_ptrs_ty(cx.tables.expr_ty(map));

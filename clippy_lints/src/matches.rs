@@ -570,7 +570,7 @@ fn is_panic_block(block: &Block) -> bool {
 fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if has_only_ref_pats(arms) {
         let mut suggs = Vec::new();
-        let (title, msg) = if let ExprKind::AddrOf(Mutability::Immutable, ref inner) = ex.kind {
+        let (title, msg) = if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Immutable, ref inner) = ex.kind {
             let span = ex.span.source_callsite();
             suggs.push((span, Sugg::hir_with_macro_callsite(cx, inner, "..").to_string()));
             (

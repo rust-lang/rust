@@ -71,7 +71,7 @@ fn or_fun_call() {
 
     let opt = Some(1);
     let hello = "Hello";
-    let _ = opt.ok_or_else(|| format!("{} world.", hello));
+    let _ = opt.ok_or(format!("{} world.", hello));
 }
 
 struct Foo(u8);

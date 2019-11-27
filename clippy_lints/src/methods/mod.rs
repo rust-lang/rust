@@ -1519,7 +1519,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         let mut arg_root = arg;
         loop {
             arg_root = match &arg_root.kind {
-                hir::ExprKind::AddrOf(_, expr) => expr,
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
                 hir::ExprKind::MethodCall(method_name, _, call_args) => {
                     if call_args.len() == 1
                         && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
@@ -1561,7 +1561,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         applicability: &mut Applicability,
     ) -> Vec<String> {
         if_chain! {
-            if let hir::ExprKind::AddrOf(_, ref format_arg) = a.kind;
+            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref format_arg) = a.kind;
             if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.kind;
             if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.kind;
 
@@ -1578,7 +1578,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
 
     fn is_call(node: &hir::ExprKind) -> bool {
         match node {
-            hir::ExprKind::AddrOf(_, expr) => {
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => {
                 is_call(&expr.kind)
             },
             hir::ExprKind::Call(..)
@@ -1610,30 +1610,35 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
     let mut applicability = Applicability::MachineApplicable;
 
     //Special handling for `format!` as arg_root
-    if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg_root.kind {
-        if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1 {
-            if let hir::ExprKind::Call(_, format_args) = &inner_args[0].kind {
-                let fmt_spec = &format_args[0];
-                let fmt_args = &format_args[1];
+    if_chain! {
+        if let hir::ExprKind::Block(block, None) = &arg_root.kind;
+        if block.stmts.len() == 1;
+        if let hir::StmtKind::Local(local) = &block.stmts[0].kind;
+        if let Some(arg_root) = &local.init;
+        if let hir::ExprKind::Call(ref inner_fun, ref inner_args) = arg_root.kind;
+        if is_expn_of(inner_fun.span, "format").is_some() && inner_args.len() == 1;
+        if let hir::ExprKind::Call(_, format_args) = &inner_args[0].kind;
+        then {
+            let fmt_spec = &format_args[0];
+            let fmt_args = &format_args[1];
 
-                let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
+            let mut args = vec![snippet(cx, fmt_spec.span, "..").into_owned()];
 
-                args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
+            args.extend(generate_format_arg_snippet(cx, fmt_args, &mut applicability));
 
-                let sugg = args.join(", ");
+            let sugg = args.join(", ");
 
-                span_lint_and_sugg(
-                    cx,
-                    EXPECT_FUN_CALL,
-                    span_replace_word,
-                    &format!("use of `{}` followed by a function call", name),
-                    "try this",
-                    format!("unwrap_or_else({} panic!({}))", closure_args, sugg),
-                    applicability,
-                );
+            span_lint_and_sugg(
+                cx,
+                EXPECT_FUN_CALL,
+                span_replace_word,
+                &format!("use of `{}` followed by a function call", name),
+                "try this",
+                format!("unwrap_or_else({} panic!({}))", closure_args, sugg),
+                applicability,
+            );
 
-                return;
-            }
+            return;
         }
     }
 

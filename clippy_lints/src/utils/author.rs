@@ -425,9 +425,12 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = path_pat;
                 self.print_qpath(path);
             },
-            ExprKind::AddrOf(mutability, ref inner) => {
+            ExprKind::AddrOf(kind, mutability, ref inner) => {
                 let inner_pat = self.next("inner");
-                println!("AddrOf(Mutability::{:?}, ref {}) = {};", mutability, inner_pat, current);
+                println!(
+                    "AddrOf(BorrowKind::{:?}, Mutability::{:?}, ref {}) = {};",
+                    kind, mutability, inner_pat, current
+                );
                 self.current = inner_pat;
                 self.visit_expr(inner);
             },

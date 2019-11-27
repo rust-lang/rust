@@ -1,6 +1,6 @@
 use crate::utils::{match_def_path, paths, snippet, span_lint_and_then, walk_ptrs_ty_depth};
 use if_chain::if_chain;
-use rustc::hir::{Expr, ExprKind};
+use rustc::hir::{BorrowKind, Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
@@ -57,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                             let mut derefs_needed = ptr_depth;
                             let mut cur_expr = param;
                             while derefs_needed > 0  {
-                                if let ExprKind::AddrOf(_, ref inner_expr) = cur_expr.kind {
+                                if let ExprKind::AddrOf(BorrowKind::Ref, _, ref inner_expr) = cur_expr.kind {
                                     derefs_needed -= 1;
                                     cur_expr = inner_expr;
                                 } else {

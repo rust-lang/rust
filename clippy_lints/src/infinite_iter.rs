@@ -163,7 +163,7 @@ fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
             Finite
         },
         ExprKind::Block(ref block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
-        ExprKind::Box(ref e) | ExprKind::AddrOf(_, ref e) => is_infinite(cx, e),
+        ExprKind::Box(ref e) | ExprKind::AddrOf(BorrowKind::Ref, _, ref e) => is_infinite(cx, e),
         ExprKind::Call(ref path, _) => {
             if let ExprKind::Path(ref qpath) = path.kind {
                 match_qpath(qpath, &paths::REPEAT).into()

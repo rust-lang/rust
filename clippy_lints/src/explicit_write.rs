@@ -135,7 +135,7 @@ fn write_output_string(write_args: &HirVec<Expr>) -> Option<String> {
         if write_args.len() > 1;
         if let ExprKind::Call(_, ref output_args) = write_args[1].kind;
         if output_args.len() > 0;
-        if let ExprKind::AddrOf(_, ref output_string_expr) = output_args[0].kind;
+        if let ExprKind::AddrOf(BorrowKind::Ref, _, ref output_string_expr) = output_args[0].kind;
         if let ExprKind::Array(ref string_exprs) = output_string_expr.kind;
         // we only want to provide an automatic suggestion for simple (non-format) strings
         if string_exprs.len() == 1;
