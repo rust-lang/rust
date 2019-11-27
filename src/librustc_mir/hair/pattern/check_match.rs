@@ -492,7 +492,7 @@ fn check_not_useful(
     match is_useful(cx, matrix, &PatStack::from_pattern(&wild_pattern), ConstructWitness, hir_id) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
-            vec![wild_pattern]
+            bug!("Exhaustiveness check returned no witnesses")
         } else {
             pats.into_iter().map(|w| w.single_pattern()).collect()
         }),
