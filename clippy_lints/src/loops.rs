@@ -674,7 +674,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Cast(ref e, _)
         | ExprKind::Type(ref e, _)
         | ExprKind::Field(ref e, _)
-        | ExprKind::AddrOf(BorrowKind::Ref, _, ref e)
+        | ExprKind::AddrOf(_, _, ref e)
         | ExprKind::Struct(_, _, Some(ref e))
         | ExprKind::Repeat(ref e, _)
         | ExprKind::DropTemps(ref e) => never_loop_expr(e, main_loop_id),

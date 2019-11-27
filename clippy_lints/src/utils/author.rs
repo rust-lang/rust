@@ -4,7 +4,7 @@
 use crate::utils::{get_attr, higher};
 use rustc::hir;
 use rustc::hir::intravisit::{NestedVisitorMap, Visitor};
-use rustc::hir::{BindingAnnotation, Block, BorrowKind, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
+use rustc::hir::{BindingAnnotation, Block, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::session::Session;
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -425,11 +425,11 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 self.current = path_pat;
                 self.print_qpath(path);
             },
-            ExprKind::AddrOf(BorrowKind::Ref, mutability, ref inner) => {
+            ExprKind::AddrOf(kind, mutability, ref inner) => {
                 let inner_pat = self.next("inner");
                 println!(
-                    "AddrOf(BorrowKind::Ref, Mutability::{:?}, ref {}) = {};",
-                    mutability, inner_pat, current
+                    "AddrOf(BorrowKind::{:?}, Mutability::{:?}, ref {}) = {};",
+                    kind, mutability, inner_pat, current
                 );
                 self.current = inner_pat;
                 self.visit_expr(inner);
