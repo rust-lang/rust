@@ -1,0 +1,43 @@
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:11:11
+   |
+LL |     foo11("bar", &"baz");
+   |           ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required for the cast to the object type `dyn std::convert::AsRef<std::path::Path>`
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:13:19
+   |
+LL |     foo12(&"bar", "baz");
+   |                   ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required for the cast to the object type `dyn std::convert::AsRef<std::path::Path>`
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:16:11
+   |
+LL |     foo21("bar", &"baz");
+   |           ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required for the cast to the object type `dyn std::convert::AsRef<str>`
+
+error[E0277]: the size for values of type `str` cannot be known at compilation time
+  --> $DIR/unsized-fn-param.rs:18:19
+   |
+LL |     foo22(&"bar", "baz");
+   |                   ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `str`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required for the cast to the object type `dyn std::convert::AsRef<str>`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -75,6 +75,12 @@ pub mod consts {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const PI: f64 = 3.14159265358979323846264338327950288_f64;
 
+    /// The full circle constant (τ)
+    ///
+    /// Equal to 2π.
+    #[unstable(feature = "tau_constant", issue = "66770")]
+    pub const TAU: f64 = 6.28318530717958647692528676655900577_f64;
+
     /// π/2
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_2: f64 = 1.57079632679489661923132169163975144_f64;

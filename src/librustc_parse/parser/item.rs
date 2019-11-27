@@ -7,7 +7,7 @@ use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, An
 use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
-use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, VariantData, StructField};
+use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, Variant, VariantData, StructField};
 use syntax::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -1329,85 +1329,65 @@ impl<'a> Parser<'a> {
         let id = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
-        self.expect(&token::OpenDelim(token::Brace))?;
 
-        let enum_definition = self.parse_enum_def(&generics).map_err(|e| {
+        let (variants, _) = self.parse_delim_comma_seq(
+            token::Brace,
+            |p| p.parse_enum_item(),
+        ).map_err(|e| {
             self.recover_stmt();
-            self.eat(&token::CloseDelim(token::Brace));
             e
         })?;
+
+        let enum_definition = EnumDef {
+            variants: variants.into_iter().filter_map(|v| v).collect(),
+        };
         Ok((id, ItemKind::Enum(enum_definition, generics), None))
     }
 
-    /// Parses the part of an enum declaration following the `{`.
-    fn parse_enum_def(&mut self, _generics: &Generics) -> PResult<'a, EnumDef> {
-        let mut variants = Vec::new();
-        // FIXME: Consider using `parse_delim_comma_seq`.
-        // We could then remove eating comma in `recover_nested_adt_item`.
-        while self.token != token::CloseDelim(token::Brace) {
-            let variant_attrs = self.parse_outer_attributes()?;
-            let vlo = self.token.span;
+    fn parse_enum_item(&mut self) -> PResult<'a, Option<Variant>> {
+        let variant_attrs = self.parse_outer_attributes()?;
+        let vlo = self.token.span;
 
-            let vis = self.parse_visibility(FollowedByType::No)?;
-            if !self.recover_nested_adt_item(kw::Enum)? {
-                // Item already parsed, we need to skip this variant.
-                continue
-            }
-            let ident = self.parse_ident()?;
-
-            let struct_def = if self.check(&token::OpenDelim(token::Brace)) {
-                // Parse a struct variant.
-                let (fields, recovered) = self.parse_record_struct_body()?;
-                VariantData::Struct(fields, recovered)
-            } else if self.check(&token::OpenDelim(token::Paren)) {
-                VariantData::Tuple(
-                    self.parse_tuple_struct_body()?,
-                    DUMMY_NODE_ID,
-                )
-            } else {
-                VariantData::Unit(DUMMY_NODE_ID)
-            };
-
-            let disr_expr = if self.eat(&token::Eq) {
-                Some(AnonConst {
-                    id: DUMMY_NODE_ID,
-                    value: self.parse_expr()?,
-                })
-            } else {
-                None
-            };
-
-            let vr = ast::Variant {
-                ident,
-                vis,
-                id: DUMMY_NODE_ID,
-                attrs: variant_attrs,
-                data: struct_def,
-                disr_expr,
-                span: vlo.to(self.prev_span),
-                is_placeholder: false,
-            };
-            variants.push(vr);
-
-            if !self.eat(&token::Comma) {
-                if self.token.is_ident() && !self.token.is_reserved_ident() {
-                    let sp = self.sess.source_map().next_point(self.prev_span);
-                    self.struct_span_err(sp, "missing comma")
-                        .span_suggestion_short(
-                            sp,
-                            "missing comma",
-                            ",".to_owned(),
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
-                } else {
-                    break;
-                }
-            }
+        let vis = self.parse_visibility(FollowedByType::No)?;
+        if !self.recover_nested_adt_item(kw::Enum)? {
+            return Ok(None)
         }
-        self.expect(&token::CloseDelim(token::Brace))?;
+        let ident = self.parse_ident()?;
 
-        Ok(ast::EnumDef { variants })
+        let struct_def = if self.check(&token::OpenDelim(token::Brace)) {
+            // Parse a struct variant.
+            let (fields, recovered) = self.parse_record_struct_body()?;
+            VariantData::Struct(fields, recovered)
+        } else if self.check(&token::OpenDelim(token::Paren)) {
+            VariantData::Tuple(
+                self.parse_tuple_struct_body()?,
+                DUMMY_NODE_ID,
+            )
+        } else {
+            VariantData::Unit(DUMMY_NODE_ID)
+        };
+
+        let disr_expr = if self.eat(&token::Eq) {
+            Some(AnonConst {
+                id: DUMMY_NODE_ID,
+                value: self.parse_expr()?,
+            })
+        } else {
+            None
+        };
+
+        let vr = ast::Variant {
+            ident,
+            vis,
+            id: DUMMY_NODE_ID,
+            attrs: variant_attrs,
+            data: struct_def,
+            disr_expr,
+            span: vlo.to(self.prev_span),
+            is_placeholder: false,
+        };
+
+        Ok(Some(vr))
     }
 
     /// Parses `struct Foo { ... }`.
@@ -1764,7 +1744,6 @@ impl<'a> Parser<'a> {
             let kw_token = self.token.clone();
             let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item()?;
-            self.eat(&token::Comma);
 
             self.struct_span_err(
                 kw_token.span,
@@ -2033,7 +2012,7 @@ impl<'a> Parser<'a> {
 
         let mut params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
 
-        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
+        // Replace duplicated recovered params with `_` pattern to avoid unnecessary errors.
         self.deduplicate_recovered_params_names(&mut params);
 
         if c_variadic && params.len() <= 1 {

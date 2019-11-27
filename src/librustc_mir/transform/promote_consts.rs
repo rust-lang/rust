@@ -185,7 +185,7 @@ impl<'tcx> Visitor<'tcx> for Collector<'_, 'tcx> {
 
         // Ignore drops, if the temp gets promoted,
         // then it's constant and thus drop is noop.
-        // Non-uses are also irrelevent.
+        // Non-uses are also irrelevant.
         if context.is_drop() || !context.is_use() {
             debug!(
                 "visit_local: context.is_drop={:?} context.is_use={:?}",

@@ -2,7 +2,7 @@ use crate::check::{Inherited, FnCtxt};
 use crate::constrained_generic_params::{identify_constrained_generic_params, Parameter};
 
 use crate::hir::def_id::DefId;
-use rustc::traits::{self, ObligationCauseCode};
+use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
@@ -895,6 +895,11 @@ fn receiver_is_valid<'fcx, 'tcx>(
     // The first type is `receiver_ty`, which we know its not equal to `self_ty`; skip it.
     autoderef.next();
 
+    let receiver_trait_def_id = fcx.tcx.require_lang_item(
+        lang_items::ReceiverTraitLangItem,
+        None,
+    );
+
     // Keep dereferencing `receiver_ty` until we get to `self_ty`.
     loop {
         if let Some((potential_self_ty, _)) = autoderef.next() {
@@ -911,51 +916,63 @@ fn receiver_is_valid<'fcx, 'tcx>(
                 }
 
                 break
+            } else {
+                // Without `feature(arbitrary_self_types)`, we require that each step in the
+                // deref chain implement `receiver`
+                if !arbitrary_self_types_enabled
+                    && !receiver_is_implemented(
+                        fcx,
+                        receiver_trait_def_id,
+                        cause.clone(),
+                        potential_self_ty,
+                    )
+                {
+                    return false
+                }
             }
         } else {
             debug!("receiver_is_valid: type `{:?}` does not deref to `{:?}`",
                 receiver_ty, self_ty);
             // If he receiver already has errors reported due to it, consider it valid to avoid
-            // unecessary errors (#58712).
+            // unnecessary errors (#58712).
             return receiver_ty.references_error();
-        }
-
-        // Without the `arbitrary_self_types` feature, `receiver_ty` must directly deref to
-        // `self_ty`. Enforce this by only doing one iteration of the loop.
-        if !arbitrary_self_types_enabled {
-            return false
         }
     }
 
     // Without `feature(arbitrary_self_types)`, we require that `receiver_ty` implements `Receiver`.
-    if !arbitrary_self_types_enabled {
-        let trait_def_id = match fcx.tcx.lang_items().receiver_trait() {
-            Some(did) => did,
-            None => {
-                debug!("receiver_is_valid: missing Receiver trait");
-                return false
-            }
-        };
-
-        let trait_ref = ty::TraitRef{
-            def_id: trait_def_id,
-            substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
-        };
-
-        let obligation = traits::Obligation::new(
-            cause,
-            fcx.param_env,
-            trait_ref.to_predicate()
-        );
-
-        if !fcx.predicate_must_hold_modulo_regions(&obligation) {
-            debug!("receiver_is_valid: type `{:?}` does not implement `Receiver` trait",
-                receiver_ty);
-            return false
-        }
+    if !arbitrary_self_types_enabled
+        && !receiver_is_implemented(fcx, receiver_trait_def_id, cause.clone(), receiver_ty)
+    {
+        return false
     }
 
     true
+}
+
+fn receiver_is_implemented(
+    fcx: &FnCtxt<'_, 'tcx>,
+    receiver_trait_def_id: DefId,
+    cause: ObligationCause<'tcx>,
+    receiver_ty: Ty<'tcx>,
+) -> bool {
+    let trait_ref = ty::TraitRef{
+        def_id: receiver_trait_def_id,
+        substs: fcx.tcx.mk_substs_trait(receiver_ty, &[]),
+    };
+
+    let obligation = traits::Obligation::new(
+        cause,
+        fcx.param_env,
+        trait_ref.to_predicate()
+    );
+
+    if fcx.predicate_must_hold_modulo_regions(&obligation) {
+        true
+    } else {
+        debug!("receiver_is_implemented: type `{:?}` does not implement `Receiver` trait",
+            receiver_ty);
+        false
+    }
 }
 
 fn check_variances_for_type_defn<'tcx>(

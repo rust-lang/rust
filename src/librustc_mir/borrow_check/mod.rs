@@ -951,7 +951,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             self.check_access_for_conflict(location, place_span, sd, rw, flow_state);
 
         if let (Activation(_, borrow_idx), true) = (kind.1, conflict_error) {
-            // Suppress this warning when there's an error being emited for the
+            // Suppress this warning when there's an error being emitted for the
             // same borrow: fixing the error is likely to fix the warning.
             self.reservation_warnings.remove(&borrow_idx);
         }

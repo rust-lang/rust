@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self.rs:12:9
+  --> $DIR/lt-ref-self.rs:11:9
    |
 LL |     fn ref_self(&self, f: &u32) -> &u32 {
    |                 -         - let's call the lifetime of this reference `'1`
@@ -9,7 +9,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self.rs:18:9
+  --> $DIR/lt-ref-self.rs:17:9
    |
 LL |     fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                       -         - let's call the lifetime of this reference `'1`
@@ -19,7 +19,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self.rs:22:9
+  --> $DIR/lt-ref-self.rs:21:9
    |
 LL |     fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                               -          - let's call the lifetime of this reference `'1`
@@ -29,7 +29,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self.rs:26:9
+  --> $DIR/lt-ref-self.rs:25:9
    |
 LL |     fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                               -          - let's call the lifetime of this reference `'1`
@@ -39,7 +39,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self.rs:30:9
+  --> $DIR/lt-ref-self.rs:29:9
    |
 LL |     fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                       -           - let's call the lifetime of this reference `'1`
@@ -49,7 +49,7 @@ LL |         f
    |         ^ function was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
 
 error: lifetime may not live long enough
-  --> $DIR/lt-ref-self.rs:34:9
+  --> $DIR/lt-ref-self.rs:33:9
    |
 LL |     fn box_pin_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                   -           - let's call the lifetime of this reference `'1`

@@ -130,7 +130,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>, foreign_e
 fn interpret_cs_action(cs_action: u64, lpad: usize, foreign_exception: bool) -> EHAction {
     if cs_action == 0 {
         // If cs_action is 0 then this is a cleanup (Drop::drop). We run these
-        // for both Rust panics and foriegn exceptions.
+        // for both Rust panics and foreign exceptions.
         EHAction::Cleanup(lpad)
     } else if foreign_exception {
         // catch_unwind should not catch foreign exceptions, only Rust panics.

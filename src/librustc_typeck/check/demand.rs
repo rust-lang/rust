@@ -434,7 +434,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             segment.ident.name,
                         ) {
                             // If this expression had a clone call when suggesting borrowing
-                            // we want to suggest removing it because it'd now be unecessary.
+                            // we want to suggest removing it because it'd now be unnecessary.
                             sugg_sp = arg.span;
                         }
                     }

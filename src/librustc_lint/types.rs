@@ -591,6 +591,23 @@ fn is_repr_nullable_ptr<'tcx>(
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
+
+    /// Check if the type is array and emit an unsafe type lint.
+    fn check_for_array_ty(&mut self, sp: Span, ty: Ty<'tcx>) -> bool {
+        if let ty::Array(..) = ty.kind {
+            self.emit_ffi_unsafe_type_lint(
+                ty,
+                sp,
+                "passing raw arrays by value is not FFI-safe",
+                Some("consider passing a pointer to the array"),
+            );
+            true
+        } else {
+            false
+        }
+    }
+
+
     /// Checks if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
     fn check_type_for_ffi(&self,
@@ -825,7 +842,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::RawPtr(ty::TypeAndMut { ty, .. }) |
             ty::Ref(_, ty, _) => self.check_type_for_ffi(cache, ty),
 
-            ty::Array(ty, _) => self.check_type_for_ffi(cache, ty),
+            ty::Array(inner_ty, _) => self.check_type_for_ffi(cache, inner_ty),
 
             ty::FnPtr(sig) => {
                 match sig.abi() {
@@ -937,7 +954,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>) {
+    fn check_type_for_ffi_and_report_errors(&mut self, sp: Span, ty: Ty<'tcx>, is_static: bool) {
         // We have to check for opaque types before `normalize_erasing_regions`,
         // which will replace opaque types with their underlying concrete type.
         if self.check_for_opaque_ty(sp, ty) {
@@ -948,6 +965,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         // it is only OK to use this function because extern fns cannot have
         // any generic types right now:
         let ty = self.cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+        // C doesn't really support passing arrays by value.
+        // The only way to pass an array by value is through a struct.
+        // So we first test that the top level isn't an array,
+        // and then recursively check the types inside.
+        if !is_static && self.check_for_array_ty(sp, ty) {
+            return;
+        }
 
         match self.check_type_for_ffi(&mut FxHashSet::default(), ty) {
             FfiResult::FfiSafe => {}
@@ -966,13 +990,13 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
         for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
-            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty);
+            self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false);
         }
 
         if let hir::Return(ref ret_hir) = decl.output {
             let ret_ty = sig.output();
             if !ret_ty.is_unit() {
-                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty);
+                self.check_type_for_ffi_and_report_errors(ret_hir.span, ret_ty, false);
             }
         }
     }
@@ -980,7 +1004,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_foreign_static(&mut self, id: hir::HirId, span: Span) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let ty = self.cx.tcx.type_of(def_id);
-        self.check_type_for_ffi_and_report_errors(span, ty);
+        self.check_type_for_ffi_and_report_errors(span, ty, true);
     }
 }
 
