@@ -2,9 +2,7 @@
 use hir_def::expr::{BinaryOp, CmpOp};
 
 use super::{InferTy, Ty, TypeCtor};
-use crate::{
-    ty::ApplicationTy,
-};
+use crate::ty::ApplicationTy;
 
 pub(super) fn binary_op_return_ty(op: BinaryOp, rhs_ty: Ty) -> Ty {
     match op {
