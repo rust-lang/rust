@@ -61,12 +61,18 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
         path_str: &str,
         current_item: &Option<String>,
         module_id: syntax::ast::NodeId,
-    ) -> Result<(Res, Option<String>), ()> {
+    ) -> Result<(Res, Option<String>), ErrorKind> {
         let cx = self.cx;
 
         let mut split = path_str.rsplitn(3, "::");
-        let variant_field_name = split.next().map(|f| Symbol::intern(f)).ok_or(())?;
-        let variant_name = split.next().map(|f| Symbol::intern(f)).ok_or(())?;
+        let variant_field_name = split
+            .next()
+            .map(|f| Symbol::intern(f))
+            .ok_or(ErrorKind::ResolutionFailure)?;
+        let variant_name = split
+            .next()
+            .map(|f| Symbol::intern(f))
+            .ok_or(ErrorKind::ResolutionFailure)?;
         let path = split.next().map(|f| {
             if f == "self" || f == "Self" {
                 if let Some(name) = current_item.as_ref() {
@@ -74,12 +80,12 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                 }
             }
             f.to_owned()
-        }).ok_or(())?;
+        }).ok_or(ErrorKind::ResolutionFailure)?;
         let (_, ty_res) = cx.enter_resolver(|resolver| {
             resolver.resolve_str_path_error(DUMMY_SP, &path, TypeNS, module_id)
-        })?;
+        }).map_err(|_| ErrorKind::ResolutionFailure)?;
         if let Res::Err = ty_res {
-            return Err(());
+            return Err(ErrorKind::ResolutionFailure);
         }
         let ty_res = ty_res.map_id(|_| panic!("unexpected node_id"));
         match ty_res {
@@ -88,7 +94,7 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                          .iter()
                          .flat_map(|imp| cx.tcx.associated_items(*imp))
                          .any(|item| item.ident.name == variant_name) {
-                    return Err(());
+                    return Err(ErrorKind::ResolutionFailure);
                 }
                 match cx.tcx.type_of(did).kind {
                     ty::Adt(def, _) if def.is_enum() => {
@@ -98,13 +104,13 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
                                 Some(format!("variant.{}.field.{}",
                                              variant_name, variant_field_name))))
                         } else {
-                            Err(())
+                            Err(ErrorKind::ResolutionFailure)
                         }
                     }
-                    _ => Err(()),
+                    _ => Err(ErrorKind::ResolutionFailure),
                 }
             }
-            _ => Err(())
+            _ => Err(ErrorKind::ResolutionFailure)
         }
     }
 
