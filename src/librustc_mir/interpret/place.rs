@@ -658,6 +658,13 @@ where
                 PlaceTy {
                     place: match self.frame().return_place {
                         Some(p) => *p,
+                        // Even if we don't have a return place, we sometimes need to
+                        // create this place, but any attempt to read from / write to it
+                        // (even a ZST read/write) needs to error, so let us make this
+                        // a NULL place.
+                        //
+                        // FIXME: Ideally we'd make sure that the place projections also
+                        // bail out.
                         None => Place::null(&*self),
                     },
                     layout: self.layout_of(
