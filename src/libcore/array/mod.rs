@@ -1,5 +1,5 @@
 //! Implementations of things like `Eq` for fixed-length arrays
-//! up to a certain length. Eventually we should able to generalize
+//! up to a certain length. Eventually, we should be able to generalize
 //! to all lengths.
 //!
 //! *[See also the array primitive type](../../std/primitive.array.html).*
