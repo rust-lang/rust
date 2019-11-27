@@ -1,8 +1,7 @@
 use crate::hir::CodegenFnAttrFlags;
-use crate::hir::Unsafety;
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, SubstsRef, TyCtxt};
+use crate::ty::{self, Ty, TypeFoldable, SubstsRef, TyCtxt};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::traits;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
@@ -10,7 +9,6 @@ use rustc_target::spec::abi::Abi;
 use rustc_macros::HashStable;
 
 use std::fmt;
-use std::iter;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, Lift)]
@@ -65,68 +63,6 @@ impl<'tcx> Instance<'tcx> {
             ty::ParamEnv::reveal_all(),
             &ty,
         )
-    }
-
-    pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
-        let ty = self.ty(tcx);
-        match ty.kind {
-            ty::FnDef(..) |
-            // Shims currently have type FnPtr. Not sure this should remain.
-            ty::FnPtr(_) => {
-                let mut sig = ty.fn_sig(tcx);
-                if let InstanceDef::VtableShim(..) = self.def {
-                    // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-                    sig = sig.map_bound(|mut sig| {
-                        let mut inputs_and_output = sig.inputs_and_output.to_vec();
-                        inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
-                        sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
-                        sig
-                    });
-                }
-                sig
-            }
-            ty::Closure(def_id, substs) => {
-                let sig = substs.as_closure().sig(def_id, tcx);
-
-                let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-                sig.map_bound(|sig| tcx.mk_fn_sig(
-                    iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
-                    sig.output(),
-                    sig.c_variadic,
-                    sig.unsafety,
-                    sig.abi
-                ))
-            }
-            ty::Generator(def_id, substs, _) => {
-                let sig = substs.as_generator().poly_sig(def_id, tcx);
-
-                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-                let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
-
-                let pin_did = tcx.lang_items().pin_type().unwrap();
-                let pin_adt_ref = tcx.adt_def(pin_did);
-                let pin_substs = tcx.intern_substs(&[env_ty.into()]);
-                let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
-
-                sig.map_bound(|sig| {
-                    let state_did = tcx.lang_items().gen_state().unwrap();
-                    let state_adt_ref = tcx.adt_def(state_did);
-                    let state_substs = tcx.intern_substs(&[
-                        sig.yield_ty.into(),
-                        sig.return_ty.into(),
-                    ]);
-                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-
-                    tcx.mk_fn_sig(iter::once(env_ty),
-                        ret_ty,
-                        false,
-                        Unsafety::Normal,
-                        Abi::Rust
-                    )
-                })
-            }
-            _ => bug!("unexpected type {:?} in Instance::fn_sig", ty)
-        }
     }
 }
 
