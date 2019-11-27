@@ -19,7 +19,6 @@ use crate::dataflow::indexes::{MovePathIndex, MoveOutIndex};
 use crate::util::borrowck_errors;
 
 use crate::borrow_check::{
-    nll::region_infer::{RegionName, RegionNameSource},
     prefixes::IsPrefixOf,
     WriteKind,
     borrow_set::BorrowData,
@@ -27,7 +26,7 @@ use crate::borrow_check::{
 };
 
 use super::{
-    IncludingDowncast, UseSpans,
+    IncludingDowncast, UseSpans, RegionName, RegionNameSource,
     explain_borrow::BorrowExplanation,
 };
 

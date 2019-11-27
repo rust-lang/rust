@@ -20,11 +20,19 @@ use super::MirBorrowckCtxt;
 use crate::dataflow::move_paths::{InitLocation, LookupResult};
 
 mod find_use;
+mod var_name;
+mod region_name;
+mod outlives_suggestion;
 
 crate mod conflict_errors;
 crate mod move_errors;
 crate mod mutability_errors;
+crate mod region_errors;
 crate mod explain_borrow;
+
+crate use region_name::{RegionName, RegionNameSource, RegionErrorNamingCtx};
+crate use region_errors::{ErrorReportingCtx, ErrorConstraintInfo};
+crate use outlives_suggestion::OutlivesSuggestionBuilder;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 
