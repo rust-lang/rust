@@ -128,7 +128,7 @@ cfg_has_statx! {{
                 // It is a trick to call `statx` with NULL pointers to check if the syscall
                 // is available. According to the manual, it is expected to fail with EFAULT.
                 // We do this mainly for performance, since it is nearly hundreds times
-                // faster than a normal successfull call.
+                // faster than a normal successful call.
                 let err = cvt(statx(0, ptr::null(), 0, libc::STATX_ALL, ptr::null_mut()))
                     .err()
                     .and_then(|e| e.raw_os_error());
@@ -1223,7 +1223,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
             // The code below ensures that `FreeOnDrop` is never a null pointer
             unsafe {
                 // `copyfile_state_free` returns -1 if the `to` or `from` files
-                // cannot be closed. However, this is not considerd this an
+                // cannot be closed. However, this is not considered this an
                 // error.
                 copyfile_state_free(self.0);
             }

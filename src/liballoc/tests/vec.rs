@@ -985,7 +985,7 @@ fn drain_filter_consumed_panic() {
         };
         let drain = data.drain_filter(filter);
 
-        // NOTE: The DrainFilter is explictly consumed
+        // NOTE: The DrainFilter is explicitly consumed
         drain.for_each(drop);
     });
 

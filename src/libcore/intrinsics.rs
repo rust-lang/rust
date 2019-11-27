@@ -1279,7 +1279,7 @@ extern "rust-intrinsic" {
     /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
     pub fn unchecked_add<T>(x: T, y: T) -> T;
 
-    /// Returns the result of an unchecked substraction, resulting in
+    /// Returns the result of an unchecked subtraction, resulting in
     /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
     pub fn unchecked_sub<T>(x: T, y: T) -> T;
 

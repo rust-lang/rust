@@ -55,7 +55,7 @@ fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    // We do not have value optmizations for everything.
+    // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
     // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
     // from scalar unions that are initialized with one of their zero sized variants. We could

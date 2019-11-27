@@ -113,7 +113,7 @@ pub fn spin_loop() {
 pub fn black_box<T>(dummy: T) -> T {
     // We need to "use" the argument in some way LLVM can't introspect, and on
     // targets that support it we can typically leverage inline assembly to do
-    // this. LLVM's intepretation of inline assembly is that it's, well, a black
+    // this. LLVM's interpretation of inline assembly is that it's, well, a black
     // box. This isn't the greatest implementation since it probably deoptimizes
     // more than we want, but it's so far good enough.
     unsafe {
