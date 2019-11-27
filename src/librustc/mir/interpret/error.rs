@@ -10,7 +10,7 @@ use crate::ty::query::TyCtxtAt;
 use backtrace::Backtrace;
 use errors::DiagnosticBuilder;
 use rustc_macros::HashStable;
-use rustc_target::spec::abi::Abi;
+use rustc_target::abi;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
 
@@ -396,7 +396,7 @@ pub enum UnsupportedOpInfo<'tcx> {
     Unsupported(String),
 
     // -- Everything below is not categorized yet --
-    FunctionAbiMismatch(Abi, Abi),
+    FunctionAbiMismatch(abi::call::Conv, abi::call::Conv),
     FunctionArgMismatch(Ty<'tcx>, Ty<'tcx>),
     FunctionRetMismatch(Ty<'tcx>, Ty<'tcx>),
     FunctionArgCountMismatch,
@@ -460,9 +460,9 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                 write!(f, "type validation failed: {}", err)
             }
             NoMirFor(ref func) => write!(f, "no MIR for `{}`", func),
-            FunctionAbiMismatch(caller_abi, callee_abi) =>
+            FunctionAbiMismatch(caller_conv, callee_conv) =>
                 write!(f, "tried to call a function with ABI {:?} using caller ABI {:?}",
-                    callee_abi, caller_abi),
+                    callee_conv, caller_conv),
             FunctionArgMismatch(caller_ty, callee_ty) =>
                 write!(f, "tried to call a function with argument of type {:?} \
                            passing data of type {:?}",

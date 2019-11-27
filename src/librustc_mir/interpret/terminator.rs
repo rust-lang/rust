@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 
-use rustc::{mir, ty};
-use rustc::ty::Instance;
-use rustc::ty::layout::{self, TyLayout, LayoutOf};
+use rustc::mir;
+use rustc::ty::{self, Instance, Ty};
+use rustc::ty::layout::{self, FnAbiExt, TyLayout, LayoutOf};
 use syntax::source_map::Span;
+use rustc_target::abi::call::FnAbi;
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -60,16 +61,22 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 ..
             } => {
                 let func = self.eval_operand(func, None)?;
-                let (fn_val, abi) = match func.layout.ty.kind {
+                let (fn_val, abi, fn_abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
                         let caller_abi = sig.abi();
                         let fn_ptr = self.read_scalar(func)?.not_undef()?;
                         let fn_val = self.memory.get_fn(fn_ptr)?;
-                        (fn_val, caller_abi)
+                        // FIXME(eddyb) compute `extra_args` to pass to
+                        // `FnAbi::of_fn_ptr` to support C variadics.
+                        (fn_val, caller_abi, FnAbi::of_fn_ptr(self, sig, &[]))
                     }
                     ty::FnDef(def_id, substs) => {
                         let sig = func.layout.ty.fn_sig(*self.tcx);
-                        (FnVal::Instance(self.resolve(def_id, substs)?), sig.abi())
+                        let instance = self.resolve(def_id, substs)?;
+                        // FIXME(eddyb) compute `extra_args` to pass to
+                        // `FnAbi::of_instance` to support C variadics.
+                        let fn_abi = FnAbi::of_instance(self, instance, &[]);
+                        (FnVal::Instance(instance), sig.abi(), fn_abi)
                     },
                     _ => {
                         bug!("invalid callee of type {:?}", func.layout.ty)
@@ -84,6 +91,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     fn_val,
                     terminator.source_info.span,
                     abi,
+                    &fn_abi,
                     &args[..],
                     ret,
                     *cleanup
@@ -234,7 +242,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &mut self,
         fn_val: FnVal<'tcx, M::ExtraFnVal>,
         span: Span,
+        // FIXME(eddyb) this shouldn't be needed, its main purpose
+        // right now is special-casing `RustCall` and intrinsics.
         caller_abi: Abi,
+        caller_fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         args: &[OpTy<'tcx, M::PointerTag>],
         ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
         unwind: Option<mir::BasicBlock>
@@ -249,26 +260,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         };
 
         // ABI check
+        // FIXME(eddyb) check every aspect of `FnAbi` and use it below
+        // for adjusting various details (such as ignoring ZSTs).
         {
-            let callee_abi = {
-                let instance_ty = instance.ty(*self.tcx);
-                match instance_ty.kind {
-                    ty::FnDef(..) =>
-                        instance_ty.fn_sig(*self.tcx).abi(),
-                    ty::Closure(..) => Abi::RustCall,
-                    ty::Generator(..) => Abi::Rust,
-                    _ => bug!("unexpected callee ty: {:?}", instance_ty),
-                }
-            };
-            let normalize_abi = |abi| match abi {
-                Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
-                    // These are all the same ABI, really.
-                    Abi::Rust,
-                abi =>
-                    abi,
-            };
-            if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
+            // FIXME(eddyb) compute `extra_args` to pass to
+            // `FnAbi::of_instance` to support C variadics.
+            let callee_fn_abi = FnAbi::of_instance(self, instance, &[]);
+            if caller_fn_abi.conv != callee_fn_abi.conv {
+                throw_unsup!(FunctionAbiMismatch(caller_fn_abi.conv, callee_fn_abi.conv))
             }
         }
 
@@ -444,7 +443,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, span, caller_abi, &args, ret, unwind)
+                self.eval_fn_call(drop_fn, span, caller_abi, caller_fn_abi, &args, ret, unwind)
             }
         }
     }
@@ -479,10 +478,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let ty = self.tcx.mk_unit(); // return type is ()
         let dest = MPlaceTy::dangling(self.layout_of(ty)?, self);
 
+        // FIXME(eddyb) perhaps compute this more like the way it's done in
+        // `rustc_codegen_ssa::mir::block`?
+        let fn_abi = FnAbi::of_instance(self, instance, &[]);
+
         self.eval_fn_call(
             FnVal::Instance(instance),
             span,
             Abi::Rust,
+            &fn_abi,
             &[arg.into()],
             Some((dest.into(), target)),
             unwind

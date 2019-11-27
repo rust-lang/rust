@@ -2,6 +2,8 @@ use crate::abi::{self, Abi, Align, FieldPlacement, Size};
 use crate::abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 use crate::spec::{self, HasTargetSpec};
 
+use rustc_macros::HashStable_Generic;
+
 mod aarch64;
 mod amdgpu;
 mod arm;
@@ -488,7 +490,8 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable_Generic)]
 pub enum Conv {
     // General language calling conventions, for which every target
     // should have its own backend (e.g. LLVM) support.
