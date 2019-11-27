@@ -22,7 +22,7 @@ impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(self, db: &impl DefDatabase) -> Source<ModuleSource> {
         let def_map = db.crate_def_map(self.id.krate);
-        let src = def_map[self.id.module_id].definition_source(db);
+        let src = def_map[self.id.local_id].definition_source(db);
         src.map(|it| match it {
             Either::A(it) => ModuleSource::SourceFile(it),
             Either::B(it) => ModuleSource::Module(it),
@@ -33,7 +33,7 @@ impl Module {
     /// `None` for the crate root.
     pub fn declaration_source(self, db: &impl DefDatabase) -> Option<Source<ast::Module>> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.module_id].declaration_source(db)
+        def_map[self.id.local_id].declaration_source(db)
     }
 }
 

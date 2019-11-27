@@ -262,13 +262,13 @@ impl Module {
 
         let original_file = src.file_id.original_file(db);
 
-        let (krate, module_id) =
+        let (krate, local_id) =
             db.relevant_crates(original_file).iter().find_map(|&crate_id| {
                 let crate_def_map = db.crate_def_map(crate_id);
-                let local_module_id = crate_def_map.modules_for_file(original_file).next()?;
-                Some((crate_id, local_module_id))
+                let local_id = crate_def_map.modules_for_file(original_file).next()?;
+                Some((crate_id, local_id))
             })?;
-        Some(Module { id: ModuleId { krate, module_id } })
+        Some(Module { id: ModuleId { krate, local_id } })
     }
 }
 

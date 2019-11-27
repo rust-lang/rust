@@ -50,7 +50,7 @@ impl_arena_id!(LocalImportId);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ModuleId {
     pub krate: CrateId,
-    pub module_id: LocalModuleId,
+    pub local_id: LocalModuleId,
 }
 
 /// An ID of a module, **local** to a specific crate

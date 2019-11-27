@@ -73,9 +73,9 @@ impl TestDB {
     pub fn module_for_file(&self, file_id: FileId) -> ModuleId {
         for &krate in self.relevant_crates(file_id).iter() {
             let crate_def_map = self.crate_def_map(krate);
-            for (module_id, data) in crate_def_map.modules.iter() {
+            for (local_id, data) in crate_def_map.modules.iter() {
                 if data.definition == Some(file_id) {
-                    return ModuleId { krate, module_id };
+                    return ModuleId { krate, local_id };
                 }
             }
         }
