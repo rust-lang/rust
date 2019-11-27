@@ -80,13 +80,7 @@ pub fn get_fn(
         let llfn = cx.declare_fn(&sym, &fn_abi);
         debug!("get_fn: not casting pointer!");
 
-        if instance.def.is_inline(tcx) {
-            attributes::inline(cx, llfn, attributes::InlineAttr::Hint);
-        }
-        // FIXME(eddyb) avoid this `Instance::fn_sig` call.
-        // Perhaps store the relevant information in `FnAbi`?
-        let sig_abi = instance.fn_sig(cx.tcx()).abi();
-        attributes::from_fn_attrs(cx, llfn, Some(instance.def.def_id()), sig_abi);
+        attributes::from_fn_attrs(cx, llfn, instance);
 
         let instance_def_id = instance.def_id();
 

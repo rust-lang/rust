@@ -2,11 +2,11 @@
 
 use std::ffi::CString;
 
-use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::{Sanitizer, OptLevel};
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::small_c_str::SmallCStr;
@@ -202,11 +202,9 @@ pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
 pub fn from_fn_attrs(
     cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
-    id: Option<DefId>,
-    abi: Abi,
+    instance: ty::Instance<'tcx>,
 ) {
-    let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
-        .unwrap_or_else(|| CodegenFnAttrs::new());
+    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
     match codegen_fn_attrs.optimize {
         OptimizeAttr::None => {
@@ -222,6 +220,11 @@ pub fn from_fn_attrs(
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
             llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
         }
+    }
+
+    // FIXME(eddyb) consolidate these two `inline` calls (and avoid overwrites).
+    if instance.def.is_inline(cx.tcx) {
+        inline(cx, llfn, attributes::InlineAttr::Hint);
     }
 
     inline(cx, llfn, codegen_fn_attrs.inline);
@@ -276,6 +279,9 @@ pub fn from_fn_attrs(
         // Special attribute for allocator functions, which can't unwind.
         false
     } else {
+        // FIXME(eddyb) avoid this `Instance::fn_sig` call.
+        // Perhaps store the relevant information in `FnAbi`?
+        let abi = instance.fn_sig(cx.tcx()).abi();
         if abi == Abi::Rust || abi == Abi::RustCall {
             // Any Rust method (or `extern "Rust" fn` or `extern
             // "rust-call" fn`) is explicitly allowed to unwind
@@ -330,16 +336,14 @@ pub fn from_fn_attrs(
     // Note that currently the `wasm-import-module` doesn't do anything, but
     // eventually LLVM 7 should read this and ferry the appropriate import
     // module to the output file.
-    if let Some(id) = id {
-        if cx.tcx.sess.target.target.arch == "wasm32" {
-            if let Some(module) = wasm_import_module(cx.tcx, id) {
-                llvm::AddFunctionAttrStringValue(
-                    llfn,
-                    llvm::AttributePlace::Function,
-                    const_cstr!("wasm-import-module"),
-                    &module,
-                );
-            }
+    if cx.tcx.sess.target.target.arch == "wasm32" {
+        if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
+            llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                const_cstr!("wasm-import-module"),
+                &module,
+            );
         }
     }
 }

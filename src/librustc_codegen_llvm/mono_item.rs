@@ -7,7 +7,7 @@ use crate::type_of::LayoutLlvmExt;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::{TypeFoldable, Instance};
-use rustc::ty::layout::{FnAbiExt, LayoutOf, HasTyCtxt};
+use rustc::ty::layout::{FnAbiExt, LayoutOf};
 use rustc_codegen_ssa::traits::*;
 
 pub use rustc::mir::mono::MonoItem;
@@ -69,18 +69,8 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
 
         debug!("predefine_fn: instance = {:?}", instance);
-        if instance.def.is_inline(self.tcx) {
-            attributes::inline(self, lldecl, attributes::InlineAttr::Hint);
-        }
-        // FIXME(eddyb) avoid this `Instance::fn_sig` call.
-        // Perhaps store the relevant information in `FnAbi`?
-        let mono_sig_abi = instance.fn_sig(self.tcx()).abi();
-        attributes::from_fn_attrs(
-            self,
-            lldecl,
-            Some(instance.def.def_id()),
-            mono_sig_abi,
-        );
+
+        attributes::from_fn_attrs(self, lldecl, instance);
 
         self.instances.borrow_mut().insert(instance, lldecl);
     }
