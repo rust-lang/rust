@@ -233,11 +233,13 @@ impl CodegenCx<'ll, 'tcx> {
                     ref attrs, span, kind: hir::ItemKind::Static(..), ..
                 }) => {
                     let sym_str = sym.as_str();
-                    if self.get_declared_value(&sym_str).is_some() {
-                        span_bug!(span, "Conflicting symbol names for static?");
+                    if let Some(g) = self.get_declared_value(&sym_str) {
+                        if self.val_ty(g) != self.type_ptr_to(llty) {
+                            span_bug!(span, "Conflicting types for static");
+                        }
                     }
 
-                    let g = self.define_global(&sym_str, llty).unwrap();
+                    let g = self.declare_global(&sym_str, llty);
 
                     if !self.tcx.is_reachable_non_generic(def_id) {
                         unsafe {
