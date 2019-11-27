@@ -328,7 +328,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReadVisitor<'a, 'tcx> {
             // ```
             //
             // TODO: fix this
-            ExprKind::AddrOf(BorrowKind::Ref, _, _) => {
+            ExprKind::AddrOf(_, _, _) => {
                 return;
             }
             _ => {}

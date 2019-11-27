@@ -264,8 +264,9 @@ fn print_expr(cx: &LateContext<'_, '_>, expr: &hir::Expr, indent: usize) {
             println!("{}Relative Path, {:?}", ind, ty);
             println!("{}seg: {:?}", ind, seg);
         },
-        hir::ExprKind::AddrOf(BorrowKind::Ref, ref muta, ref e) => {
+        hir::ExprKind::AddrOf(kind, ref muta, ref e) => {
             println!("{}AddrOf", ind);
+            println!("kind: {:?}", kind);
             println!("mutability: {:?}", muta);
             print_expr(cx, e, indent + 1);
         },

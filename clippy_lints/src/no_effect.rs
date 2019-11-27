@@ -58,7 +58,7 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
         | ExprKind::Type(ref inner, _)
         | ExprKind::Unary(_, ref inner)
         | ExprKind::Field(ref inner, _)
-        | ExprKind::AddrOf(BorrowKind::Ref, _, ref inner)
+        | ExprKind::AddrOf(_, _, ref inner)
         | ExprKind::Box(ref inner) => has_no_effect(cx, inner),
         ExprKind::Struct(_, ref fields, ref base) => {
             !has_drop(cx, cx.tables.expr_ty(expr))
@@ -134,7 +134,7 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
         | ExprKind::Type(ref inner, _)
         | ExprKind::Unary(_, ref inner)
         | ExprKind::Field(ref inner, _)
-        | ExprKind::AddrOf(BorrowKind::Ref, _, ref inner)
+        | ExprKind::AddrOf(_, _, ref inner)
         | ExprKind::Box(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
         ExprKind::Struct(_, ref fields, ref base) => {
             if has_drop(cx, cx.tables.expr_ty(expr)) {
