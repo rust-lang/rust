@@ -2,14 +2,14 @@
 
 use hir_def::{
     path::{Path, PathSegment},
-    resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
+    resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
+    AssocItemId, ContainerId, Lookup,
 };
 use hir_expand::name::Name;
 
 use crate::{
     db::HirDatabase,
     ty::{method_resolution, Substs, Ty, TypeWalk, ValueTyDefId},
-    AssocItem, Container, Function,
 };
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
@@ -143,31 +143,35 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         id: ExprOrPatId,
     ) -> Option<(ValueNs, Option<Substs>)> {
         let trait_ = trait_ref.trait_;
-        let item =
-            self.db.trait_data(trait_).items.iter().map(|(_name, id)| (*id).into()).find_map(
-                |item| match item {
-                    AssocItem::Function(func) => {
-                        if segment.name == func.name(self.db) {
-                            Some(AssocItem::Function(func))
-                        } else {
-                            None
-                        }
+        let item = self
+            .db
+            .trait_data(trait_)
+            .items
+            .iter()
+            .map(|(_name, id)| (*id).into())
+            .find_map(|item| match item {
+                AssocItemId::FunctionId(func) => {
+                    if segment.name == self.db.function_data(func).name {
+                        Some(AssocItemId::FunctionId(func))
+                    } else {
+                        None
                     }
+                }
 
-                    AssocItem::Const(konst) => {
-                        if konst.name(self.db).map_or(false, |n| n == segment.name) {
-                            Some(AssocItem::Const(konst))
-                        } else {
-                            None
-                        }
+                AssocItemId::ConstId(konst) => {
+                    if self.db.const_data(konst).name.as_ref().map_or(false, |n| n == &segment.name)
+                    {
+                        Some(AssocItemId::ConstId(konst))
+                    } else {
+                        None
                     }
-                    AssocItem::TypeAlias(_) => None,
-                },
-            )?;
+                }
+                AssocItemId::TypeAliasId(_) => None,
+            })?;
         let def = match item {
-            AssocItem::Function(f) => ValueNs::FunctionId(f.id),
-            AssocItem::Const(c) => ValueNs::ConstId(c.id),
-            AssocItem::TypeAlias(_) => unreachable!(),
+            AssocItemId::FunctionId(f) => ValueNs::FunctionId(f),
+            AssocItemId::ConstId(c) => ValueNs::ConstId(c),
+            AssocItemId::TypeAliasId(_) => unreachable!(),
         };
         let substs = Substs::build_for_def(self.db, item)
             .use_parent_substs(&trait_ref.substs)
@@ -197,16 +201,18 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some(name),
             method_resolution::LookupMode::Path,
             move |_ty, item| {
-                let def = match item {
-                    AssocItem::Function(f) => ValueNs::FunctionId(f.id),
-                    AssocItem::Const(c) => ValueNs::ConstId(c.id),
-                    AssocItem::TypeAlias(_) => unreachable!(),
+                let (def, container) = match item {
+                    AssocItemId::FunctionId(f) => {
+                        (ValueNs::FunctionId(f), f.lookup(self.db).container)
+                    }
+                    AssocItemId::ConstId(c) => (ValueNs::ConstId(c), c.lookup(self.db).container),
+                    AssocItemId::TypeAliasId(_) => unreachable!(),
                 };
-                let substs = match item.container(self.db) {
-                    Container::ImplBlock(_) => self.find_self_types(&def, ty.clone()),
-                    Container::Trait(t) => {
+                let substs = match container {
+                    ContainerId::ImplId(_) => self.find_self_types(&def, ty.clone()),
+                    ContainerId::TraitId(trait_) => {
                         // we're picking this method
-                        let trait_substs = Substs::build_for_def(self.db, t.id)
+                        let trait_substs = Substs::build_for_def(self.db, trait_)
                             .push(ty.clone())
                             .fill(std::iter::repeat_with(|| self.new_type_var()))
                             .build();
@@ -215,29 +221,35 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             .fill_with_params()
                             .build();
                         self.obligations.push(super::Obligation::Trait(TraitRef {
-                            trait_: t.id,
+                            trait_,
                             substs: trait_substs,
                         }));
                         Some(substs)
                     }
+                    ContainerId::ModuleId(_) => None,
                 };
 
-                self.write_assoc_resolution(id, item);
+                self.write_assoc_resolution(id, item.into());
                 Some((def, substs))
             },
         )
     }
 
     fn find_self_types(&self, def: &ValueNs, actual_def_ty: Ty) -> Option<Substs> {
-        if let ValueNs::FunctionId(func) = def {
-            let func = Function::from(*func);
+        if let ValueNs::FunctionId(func) = *def {
             // We only do the infer if parent has generic params
-            let gen = self.db.generic_params(func.id.into());
+            let gen = self.db.generic_params(func.into());
             if gen.count_parent_params() == 0 {
                 return None;
             }
 
-            let impl_block = func.impl_block(self.db)?.target_ty(self.db);
+            let impl_id = match func.lookup(self.db).container {
+                ContainerId::ImplId(it) => it,
+                _ => return None,
+            };
+            let resolver = impl_id.resolver(self.db);
+            let impl_data = self.db.impl_data(impl_id);
+            let impl_block = Ty::from_hir(self.db, &resolver, &impl_data.target_type);
             let impl_block_substs = impl_block.substs()?;
             let actual_substs = actual_def_ty.substs()?;
 

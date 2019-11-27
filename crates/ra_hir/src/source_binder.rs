@@ -11,7 +11,7 @@ use hir_def::{
     expr::{ExprId, PatId},
     path::known,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
-    DefWithBodyId,
+    AssocItemId, DefWithBodyId,
 };
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, MacroCallId, MacroFileKind, Source,
@@ -380,7 +380,7 @@ impl SourceAnalyzer {
             name,
             method_resolution::LookupMode::MethodCall,
             |ty, it| match it {
-                AssocItem::Function(f) => callback(ty, f),
+                AssocItemId::FunctionId(f) => callback(ty, f.into()),
                 _ => None,
             },
         )
@@ -391,7 +391,7 @@ impl SourceAnalyzer {
         db: &impl HirDatabase,
         ty: &Type,
         name: Option<&Name>,
-        callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+        mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
     ) -> Option<T> {
         // There should be no inference vars in types passed here
         // FIXME check that?
@@ -403,7 +403,7 @@ impl SourceAnalyzer {
             &self.resolver,
             name,
             method_resolution::LookupMode::Path,
-            callback,
+            |ty, it| callback(ty, it.into()),
         )
     }
 
