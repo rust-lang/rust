@@ -75,7 +75,7 @@ pub struct Queries<'tcx> {
     forest: Once<hir::map::Forest>,
 
     all_arenas: AllArenas,
-    local_arena: WorkerLocal<Arena<'tcx>>,
+    arena: WorkerLocal<Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
@@ -96,7 +96,7 @@ impl<'tcx> Queries<'tcx> {
             gcx: Once::new(),
             forest: Once::new(),
             all_arenas: AllArenas::new(),
-            local_arena: WorkerLocal::new(|_| Arena::default()),
+            arena: WorkerLocal::new(|_| Arena::default()),
             dep_graph_future: Default::default(),
             parse: Default::default(),
             crate_name: Default::default(),
@@ -269,7 +269,7 @@ impl<'tcx> Queries<'tcx> {
                 &crate_name,
                 &self.gcx,
                 &self.all_arenas,
-                &self.local_arena,
+                &self.arena,
             ))
         })
     }

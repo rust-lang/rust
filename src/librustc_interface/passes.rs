@@ -765,7 +765,7 @@ pub fn create_global_ctxt<'tcx>(
     crate_name: &str,
     global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
     all_arenas: &'tcx AllArenas,
-    local_arena: &'tcx WorkerLocal<Arena<'tcx>>,
+    arena: &'tcx WorkerLocal<Arena<'tcx>>,
 ) -> QueryContext<'tcx> {
     let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
@@ -788,8 +788,7 @@ pub fn create_global_ctxt<'tcx>(
     default_provide_extern(&mut extern_providers);
     codegen_backend.provide_extern(&mut extern_providers);
 
-    let override_queries = compiler.override_queries;
-    if let Some(callback) = override_queries {
+    if let Some(callback) = compiler.override_queries {
         callback(sess, &mut local_providers, &mut extern_providers);
     }
 
@@ -799,7 +798,7 @@ pub fn create_global_ctxt<'tcx>(
         local_providers,
         extern_providers,
         &all_arenas,
-        local_arena,
+        arena,
         resolver_outputs,
         hir_map,
         query_result_on_disk_cache,
