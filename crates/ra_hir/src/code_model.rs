@@ -618,7 +618,7 @@ impl Function {
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.into())
+        db.infer(self.id.into())
     }
 
     /// The containing impl block, if this is a method.
@@ -672,7 +672,7 @@ impl Const {
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.into())
+        db.infer(self.id.into())
     }
 
     /// The containing impl block, if this is a type alias.
@@ -715,7 +715,7 @@ impl Static {
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.into())
+        db.infer(self.id.into())
     }
 }
 
@@ -908,9 +908,9 @@ impl Local {
     }
 
     pub fn ty(self, db: &impl HirDatabase) -> Type {
-        let infer = db.infer(self.parent);
-        let ty = infer[self.pat_id].clone();
         let def = DefWithBodyId::from(self.parent);
+        let infer = db.infer(def);
+        let ty = infer[self.pat_id].clone();
         let resolver = def.resolver(db);
         let krate = def.module(db).krate;
         let environment = TraitEnvironment::lower(db, &resolver);

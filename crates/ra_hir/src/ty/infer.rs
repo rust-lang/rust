@@ -41,10 +41,7 @@ use super::{
     ApplicationTy, InEnvironment, ProjectionTy, Substs, TraitEnvironment, TraitRef, Ty, TypeCtor,
     TypeWalk, Uncertain,
 };
-use crate::{
-    db::HirDatabase, ty::infer::diagnostics::InferenceDiagnostic, AssocItem, DefWithBody,
-    VariantDef,
-};
+use crate::{db::HirDatabase, ty::infer::diagnostics::InferenceDiagnostic, VariantDef};
 
 macro_rules! ty_app {
     ($ctor:pat, $param:pat) => {
@@ -62,15 +59,15 @@ mod pat;
 mod coerce;
 
 /// The entry point of type inference.
-pub fn infer_query(db: &impl HirDatabase, def: DefWithBody) -> Arc<InferenceResult> {
+pub fn infer_query(db: &impl HirDatabase, def: DefWithBodyId) -> Arc<InferenceResult> {
     let _p = profile("infer_query");
-    let resolver = DefWithBodyId::from(def).resolver(db);
+    let resolver = def.resolver(db);
     let mut ctx = InferenceContext::new(db, def, resolver);
 
-    match &def {
-        DefWithBody::Const(c) => ctx.collect_const(&db.const_data(c.id)),
-        DefWithBody::Function(f) => ctx.collect_fn(&db.function_data(f.id)),
-        DefWithBody::Static(s) => ctx.collect_const(&db.static_data(s.id)),
+    match def {
+        DefWithBodyId::ConstId(c) => ctx.collect_const(&db.const_data(c)),
+        DefWithBodyId::FunctionId(f) => ctx.collect_fn(&db.function_data(f)),
+        DefWithBodyId::StaticId(s) => ctx.collect_const(&db.static_data(s)),
     }
 
     ctx.infer_body();
@@ -129,7 +126,7 @@ pub struct InferenceResult {
     /// For each struct literal, records the variant it resolves to.
     variant_resolutions: FxHashMap<ExprOrPatId, VariantDef>,
     /// For each associated item record what it resolves to
-    assoc_resolutions: FxHashMap<ExprOrPatId, AssocItem>,
+    assoc_resolutions: FxHashMap<ExprOrPatId, AssocItemId>,
     diagnostics: Vec<InferenceDiagnostic>,
     pub(super) type_of_expr: ArenaMap<ExprId, Ty>,
     pub(super) type_of_pat: ArenaMap<PatId, Ty>,
@@ -152,10 +149,10 @@ impl InferenceResult {
     pub fn variant_resolution_for_pat(&self, id: PatId) -> Option<VariantDef> {
         self.variant_resolutions.get(&id.into()).copied()
     }
-    pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<AssocItem> {
+    pub fn assoc_resolutions_for_expr(&self, id: ExprId) -> Option<AssocItemId> {
         self.assoc_resolutions.get(&id.into()).copied()
     }
-    pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<AssocItem> {
+    pub fn assoc_resolutions_for_pat(&self, id: PatId) -> Option<AssocItemId> {
         self.assoc_resolutions.get(&id.into()).copied()
     }
     pub fn type_mismatch_for_expr(&self, expr: ExprId) -> Option<&TypeMismatch> {
@@ -191,7 +188,7 @@ impl Index<PatId> for InferenceResult {
 #[derive(Clone, Debug)]
 struct InferenceContext<'a, D: HirDatabase> {
     db: &'a D,
-    owner: DefWithBody,
+    owner: DefWithBodyId,
     body: Arc<Body>,
     resolver: Resolver,
     var_unification_table: InPlaceUnificationTable<TypeVarId>,
@@ -209,7 +206,7 @@ struct InferenceContext<'a, D: HirDatabase> {
 }
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
-    fn new(db: &'a D, owner: DefWithBody, resolver: Resolver) -> Self {
+    fn new(db: &'a D, owner: DefWithBodyId, resolver: Resolver) -> Self {
         InferenceContext {
             result: InferenceResult::default(),
             var_unification_table: InPlaceUnificationTable::new(),

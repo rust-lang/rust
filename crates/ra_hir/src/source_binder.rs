@@ -168,7 +168,7 @@ impl SourceAnalyzer {
                 resolver,
                 body_owner: Some(def),
                 body_source_map: Some(source_map),
-                infer: Some(db.infer(def)),
+                infer: Some(db.infer(def.into())),
                 scopes: Some(scopes),
                 file_id: node.file_id,
             }
@@ -297,13 +297,13 @@ impl SourceAnalyzer {
         if let Some(path_expr) = path.syntax().parent().and_then(ast::PathExpr::cast) {
             let expr_id = self.expr_id(&path_expr.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_expr(expr_id) {
-                return Some(PathResolution::AssocItem(assoc));
+                return Some(PathResolution::AssocItem(assoc.into()));
             }
         }
         if let Some(path_pat) = path.syntax().parent().and_then(ast::PathPat::cast) {
             let pat_id = self.pat_id(&path_pat.into())?;
             if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
-                return Some(PathResolution::AssocItem(assoc));
+                return Some(PathResolution::AssocItem(assoc.into()));
             }
         }
         // This must be a normal source file rather than macro file.
