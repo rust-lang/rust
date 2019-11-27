@@ -72,7 +72,6 @@ impl<T> Default for Query<T> {
 pub struct Queries<'tcx> {
     compiler: &'tcx Compiler,
     gcx: Once<GlobalCtxt<'tcx>>,
-    forest: Once<hir::map::Forest>,
 
     all_arenas: AllArenas,
     arena: WorkerLocal<Arena<'tcx>>,
@@ -94,7 +93,6 @@ impl<'tcx> Queries<'tcx> {
         Queries {
             compiler,
             gcx: Once::new(),
-            forest: Once::new(),
             all_arenas: AllArenas::new(),
             arena: WorkerLocal::new(|_| Arena::default()),
             dep_graph_future: Default::default(),
@@ -236,7 +234,7 @@ impl<'tcx> Queries<'tcx> {
                     &krate
                 )
             })?;
-            let hir = self.forest.init_locking(|| hir);
+            let hir = self.arena.alloc(hir);
             Ok((hir, Steal::new(BoxedResolver::to_resolver_outputs(resolver))))
         })
     }

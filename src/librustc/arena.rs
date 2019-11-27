@@ -93,6 +93,7 @@ macro_rules! arena_types {
                         rustc::hir::def_id::CrateNum
                     >
                 >,
+            [few] hir_forest: rustc::hir::map::Forest,
             [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
                 syntax::symbol::Symbol,
                 rustc::hir::def_id::DefId,
