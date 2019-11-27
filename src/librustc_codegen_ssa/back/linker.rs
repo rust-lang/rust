@@ -743,7 +743,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // correctly.
         //
         // For more information see RFC #1665
-        if subsystem.starts_with("windows") {
+        if subsystem == "windows" {
             self.cmd.arg("/ENTRY:mainCRTStartup");
         }
     }
