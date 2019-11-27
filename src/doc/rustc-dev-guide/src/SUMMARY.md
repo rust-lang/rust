@@ -38,6 +38,7 @@
         - [Incremental compilation](./queries/incremental-compilation.md)
         - [Incremental compilation In Detail](./queries/incremental-compilation-in-detail.md)
         - [Debugging and Testing](./incrcomp-debugging.md)
+        - [Salsa](./salsa.md)
     - [Lexing and Parsing](./the-parser.md)
     - [`#[test]` Implementation](./test-implementation.md)
     - [Macro expansion](./macro-expansion.md)
