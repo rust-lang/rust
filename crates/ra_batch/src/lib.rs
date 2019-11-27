@@ -6,7 +6,7 @@ use rustc_hash::FxHashMap;
 
 use crossbeam_channel::{unbounded, Receiver};
 use ra_db::{CrateGraph, FileId, SourceRootId};
-use ra_ide_api::{AnalysisChange, AnalysisHost, FeatureFlags};
+use ra_ide::{AnalysisChange, AnalysisHost, FeatureFlags};
 use ra_project_model::{get_rustc_cfg_options, PackageRoot, ProjectWorkspace};
 use ra_vfs::{RootEntry, Vfs, VfsChange, VfsTask, Watch};
 use ra_vfs_glob::RustPackageFilterBuilder;

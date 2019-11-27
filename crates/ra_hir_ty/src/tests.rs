@@ -4677,7 +4677,7 @@ fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
 
     let module = db.module_for_file(pos.file_id);
     let crate_def_map = db.crate_def_map(module.krate);
-    for decl in crate_def_map[module.module_id].scope.declarations() {
+    for decl in crate_def_map[module.local_id].scope.declarations() {
         if let ModuleDefId::FunctionId(func) = decl {
             let (_body, source_map) = db.body_with_source_map(func.into());
             if let Some(expr_id) = source_map.node_expr(Source::new(pos.file_id.into(), &expr)) {
@@ -4753,7 +4753,7 @@ fn infer(content: &str) -> String {
     let crate_def_map = db.crate_def_map(module.krate);
 
     let mut defs: Vec<DefWithBodyId> = Vec::new();
-    visit_module(&db, &crate_def_map, module.module_id, &mut |it| defs.push(it));
+    visit_module(&db, &crate_def_map, module.local_id, &mut |it| defs.push(it));
     defs.sort_by_key(|def| match def {
         DefWithBodyId::FunctionId(it) => {
             it.lookup(&db).ast_id.to_node(&db).syntax().text_range().start()
@@ -4796,7 +4796,7 @@ fn visit_module(
                     }
                 }
             }
-            ModuleDefId::ModuleId(it) => visit_module(db, crate_def_map, it.module_id, cb),
+            ModuleDefId::ModuleId(it) => visit_module(db, crate_def_map, it.local_id, cb),
             _ => (),
         }
     }
@@ -4844,7 +4844,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id);
             let crate_def_map = db.crate_def_map(module.krate);
-            visit_module(&db, &crate_def_map, module.module_id, &mut |def| {
+            visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
                 db.infer(def);
             });
         });
@@ -4866,7 +4866,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
         let events = db.log_executed(|| {
             let module = db.module_for_file(pos.file_id);
             let crate_def_map = db.crate_def_map(module.krate);
-            visit_module(&db, &crate_def_map, module.module_id, &mut |def| {
+            visit_module(&db, &crate_def_map, module.local_id, &mut |def| {
                 db.infer(def);
             });
         });

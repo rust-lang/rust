@@ -36,7 +36,7 @@ impl Documentation {
         match def {
             AttrDefId::ModuleId(module) => {
                 let def_map = db.crate_def_map(module.krate);
-                let src = def_map[module.module_id].declaration_source(db)?;
+                let src = def_map[module.local_id].declaration_source(db)?;
                 docs_from_ast(&src.value)
             }
             AttrDefId::StructFieldId(it) => {

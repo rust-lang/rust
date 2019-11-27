@@ -1,6 +1,6 @@
 //! Implementation of the LSP for rust-analyzer.
 //!
-//! This crate takes Rust-specific analysis results from ra_ide_api and
+//! This crate takes Rust-specific analysis results from ra_ide and
 //! translates into LSP types.
 //!
 //! It also is the root of all state. `world` module defines the bulk of the

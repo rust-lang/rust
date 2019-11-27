@@ -1,6 +1,6 @@
 [package]
 edition = "2018"
-name = "ra_ide_api"
+name = "ra_ide"
 version = "0.1.0"
 authors = ["rust-analyzer developers"]
 
@@ -32,7 +32,7 @@ ra_prof = { path = "../ra_prof" }
 test_utils = { path = "../test_utils" }
 ra_assists = { path = "../ra_assists" }
 
-# ra_ide_api should depend only on the top-level `hir` package. if you need
+# ra_ide should depend only on the top-level `hir` package. if you need
 # something from some `hir_xxx` subpackage, reexport the API via `hir`.
 hir = { path = "../ra_hir", package = "ra_hir" }
 

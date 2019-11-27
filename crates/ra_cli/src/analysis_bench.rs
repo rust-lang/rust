@@ -10,7 +10,7 @@ use ra_db::{
     salsa::{Database, Durability},
     FileId, SourceDatabaseExt,
 };
-use ra_ide_api::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
+use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
 use crate::Result;
 

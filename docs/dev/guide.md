@@ -40,8 +40,8 @@ terms of files and offsets, and **not** in terms of Rust concepts like structs,
 traits, etc. The "typed" API with Rust specific types is slightly lower in the
 stack, we'll talk about it later.
 
-[`AnalysisHost`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L265-L284
-[`Analysis`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L291-L478
+[`AnalysisHost`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/lib.rs#L265-L284
+[`Analysis`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/lib.rs#L291-L478
 
 The reason for this separation of `Analysis` and `AnalysisHost` is that we want to apply
 changes "uniquely", but we might also want to fork an `Analysis` and send it to
@@ -69,7 +69,7 @@ the `AnalysisHost::apply_change` method, which accepts a single argument, a
 "transaction", so it suffices to study its methods to understand all of the
 input data.
 
-[`AnalysisChange`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L119-L167
+[`AnalysisChange`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/lib.rs#L119-L167
 
 The `(add|change|remove)_file` methods control the set of the input files, where
 each file has an integer id (`FileId`, picked by the client), text (`String`)
@@ -253,7 +253,7 @@ All analyzer information is stored in a salsa database. `Analysis` and
 `AnalysisHost` types are newtype wrappers for [`RootDatabase`] -- a salsa
 database.
 
-[`RootDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/db.rs#L88-L134
+[`RootDatabase`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/db.rs#L88-L134
 
 Salsa input queries are defined in [`FilesDatabase`] (which is a part of
 `RootDatabase`). They closely mirror the familiar `AnalysisChange` structure:
@@ -565,11 +565,11 @@ the type to completion.
 [schedule it on the threadpool]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L428
 [catch]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_lsp_server/src/main_loop.rs#L436-L442
 [the handler]: https://salsa.zulipchat.com/#narrow/stream/181542-rfcs.2Fsalsa-query-group/topic/design.20next.20steps
-[ask analysis for completion]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/lib.rs#L439-L444
-[completion implementation]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L46-L62
-[`CompletionContext`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L14-L37
-["IntelliJ Trick"]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L72-L75
-[find an ancestor `fn` node]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L116-L120
-[semantic model]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/completion_context.rs#L123
-[series of independent completion routines]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion.rs#L52-L59
-[`complete_dot`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide_api/src/completion/complete_dot.rs#L6-L22
+[ask analysis for completion]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/lib.rs#L439-L444
+[completion implementation]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/completion.rs#L46-L62
+[`CompletionContext`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/completion/completion_context.rs#L14-L37
+["IntelliJ Trick"]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/completion/completion_context.rs#L72-L75
+[find an ancestor `fn` node]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/completion/completion_context.rs#L116-L120
+[semantic model]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/completion/completion_context.rs#L123
+[series of independent completion routines]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/completion.rs#L52-L59
+[`complete_dot`]: https://github.com/rust-analyzer/rust-analyzer/blob/guide-2019-01/crates/ra_ide/src/completion/complete_dot.rs#L6-L22

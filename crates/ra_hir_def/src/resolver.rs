@@ -325,7 +325,7 @@ impl Resolver {
             if let Scope::ModuleScope(m) = scope {
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
-                    traits.extend(prelude_def_map[prelude.module_id].scope.traits());
+                    traits.extend(prelude_def_map[prelude.local_id].scope.traits());
                 }
                 traits.extend(m.crate_def_map[m.module_id].scope.traits());
             }
@@ -402,7 +402,7 @@ impl Scope {
                 });
                 if let Some(prelude) = m.crate_def_map.prelude {
                     let prelude_def_map = db.crate_def_map(prelude.krate);
-                    prelude_def_map[prelude.module_id].scope.entries().for_each(|(name, res)| {
+                    prelude_def_map[prelude.local_id].scope.entries().for_each(|(name, res)| {
                         f(name.clone(), ScopeDef::PerNs(res.def));
                     });
                 }
@@ -492,7 +492,7 @@ pub trait HasResolver: Copy {
 impl HasResolver for ModuleId {
     fn resolver(self, db: &impl DefDatabase) -> Resolver {
         let def_map = db.crate_def_map(self.krate);
-        Resolver::default().push_module_scope(def_map, self.module_id)
+        Resolver::default().push_module_scope(def_map, self.local_id)
     }
 }
 

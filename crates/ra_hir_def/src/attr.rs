@@ -35,7 +35,7 @@ impl Attrs {
         match def {
             AttrDefId::ModuleId(module) => {
                 let def_map = db.crate_def_map(module.krate);
-                let src = match def_map[module.module_id].declaration_source(db) {
+                let src = match def_map[module.local_id].declaration_source(db) {
                     Some(it) => it,
                     None => return Attrs::default(),
                 };

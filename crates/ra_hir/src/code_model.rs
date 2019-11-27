@@ -174,15 +174,15 @@ pub use hir_def::attr::Attrs;
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
-        Module { id: ModuleId { krate: krate.crate_id, module_id: crate_module_id } }
+        Module { id: ModuleId { krate: krate.crate_id, local_id: crate_module_id } }
     }
 
     /// Name of this module.
     pub fn name(self, db: &impl DefDatabase) -> Option<Name> {
         let def_map = db.crate_def_map(self.id.krate);
-        let parent = def_map[self.id.module_id].parent?;
+        let parent = def_map[self.id.local_id].parent?;
         def_map[parent].children.iter().find_map(|(name, module_id)| {
-            if *module_id == self.id.module_id {
+            if *module_id == self.id.local_id {
                 Some(name.clone())
             } else {
                 None
@@ -206,14 +206,14 @@ impl Module {
     /// Finds a child module with the specified name.
     pub fn child(self, db: &impl DefDatabase, name: &Name) -> Option<Module> {
         let def_map = db.crate_def_map(self.id.krate);
-        let child_id = def_map[self.id.module_id].children.get(name)?;
+        let child_id = def_map[self.id.local_id].children.get(name)?;
         Some(self.with_module_id(*child_id))
     }
 
     /// Iterates over all child modules.
     pub fn children(self, db: &impl DefDatabase) -> impl Iterator<Item = Module> {
         let def_map = db.crate_def_map(self.id.krate);
-        let children = def_map[self.id.module_id]
+        let children = def_map[self.id.local_id]
             .children
             .iter()
             .map(|(_, module_id)| self.with_module_id(*module_id))
@@ -224,7 +224,7 @@ impl Module {
     /// Finds a parent module.
     pub fn parent(self, db: &impl DefDatabase) -> Option<Module> {
         let def_map = db.crate_def_map(self.id.krate);
-        let parent_id = def_map[self.id.module_id].parent?;
+        let parent_id = def_map[self.id.local_id].parent?;
         Some(self.with_module_id(parent_id))
     }
 
@@ -240,7 +240,7 @@ impl Module {
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(self, db: &impl HirDatabase) -> Vec<(Name, ScopeDef, Option<Import>)> {
-        db.crate_def_map(self.id.krate)[self.id.module_id]
+        db.crate_def_map(self.id.krate)[self.id.local_id]
             .scope
             .entries()
             .map(|(name, res)| {
@@ -250,7 +250,7 @@ impl Module {
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
-        db.crate_def_map(self.id.krate).add_diagnostics(db, self.id.module_id, sink);
+        db.crate_def_map(self.id.krate).add_diagnostics(db, self.id.local_id, sink);
         for decl in self.declarations(db) {
             match decl {
                 crate::ModuleDef::Function(f) => f.diagnostics(db, sink),
@@ -275,12 +275,12 @@ impl Module {
 
     pub fn declarations(self, db: &impl DefDatabase) -> Vec<ModuleDef> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.module_id].scope.declarations().map(ModuleDef::from).collect()
+        def_map[self.id.local_id].scope.declarations().map(ModuleDef::from).collect()
     }
 
     pub fn impl_blocks(self, db: &impl DefDatabase) -> Vec<ImplBlock> {
         let def_map = db.crate_def_map(self.id.krate);
-        def_map[self.id.module_id].impls.iter().copied().map(ImplBlock::from).collect()
+        def_map[self.id.local_id].impls.iter().copied().map(ImplBlock::from).collect()
     }
 
     fn with_module_id(self, module_id: LocalModuleId) -> Module {
