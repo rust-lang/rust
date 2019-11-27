@@ -2,7 +2,7 @@
 
 // Show that `homogeneous_aggregate` code ignores zero-length C
 // arrays.  This matches the recent C standard, though not the
-// behavior of all older compilers, which somtimes consider `T[0]` to
+// behavior of all older compilers, which sometimes consider `T[0]` to
 // be a "flexible array member" (see discussion on #56877 for
 // details).
 

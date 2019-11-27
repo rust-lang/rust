@@ -149,7 +149,7 @@ impl Hasher for StableHasher {
 ///
 ///   That second condition is usually not required for hash functions
 ///   (e.g. `Hash`). In practice this means that `hash_stable` must feed any
-///   information into the hasher that a `PartialEq` comparision takes into
+///   information into the hasher that a `PartialEq` comparison takes into
 ///   account. See [#49300](https://github.com/rust-lang/rust/issues/49300)
 ///   for an example where violating this invariant has caused trouble in the
 ///   past.

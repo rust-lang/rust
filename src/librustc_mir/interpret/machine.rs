@@ -95,7 +95,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
-    /// For example, Miri uses this to return a fucntion pointer from `dlsym`
+    /// For example, Miri uses this to return a function pointer from `dlsym`
     /// that can later be called to execute the right thing.
     type ExtraFnVal: ::std::fmt::Debug + Copy;
 

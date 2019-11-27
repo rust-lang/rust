@@ -2028,7 +2028,7 @@ impl<'a> Parser<'a> {
 
         let mut params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
 
-        // Replace duplicated recovered params with `_` pattern to avoid unecessary errors.
+        // Replace duplicated recovered params with `_` pattern to avoid unnecessary errors.
         self.deduplicate_recovered_params_names(&mut params);
 
         if c_variadic && params.len() <= 1 {

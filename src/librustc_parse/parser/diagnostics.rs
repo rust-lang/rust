@@ -1515,11 +1515,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Replace duplicated recovered parameters with `_` pattern to avoid unecessary errors.
+    /// Replace duplicated recovered parameters with `_` pattern to avoid unnecessary errors.
     ///
     /// This is necessary because at this point we don't know whether we parsed a function with
     /// anonymous parameters or a function with names but no types. In order to minimize
-    /// unecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
+    /// unnecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
     /// the parameters are *names* (so we don't emit errors about not being able to find `b` in
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
     /// we deduplicate them to not complain about duplicated parameter names.

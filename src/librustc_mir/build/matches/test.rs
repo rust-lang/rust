@@ -488,7 +488,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Given that we are performing `test` against `test_place`, this job
     /// sorts out what the status of `candidate` will be after the test. See
     /// `test_candidates` for the usage of this function. The returned index is
-    /// the index that this candiate should be placed in the
+    /// the index that this candidate should be placed in the
     /// `target_candidates` vec. The candidate may be modified to update its
     /// `match_pairs`.
     ///

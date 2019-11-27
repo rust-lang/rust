@@ -461,7 +461,7 @@ impl AutoTraitFinder<'tcx> {
                                     // The old predicate has a region variable where the new
                                     // predicate has some other kind of region. An region
                                     // variable isn't something we can actually display to a user,
-                                    // so we choose ther new predicate (which doesn't have a region
+                                    // so we choose their new predicate (which doesn't have a region
                                     // varaible).
                                     //
                                     // In both cases, we want to remove the old predicate,
@@ -703,7 +703,7 @@ impl AutoTraitFinder<'tcx> {
                     // that we could add to our ParamEnv that would 'fix' this kind
                     // of error, as it's not caused by an unimplemented type.
                     //
-                    // 2. We succesfully project the predicate (Ok(Some(_))), generating
+                    // 2. We successfully project the predicate (Ok(Some(_))), generating
                     //  some subobligations. We then process these subobligations
                     //  like any other generated sub-obligations.
                     //
@@ -770,7 +770,7 @@ impl AutoTraitFinder<'tcx> {
                         Ok(None) => {
                             // It's ok not to make progress when hvave no inference variables -
                             // in that case, we were only performing unifcation to check if an
-                            // error occured (which would indicate that it's impossible for our
+                            // error occurred (which would indicate that it's impossible for our
                             // type to implement the auto trait).
                             // However, we should always make progress (either by generating
                             // subobligations or getting an error) when we started off with

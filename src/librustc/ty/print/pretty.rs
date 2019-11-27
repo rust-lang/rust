@@ -54,7 +54,7 @@ thread_local! {
 }
 
 /// Avoids running any queries during any prints that occur
-/// during the closure. This may alter the apperance of some
+/// during the closure. This may alter the appearance of some
 /// types (e.g. forcing verbose printing for opaque types).
 /// This method is used during some queries (e.g. `predicates_of`
 /// for opaque types), to ensure that any debug printing that
