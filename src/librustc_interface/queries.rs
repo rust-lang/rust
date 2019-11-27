@@ -69,13 +69,13 @@ impl<T> Default for Query<T> {
     }
 }
 
-pub struct Queries<'comp> {
-    compiler: &'comp Compiler,
-    gcx: Once<GlobalCtxt<'comp>>,
+pub struct Queries<'tcx> {
+    compiler: &'tcx Compiler,
+    gcx: Once<GlobalCtxt<'tcx>>,
     arenas: Once<AllArenas>,
     forest: Once<hir::map::Forest>,
 
-    local_arena: WorkerLocal<Arena<'comp>>,
+    local_arena: WorkerLocal<Arena<'tcx>>,
 
     dep_graph_future: Query<Option<DepGraphFuture>>,
     parse: Query<ast::Crate>,
@@ -83,14 +83,14 @@ pub struct Queries<'comp> {
     register_plugins: Query<(ast::Crate, Lrc<LintStore>)>,
     expansion: Query<(ast::Crate, Steal<Rc<RefCell<BoxedResolver>>>, Lrc<LintStore>)>,
     dep_graph: Query<DepGraph>,
-    lower_to_hir: Query<(&'comp hir::map::Forest, Steal<ResolverOutputs>)>,
+    lower_to_hir: Query<(&'tcx hir::map::Forest, Steal<ResolverOutputs>)>,
     prepare_outputs: Query<OutputFilenames>,
-    global_ctxt: Query<BoxedGlobalCtxt<'comp>>,
+    global_ctxt: Query<BoxedGlobalCtxt<'tcx>>,
     ongoing_codegen: Query<Box<dyn Any>>,
 }
 
-impl<'comp> Queries<'comp> {
-    pub fn new(compiler: &'comp Compiler) -> Queries<'comp> {
+impl<'tcx> Queries<'tcx> {
+    pub fn new(compiler: &'tcx Compiler) -> Queries<'tcx> {
         Queries {
             compiler,
             gcx: Once::new(),
@@ -219,8 +219,8 @@ impl<'comp> Queries<'comp> {
     }
 
     pub fn lower_to_hir(
-        &'comp self,
-    ) -> Result<&Query<(&'comp hir::map::Forest, Steal<ResolverOutputs>)>> {
+        &'tcx self,
+    ) -> Result<&Query<(&'tcx hir::map::Forest, Steal<ResolverOutputs>)>> {
         self.lower_to_hir.compute(|| {
             let expansion_result = self.expansion()?;
             let peeked = expansion_result.peek();
@@ -253,7 +253,7 @@ impl<'comp> Queries<'comp> {
         })
     }
 
-    pub fn global_ctxt(&'comp self) -> Result<&Query<BoxedGlobalCtxt<'comp>>> {
+    pub fn global_ctxt(&'tcx self) -> Result<&Query<BoxedGlobalCtxt<'tcx>>> {
         self.global_ctxt.compute(|| {
             let crate_name = self.crate_name()?.peek().clone();
             let outputs = self.prepare_outputs()?.peek().clone();
@@ -274,7 +274,7 @@ impl<'comp> Queries<'comp> {
         })
     }
 
-    pub fn ongoing_codegen(&'comp self) -> Result<&Query<Box<dyn Any>>> {
+    pub fn ongoing_codegen(&'tcx self) -> Result<&Query<Box<dyn Any>>> {
         self.ongoing_codegen.compute(|| {
             let outputs = self.prepare_outputs()?;
             self.global_ctxt()?.peek_mut().enter(|tcx| {
@@ -292,7 +292,7 @@ impl<'comp> Queries<'comp> {
         })
     }
 
-    pub fn linker(&'comp self) -> Result<Linker> {
+    pub fn linker(&'tcx self) -> Result<Linker> {
         let dep_graph = self.dep_graph()?;
         let prepare_outputs = self.prepare_outputs()?;
         let ongoing_codegen = self.ongoing_codegen()?;

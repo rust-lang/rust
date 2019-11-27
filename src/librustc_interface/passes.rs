@@ -743,10 +743,10 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
 
 pub struct BoxedGlobalCtxt<'tcx>(&'tcx GlobalCtxt<'tcx>);
 
-impl<'gcx> BoxedGlobalCtxt<'gcx> {
+impl<'tcx> BoxedGlobalCtxt<'tcx> {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
+        F: FnOnce(TyCtxt<'tcx>) -> R,
     {
         ty::tls::enter_global(self.0, |tcx| f(tcx))
     }
@@ -756,17 +756,17 @@ impl<'gcx> BoxedGlobalCtxt<'gcx> {
     }
 }
 
-pub fn create_global_ctxt<'gcx>(
-    compiler: &'gcx Compiler,
+pub fn create_global_ctxt<'tcx>(
+    compiler: &'tcx Compiler,
     lint_store: Lrc<lint::LintStore>,
-    hir_forest: &'gcx hir::map::Forest,
+    hir_forest: &'tcx hir::map::Forest,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
-    global_ctxt: &'gcx Once<GlobalCtxt<'gcx>>,
-    arenas: &'gcx Once<AllArenas>,
-    local_arena: &'gcx WorkerLocal<Arena<'gcx>>,
-) -> BoxedGlobalCtxt<'gcx> {
+    global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
+    arenas: &'tcx Once<AllArenas>,
+    local_arena: &'tcx WorkerLocal<Arena<'tcx>>,
+) -> BoxedGlobalCtxt<'tcx> {
     let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
 
