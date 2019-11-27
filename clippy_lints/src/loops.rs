@@ -674,7 +674,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: HirId) -> NeverLoopResult {
         | ExprKind::Cast(ref e, _)
         | ExprKind::Type(ref e, _)
         | ExprKind::Field(ref e, _)
-        | ExprKind::AddrOf(_, _, ref e)
+        | ExprKind::AddrOf(BorrowKind::Ref, _, ref e)
         | ExprKind::Struct(_, _, Some(ref e))
         | ExprKind::Repeat(ref e, _)
         | ExprKind::DropTemps(ref e) => never_loop_expr(e, main_loop_id),
@@ -1504,7 +1504,7 @@ fn make_iterator_snippet(cx: &LateContext<'_, '_>, arg: &Expr, applic_ref: &mut 
         // (&x).into_iter() ==> x.iter()
         // (&mut x).into_iter() ==> x.iter_mut()
         match &arg.kind {
-            ExprKind::AddrOf(_, mutability, arg_inner)
+            ExprKind::AddrOf(BorrowKind::Ref, mutability, arg_inner)
                 if has_iter_method(cx, cx.tables.expr_ty(&arg_inner)).is_some() =>
             {
                 let meth_name = match mutability {
@@ -1551,7 +1551,7 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                 Mutability::Mutable => "_mut",
             };
             let arg = match arg.kind {
-                ExprKind::AddrOf(_, _, ref expr) => &**expr,
+                ExprKind::AddrOf(BorrowKind::Ref, _, ref expr) => &**expr,
                 _ => arg,
             };
 
@@ -1875,7 +1875,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                 self.prefer_mutable = false;
                 self.visit_expr(rhs);
             },
-            ExprKind::AddrOf(_, mutbl, ref expr) => {
+            ExprKind::AddrOf(BorrowKind::Ref, mutbl, ref expr) => {
                 if mutbl == Mutability::Mutable {
                     self.prefer_mutable = true;
                 }
@@ -2092,7 +2092,7 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
                         }
                     },
                     ExprKind::Assign(ref lhs, _) if lhs.hir_id == expr.hir_id => *state = VarState::DontWarn,
-                    ExprKind::AddrOf(_, mutability, _) if mutability == Mutability::Mutable => {
+                    ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mutable => {
                         *state = VarState::DontWarn
                     },
                     _ => (),
@@ -2176,7 +2176,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InitializeVisitor<'a, 'tcx> {
                             VarState::DontWarn
                         }
                     },
-                    ExprKind::AddrOf(_, mutability, _) if mutability == Mutability::Mutable => {
+                    ExprKind::AddrOf(BorrowKind::Ref, mutability, _) if mutability == Mutability::Mutable => {
                         self.state = VarState::DontWarn
                     },
                     _ => (),

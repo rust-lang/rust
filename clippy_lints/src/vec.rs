@@ -33,7 +33,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UselessVec {
         if_chain! {
             if let ty::Ref(_, ty, _) = cx.tables.expr_ty_adjusted(expr).kind;
             if let ty::Slice(..) = ty.kind;
-            if let ExprKind::AddrOf(_, _, ref addressee) = expr.kind;
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, ref addressee) = expr.kind;
             if let Some(vec_args) = higher::vec_macro(cx, addressee);
             then {
                 check_vec_macro(cx, &vec_args, expr.span);

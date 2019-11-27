@@ -1519,7 +1519,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         let mut arg_root = arg;
         loop {
             arg_root = match &arg_root.kind {
-                hir::ExprKind::AddrOf(_, _, expr) => expr,
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
                 hir::ExprKind::MethodCall(method_name, _, call_args) => {
                     if call_args.len() == 1
                         && (method_name.ident.name == sym!(as_str) || method_name.ident.name == sym!(as_ref))
@@ -1561,7 +1561,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         applicability: &mut Applicability,
     ) -> Vec<String> {
         if_chain! {
-            if let hir::ExprKind::AddrOf(_, _, ref format_arg) = a.kind;
+            if let hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref format_arg) = a.kind;
             if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.kind;
             if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.kind;
 
@@ -1578,7 +1578,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
 
     fn is_call(node: &hir::ExprKind) -> bool {
         match node {
-            hir::ExprKind::AddrOf(_, _, expr) => {
+            hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => {
                 is_call(&expr.kind)
             },
             hir::ExprKind::Call(..)

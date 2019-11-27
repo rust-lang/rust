@@ -656,7 +656,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for StaticMutVisitor<'a, 'tcx> {
                     tys.clear();
                 }
             },
-            Assign(ref target, _) | AssignOp(_, ref target, _) | AddrOf(_, hir::Mutability::Mutable, ref target) => {
+            Assign(ref target, _) | AssignOp(_, ref target, _) | AddrOf(BorrowKind::Ref, hir::Mutability::Mutable, ref target) => {
                 self.mutates_static |= is_mutated_static(self.cx, target)
             },
             _ => {},
