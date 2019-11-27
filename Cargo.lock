@@ -962,28 +962,13 @@ dependencies = [
 name = "ra_hir"
 version = "0.1.0"
 dependencies = [
- "arrayvec 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "chalk-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
- "chalk-rust-ir 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
- "chalk-solve 0.1.0 (git+https://github.com/jackh726/chalk.git?rev=095cd38a4f16337913bba487f2055b9ca0179f30)",
- "ena 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "lalrpop-intern 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "once_cell 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "ra_arena 0.1.0",
- "ra_cfg 0.1.0",
  "ra_db 0.1.0",
  "ra_hir_def 0.1.0",
  "ra_hir_expand 0.1.0",
  "ra_hir_ty 0.1.0",
- "ra_mbe 0.1.0",
- "ra_prof 0.1.0",
  "ra_syntax 0.1.0",
- "ra_tt 0.1.0",
  "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "test_utils 0.1.0",
 ]
 
 [[package]]
@@ -1031,7 +1016,6 @@ dependencies = [
  "insta 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "lalrpop-intern 0.15.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "parking_lot 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_arena 0.1.0",
  "ra_db 0.1.0",
  "ra_hir_def 0.1.0",

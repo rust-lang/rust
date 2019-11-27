@@ -1,10 +1,12 @@
 //! Database used for testing `hir`.
 
-use std::{panic, sync::Arc};
+use std::{
+    panic,
+    sync::{Arc, Mutex},
+};
 
 use hir_def::{db::DefDatabase, AssocItemId, ModuleDefId, ModuleId};
 use hir_expand::diagnostics::DiagnosticSink;
-use parking_lot::Mutex;
 use ra_db::{salsa, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath, SourceDatabase};
 
 use crate::{db::HirDatabase, expr::ExprValidator};
@@ -33,7 +35,7 @@ impl salsa::Database for TestDB {
     }
 
     fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
-        let mut events = self.events.lock();
+        let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {
             events.push(event());
         }
@@ -122,9 +124,9 @@ impl TestDB {
 
 impl TestDB {
     pub fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<TestDB>> {
-        *self.events.lock() = Some(Vec::new());
+        *self.events.lock().unwrap() = Some(Vec::new());
         f();
-        self.events.lock().take().unwrap()
+        self.events.lock().unwrap().take().unwrap()
     }
 
     pub fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {

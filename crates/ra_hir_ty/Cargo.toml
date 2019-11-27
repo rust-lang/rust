@@ -9,18 +9,17 @@ doctest = false
 
 [dependencies]
 arrayvec = "0.5.1"
+ena = "0.13"
 log = "0.4.5"
 rustc-hash = "1.0"
-parking_lot = "0.10.0"
-ena = "0.13"
 
-ra_syntax = { path = "../ra_syntax" }
+hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
+hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
 ra_arena = { path = "../ra_arena" }
 ra_db = { path = "../ra_db" }
-hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
-hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
-test_utils = { path = "../test_utils" }
 ra_prof = { path = "../ra_prof" }
+ra_syntax = { path = "../ra_syntax" }
+test_utils = { path = "../test_utils" }
 
 # https://github.com/rust-lang/chalk/pull/294
 chalk-solve =   { git = "https://github.com/jackh726/chalk.git", rev = "095cd38a4f16337913bba487f2055b9ca0179f30" }
