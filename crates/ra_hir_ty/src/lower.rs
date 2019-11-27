@@ -363,7 +363,7 @@ pub(super) fn substs_from_path_segment(
 }
 
 impl TraitRef {
-    pub(crate) fn from_path(
+    fn from_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
         path: &Path,
@@ -377,7 +377,7 @@ impl TraitRef {
         Some(TraitRef::from_resolved_path(db, resolver, resolved.into(), segment, explicit_self_ty))
     }
 
-    pub(super) fn from_resolved_path(
+    pub(crate) fn from_resolved_path(
         db: &impl HirDatabase,
         resolver: &Resolver,
         resolved: TraitId,
@@ -391,7 +391,7 @@ impl TraitRef {
         TraitRef { trait_: resolved, substs }
     }
 
-    pub(crate) fn from_hir(
+    fn from_hir(
         db: &impl HirDatabase,
         resolver: &Resolver,
         type_ref: &TypeRef,
@@ -413,11 +413,6 @@ impl TraitRef {
         let has_self_param =
             segment.args_and_bindings.as_ref().map(|a| a.has_self_type).unwrap_or(false);
         substs_from_path_segment(db, resolver, segment, Some(resolved.into()), !has_self_param)
-    }
-
-    pub fn for_trait(db: &impl HirDatabase, trait_: TraitId) -> TraitRef {
-        let substs = Substs::identity(&db.generic_params(trait_.into()));
-        TraitRef { trait_, substs }
     }
 
     pub(crate) fn from_type_bound(

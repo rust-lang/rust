@@ -29,10 +29,7 @@ use ra_syntax::{ast, AstNode, SyntaxNode};
 use crate::{
     db::{DefDatabase, HirDatabase},
     ty::display::HirFormatter,
-    ty::{
-        self, InEnvironment, InferenceResult, TraitEnvironment, TraitRef, Ty, TyDefId, TypeCtor,
-        TypeWalk,
-    },
+    ty::{self, InEnvironment, InferenceResult, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk},
     CallableDef, Either, HirDisplay, Name, Source,
 };
 
@@ -729,10 +726,6 @@ impl Trait {
 
     pub fn items(self, db: &impl DefDatabase) -> Vec<AssocItem> {
         db.trait_data(self.id).items.iter().map(|(_name, it)| (*it).into()).collect()
-    }
-
-    pub fn trait_ref(self, db: &impl HirDatabase) -> TraitRef {
-        TraitRef::for_trait(db, self.id)
     }
 
     pub fn is_auto(self, db: &impl DefDatabase) -> bool {
