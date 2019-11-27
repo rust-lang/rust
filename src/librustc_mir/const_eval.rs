@@ -148,7 +148,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
 
     // Assert all args (if any) are zero-sized types; `eval_body_using_ecx` doesn't
-    // make sense if the body is expecting nontrival arguments.
+    // make sense if the body is expecting nontrivial arguments.
     // (The alternative would be to use `eval_fn_call` with an args slice.)
     for arg in body.args_iter() {
         let decl = body.local_decls.get(arg).expect("arg missing from local_decls");
