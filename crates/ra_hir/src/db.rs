@@ -13,7 +13,7 @@ use crate::{
         CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, Ty, TyDefId, TypeCtor,
         ValueTyDefId,
     },
-    Crate, DefWithBody, ImplBlock,
+    DefWithBody, ImplBlock,
 };
 
 pub use hir_def::db::{
@@ -71,7 +71,7 @@ pub trait HirDatabase: DefDatabase {
     /// Mutex and the query does an untracked read internally, to make sure the
     /// cached state is thrown away when input facts change.
     #[salsa::invoke(crate::ty::traits::trait_solver_query)]
-    fn trait_solver(&self, krate: Crate) -> crate::ty::traits::TraitSolver;
+    fn trait_solver(&self, krate: CrateId) -> crate::ty::traits::TraitSolver;
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
@@ -93,35 +93,35 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::ty::traits::chalk::trait_datum_query)]
     fn trait_datum(
         &self,
-        krate: Crate,
+        krate: CrateId,
         trait_id: chalk_ir::TraitId,
     ) -> Arc<chalk_rust_ir::TraitDatum<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::chalk::struct_datum_query)]
     fn struct_datum(
         &self,
-        krate: Crate,
+        krate: CrateId,
         struct_id: chalk_ir::StructId,
     ) -> Arc<chalk_rust_ir::StructDatum<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::chalk::impl_datum_query)]
     fn impl_datum(
         &self,
-        krate: Crate,
+        krate: CrateId,
         impl_id: chalk_ir::ImplId,
     ) -> Arc<chalk_rust_ir::ImplDatum<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::chalk::associated_ty_value_query)]
     fn associated_ty_value(
         &self,
-        krate: Crate,
+        krate: CrateId,
         id: chalk_rust_ir::AssociatedTyValueId,
     ) -> Arc<chalk_rust_ir::AssociatedTyValue<chalk_ir::family::ChalkIr>>;
 
     #[salsa::invoke(crate::ty::traits::trait_solve_query)]
     fn trait_solve(
         &self,
-        krate: Crate,
+        krate: CrateId,
         goal: crate::ty::Canonical<crate::ty::InEnvironment<crate::ty::Obligation>>,
     ) -> Option<crate::ty::traits::Solution>;
 }

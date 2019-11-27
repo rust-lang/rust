@@ -8,7 +8,7 @@ use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, Crate, ImplBlock, TypeAlias};
+use crate::{db::HirDatabase, ImplBlock, TypeAlias};
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
@@ -18,7 +18,7 @@ pub(crate) mod chalk;
 
 #[derive(Debug, Clone)]
 pub struct TraitSolver {
-    krate: Crate,
+    krate: CrateId,
     inner: Arc<Mutex<chalk_solve::Solver<ChalkIr>>>,
 }
 
@@ -60,12 +60,12 @@ const CHALK_SOLVER_MAX_SIZE: usize = 4;
 #[derive(Debug, Copy, Clone)]
 struct ChalkContext<'a, DB> {
     db: &'a DB,
-    krate: Crate,
+    krate: CrateId,
 }
 
 pub(crate) fn trait_solver_query(
     db: &(impl HirDatabase + salsa::Database),
-    krate: Crate,
+    krate: CrateId,
 ) -> TraitSolver {
     db.salsa_runtime().report_untracked_read();
     // krate parameter is just so we cache a unique solver per crate
@@ -176,7 +176,7 @@ impl TypeWalk for ProjectionPredicate {
 /// Solve a trait goal using Chalk.
 pub(crate) fn trait_solve_query(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     goal: Canonical<InEnvironment<Obligation>>,
 ) -> Option<Solution> {
     let _p = profile("trait_solve_query");

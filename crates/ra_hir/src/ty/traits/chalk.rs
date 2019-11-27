@@ -8,6 +8,7 @@ use chalk_ir::{
     TypeKindId, TypeName, UniverseIndex,
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
+use ra_db::CrateId;
 
 use hir_def::{
     lang_item::LangItemTarget, AstItemDef, ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId,
@@ -21,7 +22,7 @@ use crate::{
     db::HirDatabase,
     ty::display::HirDisplay,
     ty::{ApplicationTy, GenericPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-    Crate, ImplBlock, TypeAlias,
+    ImplBlock, TypeAlias,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -448,7 +449,7 @@ where
         let trait_: TraitId = from_chalk(self.db, trait_id);
         let mut result: Vec<_> = self
             .db
-            .impls_for_trait(self.krate.crate_id, trait_.into())
+            .impls_for_trait(self.krate, trait_.into())
             .iter()
             .copied()
             .map(Impl::ImplBlock)
@@ -487,7 +488,7 @@ where
         &self,
         id: chalk_rust_ir::AssociatedTyValueId,
     ) -> Arc<AssociatedTyValue<ChalkIr>> {
-        self.db.associated_ty_value(self.krate, id)
+        self.db.associated_ty_value(self.krate.into(), id)
     }
     fn custom_clauses(&self) -> Vec<chalk_ir::ProgramClause<ChalkIr>> {
         vec![]
@@ -528,7 +529,7 @@ pub(crate) fn associated_ty_data_query(
 
 pub(crate) fn trait_datum_query(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     trait_id: chalk_ir::TraitId,
 ) -> Arc<TraitDatum<ChalkIr>> {
     debug!("trait_datum {:?}", trait_id);
@@ -557,7 +558,7 @@ pub(crate) fn trait_datum_query(
     let bound_vars = Substs::bound_vars(&generic_params);
     let flags = chalk_rust_ir::TraitFlags {
         auto: trait_data.auto,
-        upstream: trait_.module(db).krate != krate.crate_id,
+        upstream: trait_.module(db).krate != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME set these flags correctly
@@ -579,7 +580,7 @@ pub(crate) fn trait_datum_query(
 
 pub(crate) fn struct_datum_query(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     struct_id: chalk_ir::StructId,
 ) -> Arc<StructDatum<ChalkIr>> {
     debug!("struct_datum {:?}", struct_id);
@@ -611,7 +612,7 @@ pub(crate) fn struct_datum_query(
 
 pub(crate) fn impl_datum_query(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     impl_id: ImplId,
 ) -> Arc<ImplDatum<ChalkIr>> {
     let _p = ra_prof::profile("impl_datum");
@@ -626,7 +627,7 @@ pub(crate) fn impl_datum_query(
 
 fn impl_block_datum(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     impl_id: ImplId,
     impl_block: ImplBlock,
 ) -> Option<Arc<ImplDatum<ChalkIr>>> {
@@ -634,7 +635,7 @@ fn impl_block_datum(
     let bound_vars = Substs::bound_vars(&generic_params);
     let trait_ref = impl_block.target_trait_ref(db)?.subst(&bound_vars);
     let trait_ = trait_ref.trait_;
-    let impl_type = if impl_block.krate(db) == krate {
+    let impl_type = if impl_block.krate(db).crate_id == krate {
         chalk_rust_ir::ImplType::Local
     } else {
         chalk_rust_ir::ImplType::External
@@ -698,7 +699,7 @@ fn invalid_impl_datum() -> Arc<ImplDatum<ChalkIr>> {
 
 fn closure_fn_trait_impl_datum(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     data: super::ClosureFnTraitImplData,
 ) -> Option<Arc<ImplDatum<ChalkIr>>> {
     // for some closure |X, Y| -> Z:
@@ -755,7 +756,7 @@ fn closure_fn_trait_impl_datum(
 
 pub(crate) fn associated_ty_value_query(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     id: chalk_rust_ir::AssociatedTyValueId,
 ) -> Arc<chalk_rust_ir::AssociatedTyValue<ChalkIr>> {
     let data: AssocTyValue = from_chalk(db, id);
@@ -771,7 +772,7 @@ pub(crate) fn associated_ty_value_query(
 
 fn type_alias_associated_ty_value(
     db: &impl HirDatabase,
-    _krate: Crate,
+    _krate: CrateId,
     type_alias: TypeAlias,
 ) -> Arc<AssociatedTyValue<ChalkIr>> {
     let impl_block = type_alias.impl_block(db).expect("assoc ty value should be in impl");
@@ -798,7 +799,7 @@ fn type_alias_associated_ty_value(
 
 fn closure_fn_trait_output_assoc_ty_value(
     db: &impl HirDatabase,
-    krate: Crate,
+    krate: CrateId,
     data: super::ClosureFnTraitImplData,
 ) -> Arc<AssociatedTyValue<ChalkIr>> {
     let impl_id = Impl::ClosureFnTraitImpl(data.clone()).to_chalk(db);
@@ -831,8 +832,12 @@ fn closure_fn_trait_output_assoc_ty_value(
     Arc::new(value)
 }
 
-fn get_fn_trait(db: &impl HirDatabase, krate: Crate, fn_trait: super::FnTrait) -> Option<TraitId> {
-    let target = db.lang_item(krate.crate_id, fn_trait.lang_item_name().into())?;
+fn get_fn_trait(
+    db: &impl HirDatabase,
+    krate: CrateId,
+    fn_trait: super::FnTrait,
+) -> Option<TraitId> {
+    let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
     match target {
         LangItemTarget::TraitId(t) => Some(t),
         _ => None,
