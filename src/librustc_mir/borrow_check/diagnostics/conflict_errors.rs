@@ -19,7 +19,6 @@ use crate::dataflow::indexes::{MovePathIndex, MoveOutIndex};
 use crate::util::borrowck_errors;
 
 use crate::borrow_check::{
-    nll::explain_borrow::BorrowExplanation,
     nll::region_infer::{RegionName, RegionNameSource},
     prefixes::IsPrefixOf,
     WriteKind,
@@ -27,7 +26,10 @@ use crate::borrow_check::{
     MirBorrowckCtxt, InitializationRequiringAction, PrefixSet
 };
 
-use super::{IncludingDowncast, UseSpans};
+use super::{
+    IncludingDowncast, UseSpans,
+    explain_borrow::BorrowExplanation,
+};
 
 #[derive(Debug)]
 struct MoveSite {

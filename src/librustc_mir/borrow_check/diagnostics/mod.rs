@@ -19,9 +19,12 @@ use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
 use crate::dataflow::move_paths::{InitLocation, LookupResult};
 
+mod find_use;
+
 crate mod conflict_errors;
 crate mod move_errors;
 crate mod mutability_errors;
+crate mod explain_borrow;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 

@@ -32,7 +32,6 @@ use crate::util as mir_util;
 use crate::util::pretty;
 
 mod constraint_generation;
-pub mod explain_borrow;
 mod facts;
 mod invalidation;
 crate mod region_infer;

@@ -1,7 +1,6 @@
 use std::collections::VecDeque;
 
 use crate::borrow_check::borrow_set::BorrowData;
-use crate::borrow_check::diagnostics::UseSpans;
 use crate::borrow_check::nll::region_infer::{Cause, RegionName};
 use crate::borrow_check::nll::ConstraintDescription;
 use crate::borrow_check::{MirBorrowckCtxt, WriteKind};
@@ -17,7 +16,7 @@ use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 
-mod find_use;
+use super::{UseSpans, find_use};
 
 #[derive(Debug)]
 pub(in crate::borrow_check) enum BorrowExplanation {
