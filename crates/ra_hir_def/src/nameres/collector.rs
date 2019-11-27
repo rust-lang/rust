@@ -682,8 +682,7 @@ where
     }
 
     fn define_def(&mut self, def: &raw::DefData) {
-        let module =
-            ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
+        let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
 
         let name = def.name.clone();
