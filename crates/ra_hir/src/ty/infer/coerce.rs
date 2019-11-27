@@ -7,6 +7,7 @@
 use hir_def::{
     lang_item::LangItemTarget,
     resolver::{HasResolver, Resolver},
+    type_ref::Mutability,
     AdtId,
 };
 use rustc_hash::FxHashMap;
@@ -15,7 +16,6 @@ use test_utils::tested_by;
 use crate::{
     db::HirDatabase,
     ty::{autoderef, Substs, TraitRef, Ty, TypeCtor, TypeWalk},
-    Mutability,
 };
 
 use super::{InEnvironment, InferTy, InferenceContext, TypeVarValue};

@@ -18,7 +18,7 @@ use crate::{
     db::HirDatabase,
     ty::primitive::{FloatBitness, Uncertain},
     ty::{utils::all_super_traits, Ty, TypeCtor},
-    AssocItem, Function,
+    Function,
 };
 
 use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
@@ -157,7 +157,7 @@ pub(crate) fn lookup_method(
 ) -> Option<(Ty, Function)> {
     iterate_method_candidates(ty, db, resolver, Some(name), LookupMode::MethodCall, |ty, f| match f
     {
-        AssocItem::Function(f) => Some((ty.clone(), f)),
+        AssocItemId::FunctionId(f) => Some((ty.clone(), f.into())),
         _ => None,
     })
 }
@@ -183,7 +183,7 @@ pub(crate) fn iterate_method_candidates<T>(
     resolver: &Resolver,
     name: Option<&Name>,
     mode: LookupMode,
-    mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
     match mode {
@@ -239,7 +239,7 @@ fn iterate_trait_method_candidates<T>(
     resolver: &Resolver,
     name: Option<&Name>,
     mode: LookupMode,
-    mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
     // FIXME: maybe put the trait_env behind a query (need to figure out good input parameters for that)
@@ -285,7 +285,7 @@ fn iterate_inherent_methods<T>(
     name: Option<&Name>,
     mode: LookupMode,
     krate: CrateId,
-    mut callback: impl FnMut(&Ty, AssocItem) -> Option<T>,
+    mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     for krate in ty.value.def_crates(db, krate)? {
         let impls = db.impls_in_crate(krate);

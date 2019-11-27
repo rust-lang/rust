@@ -3,14 +3,18 @@
 use std::iter::repeat;
 use std::sync::Arc;
 
+use hir_def::{
+    expr::{BindingAnnotation, Pat, PatId, RecordFieldPat},
+    path::Path,
+    type_ref::Mutability,
+};
+use hir_expand::name::Name;
 use test_utils::tested_by;
 
 use super::{BindingMode, InferenceContext};
 use crate::{
     db::HirDatabase,
-    expr::{BindingAnnotation, Pat, PatId, RecordFieldPat},
-    ty::{Mutability, Substs, Ty, TypeCtor, TypeWalk},
-    Name, Path,
+    ty::{Substs, Ty, TypeCtor, TypeWalk},
 };
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {

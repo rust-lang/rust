@@ -1,12 +1,14 @@
 //! Unification and canonicalization logic.
 
 use super::{InferenceContext, Obligation};
-use crate::db::HirDatabase;
-use crate::ty::{
-    Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
-    TypeWalk,
+use crate::{
+    db::HirDatabase,
+    ty::{
+        Canonical, InEnvironment, InferTy, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty,
+        TypeWalk,
+    },
+    util::make_mut_slice,
 };
-use crate::util::make_mut_slice;
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     pub(super) fn canonicalizer<'b>(&'b mut self) -> Canonicalizer<'a, 'b, D>

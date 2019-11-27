@@ -5,22 +5,21 @@ use std::sync::Arc;
 
 use hir_def::{
     builtin_type::Signedness,
+    expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     generics::GenericParams,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
     AdtId, ContainerId, Lookup, StructFieldId,
 };
-use hir_expand::name;
+use hir_expand::name::{self, Name};
 
 use crate::{
     db::HirDatabase,
-    expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
     ty::{
         autoderef, method_resolution, op, traits::InEnvironment, CallableDef, InferTy, IntTy,
         Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs, TraitRef, Ty, TypeCtor,
         TypeWalk, Uncertain,
     },
-    Name,
 };
 
 use super::{BindingMode, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch};

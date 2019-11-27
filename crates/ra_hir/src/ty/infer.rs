@@ -26,7 +26,7 @@ use hir_def::{
     path::known,
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Mutability, TypeRef},
-    AdtId, DefWithBodyId,
+    AdtId, AssocItemId, DefWithBodyId,
 };
 use hir_expand::{diagnostics::DiagnosticSink, name};
 use ra_arena::map::ArenaMap;
@@ -255,8 +255,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         self.result.variant_resolutions.insert(id, variant);
     }
 
-    fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: AssocItem) {
-        self.result.assoc_resolutions.insert(id, item);
+    fn write_assoc_resolution(&mut self, id: ExprOrPatId, item: AssocItemId) {
+        self.result.assoc_resolutions.insert(id, item.into());
     }
 
     fn write_pat_ty(&mut self, pat: PatId, ty: Ty) {

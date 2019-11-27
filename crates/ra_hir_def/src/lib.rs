@@ -398,6 +398,16 @@ impl_froms!(
     ConstId
 );
 
+impl From<AssocItemId> for GenericDefId {
+    fn from(item: AssocItemId) -> Self {
+        match item {
+            AssocItemId::FunctionId(f) => f.into(),
+            AssocItemId::ConstId(c) => c.into(),
+            AssocItemId::TypeAliasId(t) => t.into(),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum AttrDefId {
     ModuleId(ModuleId),
