@@ -710,7 +710,7 @@ impl DepGraph {
                                 return None
                             }
                             None => {
-                                if !tcx.sess.has_errors() {
+                                if !tcx.sess.has_errors_or_delayed_span_bugs() {
                                     bug!("try_mark_previous_green() - Forcing the DepNode \
                                           should have set its color")
                                 } else {
