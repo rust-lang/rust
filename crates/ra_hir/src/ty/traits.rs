@@ -2,13 +2,13 @@
 use std::sync::{Arc, Mutex};
 
 use chalk_ir::{cast::Cast, family::ChalkIr};
-use hir_def::{expr::ExprId, DefWithBodyId, TraitId};
+use hir_def::{expr::ExprId, DefWithBodyId, TraitId, TypeAliasId};
 use log::debug;
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
 use rustc_hash::FxHashSet;
 
-use crate::{db::HirDatabase, ImplBlock, TypeAlias};
+use crate::{db::HirDatabase, ImplBlock};
 
 use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty, TypeWalk};
 
@@ -317,7 +317,7 @@ impl_intern_key!(GlobalImplId);
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AssocTyValue {
     /// A normal assoc type value from an impl block.
-    TypeAlias(TypeAlias),
+    TypeAlias(TypeAliasId),
     /// The output type of the Fn trait implementation.
     ClosureFnTraitImplOutput(ClosureFnTraitImplData),
 }
