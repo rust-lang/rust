@@ -65,7 +65,7 @@ use crate::sys_common::rwlock as sys;
 /// [`Mutex`]: struct.Mutex.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T: ?Sized> {
-    inner: Box<sys::RWLock>,
+    inner: sys::RWLock,
     poison: poison::Flag,
     data: UnsafeCell<T>,
 }
@@ -129,9 +129,9 @@ impl<T> RwLock<T> {
     /// let lock = RwLock::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(t: T) -> RwLock<T> {
+    pub const fn new(t: T) -> RwLock<T> {
         RwLock {
-            inner: box sys::RWLock::new(),
+            inner: sys::RWLock::new(),
             poison: poison::Flag::new(),
             data: UnsafeCell::new(t),
         }
