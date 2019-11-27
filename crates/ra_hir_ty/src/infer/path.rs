@@ -2,7 +2,7 @@
 
 use hir_def::{
     path::{Path, PathKind, PathSegment},
-    resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
+    resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
     AssocItemId, ContainerId, Lookup,
 };
 use hir_expand::name::Name;
@@ -244,17 +244,15 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ContainerId::ImplId(it) => it,
                 _ => return None,
             };
-            let resolver = impl_id.resolver(self.db);
-            let impl_data = self.db.impl_data(impl_id);
-            let impl_block = Ty::from_hir(self.db, &resolver, &impl_data.target_type);
-            let impl_block_substs = impl_block.substs()?;
+            let self_ty = self.db.impl_ty(impl_id).self_type().clone();
+            let self_ty_substs = self_ty.substs()?;
             let actual_substs = actual_def_ty.substs()?;
 
             let mut new_substs = vec![Ty::Unknown; gen.count_parent_params()];
 
             // The following code *link up* the function actual parma type
             // and impl_block type param index
-            impl_block_substs.iter().zip(actual_substs.iter()).for_each(|(param, pty)| {
+            self_ty_substs.iter().zip(actual_substs.iter()).for_each(|(param, pty)| {
                 if let Ty::Param { idx, .. } = param {
                     if let Some(s) = new_substs.get_mut(*idx as usize) {
                         *s = pty.clone();

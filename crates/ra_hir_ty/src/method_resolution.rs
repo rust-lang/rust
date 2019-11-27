@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use hir_def::{
-    lang_item::LangItemTarget, resolver::HasResolver, resolver::Resolver, type_ref::Mutability,
-    AssocItemId, AstItemDef, FunctionId, HasModule, ImplId, TraitId,
+    lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AssocItemId, AstItemDef,
+    FunctionId, HasModule, ImplId, TraitId,
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
@@ -15,13 +15,12 @@ use ra_prof::profile;
 use rustc_hash::FxHashMap;
 
 use crate::{
+    autoderef,
     db::HirDatabase,
     primitive::{FloatBitness, Uncertain},
     utils::all_super_traits,
-    Ty, TypeCtor,
+    Canonical, ImplTy, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
-
-use super::{autoderef, Canonical, InEnvironment, TraitEnvironment, TraitRef};
 
 /// This is used as a key for indexing impls.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -59,22 +58,13 @@ impl CrateImplBlocks {
         let crate_def_map = db.crate_def_map(krate);
         for (_module_id, module_data) in crate_def_map.modules.iter() {
             for &impl_id in module_data.impls.iter() {
-                let impl_data = db.impl_data(impl_id);
-                let resolver = impl_id.resolver(db);
-
-                let target_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
-
-                match &impl_data.target_trait {
-                    Some(trait_ref) => {
-                        if let Some(tr) =
-                            TraitRef::from_hir(db, &resolver, &trait_ref, Some(target_ty))
-                        {
-                            res.impls_by_trait.entry(tr.trait_).or_default().push(impl_id);
-                        }
+                match db.impl_ty(impl_id) {
+                    ImplTy::TraitRef(tr) => {
+                        res.impls_by_trait.entry(tr.trait_).or_default().push(impl_id);
                     }
-                    None => {
-                        if let Some(target_ty_fp) = TyFingerprint::for_impl(&target_ty) {
-                            res.impls.entry(target_ty_fp).or_default().push(impl_id);
+                    ImplTy::Inherent(self_ty) => {
+                        if let Some(self_ty_fp) = TyFingerprint::for_impl(&self_ty) {
+                            res.impls.entry(self_ty_fp).or_default().push(impl_id);
                         }
                     }
                 }
