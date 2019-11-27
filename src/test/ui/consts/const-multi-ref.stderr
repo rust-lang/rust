@@ -1,8 +1,11 @@
-error[E0017]: references in constants may only refer to immutable values
+error[E0658]: references in constants may only refer to immutable values
   --> $DIR/const-multi-ref.rs:6:13
    |
 LL |     let p = &mut a;
    |             ^^^^^^ constants require immutable values
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0492]: cannot borrow a constant which may contain interior mutability, create a static instead
   --> $DIR/const-multi-ref.rs:16:13
@@ -12,5 +15,5 @@ LL |     let p = &a;
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0017, E0492.
-For more information about an error, try `rustc --explain E0017`.
+Some errors have detailed explanations: E0492, E0658.
+For more information about an error, try `rustc --explain E0492`.

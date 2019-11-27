@@ -197,9 +197,13 @@ impl NonConstOp for MutBorrow {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let mut err = struct_span_err!(item.tcx.sess, span, E0017,
-                                       "references in {}s may only refer \
-                                        to immutable values", item.const_kind());
+        let mut err = feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_mut_refs,
+            span,
+            &format!("references in {}s may only refer \
+                      to immutable values", item.const_kind())
+        );
         err.span_label(span, format!("{}s require immutable values",
                                             item.const_kind()));
         if item.tcx.sess.teach(&err.get_code().unwrap()) {

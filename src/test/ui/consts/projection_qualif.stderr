@@ -1,8 +1,11 @@
-error[E0017]: references in constants may only refer to immutable values
+error[E0658]: references in constants may only refer to immutable values
   --> $DIR/projection_qualif.rs:6:27
    |
 LL |         let b: *mut u32 = &mut a;
    |                           ^^^^^^ constants require immutable values
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0658]: dereferencing raw pointers in constants is unstable
   --> $DIR/projection_qualif.rs:7:18
@@ -21,5 +24,5 @@ LL |         unsafe { *b = 5; }
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0017, E0019, E0658.
-For more information about an error, try `rustc --explain E0017`.
+Some errors have detailed explanations: E0019, E0658.
+For more information about an error, try `rustc --explain E0019`.
