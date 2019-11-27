@@ -1089,7 +1089,7 @@ impl<T: ?Sized> *const T {
     /// Rust's aliasing rules. In particular, for the duration of this lifetime,
     /// the memory the pointer points to must not get mutated (except inside `UnsafeCell`).
     ///
-    /// [here]: https://doc.rust-lang.org/std/ptr/index.html#safety
+    /// [here]: crate::ptr#safety
     ///
     /// # Examples
     ///
@@ -1950,7 +1950,7 @@ impl<T: ?Sized> *mut T {
     /// the memory this pointer points to must not get accessed (read or written)
     /// through any other pointer.
     ///
-    /// [here]: https://doc.rust-lang.org/std/ptr/index.html#safety
+    /// [here]: crate::ptr#safety
     /// [`as_ref`]: #method.as_ref
     ///
     /// # Examples
