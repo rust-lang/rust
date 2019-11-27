@@ -1,14 +1,15 @@
 //! Path expression resolution.
 
 use hir_def::{
-    path::PathSegment,
+    path::{Path, PathSegment},
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
 };
+use hir_expand::name::Name;
 
 use crate::{
     db::HirDatabase,
     ty::{method_resolution, Substs, Ty, TypeWalk, ValueTyDefId},
-    AssocItem, Container, Function, Name, Path,
+    AssocItem, Container, Function,
 };
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
