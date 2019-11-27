@@ -358,8 +358,7 @@ impl<'tcx> TraitAliasExpander<'tcx> {
         debug!("expand_trait_aliases: trait_ref={:?}", trait_ref);
 
         // Don't recurse if this bound is not a trait alias.
-        let is_alias = tcx.is_trait_alias(trait_ref.def_id());
-        if !is_alias {
+        if !tcx.is_trait_alias(trait_ref.def_id()) {
             return true;
         }
 

@@ -1247,8 +1247,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
         let expanded_traits =
-            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().cloned());
-        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
+            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().cloned())
+                // Ensure that trait ref is to self type and not some type param.
+                .filter(|info| info.trait_ref().self_ty() == dummy_self);
+        let (auto_traits, regular_traits): (Vec<_>, Vec<_>) =
             expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
             let first_trait = &regular_traits[0];
@@ -1289,7 +1291,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut associated_types = BTreeSet::default();
 
         let regular_traits_refs = bounds.trait_bounds
-            .into_iter()
+            .iter()
+            .cloned()
             .filter(|(trait_ref, _)| !tcx.trait_is_auto(trait_ref.def_id()))
             .map(|(trait_ref, _)| trait_ref);
         for trait_ref in traits::elaborate_trait_refs(tcx, regular_traits_refs) {
@@ -1398,10 +1401,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             err.emit();
         }
 
+        let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) =
+            bounds.trait_bounds
+                .into_iter()
+                .map(|(trait_ref, _)| trait_ref)
+                .partition(|i| tcx.trait_is_auto(i.def_id()));
+
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`.
-        auto_traits.sort_by_key(|i| i.trait_ref().def_id());
-        auto_traits.dedup_by_key(|i| i.trait_ref().def_id());
+        auto_traits.sort_by_key(|i| i.def_id());
+        auto_traits.dedup_by_key(|i| i.def_id());
         debug!("regular_traits: {:?}", regular_traits);
         debug!("auto_traits: {:?}", auto_traits);
 
@@ -1415,25 +1424,28 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
-        let existential_trait_refs = regular_traits.iter().map(|i| {
-            i.trait_ref().map_bound(|trait_ref| trait_ref_to_existential(trait_ref))
-        });
-        let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
-            bound.map_bound(|b| {
-                let trait_ref = trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
-                ty::ExistentialProjection {
-                    ty: b.ty,
-                    item_def_id: b.projection_ty.item_def_id,
-                    substs: trait_ref.substs,
-                }
-            })
-        });
+        let existential_trait_refs = regular_traits
+            .iter()
+            .map(|i| i.map_bound(|trait_ref| trait_ref_to_existential(trait_ref)));
+        let existential_projections = bounds.projection_bounds
+            .iter()
+            .map(|(bound, _)| {
+                bound.map_bound(|b| {
+                    let trait_ref = trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
+                    ty::ExistentialProjection {
+                        ty: b.ty,
+                        item_def_id: b.projection_ty.item_def_id,
+                        substs: trait_ref.substs,
+                    }
+                })
+            });
 
         // Calling `skip_binder` is okay because the predicates are re-bound.
-        let regular_trait_predicates = existential_trait_refs.map(
-            |trait_ref| ty::ExistentialPredicate::Trait(*trait_ref.skip_binder()));
-        let auto_trait_predicates = auto_traits.into_iter().map(
-            |trait_ref| ty::ExistentialPredicate::AutoTrait(trait_ref.trait_ref().def_id()));
+        let regular_trait_predicates = existential_trait_refs
+            .map(|trait_ref| ty::ExistentialPredicate::Trait(*trait_ref.skip_binder()));
+        let auto_trait_predicates = auto_traits
+            .into_iter()
+            .map(|trait_ref| ty::ExistentialPredicate::AutoTrait(trait_ref.def_id()));
         let mut v =
             regular_trait_predicates
             .chain(auto_trait_predicates)
