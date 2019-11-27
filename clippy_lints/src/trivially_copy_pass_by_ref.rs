@@ -62,7 +62,7 @@ pub struct TriviallyCopyPassByRef {
 impl<'a, 'tcx> TriviallyCopyPassByRef {
     pub fn new(limit: Option<u64>, target: &SessionConfig) -> Self {
         let limit = limit.unwrap_or_else(|| {
-            let bit_width = target.usize_ty.bit_width().expect("usize should have a width") as u64;
+            let bit_width = u64::from(target.ptr_width);
             // Cap the calculated bit width at 32-bits to reduce
             // portability problems between 32 and 64-bit targets
             let bit_width = cmp::min(bit_width, 32);
