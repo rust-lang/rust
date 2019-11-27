@@ -267,10 +267,7 @@ impl Completions {
 
     pub(crate) fn add_enum_variant(&mut self, ctx: &CompletionContext, variant: hir::EnumVariant) {
         let is_deprecated = is_deprecated(variant, ctx.db);
-        let name = match variant.name(ctx.db) {
-            Some(it) => it,
-            None => return,
-        };
+        let name = variant.name(ctx.db);
         let detail_types = variant.fields(ctx.db).into_iter().map(|field| field.ty(ctx.db));
         let detail = join(detail_types.map(|t| t.display(ctx.db).to_string()))
             .separator(", ")
