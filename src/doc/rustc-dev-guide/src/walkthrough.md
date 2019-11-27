@@ -121,7 +121,7 @@ work may be added or you may decide to change parts of the proposal itself).
 
 In the end, when the discussion seems to reach a consensus and die down a bit,
 a rust team member may propose to move to "final comment period" (FCP) with one
-of three possible dispositions.  This means that they want the other members of
+of three possible dispositions. This means that they want the other members of
 the appropriate teams to review and comment on the RFC. More discussion may
 ensue, which may result in more changes or unresolved questions being added. At
 some point, when everyone is satisfied, the RFC enters the FCP, which is the
