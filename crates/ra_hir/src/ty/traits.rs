@@ -2,7 +2,7 @@
 use std::sync::{Arc, Mutex};
 
 use chalk_ir::{cast::Cast, family::ChalkIr};
-use hir_def::{expr::ExprId, DefWithBodyId, TraitId, TypeAliasId};
+use hir_def::{expr::ExprId, DefWithBodyId, ImplId, TraitId, TypeAliasId};
 use log::debug;
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_prof::profile;
@@ -79,7 +79,7 @@ pub(crate) fn impls_for_trait_query(
     db: &impl HirDatabase,
     krate: CrateId,
     trait_: TraitId,
-) -> Arc<[ImplBlock]> {
+) -> Arc<[ImplId]> {
     let mut impls = FxHashSet::default();
     // We call the query recursively here. On the one hand, this means we can
     // reuse results from queries for different crates; on the other hand, this
@@ -90,7 +90,7 @@ pub(crate) fn impls_for_trait_query(
         impls.extend(db.impls_for_trait(dep.crate_id, trait_).iter());
     }
     let crate_impl_blocks = db.impls_in_crate(krate);
-    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_).map(ImplBlock::from));
+    impls.extend(crate_impl_blocks.lookup_impl_blocks_for_trait(trait_));
     impls.into_iter().collect()
 }
 

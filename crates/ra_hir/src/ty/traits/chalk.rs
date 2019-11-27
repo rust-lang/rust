@@ -453,7 +453,7 @@ where
             .impls_for_trait(self.krate, trait_.into())
             .iter()
             .copied()
-            .map(Impl::ImplBlock)
+            .map(|it| Impl::ImplBlock(it.into()))
             .map(|impl_| impl_.to_chalk(self.db))
             .collect();
 
