@@ -1,11 +1,11 @@
 //! The various algorithms from the paper.
 
 use crate::cmp::min;
-use crate::cmp::Ordering::{Less, Equal, Greater};
-use crate::num::diy_float::Fp;
-use crate::num::dec2flt::table;
-use crate::num::dec2flt::rawfp::{self, Unpacked, RawFloat, fp_to_float, next_float, prev_float};
+use crate::cmp::Ordering::{Equal, Greater, Less};
 use crate::num::dec2flt::num::{self, Big};
+use crate::num::dec2flt::rawfp::{self, fp_to_float, next_float, prev_float, RawFloat, Unpacked};
+use crate::num::dec2flt::table;
+use crate::num::diy_float::Fp;
 
 /// Number of significand bits in Fp
 const P: u32 = 64;
@@ -23,9 +23,9 @@ fn power_of_ten(e: i16) -> Fp {
 
 // In most architectures, floating point operations have an explicit bit size, therefore the
 // precision of the computation is determined on a per-operation basis.
-#[cfg(any(not(target_arch="x86"), target_feature="sse2"))]
+#[cfg(any(not(target_arch = "x86"), target_feature = "sse2"))]
 mod fpu_precision {
-    pub fn set_precision<T>() { }
+    pub fn set_precision<T>() {}
 }
 
 // On x86, the x87 FPU is used for float operations if the SSE/SSE2 extensions are not available.
@@ -33,7 +33,7 @@ mod fpu_precision {
 // round to 80 bits causing double rounding to happen when values are eventually represented as
 // 32/64 bit float values. To overcome this, the FPU control word can be set so that the
 // computations are performed in the desired precision.
-#[cfg(all(target_arch="x86", not(target_feature="sse2")))]
+#[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
 mod fpu_precision {
     use crate::mem::size_of;
 

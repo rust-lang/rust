@@ -95,7 +95,9 @@
 /// ```
 #[stable(feature = "convert_id", since = "1.33.0")]
 #[inline]
-pub const fn identity<T>(x: T) -> T { x }
+pub const fn identity<T>(x: T) -> T {
+    x
+}
 
 /// Used to do a cheap reference-to-reference conversion.
 ///
@@ -364,12 +366,10 @@ pub trait Into<T>: Sized {
 /// [`from`]: trait.From.html#tymethod.from
 /// [book]: ../../book/ch09-00-error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented(
-    on(
-        all(_Self="&str", T="std::string::String"),
-        note="to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
-    )
-)]
+#[rustc_on_unimplemented(on(
+    all(_Self = "&str", T = "std::string::String"),
+    note = "to coerce a `{T}` into a `{Self}`, use `&*` as a prefix",
+))]
 pub trait From<T>: Sized {
     /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -490,7 +490,9 @@ pub trait TryFrom<T>: Sized {
 
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsRef<U> for &T where T: AsRef<U>
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &T
+where
+    T: AsRef<U>,
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -499,7 +501,9 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &T where T: AsRef<U>
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
+impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T
+where
+    T: AsRef<U>,
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -516,7 +520,9 @@ impl<T: ?Sized, U: ?Sized> AsRef<U> for &mut T where T: AsRef<U>
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
+impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T
+where
+    T: AsMut<U>,
 {
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
@@ -533,7 +539,9 @@ impl<T: ?Sized, U: ?Sized> AsMut<U> for &mut T where T: AsMut<U>
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, U> Into<U> for T where U: From<T>
+impl<T, U> Into<U> for T
+where
+    U: From<T>,
 {
     fn into(self) -> U {
         U::from(self)
@@ -543,7 +551,9 @@ impl<T, U> Into<U> for T where U: From<T>
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<T> for T {
-    fn from(t: T) -> T { t }
+    fn from(t: T) -> T {
+        t
+    }
 }
 
 /// **Stability note:** This impl does not yet exist, but we are
@@ -552,15 +562,19 @@ impl<T> From<T> for T {
 ///
 /// [#64715]: https://github.com/rust-lang/rust/issues/64715
 #[stable(feature = "convert_infallible", since = "1.34.0")]
-#[rustc_reservation_impl="permitting this impl would forbid us from adding \
-`impl<T> From<!> for T` later; see rust-lang/rust#64715 for details"]
+#[rustc_reservation_impl = "permitting this impl would forbid us from adding \
+                            `impl<T> From<!> for T` later; see rust-lang/rust#64715 for details"]
 impl<T> From<!> for T {
-    fn from(t: !) -> T { t }
+    fn from(t: !) -> T {
+        t
+    }
 }
 
 // TryFrom implies TryInto
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<T, U> TryInto<U> for T where U: TryFrom<T>
+impl<T, U> TryInto<U> for T
+where
+    U: TryFrom<T>,
 {
     type Error = U::Error;
 
@@ -572,7 +586,10 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T>
 // Infallible conversions are semantically equivalent to fallible conversions
 // with an uninhabited error type.
 #[stable(feature = "try_from", since = "1.34.0")]
-impl<T, U> TryFrom<U> for T where U: Into<T> {
+impl<T, U> TryFrom<U> for T
+where
+    U: Into<T>,
+{
     type Error = Infallible;
 
     fn try_from(value: U) -> Result<Self, Self::Error> {

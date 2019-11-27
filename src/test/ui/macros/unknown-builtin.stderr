@@ -7,8 +7,8 @@ LL | macro_rules! unknown { () => () }
 error: cannot find a built-in macro with name `line`
   --> <::core::macros::builtin::line macros>:1:1
    |
-LL | () => { }
-   | ^^^^^^^^^
+LL | () => { } ;
+   | ^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
