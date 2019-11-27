@@ -23,13 +23,6 @@ use super::qualifs::{self, HasMutInterior, NeedsDrop};
 use super::resolver::FlowSensitiveAnalysis;
 use super::{ConstKind, Item, Qualif, is_lang_panic_fn};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum CheckOpResult {
-    Forbidden,
-    Unleashed,
-    Allowed,
-}
-
 pub type IndirectlyMutableResults<'mir, 'tcx> =
     old_dataflow::DataflowResultsCursor<'mir, 'tcx, IndirectlyMutableLocals<'mir, 'tcx>>;
 
@@ -246,15 +239,15 @@ impl Validator<'a, 'mir, 'tcx> {
     }
 
     /// Emits an error at the given `span` if an expression cannot be evaluated in the current
-    /// context. Returns `Forbidden` if an error was emitted.
-    pub fn check_op_spanned<O>(&mut self, op: O, span: Span) -> CheckOpResult
+    /// context.
+    pub fn check_op_spanned<O>(&mut self, op: O, span: Span)
     where
         O: NonConstOp
     {
         trace!("check_op: op={:?}", op);
 
         if op.is_allowed_in_item(self) {
-            return CheckOpResult::Allowed;
+            return;
         }
 
         // If an operation is supported in miri (and is not already controlled by a feature gate) it
@@ -264,20 +257,19 @@ impl Validator<'a, 'mir, 'tcx> {
 
         if is_unleashable && self.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
             self.tcx.sess.span_warn(span, "skipping const checks");
-            return CheckOpResult::Unleashed;
+            return;
         }
 
         op.emit_error(self, span);
-        CheckOpResult::Forbidden
     }
 
     /// Emits an error if an expression cannot be evaluated in the current context.
-    pub fn check_op(&mut self, op: impl NonConstOp) -> CheckOpResult {
+    pub fn check_op(&mut self, op: impl NonConstOp) {
         let span = self.span;
         self.check_op_spanned(op, span)
     }
 
-    fn check_static(&mut self, def_id: DefId, span: Span) -> CheckOpResult {
+    fn check_static(&mut self, def_id: DefId, span: Span) {
         let is_thread_local = self.tcx.has_attr(def_id, sym::thread_local);
         if is_thread_local {
             self.check_op_spanned(ops::ThreadLocalAccess, span)
