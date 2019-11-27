@@ -805,21 +805,39 @@ impl<'a> Parser<'a> {
                             recovered = true;
                             break;
                         }
-                        Err(mut e) => {
+                        Err(mut expect_err) => {
+                            let sp = self.sess.source_map().next_point(self.prev_span);
+                            let token_str = pprust::token_kind_to_string(t);
+
                             // Attempt to keep parsing if it was a similar separator.
                             if let Some(ref tokens) = t.similar_tokens() {
                                 if tokens.contains(&self.token.kind) {
                                     self.bump();
                                 }
                             }
-                            e.emit();
+
                             // Attempt to keep parsing if it was an omitted separator.
                             match f(self) {
                                 Ok(t) => {
+                                    // Parsed successfully, therefore most probably the code only
+                                    // misses a separator.
+                                    expect_err
+                                        .span_suggestion_short(
+                                            sp,
+                                            &format!("missing `{}`", token_str),
+                                            token_str,
+                                            Applicability::MaybeIncorrect,
+                                        )
+                                        .emit();
+
                                     v.push(t);
                                     continue;
                                 },
                                 Err(mut e) => {
+                                    // Parsing failed, therefore it must be something more serious
+                                    // than just a missing separator.
+                                    expect_err.emit();
+
                                     e.cancel();
                                     break;
                                 }
