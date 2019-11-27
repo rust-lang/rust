@@ -6,15 +6,16 @@ use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::{Sanitizer, OptLevel};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_target::abi::call::Conv;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
 
-use crate::abi::Abi;
+use crate::abi::FnAbi;
 use crate::attributes;
 use crate::llvm::{self, Attribute};
 use crate::llvm::AttributePlace::Function;
@@ -203,6 +204,7 @@ pub fn from_fn_attrs(
     cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
     instance: ty::Instance<'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) {
     let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
@@ -279,10 +281,7 @@ pub fn from_fn_attrs(
         // Special attribute for allocator functions, which can't unwind.
         false
     } else {
-        // FIXME(eddyb) avoid this `Instance::fn_sig` call.
-        // Perhaps store the relevant information in `FnAbi`?
-        let abi = instance.fn_sig(cx.tcx()).abi();
-        if abi == Abi::Rust || abi == Abi::RustCall {
+        if fn_abi.conv == Conv::Rust {
             // Any Rust method (or `extern "Rust" fn` or `extern
             // "rust-call" fn`) is explicitly allowed to unwind
             // (unless it has no-unwind attribute, handled above).

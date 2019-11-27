@@ -372,7 +372,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
     fn llvm_cconv(&self) -> llvm::CallConv {
         match self.conv {
-            Conv::C => llvm::CCallConv,
+            Conv::C | Conv::Rust => llvm::CCallConv,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,
             Conv::Msp430Intr => llvm::Msp430Intr,

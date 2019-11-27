@@ -80,7 +80,7 @@ pub fn get_fn(
         let llfn = cx.declare_fn(&sym, &fn_abi);
         debug!("get_fn: not casting pointer!");
 
-        attributes::from_fn_attrs(cx, llfn, instance);
+        attributes::from_fn_attrs(cx, llfn, instance, &fn_abi);
 
         let instance_def_id = instance.def_id();
 
