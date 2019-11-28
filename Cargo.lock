@@ -466,7 +466,7 @@ dependencies = [
  "cargo_metadata 0.9.0",
  "clippy-mini-macro-test",
  "clippy_lints",
- "compiletest_rs 0.4.0",
+ "compiletest_rs",
  "derive-new",
  "lazy_static 1.3.0",
  "regex",
@@ -474,7 +474,7 @@ dependencies = [
  "rustc_tools_util 0.2.0",
  "semver",
  "serde",
- "tester 0.7.0",
+ "tester",
 ]
 
 [[package]]
@@ -597,28 +597,6 @@ dependencies = [
 
 [[package]]
 name = "compiletest_rs"
-version = "0.3.26"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7d8975604ebad8b6660796802377eb6495045c5606168fc1b8d19a4dd9bfa46"
-dependencies = [
- "diff",
- "filetime",
- "getopts",
- "libc",
- "log",
- "miow 0.3.3",
- "regex",
- "rustfix",
- "serde",
- "serde_derive",
- "serde_json",
- "tempfile",
- "tester 0.6.0",
- "winapi 0.3.8",
-]
-
-[[package]]
-name = "compiletest_rs"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d7b678957210a00ba0fbeacc23d38cbfbf29895564da1616564634351e1dac5e"
@@ -635,7 +613,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "tempfile",
- "tester 0.7.0",
+ "tester",
  "winapi 0.3.8",
 ]
 
@@ -2223,7 +2201,7 @@ dependencies = [
  "byteorder",
  "cargo_metadata 0.9.0",
  "colored",
- "compiletest_rs 0.3.26",
+ "compiletest_rs",
  "directories",
  "env_logger 0.7.1",
  "getrandom",
@@ -4619,17 +4597,6 @@ dependencies = [
  "proc_macro",
  "std",
  "term 0.0.0",
-]
-
-[[package]]
-name = "tester"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7647e6d732eb84375d8e7abda37818f81861ddbfc7235e33f4983cb254b71e4f"
-dependencies = [
- "getopts",
- "libc",
- "term 0.6.0",
 ]
 
 [[package]]
