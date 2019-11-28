@@ -16,24 +16,32 @@ LL |     println!("}");
    |
    = note: if you intended to print `}`, you can escape it using `}}`
 
-error: invalid format string: invalid argument name `_foo`
-  --> $DIR/format-string-error.rs:9:23
-   |
-LL |     let _ = format!("{_foo}", _foo = 6usize);
-   |                       ^^^^ invalid argument name in format string
-   |
-   = note: argument names cannot start with an underscore
-
 error: invalid format string: invalid argument name `_`
-  --> $DIR/format-string-error.rs:11:23
+  --> $DIR/format-string-error.rs:9:23
    |
 LL |     let _ = format!("{_}", _ = 6usize);
    |                       ^ invalid argument name in format string
    |
-   = note: argument names cannot start with an underscore
+   = note: argument name cannot be a single underscore
+
+error: invalid format string: invalid argument name `_`
+  --> $DIR/format-string-error.rs:11:25
+   |
+LL |     let _ = format!("{a:_}", a = "", _ = 0);
+   |                         ^ invalid argument name in format string
+   |
+   = note: argument name cannot be a single underscore
+
+error: invalid format string: invalid argument name `_`
+  --> $DIR/format-string-error.rs:13:26
+   |
+LL |     let _ = format!("{a:._$}", a = "", _ = 0);
+   |                          ^ invalid argument name in format string
+   |
+   = note: argument name cannot be a single underscore
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/format-string-error.rs:13:23
+  --> $DIR/format-string-error.rs:15:23
    |
 LL |     let _ = format!("{");
    |                      -^ expected `'}'` in format string
@@ -43,7 +51,7 @@ LL |     let _ = format!("{");
    = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/format-string-error.rs:15:22
+  --> $DIR/format-string-error.rs:17:22
    |
 LL |     let _ = format!("}");
    |                      ^ unmatched `}` in format string
@@ -51,7 +59,7 @@ LL |     let _ = format!("}");
    = note: if you intended to print `}`, you can escape it using `}}`
 
 error: invalid format string: expected `'}'`, found `'\'`
-  --> $DIR/format-string-error.rs:17:23
+  --> $DIR/format-string-error.rs:19:23
    |
 LL |     let _ = format!("{\}");
    |                      -^ expected `}` in format string
@@ -61,7 +69,7 @@ LL |     let _ = format!("{\}");
    = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/format-string-error.rs:19:35
+  --> $DIR/format-string-error.rs:21:35
    |
 LL |     let _ = format!("\n\n\n{\n\n\n");
    |                            -      ^ expected `'}'` in format string
@@ -71,7 +79,7 @@ LL |     let _ = format!("\n\n\n{\n\n\n");
    = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/format-string-error.rs:25:3
+  --> $DIR/format-string-error.rs:27:3
    |
 LL |     {"###);
    |     -^ expected `'}'` in format string
@@ -81,7 +89,7 @@ LL |     {"###);
    = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: expected `'}'` but string was terminated
-  --> $DIR/format-string-error.rs:33:1
+  --> $DIR/format-string-error.rs:35:1
    |
 LL |     {
    |     - because of this opening brace
@@ -92,7 +100,7 @@ LL | "###);
    = note: if you intended to print `{`, you can escape it using `{{`
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/format-string-error.rs:39:2
+  --> $DIR/format-string-error.rs:41:2
    |
 LL |     }
    |     ^ unmatched `}` in format string
@@ -100,7 +108,7 @@ LL |     }
    = note: if you intended to print `}`, you can escape it using `}}`
 
 error: invalid format string: unmatched `}` found
-  --> $DIR/format-string-error.rs:47:9
+  --> $DIR/format-string-error.rs:49:9
    |
 LL |         }
    |         ^ unmatched `}` in format string
@@ -108,10 +116,10 @@ LL |         }
    = note: if you intended to print `}`, you can escape it using `}}`
 
 error: 3 positional arguments in format string, but there are 2 arguments
-  --> $DIR/format-string-error.rs:51:15
+  --> $DIR/format-string-error.rs:53:15
    |
 LL |     println!("{} {} {}", 1, 2);
    |               ^^ ^^ ^^   -  -
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 
