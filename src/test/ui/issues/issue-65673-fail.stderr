@@ -1,0 +1,11 @@
+error[E0277]: the trait bound `(): Trait` is not satisfied
+  --> $DIR/issue-65673-fail.rs:20:41
+   |
+LL |     let _: Box<<() as WithType>::Ctx> = Box::new(());
+   |                                         ^^^^^^^^^^^^ the trait `Trait` is not implemented for `()`
+   |
+   = note: required for the cast to the object type `dyn Alias<()>`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
