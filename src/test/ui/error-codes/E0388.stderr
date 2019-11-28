@@ -1,5 +1,5 @@
 error[E0658]: references in constants may only refer to immutable values
-  --> $DIR/E0017.rs:5:30
+  --> $DIR/E0388.rs:4:30
    |
 LL | const CR: &'static mut i32 = &mut C;
    |                              ^^^^^^ constants require immutable values
@@ -8,13 +8,13 @@ LL | const CR: &'static mut i32 = &mut C;
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0019]: static contains unimplemented expression type
-  --> $DIR/E0017.rs:6:39
+  --> $DIR/E0388.rs:5:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^
 
 error[E0658]: references in statics may only refer to immutable values
-  --> $DIR/E0017.rs:6:39
+  --> $DIR/E0388.rs:5:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^ statics require immutable values
@@ -23,13 +23,13 @@ LL | static STATIC_REF: &'static mut i32 = &mut X;
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0596]: cannot borrow immutable static item `X` as mutable
-  --> $DIR/E0017.rs:6:39
+  --> $DIR/E0388.rs:5:39
    |
 LL | static STATIC_REF: &'static mut i32 = &mut X;
    |                                       ^^^^^^ cannot borrow as mutable
 
 error[E0658]: references in statics may only refer to immutable values
-  --> $DIR/E0017.rs:9:38
+  --> $DIR/E0388.rs:8:38
    |
 LL | static CONST_REF: &'static mut i32 = &mut C;
    |                                      ^^^^^^ statics require immutable values
@@ -37,16 +37,7 @@ LL | static CONST_REF: &'static mut i32 = &mut C;
    = note: for more information, see https://github.com/rust-lang/rust/issues/57349
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: references in statics may only refer to immutable values
-  --> $DIR/E0017.rs:10:52
-   |
-LL | static STATIC_MUT_REF: &'static mut i32 = unsafe { &mut M };
-   |                                                    ^^^^^^ statics require immutable values
-   |
-   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
-   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
-
-error: aborting due to 6 previous errors
+error: aborting due to 5 previous errors
 
 Some errors have detailed explanations: E0019, E0596, E0658.
 For more information about an error, try `rustc --explain E0019`.
