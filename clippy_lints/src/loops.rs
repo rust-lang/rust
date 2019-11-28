@@ -13,7 +13,7 @@ use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{is_type_diagnostic_item, qpath_res, sext, sugg};
 use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::cmt_;
+use rustc::middle::mem_categorization::Place;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
@@ -1586,9 +1586,9 @@ struct MutatePairDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
-    fn consume(&mut self, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &Place<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &cmt_<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             if let Categorization::Local(id) = cmt.cat {
                 if Some(id) == self.hir_id_low {
@@ -1601,7 +1601,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
         }
     }
 
-    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
+    fn mutate(&mut self, cmt: &Place<'tcx>) {
         if let Categorization::Local(id) = cmt.cat {
             if Some(id) == self.hir_id_low {
                 self.span_low = Some(cmt.span)

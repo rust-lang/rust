@@ -2,7 +2,7 @@ use rustc::hir::intravisit as visit;
 use rustc::hir::{self, *};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::{cmt_, Categorization};
+use rustc::middle::mem_categorization::{Place, Categorization};
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use rustc::util::nodemap::HirIdSet;
@@ -105,7 +105,7 @@ fn is_argument(map: &hir::map::Map<'_>, id: HirId) -> bool {
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
-    fn consume(&mut self, cmt: &cmt_<'tcx>, mode: ConsumeMode) {
+    fn consume(&mut self, cmt: &Place<'tcx>, mode: ConsumeMode) {
         if let Categorization::Local(lid) = cmt.cat {
             if let ConsumeMode::Move = mode {
                 // moved out or in. clearly can't be localized
@@ -125,13 +125,13 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
         }
     }
 
-    fn borrow(&mut self, cmt: &cmt_<'tcx>, _: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &Place<'tcx>, _: ty::BorrowKind) {
         if let Categorization::Local(lid) = cmt.cat {
             self.set.remove(&lid);
         }
     }
 
-    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
+    fn mutate(&mut self, cmt: &Place<'tcx>) {
         let map = &self.cx.tcx.hir();
         if is_argument(map, cmt.hir_id) {
             // Skip closure arguments

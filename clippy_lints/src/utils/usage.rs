@@ -2,7 +2,7 @@ use rustc::hir::def::Res;
 use rustc::hir::*;
 use rustc::lint::LateContext;
 use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::cmt_;
+use rustc::middle::mem_categorization::Place;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
@@ -64,15 +64,15 @@ impl<'tcx> MutVarsDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
-    fn consume(&mut self, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &Place<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &cmt_<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
             self.update(&cmt.cat)
         }
     }
 
-    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
+    fn mutate(&mut self, cmt: &Place<'tcx>) {
         self.update(&cmt.cat)
     }
 }

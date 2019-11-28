@@ -326,7 +326,7 @@ struct MovedVariablesCtxt {
 }
 
 impl MovedVariablesCtxt {
-    fn move_common(&mut self, cmt: &mc::cmt_<'_>) {
+    fn move_common(&mut self, cmt: &mc::Place<'_>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if let mc::Categorization::Local(vid) = cmt.cat {
@@ -336,18 +336,18 @@ impl MovedVariablesCtxt {
 }
 
 impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
-    fn consume(&mut self, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
+    fn consume(&mut self, cmt: &mc::Place<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move = mode {
             self.move_common(cmt);
         }
     }
 
-    fn borrow(&mut self, _: &mc::cmt_<'tcx>, _: ty::BorrowKind) {}
+    fn borrow(&mut self, _: &mc::Place<'tcx>, _: ty::BorrowKind) {}
 
-    fn mutate(&mut self, _: &mc::cmt_<'tcx>) {}
+    fn mutate(&mut self, _: &mc::Place<'tcx>) {}
 }
 
-fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::cmt_<'tcx>) -> mc::cmt_<'tcx> {
+fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::Place<'tcx>) -> mc::Place<'tcx> {
     loop {
         match cmt.cat {
             mc::Categorization::Downcast(ref c, _) | mc::Categorization::Interior(ref c, _) => {
