@@ -4,6 +4,7 @@
 
 // run-fail
 // error-pattern:generator resumed after completion
+// edition:2018
 
 #![feature(generators, generator_trait)]
 

@@ -253,7 +253,6 @@ fn new_body<'tcx>(
         basic_blocks,
         source_scopes,
         ClearCrossCrate::Clear,
-        None,
         local_decls,
         IndexVec::new(),
         arg_count,

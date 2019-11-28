@@ -3,7 +3,7 @@
 
 // run-fail
 // error-pattern: thread 'main' panicked at '`async fn` resumed after completion'
-// compile-flags: --edition 2018
+// edition:2018
 
 #![feature(generators, generator_trait)]
 
