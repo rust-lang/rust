@@ -96,8 +96,8 @@ macro_rules! late_lint_methods {
             fn check_mod_post(a: &$hir hir::Mod, b: Span, c: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem);
             fn check_foreign_item_post(a: &$hir hir::ForeignItem);
-            fn check_item(a: &$hir hir::Item);
-            fn check_item_post(a: &$hir hir::Item);
+            fn check_item(a: &$hir hir::Item<$hir>);
+            fn check_item_post(a: &$hir hir::Item<$hir>);
             fn check_local(a: &$hir hir::Local);
             fn check_block(a: &$hir hir::Block);
             fn check_block_post(a: &$hir hir::Block);
@@ -604,7 +604,7 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         });
     }
 
-    fn visit_item(&mut self, it: &'tcx hir::Item) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         self.with_lint_attrs(it.hir_id, &it.attrs, |builder| {
             intravisit::walk_item(builder, it);
         });

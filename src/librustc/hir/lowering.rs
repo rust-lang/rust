@@ -95,7 +95,7 @@ pub struct LoweringContext<'a, 'hir: 'a> {
     arena: &'hir Arena<'hir>,
 
     /// The items being lowered are collected here.
-    items: BTreeMap<hir::HirId, hir::Item>,
+    items: BTreeMap<hir::HirId, hir::Item<'hir>>,
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
@@ -566,7 +566,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn insert_item(&mut self, item: hir::Item) {
+    fn insert_item(&mut self, item: hir::Item<'hir>) {
         let id = item.hir_id;
         // FIXME: Use `debug_asset-rt`.
         assert_eq!(id.local_id, hir::ItemLocalId::from_u32(0));
@@ -873,7 +873,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // for them.
     fn with_in_scope_lifetime_defs<T, F>(&mut self, params: &[GenericParam], f: F) -> T
     where
-        F: FnOnce(&mut LoweringContext<'_, '_>) -> T,
+        F: FnOnce(&mut LoweringContext<'_, 'hir>) -> T,
     {
         let old_len = self.in_scope_lifetimes.len();
         let lt_def_names = params.iter().filter_map(|param| match param.kind {

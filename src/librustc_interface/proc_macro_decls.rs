@@ -24,7 +24,7 @@ struct Finder {
 }
 
 impl<'v> ItemLikeVisitor<'v> for Finder {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if attr::contains_name(&item.attrs, sym::rustc_proc_macro_decls) {
             self.decls = Some(item.hir_id);
         }

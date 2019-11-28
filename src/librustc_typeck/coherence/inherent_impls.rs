@@ -50,7 +50,7 @@ struct InherentCollect<'tcx> {
 }
 
 impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         let ty = match item.kind {
             hir::ItemKind::Impl(.., None, ref ty, _) => ty,
             _ => return
@@ -262,7 +262,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
 }
 
 impl InherentCollect<'tcx> {
-    fn check_def_id(&mut self, item: &hir::Item, def_id: DefId) {
+    fn check_def_id(&mut self, item: &hir::Item<'_>, def_id: DefId) {
         if def_id.is_local() {
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and

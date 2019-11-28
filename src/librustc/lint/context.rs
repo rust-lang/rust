@@ -930,7 +930,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         lint_callback!(self, check_body_post, body);
     }
 
-    fn visit_item(&mut self, it: &'tcx hir::Item) {
+    fn visit_item(&mut self, it: &'tcx hir::Item<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = it.kind.generics();
         self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {

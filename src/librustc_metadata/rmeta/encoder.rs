@@ -1048,7 +1048,7 @@ impl EncodeContext<'tcx> {
         self.lazy(rendered_const)
     }
 
-    fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item) {
+    fn encode_info_for_item(&mut self, def_id: DefId, item: &'tcx hir::Item<'tcx>) {
         let tcx = self.tcx;
 
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
@@ -1580,7 +1580,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         let def_id = self.tcx.hir().local_def_id(c.hir_id);
         self.encode_info_for_anon_const(def_id);
     }
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         intravisit::walk_item(self, item);
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
@@ -1649,7 +1649,7 @@ impl EncodeContext<'tcx> {
     /// encode some sub-items. Usually we want some info from the item
     /// so it's easier to do that here then to wait until we would encounter
     /// normally in the visitor walk.
-    fn encode_addl_info_for_item(&mut self, item: &hir::Item) {
+    fn encode_addl_info_for_item(&mut self, item: &hir::Item<'_>) {
         let def_id = self.tcx.hir().local_def_id(item.hir_id);
         match item.kind {
             hir::ItemKind::Static(..) |
@@ -1713,7 +1713,7 @@ struct ImplVisitor<'tcx> {
 }
 
 impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::Impl(..) = item.kind {
             let impl_id = self.tcx.hir().local_def_id(item.hir_id);
             if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_id) {

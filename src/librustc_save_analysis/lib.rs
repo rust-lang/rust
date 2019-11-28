@@ -614,9 +614,9 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
             Node::TraitRef(tr) => tr.path.res,
 
             Node::Item(&hir::Item {
-                kind: hir::ItemKind::Use(ref path, _),
+                kind: hir::ItemKind::Use(path, _),
                 ..
-            }) |
+            }) => path.res,
             Node::Visibility(&Spanned {
                 node: hir::VisibilityKind::Restricted { ref path, .. }, .. }) => path.res,
 

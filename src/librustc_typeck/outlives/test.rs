@@ -16,7 +16,7 @@ struct OutlivesTest<'tcx> {
 }
 
 impl ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let item_def_id = self.tcx.hir().local_def_id(item.hir_id);
 
         // For unit testing: check for a special "rustc_outlives"

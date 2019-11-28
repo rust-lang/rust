@@ -652,7 +652,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let inherited_item_level = match item.kind {
             hir::ItemKind::Impl(..) =>
                 Option::<AccessLevel>::of_impl(item.hir_id, self.tcx, &self.access_levels),
@@ -685,14 +685,14 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Impl(.., ref trait_ref, _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., ref trait_ref, _, impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
                     if trait_ref.is_some() || impl_item_ref.vis.node.is_pub() {
                         self.update(impl_item_ref.id.hir_id, item_level);
                     }
                 }
             }
-            hir::ItemKind::Trait(.., ref trait_item_refs) => {
+            hir::ItemKind::Trait(.., trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
                     self.update(trait_item_ref.id.hir_id, item_level);
                 }
@@ -756,7 +756,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                     self.reach(item.hir_id, item_level).generics().predicates().ty();
                 }
             }
-            hir::ItemKind::Trait(.., ref trait_item_refs) => {
+            hir::ItemKind::Trait(.., trait_item_refs) => {
                 if item_level.is_some() {
                     self.reach(item.hir_id, item_level).generics().predicates();
 
@@ -779,7 +779,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
             // Visit everything except for private impl items.
-            hir::ItemKind::Impl(.., ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., impl_item_refs) => {
                 if item_level.is_some() {
                     self.reach(item.hir_id, item_level).generics().predicates().ty().trait_ref();
 
@@ -1004,7 +1004,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         self.tables = orig_tables;
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let orig_current_item = mem::replace(&mut self.current_item, item.hir_id);
         let orig_tables =
             mem::replace(&mut self.tables, item_tables(self.tcx, item.hir_id, self.empty_tables));
@@ -1283,7 +1283,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
     }
 
     // Check types in item interfaces.
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let orig_current_item = mem::replace(&mut self.current_item,
             self.tcx.hir().local_def_id(item.hir_id));
         let orig_in_body = mem::replace(&mut self.in_body, false);
@@ -1416,7 +1416,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             // Contents of a private mod can be re-exported, so we need
             // to check internals.
@@ -1441,7 +1441,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             // (i.e., we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
             // publicly visible).
-            hir::ItemKind::Impl(.., ref g, ref trait_ref, ref self_, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., ref g, ref trait_ref, ref self_, impl_item_refs) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
                 // `impl [... for] Public<...>`, but not `impl [... for]
@@ -1849,7 +1849,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         let tcx = self.tcx;
         let item_visibility = ty::Visibility::from_hir(&item.vis, item.hir_id, tcx);
 
@@ -1872,7 +1872,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                 // it's not a part of interface, so we skip it.
                 self.check(item.hir_id, item_visibility).generics().predicates();
             }
-            hir::ItemKind::Trait(.., ref trait_item_refs) => {
+            hir::ItemKind::Trait(.., trait_item_refs) => {
                 self.check(item.hir_id, item_visibility).generics().predicates();
 
                 for trait_item_ref in trait_item_refs {
@@ -1917,7 +1917,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of inherent impls have their own publicity.
             // A trait impl is public when both its type and its trait are public
             // Subitems of trait impls have inherited publicity.
-            hir::ItemKind::Impl(.., ref trait_ref, _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., ref trait_ref, _, impl_item_refs) => {
                 let impl_vis = ty::Visibility::of_impl(item.hir_id, tcx, &Default::default());
                 self.check(item.hir_id, impl_vis).generics().predicates();
                 for impl_item_ref in impl_item_refs {

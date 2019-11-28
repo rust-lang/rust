@@ -29,7 +29,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 }
 
 impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if item.vis.node.is_pub() || item.span.is_dummy() {
             return;
         }
@@ -217,7 +217,7 @@ struct ExternCrateToLint {
 }
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
             let extern_crate_def_id = self.tcx.hir().local_def_id(item.hir_id);
             self.crates_to_lint.push(

@@ -254,7 +254,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, i: &'tcx Item) {
+    fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
         let orig_in_trait_impl = self.in_trait_impl;
         let mut kind = AnnotationKind::Required;
         match i.kind {
@@ -354,7 +354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, i: &'tcx Item) {
+    fn visit_item(&mut self, i: &'tcx Item<'tcx>) {
         match i.kind {
             // Inherent impls and foreign modules serve only as containers for other items,
             // they don't have their own stability. They still can be annotated as unstable
@@ -816,7 +816,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::ExternCrate(_) => {
                 // compiler-generated `extern crate` items have a dummy span.
@@ -834,7 +834,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
             // For implementations of traits, check the stability of each item
             // individually as it's possible to have a stable trait with unstable
             // items.
-            hir::ItemKind::Impl(.., Some(ref t), _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., Some(ref t), _, impl_item_refs) => {
                 if let Res::Def(DefKind::Trait, trait_did) = t.path.res {
                     for impl_item_ref in impl_item_refs {
                         let impl_item = self.tcx.hir().impl_item(impl_item_ref.id);

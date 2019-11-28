@@ -751,7 +751,7 @@ struct CheckItemTypesVisitor<'tcx> {
 }
 
 impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
-    fn visit_item(&mut self, i: &'tcx hir::Item) {
+    fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
         check_item_type(self.tcx, i);
     }
     fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) { }
@@ -1696,7 +1696,7 @@ fn fn_maybe_err(tcx: TyCtxt<'_>, sp: Span, abi: Abi) {
     }
 }
 
-pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item) {
+pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
     debug!(
         "check_item_type(it.hir_id={}, it.name={})",
         it.hir_id,
@@ -1857,7 +1857,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
     }
 }
 
-fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item) {
+fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item<'_>) {
     let item_def_id = tcx.hir().local_def_id(item.hir_id);
     // an error would be reported if this fails.
     let _ = traits::OnUnimplementedDirective::of_item(tcx, trait_def_id, item_def_id);

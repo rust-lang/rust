@@ -440,7 +440,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 om.unions.push(self.visit_union_data(item, ident.name, sd, gen)),
             hir::ItemKind::Fn(ref sig, ref gen, body) =>
                 self.visit_fn(om, item, ident.name, &sig.decl, sig.header, gen, body),
-            hir::ItemKind::TyAlias(ref ty, ref gen) => {
+            hir::ItemKind::TyAlias(ty, ref gen) => {
                 let t = Typedef {
                     ty,
                     gen,
@@ -463,7 +463,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.opaque_tys.push(t);
             },
-            hir::ItemKind::Static(ref type_, mutability, expr) => {
+            hir::ItemKind::Static(type_, mutability, expr) => {
                 let s = Static {
                     type_,
                     mutability,
@@ -476,7 +476,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 };
                 om.statics.push(s);
             },
-            hir::ItemKind::Const(ref type_, expr) => {
+            hir::ItemKind::Const(type_, expr) => {
                 let s = Constant {
                     type_,
                     expr,
@@ -524,7 +524,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                           defaultness,
                           ref generics,
                           ref trait_,
-                          ref for_,
+                          for_,
                           ref item_ids) => {
                 // Don't duplicate impls when inlining or if it's implementing a trait, we'll pick
                 // them up regardless of where they're located.

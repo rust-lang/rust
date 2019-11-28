@@ -756,7 +756,7 @@ pub struct Crate<'hir> {
     // does, because it can affect the order in which errors are
     // detected, which in turn can make compile-fail tests yield
     // slightly different results.
-    pub items: BTreeMap<HirId, Item>,
+    pub items: BTreeMap<HirId, Item<'hir>>,
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
@@ -774,8 +774,8 @@ pub struct Crate<'hir> {
     pub modules: BTreeMap<HirId, ModuleItems>,
 }
 
-impl Crate<'_> {
-    pub fn item(&self, id: HirId) -> &Item {
+impl Crate<'hir> {
+    pub fn item(&self, id: HirId) -> &Item<'hir> {
         &self.items[&id]
     }
 
@@ -787,6 +787,12 @@ impl Crate<'_> {
         &self.impl_items[&id]
     }
 
+    pub fn body(&self, id: BodyId) -> &Body {
+        &self.bodies[&id]
+    }
+}
+
+impl Crate<'_> {
     /// Visits all items in the crate in some deterministic (but
     /// unspecified) order. If you just need to process every item,
     /// but don't care about nesting, this method is the best choice.
@@ -828,10 +834,6 @@ impl Crate<'_> {
                 visitor.visit_impl_item(impl_item);
             });
         });
-    }
-
-    pub fn body(&self, id: BodyId) -> &Body {
-        &self.bodies[&id]
     }
 }
 
@@ -2440,11 +2442,11 @@ pub struct ItemId {
 ///
 /// The name might be a dummy name in case of anonymous items
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Item {
+pub struct Item<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
-    pub kind: ItemKind,
+    pub kind: ItemKind<'hir>,
     pub vis: Visibility,
     pub span: Span,
 }
@@ -2467,7 +2469,7 @@ impl FnHeader {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ItemKind {
+pub enum ItemKind<'hir> {
     /// An `extern crate` item, with optional *original* crate name if the crate was renamed.
     ///
     /// E.g., `extern crate foo` or `extern crate foo_bar as foo`.
@@ -2478,12 +2480,12 @@ pub enum ItemKind {
     /// or just
     ///
     /// `use foo::bar::baz;` (with `as baz` implicitly on the right).
-    Use(P<Path>, UseKind),
+    Use(&'hir Path, UseKind),
 
     /// A `static` item.
-    Static(P<Ty>, Mutability, BodyId),
+    Static(&'hir Ty, Mutability, BodyId),
     /// A `const` item.
-    Const(P<Ty>, BodyId),
+    Const(&'hir Ty, BodyId),
     /// A function declaration.
     Fn(FnSig, Generics, BodyId),
     /// A module.
@@ -2491,9 +2493,9 @@ pub enum ItemKind {
     /// An external module, e.g. `extern { .. }`.
     ForeignMod(ForeignMod),
     /// Module-level inline assembly (from `global_asm!`).
-    GlobalAsm(P<GlobalAsm>),
+    GlobalAsm(&'hir GlobalAsm),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
-    TyAlias(P<Ty>, Generics),
+    TyAlias(&'hir Ty, Generics),
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     OpaqueTy(OpaqueTy),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
@@ -2503,7 +2505,7 @@ pub enum ItemKind {
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
     Union(VariantData, Generics),
     /// A trait definition.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, HirVec<TraitItemRef>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, &'hir [TraitItemRef]),
     /// A trait alias.
     TraitAlias(Generics, GenericBounds),
 
@@ -2513,11 +2515,11 @@ pub enum ItemKind {
          Defaultness,
          Generics,
          Option<TraitRef>, // (optional) trait this impl implements
-         P<Ty>, // self
-         HirVec<ImplItemRef>),
+         &'hir Ty, // self
+         &'hir [ImplItemRef]),
 }
 
-impl ItemKind {
+impl ItemKind<'_> {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ItemKind::ExternCrate(..) => "extern crate",
@@ -2785,7 +2787,7 @@ impl CodegenFnAttrs {
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
     Param(&'hir Param),
-    Item(&'hir Item),
+    Item(&'hir Item<'hir>),
     ForeignItem(&'hir ForeignItem),
     TraitItem(&'hir TraitItem),
     ImplItem(&'hir ImplItem),

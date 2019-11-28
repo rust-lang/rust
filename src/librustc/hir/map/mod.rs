@@ -959,7 +959,7 @@ impl<'hir> Map<'hir> {
         bug!("expected foreign mod or inlined parent, found {}", self.node_to_string(parent))
     }
 
-    pub fn expect_item(&self, id: HirId) -> &'hir Item {
+    pub fn expect_item(&self, id: HirId) -> &'hir Item<'hir> {
         match self.find(id) { // read recorded by `find`
             Some(Node::Item(item)) => item,
             _ => bug!("expected item, found {}", self.node_to_string(id))
@@ -1213,7 +1213,7 @@ impl<'a> NodesMatchingSuffix<'a> {
                 id = parent;
             }
 
-            fn item_is_mod(item: &Item) -> bool {
+            fn item_is_mod(item: &Item<'_>) -> bool {
                 match item.kind {
                     ItemKind::Mod(_) => true,
                     _ => false,
@@ -1248,7 +1248,7 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.ident.name } }
+impl Named for Item<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for Variant { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }

@@ -987,7 +987,7 @@ struct RootCollector<'a, 'tcx> {
 }
 
 impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
+    fn visit_item(&mut self, item: &'v hir::Item<'v>) {
         match item.kind {
             hir::ItemKind::ExternCrate(..) |
             hir::ItemKind::Use(..) |
@@ -1145,7 +1145,7 @@ fn item_requires_monomorphization(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
 
 fn create_mono_items_for_default_impls<'tcx>(
     tcx: TyCtxt<'tcx>,
-    item: &'tcx hir::Item,
+    item: &'tcx hir::Item<'tcx>,
     output: &mut Vec<MonoItem<'tcx>>,
 ) {
     match item.kind {

@@ -35,7 +35,7 @@ pub struct FnLikeNode<'a> { node: Node<'a> }
 /// corresponds to some FnLikeNode.
 trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 
-impl MaybeFnLike for ast::Item {
+impl MaybeFnLike for ast::Item<'_> {
     fn is_fn_like(&self) -> bool {
         match self.kind {
             ast::ItemKind::Fn(..) => true,

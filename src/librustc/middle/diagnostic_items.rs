@@ -25,7 +25,7 @@ struct DiagnosticItemCollector<'tcx> {
 }
 
 impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         self.observe_item(&item.attrs, item.hir_id);
     }
 

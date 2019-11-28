@@ -127,7 +127,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
 }
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         debug!("add_inferreds for item {}",
                self.tcx.hir().node_to_string(item.hir_id));
 

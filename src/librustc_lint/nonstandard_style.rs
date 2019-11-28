@@ -325,7 +325,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         if let hir::ItemKind::Mod(_) = it.kind {
             self.check_snake_case(cx, "module", &it.ident);
         }
@@ -386,7 +386,7 @@ impl NonUpperCaseGlobals {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
+    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item<'_>) {
         match it.kind {
             hir::ItemKind::Static(..) if !attr::contains_name(&it.attrs, sym::no_mangle) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "static variable", &it.ident);

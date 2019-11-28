@@ -21,7 +21,7 @@ use std::vec;
 pub enum AnnNode<'a> {
     Name(&'a ast::Name),
     Block(&'a hir::Block),
-    Item(&'a hir::Item),
+    Item(&'a hir::Item<'a>),
     SubItem(hir::HirId),
     Expr(&'a hir::Expr),
     Pat(&'a hir::Pat),
@@ -43,7 +43,7 @@ pub trait PpAnn {
     }
     fn post(&self, _state: &mut State<'_>, _node: AnnNode<'_>) {
     }
-    fn try_fetch_item(&self, _: hir::HirId) -> Option<&hir::Item> {
+    fn try_fetch_item(&self, _: hir::HirId) -> Option<&hir::Item<'_>> {
         None
     }
 }
@@ -53,7 +53,7 @@ impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
 impl PpAnn for hir::Crate<'a> {
-    fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item> {
+    fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item<'_>> {
         Some(self.item(item))
     }
     fn nested(&self, state: &mut State<'_>, nested: Nested) {
@@ -445,7 +445,7 @@ impl<'a> State<'a> {
 
     fn print_item_type(
         &mut self,
-        item: &hir::Item,
+        item: &hir::Item<'_>,
         generics: &hir::Generics,
         inner: impl Fn(&mut Self),
     ) {
@@ -462,7 +462,7 @@ impl<'a> State<'a> {
     }
 
     /// Pretty-print an item
-    pub fn print_item(&mut self, item: &hir::Item) {
+    pub fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);
@@ -601,7 +601,7 @@ impl<'a> State<'a> {
                           ref generics,
                           ref opt_trait,
                           ref ty,
-                          ref impl_items) => {
+                          impl_items) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_defaultness(defaultness);
@@ -634,7 +634,7 @@ impl<'a> State<'a> {
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, ref trait_items) => {
+            hir::ItemKind::Trait(is_auto, unsafety, ref generics, ref bounds, trait_items) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_is_auto(is_auto);

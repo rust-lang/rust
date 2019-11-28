@@ -162,7 +162,7 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         self.process_attrs(item.hir_id, &item.attrs);
         intravisit::walk_item(self, item);
     }

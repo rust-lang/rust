@@ -421,7 +421,7 @@ fn krate(tcx: TyCtxt<'_>) -> NamedRegionMap {
 /// In traits, there is an implicit `Self` type parameter which comes before the generics.
 /// We have to account for this when computing the index of the other generic parameters.
 /// This function returns whether there is such an implicit parameter defined on the given item.
-fn sub_items_have_self_param(node: &hir::ItemKind) -> bool {
+fn sub_items_have_self_param(node: &hir::ItemKind<'_>) -> bool {
     match *node {
         hir::ItemKind::Trait(..) |
         hir::ItemKind::TraitAlias(..) => true,
@@ -454,7 +454,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         replace(&mut self.labels_in_fn, saved);
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
                 self.visit_early_late(None, &sig.decl, generics, |this| {

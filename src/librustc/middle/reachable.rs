@@ -27,7 +27,7 @@ use crate::hir::intravisit;
 // Returns true if the given item must be inlined because it may be
 // monomorphized or it was marked with `#[inline]`. This will only return
 // true for functions.
-fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item, attrs: CodegenFnAttrs) -> bool {
+fn item_might_be_inlined(tcx: TyCtxt<'tcx>, item: &hir::Item<'_>, attrs: CodegenFnAttrs) -> bool {
     if attrs.requests_inline() {
         return true
     }
@@ -349,7 +349,7 @@ struct CollectPrivateImplItemsVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         // Anything which has custom linkage gets thrown on the worklist no
         // matter where it is in the crate, along with "special std symbols"
         // which are currently akin to allocator symbols.

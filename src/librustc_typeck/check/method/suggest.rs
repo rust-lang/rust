@@ -1002,7 +1002,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
     }
 
     impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
-        fn visit_item(&mut self, i: &'v hir::Item) {
+        fn visit_item(&mut self, i: &'v hir::Item<'v>) {
             match i.kind {
                 hir::ItemKind::Trait(..) |
                 hir::ItemKind::TraitAlias(..) => {

@@ -86,7 +86,7 @@ impl Display for Target {
 }
 
 impl Target {
-    pub(crate) fn from_item(item: &Item) -> Target {
+    pub(crate) fn from_item(item: &Item<'_>) -> Target {
         match item.kind {
             ItemKind::ExternCrate(..) => Target::ExternCrate,
             ItemKind::Use(..) => Target::Use,
@@ -161,7 +161,7 @@ impl CheckAttrVisitor<'tcx> {
         attrs: &HirVec<Attribute>,
         span: &Span,
         target: Target,
-        item: Option<&Item>,
+        item: Option<&Item<'_>>,
     ) {
         let mut is_valid = true;
         for attr in attrs {
@@ -335,7 +335,7 @@ impl CheckAttrVisitor<'tcx> {
         attrs: &HirVec<Attribute>,
         span: &Span,
         target: Target,
-        item: Option<&Item>,
+        item: Option<&Item<'_>>,
     ) {
         // Extract the names of all repr hints, e.g., [foo, bar, align] for:
         // ```
@@ -492,7 +492,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx Item) {
+    fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
         self.check_attributes(item.hir_id, &item.attrs, &item.span, target, Some(item));
         intravisit::walk_item(self, item)
@@ -527,7 +527,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 }
 
-fn is_c_like_enum(item: &Item) -> bool {
+fn is_c_like_enum(item: &Item<'_>) -> bool {
     if let ItemKind::Enum(ref def, _) = item.kind {
         for variant in &def.variants {
             match variant.data {

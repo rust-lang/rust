@@ -362,7 +362,7 @@ struct LifeSeeder<'k, 'tcx> {
 }
 
 impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
-    fn visit_item(&mut self, item: &hir::Item) {
+    fn visit_item(&mut self, item: &hir::Item<'_>) {
         let allow_dead_code = has_allow_dead_code_or_lang_attr(self.tcx,
                                                                item.hir_id,
                                                                &item.attrs);
@@ -381,7 +381,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Trait(.., ref trait_item_refs) => {
+            hir::ItemKind::Trait(.., trait_item_refs) => {
                 for trait_item_ref in trait_item_refs {
                     let trait_item = self.krate.trait_item(trait_item_ref.id);
                     match trait_item.kind {
@@ -397,7 +397,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     }
                 }
             }
-            hir::ItemKind::Impl(.., ref opt_trait, _, ref impl_item_refs) => {
+            hir::ItemKind::Impl(.., ref opt_trait, _, impl_item_refs) => {
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.krate.impl_item(impl_item_ref.id);
                     if opt_trait.is_some() ||
@@ -481,7 +481,7 @@ struct DeadVisitor<'tcx> {
 }
 
 impl DeadVisitor<'tcx> {
-    fn should_warn_about_item(&mut self, item: &hir::Item) -> bool {
+    fn should_warn_about_item(&mut self, item: &hir::Item<'_>) -> bool {
         let should_warn = match item.kind {
             hir::ItemKind::Static(..)
             | hir::ItemKind::Const(..)
@@ -567,7 +567,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         if self.should_warn_about_item(item) {
             // For most items, we want to highlight its identifier
             let span = match item.kind {

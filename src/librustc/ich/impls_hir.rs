@@ -245,7 +245,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Item {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Item<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Item {
             ident,

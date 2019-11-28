@@ -50,7 +50,7 @@ pub fn trait_obligations<'a, 'tcx>(
     body_id: hir::HirId,
     trait_ref: &ty::TraitRef<'tcx>,
     span: Span,
-    item: Option<&'tcx hir::Item>,
+    item: Option<&'tcx hir::Item<'tcx>>,
 ) -> Vec<traits::PredicateObligation<'tcx>> {
     let mut wf = WfPredicates { infcx, param_env, body_id, span, out: vec![], item };
     wf.compute_trait_ref(trait_ref, Elaborate::All);
@@ -111,7 +111,7 @@ struct WfPredicates<'a, 'tcx> {
     body_id: hir::HirId,
     span: Span,
     out: Vec<traits::PredicateObligation<'tcx>>,
-    item: Option<&'tcx hir::Item>,
+    item: Option<&'tcx hir::Item<'tcx>>,
 }
 
 /// Controls whether we "elaborate" supertraits and so forth on the WF

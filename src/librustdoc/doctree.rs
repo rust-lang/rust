@@ -9,7 +9,6 @@ use syntax_pos::{self, Span};
 
 use rustc::hir;
 use rustc::hir::def_id::CrateNum;
-use rustc::hir::ptr::P;
 
 pub struct Module<'hir> {
     pub name: Option<Name>,
@@ -136,7 +135,7 @@ pub struct Function<'hir> {
 }
 
 pub struct Typedef<'hir> {
-    pub ty: &'hir P<hir::Ty>,
+    pub ty: &'hir hir::Ty,
     pub gen: &'hir hir::Generics,
     pub name: Name,
     pub id: hir::HirId,
@@ -156,7 +155,7 @@ pub struct OpaqueTy<'hir> {
 
 #[derive(Debug)]
 pub struct Static<'hir> {
-    pub type_: &'hir P<hir::Ty>,
+    pub type_: &'hir hir::Ty,
     pub mutability: hir::Mutability,
     pub expr: hir::BodyId,
     pub name: Name,
@@ -167,7 +166,7 @@ pub struct Static<'hir> {
 }
 
 pub struct Constant<'hir> {
-    pub type_: &'hir P<hir::Ty>,
+    pub type_: &'hir hir::Ty,
     pub expr: hir::BodyId,
     pub name: Name,
     pub attrs: &'hir [ast::Attribute],
@@ -206,7 +205,7 @@ pub struct Impl<'hir> {
     pub defaultness: hir::Defaultness,
     pub generics: &'hir hir::Generics,
     pub trait_: &'hir Option<hir::TraitRef>,
-    pub for_: &'hir P<hir::Ty>,
+    pub for_: &'hir hir::Ty,
     pub items: Vec<&'hir hir::ImplItem>,
     pub attrs: &'hir [ast::Attribute],
     pub whence: Span,

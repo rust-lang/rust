@@ -218,7 +218,7 @@ pub trait Visitor<'v>: Sized {
 
     /// Visits the top-level item and (optionally) nested items / impl items. See
     /// `visit_nested_item` for details.
-    fn visit_item(&mut self, i: &'v Item) {
+    fn visit_item(&mut self, i: &'v Item<'v>) {
         walk_item(self, i)
     }
 
@@ -462,7 +462,7 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param) {
     walk_list!(visitor, visit_attribute, &param.attrs);
 }
 
-pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
+pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
     visitor.visit_vis(&item.vis);
     visitor.visit_ident(item.ident);
     match item.kind {
@@ -527,7 +527,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             ref generics,
             ref opt_trait_reference,
             ref typ,
-            ref impl_item_refs
+            impl_item_refs
         ) => {
             visitor.visit_id(item.hir_id);
             visitor.visit_generics(generics);
@@ -542,7 +542,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_variant_data(struct_definition, item.ident.name, generics, item.hir_id,
                                        item.span);
         }
-        ItemKind::Trait(.., ref generics, ref bounds, ref trait_item_refs) => {
+        ItemKind::Trait(.., ref generics, ref bounds, trait_item_refs) => {
             visitor.visit_id(item.hir_id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);

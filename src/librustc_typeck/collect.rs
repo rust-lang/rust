@@ -111,7 +111,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         NestedVisitorMap::OnlyBodies(&self.tcx.hir())
     }
 
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
+    fn visit_item(&mut self, item: &'tcx hir::Item<'tcx>) {
         convert_item(self.tcx, item.hir_id);
         intravisit::walk_item(self, item);
     }
@@ -1693,7 +1693,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
             intravisit::NestedVisitorMap::All(&self.tcx.hir())
         }
-        fn visit_item(&mut self, it: &'tcx Item) {
+        fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The opaque type itself or its children are not within its reveal scope.
@@ -2052,8 +2052,6 @@ fn explicit_predicates_of(
 
     const NO_GENERICS: &hir::Generics = &hir::Generics::empty();
 
-    let empty_trait_items = HirVec::new();
-
     let mut predicates = UniquePredicates::new();
 
     let ast_generics = match node {
@@ -2098,12 +2096,12 @@ fn explicit_predicates_of(
                 | ItemKind::Struct(_, ref generics)
                 | ItemKind::Union(_, ref generics) => generics,
 
-                ItemKind::Trait(_, _, ref generics, .., ref items) => {
+                ItemKind::Trait(_, _, ref generics, .., items) => {
                     is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
                     generics
                 }
                 ItemKind::TraitAlias(ref generics, _) => {
-                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), &empty_trait_items));
+                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), &[]));
                     generics
                 }
                 ItemKind::OpaqueTy(OpaqueTy {
