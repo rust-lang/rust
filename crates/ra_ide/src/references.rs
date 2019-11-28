@@ -14,7 +14,7 @@ mod name_definition;
 mod rename;
 mod search_scope;
 
-use hir::Source;
+use hir::InFile;
 use once_cell::unsync::Lazy;
 use ra_db::{SourceDatabase, SourceDatabaseExt};
 use ra_prof::profile;
@@ -107,12 +107,12 @@ fn find_name<'a>(
     position: FilePosition,
 ) -> Option<RangeInfo<(String, NameDefinition)>> {
     if let Some(name) = find_node_at_offset::<ast::Name>(&syntax, position.offset) {
-        let def = classify_name(db, Source::new(position.file_id.into(), &name))?;
+        let def = classify_name(db, InFile::new(position.file_id.into(), &name))?;
         let range = name.syntax().text_range();
         return Some(RangeInfo::new(range, (name.text().to_string(), def)));
     }
     let name_ref = find_node_at_offset::<ast::NameRef>(&syntax, position.offset)?;
-    let def = classify_name_ref(db, Source::new(position.file_id.into(), &name_ref))?;
+    let def = classify_name_ref(db, InFile::new(position.file_id.into(), &name_ref))?;
     let range = name_ref.syntax().text_range();
     Some(RangeInfo::new(range, (name_ref.text().to_string(), def)))
 }
@@ -144,7 +144,7 @@ fn process_definition(
                         continue;
                     }
                 }
-                if let Some(d) = classify_name_ref(db, Source::new(file_id.into(), &name_ref)) {
+                if let Some(d) = classify_name_ref(db, InFile::new(file_id.into(), &name_ref)) {
                     if d == def {
                         refs.push(FileRange { file_id, range });
                     }

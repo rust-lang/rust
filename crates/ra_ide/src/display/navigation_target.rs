@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{AssocItem, Either, FieldSource, HasSource, ModuleSource, Source};
+use hir::{AssocItem, Either, FieldSource, HasSource, InFile, ModuleSource};
 use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
@@ -141,7 +141,7 @@ impl NavigationTarget {
     /// Allows `NavigationTarget` to be created from a `NameOwner`
     pub(crate) fn from_named(
         db: &RootDatabase,
-        node: Source<&dyn ast::NameOwner>,
+        node: InFile<&dyn ast::NameOwner>,
         docs: Option<String>,
         description: Option<String>,
     ) -> NavigationTarget {

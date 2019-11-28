@@ -22,8 +22,8 @@ use ra_syntax::{
 use test_utils::tested_by;
 
 use crate::{
-    attr::Attrs, db::DefDatabase, path::Path, trace::Trace, FileAstId, HirFileId, LocalImportId,
-    Source,
+    attr::Attrs, db::DefDatabase, path::Path, trace::Trace, FileAstId, HirFileId, InFile,
+    LocalImportId,
 };
 
 /// `RawItems` is a set of top-level items in a file (except for impls).
@@ -313,7 +313,7 @@ impl RawItemsCollector {
 
         let mut buf = Vec::new();
         Path::expand_use_item(
-            Source { value: use_item, file_id: self.file_id },
+            InFile { value: use_item, file_id: self.file_id },
             &self.hygiene,
             |path, use_tree, is_glob, alias| {
                 let import_data = ImportData {

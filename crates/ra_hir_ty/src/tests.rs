@@ -8,7 +8,7 @@ use hir_def::{
     body::BodySourceMap, db::DefDatabase, nameres::CrateDefMap, AssocItemId, DefWithBodyId,
     LocalModuleId, Lookup, ModuleDefId,
 };
-use hir_expand::Source;
+use hir_expand::InFile;
 use insta::assert_snapshot;
 use ra_db::{fixture::WithFixture, salsa::Database, FilePosition, SourceDatabase};
 use ra_syntax::{
@@ -4680,7 +4680,7 @@ fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     for decl in crate_def_map[module.local_id].scope.declarations() {
         if let ModuleDefId::FunctionId(func) = decl {
             let (_body, source_map) = db.body_with_source_map(func.into());
-            if let Some(expr_id) = source_map.node_expr(Source::new(pos.file_id.into(), &expr)) {
+            if let Some(expr_id) = source_map.node_expr(InFile::new(pos.file_id.into(), &expr)) {
                 let infer = db.infer(func.into());
                 let ty = &infer[expr_id];
                 return ty.display(db).to_string();

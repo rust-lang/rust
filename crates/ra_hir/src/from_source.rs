@@ -10,46 +10,46 @@ use ra_syntax::{
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     AssocItem, Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock,
-    Local, MacroDef, Module, ModuleDef, ModuleSource, Source, Static, Struct, StructField, Trait,
+    InFile, Local, MacroDef, Module, ModuleDef, ModuleSource, Static, Struct, StructField, Trait,
     TypeAlias, Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
     type Ast;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self>;
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self>;
 }
 
 impl FromSource for Struct {
     type Ast = ast::StructDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let id = from_source(db, src)?;
         Some(Struct { id })
     }
 }
 impl FromSource for Union {
     type Ast = ast::UnionDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let id = from_source(db, src)?;
         Some(Union { id })
     }
 }
 impl FromSource for Enum {
     type Ast = ast::EnumDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let id = from_source(db, src)?;
         Some(Enum { id })
     }
 }
 impl FromSource for Trait {
     type Ast = ast::TraitDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let id = from_source(db, src)?;
         Some(Trait { id })
     }
 }
 impl FromSource for Function {
     type Ast = ast::FnDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let items = match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
             Container::Trait(it) => it.items(db),
             Container::ImplBlock(it) => it.items(db),
@@ -76,7 +76,7 @@ impl FromSource for Function {
 
 impl FromSource for Const {
     type Ast = ast::ConstDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let items = match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
             Container::Trait(it) => it.items(db),
             Container::ImplBlock(it) => it.items(db),
@@ -102,7 +102,7 @@ impl FromSource for Const {
 }
 impl FromSource for Static {
     type Ast = ast::StaticDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let module = match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
             Container::Module(it) => it,
             Container::Trait(_) | Container::ImplBlock(_) => return None,
@@ -120,7 +120,7 @@ impl FromSource for Static {
 
 impl FromSource for TypeAlias {
     type Ast = ast::TypeAliasDef;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let items = match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
             Container::Trait(it) => it.items(db),
             Container::ImplBlock(it) => it.items(db),
@@ -147,11 +147,11 @@ impl FromSource for TypeAlias {
 
 impl FromSource for MacroDef {
     type Ast = ast::MacroCall;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let kind = MacroDefKind::Declarative;
 
         let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
-        let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
+        let module = Module::from_definition(db, InFile::new(src.file_id, module_src))?;
         let krate = module.krate().crate_id();
 
         let ast_id = AstId::new(src.file_id, db.ast_id_map(src.file_id).ast_id(&src.value));
@@ -163,7 +163,7 @@ impl FromSource for MacroDef {
 
 impl FromSource for ImplBlock {
     type Ast = ast::ImplBlock;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let id = from_source(db, src)?;
         Some(ImplBlock { id })
     }
@@ -171,9 +171,9 @@ impl FromSource for ImplBlock {
 
 impl FromSource for EnumVariant {
     type Ast = ast::EnumVariant;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let parent_enum = src.value.parent_enum();
-        let src_enum = Source { file_id: src.file_id, value: parent_enum };
+        let src_enum = InFile { file_id: src.file_id, value: parent_enum };
         let variants = Enum::from_source(db, src_enum)?.variants(db);
         variants.into_iter().find(|v| same_source(&v.source(db), &src))
     }
@@ -181,17 +181,17 @@ impl FromSource for EnumVariant {
 
 impl FromSource for StructField {
     type Ast = FieldSource;
-    fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
+    fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
         let variant_def: VariantDef = match src.value {
             FieldSource::Named(ref field) => {
                 let value = field.syntax().ancestors().find_map(ast::StructDef::cast)?;
-                let src = Source { file_id: src.file_id, value };
+                let src = InFile { file_id: src.file_id, value };
                 let def = Struct::from_source(db, src)?;
                 VariantDef::from(def)
             }
             FieldSource::Pos(ref field) => {
                 let value = field.syntax().ancestors().find_map(ast::EnumVariant::cast)?;
-                let src = Source { file_id: src.file_id, value };
+                let src = InFile { file_id: src.file_id, value };
                 let def = EnumVariant::from_source(db, src)?;
                 VariantDef::from(def)
             }
@@ -206,14 +206,14 @@ impl FromSource for StructField {
 }
 
 impl Local {
-    pub fn from_source(db: &impl HirDatabase, src: Source<ast::BindPat>) -> Option<Self> {
+    pub fn from_source(db: &impl HirDatabase, src: InFile<ast::BindPat>) -> Option<Self> {
         let file_id = src.file_id;
         let parent: DefWithBody = src.value.syntax().ancestors().find_map(|it| {
             let res = match_ast! {
                 match it {
-                    ast::ConstDef(value) => { Const::from_source(db, Source { value, file_id})?.into() },
-                    ast::StaticDef(value) => { Static::from_source(db, Source { value, file_id})?.into() },
-                    ast::FnDef(value) => { Function::from_source(db, Source { value, file_id})?.into() },
+                    ast::ConstDef(value) => { Const::from_source(db, InFile { value, file_id})?.into() },
+                    ast::StaticDef(value) => { Static::from_source(db, InFile { value, file_id})?.into() },
+                    ast::FnDef(value) => { Function::from_source(db, InFile { value, file_id})?.into() },
                     _ => return None,
                 }
             };
@@ -227,16 +227,16 @@ impl Local {
 }
 
 impl Module {
-    pub fn from_declaration(db: &impl DefDatabase, src: Source<ast::Module>) -> Option<Self> {
+    pub fn from_declaration(db: &impl DefDatabase, src: InFile<ast::Module>) -> Option<Self> {
         let parent_declaration = src.value.syntax().ancestors().skip(1).find_map(ast::Module::cast);
 
         let parent_module = match parent_declaration {
             Some(parent_declaration) => {
-                let src_parent = Source { file_id: src.file_id, value: parent_declaration };
+                let src_parent = InFile { file_id: src.file_id, value: parent_declaration };
                 Module::from_declaration(db, src_parent)
             }
             _ => {
-                let src_parent = Source {
+                let src_parent = InFile {
                     file_id: src.file_id,
                     value: ModuleSource::new(db, Some(src.file_id.original_file(db)), None),
                 };
@@ -248,13 +248,13 @@ impl Module {
         parent_module.child(db, &child_name.as_name())
     }
 
-    pub fn from_definition(db: &impl DefDatabase, src: Source<ModuleSource>) -> Option<Self> {
+    pub fn from_definition(db: &impl DefDatabase, src: InFile<ModuleSource>) -> Option<Self> {
         match src.value {
             ModuleSource::Module(ref module) => {
                 assert!(!module.has_semi());
                 return Module::from_declaration(
                     db,
-                    Source { file_id: src.file_id, value: module.clone() },
+                    InFile { file_id: src.file_id, value: module.clone() },
                 );
             }
             ModuleSource::SourceFile(_) => (),
@@ -271,13 +271,13 @@ impl Module {
     }
 }
 
-fn from_source<N, DEF>(db: &(impl DefDatabase + AstDatabase), src: Source<N>) -> Option<DEF>
+fn from_source<N, DEF>(db: &(impl DefDatabase + AstDatabase), src: InFile<N>) -> Option<DEF>
 where
     N: AstNode,
     DEF: AstItemDef<N>,
 {
     let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
-    let module = Module::from_definition(db, Source::new(src.file_id, module_src))?;
+    let module = Module::from_definition(db, InFile::new(src.file_id, module_src))?;
     let ctx = LocationCtx::new(db, module.id, src.file_id);
     let items = db.ast_id_map(src.file_id);
     let item_id = items.ast_id(&src.value);
@@ -291,7 +291,7 @@ enum Container {
 }
 
 impl Container {
-    fn find(db: &impl DefDatabase, src: Source<&SyntaxNode>) -> Option<Container> {
+    fn find(db: &impl DefDatabase, src: InFile<&SyntaxNode>) -> Option<Container> {
         // FIXME: this doesn't try to handle nested declarations
         for container in src.value.ancestors() {
             let res = match_ast! {
@@ -322,6 +322,6 @@ impl Container {
 /// In general, we do not guarantee that we have exactly one instance of a
 /// syntax tree for each file. We probably should add such guarantee, but, for
 /// the time being, we will use identity-less AstPtr comparison.
-fn same_source<N: AstNode>(s1: &Source<N>, s2: &Source<N>) -> bool {
+fn same_source<N: AstNode>(s1: &InFile<N>, s2: &InFile<N>) -> bool {
     s1.as_ref().map(AstPtr::new) == s2.as_ref().map(AstPtr::new)
 }

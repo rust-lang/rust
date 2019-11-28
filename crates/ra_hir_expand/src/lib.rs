@@ -90,9 +90,9 @@ impl HirFileId {
                 let macro_arg = db.macro_arg(macro_file.macro_call_id)?;
 
                 Some(ExpansionInfo {
-                    expanded: Source::new(self, parse.syntax_node()),
-                    arg: Source::new(loc.ast_id.file_id, arg_tt),
-                    def: Source::new(loc.ast_id.file_id, def_tt),
+                    expanded: InFile::new(self, parse.syntax_node()),
+                    arg: InFile::new(loc.ast_id.file_id, arg_tt),
+                    def: InFile::new(loc.ast_id.file_id, def_tt),
                     macro_arg,
                     macro_def,
                     exp_map,
@@ -167,9 +167,9 @@ impl MacroCallId {
 /// ExpansionInfo mainly describes how to map text range between src and expanded macro
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpansionInfo {
-    expanded: Source<SyntaxNode>,
-    arg: Source<ast::TokenTree>,
-    def: Source<ast::TokenTree>,
+    expanded: InFile<SyntaxNode>,
+    arg: InFile<ast::TokenTree>,
+    def: InFile<ast::TokenTree>,
 
     macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
     macro_arg: Arc<(tt::Subtree, mbe::TokenMap)>,
@@ -177,7 +177,7 @@ pub struct ExpansionInfo {
 }
 
 impl ExpansionInfo {
-    pub fn map_token_down(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
+    pub fn map_token_down(&self, token: InFile<&SyntaxToken>) -> Option<InFile<SyntaxToken>> {
         assert_eq!(token.file_id, self.arg.file_id);
         let range =
             token.value.text_range().checked_sub(self.arg.value.syntax().text_range().start())?;
@@ -191,7 +191,7 @@ impl ExpansionInfo {
         Some(self.expanded.with_value(token))
     }
 
-    pub fn map_token_up(&self, token: Source<&SyntaxToken>) -> Option<Source<SyntaxToken>> {
+    pub fn map_token_up(&self, token: InFile<&SyntaxToken>) -> Option<InFile<SyntaxToken>> {
         let token_id = self.exp_map.token_by_range(token.value.text_range())?;
 
         let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
@@ -254,33 +254,33 @@ impl<N: AstNode> AstId<N> {
     }
 }
 
-/// `Source<T>` stores a value of `T` inside a particular file/syntax tree.
+/// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
 ///
 /// Typical usages are:
 ///
-/// * `Source<SyntaxNode>` -- syntax node in a file
-/// * `Source<ast::FnDef>` -- ast node in a file
-/// * `Source<TextUnit>` -- offset in a file
+/// * `InFile<SyntaxNode>` -- syntax node in a file
+/// * `InFile<ast::FnDef>` -- ast node in a file
+/// * `InFile<TextUnit>` -- offset in a file
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
-pub struct Source<T> {
+pub struct InFile<T> {
     pub file_id: HirFileId,
     pub value: T,
 }
 
-impl<T> Source<T> {
-    pub fn new(file_id: HirFileId, value: T) -> Source<T> {
-        Source { file_id, value }
+impl<T> InFile<T> {
+    pub fn new(file_id: HirFileId, value: T) -> InFile<T> {
+        InFile { file_id, value }
     }
 
     // Similarly, naming here is stupid...
-    pub fn with_value<U>(&self, value: U) -> Source<U> {
-        Source::new(self.file_id, value)
+    pub fn with_value<U>(&self, value: U) -> InFile<U> {
+        InFile::new(self.file_id, value)
     }
 
-    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> Source<U> {
-        Source::new(self.file_id, f(self.value))
+    pub fn map<F: FnOnce(T) -> U, U>(self, f: F) -> InFile<U> {
+        InFile::new(self.file_id, f(self.value))
     }
-    pub fn as_ref(&self) -> Source<&T> {
+    pub fn as_ref(&self) -> InFile<&T> {
         self.with_value(&self.value)
     }
     pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {

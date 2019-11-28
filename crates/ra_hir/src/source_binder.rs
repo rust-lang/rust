@@ -18,7 +18,7 @@ use hir_def::{
     AssocItemId, DefWithBodyId,
 };
 use hir_expand::{
-    hygiene::Hygiene, name::AsName, AstId, HirFileId, MacroCallId, MacroFileKind, Source,
+    hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroFileKind,
 };
 use ra_syntax::{
     ast::{self, AstNode},
@@ -37,7 +37,7 @@ use crate::{
     GenericParam, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
 };
 
-fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -> Option<Resolver> {
+fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> Option<Resolver> {
     match_ast! {
         match (node.value) {
             ast::Module(it) => {
@@ -71,7 +71,7 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: Source<&SyntaxNode>) -
 
 fn def_with_body_from_child_node(
     db: &impl HirDatabase,
-    child: Source<&SyntaxNode>,
+    child: InFile<&SyntaxNode>,
 ) -> Option<DefWithBody> {
     child.value.ancestors().find_map(|node| {
         match_ast! {
@@ -141,8 +141,8 @@ impl Expansion {
     pub fn map_token_down(
         &self,
         db: &impl HirDatabase,
-        token: Source<&SyntaxToken>,
-    ) -> Option<Source<SyntaxToken>> {
+        token: InFile<&SyntaxToken>,
+    ) -> Option<InFile<SyntaxToken>> {
         let exp_info = self.file_id().expansion_info(db)?;
         exp_info.map_token_down(token)
     }
@@ -155,7 +155,7 @@ impl Expansion {
 impl SourceAnalyzer {
     pub fn new(
         db: &impl HirDatabase,
-        node: Source<&SyntaxNode>,
+        node: InFile<&SyntaxNode>,
         offset: Option<TextUnit>,
     ) -> SourceAnalyzer {
         let def_with_body = def_with_body_from_child_node(db, node);
@@ -192,12 +192,12 @@ impl SourceAnalyzer {
     }
 
     fn expr_id(&self, expr: &ast::Expr) -> Option<ExprId> {
-        let src = Source { file_id: self.file_id, value: expr };
+        let src = InFile { file_id: self.file_id, value: expr };
         self.body_source_map.as_ref()?.node_expr(src)
     }
 
     fn pat_id(&self, pat: &ast::Pat) -> Option<PatId> {
-        let src = Source { file_id: self.file_id, value: pat };
+        let src = InFile { file_id: self.file_id, value: pat };
         self.body_source_map.as_ref()?.node_pat(src)
     }
 
@@ -243,7 +243,7 @@ impl SourceAnalyzer {
     pub fn resolve_macro_call(
         &self,
         db: &impl HirDatabase,
-        macro_call: Source<&ast::MacroCall>,
+        macro_call: InFile<&ast::MacroCall>,
     ) -> Option<MacroDef> {
         let hygiene = Hygiene::new(db, macro_call.file_id);
         let path = macro_call.value.path().and_then(|ast| Path::from_src(ast, &hygiene))?;
@@ -318,7 +318,7 @@ impl SourceAnalyzer {
         let name = name_ref.as_name();
         let source_map = self.body_source_map.as_ref()?;
         let scopes = self.scopes.as_ref()?;
-        let scope = scope_for(scopes, source_map, Source::new(self.file_id, name_ref.syntax()))?;
+        let scope = scope_for(scopes, source_map, InFile::new(self.file_id, name_ref.syntax()))?;
         let entry = scopes.resolve_name_in_scope(scope, &name)?;
         Some(ScopeEntryWithSyntax {
             name: entry.name().clone(),
@@ -446,7 +446,7 @@ impl SourceAnalyzer {
     pub fn expand(
         &self,
         db: &impl HirDatabase,
-        macro_call: Source<&ast::MacroCall>,
+        macro_call: InFile<&ast::MacroCall>,
     ) -> Option<Expansion> {
         let def = self.resolve_macro_call(db, macro_call)?.id;
         let ast_id = AstId::new(
@@ -463,19 +463,19 @@ impl SourceAnalyzer {
 fn scope_for(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    node: Source<&SyntaxNode>,
+    node: InFile<&SyntaxNode>,
 ) -> Option<ScopeId> {
     node.value
         .ancestors()
         .filter_map(ast::Expr::cast)
-        .filter_map(|it| source_map.node_expr(Source::new(node.file_id, &it)))
+        .filter_map(|it| source_map.node_expr(InFile::new(node.file_id, &it)))
         .find_map(|it| scopes.scope_for(it))
 }
 
 fn scope_for_offset(
     scopes: &ExprScopes,
     source_map: &BodySourceMap,
-    offset: Source<TextUnit>,
+    offset: InFile<TextUnit>,
 ) -> Option<ScopeId> {
     scopes
         .scope_by_expr()

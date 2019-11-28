@@ -55,7 +55,7 @@ fn rename_mod(
 ) -> Option<SourceChange> {
     let mut source_file_edits = Vec::new();
     let mut file_system_edits = Vec::new();
-    let module_src = hir::Source { file_id: position.file_id.into(), value: ast_module.clone() };
+    let module_src = hir::InFile { file_id: position.file_id.into(), value: ast_module.clone() };
     if let Some(module) = hir::Module::from_declaration(db, module_src) {
         let src = module.definition_source(db);
         let file_id = src.file_id.original_file(db);

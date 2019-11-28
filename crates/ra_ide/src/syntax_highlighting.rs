@@ -2,7 +2,7 @@
 
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use hir::{Name, Source};
+use hir::{InFile, Name};
 use ra_db::SourceDatabase;
 use ra_prof::profile;
 use ra_syntax::{ast, AstNode, Direction, SyntaxElement, SyntaxKind, SyntaxKind::*, TextRange, T};
@@ -81,7 +81,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
 
                 let name_ref = node.as_node().cloned().and_then(ast::NameRef::cast).unwrap();
                 let name_kind =
-                    classify_name_ref(db, Source::new(file_id.into(), &name_ref)).map(|d| d.kind);
+                    classify_name_ref(db, InFile::new(file_id.into(), &name_ref)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {
@@ -95,7 +95,7 @@ pub(crate) fn highlight(db: &RootDatabase, file_id: FileId) -> Vec<HighlightedRa
             NAME => {
                 let name = node.as_node().cloned().and_then(ast::Name::cast).unwrap();
                 let name_kind =
-                    classify_name(db, Source::new(file_id.into(), &name)).map(|d| d.kind);
+                    classify_name(db, InFile::new(file_id.into(), &name)).map(|d| d.kind);
 
                 if let Some(Local(local)) = &name_kind {
                     if let Some(name) = local.name(db) {

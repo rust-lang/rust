@@ -22,7 +22,7 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
     let name_ref = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset)?;
     let mac = name_ref.syntax().ancestors().find_map(ast::MacroCall::cast)?;
 
-    let source = hir::Source::new(position.file_id.into(), mac.syntax());
+    let source = hir::InFile::new(position.file_id.into(), mac.syntax());
     let expanded = expand_macro_recur(db, source, source.with_value(&mac))?;
 
     // FIXME:
@@ -34,8 +34,8 @@ pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<
 
 fn expand_macro_recur(
     db: &RootDatabase,
-    source: hir::Source<&SyntaxNode>,
-    macro_call: hir::Source<&ast::MacroCall>,
+    source: hir::InFile<&SyntaxNode>,
+    macro_call: hir::InFile<&ast::MacroCall>,
 ) -> Option<SyntaxNode> {
     let analyzer = hir::SourceAnalyzer::new(db, source, None);
     let expansion = analyzer.expand(db, macro_call)?;
@@ -46,7 +46,7 @@ fn expand_macro_recur(
     let mut replaces = FxHashMap::default();
 
     for child in children.into_iter() {
-        let node = hir::Source::new(macro_file_id, &child);
+        let node = hir::InFile::new(macro_file_id, &child);
         if let Some(new_node) = expand_macro_recur(db, source, node) {
             // Replace the whole node if it is root
             // `replace_descendants` will not replace the parent node

@@ -54,13 +54,13 @@ impl<'a> CompletionContext<'a> {
         let src = hir::ModuleSource::from_position(db, position);
         let module = hir::Module::from_definition(
             db,
-            hir::Source { file_id: position.file_id.into(), value: src },
+            hir::InFile { file_id: position.file_id.into(), value: src },
         );
         let token =
             original_parse.tree().syntax().token_at_offset(position.offset).left_biased()?;
         let analyzer = hir::SourceAnalyzer::new(
             db,
-            hir::Source::new(position.file_id.into(), &token.parent()),
+            hir::InFile::new(position.file_id.into(), &token.parent()),
             Some(position.offset),
         );
         let mut ctx = CompletionContext {

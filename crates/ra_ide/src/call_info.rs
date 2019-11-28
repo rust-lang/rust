@@ -18,7 +18,7 @@ pub(crate) fn call_info(db: &RootDatabase, position: FilePosition) -> Option<Cal
     // Find the calling expression and it's NameRef
     let calling_node = FnCallNode::with_node(&syntax, position.offset)?;
     let name_ref = calling_node.name_ref()?;
-    let name_ref = hir::Source::new(position.file_id.into(), name_ref.syntax());
+    let name_ref = hir::InFile::new(position.file_id.into(), name_ref.syntax());
 
     let analyzer = hir::SourceAnalyzer::new(db, name_ref, None);
     let (mut call_info, has_self) = match &calling_node {

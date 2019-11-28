@@ -30,7 +30,7 @@ use crate::{
     db::{DefDatabase, HirDatabase},
     ty::display::HirFormatter,
     ty::{self, InEnvironment, InferenceResult, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk},
-    CallableDef, Either, HirDisplay, Name, Source,
+    CallableDef, Either, HirDisplay, InFile, Name,
 };
 
 /// hir::Crate describes a single crate. It's the main interface with which
@@ -118,7 +118,7 @@ impl ModuleSource {
         }
     }
 
-    pub fn from_child_node(db: &impl DefDatabase, child: Source<&SyntaxNode>) -> ModuleSource {
+    pub fn from_child_node(db: &impl DefDatabase, child: InFile<&SyntaxNode>) -> ModuleSource {
         if let Some(m) =
             child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
         {
@@ -901,7 +901,7 @@ impl Local {
         Type { krate, ty: InEnvironment { value: ty, environment } }
     }
 
-    pub fn source(self, db: &impl HirDatabase) -> Source<Either<ast::BindPat, ast::SelfParam>> {
+    pub fn source(self, db: &impl HirDatabase) -> InFile<Either<ast::BindPat, ast::SelfParam>> {
         let (_body, source_map) = db.body_with_source_map(self.parent.into());
         let src = source_map.pat_syntax(self.pat_id).unwrap(); // Hmm...
         let root = src.file_syntax(db);

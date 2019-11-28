@@ -58,8 +58,8 @@ mod tests;
 use std::sync::Arc;
 
 use hir_expand::{
-    ast_id_map::FileAstId, diagnostics::DiagnosticSink, either::Either, name::Name, MacroDefId,
-    Source,
+    ast_id_map::FileAstId, diagnostics::DiagnosticSink, either::Either, name::Name, InFile,
+    MacroDefId,
 };
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
@@ -261,21 +261,21 @@ impl ModuleData {
     pub fn definition_source(
         &self,
         db: &impl DefDatabase,
-    ) -> Source<Either<ast::SourceFile, ast::Module>> {
+    ) -> InFile<Either<ast::SourceFile, ast::Module>> {
         if let Some(file_id) = self.definition {
             let sf = db.parse(file_id).tree();
-            return Source::new(file_id.into(), Either::A(sf));
+            return InFile::new(file_id.into(), Either::A(sf));
         }
         let decl = self.declaration.unwrap();
-        Source::new(decl.file_id(), Either::B(decl.to_node(db)))
+        InFile::new(decl.file_id(), Either::B(decl.to_node(db)))
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
     /// `None` for the crate root.
-    pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<Source<ast::Module>> {
+    pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<InFile<ast::Module>> {
         let decl = self.declaration?;
         let value = decl.to_node(db);
-        Some(Source { file_id: decl.file_id(), value })
+        Some(InFile { file_id: decl.file_id(), value })
     }
 }
 

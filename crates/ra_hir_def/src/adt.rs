@@ -5,7 +5,7 @@ use std::sync::Arc;
 use hir_expand::{
     either::Either,
     name::{AsName, Name},
-    Source,
+    InFile,
 };
 use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
@@ -88,7 +88,7 @@ impl EnumData {
 impl HasChildSource for EnumId {
     type ChildId = LocalEnumVariantId;
     type Value = ast::EnumVariant;
-    fn child_source(&self, db: &impl DefDatabase) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = self.source(db);
         let mut trace = Trace::new_for_map();
         lower_enum(&mut trace, &src.value);
@@ -145,7 +145,7 @@ impl HasChildSource for VariantId {
     type ChildId = LocalStructFieldId;
     type Value = Either<ast::TupleFieldDef, ast::RecordFieldDef>;
 
-    fn child_source(&self, db: &impl DefDatabase) -> Source<ArenaMap<Self::ChildId, Self::Value>> {
+    fn child_source(&self, db: &impl DefDatabase) -> InFile<ArenaMap<Self::ChildId, Self::Value>> {
         let src = match self {
             VariantId::EnumVariantId(it) => {
                 // I don't really like the fact that we call into parent source

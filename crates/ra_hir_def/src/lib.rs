@@ -36,7 +36,7 @@ mod marks;
 
 use std::hash::{Hash, Hasher};
 
-use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, MacroDefId, Source};
+use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, InFile, MacroDefId};
 use ra_arena::{impl_arena_id, map::ArenaMap, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_syntax::{ast, AstNode};
@@ -105,10 +105,10 @@ pub trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
         let loc = ItemLoc { module: ctx.module, ast_id: AstId::new(ctx.file_id, ast_id) };
         Self::intern(ctx.db, loc)
     }
-    fn source(self, db: &(impl AstDatabase + InternDatabase)) -> Source<N> {
+    fn source(self, db: &(impl AstDatabase + InternDatabase)) -> InFile<N> {
         let loc = self.lookup_intern(db);
         let value = loc.ast_id.to_node(db);
-        Source { file_id: loc.ast_id.file_id(), value }
+        InFile { file_id: loc.ast_id.file_id(), value }
     }
     fn module(self, db: &impl InternDatabase) -> ModuleId {
         let loc = self.lookup_intern(db);
@@ -517,42 +517,42 @@ impl HasModule for StaticLoc {
 
 pub trait HasSource {
     type Value;
-    fn source(&self, db: &impl db::DefDatabase) -> Source<Self::Value>;
+    fn source(&self, db: &impl db::DefDatabase) -> InFile<Self::Value>;
 }
 
 impl HasSource for FunctionLoc {
     type Value = ast::FnDef;
 
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::FnDef> {
+    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::FnDef> {
         let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id(), node)
     }
 }
 
 impl HasSource for TypeAliasLoc {
     type Value = ast::TypeAliasDef;
 
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::TypeAliasDef> {
+    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::TypeAliasDef> {
         let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id(), node)
     }
 }
 
 impl HasSource for ConstLoc {
     type Value = ast::ConstDef;
 
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::ConstDef> {
+    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::ConstDef> {
         let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id(), node)
     }
 }
 
 impl HasSource for StaticLoc {
     type Value = ast::StaticDef;
 
-    fn source(&self, db: &impl db::DefDatabase) -> Source<ast::StaticDef> {
+    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::StaticDef> {
         let node = self.ast_id.to_node(db);
-        Source::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id(), node)
     }
 }
 
@@ -562,5 +562,5 @@ pub trait HasChildSource {
     fn child_source(
         &self,
         db: &impl db::DefDatabase,
-    ) -> Source<ArenaMap<Self::ChildId, Self::Value>>;
+    ) -> InFile<ArenaMap<Self::ChildId, Self::Value>>;
 }
