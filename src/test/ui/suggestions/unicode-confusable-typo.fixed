@@ -1,0 +1,11 @@
+// run-rustfix
+#![feature(non_ascii_idents)]
+
+struct ℝ𝓊𝓈𝓉;
+
+fn main() {
+    let ü = ℝ𝓊𝓈𝓉;
+    //~^ ERROR cannot find value `Rust` in this scope
+    let _ = ü;
+    //~^ ERROR cannot find value `u` in this scope
+}

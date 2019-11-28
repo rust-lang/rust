@@ -488,9 +488,11 @@ impl<'a> Resolver<'a> {
             &ident.as_str(),
             None,
         ) {
-            Some(found) if found != ident.name => suggestions
-                .into_iter()
-                .find(|suggestion| suggestion.candidate == found),
+            Some(found) if found != ident.name => suggestions.into_iter()
+                .find(|suggestion| unicode_skeleton::confusable(
+                    suggestion.candidate.as_str().chars(),
+                    found.as_str().chars(),
+                )),
             _ => None,
         }
     }

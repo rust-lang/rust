@@ -3871,6 +3871,7 @@ dependencies = [
  "syntax",
  "syntax_expand",
  "syntax_pos",
+ "unicode_skeleton",
 ]
 
 [[package]]
@@ -4471,6 +4472,7 @@ dependencies = [
  "serialize",
  "smallvec 1.0.0",
  "syntax_pos",
+ "unicode_skeleton",
 ]
 
 [[package]]
@@ -5044,6 +5046,15 @@ name = "unicode_categories"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39ec24b3121d976906ece63c9daad25b85969647682eee313cb5779fdd69e14e"
+
+[[package]]
+name = "unicode_skeleton"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66bd74db2c088d393d1fbf83db2cd5663137640f072d128287dd53c882a0f412"
+dependencies = [
+ "unicode-normalization",
+]
 
 [[package]]
 name = "unstable-book-gen"

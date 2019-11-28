@@ -1,0 +1,18 @@
+error[E0425]: cannot find value `Rust` in this scope
+  --> $DIR/unicode-confusable-typo.rs:7:13
+   |
+LL | struct ℝ𝓊𝓈𝓉;
+   | ------------ similarly named unit struct `ℝ𝓊𝓈𝓉` defined here
+...
+LL |     let ü = Rust;
+   |             ^^^^ help: a unit struct with a similar name exists: `ℝ𝓊𝓈𝓉`
+
+error[E0425]: cannot find value `u` in this scope
+  --> $DIR/unicode-confusable-typo.rs:9:13
+   |
+LL |     let _ = u;
+   |             ^ help: a local variable with a similar name exists: `ü`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
