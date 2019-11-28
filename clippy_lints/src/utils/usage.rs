@@ -12,13 +12,11 @@ pub fn mutated_variables<'a, 'tcx>(expr: &'tcx Expr, cx: &'a LateContext<'a, 'tc
         skip: false,
     };
     let def_id = def_id::DefId::local(expr.hir_id.owner);
-    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
     ExprUseVisitor::new(
         &mut delegate,
         cx.tcx,
         def_id,
         cx.param_env,
-        region_scope_tree,
         cx.tables,
     )
     .walk_expr(expr);
