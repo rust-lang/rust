@@ -1411,8 +1411,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // `dyn Trait + Send`.
         auto_traits.sort_by_key(|i| i.def_id());
         auto_traits.dedup_by_key(|i| i.def_id());
-        debug!("regular_traits: {:?}", regular_traits);
-        debug!("auto_traits: {:?}", auto_traits);
+        debug!(
+            "conv_object_ty_poly_trait_ref: regular_traits={:?} auto_traits={:?}",
+            regular_traits, auto_traits
+        );
 
         // Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
         // removing the dummy `Self` type (`trait_object_dummy_self`).
@@ -1473,10 +1475,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             })
         };
-        debug!("region_bound: {:?}", region_bound);
+        debug!("conv_object_ty_poly_trait_ref: region_bound={:?}", region_bound);
 
         let ty = tcx.mk_dynamic(existential_predicates, region_bound);
-        debug!("trait_object_type: {:?}", ty);
+        debug!("conv_object_ty_poly_trait_ref: trait_object_type={:?}", ty);
         ty
     }
 
