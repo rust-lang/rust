@@ -1,5 +1,5 @@
 // compile-flags: -Zmiri-track-id=1372
-// do not run on anything but x86_64 linux, because minute changes can change the borrow stack ids
+// do not run on anything but x86_64 linux, because minor libstd changes can change the borrow stack ids
 // only-x86_64
 // only-linux
 
