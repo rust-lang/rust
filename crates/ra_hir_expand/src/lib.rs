@@ -13,7 +13,7 @@ pub mod diagnostics;
 pub mod builtin_macro;
 pub mod quote;
 
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::sync::Arc;
 
 use ra_db::{salsa, CrateId, FileId};
@@ -70,7 +70,7 @@ impl HirFileId {
             HirFileIdRepr::FileId(file_id) => file_id,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc = db.lookup_intern_macro(macro_file.macro_call_id);
-                loc.ast_id.file_id().original_file(db)
+                loc.ast_id.file_id.original_file(db)
             }
         }
     }
@@ -214,43 +214,12 @@ impl ExpansionInfo {
 ///
 /// It is stable across reparses, and can be used as salsa key/value.
 // FIXME: isn't this just a `Source<FileAstId<N>>` ?
-#[derive(Debug)]
-pub struct AstId<N: AstNode> {
-    file_id: HirFileId,
-    file_ast_id: FileAstId<N>,
-}
-
-impl<N: AstNode> Clone for AstId<N> {
-    fn clone(&self) -> AstId<N> {
-        *self
-    }
-}
-impl<N: AstNode> Copy for AstId<N> {}
-
-impl<N: AstNode> PartialEq for AstId<N> {
-    fn eq(&self, other: &Self) -> bool {
-        (self.file_id, self.file_ast_id) == (other.file_id, other.file_ast_id)
-    }
-}
-impl<N: AstNode> Eq for AstId<N> {}
-impl<N: AstNode> Hash for AstId<N> {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        (self.file_id, self.file_ast_id).hash(hasher);
-    }
-}
+pub type AstId<N> = InFile<FileAstId<N>>;
 
 impl<N: AstNode> AstId<N> {
-    pub fn new(file_id: HirFileId, file_ast_id: FileAstId<N>) -> AstId<N> {
-        AstId { file_id, file_ast_id }
-    }
-
-    pub fn file_id(&self) -> HirFileId {
-        self.file_id
-    }
-
     pub fn to_node(&self, db: &dyn db::AstDatabase) -> N {
         let root = db.parse_or_expand(self.file_id).unwrap();
-        db.ast_id_map(self.file_id).get(self.file_ast_id).to_node(&root)
+        db.ast_id_map(self.file_id).get(self.value).to_node(&root)
     }
 }
 

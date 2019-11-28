@@ -267,7 +267,7 @@ impl ModuleData {
             return InFile::new(file_id.into(), Either::A(sf));
         }
         let decl = self.declaration.unwrap();
-        InFile::new(decl.file_id(), Either::B(decl.to_node(db)))
+        InFile::new(decl.file_id, Either::B(decl.to_node(db)))
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
@@ -275,7 +275,7 @@ impl ModuleData {
     pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<InFile<ast::Module>> {
         let decl = self.declaration?;
         let value = decl.to_node(db);
-        Some(InFile { file_id: decl.file_id(), value })
+        Some(InFile { file_id: decl.file_id, value })
     }
 }
 
@@ -309,7 +309,7 @@ mod diagnostics {
                     }
                     let decl = declaration.to_node(db);
                     sink.push(UnresolvedModule {
-                        file: declaration.file_id(),
+                        file: declaration.file_id,
                         decl: AstPtr::new(&decl),
                         candidate: candidate.clone(),
                     })
