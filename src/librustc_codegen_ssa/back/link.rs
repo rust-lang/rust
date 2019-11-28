@@ -460,6 +460,101 @@ fn link_staticlib<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
     }
 }
 
+
+/// rust-lang/rust#61539: bugs in older versions of GNU `ld` cause problems that
+/// are readily exposed under our default setting of disabling PLT (PR
+/// rust-lang/rust#54592). Heuristically detect and warn about this.
+fn check_for_buggy_ld_version(sess: &Session,
+                              program_name: &Path,
+                              flavor: LinkerFlavor,
+                              crate_type: config::CrateType) {
+    debug!("check_for_buggy_ld_version: \
+            program_name: {:?} flavor: {:?} crate_type: {:?}",
+           program_name, flavor, crate_type);
+
+    match crate_type {
+        config::CrateType::Dylib |
+        config::CrateType::ProcMacro => (),
+
+        // FIXME: should we include CrateType::Cdylib in the warning? It is not
+        // clear why we haven't seen it there.
+        config::CrateType::Cdylib => return,
+
+        // Static objects won't run into this (unless they load a dynamic
+        // object, which this heuristic is not attempting to detect).
+        config::CrateType::Executable |
+        config::CrateType::Rlib |
+        config::CrateType::Staticlib => return,
+    };
+
+    let mut version_cmd = Command::new(program_name);
+    match flavor {
+        LinkerFlavor::Gcc => {
+            // run `gcc -v -Xlinker --version` to query gcc for version info of underlying linker
+            version_cmd.args(&["-v", "-Xlinker", "--version"]);
+        }
+        LinkerFlavor::Ld => {
+            // run `ld --version`
+            version_cmd.args(&["--version"]);
+        }
+        LinkerFlavor::Msvc |
+        LinkerFlavor::Em |
+        LinkerFlavor::Lld(..) |
+        LinkerFlavor::PtxLinker => {
+            // Not GNU ld, so don't bother inspecting version.
+            return;
+        }
+    }
+    let version_check_invocation = format!("{:?}", &version_cmd);
+    debug!("check_for_buggy_ld_version version_check_invocation: {:?}",
+           version_check_invocation);
+    let output = match version_cmd.output() {
+        Err(_) => {
+            sess.warn(&format!("Linker version inspection failed to execute: `{}`",
+                               version_check_invocation));
+            return;
+        }
+        Ok(output) => output,
+    };
+    let out = String::from_utf8_lossy(&output.stdout);
+
+    debug!("check_for_buggy_ld_version out: {:?}", out);
+
+    let parse = |first_line: &str| -> Option<(u32, u32)> {
+        let suffix = first_line.splitn(2, "GNU ld version ").last()?;
+        let version_components: Vec<_> = suffix.split('.').collect();
+        let major: u32 = version_components.get(0)?.parse().ok()?;
+        let minor: u32 = version_components.get(1)?.parse().ok()?;
+        Some((major, minor))
+    };
+
+    let first_line = out.lines().next();
+
+    debug!("check_for_buggy_ld_version first_line: {:?}", first_line);
+
+    let (major, minor) = match first_line.and_then(parse) {
+        None => {
+            sess.warn(&format!("Linker version inspection failed to parse: `{}`, output: {}",
+                               version_check_invocation, out));
+            return;
+        }
+        Some(version) => version,
+    };
+    debug!("check_for_buggy_ld_version (major, minor): {:?}", (major, minor));
+
+    let is_old_buggy_version = major < 2 || (major == 2 && minor < 29);
+
+    if is_old_buggy_version {
+        let diag = sess.diagnostic();
+        diag.warn(&format!("Using linker `{}` with Rust dynamic libraries has known bugs.",
+                           first_line.unwrap()));
+        diag.note_without_error(
+            "Consider upgrading to GNU ld version 2.29 or newer, or using a different linker.");
+        diag.note_without_error(
+            "For more information, see https://github.com/rust-lang/rust/issues/61539");
+    }
+}
+
 // Create a dynamic library or executable
 //
 // This will invoke the system linker/cc to create the resulting file. This
@@ -475,6 +570,9 @@ fn link_natively<'a, B: ArchiveBuilder<'a>>(sess: &'a Session,
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd) = get_linker(sess, &linker, flavor);
+
+    // rust-lang/rust#61539: heuristically inspect ld version to warn about bugs
+    check_for_buggy_ld_version(sess, &pname, flavor, crate_type);
 
     if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
         cmd.args(args);
