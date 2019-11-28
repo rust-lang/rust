@@ -76,4 +76,65 @@ fn f(x: u8, y: u8, z: u8) {
     }
 }
 
+#[allow(clippy::float_cmp)]
+fn g(x: f64, y: f64, z: f64) {
+    // Ignored: f64 doesn't implement Ord
+    if x > y {
+        a()
+    } else if x < y {
+        b()
+    }
+
+    // Ignored: f64 doesn't implement Ord
+    if x > y {
+        a()
+    } else if x < y {
+        b()
+    } else {
+        c()
+    }
+
+    // Ignored: f64 doesn't implement Ord
+    if x > y {
+        a()
+    } else if y > x {
+        b()
+    } else {
+        c()
+    }
+
+    // Ignored: f64 doesn't implement Ord
+    if x > 1.0 {
+        a()
+    } else if x < 1.0 {
+        b()
+    } else if x == 1.0 {
+        c()
+    }
+}
+
+fn h<T: Ord>(x: T, y: T, z: T) {
+    if x > y {
+        a()
+    } else if x < y {
+        b()
+    }
+
+    if x > y {
+        a()
+    } else if x < y {
+        b()
+    } else {
+        c()
+    }
+
+    if x > y {
+        a()
+    } else if y > x {
+        b()
+    } else {
+        c()
+    }
+}
+
 fn main() {}
