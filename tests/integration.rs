@@ -65,7 +65,7 @@ fn integration_test() {
     match output.status.code() {
         Some(code) => {
             if code == 0 {
-                eprintln!("Compilation successful");
+                println!("Compilation successful");
             } else {
                 eprintln!("Compilation failed. Exit code: {}", code);
             }
