@@ -13,7 +13,7 @@ fn main() {
     let reference = unsafe { &*raw }; // freeze
     let ptr = reference as *const _ as *mut i32; // raw ptr, with raw tag
     let _mut_ref: &mut i32 = unsafe { mem::transmute(ptr) }; // &mut, with raw tag
-    //~^ ERROR popped id 1372
+    //~^ ERROR disabling item [SharedReadOnly for <1372>] for tag Some(<untagged>)
     // Now we retag, making our ref top-of-stack -- and, in particular, unfreezing.
     let _val = *reference;
 }

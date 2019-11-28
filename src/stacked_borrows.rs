@@ -271,6 +271,11 @@ impl<'tcx> Stack {
 
     /// Check if the given item is protected.
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
+        if let Tag::Tagged(id) = item.tag {
+            if Some(id) == global.tracked_id {
+                throw_unsup!(Unsupported(format!("disabling item {:?} for tag {:?}", item, tag)));
+            }
+        }
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
@@ -313,11 +318,6 @@ impl<'tcx> Stack {
             let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
-                if let Tag::Tagged(id) = item.tag {
-                    if Some(id) == global.tracked_id {
-                        throw_unsup!(Unsupported(format!("popped id {}", id)));
-                    }
-                }
                 Stack::check_protector(&item, Some(tag), global)?;
             }
         } else {
