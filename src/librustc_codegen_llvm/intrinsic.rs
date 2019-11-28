@@ -516,8 +516,35 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         return;
                     }
                 }
-
             },
+
+            "float_to_int_approx_unchecked" => {
+                if float_type_width(arg_tys[0]).is_none() {
+                    span_invalid_monomorphization_error(
+                        tcx.sess, span,
+                        &format!("invalid monomorphization of `float_to_int_approx_unchecked` \
+                                  intrinsic: expected basic float type, \
+                                  found `{}`", arg_tys[0]));
+                    return;
+                }
+                match int_type_width_signed(ret_ty, self.cx) {
+                    Some((width, signed)) => {
+                        if signed {
+                            self.fptosi(args[0].immediate(), self.cx.type_ix(width))
+                        } else {
+                            self.fptoui(args[0].immediate(), self.cx.type_ix(width))
+                        }
+                    }
+                    None => {
+                        span_invalid_monomorphization_error(
+                            tcx.sess, span,
+                            &format!("invalid monomorphization of `float_to_int_approx_unchecked` \
+                                      intrinsic:  expected basic integer type, \
+                                      found `{}`", ret_ty));
+                        return;
+                    }
+                }
+            }
 
             "discriminant_value" => {
                 args[0].deref(self.cx()).codegen_get_discr(self, ret_ty)

@@ -1144,6 +1144,11 @@ extern "rust-intrinsic" {
     /// May assume inputs are finite.
     pub fn frem_fast<T>(a: T, b: T) -> T;
 
+    /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
+    /// https://github.com/rust-lang/rust/issues/10184
+    #[cfg(not(bootstrap))]
+    pub fn float_to_int_approx_unchecked<Float, Int>(value: Float) -> Int;
+
 
     /// Returns the number of bits set in an integer type `T`
     pub fn ctpop<T>(x: T) -> T;
