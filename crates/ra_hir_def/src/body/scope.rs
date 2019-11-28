@@ -171,7 +171,7 @@ fn compute_expr_scopes(expr: ExprId, body: &Body, scopes: &mut ExprScopes, scope
 
 #[cfg(test)]
 mod tests {
-    use hir_expand::{name::AsName, Source};
+    use hir_expand::{name::AsName, InFile};
     use ra_db::{fixture::WithFixture, FileId, SourceDatabase};
     use ra_syntax::{algo::find_node_at_offset, ast, AstNode};
     use test_utils::{assert_eq_text, covers, extract_offset};
@@ -211,7 +211,7 @@ mod tests {
         let (_body, source_map) = db.body_with_source_map(function.into());
 
         let expr_id = source_map
-            .node_expr(Source { file_id: file_id.into(), value: &marker.into() })
+            .node_expr(InFile { file_id: file_id.into(), value: &marker.into() })
             .unwrap();
         let scope = scopes.scope_for(expr_id);
 
@@ -318,7 +318,7 @@ mod tests {
         let expr_scope = {
             let expr_ast = name_ref.syntax().ancestors().find_map(ast::Expr::cast).unwrap();
             let expr_id =
-                source_map.node_expr(Source { file_id: file_id.into(), value: &expr_ast }).unwrap();
+                source_map.node_expr(InFile { file_id: file_id.into(), value: &expr_ast }).unwrap();
             scopes.scope_for(expr_id).unwrap()
         };
 

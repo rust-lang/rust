@@ -13,7 +13,7 @@ use ra_syntax::{
     AstNode,
 };
 
-use crate::{type_ref::TypeRef, Source};
+use crate::{type_ref::TypeRef, InFile};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Path {
@@ -67,7 +67,7 @@ pub enum PathKind {
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
     pub(crate) fn expand_use_item(
-        item_src: Source<ast::UseItem>,
+        item_src: InFile<ast::UseItem>,
         hygiene: &Hygiene,
         mut cb: impl FnMut(Path, &ast::UseTree, bool, Option<Name>),
     ) {

@@ -18,11 +18,11 @@ use std::{any::Any, fmt};
 
 use ra_syntax::{SyntaxNode, SyntaxNodePtr, TextRange};
 
-use crate::{db::AstDatabase, Source};
+use crate::{db::AstDatabase, InFile};
 
 pub trait Diagnostic: Any + Send + Sync + fmt::Debug + 'static {
     fn message(&self) -> String;
-    fn source(&self) -> Source<SyntaxNodePtr>;
+    fn source(&self) -> InFile<SyntaxNodePtr>;
     fn highlight_range(&self) -> TextRange {
         self.source().value.range()
     }

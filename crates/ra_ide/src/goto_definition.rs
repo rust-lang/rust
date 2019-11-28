@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir::{db::AstDatabase, Source};
+use hir::{db::AstDatabase, InFile};
 use ra_syntax::{
     ast::{self, DocCommentsOwner},
     match_ast, AstNode, SyntaxNode,
@@ -58,7 +58,7 @@ impl ReferenceResult {
 
 pub(crate) fn reference_definition(
     db: &RootDatabase,
-    name_ref: Source<&ast::NameRef>,
+    name_ref: InFile<&ast::NameRef>,
 ) -> ReferenceResult {
     use self::ReferenceResult::*;
 
@@ -94,7 +94,7 @@ pub(crate) fn reference_definition(
 
 pub(crate) fn name_definition(
     db: &RootDatabase,
-    name: Source<&ast::Name>,
+    name: InFile<&ast::Name>,
 ) -> Option<Vec<NavigationTarget>> {
     let parent = name.value.syntax().parent()?;
 
@@ -115,7 +115,7 @@ pub(crate) fn name_definition(
     None
 }
 
-fn named_target(db: &RootDatabase, node: Source<&SyntaxNode>) -> Option<NavigationTarget> {
+fn named_target(db: &RootDatabase, node: InFile<&SyntaxNode>) -> Option<NavigationTarget> {
     match_ast! {
         match (node.value) {
             ast::StructDef(it) => {

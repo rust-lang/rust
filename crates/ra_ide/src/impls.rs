@@ -16,7 +16,7 @@ pub(crate) fn goto_implementation(
     let src = hir::ModuleSource::from_position(db, position);
     let module = hir::Module::from_definition(
         db,
-        hir::Source { file_id: position.file_id.into(), value: src },
+        hir::InFile { file_id: position.file_id.into(), value: src },
     )?;
 
     if let Some(nominal_def) = find_node_at_offset::<ast::NominalDef>(&syntax, position.offset) {
@@ -42,15 +42,15 @@ fn impls_for_def(
 ) -> Option<Vec<NavigationTarget>> {
     let ty = match node {
         ast::NominalDef::StructDef(def) => {
-            let src = hir::Source { file_id: position.file_id.into(), value: def.clone() };
+            let src = hir::InFile { file_id: position.file_id.into(), value: def.clone() };
             hir::Struct::from_source(db, src)?.ty(db)
         }
         ast::NominalDef::EnumDef(def) => {
-            let src = hir::Source { file_id: position.file_id.into(), value: def.clone() };
+            let src = hir::InFile { file_id: position.file_id.into(), value: def.clone() };
             hir::Enum::from_source(db, src)?.ty(db)
         }
         ast::NominalDef::UnionDef(def) => {
-            let src = hir::Source { file_id: position.file_id.into(), value: def.clone() };
+            let src = hir::InFile { file_id: position.file_id.into(), value: def.clone() };
             hir::Union::from_source(db, src)?.ty(db)
         }
     };
@@ -73,7 +73,7 @@ fn impls_for_trait(
     node: &ast::TraitDef,
     module: hir::Module,
 ) -> Option<Vec<NavigationTarget>> {
-    let src = hir::Source { file_id: position.file_id.into(), value: node.clone() };
+    let src = hir::InFile { file_id: position.file_id.into(), value: node.clone() };
     let tr = hir::Trait::from_source(db, src)?;
 
     let krate = module.krate();

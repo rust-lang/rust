@@ -227,7 +227,7 @@ pub(crate) fn type_of(db: &RootDatabase, frange: FileRange) -> Option<String> {
         .take_while(|it| it.text_range() == leaf_node.text_range())
         .find(|it| ast::Expr::cast(it.clone()).is_some() || ast::Pat::cast(it.clone()).is_some())?;
     let analyzer =
-        hir::SourceAnalyzer::new(db, hir::Source::new(frange.file_id.into(), &node), None);
+        hir::SourceAnalyzer::new(db, hir::InFile::new(frange.file_id.into(), &node), None);
     let ty = if let Some(ty) = ast::Expr::cast(node.clone()).and_then(|e| analyzer.type_of(db, &e))
     {
         ty

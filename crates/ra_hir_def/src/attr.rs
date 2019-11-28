@@ -2,7 +2,7 @@
 
 use std::{ops, sync::Arc};
 
-use hir_expand::{either::Either, hygiene::Hygiene, AstId, Source};
+use hir_expand::{either::Either, hygiene::Hygiene, AstId, InFile};
 use mbe::ast_to_token_tree;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -68,7 +68,7 @@ impl Attrs {
         }
     }
 
-    fn from_attrs_owner(db: &impl DefDatabase, owner: Source<&dyn AttrsOwner>) -> Attrs {
+    fn from_attrs_owner(db: &impl DefDatabase, owner: InFile<&dyn AttrsOwner>) -> Attrs {
         let hygiene = Hygiene::new(db, owner.file_id);
         Attrs::new(owner.value, &hygiene)
     }
@@ -157,7 +157,7 @@ where
     N: ast::AttrsOwner,
     D: DefDatabase,
 {
-    let src = Source::new(src.file_id(), src.to_node(db));
+    let src = InFile::new(src.file_id(), src.to_node(db));
     Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
 

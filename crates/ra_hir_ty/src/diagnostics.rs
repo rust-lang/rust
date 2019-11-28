@@ -2,7 +2,7 @@
 
 use std::any::Any;
 
-use hir_expand::{db::AstDatabase, name::Name, HirFileId, Source};
+use hir_expand::{db::AstDatabase, name::Name, HirFileId, InFile};
 use ra_syntax::{ast, AstNode, AstPtr, SyntaxNodePtr};
 
 pub use hir_def::diagnostics::UnresolvedModule;
@@ -19,8 +19,8 @@ impl Diagnostic for NoSuchField {
         "no such field".to_string()
     }
 
-    fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, value: self.field.into() }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.field.into() }
     }
 
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
@@ -44,8 +44,8 @@ impl Diagnostic for MissingFields {
         }
         message
     }
-    fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, value: self.field_list.into() }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.field_list.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self
@@ -72,8 +72,8 @@ impl Diagnostic for MissingOkInTailExpr {
     fn message(&self) -> String {
         "wrap return expression in Ok".to_string()
     }
-    fn source(&self) -> Source<SyntaxNodePtr> {
-        Source { file_id: self.file, value: self.expr.into() }
+    fn source(&self) -> InFile<SyntaxNodePtr> {
+        InFile { file_id: self.file, value: self.expr.into() }
     }
     fn as_any(&self) -> &(dyn Any + Send + 'static) {
         self

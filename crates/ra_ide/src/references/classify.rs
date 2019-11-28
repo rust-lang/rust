@@ -1,6 +1,6 @@
 //! Functions that are used to classify an element from its definition or reference.
 
-use hir::{FromSource, Module, ModuleSource, PathResolution, Source, SourceAnalyzer};
+use hir::{FromSource, InFile, Module, ModuleSource, PathResolution, SourceAnalyzer};
 use ra_prof::profile;
 use ra_syntax::{ast, match_ast, AstNode};
 use test_utils::tested_by;
@@ -11,7 +11,7 @@ use super::{
 };
 use crate::db::RootDatabase;
 
-pub(crate) fn classify_name(db: &RootDatabase, name: Source<&ast::Name>) -> Option<NameDefinition> {
+pub(crate) fn classify_name(db: &RootDatabase, name: InFile<&ast::Name>) -> Option<NameDefinition> {
     let _p = profile("classify_name");
     let parent = name.value.syntax().parent()?;
 
@@ -117,7 +117,7 @@ pub(crate) fn classify_name(db: &RootDatabase, name: Source<&ast::Name>) -> Opti
 
 pub(crate) fn classify_name_ref(
     db: &RootDatabase,
-    name_ref: Source<&ast::NameRef>,
+    name_ref: InFile<&ast::NameRef>,
 ) -> Option<NameDefinition> {
     let _p = profile("classify_name_ref");
 

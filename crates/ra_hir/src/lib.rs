@@ -63,5 +63,5 @@ pub use hir_def::{
     type_ref::Mutability,
 };
 pub use hir_expand::{
-    either::Either, name::Name, HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Source,
+    either::Either, name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile,
 };

@@ -38,7 +38,7 @@ fn get_inlay_hints(
     node: &SyntaxNode,
     max_inlay_hint_length: Option<usize>,
 ) -> Option<Vec<InlayHint>> {
-    let analyzer = SourceAnalyzer::new(db, hir::Source::new(file_id.into(), node), None);
+    let analyzer = SourceAnalyzer::new(db, hir::InFile::new(file_id.into(), node), None);
     match_ast! {
         match node {
             ast::LetStmt(it) => {

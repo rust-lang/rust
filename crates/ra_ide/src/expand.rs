@@ -1,13 +1,13 @@
 //! Utilities to work with files, produced by macros.
 use std::iter::successors;
 
-use hir::Source;
+use hir::InFile;
 use ra_db::FileId;
 use ra_syntax::{ast, AstNode, SyntaxNode, SyntaxToken};
 
 use crate::{db::RootDatabase, FileRange};
 
-pub(crate) fn original_range(db: &RootDatabase, node: Source<&SyntaxNode>) -> FileRange {
+pub(crate) fn original_range(db: &RootDatabase, node: InFile<&SyntaxNode>) -> FileRange {
     let expansion = match node.file_id.expansion_info(db) {
         None => {
             return FileRange {
@@ -44,8 +44,8 @@ pub(crate) fn descend_into_macros(
     db: &RootDatabase,
     file_id: FileId,
     token: SyntaxToken,
-) -> Source<SyntaxToken> {
-    let src = Source::new(file_id.into(), token);
+) -> InFile<SyntaxToken> {
+    let src = InFile::new(file_id.into(), token);
 
     successors(Some(src), |token| {
         let macro_call = token.value.ancestors().find_map(ast::MacroCall::cast)?;
