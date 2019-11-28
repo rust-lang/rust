@@ -104,14 +104,14 @@ fn is_argument(map: &hir::map::Map<'_>, id: HirId) -> bool {
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, cmt: &Place<'tcx>, mode: ConsumeMode) {
-        if let Categorization::Local(lid) = cmt.cat {
+        if let PlaceBase::Local(lid) = cmt.base {
             if let ConsumeMode::Move = mode {
                 // moved out or in. clearly can't be localized
                 self.set.remove(&lid);
             }
         }
         let map = &self.cx.tcx.hir();
-        if let Categorization::Local(lid) = cmt.cat {
+        if let PlaceBase::Local(lid) = cmt.base {
             if let Some(Node::Binding(_)) = map.find(cmt.hir_id) {
                 if self.set.contains(&lid) {
                     // let y = x where x is known
@@ -124,7 +124,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     }
 
     fn borrow(&mut self, cmt: &Place<'tcx>, _: ty::BorrowKind) {
-        if let Categorization::Local(lid) = cmt.cat {
+        if let PlaceBase::Local(lid) = cmt.base {
             self.set.remove(&lid);
         }
     }

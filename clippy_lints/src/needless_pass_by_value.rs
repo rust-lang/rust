@@ -325,9 +325,7 @@ struct MovedVariablesCtxt {
 
 impl MovedVariablesCtxt {
     fn move_common(&mut self, cmt: &euv::Place<'_>) {
-        let cmt = unwrap_downcast_or_interior(cmt);
-
-        if let mc::Categorization::Local(vid) = cmt.cat {
+        if let euv::PlaceBase::Local(vid) = cmt.base {
             self.moved_vars.insert(vid);
         }
     }
@@ -345,13 +343,3 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
     fn mutate(&mut self, _: &euv::Place<'tcx>) {}
 }
 
-fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a euv::Place<'tcx>) -> euv::Place<'tcx> {
-    loop {
-        match cmt.cat {
-            mc::Categorization::Downcast(ref c, _) | mc::Categorization::Interior(ref c, _) => {
-                cmt = c;
-            },
-            _ => return (*cmt).clone(),
-        }
-    }
-}

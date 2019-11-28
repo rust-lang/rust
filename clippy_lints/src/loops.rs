@@ -1588,7 +1588,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
 
     fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
-            if let Categorization::Local(id) = cmt.cat {
+            if let PlaceBase::Local(id) = cmt.base {
                 if Some(id) == self.hir_id_low {
                     self.span_low = Some(cmt.span)
                 }
@@ -1600,7 +1600,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
     }
 
     fn mutate(&mut self, cmt: &Place<'tcx>) {
-        if let Categorization::Local(id) = cmt.cat {
+        if let PlaceBase::Local(id) = cmt.base {
             if Some(id) == self.hir_id_low {
                 self.span_low = Some(cmt.span)
             }

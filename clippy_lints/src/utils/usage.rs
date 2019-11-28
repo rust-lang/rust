@@ -42,18 +42,17 @@ struct MutVarsDelegate {
 
 impl<'tcx> MutVarsDelegate {
     #[allow(clippy::similar_names)]
-    fn update(&mut self, cat: &'tcx Categorization<'_>) {
-        match *cat {
-            Categorization::Local(id) => {
+    fn update(&mut self, cat: &Place<'tcx>) {
+        match cat.base {
+            PlaceBase::Local(id) => {
                 self.used_mutably.insert(id);
             },
-            Categorization::Upvar(_) => {
+            PlaceBase::Upvar(_) => {
                 //FIXME: This causes false negatives. We can't get the `NodeId` from
                 //`Categorization::Upvar(_)`. So we search for any `Upvar`s in the
                 //`while`-body, not just the ones in the condition.
                 self.skip = true
             },
-            Categorization::Deref(ref cmt, _) | Categorization::Interior(ref cmt, _) => self.update(&cmt.cat),
             _ => {},
         }
     }
@@ -64,11 +63,11 @@ impl<'tcx> Delegate<'tcx> for MutVarsDelegate {
 
     fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
-            self.update(&cmt.cat)
+            self.update(&cmt)
         }
     }
 
     fn mutate(&mut self, cmt: &Place<'tcx>) {
-        self.update(&cmt.cat)
+        self.update(&cmt)
     }
 }
