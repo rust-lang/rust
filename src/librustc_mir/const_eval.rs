@@ -146,7 +146,16 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
-    assert!(body.arg_count == 0);
+
+    // Assert all args (if any) are zero-sized types; `eval_body_using_ecx` doesn't
+    // make sense if the body is expecting nontrivial arguments.
+    // (The alternative would be to use `eval_fn_call` with an args slice.)
+    for arg in body.args_iter() {
+        let decl = body.local_decls.get(arg).expect("arg missing from local_decls");
+        let layout = ecx.layout_of(decl.ty.subst(tcx, cid.instance.substs))?;
+        assert!(layout.is_zst())
+    };
+
     ecx.push_stack_frame(
         cid.instance,
         body.span,

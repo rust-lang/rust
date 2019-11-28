@@ -17,12 +17,16 @@ use std::env;
 use std::process::{Command, Stdio};
 
 // this will panic in debug mode and overflow in release mode
+//
+// NB we give bar an unused argument because otherwise memoization
+// of the const fn kicks in, causing a different code path in the
+// compiler to be executed (see PR #66294).
 #[stable(feature = "rustc", since = "1.0.0")]
 #[rustc_promotable]
-const fn bar() -> usize { 0 - 1 }
+const fn bar(_: bool) -> usize { 0 - 1 }
 
 fn foo() {
-    let _: &'static _ = &bar();
+    let _: &'static _ = &bar(true);
 }
 
 #[cfg(unix)]

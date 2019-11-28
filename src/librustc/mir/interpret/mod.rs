@@ -123,7 +123,10 @@ use rustc_data_structures::tiny_list::TinyList;
 use rustc_macros::HashStable;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 
-/// Uniquely identifies a specific constant or static.
+/// Uniquely identifies one of the following:
+/// - A constant
+/// - A static
+/// - A const fn where all arguments (if any) are zero-sized types
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, Lift)]
 pub struct GlobalId<'tcx> {
