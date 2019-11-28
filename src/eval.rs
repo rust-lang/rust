@@ -26,6 +26,8 @@ pub struct MiriConfig {
     pub args: Vec<String>,
     /// The seed to use when non-determinism or randomness are required (e.g. ptr-to-int cast, `getrandom()`).
     pub seed: Option<u64>,
+    /// The stacked borrow id to report about
+    pub tracked_id: Option<PtrId>,
 }
 
 /// Details of premature program termination.
@@ -47,7 +49,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(config.communicate),
-        MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate),
+        MemoryExtra::new(StdRng::seed_from_u64(config.seed.unwrap_or(0)), config.validate, config.tracked_id),
     );
     // Complete initialization.
     EnvVars::init(&mut ecx, config.excluded_env_vars);

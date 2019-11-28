@@ -126,6 +126,7 @@ fn main() {
     let mut communicate = false;
     let mut ignore_leaks = false;
     let mut seed: Option<u64> = None;
+    let mut tracked_id: Option<miri::PtrId> = None;
     let mut rustc_args = vec![];
     let mut miri_args = vec![];
     let mut after_dashdash = false;
@@ -176,6 +177,17 @@ fn main() {
                 arg if arg.starts_with("-Zmiri-env-exclude=") => {
                     excluded_env_vars.push(arg.trim_start_matches("-Zmiri-env-exclude=").to_owned());
                 },
+                arg if arg.starts_with("-Zmiri-track-id=") => {
+                    let id: u64 = match arg.trim_start_matches("-Zmiri-track-id=").parse() {
+                        Ok(id) => id,
+                        Err(err) => panic!("-Zmiri-track-id requires a valid `u64` as the argument: {}", err),
+                    };
+                    if let Some(id) = miri::PtrId::new(id) {
+                        tracked_id = Some(id);
+                    } else {
+                        panic!("-Zmiri-track-id must be a nonzero id");
+                    }
+                },
                 _ => {
                     rustc_args.push(arg);
                 }
@@ -208,6 +220,7 @@ fn main() {
         excluded_env_vars,
         seed,
         args: miri_args,
+        tracked_id,
     };
     rustc_driver::install_ice_hook();
     let result = rustc_driver::catch_fatal_errors(move || {

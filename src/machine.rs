@@ -77,9 +77,9 @@ pub struct MemoryExtra {
 }
 
 impl MemoryExtra {
-    pub fn new(rng: StdRng, validate: bool) -> Self {
+    pub fn new(rng: StdRng, validate: bool, tracked_id: Option<PtrId>) -> Self {
         MemoryExtra {
-            stacked_borrows: Default::default(),
+            stacked_borrows: Rc::new(RefCell::new(GlobalState::new(tracked_id))),
             intptrcast: Default::default(),
             rng: RefCell::new(rng),
             validate,

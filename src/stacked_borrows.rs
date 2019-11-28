@@ -105,6 +105,8 @@ pub struct GlobalState {
     next_call_id: CallId,
     /// Those call IDs corresponding to functions that are still running.
     active_calls: HashSet<CallId>,
+    /// The id to trace in this execution run
+    tracked_id: Option<PtrId>,
 }
 /// Memory extra state gives us interior mutable access to the global state.
 pub type MemoryExtra = Rc<RefCell<GlobalState>>;
@@ -151,18 +153,17 @@ impl fmt::Display for RefKind {
 }
 
 /// Utilities for initialization and ID generation
-impl Default for GlobalState {
-    fn default() -> Self {
+impl GlobalState {
+    pub fn new(tracked_id: Option<PtrId>) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: HashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
             active_calls: HashSet::default(),
+            tracked_id,
         }
     }
-}
 
-impl GlobalState {
     fn new_ptr(&mut self) -> PtrId {
         let id = self.next_ptr_id;
         self.next_ptr_id = NonZeroU64::new(id.get() + 1).unwrap();
@@ -312,6 +313,11 @@ impl<'tcx> Stack {
             let first_incompatible_idx = self.find_first_write_incompatible(granting_idx);
             for item in self.borrows.drain(first_incompatible_idx..).rev() {
                 trace!("access: popping item {:?}", item);
+                if let Tag::Tagged(id) = item.tag {
+                    if Some(id) == global.tracked_id {
+                        throw_unsup!(Unsupported(format!("popped id {}", id)));
+                    }
+                }
                 Stack::check_protector(&item, Some(tag), global)?;
             }
         } else {
