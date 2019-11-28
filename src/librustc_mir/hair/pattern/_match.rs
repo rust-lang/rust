@@ -347,6 +347,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
             ) => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
 
             (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => s.fold_with(self),
+            (_, &PatKind::AscribeUserType { subpattern: ref s, .. }) => s.fold_with(self),
             _ => pat.super_fold_with(self),
         }
     }
@@ -747,7 +748,7 @@ impl<'tcx> Constructor<'tcx> {
                     .iter()
                     .filter_map(|c: &Constructor<'_>| match c {
                         Slice(slice) => Some(*slice),
-                        // FIXME(#65413): We ignore `ConstantValue`s here.
+                        // FIXME(oli-obk): implement `deref` for `ConstValue`
                         ConstantValue(..) => None,
                         _ => bug!("bad slice pattern constructor {:?}", c),
                     })
@@ -1759,9 +1760,7 @@ fn pat_constructor<'tcx>(
     pat: &Pat<'tcx>,
 ) -> Option<Constructor<'tcx>> {
     match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => {
-            pat_constructor(tcx, param_env, subpattern)
-        }
+        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
         PatKind::Binding { .. } | PatKind::Wild => None,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(Single),
         PatKind::Variant { adt_def, variant_index, .. } => {
@@ -1771,7 +1770,19 @@ fn pat_constructor<'tcx>(
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantValue(value))
+                match (value.val, &value.ty.kind) {
+                    (_, ty::Array(_, n)) => {
+                        let len = n.eval_usize(tcx, param_env);
+                        Some(Slice(Slice { array_len: Some(len), kind: FixedLen(len) }))
+                    }
+                    (ty::ConstKind::Value(ConstValue::Slice { start, end, .. }), ty::Slice(_)) => {
+                        let len = (end - start) as u64;
+                        Some(Slice(Slice { array_len: None, kind: FixedLen(len) }))
+                    }
+                    // FIXME(oli-obk): implement `deref` for `ConstValue`
+                    // (ty::ConstKind::Value(ConstValue::ByRef { .. }), ty::Slice(_)) => { ... }
+                    _ => Some(ConstantValue(value)),
+                }
             }
         }
         PatKind::Range(PatRange { lo, hi, end }) => {
@@ -2085,32 +2096,19 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let mut max_suffix_len = self_suffix;
                 let mut max_fixed_len = 0;
 
-                for row in matrix.heads() {
-                    match *row.kind {
-                        PatKind::Constant { value } => {
-                            // extract the length of an array/slice from a constant
-                            match (value.val, &value.ty.kind) {
-                                (_, ty::Array(_, n)) => {
-                                    max_fixed_len =
-                                        cmp::max(max_fixed_len, n.eval_usize(tcx, param_env))
-                                }
-                                (
-                                    ty::ConstKind::Value(ConstValue::Slice { start, end, .. }),
-                                    ty::Slice(_),
-                                ) => max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64),
-                                _ => {}
+                let head_ctors =
+                    matrix.heads().filter_map(|pat| pat_constructor(tcx, param_env, pat));
+                for ctor in head_ctors {
+                    match ctor {
+                        Slice(slice) => match slice.pattern_kind() {
+                            FixedLen(len) => {
+                                max_fixed_len = cmp::max(max_fixed_len, len);
                             }
-                        }
-                        PatKind::Slice { ref prefix, slice: None, ref suffix }
-                        | PatKind::Array { ref prefix, slice: None, ref suffix } => {
-                            let fixed_len = prefix.len() as u64 + suffix.len() as u64;
-                            max_fixed_len = cmp::max(max_fixed_len, fixed_len);
-                        }
-                        PatKind::Slice { ref prefix, slice: Some(_), ref suffix }
-                        | PatKind::Array { ref prefix, slice: Some(_), ref suffix } => {
-                            max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
-                            max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
-                        }
+                            VarLen(prefix, suffix) => {
+                                max_prefix_len = cmp::max(max_prefix_len, prefix);
+                                max_suffix_len = cmp::max(max_suffix_len, suffix);
+                            }
+                        },
                         _ => {}
                     }
                 }
@@ -2250,21 +2248,17 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
 /// fields filled with wild patterns.
 fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    mut pat: &'q Pat<'tcx>,
+    pat: &'q Pat<'tcx>,
     constructor: &Constructor<'tcx>,
     ctor_wild_subpatterns: &[&'p Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
-    while let PatKind::AscribeUserType { ref subpattern, .. } = *pat.kind {
-        pat = subpattern;
-    }
-
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
         return if pat.is_wildcard() { Some(PatStack::default()) } else { None };
     }
 
     let result = match *pat.kind {
-        PatKind::AscribeUserType { .. } => bug!(), // Handled above
+        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
 
         PatKind::Binding { .. } | PatKind::Wild => {
             Some(PatStack::from_slice(ctor_wild_subpatterns))

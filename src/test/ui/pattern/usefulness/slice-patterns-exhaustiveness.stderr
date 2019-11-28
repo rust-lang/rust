@@ -102,6 +102,30 @@ LL |     match s {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 13 previous errors
+error[E0004]: non-exhaustive patterns: `&[..]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:87:11
+   |
+LL |     match s {
+   |           ^ pattern `&[..]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[true]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:91:11
+   |
+LL |     match s {
+   |           ^ pattern `&[true]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: `&[false]` not covered
+  --> $DIR/slice-patterns-exhaustiveness.rs:99:11
+   |
+LL |     match s1 {
+   |           ^^ pattern `&[false]` not covered
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error: aborting due to 16 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
