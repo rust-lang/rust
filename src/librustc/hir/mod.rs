@@ -2252,9 +2252,9 @@ pub struct Mod {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct ForeignMod {
+pub struct ForeignMod<'hir> {
     pub abi: Abi,
-    pub items: HirVec<ForeignItem>,
+    pub items: &'hir [ForeignItem<'hir>],
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2491,7 +2491,7 @@ pub enum ItemKind<'hir> {
     /// A module.
     Mod(Mod),
     /// An external module, e.g. `extern { .. }`.
-    ForeignMod(ForeignMod),
+    ForeignMod(ForeignMod<'hir>),
     /// Module-level inline assembly (from `global_asm!`).
     GlobalAsm(&'hir GlobalAsm),
     /// A type alias, e.g., `type Foo = Bar<u8>`.
@@ -2607,11 +2607,11 @@ pub enum AssocItemKind {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct ForeignItem {
+pub struct ForeignItem<'hir> {
     #[stable_hasher(project(name))]
     pub ident: Ident,
-    pub attrs: HirVec<Attribute>,
-    pub kind: ForeignItemKind,
+    pub attrs: &'hir [Attribute],
+    pub kind: ForeignItemKind<'hir>,
     pub hir_id: HirId,
     pub span: Span,
     pub vis: Visibility,
@@ -2619,16 +2619,16 @@ pub struct ForeignItem {
 
 /// An item within an `extern` block.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ForeignItemKind {
+pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(P<FnDecl>, HirVec<Ident>, Generics),
+    Fn(&'hir FnDecl, &'hir [Ident], Generics),
     /// A foreign static item (`static ext: u8`).
-    Static(P<Ty>, Mutability),
+    Static(&'hir Ty, Mutability),
     /// A foreign type.
     Type,
 }
 
-impl ForeignItemKind {
+impl ForeignItemKind<'hir> {
     pub fn descriptive_variant(&self) -> &str {
         match *self {
             ForeignItemKind::Fn(..) => "foreign function",
@@ -2788,7 +2788,7 @@ impl CodegenFnAttrs {
 pub enum Node<'hir> {
     Param(&'hir Param),
     Item(&'hir Item<'hir>),
-    ForeignItem(&'hir ForeignItem),
+    ForeignItem(&'hir ForeignItem<'hir>),
     TraitItem(&'hir TraitItem),
     ImplItem(&'hir ImplItem),
     Variant(&'hir Variant),

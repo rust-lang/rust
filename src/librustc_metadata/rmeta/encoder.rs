@@ -1525,7 +1525,7 @@ impl EncodeContext<'tcx> {
     fn encode_info_for_foreign_item(
         &mut self,
         def_id: DefId,
-        nitem: &hir::ForeignItem,
+        nitem: &hir::ForeignItem<'_>,
     )  {
         let tcx = self.tcx;
 
@@ -1551,7 +1551,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <-
             ty::Visibility::from_hir(&nitem.vis, nitem.hir_id, self.tcx));
         record!(self.per_def.span[def_id] <- nitem.span);
-        record!(self.per_def.attributes[def_id] <- &nitem.attrs);
+        record!(self.per_def.attributes[def_id] <- nitem.attrs);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1590,7 +1590,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         }
         self.encode_addl_info_for_item(item);
     }
-    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, ni: &'tcx hir::ForeignItem<'tcx>) {
         intravisit::walk_foreign_item(self, ni);
         let def_id = self.tcx.hir().local_def_id(ni.hir_id);
         self.encode_info_for_foreign_item(def_id, ni);

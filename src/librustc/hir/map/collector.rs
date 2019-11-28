@@ -385,7 +385,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem) {
+    fn visit_foreign_item(&mut self, foreign_item: &'hir ForeignItem<'hir>) {
         self.insert(foreign_item.span, foreign_item.hir_id, Node::ForeignItem(foreign_item));
 
         self.with_parent(foreign_item.hir_id, |this| {

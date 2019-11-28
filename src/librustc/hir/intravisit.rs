@@ -250,7 +250,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_mod(&mut self, m: &'v Mod, _s: Span, n: HirId) {
         walk_mod(self, m, n)
     }
-    fn visit_foreign_item(&mut self, i: &'v ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) {
         walk_foreign_item(self, i)
     }
     fn visit_local(&mut self, l: &'v Local) {
@@ -498,7 +498,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
         }
         ItemKind::ForeignMod(ref foreign_module) => {
             visitor.visit_id(item.hir_id);
-            walk_list!(visitor, visit_foreign_item, &foreign_module.items);
+            walk_list!(visitor, visit_foreign_item, foreign_module.items);
         }
         ItemKind::GlobalAsm(_) => {
             visitor.visit_id(item.hir_id);
@@ -735,13 +735,13 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
     }
 }
 
-pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v ForeignItem) {
+pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v ForeignItem<'v>) {
     visitor.visit_id(foreign_item.hir_id);
     visitor.visit_vis(&foreign_item.vis);
     visitor.visit_ident(foreign_item.ident);
 
     match foreign_item.kind {
-        ForeignItemKind::Fn(ref function_declaration, ref param_names, ref generics) => {
+        ForeignItemKind::Fn(ref function_declaration, param_names, ref generics) => {
             visitor.visit_generics(generics);
             visitor.visit_fn_decl(function_declaration);
             for &param_name in param_names {
@@ -752,7 +752,7 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(visitor: &mut V, foreign_item: &'v 
         ForeignItemKind::Type => (),
     }
 
-    walk_list!(visitor, visit_attribute, &foreign_item.attrs);
+    walk_list!(visitor, visit_attribute, foreign_item.attrs);
 }
 
 pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericBound) {

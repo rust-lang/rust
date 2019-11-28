@@ -1766,15 +1766,15 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
             check_abi(tcx, it.span, m.abi);
 
             if m.abi == Abi::RustIntrinsic {
-                for item in &m.items {
+                for item in m.items {
                     intrinsic::check_intrinsic_type(tcx, item);
                 }
             } else if m.abi == Abi::PlatformIntrinsic {
-                for item in &m.items {
+                for item in m.items {
                     intrinsic::check_platform_intrinsic_type(tcx, item);
                 }
             } else {
-                for item in &m.items {
+                for item in m.items {
                     let generics = tcx.generics_of(tcx.hir().local_def_id(item.hir_id));
                     let own_counts = generics.own_counts();
                     if generics.params.len() - own_counts.lifetimes != 0 {
@@ -4689,7 +4689,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(Node::ForeignItem(hir::ForeignItem {
                     kind: hir::ForeignItemKind::Fn(_, idents, _),
                     ..
-                })) |
+                })) => sugg_call = idents.iter()
+                        .map(|ident| if ident.name != kw::SelfLower {
+                            ident.to_string()
+                        } else {
+                            "_".to_string()
+                        }).collect::<Vec<_>>()
+                        .join(", "),
                 Some(Node::TraitItem(hir::TraitItem {
                     kind: hir::TraitItemKind::Method(.., hir::TraitMethod::Required(idents)),
                     ..

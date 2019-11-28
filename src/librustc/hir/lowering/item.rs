@@ -706,12 +706,12 @@ impl LoweringContext<'_, 'hir> {
         respan(vis.span, vis_kind)
     }
 
-    fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem {
+    fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem<'hir> {
         let def_id = self.resolver.definitions().local_def_id(i.id);
         hir::ForeignItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
-            attrs: self.lower_attrs(&i.attrs),
+            attrs: self.lower_attrs_arena(&i.attrs),
             kind: match i.kind {
                 ForeignItemKind::Fn(ref fdec, ref generics) => {
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
@@ -726,12 +726,14 @@ impl LoweringContext<'_, 'hir> {
                             )
                         },
                     );
+                    let fn_dec = self.arena.alloc(fn_dec.into_inner());
+                    let fn_args = self.arena.alloc_from_iter(fn_args.into_iter());
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
                 ForeignItemKind::Static(ref t, m) => {
                     hir::ForeignItemKind::Static(
-                        self.lower_ty(t, ImplTraitContext::disallowed()), m)
+                        self.arena.alloc(self.lower_ty(t, ImplTraitContext::disallowed()).into_inner()), m)
                 }
                 ForeignItemKind::Ty => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
@@ -741,13 +743,12 @@ impl LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_foreign_mod(&mut self, fm: &ForeignMod) -> hir::ForeignMod {
+    fn lower_foreign_mod(&mut self, fm: &ForeignMod) -> hir::ForeignMod<'hir> {
         hir::ForeignMod {
             abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
-            items: fm.items
+            items: self.arena.alloc_from_iter(fm.items
                 .iter()
-                .map(|x| self.lower_foreign_item(x))
-                .collect(),
+                .map(|x| self.lower_foreign_item(x))),
         }
     }
 

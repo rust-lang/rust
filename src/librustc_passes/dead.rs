@@ -510,7 +510,7 @@ impl DeadVisitor<'tcx> {
                                                  &variant.attrs)
     }
 
-    fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem) -> bool {
+    fn should_warn_about_foreign_item(&mut self, fi: &hir::ForeignItem<'_>) -> bool {
         !self.symbol_is_live(fi.hir_id)
             && !has_allow_dead_code_or_lang_attr(self.tcx, fi.hir_id, &fi.attrs)
     }
@@ -621,7 +621,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         }
     }
 
-    fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, fi: &'tcx hir::ForeignItem<'tcx>) {
         if self.should_warn_about_foreign_item(fi) {
             self.warn_dead_code(fi.hir_id, fi.span, fi.ident.name,
                                 fi.kind.descriptive_variant(), "used");

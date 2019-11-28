@@ -133,7 +133,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_mod(self, m, n)
     }
 
-    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
         self.record("ForeignItem", Id::Node(i.hir_id), i);
         hir_visit::walk_foreign_item(self, i)
     }

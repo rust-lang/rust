@@ -217,7 +217,7 @@ pub struct ForeignItem<'hir> {
     pub vis: &'hir hir::Visibility,
     pub id: hir::HirId,
     pub name: Name,
-    pub kind: &'hir hir::ForeignItemKind,
+    pub kind: &'hir hir::ForeignItemKind<'hir>,
     pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
 }

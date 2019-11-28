@@ -708,7 +708,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 }
             }
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
-                for foreign_item in &foreign_mod.items {
+                for foreign_item in foreign_mod.items {
                     if foreign_item.vis.node.is_pub() {
                         self.update(foreign_item.hir_id, item_level);
                     }
@@ -812,7 +812,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
             }
             // Visit everything, but foreign items have their own levels.
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
-                for foreign_item in &foreign_mod.items {
+                for foreign_item in foreign_mod.items {
                     let foreign_item_level = self.get(foreign_item.hir_id);
                     if foreign_item_level.is_some() {
                         self.reach(foreign_item.hir_id, foreign_item_level)
@@ -1621,7 +1621,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'tcx>) {
         if self.access_levels.is_reachable(item.hir_id) {
             intravisit::walk_foreign_item(self, item)
         }
@@ -1898,7 +1898,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             }
             // Subitems of foreign modules have their own publicity.
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
-                for foreign_item in &foreign_mod.items {
+                for foreign_item in foreign_mod.items {
                     let vis = ty::Visibility::from_hir(&foreign_item.vis, item.hir_id, tcx);
                     self.check(foreign_item.hir_id, vis).generics().predicates().ty();
                 }

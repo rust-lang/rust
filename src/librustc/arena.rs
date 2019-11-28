@@ -126,6 +126,8 @@ macro_rules! arena_types {
             [few] hir_forest: rustc::hir::map::Forest<$tcx>,
             [] attribute: syntax::ast::Attribute,
             [] global_asm: rustc::hir::GlobalAsm,
+            [] fn_decl: rustc::hir::FnDecl,
+            [] foreign_item: rustc::hir::ForeignItem<$tcx>,
             [] impl_item_ref: rustc::hir::ImplItemRef,
             [] macro_def: rustc::hir::MacroDef<$tcx>,
             [] path: rustc::hir::Path,

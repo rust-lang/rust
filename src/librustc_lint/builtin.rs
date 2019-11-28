@@ -996,7 +996,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
         self.perform_lint(cx, "item", item.hir_id, &item.vis, item.span, true);
     }
 
-    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, foreign_item: &hir::ForeignItem) {
+    fn check_foreign_item(&mut self, cx: &LateContext<'_, '_>, foreign_item: &hir::ForeignItem<'tcx>) {
         self.perform_lint(cx, "item", foreign_item.hir_id, &foreign_item.vis,
                           foreign_item.span, true);
     }

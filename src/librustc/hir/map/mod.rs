@@ -1002,7 +1002,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem {
+    pub fn expect_foreign_item(&self, id: HirId) -> &'hir ForeignItem<'hir> {
         match self.find(id) {
             Some(Node::ForeignItem(item)) => item,
             _ => bug!("expected foreign item, found {}", self.node_to_string(id))
@@ -1249,7 +1249,7 @@ trait Named {
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
 impl Named for Item<'_> { fn name(&self) -> Name { self.ident.name } }
-impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for ForeignItem<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for Variant { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }

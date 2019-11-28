@@ -120,7 +120,7 @@ impl Target {
         }
     }
 
-    fn from_foreign_item(foreign_item: &hir::ForeignItem) -> Target {
+    fn from_foreign_item(foreign_item: &hir::ForeignItem<'_>) -> Target {
         match foreign_item.kind {
             hir::ForeignItemKind::Fn(..) => Target::ForeignFn,
             hir::ForeignItemKind::Static(..) => Target::ForeignStatic,
@@ -504,7 +504,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_trait_item(self, trait_item)
     }
 
-    fn visit_foreign_item(&mut self, f_item: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, f_item: &'tcx hir::ForeignItem<'tcx>) {
         let target = Target::from_foreign_item(f_item);
         self.check_attributes(f_item.hir_id, &f_item.attrs, &f_item.span, target, None);
         intravisit::walk_foreign_item(self, f_item)

@@ -17,7 +17,7 @@ use std::iter;
 
 fn equate_intrinsic_type<'tcx>(
     tcx: TyCtxt<'tcx>,
-    it: &hir::ForeignItem,
+    it: &hir::ForeignItem<'_>,
     n_tps: usize,
     abi: Abi,
     safety: hir::Unsafety,
@@ -83,7 +83,7 @@ pub fn intrinsic_operation_unsafety(intrinsic: &str) -> hir::Unsafety {
 
 /// Remember to add all intrinsics here, in librustc_codegen_llvm/intrinsic.rs,
 /// and in libcore/intrinsics.rs
-pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
+pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)));
     let name = it.ident.as_str();
 
@@ -399,7 +399,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
-pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
+pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
     let param = |n| {
         let name = Symbol::intern(&format!("P{}", n));
         tcx.mk_ty_param(n, name)

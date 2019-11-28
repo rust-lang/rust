@@ -267,11 +267,11 @@ impl<'a> State<'a> {
     }
 
     pub fn print_foreign_mod(&mut self,
-                             nmod: &hir::ForeignMod,
+                             nmod: &hir::ForeignMod<'_>,
                              attrs: &[ast::Attribute])
                              {
         self.print_inner_attributes(attrs);
-        for item in &nmod.items {
+        for item in nmod.items {
             self.print_foreign_item(item);
         }
     }
@@ -361,7 +361,7 @@ impl<'a> State<'a> {
         self.end()
     }
 
-    pub fn print_foreign_item(&mut self, item: &hir::ForeignItem) {
+    pub fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         self.print_outer_attributes(&item.attrs);

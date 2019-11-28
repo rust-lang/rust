@@ -93,7 +93,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             }
 
             hir::ItemKind::ForeignMod(ref foreign_mod) => {
-                for foreign_item in &foreign_mod.items {
+                for foreign_item in foreign_mod.items {
                     if let hir::ForeignItemKind::Fn(..) = foreign_item.kind {
                         self.visit_node_helper(foreign_item.hir_id);
                     }

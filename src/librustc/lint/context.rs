@@ -943,7 +943,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         self.context.generics = generics;
     }
 
-    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem) {
+    fn visit_foreign_item(&mut self, it: &'tcx hir::ForeignItem<'tcx>) {
         self.with_lint_attrs(it.hir_id, &it.attrs, |cx| {
             cx.with_param_env(it.hir_id, |cx| {
                 lint_callback!(cx, check_foreign_item, it);
