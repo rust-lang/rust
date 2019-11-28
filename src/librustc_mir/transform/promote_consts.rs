@@ -24,7 +24,6 @@ use syntax::symbol::sym;
 use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_index::vec::{IndexVec, Idx};
-use rustc_index::bit_set::HybridBitSet;
 use rustc_target::spec::abi::Abi;
 
 use std::cell::Cell;
@@ -35,10 +34,8 @@ use crate::transform::check_consts::{qualifs, Item, ConstKind, is_lang_panic_fn}
 
 /// A `MirPass` for promotion.
 ///
-/// In this case, "promotion" entails the following:
-/// - Extract promotable temps in `fn` and `const fn` into their own MIR bodies.
-/// - Extend lifetimes in `const` and `static` by removing `Drop` and `StorageDead`.
-/// - Emit errors if the requirements of `#[rustc_args_required_const]` are not met.
+/// Promotion is the extraction of promotable temps into separate MIR bodies. This pass also emits
+/// errors when promotion of `#[rustc_args_required_const]` arguments fails.
 ///
 /// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
 /// newly created `StaticKind::Promoted`.
@@ -63,26 +60,13 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
 
         let def_id = src.def_id();
 
-        let item = Item::new(tcx, def_id, body);
         let mut rpo = traversal::reverse_postorder(body);
         let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
 
         let promotable_candidates = validate_candidates(tcx, body, def_id, &temps, &all_candidates);
 
-        // For now, lifetime extension is done in `const` and `static`s without creating promoted
-        // MIR fragments by removing `Drop` and `StorageDead` for each referent. However, this will
-        // not work inside loops when they are allowed in `const`s.
-        //
-        // FIXME: use promoted MIR fragments everywhere?
-        let promoted_fragments = if should_create_promoted_mir_fragments(item.const_kind) {
-            promote_candidates(def_id, body, tcx, temps, promotable_candidates)
-        } else {
-            // FIXME: promote const array initializers in consts.
-            remove_drop_and_storage_dead_on_promoted_locals(tcx, body, &promotable_candidates);
-            IndexVec::new()
-        };
-
-        self.promoted_fragments.set(promoted_fragments);
+        let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
+        self.promoted_fragments.set(promoted);
     }
 }
 
@@ -1177,84 +1161,4 @@ crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     debug!("should_suggest_const_in_array_repeat_expressions_flag: mir_def_id={:?} \
             should_promote={:?} feature_flag={:?}", mir_def_id, should_promote, feature_flag);
     should_promote && !feature_flag
-}
-
-fn should_create_promoted_mir_fragments(const_kind: Option<ConstKind>) -> bool {
-    match const_kind {
-        Some(ConstKind::ConstFn) | None => true,
-        Some(ConstKind::Const) | Some(ConstKind::Static) | Some(ConstKind::StaticMut) => false,
-    }
-}
-
-/// In `const` and `static` everything without `StorageDead`
-/// is `'static`, we don't have to create promoted MIR fragments,
-/// just remove `Drop` and `StorageDead` on "promoted" locals.
-fn remove_drop_and_storage_dead_on_promoted_locals(
-    tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
-    promotable_candidates: &[Candidate],
-) {
-    debug!("run_pass: promotable_candidates={:?}", promotable_candidates);
-
-    // Removing `StorageDead` will cause errors for temps declared inside a loop body. For now we
-    // simply skip promotion if a loop exists, since loops are not yet allowed in a `const`.
-    //
-    // FIXME: Just create MIR fragments for `const`s instead of using this hackish approach?
-    if body.is_cfg_cyclic() {
-        tcx.sess.delay_span_bug(body.span, "Control-flow cycle detected in `const`");
-        return;
-    }
-
-    // The underlying local for promotion contexts like `&temp` and `&(temp.proj)`.
-    let mut requires_lifetime_extension = HybridBitSet::new_empty(body.local_decls.len());
-
-    promotable_candidates
-        .iter()
-        .filter_map(|c| {
-            match c {
-                Candidate::Ref(loc) => Some(loc),
-                Candidate::Repeat(_) | Candidate::Argument { .. } => None,
-            }
-        })
-        .map(|&Location { block, statement_index }| {
-            // FIXME: store the `Local` for each `Candidate` when it is created.
-            let place = match &body[block].statements[statement_index].kind {
-                StatementKind::Assign(box ( _, Rvalue::Ref(_, _, place))) => place,
-                _ => bug!("`Candidate::Ref` without corresponding assignment"),
-            };
-
-            match place.base {
-                PlaceBase::Local(local) => local,
-                PlaceBase::Static(_) => bug!("`Candidate::Ref` for a non-local"),
-            }
-        })
-        .for_each(|local| {
-            requires_lifetime_extension.insert(local);
-        });
-
-    // Remove `Drop` terminators and `StorageDead` statements for all promotable temps that require
-    // lifetime extension.
-    for block in body.basic_blocks_mut() {
-        block.statements.retain(|statement| {
-            match statement.kind {
-                StatementKind::StorageDead(index) => !requires_lifetime_extension.contains(index),
-                _ => true
-            }
-        });
-        let terminator = block.terminator_mut();
-        match &terminator.kind {
-            TerminatorKind::Drop {
-                location,
-                target,
-                ..
-            } => {
-                if let Some(index) = location.as_local() {
-                    if requires_lifetime_extension.contains(index) {
-                        terminator.kind = TerminatorKind::Goto { target: *target };
-                    }
-                }
-            }
-            _ => {}
-        }
-    }
 }
