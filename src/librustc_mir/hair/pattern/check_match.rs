@@ -261,8 +261,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             patcx.include_lint_checks();
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
-            let pattern = expand_pattern(cx, pattern);
-            let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(&pattern)].into_iter().collect();
+            let pattern = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
+            let pats: Matrix<'_, '_> = vec![PatStack::from_pattern(pattern)].into_iter().collect();
 
             let witnesses = match check_not_useful(cx, pattern_ty, &pats, pat.hir_id) {
                 Ok(_) => return,
@@ -398,7 +398,7 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 
 // Check for unreachable patterns
 fn check_arms<'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     arms: &[(Vec<(&'p super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
     source: hir::MatchSource,
 ) -> Matrix<'p, 'tcx> {
@@ -482,14 +482,14 @@ fn check_arms<'p, 'tcx>(
     seen
 }
 
-fn check_not_useful(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+fn check_not_useful<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     ty: Ty<'tcx>,
-    matrix: &Matrix<'_, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
     hir_id: HirId,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
-    let wild_pattern = super::Pat::wildcard_from_ty(ty);
-    match is_useful(cx, matrix, &PatStack::from_pattern(&wild_pattern), ConstructWitness, hir_id) {
+    let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(ty));
+    match is_useful(cx, matrix, &PatStack::from_pattern(wild_pattern), ConstructWitness, hir_id) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
             bug!("Exhaustiveness check returned no witnesses")
@@ -500,11 +500,11 @@ fn check_not_useful(
     }
 }
 
-fn check_exhaustive<'tcx>(
-    cx: &mut MatchCheckCtxt<'_, 'tcx>,
+fn check_exhaustive<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     scrut_ty: Ty<'tcx>,
     sp: Span,
-    matrix: &Matrix<'_, 'tcx>,
+    matrix: &Matrix<'p, 'tcx>,
     hir_id: HirId,
 ) {
     let witnesses = match check_not_useful(cx, scrut_ty, matrix, hir_id) {
