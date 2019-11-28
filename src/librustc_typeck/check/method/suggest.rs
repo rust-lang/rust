@@ -1015,7 +1015,7 @@ fn compute_all_traits(tcx: TyCtxt<'_>) -> Vec<DefId> {
 
         fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
-        fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {}
+        fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {}
     }
 
     tcx.hir().krate().visit_all_item_likes(&mut Visitor {

@@ -98,7 +98,7 @@ pub struct LoweringContext<'a, 'hir: 'a> {
     items: BTreeMap<hir::HirId, hir::Item<'hir>>,
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
-    impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
+    impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
     bodies: BTreeMap<hir::BodyId, hir::Body>,
     exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,

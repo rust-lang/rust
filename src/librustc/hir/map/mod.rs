@@ -451,7 +451,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.trait_item(id)
     }
 
-    pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem {
+    pub fn impl_item(&self, id: ImplItemId) -> &'hir ImplItem<'hir> {
         self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -966,7 +966,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem {
+    pub fn expect_impl_item(&self, id: HirId) -> &'hir ImplItem<'hir> {
         match self.find(id) {
             Some(Node::ImplItem(item)) => item,
             _ => bug!("expected impl item, found {}", self.node_to_string(id))
@@ -1253,7 +1253,7 @@ impl Named for ForeignItem<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for Variant { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem<'_> { fn name(&self) -> Name { self.ident.name } }
-impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for ImplItem<'_> { fn name(&self) -> Name { self.ident.name } }
 
 pub fn map_crate<'hir>(sess: &crate::session::Session,
                        cstore: &CrateStoreDyn,

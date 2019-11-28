@@ -906,14 +906,14 @@ impl LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Err, AttrVec::new())
     }
 
-    fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem {
+    fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem<'hir> {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
             AssocItemKind::Const(ref ty, ref expr) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::ImplItemKind::Const(
-                    self.lower_ty(ty, ImplTraitContext::disallowed()),
+                    self.arena.alloc(self.lower_ty(ty, ImplTraitContext::disallowed()).into_inner()),
                     self.lower_const_body(i.span, expr.as_deref()),
                 ),
             ),
@@ -940,11 +940,13 @@ impl LoweringContext<'_, 'hir> {
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let kind = match ty {
                     None => {
-                        hir::ImplItemKind::TyAlias(P(self.ty(i.span, hir::TyKind::Err)))
+                        let ty = self.arena.alloc(self.ty(i.span, hir::TyKind::Err));
+                        hir::ImplItemKind::TyAlias(ty)
                     }
                     Some(ty) => match ty.kind.opaque_top_hack() {
                         None => {
                             let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                            let ty = self.arena.alloc(ty.into_inner());
                             hir::ImplItemKind::TyAlias(ty)
                         }
                         Some(bs) => {
@@ -961,7 +963,7 @@ impl LoweringContext<'_, 'hir> {
         hir::ImplItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
-            attrs: self.lower_attrs(&i.attrs),
+            attrs: self.lower_attrs_arena(&i.attrs),
             generics,
             vis: self.lower_visibility(&i.vis, None),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),

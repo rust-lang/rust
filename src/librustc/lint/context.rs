@@ -1085,7 +1085,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         self.context.generics = generics;
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = Some(&impl_item.generics);
         self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |cx| {

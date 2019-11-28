@@ -91,7 +91,7 @@ impl ItemLikeVisitor<'tcx> for ImplWfCheck<'tcx> {
 
     fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) { }
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) { }
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) { }
 }
 
 fn enforce_impl_params_are_constrained(

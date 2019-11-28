@@ -1127,7 +1127,7 @@ impl Clean<Item> for hir::TraitItem<'_> {
     }
 }
 
-impl Clean<Item> for hir::ImplItem {
+impl Clean<Item> for hir::ImplItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.kind {
             hir::ImplItemKind::Const(ref ty, expr) => {

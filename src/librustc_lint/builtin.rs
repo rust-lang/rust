@@ -454,7 +454,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
                                       desc);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
         if method_context(cx, impl_item.hir_id) == MethodLateContext::TraitImpl {
             return;
@@ -1005,7 +1005,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
         self.perform_lint(cx, "field", field.hir_id, &field.vis, field.span, false);
     }
 
-    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem) {
+    fn check_impl_item(&mut self, cx: &LateContext<'_, '_>, impl_item: &hir::ImplItem<'_>) {
         self.perform_lint(cx, "item", impl_item.hir_id, &impl_item.vis, impl_item.span, false);
     }
 }

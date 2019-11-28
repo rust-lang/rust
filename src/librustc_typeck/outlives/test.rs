@@ -34,5 +34,5 @@ impl ItemLikeVisitor<'tcx> for OutlivesTest<'tcx> {
     }
 
     fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) {}
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) {}
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) {}
 }

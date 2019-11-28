@@ -289,7 +289,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let kind = if self.in_trait_impl {
             AnnotationKind::Prohibited
         } else {
@@ -373,7 +373,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_trait_item(self, ti);
     }
 
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem<'tcx>) {
         let impl_def_id = self.tcx.hir().local_def_id(
             self.tcx.hir().get_parent_item(ii.hir_id));
         if self.tcx.impl_trait_ref(impl_def_id).is_none() {

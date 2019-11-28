@@ -206,7 +206,7 @@ pub struct Impl<'hir> {
     pub generics: &'hir hir::Generics,
     pub trait_: &'hir Option<hir::TraitRef>,
     pub for_: &'hir hir::Ty,
-    pub items: Vec<&'hir hir::ImplItem>,
+    pub items: Vec<&'hir hir::ImplItem<'hir>>,
     pub attrs: &'hir [ast::Attribute],
     pub whence: Span,
     pub vis: &'hir hir::Visibility,

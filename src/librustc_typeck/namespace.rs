@@ -19,8 +19,8 @@ impl From<ty::AssocKind> for Namespace {
     }
 }
 
-impl<'a> From <&'a hir::ImplItemKind> for Namespace {
-    fn from(impl_kind: &'a hir::ImplItemKind) -> Self {
+impl<'a> From <&'a hir::ImplItemKind<'_>> for Namespace {
+    fn from(impl_kind: &'a hir::ImplItemKind<'_>) -> Self {
         match *impl_kind {
             hir::ImplItemKind::OpaqueTy(..) |
             hir::ImplItemKind::TyAlias(..) => Namespace::Type,

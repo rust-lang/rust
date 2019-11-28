@@ -301,7 +301,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_trait_item_ref(&mut self, ii: &'v TraitItemRef) {
         walk_trait_item_ref(self, ii)
     }
-    fn visit_impl_item(&mut self, ii: &'v ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v ImplItem<'v>) {
         walk_impl_item(self, ii)
     }
     fn visit_impl_item_ref(&mut self, ii: &'v ImplItemRef) {
@@ -893,14 +893,14 @@ pub fn walk_trait_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, trait_item_ref: 
     visitor.visit_defaultness(defaultness);
 }
 
-pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
+pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem<'v>) {
     // N.B., deliberately force a compilation error if/when new fields are added.
     let ImplItem {
         hir_id: _,
         ident,
         ref vis,
         ref defaultness,
-        ref attrs,
+        attrs,
         ref generics,
         ref kind,
         span: _,

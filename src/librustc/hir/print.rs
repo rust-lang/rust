@@ -882,7 +882,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::SubItem(ti.hir_id))
     }
 
-    pub fn print_impl_item(&mut self, ii: &hir::ImplItem) {
+    pub fn print_impl_item(&mut self, ii: &hir::ImplItem<'_>) {
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());

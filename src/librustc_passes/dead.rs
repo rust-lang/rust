@@ -421,7 +421,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
         // ignore: we are handling this in `visit_item` above
     }
 
-    fn visit_impl_item(&mut self, _item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _item: &hir::ImplItem<'_>) {
         // ignore: we are handling this in `visit_item` above
     }
 }
@@ -636,7 +636,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         intravisit::walk_struct_field(self, field);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         match impl_item.kind {
             hir::ImplItemKind::Const(_, body_id) => {
                 if !self.symbol_is_live(impl_item.hir_id) {

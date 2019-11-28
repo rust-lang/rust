@@ -41,7 +41,7 @@ impl ItemLikeVisitor<'v> for CheckVisitor<'tcx> {
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
     }
 }
 
@@ -234,6 +234,6 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'_>) {
     }
 }

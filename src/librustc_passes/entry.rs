@@ -44,7 +44,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
         // Entry fn is never a trait item.
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &'tcx ImplItem<'tcx>) {
         // Entry fn is never a trait item.
     }
 }

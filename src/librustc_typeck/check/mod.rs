@@ -755,7 +755,7 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
         check_item_type(self.tcx, i);
     }
     fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) { }
-    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem<'tcx>) { }
 }
 
 pub fn check_wf_new(tcx: TyCtxt<'_>) {
@@ -1865,7 +1865,7 @@ fn check_on_unimplemented(tcx: TyCtxt<'_>, trait_def_id: DefId, item: &hir::Item
 
 fn report_forbidden_specialization(
     tcx: TyCtxt<'_>,
-    impl_item: &hir::ImplItem,
+    impl_item: &hir::ImplItem<'_>,
     parent_impl: DefId,
 ) {
     let mut err = struct_span_err!(
@@ -1895,7 +1895,7 @@ fn check_specialization_validity<'tcx>(
     trait_def: &ty::TraitDef,
     trait_item: &ty::AssocItem,
     impl_id: DefId,
-    impl_item: &hir::ImplItem,
+    impl_item: &hir::ImplItem<'_>,
 ) {
     let kind = match impl_item.kind {
         hir::ImplItemKind::Const(..) => ty::AssocKind::Const,

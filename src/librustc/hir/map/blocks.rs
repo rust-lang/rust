@@ -44,7 +44,7 @@ impl MaybeFnLike for ast::Item<'_> {
     }
 }
 
-impl MaybeFnLike for ast::ImplItem {
+impl MaybeFnLike for ast::ImplItem<'_> {
     fn is_fn_like(&self) -> bool {
         match self.kind {
             ast::ImplItemKind::Method(..) => true,

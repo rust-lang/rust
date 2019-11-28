@@ -128,7 +128,7 @@ impl Target {
         }
     }
 
-    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem) -> Target {
+    fn from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>) -> Target {
         match impl_item.kind {
             hir::ImplItemKind::Const(..) => Target::AssocConst,
             hir::ImplItemKind::Method(..) => {
@@ -510,7 +510,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_foreign_item(self, f_item)
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         let target = Target::from_impl_item(self.tcx, impl_item);
         self.check_attributes(impl_item.hir_id, &impl_item.attrs, &impl_item.span, target, None);
         intravisit::walk_impl_item(self, impl_item)

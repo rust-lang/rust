@@ -410,7 +410,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_impl_item(&mut self, ii: &'hir ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
         debug_assert_eq!(ii.hir_id.owner,
                          self.definitions.opt_def_index(self.hir_to_node_id[&ii.hir_id]).unwrap());
         self.with_dep_node_owner(ii.hir_id.owner, ii, |this| {

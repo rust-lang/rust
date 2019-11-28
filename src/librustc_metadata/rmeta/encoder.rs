@@ -945,7 +945,7 @@ impl EncodeContext<'tcx> {
         });
         record!(self.per_def.visibility[def_id] <- impl_item.vis);
         record!(self.per_def.span[def_id] <- ast_item.span);
-        record!(self.per_def.attributes[def_id] <- &ast_item.attrs);
+        record!(self.per_def.attributes[def_id] <- ast_item.attrs);
         self.encode_stability(def_id);
         self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
@@ -1727,7 +1727,7 @@ impl<'tcx, 'v> ItemLikeVisitor<'v> for ImplVisitor<'tcx> {
 
     fn visit_trait_item(&mut self, _trait_item: &'v hir::TraitItem<'v>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &'v hir::ImplItem<'v>) {
         // handled in `visit_item` above
     }
 }

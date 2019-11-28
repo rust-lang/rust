@@ -101,6 +101,6 @@ impl ItemLikeVisitor<'v> for InherentOverlapChecker<'tcx> {
     fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'v>) {
     }
 
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
+    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem<'v>) {
     }
 }

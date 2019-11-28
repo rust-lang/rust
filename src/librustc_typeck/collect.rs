@@ -150,7 +150,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_trait_item(self, trait_item);
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         convert_impl_item(self.tcx, impl_item.hir_id);
         intravisit::walk_impl_item(self, impl_item);
     }
@@ -1702,7 +1702,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 intravisit::walk_item(self, it);
             }
         }
-        fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
+        fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             // The opaque type itself or its children are not within its reveal scope.

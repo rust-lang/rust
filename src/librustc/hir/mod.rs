@@ -759,7 +759,7 @@ pub struct Crate<'hir> {
     pub items: BTreeMap<HirId, Item<'hir>>,
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
-    pub impl_items: BTreeMap<ImplItemId, ImplItem>,
+    pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
     pub bodies: BTreeMap<BodyId, Body>,
     pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
 
@@ -783,7 +783,7 @@ impl Crate<'hir> {
         &self.trait_items[&id]
     }
 
-    pub fn impl_item(&self, id: ImplItemId) -> &ImplItem {
+    pub fn impl_item(&self, id: ImplItemId) -> &ImplItem<'hir> {
         &self.impl_items[&id]
     }
 
@@ -1938,27 +1938,27 @@ pub struct ImplItemId {
 
 /// Represents anything within an `impl` block.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct ImplItem {
+pub struct ImplItem<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
     pub vis: Visibility,
     pub defaultness: Defaultness,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub generics: Generics,
-    pub kind: ImplItemKind,
+    pub kind: ImplItemKind<'hir>,
     pub span: Span,
 }
 
 /// Represents various kinds of content within an `impl`.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum ImplItemKind {
+pub enum ImplItemKind<'hir> {
     /// An associated constant of the given type, set to the constant result
     /// of the expression.
-    Const(P<Ty>, BodyId),
+    Const(&'hir Ty, BodyId),
     /// A method implementation with the given signature and body.
     Method(FnSig, BodyId),
     /// An associated type.
-    TyAlias(P<Ty>),
+    TyAlias(&'hir Ty),
     /// An associated `type = impl Trait`.
     OpaqueTy(GenericBounds),
 }
@@ -2790,7 +2790,7 @@ pub enum Node<'hir> {
     Item(&'hir Item<'hir>),
     ForeignItem(&'hir ForeignItem<'hir>),
     TraitItem(&'hir TraitItem<'hir>),
-    ImplItem(&'hir ImplItem),
+    ImplItem(&'hir ImplItem<'hir>),
     Variant(&'hir Variant),
     Field(&'hir StructField),
     AnonConst(&'hir AnonConst),

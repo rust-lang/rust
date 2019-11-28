@@ -126,8 +126,8 @@ macro_rules! late_lint_methods {
             );
             fn check_trait_item(a: &$hir hir::TraitItem<$hir>);
             fn check_trait_item_post(a: &$hir hir::TraitItem<$hir>);
-            fn check_impl_item(a: &$hir hir::ImplItem);
-            fn check_impl_item_post(a: &$hir hir::ImplItem);
+            fn check_impl_item(a: &$hir hir::ImplItem<$hir>);
+            fn check_impl_item_post(a: &$hir hir::ImplItem<$hir>);
             fn check_struct_def(a: &$hir hir::VariantData);
             fn check_struct_def_post(a: &$hir hir::VariantData);
             fn check_struct_field(a: &$hir hir::StructField);
@@ -655,7 +655,7 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         });
     }
 
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
+    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem<'tcx>) {
         self.with_lint_attrs(impl_item.hir_id, &impl_item.attrs, |builder| {
             intravisit::walk_impl_item(builder, impl_item);
         });

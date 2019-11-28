@@ -193,7 +193,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         self.record("ImplItem", Id::Node(ii.hir_id), ii);
         hir_visit::walk_impl_item(self, ii)
     }

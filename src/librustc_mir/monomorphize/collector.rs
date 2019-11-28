@@ -1064,7 +1064,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
         // it's still generic over some `Self: Trait`, so not a root.
     }
 
-    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'v hir::ImplItem<'v>) {
         match ii.kind {
             hir::ImplItemKind::Method(hir::FnSig { .. }, _) => {
                 let def_id = self.tcx.hir().local_def_id(ii.hir_id);

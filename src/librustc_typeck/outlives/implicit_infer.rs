@@ -115,7 +115,7 @@ impl<'cx, 'tcx> ItemLikeVisitor<'tcx> for InferVisitor<'cx, 'tcx> {
 
     fn visit_trait_item(&mut self, _trait_item: &'tcx hir::TraitItem<'tcx>) {}
 
-    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem) {}
+    fn visit_impl_item(&mut self, _impl_item: &'tcx hir::ImplItem<'tcx>) {}
 }
 
 fn insert_required_predicates_to_be_wf<'tcx>(
