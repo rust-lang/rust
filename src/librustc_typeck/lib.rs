@@ -75,6 +75,9 @@ This API is completely unstable and subject to change.
 
 #[macro_use] extern crate rustc;
 
+// This is used by Clippy.
+pub mod expr_use_visitor;
+
 mod astconv;
 mod check;
 mod check_unused;
@@ -83,6 +86,7 @@ mod collect;
 mod constrained_generic_params;
 mod structured_errors;
 mod impl_wf_check;
+mod mem_categorization;
 mod namespace;
 mod outlives;
 mod variance;

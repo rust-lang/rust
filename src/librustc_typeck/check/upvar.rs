@@ -32,9 +32,9 @@
 
 use super::FnCtxt;
 
-use crate::middle::expr_use_visitor as euv;
-use crate::middle::mem_categorization as mc;
-use crate::middle::mem_categorization::Categorization;
+use crate::expr_use_visitor as euv;
+use crate::mem_categorization as mc;
+use crate::mem_categorization::PlaceBase;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def_id::LocalDefId;
@@ -76,6 +76,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    /// Analysis starting point.
     fn analyze_closure(
         &self,
         closure_hir_id: hir::HirId,
@@ -83,9 +84,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         body: &hir::Body,
         capture_clause: hir::CaptureBy,
     ) {
-        /*!
-         * Analysis starting point.
-         */
 
         debug!(
             "analyze_closure(id={:?}, body.id={:?})",
@@ -171,20 +169,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let body_owner_def_id = self.tcx.hir().body_owner_def_id(body.id());
         assert_eq!(body_owner_def_id, closure_def_id);
-        let region_scope_tree = &self.tcx.region_scope_tree(body_owner_def_id);
         let mut delegate = InferBorrowKind {
             fcx: self,
-            closure_def_id: closure_def_id,
+            closure_def_id,
             current_closure_kind: ty::ClosureKind::LATTICE_BOTTOM,
             current_origin: None,
             adjust_upvar_captures: ty::UpvarCaptureMap::default(),
         };
-        euv::ExprUseVisitor::with_infer(
+        euv::ExprUseVisitor::new(
             &mut delegate,
             &self.infcx,
             body_owner_def_id,
             self.param_env,
-            region_scope_tree,
             &self.tables.borrow(),
         )
         .consume_body(body);
@@ -312,13 +308,10 @@ struct InferBorrowKind<'a, 'tcx> {
 impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
     fn adjust_upvar_borrow_kind_for_consume(
         &mut self,
-        cmt: &mc::cmt_<'tcx>,
+        place: &mc::Place<'tcx>,
         mode: euv::ConsumeMode,
     ) {
-        debug!(
-            "adjust_upvar_borrow_kind_for_consume(cmt={:?}, mode={:?})",
-            cmt, mode
-        );
+        debug!("adjust_upvar_borrow_kind_for_consume(place={:?}, mode={:?})", place, mode);
 
         // we only care about moves
         match mode {
@@ -329,132 +322,68 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         }
 
         let tcx = self.fcx.tcx;
+        let upvar_id = if let PlaceBase::Upvar(upvar_id) = place.base {
+            upvar_id
+        } else {
+            return;
+        };
 
-        // watch out for a move of the deref of a borrowed pointer;
-        // for that to be legal, the upvar would have to be borrowed
-        // by value instead
-        let guarantor = cmt.guarantor();
-        debug!(
-            "adjust_upvar_borrow_kind_for_consume: guarantor={:?}",
-            guarantor
+        debug!("adjust_upvar_borrow_kind_for_consume: upvar={:?}", upvar_id);
+
+        // To move out of an upvar, this must be a FnOnce closure
+        self.adjust_closure_kind(
+            upvar_id.closure_expr_id,
+            ty::ClosureKind::FnOnce,
+            place.span,
+            var_name(tcx, upvar_id.var_path.hir_id),
         );
-        debug!(
-            "adjust_upvar_borrow_kind_for_consume: guarantor.cat={:?}",
-            guarantor.cat
-        );
-        if let Categorization::Deref(_, mc::BorrowedPtr(..)) = guarantor.cat {
-            debug!(
-                "adjust_upvar_borrow_kind_for_consume: found deref with note {:?}",
-                cmt.note
-            );
-            match guarantor.note {
-                mc::NoteUpvarRef(upvar_id) => {
-                    debug!(
-                        "adjust_upvar_borrow_kind_for_consume: \
-                         setting upvar_id={:?} to by value",
-                        upvar_id
-                    );
 
-                    // to move out of an upvar, this must be a FnOnce closure
-                    self.adjust_closure_kind(
-                        upvar_id.closure_expr_id,
-                        ty::ClosureKind::FnOnce,
-                        guarantor.span,
-                        var_name(tcx, upvar_id.var_path.hir_id),
-                    );
-
-                    self.adjust_upvar_captures
-                        .insert(upvar_id, ty::UpvarCapture::ByValue);
-                }
-                mc::NoteClosureEnv(upvar_id) => {
-                    // we get just a closureenv ref if this is a
-                    // `move` closure, or if the upvar has already
-                    // been inferred to by-value. In any case, we
-                    // must still adjust the kind of the closure
-                    // to be a FnOnce closure to permit moves out
-                    // of the environment.
-                    self.adjust_closure_kind(
-                        upvar_id.closure_expr_id,
-                        ty::ClosureKind::FnOnce,
-                        guarantor.span,
-                        var_name(tcx, upvar_id.var_path.hir_id),
-                    );
-                }
-                mc::NoteIndex | mc::NoteNone => {}
-            }
-        }
+        self.adjust_upvar_captures.insert(upvar_id, ty::UpvarCapture::ByValue);
     }
 
-    /// Indicates that `cmt` is being directly mutated (e.g., assigned
-    /// to). If cmt contains any by-ref upvars, this implies that
-    /// those upvars must be borrowed using an `&mut` borrow.
-    fn adjust_upvar_borrow_kind_for_mut(&mut self, cmt: &mc::cmt_<'tcx>) {
-        debug!("adjust_upvar_borrow_kind_for_mut(cmt={:?})", cmt);
+    /// Indicates that `place` is being directly mutated (e.g., assigned
+    /// to). If the place is based on a by-ref upvar, this implies that
+    /// the upvar must be borrowed using an `&mut` borrow.
+    fn adjust_upvar_borrow_kind_for_mut(&mut self, place: &mc::Place<'tcx>) {
+        debug!("adjust_upvar_borrow_kind_for_mut(place={:?})", place);
 
-        match cmt.cat.clone() {
-            Categorization::Deref(base, mc::Unique)
-            | Categorization::Interior(base, _)
-            | Categorization::Downcast(base, _) => {
-                // Interior or owned data is mutable if base is
-                // mutable, so iterate to the base.
-                self.adjust_upvar_borrow_kind_for_mut(&base);
-            }
-
-            Categorization::Deref(base, mc::BorrowedPtr(..)) => {
-                if !self.try_adjust_upvar_deref(cmt, ty::MutBorrow) {
+        if let PlaceBase::Upvar(upvar_id) = place.base {
+            let mut borrow_kind = ty::MutBorrow;
+            for pointer_ty in place.deref_tys() {
+                match pointer_ty.kind {
+                    // Raw pointers don't inherit mutability.
+                    ty::RawPtr(_) => return,
                     // assignment to deref of an `&mut`
                     // borrowed pointer implies that the
                     // pointer itself must be unique, but not
                     // necessarily *mutable*
-                    self.adjust_upvar_borrow_kind_for_unique(&base);
+                    ty::Ref(.., hir::Mutability::Mutable) => borrow_kind = ty::UniqueImmBorrow,
+                    _ => (),
                 }
             }
+            self.adjust_upvar_deref(upvar_id, place.span, borrow_kind);
+        }
+    }
 
-            Categorization::Deref(_, mc::UnsafePtr(..))
-            | Categorization::StaticItem
-            | Categorization::ThreadLocal
-            | Categorization::Rvalue
-            | Categorization::Local(_)
-            | Categorization::Upvar(..) => {
+    fn adjust_upvar_borrow_kind_for_unique(&mut self, place: &mc::Place<'tcx>) {
+        debug!("adjust_upvar_borrow_kind_for_unique(place={:?})", place);
+
+        if let PlaceBase::Upvar(upvar_id) = place.base {
+            if place.deref_tys().any(ty::TyS::is_unsafe_ptr) {
+                // Raw pointers don't inherit mutability.
                 return;
             }
+            // for a borrowed pointer to be unique, its base must be unique
+            self.adjust_upvar_deref(upvar_id, place.span, ty::UniqueImmBorrow);
         }
     }
 
-    fn adjust_upvar_borrow_kind_for_unique(&mut self, cmt: &mc::cmt_<'tcx>) {
-        debug!("adjust_upvar_borrow_kind_for_unique(cmt={:?})", cmt);
-
-        match cmt.cat.clone() {
-            Categorization::Deref(base, mc::Unique)
-            | Categorization::Interior(base, _)
-            | Categorization::Downcast(base, _) => {
-                // Interior or owned data is unique if base is
-                // unique.
-                self.adjust_upvar_borrow_kind_for_unique(&base);
-            }
-
-            Categorization::Deref(base, mc::BorrowedPtr(..)) => {
-                if !self.try_adjust_upvar_deref(cmt, ty::UniqueImmBorrow) {
-                    // for a borrowed pointer to be unique, its
-                    // base must be unique
-                    self.adjust_upvar_borrow_kind_for_unique(&base);
-                }
-            }
-
-            Categorization::Deref(_, mc::UnsafePtr(..))
-            | Categorization::StaticItem
-            | Categorization::ThreadLocal
-            | Categorization::Rvalue
-            | Categorization::Local(_)
-            | Categorization::Upvar(..) => {}
-        }
-    }
-
-    fn try_adjust_upvar_deref(
+    fn adjust_upvar_deref(
         &mut self,
-        cmt: &mc::cmt_<'tcx>,
+        upvar_id: ty::UpvarId,
+        place_span: Span,
         borrow_kind: ty::BorrowKind,
-    ) -> bool {
+    ) {
         assert!(match borrow_kind {
             ty::MutBorrow => true,
             ty::UniqueImmBorrow => true,
@@ -465,39 +394,19 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 
         let tcx = self.fcx.tcx;
 
-        match cmt.note {
-            mc::NoteUpvarRef(upvar_id) => {
-                // if this is an implicit deref of an
-                // upvar, then we need to modify the
-                // borrow_kind of the upvar to make sure it
-                // is inferred to mutable if necessary
-                self.adjust_upvar_borrow_kind(upvar_id, borrow_kind);
+        // if this is an implicit deref of an
+        // upvar, then we need to modify the
+        // borrow_kind of the upvar to make sure it
+        // is inferred to mutable if necessary
+        self.adjust_upvar_borrow_kind(upvar_id, borrow_kind);
 
-                // also need to be in an FnMut closure since this is not an ImmBorrow
-                self.adjust_closure_kind(
-                    upvar_id.closure_expr_id,
-                    ty::ClosureKind::FnMut,
-                    cmt.span,
-                    var_name(tcx, upvar_id.var_path.hir_id),
-                );
-
-                true
-            }
-            mc::NoteClosureEnv(upvar_id) => {
-                // this kind of deref occurs in a `move` closure, or
-                // for a by-value upvar; in either case, to mutate an
-                // upvar, we need to be an FnMut closure
-                self.adjust_closure_kind(
-                    upvar_id.closure_expr_id,
-                    ty::ClosureKind::FnMut,
-                    cmt.span,
-                    var_name(tcx, upvar_id.var_path.hir_id),
-                );
-
-                true
-            }
-            mc::NoteIndex | mc::NoteNone => false,
-        }
+        // also need to be in an FnMut closure since this is not an ImmBorrow
+        self.adjust_closure_kind(
+            upvar_id.closure_expr_id,
+            ty::ClosureKind::FnMut,
+            place_span,
+            var_name(tcx, upvar_id.var_path.hir_id),
+        );
     }
 
     /// We infer the borrow_kind with which to borrow upvars in a stack closure.
@@ -509,7 +418,7 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
         let upvar_capture = self
             .adjust_upvar_captures
             .get(&upvar_id)
-            .cloned()
+            .copied()
             .unwrap_or_else(|| self.fcx.tables.borrow().upvar_capture(upvar_id));
         debug!(
             "adjust_upvar_borrow_kind(upvar_id={:?}, upvar_capture={:?}, kind={:?})",
@@ -586,29 +495,29 @@ impl<'a, 'tcx> InferBorrowKind<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'tcx> {
-    fn consume(&mut self, cmt: &mc::cmt_<'tcx>,mode: euv::ConsumeMode) {
-        debug!("consume(cmt={:?},mode={:?})", cmt, mode);
-        self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
+    fn consume(&mut self, place: &mc::Place<'tcx>,mode: euv::ConsumeMode) {
+        debug!("consume(place={:?},mode={:?})", place, mode);
+        self.adjust_upvar_borrow_kind_for_consume(place, mode);
     }
 
-    fn borrow(&mut self, cmt: &mc::cmt_<'tcx>, bk: ty::BorrowKind) {
-        debug!("borrow(cmt={:?}, bk={:?})", cmt, bk);
+    fn borrow(&mut self, place: &mc::Place<'tcx>, bk: ty::BorrowKind) {
+        debug!("borrow(place={:?}, bk={:?})", place, bk);
 
         match bk {
             ty::ImmBorrow => {}
             ty::UniqueImmBorrow => {
-                self.adjust_upvar_borrow_kind_for_unique(cmt);
+                self.adjust_upvar_borrow_kind_for_unique(place);
             }
             ty::MutBorrow => {
-                self.adjust_upvar_borrow_kind_for_mut(cmt);
+                self.adjust_upvar_borrow_kind_for_mut(place);
             }
         }
     }
 
-    fn mutate(&mut self, assignee_cmt: &mc::cmt_<'tcx>) {
-        debug!("mutate(assignee_cmt={:?})", assignee_cmt);
+    fn mutate(&mut self, assignee_place: &mc::Place<'tcx>) {
+        debug!("mutate(assignee_place={:?})", assignee_place);
 
-        self.adjust_upvar_borrow_kind_for_mut(assignee_cmt);
+        self.adjust_upvar_borrow_kind_for_mut(assignee_place);
     }
 }
 

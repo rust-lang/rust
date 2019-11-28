@@ -74,8 +74,7 @@
 
 use crate::check::dropck;
 use crate::check::FnCtxt;
-use crate::middle::mem_categorization as mc;
-use crate::middle::mem_categorization::Categorization;
+use crate::mem_categorization as mc;
 use crate::middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::infer::outlives::env::OutlivesEnvironment;
@@ -88,7 +87,6 @@ use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc::hir::{self, PatKind};
 use std::mem;
 use std::ops::Deref;
-use std::rc::Rc;
 use syntax_pos::Span;
 
 // a variation on try that just returns unit
@@ -814,18 +812,17 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     where
         F: for<'b> FnOnce(mc::MemCategorizationContext<'b, 'tcx>) -> R,
     {
-        f(mc::MemCategorizationContext::with_infer(
+        f(mc::MemCategorizationContext::new(
             &self.infcx,
             self.outlives_environment.param_env,
             self.body_owner,
-            &self.region_scope_tree,
             &self.tables.borrow(),
         ))
     }
 
     /// Invoked on any adjustments that occur. Checks that if this is a region pointer being
     /// dereferenced, the lifetime of the pointer includes the deref expr.
-    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::cmt_<'tcx>> {
+    fn constrain_adjustments(&mut self, expr: &hir::Expr) -> mc::McResult<mc::Place<'tcx>> {
         debug!("constrain_adjustments(expr={:?})", expr);
 
         let mut cmt = self.with_mc(|mc| mc.cat_expr_unadjusted(expr))?;
@@ -899,10 +896,6 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             }
 
             cmt = self.with_mc(|mc| mc.cat_expr_adjusted(expr, cmt, &adjustment))?;
-
-            if let Categorization::Deref(_, mc::BorrowedPtr(_, r_ptr)) = cmt.cat {
-                self.mk_subregion_due_to_dereference(expr.span, expr_region, r_ptr);
-            }
         }
 
         Ok(cmt)
@@ -921,16 +914,22 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         )
     }
 
-    fn check_safety_of_rvalue_destructor_if_necessary(&mut self, cmt: &mc::cmt_<'tcx>, span: Span) {
-        if let Categorization::Rvalue = cmt.cat {
-            let typ = self.resolve_type(cmt.ty);
-            let body_id = self.body_id;
-            let _ = dropck::check_drop_obligations(
-                self,
-                typ,
-                span,
-                body_id,
-            );
+    fn check_safety_of_rvalue_destructor_if_necessary(
+        &mut self,
+        place: &mc::Place<'tcx>,
+        span: Span,
+    ) {
+        if let mc::PlaceBase::Rvalue = place.base {
+            if place.projections.is_empty() {
+                let typ = self.resolve_type(place.ty);
+                let body_id = self.body_id;
+                let _ = dropck::check_drop_obligations(
+                    self,
+                    typ,
+                    span,
+                    body_id,
+                );
+            }
         }
     }
 
@@ -1035,7 +1034,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
             }
             Some(ref expr) => &**expr,
         };
-        let discr_cmt = Rc::new(ignore_err!(self.with_mc(|mc| mc.cat_expr(init_expr))));
+        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(init_expr)));
         self.link_pattern(discr_cmt, &local.pat);
     }
 
@@ -1044,7 +1043,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     /// linked to the lifetime of its guarantor (if any).
     fn link_match(&self, discr: &hir::Expr, arms: &[hir::Arm]) {
         debug!("regionck::for_match()");
-        let discr_cmt = Rc::new(ignore_err!(self.with_mc(|mc| mc.cat_expr(discr))));
+        let discr_cmt = ignore_err!(self.with_mc(|mc| mc.cat_expr(discr)));
         debug!("discr_cmt={:?}", discr_cmt);
         for arm in arms {
             self.link_pattern(discr_cmt.clone(), &arm.pat);
@@ -1058,7 +1057,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         for param in params {
             let param_ty = self.node_ty(param.hir_id);
             let param_cmt = self.with_mc(|mc| {
-                Rc::new(mc.cat_rvalue(param.hir_id, param.pat.span, param_ty))
+                mc.cat_rvalue(param.hir_id, param.pat.span, param_ty)
             });
             debug!("param_ty={:?} param_cmt={:?} param={:?}", param_ty, param_cmt, param);
             self.link_pattern(param_cmt, &param.pat);
@@ -1067,7 +1066,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
 
     /// Link lifetimes of any ref bindings in `root_pat` to the pointers found
     /// in the discriminant, if needed.
-    fn link_pattern(&self, discr_cmt: mc::cmt<'tcx>, root_pat: &hir::Pat) {
+    fn link_pattern(&self, discr_cmt: mc::Place<'tcx>, root_pat: &hir::Pat) {
         debug!(
             "link_pattern(discr_cmt={:?}, root_pat={:?})",
             discr_cmt, root_pat
@@ -1100,7 +1099,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     fn link_autoref(
         &self,
         expr: &hir::Expr,
-        expr_cmt: &mc::cmt_<'tcx>,
+        expr_cmt: &mc::Place<'tcx>,
         autoref: &adjustment::AutoBorrow<'tcx>,
     ) {
         debug!(
@@ -1130,7 +1129,7 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         span: Span,
         id: hir::HirId,
         mutbl: hir::Mutability,
-        cmt_borrowed: &mc::cmt_<'tcx>,
+        cmt_borrowed: &mc::Place<'tcx>,
     ) {
         debug!(
             "link_region_from_node_type(id={:?}, mutbl={:?}, cmt_borrowed={:?})",
@@ -1153,60 +1152,34 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         span: Span,
         borrow_region: ty::Region<'tcx>,
         borrow_kind: ty::BorrowKind,
-        borrow_cmt: &mc::cmt_<'tcx>,
+        borrow_place: &mc::Place<'tcx>,
     ) {
-        let origin = infer::DataBorrowed(borrow_cmt.ty, span);
-        self.type_must_outlive(origin, borrow_cmt.ty, borrow_region);
+        let origin = infer::DataBorrowed(borrow_place.ty, span);
+        self.type_must_outlive(origin, borrow_place.ty, borrow_region);
 
-        let mut borrow_kind = borrow_kind;
-        let mut borrow_cmt_cat = borrow_cmt.cat.clone();
-
-        loop {
+        for pointer_ty in borrow_place.deref_tys() {
             debug!(
-                "link_region(borrow_region={:?}, borrow_kind={:?}, borrow_cmt={:?})",
-                borrow_region, borrow_kind, borrow_cmt
+                "link_region(borrow_region={:?}, borrow_kind={:?}, pointer_ty={:?})",
+                borrow_region, borrow_kind, borrow_place
             );
-            match borrow_cmt_cat {
-                Categorization::Deref(ref_cmt, mc::BorrowedPtr(ref_kind, ref_region)) => {
-                    match self.link_reborrowed_region(
+            match pointer_ty.kind {
+                ty::RawPtr(_) => return,
+                ty::Ref(ref_region, _, ref_mutability) => {
+                    if self.link_reborrowed_region(
                         span,
                         borrow_region,
-                        borrow_kind,
-                        ref_cmt,
                         ref_region,
-                        ref_kind,
-                        borrow_cmt.note,
+                        ref_mutability,
                     ) {
-                        Some((c, k)) => {
-                            borrow_cmt_cat = c.cat.clone();
-                            borrow_kind = k;
-                        }
-                        None => {
-                            return;
-                        }
+                        return;
                     }
-                }
 
-                Categorization::Downcast(cmt_base, _)
-                | Categorization::Deref(cmt_base, mc::Unique)
-                | Categorization::Interior(cmt_base, _) => {
-                    // Borrowing interior or owned data requires the base
-                    // to be valid and borrowable in the same fashion.
-                    borrow_cmt_cat = cmt_base.cat.clone();
-                    borrow_kind = borrow_kind;
                 }
-
-                Categorization::Deref(_, mc::UnsafePtr(..))
-                | Categorization::StaticItem
-                | Categorization::Upvar(..)
-                | Categorization::Local(..)
-                | Categorization::ThreadLocal
-                | Categorization::Rvalue => {
-                    // These are all "base cases" with independent lifetimes
-                    // that are not subject to inference
-                    return;
-                }
+                _ => assert!(pointer_ty.is_box(), "unexpected built-in deref type {}", pointer_ty)
             }
+        }
+        if let mc::PlaceBase::Upvar(upvar_id) = borrow_place.base {
+            self.link_upvar_region(span, borrow_region, upvar_id);
         }
     }
 
@@ -1231,83 +1204,28 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
     ///
     /// Here `bk` stands for some borrow-kind (e.g., `mut`, `uniq`, etc).
     ///
-    /// Unfortunately, there are some complications beyond the simple
-    /// scenario I just painted:
+    /// There is a complication beyond the simple scenario I just painted: there
+    /// may in fact be more levels of reborrowing. In the example, I said the
+    /// borrow was like `&'z *r`, but it might in fact be a borrow like
+    /// `&'z **q` where `q` has type `&'a &'b mut T`. In that case, we want to
+    /// ensure that `'z <= 'a` and `'z <= 'b`.
     ///
-    /// 1. The reference `r` might in fact be a "by-ref" upvar. In that
-    ///    case, we have two jobs. First, we are inferring whether this reference
-    ///    should be an `&T`, `&mut T`, or `&uniq T` reference, and we must
-    ///    adjust that based on this borrow (e.g., if this is an `&mut` borrow,
-    ///    then `r` must be an `&mut` reference). Second, whenever we link
-    ///    two regions (here, `'z <= 'a`), we supply a *cause*, and in this
-    ///    case we adjust the cause to indicate that the reference being
-    ///    "reborrowed" is itself an upvar. This provides a nicer error message
-    ///    should something go wrong.
+    /// The return value of this function indicates whether we *don't* need to
+    /// the recurse to the next reference up.
     ///
-    /// 2. There may in fact be more levels of reborrowing. In the
-    ///    example, I said the borrow was like `&'z *r`, but it might
-    ///    in fact be a borrow like `&'z **q` where `q` has type `&'a
-    ///    &'b mut T`. In that case, we want to ensure that `'z <= 'a`
-    ///    and `'z <= 'b`. This is explained more below.
-    ///
-    /// The return value of this function indicates whether we need to
-    /// recurse and process `ref_cmt` (see case 2 above).
+    /// This is explained more below.
     fn link_reborrowed_region(
         &self,
         span: Span,
         borrow_region: ty::Region<'tcx>,
-        borrow_kind: ty::BorrowKind,
-        ref_cmt: mc::cmt<'tcx>,
         ref_region: ty::Region<'tcx>,
-        mut ref_kind: ty::BorrowKind,
-        note: mc::Note,
-    ) -> Option<(mc::cmt<'tcx>, ty::BorrowKind)> {
-        // Possible upvar ID we may need later to create an entry in the
-        // maybe link map.
-
-        // Detect by-ref upvar `x`:
-        let cause = match note {
-            mc::NoteUpvarRef(ref upvar_id) => {
-                match self.tables.borrow().upvar_capture_map.get(upvar_id) {
-                    Some(&ty::UpvarCapture::ByRef(ref upvar_borrow)) => {
-                        // The mutability of the upvar may have been modified
-                        // by the above adjustment, so update our local variable.
-                        ref_kind = upvar_borrow.kind;
-
-                        infer::ReborrowUpvar(span, *upvar_id)
-                    }
-                    _ => {
-                        span_bug!(span, "Illegal upvar id: {:?}", upvar_id);
-                    }
-                }
-            }
-            mc::NoteClosureEnv(ref upvar_id) => {
-                // We don't have any mutability changes to propagate, but
-                // we do want to note that an upvar reborrow caused this
-                // link
-                infer::ReborrowUpvar(span, *upvar_id)
-            }
-            _ => infer::Reborrow(span),
-        };
-
+        ref_mutability: hir::Mutability,
+    ) -> bool {
         debug!(
             "link_reborrowed_region: {:?} <= {:?}",
             borrow_region, ref_region
         );
-        self.sub_regions(cause, borrow_region, ref_region);
-
-        // If we end up needing to recurse and establish a region link
-        // with `ref_cmt`, calculate what borrow kind we will end up
-        // needing. This will be used below.
-        //
-        // One interesting twist is that we can weaken the borrow kind
-        // when we recurse: to reborrow an `&mut` referent as mutable,
-        // borrowck requires a unique path to the `&mut` reference but not
-        // necessarily a *mutable* path.
-        let new_borrow_kind = match borrow_kind {
-            ty::ImmBorrow => ty::ImmBorrow,
-            ty::MutBorrow | ty::UniqueImmBorrow => ty::UniqueImmBorrow,
-        };
+        self.sub_regions(infer::Reborrow(span), borrow_region, ref_region);
 
         // Decide whether we need to recurse and link any regions within
         // the `ref_cmt`. This is concerned for the case where the value
@@ -1336,24 +1254,83 @@ impl<'a, 'tcx> RegionCtxt<'a, 'tcx> {
         // (Note that since we have not examined `ref_cmt.cat`, we don't
         // know whether this scenario has occurred; but I wanted to show
         // how all the types get adjusted.)
-        match ref_kind {
-            ty::ImmBorrow => {
+        match ref_mutability {
+            hir::Mutability::Immutable => {
                 // The reference being reborrowed is a shareable ref of
                 // type `&'a T`. In this case, it doesn't matter where we
                 // *found* the `&T` pointer, the memory it references will
                 // be valid and immutable for `'a`. So we can stop here.
-                //
-                // (Note that the `borrow_kind` must also be ImmBorrow or
-                // else the user is borrowed imm memory as mut memory,
-                // which means they'll get an error downstream in borrowck
-                // anyhow.)
-                return None;
+                true
             }
 
-            ty::MutBorrow | ty::UniqueImmBorrow => {
-                // The reference being reborrowed is either an `&mut T` or
-                // `&uniq T`. This is the case where recursion is needed.
-                return Some((ref_cmt, new_borrow_kind));
+            hir::Mutability::Mutable => {
+                // The reference being reborrowed is either an `&mut T`. This is
+                // the case where recursion is needed.
+                false
+            }
+        }
+    }
+
+    /// An upvar may be behind up to 2 references:
+    ///
+    /// * One can come from the reference to a "by-reference" upvar.
+    /// * Another one can come from the reference to the closure itself if it's
+    ///   a `FnMut` or `Fn` closure.
+    ///
+    /// This function links the lifetimes of those references to the lifetime
+    /// of the borrow that's provided. See [link_reborrowed_region] for some
+    /// more explanation of this in the general case.
+    ///
+    /// We also supply a *cause*, and in this case we set the cause to
+    /// indicate that the reference being "reborrowed" is itself an upvar. This
+    /// provides a nicer error message should something go wrong.
+    fn link_upvar_region(
+        &self,
+        span: Span,
+        borrow_region: ty::Region<'tcx>,
+        upvar_id: ty::UpvarId,
+    ) {
+        debug!("link_upvar_region(borrorw_region={:?}, upvar_id={:?}", borrow_region, upvar_id);
+        // A by-reference upvar can't be borrowed for longer than the
+        // upvar is borrowed from the environment.
+        match self.tables.borrow().upvar_capture(upvar_id) {
+            ty::UpvarCapture::ByRef(upvar_borrow) => {
+                self.sub_regions(
+                    infer::ReborrowUpvar(span, upvar_id),
+                    borrow_region,
+                    upvar_borrow.region,
+                );
+                if let ty::ImmBorrow = upvar_borrow.kind {
+                    debug!("link_upvar_region: capture by shared ref");
+                    return;
+                }
+            }
+            ty::UpvarCapture::ByValue => {}
+        }
+        let fn_hir_id = self.tcx.hir().local_def_id_to_hir_id(upvar_id.closure_expr_id);
+        let ty = self.resolve_node_type(fn_hir_id);
+        debug!("link_upvar_region: ty={:?}", ty);
+
+        // A closure capture can't be borrowed for longer than the
+        // reference to the closure.
+        if let ty::Closure(closure_def_id, substs) = ty.kind {
+            match self.infcx.closure_kind(closure_def_id, substs) {
+                Some(ty::ClosureKind::Fn) | Some(ty::ClosureKind::FnMut) => {
+                    // Region of environment pointer
+                    let env_region = self.tcx.mk_region(ty::ReFree(ty::FreeRegion {
+                        scope: upvar_id.closure_expr_id.to_def_id(),
+                        bound_region: ty::BrEnv
+                    }));
+                    self.sub_regions(
+                        infer::ReborrowUpvar(span, upvar_id),
+                        borrow_region,
+                        env_region,
+                    );
+                }
+                Some(ty::ClosureKind::FnOnce) => {}
+                None => {
+                    span_bug!(span, "Have not inferred closure kind before regionck");
+                }
             }
         }
     }
