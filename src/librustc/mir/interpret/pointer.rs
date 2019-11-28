@@ -5,7 +5,6 @@ use crate::ty::layout::{self, HasDataLayout, Size};
 
 use rustc_macros::HashStable;
 
-use std::convert::TryFrom;
 use std::fmt::{self, Display};
 
 /// Used by `check_in_alloc` to indicate context of check

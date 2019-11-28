@@ -1,11 +1,17 @@
 error[E0107]: wrong number of const arguments: expected 0, found 1
-  --> $DIR/invalid-const-arg-for-type-param.rs:6:34
+  --> $DIR/invalid-const-arg-for-type-param.rs:4:34
    |
 LL |     let _: u32 = 5i32.try_into::<32>().unwrap();
    |                                  ^^ unexpected const argument
 
+error[E0107]: wrong number of type arguments: expected 1, found 0
+  --> $DIR/invalid-const-arg-for-type-param.rs:4:23
+   |
+LL |     let _: u32 = 5i32.try_into::<32>().unwrap();
+   |                       ^^^^^^^^ expected 1 type argument
+
 error[E0599]: no method named `f` found for type `S` in the current scope
-  --> $DIR/invalid-const-arg-for-type-param.rs:7:7
+  --> $DIR/invalid-const-arg-for-type-param.rs:6:7
    |
 LL | struct S;
    | --------- method `f` not found for this
@@ -14,12 +20,12 @@ LL |     S.f::<0>();
    |       ^ method not found in `S`
 
 error[E0107]: wrong number of const arguments: expected 0, found 1
-  --> $DIR/invalid-const-arg-for-type-param.rs:8:9
+  --> $DIR/invalid-const-arg-for-type-param.rs:7:9
    |
 LL |     S::<0>;
    |         ^ unexpected const argument
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0107, E0599.
 For more information about an error, try `rustc --explain E0107`.

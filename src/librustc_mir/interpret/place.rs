@@ -2,7 +2,6 @@
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
 
-use std::convert::TryFrom;
 use std::hash::Hash;
 
 use rustc::mir;

@@ -10,8 +10,6 @@ use rustc::ty::util::IntTypeExt;
 use rustc_index::vec::Idx;
 use crate::util::patch::MirPatch;
 
-use std::convert::TryInto;
-
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum DropFlagState {
     Present, // i.e., initialized

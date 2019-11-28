@@ -3,8 +3,6 @@ use crate::io::prelude::*;
 use crate::cmp;
 use crate::io::{self, Initializer, SeekFrom, Error, ErrorKind, IoSlice, IoSliceMut};
 
-use core::convert::TryInto;
-
 /// A `Cursor` wraps an in-memory buffer and provides it with a
 /// [`Seek`] implementation.
 ///

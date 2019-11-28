@@ -2,7 +2,6 @@
 
 #![allow(unused_must_use)]
 
-use std::convert::TryFrom;
 use std::num::TryFromIntError;
 
 fn main() {

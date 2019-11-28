@@ -26,8 +26,6 @@ mod simplify;
 mod test;
 mod util;
 
-use std::convert::TryFrom;
-
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Generates MIR for a `match` expression.
     ///

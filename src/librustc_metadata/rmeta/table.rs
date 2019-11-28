@@ -2,7 +2,6 @@ use crate::rmeta::*;
 
 use rustc_index::vec::Idx;
 use rustc_serialize::{Encodable, opaque::Encoder};
-use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 use log::debug;

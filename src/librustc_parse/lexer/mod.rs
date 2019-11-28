@@ -9,7 +9,6 @@ use rustc_lexer::Base;
 use rustc_lexer::unescape;
 
 use std::char;
-use std::convert::TryInto;
 use rustc_data_structures::sync::Lrc;
 use log::debug;
 

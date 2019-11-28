@@ -3,7 +3,6 @@ use crate::fmt;
 use crate::mem;
 use crate::sys::c;
 use crate::time::Duration;
-use crate::convert::TryInto;
 
 use core::hash::{Hash, Hasher};
 

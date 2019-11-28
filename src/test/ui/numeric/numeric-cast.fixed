@@ -1,8 +1,5 @@
 // run-rustfix
 
-// The `try_into` suggestion doesn't include this, but we do suggest it after applying it
-use std::convert::TryInto;
-
 fn foo<N>(_x: N) {}
 
 fn main() {

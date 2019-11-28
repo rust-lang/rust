@@ -253,7 +253,6 @@ use arena::TypedArena;
 
 use smallvec::{smallvec, SmallVec};
 use std::cmp::{self, max, min, Ordering};
-use std::convert::TryInto;
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
 use std::ops::RangeInclusive;

@@ -1,4 +1,4 @@
-use core::convert::{TryFrom, TryInto};
+use core::convert::TryFrom;
 use core::cmp::PartialEq;
 use core::fmt::Debug;
 use core::marker::Copy;

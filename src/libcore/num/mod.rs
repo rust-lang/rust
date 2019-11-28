@@ -4,7 +4,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::convert::TryFrom;
+use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
@@ -275,6 +275,28 @@ $EndFeature, "
             #[rustc_promotable]
             pub const fn max_value() -> Self {
                 !Self::min_value()
+            }
+        }
+
+        doc_comment! {
+            "FIXME docs",
+            #[stable(feature = "int_inherent_try_from_try_into", since = "1.41.0")]
+            #[inline]
+            pub fn try_from<T>(value: T) -> Result<Self, <Self as TryFrom<T>>::Error>
+                where Self: TryFrom<T>
+            {
+                TryFrom::try_from(value)
+            }
+        }
+
+        doc_comment! {
+            "FIXME docs",
+            #[stable(feature = "int_inherent_try_from_try_into", since = "1.41.0")]
+            #[inline]
+            pub fn try_into<T>(self) -> Result<T, <Self as TryInto<T>>::Error>
+                where Self: TryInto<T>
+            {
+                TryInto::try_into(self)
             }
         }
 
@@ -2338,6 +2360,28 @@ stringify!($MaxV), ");", $EndFeature, "
             #[rustc_promotable]
             #[inline(always)]
             pub const fn max_value() -> Self { !0 }
+        }
+
+        doc_comment! {
+            "FIXME docs",
+            #[stable(feature = "int_inherent_try_from_try_into", since = "1.41.0")]
+            #[inline]
+            pub fn try_from<T>(value: T) -> Result<Self, <Self as TryFrom<T>>::Error>
+                where Self: TryFrom<T>
+            {
+                TryFrom::try_from(value)
+            }
+        }
+
+        doc_comment! {
+            "FIXME docs",
+            #[stable(feature = "int_inherent_try_from_try_into", since = "1.41.0")]
+            #[inline]
+            pub fn try_into<T>(self) -> Result<T, <Self as TryInto<T>>::Error>
+                where Self: TryInto<T>
+            {
+                TryInto::try_into(self)
+            }
         }
 
         doc_comment! {

@@ -18,7 +18,7 @@
 //! take the universally-correct slow path (Algorithm M) for very small and very large numbers.
 //! That algorithm needs only next_float() which does handle subnormals and zeros.
 use crate::cmp::Ordering::{Equal, Greater, Less};
-use crate::convert::{TryFrom, TryInto};
+use crate::convert::TryFrom;
 use crate::fmt::{Debug, LowerExp};
 use crate::num::dec2flt::num::{self, Big};
 use crate::num::dec2flt::table;
