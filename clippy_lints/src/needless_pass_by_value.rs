@@ -8,8 +8,7 @@ use matches::matches;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::mem_categorization as mc;
+use rustc_typeck::expr_use_visitor as euv;
 use rustc::traits;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::{declare_lint_pass, declare_tool_lint};
@@ -326,7 +325,7 @@ struct MovedVariablesCtxt {
 }
 
 impl MovedVariablesCtxt {
-    fn move_common(&mut self, cmt: &mc::Place<'_>) {
+    fn move_common(&mut self, cmt: &euv::Place<'_>) {
         let cmt = unwrap_downcast_or_interior(cmt);
 
         if let mc::Categorization::Local(vid) = cmt.cat {
@@ -336,18 +335,18 @@ impl MovedVariablesCtxt {
 }
 
 impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
-    fn consume(&mut self, cmt: &mc::Place<'tcx>, mode: euv::ConsumeMode) {
+    fn consume(&mut self, cmt: &euv::Place<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move = mode {
             self.move_common(cmt);
         }
     }
 
-    fn borrow(&mut self, _: &mc::Place<'tcx>, _: ty::BorrowKind) {}
+    fn borrow(&mut self, _: &euv::Place<'tcx>, _: ty::BorrowKind) {}
 
-    fn mutate(&mut self, _: &mc::Place<'tcx>) {}
+    fn mutate(&mut self, _: &euv::Place<'tcx>) {}
 }
 
-fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::Place<'tcx>) -> mc::Place<'tcx> {
+fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a euv::Place<'tcx>) -> euv::Place<'tcx> {
     loop {
         match cmt.cat {
             mc::Categorization::Downcast(ref c, _) | mc::Categorization::Interior(ref c, _) => {

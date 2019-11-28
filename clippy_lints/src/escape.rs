@@ -1,8 +1,7 @@
 use rustc::hir::intravisit as visit;
 use rustc::hir::{self, *};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::{Place, Categorization};
+use rustc_typeck::expr_use_visitor::*;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use rustc::util::nodemap::HirIdSet;

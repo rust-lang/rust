@@ -1,9 +1,7 @@
 use rustc::hir::def::Res;
 use rustc::hir::*;
 use rustc::lint::LateContext;
-use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::Place;
-use rustc::middle::mem_categorization::Categorization;
+use rustc_typeck::expr_use_visitor::*;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 
