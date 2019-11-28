@@ -378,10 +378,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
-    fn check_crate(&mut self, cx: &LateContext<'_, '_>, krate: &hir::Crate) {
+    fn check_crate(&mut self, cx: &LateContext<'_, '_>, krate: &hir::Crate<'_>) {
         self.check_missing_docs_attrs(cx, None, &krate.attrs, krate.span, "crate");
 
-        for macro_def in &krate.exported_macros {
+        for macro_def in krate.exported_macros {
             let has_doc = macro_def.attrs.iter().any(|a| has_doc(a));
             if !has_doc {
                 cx.span_lint(MISSING_DOCS,

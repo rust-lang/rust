@@ -1076,7 +1076,7 @@ struct UsePlacementFinder<'tcx> {
 impl UsePlacementFinder<'tcx> {
     fn check(
         tcx: TyCtxt<'tcx>,
-        krate: &'tcx hir::Crate,
+        krate: &'tcx hir::Crate<'tcx>,
         target_module: hir::HirId,
     ) -> (Option<Span>, bool) {
         let mut finder = UsePlacementFinder {

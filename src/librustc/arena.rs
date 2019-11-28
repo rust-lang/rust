@@ -93,7 +93,6 @@ macro_rules! arena_types {
                         rustc::hir::def_id::CrateNum
                     >
                 >,
-            [few] hir_forest: rustc::hir::map::Forest,
             [few] diagnostic_items: rustc_data_structures::fx::FxHashMap<
                 syntax::symbol::Symbol,
                 rustc::hir::def_id::DefId,
@@ -123,6 +122,10 @@ macro_rules! arena_types {
             [few] crate_variances: rustc::ty::CrateVariancesMap<'tcx>,
             [few] inferred_outlives_crate: rustc::ty::CratePredicatesMap<'tcx>,
             [] upvars: rustc_data_structures::fx::FxIndexMap<rustc::hir::HirId, rustc::hir::Upvar>,
+            // HIR nodes arenas
+            [few] hir_forest: rustc::hir::map::Forest<$tcx>,
+            [] attribute: syntax::ast::Attribute,
+            [] macro_def: rustc::hir::MacroDef,
         ], $tcx);
     )
 }

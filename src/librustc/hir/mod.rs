@@ -742,13 +742,13 @@ pub struct ModuleItems {
 ///
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Crate {
+pub struct Crate<'hir> {
     pub module: Mod,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub span: Span,
-    pub exported_macros: HirVec<MacroDef>,
+    pub exported_macros: &'hir [MacroDef],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
-    pub non_exported_macro_attrs: HirVec<Attribute>,
+    pub non_exported_macro_attrs: &'hir [Attribute],
 
     // N.B., we use a `BTreeMap` here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not
@@ -774,7 +774,7 @@ pub struct Crate {
     pub modules: BTreeMap<HirId, ModuleItems>,
 }
 
-impl Crate {
+impl Crate<'_> {
     pub fn item(&self, id: HirId) -> &Item {
         &self.items[&id]
     }

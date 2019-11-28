@@ -24,11 +24,11 @@ use syntax_pos::Span;
 
 use rustc_error_codes::*;
 
-pub(super) struct ItemLowerer<'tcx, 'interner> {
-    pub(super) lctx: &'tcx mut LoweringContext<'interner>,
+pub(super) struct ItemLowerer<'a, 'lowering, 'hir> {
+    pub(super) lctx: &'a mut LoweringContext<'lowering, 'hir>,
 }
 
-impl<'tcx, 'interner> ItemLowerer<'tcx, 'interner> {
+impl<'a, 'lowering, 'hir> ItemLowerer<'a, 'lowering, 'hir> {
     fn with_trait_impl_ref<F>(&mut self, trait_impl_ref: &Option<TraitRef>, f: F)
     where
         F: FnOnce(&mut Self),
@@ -44,8 +44,8 @@ impl<'tcx, 'interner> ItemLowerer<'tcx, 'interner> {
     }
 }
 
-impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
-    fn visit_mod(&mut self, m: &'tcx Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
+impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
+    fn visit_mod(&mut self, m: &'a Mod, _s: Span, _attrs: &[Attribute], n: NodeId) {
         let hir_id = self.lctx.lower_node_id(n);
 
         self.lctx.modules.insert(hir_id, hir::ModuleItems {
@@ -60,7 +60,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
         self.lctx.current_module = old;
     }
 
-    fn visit_item(&mut self, item: &'tcx Item) {
+    fn visit_item(&mut self, item: &'a Item) {
         let mut item_hir_id = None;
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             lctx.without_in_scope_lifetime_defs(|lctx| {
@@ -85,7 +85,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
         }
     }
 
-    fn visit_trait_item(&mut self, item: &'tcx AssocItem) {
+    fn visit_trait_item(&mut self, item: &'a AssocItem) {
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_trait_item(item);
             let id = hir::TraitItemId { hir_id: hir_item.hir_id };
@@ -96,7 +96,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
         visit::walk_trait_item(self, item);
     }
 
-    fn visit_impl_item(&mut self, item: &'tcx AssocItem) {
+    fn visit_impl_item(&mut self, item: &'a AssocItem) {
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_impl_item(item);
             let id = hir::ImplItemId { hir_id: hir_item.hir_id };
@@ -107,7 +107,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
     }
 }
 
-impl LoweringContext<'_> {
+impl LoweringContext<'_, '_> {
     // Same as the method above, but accepts `hir::GenericParam`s
     // instead of `ast::GenericParam`s.
     // This should only be used with generics that have already had their
@@ -116,7 +116,7 @@ impl LoweringContext<'_> {
     fn with_parent_item_lifetime_defs<T>(
         &mut self,
         parent_hir_id: hir::HirId,
-        f: impl FnOnce(&mut LoweringContext<'_>) -> T,
+        f: impl FnOnce(&mut LoweringContext<'_, '_>) -> T,
     ) -> T {
         let old_len = self.in_scope_lifetimes.len();
 
@@ -144,7 +144,7 @@ impl LoweringContext<'_> {
     // from their surrounding environment.
     fn without_in_scope_lifetime_defs<T>(
         &mut self,
-        f: impl FnOnce(&mut LoweringContext<'_>) -> T,
+        f: impl FnOnce(&mut LoweringContext<'_, '_>) -> T,
     ) -> T {
         let old_in_scope_lifetimes = std::mem::replace(&mut self.in_scope_lifetimes, vec![]);
 
@@ -1055,7 +1055,7 @@ impl LoweringContext<'_> {
 
     fn lower_body(
         &mut self,
-        f: impl FnOnce(&mut LoweringContext<'_>) -> (HirVec<hir::Param>, hir::Expr),
+        f: impl FnOnce(&mut LoweringContext<'_, '_>) -> (HirVec<hir::Param>, hir::Expr),
     ) -> hir::BodyId {
         let prev_gen_kind = self.generator_kind.take();
         let (parameters, result) = f(self);
@@ -1076,7 +1076,7 @@ impl LoweringContext<'_> {
     pub(super) fn lower_fn_body(
         &mut self,
         decl: &FnDecl,
-        body: impl FnOnce(&mut LoweringContext<'_>) -> hir::Expr,
+        body: impl FnOnce(&mut LoweringContext<'_, '_>) -> hir::Expr,
     ) -> hir::BodyId {
         self.lower_body(|this| (
             decl.inputs.iter().map(|x| this.lower_param(x)).collect(),

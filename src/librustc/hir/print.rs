@@ -52,7 +52,7 @@ pub struct NoAnn;
 impl PpAnn for NoAnn {}
 pub const NO_ANN: &dyn PpAnn = &NoAnn;
 
-impl PpAnn for hir::Crate {
+impl PpAnn for hir::Crate<'a> {
     fn try_fetch_item(&self, item: hir::HirId) -> Option<&hir::Item> {
         Some(self.item(item))
     }
@@ -107,7 +107,7 @@ pub const INDENT_UNIT: usize = 4;
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
-                       krate: &hir::Crate,
+                       krate: &hir::Crate<'a>,
                        filename: FileName,
                        input: String,
                        ann: &'a dyn PpAnn) -> String {

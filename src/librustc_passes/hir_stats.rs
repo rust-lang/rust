@@ -23,12 +23,12 @@ struct NodeData {
 }
 
 struct StatCollector<'k> {
-    krate: Option<&'k hir::Crate>,
+    krate: Option<&'k hir::Crate<'k>>,
     data: FxHashMap<&'static str, NodeData>,
     seen: FxHashSet<Id>,
 }
 
-pub fn print_hir_stats(krate: &hir::Crate) {
+pub fn print_hir_stats(krate: &hir::Crate<'_>) {
     let mut collector = StatCollector {
         krate: Some(krate),
         data: FxHashMap::default(),

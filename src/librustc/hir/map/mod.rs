@@ -153,20 +153,20 @@ impl<'hir> Entry<'hir> {
 }
 
 /// Stores a crate and any number of inlined items from other crates.
-pub struct Forest {
-    krate: Crate,
+pub struct Forest<'hir> {
+    krate: Crate<'hir>,
     pub dep_graph: DepGraph,
 }
 
-impl Forest {
-    pub fn new(krate: Crate, dep_graph: &DepGraph) -> Forest {
+impl Forest<'hir> {
+    pub fn new(krate: Crate<'hir>, dep_graph: &DepGraph) -> Forest<'hir> {
         Forest {
             krate,
             dep_graph: dep_graph.clone(),
         }
     }
 
-    pub fn krate(&self) -> &Crate {
+    pub fn krate(&self) -> &Crate<'hir> {
         self.dep_graph.read(DepNode::new_no_params(DepKind::Krate));
         &self.krate
     }
@@ -174,7 +174,7 @@ impl Forest {
     /// This is used internally in the dependency tracking system.
     /// Use the `krate` method to ensure your dependency on the
     /// crate is tracked.
-    pub fn untracked_krate(&self) -> &Crate {
+    pub fn untracked_krate(&self) -> &Crate<'hir> {
         &self.krate
     }
 }
@@ -189,7 +189,7 @@ pub(super) type HirEntryMap<'hir> = IndexVec<DefIndex, IndexVec<ItemLocalId, Opt
 #[derive(Clone)]
 pub struct Map<'hir> {
     /// The backing storage for all the AST nodes.
-    pub forest: &'hir Forest,
+    pub forest: &'hir Forest<'hir>,
 
     /// Same as the dep_graph in forest, just available with one fewer
     /// deref. This is a gratuitous micro-optimization.
@@ -439,7 +439,7 @@ impl<'hir> Map<'hir> {
         self.lookup(id).cloned()
     }
 
-    pub fn krate(&self) -> &'hir Crate {
+    pub fn krate(&self) -> &'hir Crate<'hir> {
         self.forest.krate()
     }
 
@@ -1257,7 +1257,7 @@ impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
 pub fn map_crate<'hir>(sess: &crate::session::Session,
                        cstore: &CrateStoreDyn,
-                       forest: &'hir Forest,
+                       forest: &'hir Forest<'hir>,
                        definitions: Definitions)
                        -> Map<'hir> {
     let _prof_timer = sess.prof.generic_activity("build_hir_map");

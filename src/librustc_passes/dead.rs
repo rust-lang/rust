@@ -355,7 +355,7 @@ fn has_allow_dead_code_or_lang_attr(
 //     * Implementation of a trait method
 struct LifeSeeder<'k, 'tcx> {
     worklist: Vec<hir::HirId>,
-    krate: &'k hir::Crate,
+    krate: &'k hir::Crate<'k>,
     tcx: TyCtxt<'tcx>,
     // see `MarkSymbolVisitor::struct_constructors`
     struct_constructors: FxHashMap<hir::HirId, hir::HirId>,
@@ -429,7 +429,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
 fn create_and_seed_worklist<'tcx>(
     tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
-    krate: &hir::Crate,
+    krate: &hir::Crate<'_>,
 ) -> (Vec<hir::HirId>, FxHashMap<hir::HirId, hir::HirId>) {
     let worklist = access_levels.map.iter().filter_map(|(&id, level)| {
         if level >= &privacy::AccessLevel::Reachable {
@@ -457,7 +457,7 @@ fn create_and_seed_worklist<'tcx>(
 fn find_live<'tcx>(
     tcx: TyCtxt<'tcx>,
     access_levels: &privacy::AccessLevels,
-    krate: &hir::Crate,
+    krate: &hir::Crate<'_>,
 ) -> FxHashSet<hir::HirId> {
     let (worklist, struct_constructors) = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor {

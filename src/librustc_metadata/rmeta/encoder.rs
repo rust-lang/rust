@@ -342,7 +342,7 @@ impl<'tcx> EncodeContext<'tcx> {
         let vis = Spanned { span: syntax_pos::DUMMY_SP, node: hir::VisibilityKind::Public };
         self.encode_info_for_mod(hir::CRATE_HIR_ID, &krate.module, &krate.attrs, &vis);
         krate.visit_all_item_likes(&mut self.as_deep_visitor());
-        for macro_def in &krate.exported_macros {
+        for macro_def in krate.exported_macros {
             self.visit_macro_def(macro_def);
         }
     }

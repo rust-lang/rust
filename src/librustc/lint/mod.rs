@@ -90,8 +90,8 @@ macro_rules! late_lint_methods {
             fn check_body(a: &$hir hir::Body);
             fn check_body_post(a: &$hir hir::Body);
             fn check_name(a: Span, b: ast::Name);
-            fn check_crate(a: &$hir hir::Crate);
-            fn check_crate_post(a: &$hir hir::Crate);
+            fn check_crate(a: &$hir hir::Crate<$hir>);
+            fn check_crate_post(a: &$hir hir::Crate<$hir>);
             fn check_mod(a: &$hir hir::Mod, b: Span, c: hir::HirId);
             fn check_mod_post(a: &$hir hir::Mod, b: Span, c: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem);
@@ -562,7 +562,7 @@ fn lint_levels(tcx: TyCtxt<'_>, cnum: CrateNum) -> &LintLevelMap {
 
     let push = builder.levels.push(&krate.attrs, &store);
     builder.levels.register_id(hir::CRATE_HIR_ID);
-    for macro_def in &krate.exported_macros {
+    for macro_def in krate.exported_macros {
        builder.levels.register_id(macro_def.hir_id);
     }
     intravisit::walk_crate(&mut builder, krate);

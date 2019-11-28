@@ -72,7 +72,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     pub fn visit(mut self, krate: &'tcx hir::Crate) -> Module<'tcx> {
         let mut module = self.visit_mod_contents(krate.span,
-                                              &krate.attrs,
+                                              krate.attrs,
                                               &Spanned { span: syntax_pos::DUMMY_SP,
                                                         node: hir::VisibilityKind::Public },
                                               hir::CRATE_HIR_ID,
@@ -213,7 +213,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_mod_contents(&mut self, span: Span, attrs: &'tcx hir::HirVec<ast::Attribute>,
+    fn visit_mod_contents(&mut self, span: Span, attrs: &'tcx [ast::Attribute],
                               vis: &'tcx hir::Visibility, id: hir::HirId,
                               m: &'tcx hir::Mod,
                               name: Option<ast::Name>) -> Module<'tcx> {
