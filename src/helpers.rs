@@ -1,6 +1,7 @@
 use std::{mem, iter};
 use std::ffi::{OsStr, OsString};
 
+use syntax::source_map::DUMMY_SP;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use rustc::mir;
 use rustc::ty::{
@@ -116,6 +117,40 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         this.memory.write_bytes(ptr, data.iter().copied())
+    }
+
+    /// Call a function: Push the stack frame and pass the arguments.
+    /// For now, arguments must be scalars (so that the caller does not have to know the layout).
+    fn call_function(
+        &mut self,
+        f: ty::Instance<'tcx>,
+        args: &[Scalar<Tag>],
+        dest: Option<PlaceTy<'tcx, Tag>>,
+        stack_pop: StackPopCleanup,
+    ) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+
+        // Push frame.
+        let mir = this.load_mir(f.def, None)?;
+        this.push_stack_frame(
+            f,
+            DUMMY_SP, // There is no call site.
+            mir,
+            dest,
+            stack_pop,
+        )?;
+
+        // Initialize arguments.
+        let mut callee_args = this.frame().body.args_iter();
+        for arg in args {
+            let callee_arg = this.local_place(
+                callee_args.next().expect("callee has fewer arguments than expected")
+            )?;
+            this.write_scalar(*arg, callee_arg)?;
+        }
+        callee_args.next().expect_none("callee has more arguments than expected");
+
+        Ok(())
     }
 
     /// Visits the memory covered by `place`, sensitive to freezing: the 3rd parameter

@@ -37,7 +37,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Handles the special "miri_start_panic" intrinsic, which is called
     /// by libpanic_unwind to delegate the actual unwinding process to Miri.
-    #[inline(always)]
     fn handle_miri_start_panic(
         &mut self,
         args: &[OpTy<'tcx, Tag>],
@@ -57,7 +56,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         return Ok(())
     }
 
-    #[inline(always)]
     fn handle_catch_panic(
         &mut self,
         args: &[OpTy<'tcx, Tag>],
@@ -83,29 +81,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Now we make a function call, and pass `f_arg` as first and only argument.
         let f_instance = this.memory.get_fn(f)?.as_instance()?;
         trace!("__rust_maybe_catch_panic: {:?}", f_instance);
-        // TODO: consider making this reusable? `InterpCx::step` does something similar
-        // for the TLS destructors, and of course `eval_main`.
-        let mir = this.load_mir(f_instance.def, None)?;
         let ret_place =
             MPlaceTy::dangling(this.layout_of(tcx.mk_unit())?, this).into();
-        this.push_stack_frame(
+        this.call_function(
             f_instance,
-            mir.span,
-            mir,
+            &[f_arg],
             Some(ret_place),
             // Directly return to caller.
             StackPopCleanup::Goto { ret: Some(ret), unwind: None },
         )?;
-
-        let mut args = this.frame().body.args_iter();
-        // First argument.
-        let arg_local = args
-            .next()
-            .expect("Argument to __rust_maybe_catch_panic does not take enough arguments.");
-        let arg_dest = this.local_place(arg_local)?;
-        this.write_scalar(f_arg, arg_dest)?;
-        // No more arguments.
-        args.next().expect_none("__rust_maybe_catch_panic argument has more arguments than expected");
 
         // We ourselves will return `0`, eventually (will be overwritten if we catch a panic).
         this.write_null(dest)?;
@@ -124,7 +108,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         return Ok(());
     }
 
-    #[inline(always)]
     fn handle_stack_pop(
         &mut self,
         mut extra: FrameData<'tcx>,
