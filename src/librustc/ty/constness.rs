@@ -40,6 +40,10 @@ impl<'tcx> TyCtxt<'tcx> {
     /// for being called from stable `const fn`s (`min_const_fn`).
     ///
     /// Adding more intrinsics requires sign-off from @rust-lang/lang.
+    ///
+    /// This list differs from the list in `is_const_intrinsic` in the sense that any item on this
+    /// list must be on the `is_const_intrinsic` list, too, because if an intrinsic is callable from
+    /// stable, it must be callable at all.
     fn is_intrinsic_min_const_fn(self, def_id: DefId) -> bool {
         match self.item_name(def_id) {
             | sym::size_of
@@ -108,6 +112,11 @@ pub fn provide(providers: &mut Providers<'_>) {
                 match tcx.item_name(def_id) {
                     // Keep this list in the same order as the match patterns in
                     // `librustc_mir/interpret/intrinsics.rs`
+
+                    // This whitelist is a list of intrinsics that have a miri-engine implementation
+                    // and can thus be called when enabling enough feature gates. The similar
+                    // whitelist in `is_intrinsic_min_const_fn` (in this file), exists for allowing
+                    // the intrinsics to be transitively called by stable const fns.
                     | sym::caller_location
 
                     | sym::min_align_of
