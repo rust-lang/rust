@@ -150,7 +150,7 @@ All pull requests are reviewed by another person. We have a bot,
 request.
 
 If you want to request that a specific person reviews your pull request,
-you can add an `r?` to the pull request message. For example, [Steve][steveklabnik] usually reviews
+you can add an `r?` to the pull request description. For example, [Steve][steveklabnik] usually reviews
 documentation changes. So if you were to make a documentation change, add
 
     r? @steveklabnik
