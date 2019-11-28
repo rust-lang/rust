@@ -10,6 +10,7 @@
 register_diagnostics! {
 E0001: include_str!("./error_codes/E0001.md"),
 E0002: include_str!("./error_codes/E0002.md"),
+E0003: include_str!("./error_codes/E0003.md"),
 E0004: include_str!("./error_codes/E0004.md"),
 E0005: include_str!("./error_codes/E0005.md"),
 E0007: include_str!("./error_codes/E0007.md"),
