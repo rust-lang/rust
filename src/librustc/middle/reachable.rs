@@ -387,7 +387,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 'tcx
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {}
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
         // processed in visit_item above

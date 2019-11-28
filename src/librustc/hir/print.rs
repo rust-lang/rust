@@ -846,7 +846,7 @@ impl<'a> State<'a> {
                       body_id)
     }
 
-    pub fn print_trait_item(&mut self, ti: &hir::TraitItem) {
+    pub fn print_trait_item(&mut self, ti: &hir::TraitItem<'_>) {
         self.ann.pre(self, AnnNode::SubItem(ti.hir_id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());

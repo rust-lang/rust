@@ -53,7 +53,7 @@ impl MaybeFnLike for ast::ImplItem {
     }
 }
 
-impl MaybeFnLike for ast::TraitItem {
+impl MaybeFnLike for ast::TraitItem<'_> {
     fn is_fn_like(&self) -> bool {
         match self.kind {
             ast::TraitItemKind::Method(_, ast::TraitMethod::Provided(_)) => true,

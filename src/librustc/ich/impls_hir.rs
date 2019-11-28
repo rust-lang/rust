@@ -150,7 +150,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Expr {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::TraitItem<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::TraitItem {
             hir_id: _,

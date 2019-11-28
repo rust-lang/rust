@@ -1087,7 +1087,7 @@ impl ParItemLikeVisitor<'tcx> for CheckTypeWellFormedVisitor<'tcx> {
         self.tcx.ensure().check_item_well_formed(def_id);
     }
 
-    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         debug!("visit_trait_item: {:?}", trait_item);
         let def_id = self.tcx.hir().local_def_id(trait_item.hir_id);
         self.tcx.ensure().check_trait_item_well_formed(def_id);

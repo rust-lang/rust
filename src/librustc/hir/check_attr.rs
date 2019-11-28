@@ -107,7 +107,7 @@ impl Target {
         }
     }
 
-    fn from_trait_item(trait_item: &TraitItem) -> Target {
+    fn from_trait_item(trait_item: &TraitItem<'_>) -> Target {
         match trait_item.kind {
             TraitItemKind::Const(..) => Target::AssocConst,
             TraitItemKind::Method(_, hir::TraitMethod::Required(_)) => {
@@ -498,7 +498,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         intravisit::walk_item(self, item)
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
         let target = Target::from_trait_item(trait_item);
         self.check_attributes(trait_item.hir_id, &trait_item.attrs, &trait_item.span, target, None);
         intravisit::walk_trait_item(self, trait_item)

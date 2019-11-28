@@ -124,8 +124,8 @@ macro_rules! late_lint_methods {
                 d: Span,
                 e: hir::HirId
             );
-            fn check_trait_item(a: &$hir hir::TraitItem);
-            fn check_trait_item_post(a: &$hir hir::TraitItem);
+            fn check_trait_item(a: &$hir hir::TraitItem<$hir>);
+            fn check_trait_item_post(a: &$hir hir::TraitItem<$hir>);
             fn check_impl_item(a: &$hir hir::ImplItem);
             fn check_impl_item_post(a: &$hir hir::ImplItem);
             fn check_struct_def(a: &$hir hir::VariantData);
@@ -649,7 +649,7 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
         })
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |builder| {
             intravisit::walk_trait_item(builder, trait_item);
         });

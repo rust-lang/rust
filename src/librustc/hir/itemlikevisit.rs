@@ -46,7 +46,7 @@ use super::intravisit::Visitor;
 /// needed.
 pub trait ItemLikeVisitor<'hir> {
     fn visit_item(&mut self, item: &'hir Item<'hir>);
-    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem);
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>);
     fn visit_impl_item(&mut self, impl_item: &'hir ImplItem);
 }
 
@@ -69,7 +69,7 @@ impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
         self.visitor.visit_item(item);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'hir TraitItem<'hir>) {
         self.visitor.visit_trait_item(trait_item);
     }
 
@@ -81,7 +81,7 @@ impl<'v, 'hir, V> ItemLikeVisitor<'hir> for DeepVisitor<'v, V>
 /// A parallel variant of `ItemLikeVisitor`.
 pub trait ParItemLikeVisitor<'hir> {
     fn visit_item(&self, item: &'hir Item<'hir>);
-    fn visit_trait_item(&self, trait_item: &'hir TraitItem);
+    fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>);
     fn visit_impl_item(&self, impl_item: &'hir ImplItem);
 }
 
@@ -99,7 +99,7 @@ impl<'hir, V> ParItemLikeVisitor<'hir> for ParDeepVisitor<V>
         self.0.into_visitor().visit_item(item);
     }
 
-    fn visit_trait_item(&self, trait_item: &'hir TraitItem) {
+    fn visit_trait_item(&self, trait_item: &'hir TraitItem<'hir>) {
         self.0.into_visitor().visit_trait_item(trait_item);
     }
 

@@ -417,7 +417,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _item: &hir::TraitItem<'_>) {
         // ignore: we are handling this in `visit_item` above
     }
 
@@ -662,7 +662,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 
     // Overwrite so that we don't warn the trait item itself.
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         match trait_item.kind {
             hir::TraitItemKind::Const(_, Some(body_id)) |
             hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(body_id)) => {

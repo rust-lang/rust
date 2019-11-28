@@ -758,7 +758,7 @@ pub struct Crate<'hir> {
     // slightly different results.
     pub items: BTreeMap<HirId, Item<'hir>>,
 
-    pub trait_items: BTreeMap<TraitItemId, TraitItem>,
+    pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
     pub bodies: BTreeMap<BodyId, Body>,
     pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
@@ -779,7 +779,7 @@ impl Crate<'hir> {
         &self.items[&id]
     }
 
-    pub fn trait_item(&self, id: TraitItemId) -> &TraitItem {
+    pub fn trait_item(&self, id: TraitItemId) -> &TraitItem<'hir> {
         &self.trait_items[&id]
     }
 
@@ -1897,12 +1897,12 @@ pub struct TraitItemId {
 /// either required (meaning it doesn't have an implementation, just a
 /// signature) or provided (meaning it has a default implementation).
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct TraitItem {
+pub struct TraitItem<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub generics: Generics,
-    pub kind: TraitItemKind,
+    pub kind: TraitItemKind<'hir>,
     pub span: Span,
 }
 
@@ -1918,14 +1918,14 @@ pub enum TraitMethod {
 
 /// Represents a trait method or associated constant or type
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum TraitItemKind {
+pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
-    Const(P<Ty>, Option<BodyId>),
+    Const(&'hir Ty, Option<BodyId>),
     /// A method with an optional body.
     Method(FnSig, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
-    Type(GenericBounds, Option<P<Ty>>),
+    Type(GenericBounds, Option<&'hir Ty>),
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -2789,7 +2789,7 @@ pub enum Node<'hir> {
     Param(&'hir Param),
     Item(&'hir Item<'hir>),
     ForeignItem(&'hir ForeignItem<'hir>),
-    TraitItem(&'hir TraitItem),
+    TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem),
     Variant(&'hir Variant),
     Field(&'hir StructField),

@@ -283,7 +283,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         self.in_trait_impl = orig_in_trait_impl;
     }
 
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
         self.annotate(ti.hir_id, &ti.attrs, ti.span, AnnotationKind::Required, |v| {
             intravisit::walk_trait_item(v, ti);
         });
@@ -368,7 +368,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_item(self, i)
     }
 
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem<'tcx>) {
         self.check_missing_stability(ti.hir_id, ti.span, "item");
         intravisit::walk_trait_item(self, ti);
     }

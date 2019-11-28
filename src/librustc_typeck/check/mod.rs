@@ -754,7 +754,7 @@ impl ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item<'tcx>) {
         check_item_type(self.tcx, i);
     }
-    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) { }
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem<'tcx>) { }
     fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
 }
 

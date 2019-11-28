@@ -145,7 +145,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_expr(self, expr);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         convert_trait_item(self.tcx, trait_item.hir_id);
         intravisit::walk_trait_item(self, trait_item);
     }
@@ -1711,7 +1711,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 intravisit::walk_impl_item(self, it);
             }
         }
-        fn visit_trait_item(&mut self, it: &'tcx TraitItem) {
+        fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
             debug!("find_existential_constraints: visiting {:?}", it);
             let def_id = self.tcx.hir().local_def_id(it.hir_id);
             self.check(def_id);

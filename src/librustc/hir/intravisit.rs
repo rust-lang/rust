@@ -295,7 +295,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_use(&mut self, path: &'v Path, hir_id: HirId) {
         walk_use(self, path, hir_id)
     }
-    fn visit_trait_item(&mut self, ti: &'v TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'v TraitItem<'v>) {
         walk_trait_item(self, ti)
     }
     fn visit_trait_item_ref(&mut self, ii: &'v TraitItemRef) {
@@ -849,9 +849,9 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
     visitor.visit_nested_body(body_id)
 }
 
-pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
+pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem<'v>) {
     visitor.visit_ident(trait_item.ident);
-    walk_list!(visitor, visit_attribute, &trait_item.attrs);
+    walk_list!(visitor, visit_attribute, trait_item.attrs);
     visitor.visit_generics(&trait_item.generics);
     match trait_item.kind {
         TraitItemKind::Const(ref ty, default) => {

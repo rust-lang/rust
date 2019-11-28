@@ -443,7 +443,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate()
     }
 
-    pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem {
+    pub fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir> {
         self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we
@@ -973,7 +973,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem {
+    pub fn expect_trait_item(&self, id: HirId) -> &'hir TraitItem<'hir> {
         match self.find(id) {
             Some(Node::TraitItem(item)) => item,
             _ => bug!("expected trait item, found {}", self.node_to_string(id))
@@ -1252,7 +1252,7 @@ impl Named for Item<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for ForeignItem<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for Variant { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
-impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for TraitItem<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
 pub fn map_crate<'hir>(sess: &crate::session::Session,

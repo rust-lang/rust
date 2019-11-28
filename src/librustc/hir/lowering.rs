@@ -97,7 +97,7 @@ pub struct LoweringContext<'a, 'hir: 'a> {
     /// The items being lowered are collected here.
     items: BTreeMap<hir::HirId, hir::Item<'hir>>,
 
-    trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
+    trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: BTreeMap<hir::BodyId, hir::Body>,
     exported_macros: Vec<hir::MacroDef<'hir>>,

@@ -59,7 +59,10 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyAndCache<'_> {
             (*body_id, ty.span)
         }
         | Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(ty, body_id), .. })
-        | Node::TraitItem(
+        => {
+            (*body_id, ty.span)
+        }
+        Node::TraitItem(
             hir::TraitItem { kind: hir::TraitItemKind::Const(ty, Some(body_id)), .. }
         ) => {
             (*body_id, ty.span)

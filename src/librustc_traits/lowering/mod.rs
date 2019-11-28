@@ -674,7 +674,7 @@ impl Visitor<'tcx> for ClauseDumper<'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         self.process_attrs(trait_item.hir_id, &trait_item.attrs);
         intravisit::walk_trait_item(self, trait_item);
     }

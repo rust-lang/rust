@@ -1072,7 +1072,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         hir_visit::walk_poly_trait_ref(self, t, m);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem<'tcx>) {
         let generics = self.context.generics.take();
         self.context.generics = Some(&trait_item.generics);
         self.with_lint_attrs(trait_item.hir_id, &trait_item.attrs, |cx| {

@@ -40,7 +40,7 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
         find_item(item, self, at_root);
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &'tcx TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &'tcx TraitItem<'tcx>) {
         // Entry fn is never a trait item.
     }
 

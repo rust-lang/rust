@@ -70,6 +70,12 @@ impl<T: Clean<U>, U, V: Idx> Clean<IndexVec<V, U>> for IndexVec<V, T> {
     }
 }
 
+impl<T: Clean<U>, U> Clean<U> for &T {
+    fn clean(&self, cx: &DocContext<'_>) -> U {
+        (**self).clean(cx)
+    }
+}
+
 impl<T: Clean<U>, U> Clean<U> for P<T> {
     fn clean(&self, cx: &DocContext<'_>) -> U {
         (**self).clean(cx)
@@ -1080,7 +1086,7 @@ impl Clean<PolyTrait> for hir::PolyTraitRef {
     }
 }
 
-impl Clean<Item> for hir::TraitItem {
+impl Clean<Item> for hir::TraitItem<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> Item {
         let inner = match self.kind {
             hir::TraitItemKind::Const(ref ty, default) => {
@@ -2383,12 +2389,6 @@ impl Clean<Stability> for attr::Stability {
                 _ => None,
             }
         }
-    }
-}
-
-impl<'a> Clean<Stability> for &'a attr::Stability {
-    fn clean(&self, dc: &DocContext<'_>) -> Stability {
-        (**self).clean(dc)
     }
 }
 

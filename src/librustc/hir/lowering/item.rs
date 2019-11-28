@@ -816,14 +816,14 @@ impl LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem {
+    fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem<'hir> {
         let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
             AssocItemKind::Const(ref ty, ref default) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::TraitItemKind::Const(
-                    self.lower_ty(ty, ImplTraitContext::disallowed()),
+                    self.arena.alloc(self.lower_ty(ty, ImplTraitContext::disallowed()).into_inner()),
                     default
                         .as_ref()
                         .map(|x| self.lower_const_body(i.span, Some(x))),
@@ -852,12 +852,13 @@ impl LoweringContext<'_, 'hir> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
             AssocItemKind::TyAlias(ref bounds, ref default) => {
+                let ty = default.as_ref().map(|x| -> &'hir hir::Ty { self.arena.alloc(
+                        self.lower_ty(x, ImplTraitContext::disallowed()).into_inner())
+                });
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let kind = hir::TraitItemKind::Type(
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
-                    default
-                        .as_ref()
-                        .map(|x| self.lower_ty(x, ImplTraitContext::disallowed())),
+                    ty,
                 );
 
                 (generics, kind)
@@ -868,7 +869,7 @@ impl LoweringContext<'_, 'hir> {
         hir::TraitItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
-            attrs: self.lower_attrs(&i.attrs),
+            attrs: self.lower_attrs_arena(&i.attrs),
             generics,
             kind,
             span: i.span,

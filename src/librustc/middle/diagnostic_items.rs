@@ -29,7 +29,7 @@ impl<'v, 'tcx> ItemLikeVisitor<'v> for DiagnosticItemCollector<'tcx> {
         self.observe_item(&item.attrs, item.hir_id);
     }
 
-    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, trait_item: &hir::TraitItem<'_>) {
         self.observe_item(&trait_item.attrs, trait_item.hir_id);
     }
 

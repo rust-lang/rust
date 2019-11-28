@@ -1059,7 +1059,7 @@ impl ItemLikeVisitor<'v> for RootCollector<'_, 'v> {
         }
     }
 
-    fn visit_trait_item(&mut self, _: &'v hir::TraitItem) {
+    fn visit_trait_item(&mut self, _: &'v hir::TraitItem<'v>) {
         // Even if there's a default body with no explicit generics,
         // it's still generic over some `Self: Trait`, so not a root.
     }

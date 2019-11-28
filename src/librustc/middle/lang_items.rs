@@ -151,7 +151,7 @@ impl ItemLikeVisitor<'v> for LanguageItemCollector<'tcx> {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
         // At present, lang items are always items, not trait items.
     }
 

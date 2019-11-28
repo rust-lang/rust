@@ -398,7 +398,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         intravisit::walk_generic_param(self, param);
     }
 
-    fn visit_trait_item(&mut self, ti: &'hir TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
         debug_assert_eq!(ti.hir_id.owner,
                          self.definitions.opt_def_index(self.hir_to_node_id[&ti.hir_id]).unwrap());
         self.with_dep_node_owner(ti.hir_id.owner, ti, |this| {

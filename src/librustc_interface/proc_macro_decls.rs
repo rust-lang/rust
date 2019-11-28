@@ -30,7 +30,7 @@ impl<'v> ItemLikeVisitor<'v> for Finder {
         }
     }
 
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
+    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem<'_>) {
     }
 
     fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {

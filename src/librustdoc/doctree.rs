@@ -179,7 +179,7 @@ pub struct Trait<'hir> {
     pub is_auto: hir::IsAuto,
     pub unsafety: hir::Unsafety,
     pub name: Name,
-    pub items: Vec<&'hir hir::TraitItem>,
+    pub items: Vec<&'hir hir::TraitItem<'hir>>,
     pub generics: &'hir hir::Generics,
     pub bounds: &'hir [hir::GenericBound],
     pub attrs: &'hir [ast::Attribute],

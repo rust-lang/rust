@@ -264,7 +264,7 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    fn trait_item_scope_tag(item: &hir::TraitItem) -> &'static str {
+    fn trait_item_scope_tag(item: &hir::TraitItem<'_>) -> &'static str {
         match item.kind {
             hir::TraitItemKind::Method(..) => "method body",
             hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => "associated item",
