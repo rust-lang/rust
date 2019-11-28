@@ -155,7 +155,7 @@ documentation changes. So if you were to make a documentation change, add
 
     r? @steveklabnik
 
-to the end of the pull request message, and [@rust-highfive][rust-highfive] will assign
+to the end of the pull request description, and [@rust-highfive][rust-highfive] will assign
 [@steveklabnik][steveklabnik] instead of a random person. This is entirely optional.
 
 After someone has reviewed your pull request, they will leave an annotation
