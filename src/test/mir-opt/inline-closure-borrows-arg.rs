@@ -21,8 +21,8 @@ fn foo<T: Copy>(_t: T, q: &i32) -> i32 {
 //     debug _t => _1;
 //     debug q => _2;
 //     let mut _0: i32;
-//     let _3: [closure@HirId { owner: DefIndex(4), local_id: 31 }];
-//     let mut _4: &[closure@HirId { owner: DefIndex(4), local_id: 31 }];
+//     let _3: [closure@foo<T>::{{closure}}#0];
+//     let mut _4: &[closure@foo<T>::{{closure}}#0];
 //     let mut _5: (&i32, &i32);
 //     let mut _6: &i32;
 //     let mut _7: &i32;
@@ -40,7 +40,7 @@ fn foo<T: Copy>(_t: T, q: &i32) -> i32 {
 //     }
 //     bb0: {
 //         ...
-//         _3 = [closure@HirId { owner: DefIndex(4), local_id: 31 }];
+//         _3 = [closure@foo::<T>::{{closure}}#0];
 //         ...
 //         _4 = &_3;
 //         ...
