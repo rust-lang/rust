@@ -37,10 +37,10 @@ install:
 build: false
 
 build_script:
-  - cargo build --features debugging
+  - cargo build --features deny-warnings
 
 test_script:
-  - cargo test --features debugging
+  - cargo test --features deny-warnings
 
 notifications:
   - provider: Email

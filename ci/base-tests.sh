@@ -12,12 +12,12 @@ if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
   remark -f ./*.md -f doc/*.md > /dev/null
 fi
 # build clippy in debug mode and run tests
-cargo build --features "debugging deny-warnings"
-cargo test --features "debugging deny-warnings"
+cargo build --features deny-warnings
+cargo test --features deny-warnings
 
-(cd clippy_lints && cargo test)
-(cd rustc_tools_util && cargo test)
-(cd clippy_dev && cargo test)
+(cd clippy_lints && cargo test --features deny-warnings)
+(cd rustc_tools_util && cargo test --features deny-warnings)
+(cd clippy_dev && cargo test --features deny-warnings)
 
 # make sure clippy can be called via ./path/to/cargo-clippy
 (

@@ -1,3 +1,5 @@
+#![cfg_attr(feature = "deny-warnings", deny(warnings))]
+
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
