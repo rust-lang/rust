@@ -29,6 +29,8 @@ pub mod resolver;
 mod trace;
 pub mod nameres;
 
+pub mod src;
+
 #[cfg(test)]
 mod test_db;
 #[cfg(test)]
@@ -37,7 +39,7 @@ mod marks;
 use std::hash::{Hash, Hasher};
 
 use hir_expand::{ast_id_map::FileAstId, db::AstDatabase, AstId, HirFileId, InFile, MacroDefId};
-use ra_arena::{impl_arena_id, map::ArenaMap, RawId};
+use ra_arena::{impl_arena_id, RawId};
 use ra_db::{impl_intern_key, salsa, CrateId};
 use ra_syntax::{ast, AstNode};
 
@@ -513,54 +515,4 @@ impl HasModule for StaticLoc {
     fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
         self.container
     }
-}
-
-pub trait HasSource {
-    type Value;
-    fn source(&self, db: &impl db::DefDatabase) -> InFile<Self::Value>;
-}
-
-impl HasSource for FunctionLoc {
-    type Value = ast::FnDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::FnDef> {
-        let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id, node)
-    }
-}
-
-impl HasSource for TypeAliasLoc {
-    type Value = ast::TypeAliasDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::TypeAliasDef> {
-        let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id, node)
-    }
-}
-
-impl HasSource for ConstLoc {
-    type Value = ast::ConstDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::ConstDef> {
-        let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id, node)
-    }
-}
-
-impl HasSource for StaticLoc {
-    type Value = ast::StaticDef;
-
-    fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::StaticDef> {
-        let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id, node)
-    }
-}
-
-pub trait HasChildSource {
-    type ChildId;
-    type Value;
-    fn child_source(
-        &self,
-        db: &impl db::DefDatabase,
-    ) -> InFile<ArenaMap<Self::ChildId, Self::Value>>;
 }

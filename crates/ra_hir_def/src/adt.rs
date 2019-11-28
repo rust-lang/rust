@@ -11,7 +11,7 @@ use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
-    db::DefDatabase, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId, HasChildSource,
+    db::DefDatabase, src::HasChildSource, trace::Trace, type_ref::TypeRef, AstItemDef, EnumId,
     LocalEnumVariantId, LocalStructFieldId, StructId, UnionId, VariantId,
 };
 

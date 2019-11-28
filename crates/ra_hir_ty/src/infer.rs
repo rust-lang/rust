@@ -693,7 +693,7 @@ impl Expectation {
 }
 
 mod diagnostics {
-    use hir_def::{expr::ExprId, FunctionId, HasSource, Lookup};
+    use hir_def::{expr::ExprId, src::HasSource, FunctionId, Lookup};
     use hir_expand::diagnostics::DiagnosticSink;
 
     use crate::{db::HirDatabase, diagnostics::NoSuchField};

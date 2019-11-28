@@ -8,7 +8,11 @@ use std::sync::Arc;
 use hir_expand::either::Either;
 use ra_syntax::ast;
 
-use crate::{db::DefDatabase, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup};
+use crate::{
+    db::DefDatabase,
+    src::{HasChildSource, HasSource},
+    AdtId, AstItemDef, AttrDefId, Lookup,
+};
 
 /// Holds documentation
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -11,7 +11,8 @@ use ra_syntax::{
 use tt::Subtree;
 
 use crate::{
-    db::DefDatabase, path::Path, AdtId, AstItemDef, AttrDefId, HasChildSource, HasSource, Lookup,
+    db::DefDatabase, path::Path, src::HasChildSource, src::HasSource, AdtId, AstItemDef, AttrDefId,
+    Lookup,
 };
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
