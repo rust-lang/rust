@@ -411,8 +411,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         _: &mut InterpCx<'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
-        _: Option<PlaceTy<'tcx>>,
-        _: Option<BasicBlock>,
+        _: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _: Option<BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         panic!();
@@ -423,8 +422,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         _: Span,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
-        _: Option<PlaceTy<'tcx>>,
-        _: Option<BasicBlock>,
+        _: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
         panic!();
@@ -468,7 +466,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         _: &mut InterpCx<'mir, 'tcx, Self>,
         _: !,
         _: &[OpTy<'tcx, ()>],
-        _: Option<PlaceTy<'tcx, ()>>,
+        _: Option<(PlaceTy<'tcx, ()>, BasicBlock)>,
         _: Option<BasicBlock>,
     ) -> InterpResult<'tcx> {
         unreachable!();
