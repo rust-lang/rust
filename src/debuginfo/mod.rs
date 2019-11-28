@@ -3,8 +3,9 @@ mod line_info;
 
 use crate::prelude::*;
 
-use cranelift::codegen::ir::{StackSlots, ValueLoc};
+use cranelift::codegen::ir::{StackSlots, ValueLabel, ValueLoc};
 use cranelift::codegen::isa::RegUnit;
+use cranelift::codegen::ValueLocRange;
 
 use gimli::write::{
     self, Address, AttributeValue, DwarfUnit, Expression, LineProgram, LineString, Location,
@@ -228,21 +229,13 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         }
     }
 
-    fn define_local(&mut self, local: mir::Local) -> UnitEntryId {
-        let local_decl = &self.mir.local_decls[local];
-
+    fn define_local(&mut self, name: String, ty: Ty<'tcx>) -> UnitEntryId {
         let ty = self.debug_context.tcx.subst_and_normalize_erasing_regions(
             self.instance.substs,
             ty::ParamEnv::reveal_all(),
-            &local_decl.ty,
+            &ty,
         );
         let dw_ty = self.debug_context.dwarf_ty(ty);
-
-        let name = if let Some(name) = local_decl.name {
-            format!("{}{:?}", name.as_str(), local)
-        } else {
-            format!("{:?}", local)
-        };
 
         let var_id = self
             .debug_context
@@ -280,57 +273,82 @@ impl<'a, 'tcx> FunctionDebugContext<'a, 'tcx> {
         let value_labels_ranges = context.build_value_labels_ranges(isa).unwrap();
 
         for (local, _local_decl) in self.mir.local_decls.iter_enumerated() {
-            let var_id = self.define_local(local);
-            let value_label = cranelift::codegen::ir::ValueLabel::from_u32(local.as_u32());
+            let var_id = self.define_local(format!("{:?}", local), &self.mir.local_decls[local].ty);
 
-            let location = match local_map[&local].inner() {
-                CPlaceInner::Var(_) => {
-                    if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {
-                        let loc_list = LocationList(
-                            value_loc_ranges
-                                .iter()
-                                .map(|value_loc_range| Location::StartEnd {
-                                    begin: Address::Symbol {
-                                        symbol: self.symbol,
-                                        addend: i64::from(value_loc_range.start),
-                                    },
-                                    end: Address::Symbol {
-                                        symbol: self.symbol,
-                                        addend: i64::from(value_loc_range.end),
-                                    },
-                                    data: Expression(
-                                        translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap(),
-                                    ),
-                                })
-                                .collect(),
-                        );
-                        let loc_list_id = self.debug_context.dwarf.unit.locations.add(loc_list);
-
-                        AttributeValue::LocationListRef(loc_list_id)
-                    } else {
-                        // FIXME set value labels for unused locals
-
-                        AttributeValue::Exprloc(Expression(vec![]))
-                    }
-                }
-                CPlaceInner::Addr(_, _) => {
-                    // FIXME implement this (used by arguments and returns)
-
-                    AttributeValue::Exprloc(Expression(vec![]))
-                }
-                CPlaceInner::Stack(stack_slot) => {
-                    AttributeValue::Exprloc(Expression(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap()))
-                }
-                CPlaceInner::NoPlace => AttributeValue::Exprloc(Expression(vec![])),
-            };
+            let location = place_location(
+                self,
+                context,
+                &local_map,
+                &value_labels_ranges,
+                Place {
+                    base: PlaceBase::Local(local),
+                    projection: ty::List::empty(),
+                },
+            );
 
             let var_entry = self.debug_context.dwarf.unit.get_mut(var_id);
             var_entry.set(gimli::DW_AT_location, location);
         }
+
+        // FIXME create locals for all entries in mir.var_debug_info
     }
 }
 
+fn place_location<'a, 'tcx>(
+    func_debug_ctx: &mut FunctionDebugContext<'a, 'tcx>,
+    context: &Context,
+    local_map: &HashMap<mir::Local, CPlace<'tcx>>,
+    value_labels_ranges: &HashMap<ValueLabel, Vec<ValueLocRange>>,
+    place: Place<'tcx>,
+) -> AttributeValue {
+    assert!(place.projection.is_empty()); // FIXME implement them
+    let cplace = match place.base {
+        PlaceBase::Local(local) => local_map[&local],
+        PlaceBase::Static(_) => bug!("Unenforced invariant that the place is based on a Local violated: {:?}", place),
+    };
 
+    match cplace.inner() {
+        CPlaceInner::Var(local) => {
+            let value_label = cranelift::codegen::ir::ValueLabel::from_u32(local.as_u32());
+            if let Some(value_loc_ranges) = value_labels_ranges.get(&value_label) {
+                let loc_list = LocationList(
+                    value_loc_ranges
+                        .iter()
+                        .map(|value_loc_range| Location::StartEnd {
+                            begin: Address::Symbol {
+                                symbol: func_debug_ctx.symbol,
+                                addend: i64::from(value_loc_range.start),
+                            },
+                            end: Address::Symbol {
+                                symbol: func_debug_ctx.symbol,
+                                addend: i64::from(value_loc_range.end),
+                            },
+                            data: Expression(
+                                translate_loc(value_loc_range.loc, &context.func.stack_slots).unwrap(),
+                            ),
+                        })
+                        .collect(),
+                );
+                let loc_list_id = func_debug_ctx.debug_context.dwarf.unit.locations.add(loc_list);
+
+                AttributeValue::LocationListRef(loc_list_id)
+            } else {
+                // FIXME set value labels for unused locals
+
+                AttributeValue::Exprloc(Expression(vec![]))
+            }
+        }
+        CPlaceInner::Addr(_, _) => {
+            // FIXME implement this (used by arguments and returns)
+
+            AttributeValue::Exprloc(Expression(vec![]))
+        }
+        CPlaceInner::Stack(stack_slot) => {
+            AttributeValue::Exprloc(Expression(translate_loc(ValueLoc::Stack(*stack_slot), &context.func.stack_slots).unwrap()))
+        }
+        CPlaceInner::NoPlace => AttributeValue::Exprloc(Expression(vec![])),
+    }
+}
 
 
 
