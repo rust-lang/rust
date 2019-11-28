@@ -152,7 +152,7 @@ impl<'a, 'tcx> EscapeDelegate<'a, 'tcx> {
     fn is_large_box(&self, ty: Ty<'tcx>) -> bool {
         // Large types need to be boxed to avoid stack overflows.
         if ty.is_box() {
-            self.cx.layout_of(ty.boxed_ty()).ok().map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
+            self.cx.layout_of(ty.boxed_ty()).map_or(0, |l| l.size.bytes()) > self.too_large_for_stack
         } else {
             false
         }

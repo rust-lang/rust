@@ -1,4 +1,5 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
+#![feature(result_map_or)]
 #![feature(rustc_private)]
 
 // FIXME: switch to something more ergonomic here, once available.
@@ -319,7 +320,7 @@ pub fn main() {
             // this check ensures that dependencies are built but not linted and the final
             // crate is
             // linted but not built
-            let clippy_enabled = env::var("CLIPPY_TESTS").ok().map_or(false, |val| val == "true")
+            let clippy_enabled = env::var("CLIPPY_TESTS").map_or(false, |val| val == "true")
                 || arg_value(&orig_args, "--emit", |val| val.split(',').any(|e| e == "metadata")).is_some();
 
             if clippy_enabled {

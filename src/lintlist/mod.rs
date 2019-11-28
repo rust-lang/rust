@@ -1697,7 +1697,7 @@ pub const ALL_LINTS: [Lint; 337] = [
     Lint {
         name: "result_map_unwrap_or_else",
         group: "pedantic",
-        desc: "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.ok().map_or_else(g, f)`",
+        desc: "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.map_or_else(g, f)`",
         deprecation: None,
         module: "methods",
     },
