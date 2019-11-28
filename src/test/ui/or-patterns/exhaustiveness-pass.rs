@@ -43,13 +43,16 @@ fn main() {
         _ => {}
     }
 
-     // FIXME(or_patterns): Redundancies not detected for now.
     match (0,) {
-        (1 | 1,) => {}
+        (1
+         | 1,) => {} //~ ERROR unreachable
         _ => {}
     }
     match [0; 2] {
-        [0 | 0, 0 | 0] => {}
+        [0
+            | 0 //~ ERROR unreachable
+        , 0
+            | 0] => {} //~ ERROR unreachable
         _ => {}
     }
     match &[][..] {
@@ -57,12 +60,14 @@ fn main() {
         [0, _] => {}
         [0, _, _] => {}
         [1, ..] => {}
-        [1 | 2, ..] => {}
+        [1 //~ ERROR unreachable
+            | 2, ..] => {}
         _ => {}
     }
     match Some(0) {
         Some(0) => {}
-        Some(0 | 1) => {}
+        Some(0 //~ ERROR unreachable
+             | 1) => {}
         _ => {}
     }
 }

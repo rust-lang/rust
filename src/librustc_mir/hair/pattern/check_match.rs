@@ -468,7 +468,16 @@ fn check_arms<'p, 'tcx>(
                         hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                     }
                 }
-                Useful => (),
+                Useful(unreachable_subpatterns) => {
+                    for pat in unreachable_subpatterns {
+                        cx.tcx.lint_hir(
+                            lint::builtin::UNREACHABLE_PATTERNS,
+                            hir_pat.hir_id,
+                            pat.span,
+                            "unreachable pattern",
+                        );
+                    }
+                }
                 UsefulWithWitness(_) => bug!(),
             }
             if guard.is_none() {
@@ -496,7 +505,7 @@ fn check_not_useful<'p, 'tcx>(
         } else {
             pats.into_iter().map(|w| w.single_pattern()).collect()
         }),
-        Useful => bug!(),
+        Useful(_) => bug!(),
     }
 }
 

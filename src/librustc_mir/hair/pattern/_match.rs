@@ -455,6 +455,7 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
 }
 
 /// A 2D matrix.
+#[derive(Clone)]
 pub struct Matrix<'p, 'tcx>(Vec<PatStack<'p, 'tcx>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -1025,17 +1026,19 @@ impl<'tcx> Constructor<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub enum Usefulness<'tcx> {
-    Useful,
+pub enum Usefulness<'tcx, 'p> {
+    /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
+    Useful(Vec<&'p Pat<'tcx>>),
+    /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
 }
 
-impl<'tcx> Usefulness<'tcx> {
+impl<'tcx, 'p> Usefulness<'tcx, 'p> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
             ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-            LeaveOutWitness => Useful,
+            LeaveOutWitness => Useful(vec![]),
         }
     }
 
@@ -1602,7 +1605,7 @@ pub fn is_useful<'p, 'tcx>(
     v: &PatStack<'p, 'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
-) -> Usefulness<'tcx> {
+) -> Usefulness<'tcx, 'p> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1623,11 +1626,26 @@ pub fn is_useful<'p, 'tcx>(
 
     // If the first pattern is an or-pattern, expand it.
     if let Some(vs) = v.expand_or_pat() {
-        return vs
-            .into_iter()
-            .map(|v| is_useful(cx, matrix, &v, witness_preference, hir_id))
-            .find(|result| result.is_useful())
-            .unwrap_or(NotUseful);
+        // We need to push the already-seen patterns into the matrix in order to detect redundant
+        // branches like `Some(_) | Some(0)`. We also keep track of the unreachable subpatterns.
+        let mut matrix = matrix.clone();
+        let mut unreachable_pats = Vec::new();
+        let mut any_is_useful = false;
+        for v in vs {
+            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+            match res {
+                Useful(pats) => {
+                    any_is_useful = true;
+                    unreachable_pats.extend(pats);
+                }
+                NotUseful => unreachable_pats.push(v.head()),
+                UsefulWithWitness(_) => {
+                    bug!("Encountered or-pat in `v` during exhaustiveness checking")
+                }
+            }
+            matrix.push(v);
+        }
+        return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
     }
 
     let (ty, span) = matrix
@@ -1768,7 +1786,7 @@ fn is_useful_specialized<'p, 'tcx>(
     lty: Ty<'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
-) -> Usefulness<'tcx> {
+) -> Usefulness<'tcx, 'p> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
     let ctor_wild_subpatterns =
