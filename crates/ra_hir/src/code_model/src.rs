@@ -105,7 +105,7 @@ impl HasSource for TypeAlias {
 impl HasSource for MacroDef {
     type Ast = ast::MacroCall;
     fn source(self, db: &impl DefDatabase) -> InFile<ast::MacroCall> {
-        InFile { file_id: self.id.ast_id.file_id(), value: self.id.ast_id.to_node(db) }
+        InFile { file_id: self.id.ast_id.file_id, value: self.id.ast_id.to_node(db) }
     }
 }
 impl HasSource for ImplBlock {

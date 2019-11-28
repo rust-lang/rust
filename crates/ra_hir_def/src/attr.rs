@@ -157,7 +157,7 @@ where
     N: ast::AttrsOwner,
     D: DefDatabase,
 {
-    let src = InFile::new(src.file_id(), src.to_node(db));
+    let src = InFile::new(src.file_id, src.to_node(db));
     Attrs::from_attrs_owner(db, src.as_ref().map(|it| it as &dyn AttrsOwner))
 }
 

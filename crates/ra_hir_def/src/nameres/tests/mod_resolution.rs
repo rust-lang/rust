@@ -668,7 +668,7 @@ fn unresolved_module_diagnostics() {
             module: LocalModuleId(
                 0,
             ),
-            declaration: AstId {
+            declaration: InFile {
                 file_id: HirFileId(
                     FileId(
                         FileId(
@@ -676,7 +676,7 @@ fn unresolved_module_diagnostics() {
                         ),
                     ),
                 ),
-                file_ast_id: FileAstId {
+                value: FileAstId {
                     raw: ErasedFileAstId(
                         1,
                     ),

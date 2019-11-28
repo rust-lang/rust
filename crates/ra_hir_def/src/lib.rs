@@ -108,7 +108,7 @@ pub trait AstItemDef<N: AstNode>: salsa::InternKey + Clone {
     fn source(self, db: &(impl AstDatabase + InternDatabase)) -> InFile<N> {
         let loc = self.lookup_intern(db);
         let value = loc.ast_id.to_node(db);
-        InFile { file_id: loc.ast_id.file_id(), value }
+        InFile { file_id: loc.ast_id.file_id, value }
     }
     fn module(self, db: &impl InternDatabase) -> ModuleId {
         let loc = self.lookup_intern(db);
@@ -525,7 +525,7 @@ impl HasSource for FunctionLoc {
 
     fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::FnDef> {
         let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id, node)
     }
 }
 
@@ -534,7 +534,7 @@ impl HasSource for TypeAliasLoc {
 
     fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::TypeAliasDef> {
         let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id, node)
     }
 }
 
@@ -543,7 +543,7 @@ impl HasSource for ConstLoc {
 
     fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::ConstDef> {
         let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id, node)
     }
 }
 
@@ -552,7 +552,7 @@ impl HasSource for StaticLoc {
 
     fn source(&self, db: &impl db::DefDatabase) -> InFile<ast::StaticDef> {
         let node = self.ast_id.to_node(db);
-        InFile::new(self.ast_id.file_id(), node)
+        InFile::new(self.ast_id.file_id, node)
     }
 }
 
