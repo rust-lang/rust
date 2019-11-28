@@ -415,6 +415,47 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 _ => Ty::Unknown,
             },
+            Expr::RangeFull => match self.resolve_range_full() {
+                Some(adt) => Ty::simple(TypeCtor::Adt(adt)),
+                None => Ty::Unknown,
+            },
+            Expr::Range { lhs, rhs } => {
+                let lhs_ty = self.infer_expr(*lhs, &Expectation::none());
+                let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(lhs_ty));
+                match self.resolve_range() {
+                    Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), rhs_ty),
+                    None => Ty::Unknown,
+                }
+            }
+            Expr::RangeInclusive { lhs, rhs } => {
+                let lhs_ty = self.infer_expr(*lhs, &Expectation::none());
+                let rhs_ty = self.infer_expr(*rhs, &Expectation::has_type(lhs_ty));
+                match self.resolve_range_inclusive() {
+                    Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), rhs_ty),
+                    None => Ty::Unknown,
+                }
+            }
+            Expr::RangeFrom { lhs } => {
+                let ty = self.infer_expr(*lhs, &Expectation::none());
+                match self.resolve_range_from() {
+                    Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                    None => Ty::Unknown,
+                }
+            }
+            Expr::RangeTo { rhs } => {
+                let ty = self.infer_expr(*rhs, &Expectation::none());
+                match self.resolve_range_to() {
+                    Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                    None => Ty::Unknown,
+                }
+            }
+            Expr::RangeToInclusive { rhs } => {
+                let ty = self.infer_expr(*rhs, &Expectation::none());
+                match self.resolve_range_to_inclusive() {
+                    Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                    None => Ty::Unknown,
+                }
+            }
             Expr::Index { base, index } => {
                 let _base_ty = self.infer_expr(*base, &Expectation::none());
                 let _index_ty = self.infer_expr(*index, &Expectation::none());

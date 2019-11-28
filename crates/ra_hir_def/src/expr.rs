@@ -130,6 +130,24 @@ pub enum Expr {
         rhs: ExprId,
         op: Option<BinaryOp>,
     },
+    RangeFull,
+    RangeFrom {
+        lhs: ExprId,
+    },
+    RangeTo {
+        rhs: ExprId,
+    },
+    Range {
+        lhs: ExprId,
+        rhs: ExprId,
+    },
+    RangeToInclusive {
+        rhs: ExprId,
+    },
+    RangeInclusive {
+        lhs: ExprId,
+        rhs: ExprId,
+    },
     Index {
         base: ExprId,
         index: ExprId,
@@ -284,7 +302,9 @@ impl Expr {
             Expr::Lambda { body, .. } => {
                 f(*body);
             }
-            Expr::BinaryOp { lhs, rhs, .. } => {
+            Expr::BinaryOp { lhs, rhs, .. }
+            | Expr::Range { lhs, rhs }
+            | Expr::RangeInclusive { lhs, rhs } => {
                 f(*lhs);
                 f(*rhs);
             }
@@ -292,7 +312,11 @@ impl Expr {
                 f(*base);
                 f(*index);
             }
-            Expr::Field { expr, .. }
+            Expr::RangeFull => {}
+            Expr::RangeFrom { lhs: expr }
+            | Expr::RangeTo { rhs: expr }
+            | Expr::RangeToInclusive { rhs: expr }
+            | Expr::Field { expr, .. }
             | Expr::Await { expr }
             | Expr::Try { expr }
             | Expr::Cast { expr, .. }
