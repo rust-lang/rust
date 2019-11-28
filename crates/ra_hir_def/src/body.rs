@@ -17,7 +17,8 @@ use crate::{
     expr::{Expr, ExprId, Pat, PatId},
     nameres::CrateDefMap,
     path::Path,
-    DefWithBodyId, HasModule, HasSource, Lookup, ModuleId,
+    src::HasSource,
+    DefWithBodyId, HasModule, Lookup, ModuleId,
 };
 
 struct Expander {

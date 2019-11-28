@@ -9,8 +9,9 @@ use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::DefDatabase,
+    src::HasSource,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, ContainerId, GenericDefId, HasSource, Lookup,
+    AdtId, AstItemDef, ContainerId, GenericDefId, Lookup,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).

@@ -10,9 +10,10 @@ use ra_syntax::ast::{self, NameOwner, TypeAscriptionOwner};
 
 use crate::{
     db::DefDatabase,
+    src::HasSource,
     type_ref::{Mutability, TypeRef},
-    AssocItemId, AstItemDef, ConstId, ConstLoc, ContainerId, FunctionId, FunctionLoc, HasSource,
-    ImplId, Intern, Lookup, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
+    AssocItemId, AstItemDef, ConstId, ConstLoc, ContainerId, FunctionId, FunctionLoc, ImplId,
+    Intern, Lookup, StaticId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

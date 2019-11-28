@@ -1,6 +1,9 @@
 //! FIXME: write short doc here
 
-use hir_def::{AstItemDef, HasChildSource, HasSource as _, Lookup, VariantId};
+use hir_def::{
+    src::{HasChildSource, HasSource as _},
+    AstItemDef, Lookup, VariantId,
+};
 use hir_expand::either::Either;
 use ra_syntax::ast;
 
