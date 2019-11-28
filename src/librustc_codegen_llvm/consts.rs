@@ -232,7 +232,7 @@ impl CodegenCx<'ll, 'tcx> {
             let llty = self.layout_of(ty).llvm_type(self);
             let (g, attrs) = match self.tcx.hir().get(id) {
                 Node::Item(&hir::Item {
-                    ref attrs, span, kind: hir::ItemKind::Static(..), ..
+                    attrs, span, kind: hir::ItemKind::Static(..), ..
                 }) => {
                     let sym_str = sym.as_str();
                     if let Some(g) = self.get_declared_value(&sym_str) {
@@ -256,7 +256,7 @@ impl CodegenCx<'ll, 'tcx> {
                     ref attrs, span, kind: hir::ForeignItemKind::Static(..), ..
                 }) => {
                     let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), attrs)
+                    (check_and_apply_linkage(&self, &fn_attrs, ty, sym, span), &**attrs)
                 }
 
                 item => bug!("get_static: expected static, found {:?}", item)

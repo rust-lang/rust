@@ -127,7 +127,7 @@ macro_rules! arena_types {
             [] attribute: syntax::ast::Attribute,
             [] global_asm: rustc::hir::GlobalAsm,
             [] impl_item_ref: rustc::hir::ImplItemRef,
-            [] macro_def: rustc::hir::MacroDef,
+            [] macro_def: rustc::hir::MacroDef<$tcx>,
             [] path: rustc::hir::Path,
             [] trait_item_ref: rustc::hir::TraitItemRef,
             [] ty: rustc::hir::Ty,

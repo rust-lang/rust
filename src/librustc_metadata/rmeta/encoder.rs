@@ -1160,7 +1160,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.visibility[def_id] <-
             ty::Visibility::from_hir(&item.vis, item.hir_id, tcx));
         record!(self.per_def.span[def_id] <- item.span);
-        record!(self.per_def.attributes[def_id] <- &item.attrs);
+        record!(self.per_def.attributes[def_id] <- item.attrs);
         // FIXME(eddyb) there should be a nicer way to do this.
         match item.kind {
             hir::ItemKind::ForeignMod(ref fm) => record!(self.per_def.children[def_id] <-
@@ -1271,7 +1271,7 @@ impl EncodeContext<'tcx> {
     }
 
     /// Serialize the text of exported macros
-    fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) {
+    fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef<'_>) {
         use syntax::print::pprust;
         let def_id = self.tcx.hir().local_def_id(macro_def.hir_id);
         record!(self.per_def.kind[def_id] <- EntryKind::MacroDef(self.lazy(MacroDef {
@@ -1280,7 +1280,7 @@ impl EncodeContext<'tcx> {
         })));
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);
         record!(self.per_def.span[def_id] <- macro_def.span);
-        record!(self.per_def.attributes[def_id] <- &macro_def.attrs);
+        record!(self.per_def.attributes[def_id] <- macro_def.attrs);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
     }
@@ -1599,7 +1599,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         intravisit::walk_generics(self, generics);
         self.encode_info_for_generics(generics);
     }
-    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'tcx hir::MacroDef<'tcx>) {
         self.encode_info_for_macro_def(macro_def);
     }
 }

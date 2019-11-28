@@ -4,7 +4,7 @@
 //! conflicts between multiple such attributes attached to the same
 //! item.
 
-use crate::hir::{self, HirId, HirVec, Attribute, Item, ItemKind, TraitItem, TraitItemKind};
+use crate::hir::{self, HirId, Attribute, Item, ItemKind, TraitItem, TraitItemKind};
 use crate::hir::DUMMY_HIR_ID;
 use crate::hir::def_id::DefId;
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -158,7 +158,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_attributes(
         &self,
         hir_id: HirId,
-        attrs: &HirVec<Attribute>,
+        attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
         item: Option<&Item<'_>>,
@@ -241,7 +241,7 @@ impl CheckAttrVisitor<'tcx> {
     fn check_track_caller(
         &self,
         attr_span: &Span,
-        attrs: &HirVec<Attribute>,
+        attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
     ) -> bool {
@@ -332,7 +332,7 @@ impl CheckAttrVisitor<'tcx> {
     /// Checks if the `#[repr]` attributes on `item` are valid.
     fn check_repr(
         &self,
-        attrs: &HirVec<Attribute>,
+        attrs: &'hir [Attribute],
         span: &Span,
         target: Target,
         item: Option<&Item<'_>>,
@@ -477,7 +477,7 @@ impl CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_used(&self, attrs: &HirVec<Attribute>, target: Target) {
+    fn check_used(&self, attrs: &'hir [Attribute], target: Target) {
         for attr in attrs {
             if attr.check_name(sym::used) && target != Target::Static {
                 self.tcx.sess
@@ -494,7 +494,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         let target = Target::from_item(item);
-        self.check_attributes(item.hir_id, &item.attrs, &item.span, target, Some(item));
+        self.check_attributes(item.hir_id, item.attrs, &item.span, target, Some(item));
         intravisit::walk_item(self, item)
     }
 

@@ -870,7 +870,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         intravisit::walk_mod(self, m, id);
     }
 
-    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         if attr::find_transparency(&md.attrs, md.legacy).0 != Transparency::Opaque {
             self.update(md.hir_id, Some(AccessLevel::Public));
             return

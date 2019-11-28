@@ -324,7 +324,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
         });
     }
 
-    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.annotate(md.hir_id, &md.attrs, md.span, AnnotationKind::Required, |_| {});
     }
 }
@@ -397,7 +397,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_foreign_item(self, i);
     }
 
-    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef) {
+    fn visit_macro_def(&mut self, md: &'tcx hir::MacroDef<'tcx>) {
         self.check_missing_stability(md.hir_id, md.span, "macro");
     }
 }

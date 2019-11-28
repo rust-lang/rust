@@ -100,7 +100,7 @@ pub struct LoweringContext<'a, 'hir: 'a> {
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: BTreeMap<hir::BodyId, hir::Body>,
-    exported_macros: Vec<hir::MacroDef>,
+    exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
 
     trait_impls: BTreeMap<DefId, Vec<hir::HirId>>,
@@ -989,15 +989,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attrs_extendable(&mut self, attrs: &[Attribute]) -> Vec<Attribute> {
-        attrs
-            .iter()
-            .map(|a| self.lower_attr(a))
-            .collect()
+    fn lower_attrs_arena(&mut self, attrs: &[Attribute]) -> &'hir [Attribute] {
+        self.arena.alloc_from_iter(
+            attrs.iter().map(|a| self.lower_attr(a))
+        )
     }
 
     fn lower_attrs(&mut self, attrs: &[Attribute]) -> hir::HirVec<Attribute> {
-        self.lower_attrs_extendable(attrs).into()
+        attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into()
     }
 
     fn lower_attr(&mut self, attr: &Attribute) -> Attribute {

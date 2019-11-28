@@ -746,7 +746,7 @@ pub struct Crate<'hir> {
     pub module: Mod,
     pub attrs: &'hir [Attribute],
     pub span: Span,
-    pub exported_macros: &'hir [MacroDef],
+    pub exported_macros: &'hir [MacroDef<'hir>],
     // Attributes from non-exported macros, kept only for collecting the library feature list.
     pub non_exported_macro_attrs: &'hir [Attribute],
 
@@ -841,10 +841,10 @@ impl Crate<'_> {
 ///
 /// Not parsed directly, but created on macro import or `macro_rules!` expansion.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct MacroDef {
+pub struct MacroDef<'hir> {
     pub name: Name,
     pub vis: Visibility,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub hir_id: HirId,
     pub span: Span,
     pub body: TokenStream,
@@ -2445,7 +2445,7 @@ pub struct ItemId {
 pub struct Item<'hir> {
     pub ident: Ident,
     pub hir_id: HirId,
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     pub kind: ItemKind<'hir>,
     pub vis: Visibility,
     pub span: Span,
@@ -2804,7 +2804,7 @@ pub enum Node<'hir> {
     Arm(&'hir Arm),
     Block(&'hir Block),
     Local(&'hir Local),
-    MacroDef(&'hir MacroDef),
+    MacroDef(&'hir MacroDef<'hir>),
 
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.

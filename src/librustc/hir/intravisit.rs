@@ -367,7 +367,7 @@ pub trait Visitor<'v>: Sized {
     }
     fn visit_attribute(&mut self, _attr: &'v Attribute) {
     }
-    fn visit_macro_def(&mut self, macro_def: &'v MacroDef) {
+    fn visit_macro_def(&mut self, macro_def: &'v MacroDef<'v>) {
         walk_macro_def(self, macro_def)
     }
     fn visit_vis(&mut self, vis: &'v Visibility) {
@@ -388,10 +388,10 @@ pub fn walk_crate<'v, V: Visitor<'v>>(visitor: &mut V, krate: &'v Crate<'v>) {
     walk_list!(visitor, visit_macro_def, krate.exported_macros);
 }
 
-pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef) {
+pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroDef<'v>) {
     visitor.visit_id(macro_def.hir_id);
     visitor.visit_name(macro_def.span, macro_def.name);
-    walk_list!(visitor, visit_attribute, &macro_def.attrs);
+    walk_list!(visitor, visit_attribute, macro_def.attrs);
 }
 
 pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod, mod_hir_id: HirId) {
@@ -554,7 +554,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             walk_list!(visitor, visit_param_bound, bounds);
         }
     }
-    walk_list!(visitor, visit_attribute, &item.attrs);
+    walk_list!(visitor, visit_attribute, item.attrs);
 }
 
 pub fn walk_use<'v, V: Visitor<'v>>(visitor: &mut V,

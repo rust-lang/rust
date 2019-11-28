@@ -1127,7 +1127,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
                             self.span = Some(item.span.shrink_to_lo());
                         } else {
                             // Find the first attribute on the item.
-                            for attr in &item.attrs {
+                            for attr in item.attrs {
                                 if self.span.map_or(true, |span| attr.span < span) {
                                     self.span = Some(attr.span.shrink_to_lo());
                                 }
