@@ -74,20 +74,22 @@ pub fn trans_fn<'clif, 'tcx, B: Backend + 'static>(
     context.func = func;
     cx.module.define_function(func_id, context).unwrap();
 
-    let value_ranges = context
-        .build_value_labels_ranges(cx.module.isa())
-        .expect("value location ranges");
-
     // Write optimized function to file for debugging
     #[cfg(debug_assertions)]
-    crate::pretty_clif::write_clif_file(
-        cx.tcx,
-        "opt",
-        instance,
-        &context.func,
-        &clif_comments,
-        Some(&value_ranges),
-    );
+    {
+        let value_ranges = context
+            .build_value_labels_ranges(cx.module.isa())
+            .expect("value location ranges");
+
+        crate::pretty_clif::write_clif_file(
+            cx.tcx,
+            "opt",
+            instance,
+            &context.func,
+            &clif_comments,
+            Some(&value_ranges),
+        );
+    }
 
     // Define debuginfo for function
     let isa = cx.module.isa();
