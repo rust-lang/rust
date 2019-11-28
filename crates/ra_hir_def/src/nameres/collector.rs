@@ -6,7 +6,7 @@
 use hir_expand::{
     builtin_macro::find_builtin_macro,
     name::{self, AsName, Name},
-    HirFileId, MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFileKind,
+    HirFileId, MacroCallId, MacroDefId, MacroDefKind, MacroFileKind,
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
@@ -25,7 +25,7 @@ use crate::{
     per_ns::PerNs,
     AdtId, AstId, AstItemDef, ConstLoc, ContainerId, EnumId, EnumVariantId, FunctionLoc, ImplId,
     Intern, LocalImportId, LocalModuleId, LocationCtx, ModuleDefId, ModuleId, StaticLoc, StructId,
-    StructOrUnionId, TraitId, TypeAliasLoc, UnionId,
+    TraitId, TypeAliasLoc, UnionId,
 };
 
 pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> CrateDefMap {
@@ -37,7 +37,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         log::debug!("crate dep {:?} -> {:?}", dep.name, dep.crate_id);
         def_map.extern_prelude.insert(
             dep.as_name(),
-            ModuleId { krate: dep.crate_id, module_id: dep_def_map.root }.into(),
+            ModuleId { krate: dep.crate_id, local_id: dep_def_map.root }.into(),
         );
 
         // look for the prelude
@@ -323,7 +323,7 @@ where
                         tested_by!(glob_across_crates);
                         // glob import from other crate => we can just import everything once
                         let item_map = self.db.crate_def_map(m.krate);
-                        let scope = &item_map[m.module_id].scope;
+                        let scope = &item_map[m.local_id].scope;
 
                         // Module scoped macros is included
                         let items = scope
@@ -337,7 +337,7 @@ where
                         // glob import from same crate => we do an initial
                         // import, and then need to propagate any further
                         // additions
-                        let scope = &self.def_map[m.module_id].scope;
+                        let scope = &self.def_map[m.local_id].scope;
 
                         // Module scoped macros is included
                         let items = scope
@@ -349,7 +349,7 @@ where
                         self.update(module_id, Some(import_id), &items);
                         // record the glob import in case we add further items
                         self.glob_imports
-                            .entry(m.module_id)
+                            .entry(m.local_id)
                             .or_default()
                             .push((module_id, import_id));
                     }
@@ -362,7 +362,7 @@ where
                         .variants
                         .iter()
                         .filter_map(|(local_id, variant_data)| {
-                            let name = variant_data.name.clone()?;
+                            let name = variant_data.name.clone();
                             let variant = EnumVariantId { parent: e, local_id };
                             let res = Resolution {
                                 def: PerNs::both(variant.into(), variant.into()),
@@ -480,7 +480,7 @@ where
             );
 
             if let Some(def) = resolved_res.resolved_def.take_macros() {
-                let call_id = self.db.intern_macro(MacroCallLoc { def, ast_id: *ast_id });
+                let call_id = def.as_call_id(self.db, *ast_id);
                 resolved.push((*module_id, call_id, def));
                 res = ReachedFixedPoint::No;
                 return false;
@@ -590,7 +590,7 @@ where
                     raw::RawItemKind::Impl(imp) => {
                         let module = ModuleId {
                             krate: self.def_collector.def_map.krate,
-                            module_id: self.module_id,
+                            local_id: self.module_id,
                         };
                         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
                         let imp_id = ImplId::from_ast_id(ctx, self.raw_items[imp].ast_id);
@@ -673,7 +673,7 @@ where
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
             def: PerNs::types(
-                ModuleId { krate: self.def_collector.def_map.krate, module_id: res }.into(),
+                ModuleId { krate: self.def_collector.def_map.krate, local_id: res }.into(),
             ),
             import: None,
         };
@@ -682,8 +682,7 @@ where
     }
 
     fn define_def(&mut self, def: &raw::DefData) {
-        let module =
-            ModuleId { krate: self.def_collector.def_map.krate, module_id: self.module_id };
+        let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
 
         let name = def.name.clone();
@@ -698,14 +697,12 @@ where
                 PerNs::values(def.into())
             }
             raw::DefKind::Struct(ast_id) => {
-                let id = StructOrUnionId::from_ast_id(ctx, ast_id).into();
-                let s = StructId(id).into();
-                PerNs::both(s, s)
+                let id = StructId::from_ast_id(ctx, ast_id).into();
+                PerNs::both(id, id)
             }
             raw::DefKind::Union(ast_id) => {
-                let id = StructOrUnionId::from_ast_id(ctx, ast_id).into();
-                let u = UnionId(id).into();
-                PerNs::both(u, u)
+                let id = UnionId::from_ast_id(ctx, ast_id).into();
+                PerNs::both(id, id)
             }
             raw::DefKind::Enum(ast_id) => PerNs::types(EnumId::from_ast_id(ctx, ast_id).into()),
             raw::DefKind::Const(ast_id) => {
@@ -775,8 +772,7 @@ where
         if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
             self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
         }) {
-            let macro_call_id =
-                self.def_collector.db.intern_macro(MacroCallLoc { def: macro_def, ast_id });
+            let macro_call_id = macro_def.as_call_id(self.def_collector.db, ast_id);
 
             self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_def);
             return;

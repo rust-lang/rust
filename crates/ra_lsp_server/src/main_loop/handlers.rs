@@ -9,7 +9,7 @@ use lsp_types::{
     Hover, HoverContents, Location, MarkupContent, MarkupKind, Position, PrepareRenameResponse,
     Range, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit, WorkspaceEdit,
 };
-use ra_ide_api::{
+use ra_ide::{
     AssistId, FileId, FilePosition, FileRange, Query, Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
@@ -162,7 +162,7 @@ pub fn handle_on_type_formatting(
     let line_index = world.analysis().file_line_index(position.file_id)?;
     let line_endings = world.file_line_endings(position.file_id);
 
-    // in `ra_ide_api`, the `on_type` invariant is that
+    // in `ra_ide`, the `on_type` invariant is that
     // `text.char_at(position) == typed_char`.
     position.offset = position.offset - TextUnit::of_char('.');
     let char_typed = params.ch.chars().next().unwrap_or('\0');
@@ -894,7 +894,7 @@ pub fn handle_inlay_hints(
             label: api_type.label.to_string(),
             range: api_type.range.conv_with(&line_index),
             kind: match api_type.kind {
-                ra_ide_api::InlayKind::TypeHint => InlayKind::TypeHint,
+                ra_ide::InlayKind::TypeHint => InlayKind::TypeHint,
             },
         })
         .collect())

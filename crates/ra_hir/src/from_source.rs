@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::{AstItemDef, LocationCtx, ModuleId, StructId, StructOrUnionId, UnionId};
+use hir_def::{AstItemDef, LocationCtx, ModuleId};
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
@@ -19,19 +19,18 @@ pub trait FromSource: Sized {
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self>;
 }
 
-// FIXIME: these two impls are wrong, `ast::StructDef` might produce either a struct or a union
 impl FromSource for Struct {
     type Ast = ast::StructDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id: StructOrUnionId = from_source(db, src)?;
-        Some(Struct { id: StructId(id) })
+        let id = from_source(db, src)?;
+        Some(Struct { id })
     }
 }
 impl FromSource for Union {
-    type Ast = ast::StructDef;
+    type Ast = ast::UnionDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: Source<Self::Ast>) -> Option<Self> {
-        let id: StructOrUnionId = from_source(db, src)?;
-        Some(Union { id: UnionId(id) })
+        let id = from_source(db, src)?;
+        Some(Union { id })
     }
 }
 impl FromSource for Enum {
@@ -263,13 +262,12 @@ impl Module {
 
         let original_file = src.file_id.original_file(db);
 
-        let (krate, module_id) =
-            db.relevant_crates(original_file).iter().find_map(|&crate_id| {
-                let crate_def_map = db.crate_def_map(crate_id);
-                let local_module_id = crate_def_map.modules_for_file(original_file).next()?;
-                Some((crate_id, local_module_id))
-            })?;
-        Some(Module { id: ModuleId { krate, module_id } })
+        let (krate, local_id) = db.relevant_crates(original_file).iter().find_map(|&crate_id| {
+            let crate_def_map = db.crate_def_map(crate_id);
+            let local_id = crate_def_map.modules_for_file(original_file).next()?;
+            Some((crate_id, local_id))
+        })?;
+        Some(Module { id: ModuleId { krate, local_id } })
     }
 }
 

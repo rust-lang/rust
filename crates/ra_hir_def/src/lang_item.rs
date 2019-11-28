@@ -41,7 +41,7 @@ impl LangItems {
         crate_def_map
             .modules
             .iter()
-            .filter_map(|(module_id, _)| db.module_lang_items(ModuleId { krate, module_id }))
+            .filter_map(|(local_id, _)| db.module_lang_items(ModuleId { krate, local_id }))
             .for_each(|it| lang_items.items.extend(it.items.iter().map(|(k, v)| (k.clone(), *v))));
 
         Arc::new(lang_items)
@@ -80,7 +80,7 @@ impl LangItems {
     fn collect_lang_items(&mut self, db: &impl DefDatabase, module: ModuleId) {
         // Look for impl targets
         let def_map = db.crate_def_map(module.krate);
-        let module_data = &def_map[module.module_id];
+        let module_data = &def_map[module.local_id];
         for &impl_block in module_data.impls.iter() {
             self.collect_lang_item(db, impl_block, LangItemTarget::ImplBlockId)
         }

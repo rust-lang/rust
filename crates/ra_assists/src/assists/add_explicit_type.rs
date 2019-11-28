@@ -1,4 +1,4 @@
-use hir::{db::HirDatabase, HirDisplay, Ty};
+use hir::{db::HirDatabase, HirDisplay};
 use ra_syntax::{
     ast::{self, AstNode, LetStmt, NameOwner},
     T,
@@ -43,7 +43,7 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
     let analyzer = ctx.source_analyzer(stmt.syntax(), None);
     let ty = analyzer.type_of(db, &expr)?;
     // Assist not applicable if the type is unknown
-    if is_unknown(&ty) {
+    if ty.contains_unknown() {
         return None;
     }
 
@@ -51,15 +51,6 @@ pub(crate) fn add_explicit_type(ctx: AssistCtx<impl HirDatabase>) -> Option<Assi
         edit.target(pat_range);
         edit.insert(name_range.end(), format!(": {}", ty.display(db)));
     })
-}
-
-/// Returns true if any type parameter is unknown
-fn is_unknown(ty: &Ty) -> bool {
-    match ty {
-        Ty::Unknown => true,
-        Ty::Apply(a_ty) => a_ty.parameters.iter().any(is_unknown),
-        _ => false,
-    }
 }
 
 #[cfg(test)]

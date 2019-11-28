@@ -10,7 +10,7 @@ use ra_db::{
     salsa::{Database, Durability},
     FileId, SourceDatabaseExt,
 };
-use ra_ide_api::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
+use ra_ide::{Analysis, AnalysisChange, AnalysisHost, FilePosition, LineCol};
 
 use crate::Result;
 
@@ -91,7 +91,7 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, w
     {
         let start = Instant::now();
         eprint!("trivial change: ");
-        host.raw_database().salsa_runtime().synthetic_write(Durability::LOW);
+        host.raw_database_mut().salsa_runtime_mut().synthetic_write(Durability::LOW);
         work(&host.analysis());
         eprintln!("{:?}", start.elapsed());
     }
@@ -111,7 +111,7 @@ fn do_work<F: Fn(&Analysis) -> T, T>(host: &mut AnalysisHost, file_id: FileId, w
     {
         let start = Instant::now();
         eprint!("const change:   ");
-        host.raw_database().salsa_runtime().synthetic_write(Durability::HIGH);
+        host.raw_database_mut().salsa_runtime_mut().synthetic_write(Durability::HIGH);
         let res = work(&host.analysis());
         eprintln!("{:?}", start.elapsed());
         res

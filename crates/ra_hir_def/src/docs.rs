@@ -36,7 +36,7 @@ impl Documentation {
         match def {
             AttrDefId::ModuleId(module) => {
                 let def_map = db.crate_def_map(module.krate);
-                let src = def_map[module.module_id].declaration_source(db)?;
+                let src = def_map[module.local_id].declaration_source(db)?;
                 docs_from_ast(&src.value)
             }
             AttrDefId::StructFieldId(it) => {
@@ -47,9 +47,9 @@ impl Documentation {
                 }
             }
             AttrDefId::AdtId(it) => match it {
-                AdtId::StructId(it) => docs_from_ast(&it.0.source(db).value),
+                AdtId::StructId(it) => docs_from_ast(&it.source(db).value),
                 AdtId::EnumId(it) => docs_from_ast(&it.source(db).value),
-                AdtId::UnionId(it) => docs_from_ast(&it.0.source(db).value),
+                AdtId::UnionId(it) => docs_from_ast(&it.source(db).value),
             },
             AttrDefId::EnumVariantId(it) => {
                 let src = it.parent.child_source(db);

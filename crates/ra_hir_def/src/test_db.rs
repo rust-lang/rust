@@ -24,7 +24,9 @@ impl salsa::Database for TestDB {
     fn salsa_runtime(&self) -> &salsa::Runtime<Self> {
         &self.runtime
     }
-
+    fn salsa_runtime_mut(&mut self) -> &mut salsa::Runtime<Self> {
+        &mut self.runtime
+    }
     fn salsa_event(&self, event: impl Fn() -> salsa::Event<TestDB>) {
         let mut events = self.events.lock().unwrap();
         if let Some(events) = &mut *events {

@@ -4,14 +4,13 @@
 //! are splitting the hir.
 
 use hir_def::{
-    AdtId, AssocItemId, AttrDefId, ConstId, DefWithBodyId, EnumId, EnumVariantId, FunctionId,
-    GenericDefId, ModuleDefId, StaticId, StructFieldId, StructId, TypeAliasId, UnionId, VariantId,
+    AdtId, AssocItemId, AttrDefId, DefWithBodyId, EnumVariantId, GenericDefId, ModuleDefId,
+    StructFieldId, VariantId,
 };
 
 use crate::{
-    ty::{CallableDef, TypableDef},
-    Adt, AssocItem, AttrDef, Const, Crate, DefWithBody, EnumVariant, Function, GenericDef,
-    ModuleDef, Static, StructField, TypeAlias, VariantDef,
+    Adt, AssocItem, AttrDef, Crate, DefWithBody, EnumVariant, GenericDef, ModuleDef, StructField,
+    VariantDef,
 };
 
 impl From<ra_db::CrateId> for Crate {
@@ -138,72 +137,6 @@ impl From<GenericDef> for GenericDefId {
     }
 }
 
-impl From<GenericDefId> for GenericDef {
-    fn from(def: GenericDefId) -> Self {
-        match def {
-            GenericDefId::FunctionId(it) => GenericDef::Function(it.into()),
-            GenericDefId::AdtId(it) => GenericDef::Adt(it.into()),
-            GenericDefId::TraitId(it) => GenericDef::Trait(it.into()),
-            GenericDefId::TypeAliasId(it) => GenericDef::TypeAlias(it.into()),
-            GenericDefId::ImplId(it) => GenericDef::ImplBlock(it.into()),
-            GenericDefId::EnumVariantId(it) => GenericDef::EnumVariant(it.into()),
-            GenericDefId::ConstId(it) => GenericDef::Const(it.into()),
-        }
-    }
-}
-
-impl From<AdtId> for TypableDef {
-    fn from(id: AdtId) -> Self {
-        Adt::from(id).into()
-    }
-}
-
-impl From<StructId> for TypableDef {
-    fn from(id: StructId) -> Self {
-        AdtId::StructId(id).into()
-    }
-}
-
-impl From<UnionId> for TypableDef {
-    fn from(id: UnionId) -> Self {
-        AdtId::UnionId(id).into()
-    }
-}
-
-impl From<EnumId> for TypableDef {
-    fn from(id: EnumId) -> Self {
-        AdtId::EnumId(id).into()
-    }
-}
-
-impl From<EnumVariantId> for TypableDef {
-    fn from(id: EnumVariantId) -> Self {
-        EnumVariant::from(id).into()
-    }
-}
-
-impl From<TypeAliasId> for TypableDef {
-    fn from(id: TypeAliasId) -> Self {
-        TypeAlias::from(id).into()
-    }
-}
-
-impl From<FunctionId> for TypableDef {
-    fn from(id: FunctionId) -> Self {
-        Function::from(id).into()
-    }
-}
-impl From<ConstId> for TypableDef {
-    fn from(id: ConstId) -> Self {
-        Const::from(id).into()
-    }
-}
-impl From<StaticId> for TypableDef {
-    fn from(id: StaticId) -> Self {
-        Static::from(id).into()
-    }
-}
-
 impl From<Adt> for GenericDefId {
     fn from(id: Adt) -> Self {
         match id {
@@ -214,14 +147,12 @@ impl From<Adt> for GenericDefId {
     }
 }
 
-impl From<CallableDef> for GenericDefId {
-    fn from(def: CallableDef) -> Self {
+impl From<VariantId> for VariantDef {
+    fn from(def: VariantId) -> Self {
         match def {
-            CallableDef::Function(it) => it.id.into(),
-            CallableDef::Struct(it) => it.id.into(),
-            CallableDef::EnumVariant(it) => {
-                EnumVariantId { parent: it.parent.id, local_id: it.id }.into()
-            }
+            VariantId::StructId(it) => VariantDef::Struct(it.into()),
+            VariantId::EnumVariantId(it) => VariantDef::EnumVariant(it.into()),
+            VariantId::UnionId(it) => VariantDef::Union(it.into()),
         }
     }
 }
@@ -231,6 +162,7 @@ impl From<VariantDef> for VariantId {
         match def {
             VariantDef::Struct(it) => VariantId::StructId(it.id),
             VariantDef::EnumVariant(it) => VariantId::EnumVariantId(it.into()),
+            VariantDef::Union(it) => VariantId::UnionId(it.id),
         }
     }
 }
@@ -238,6 +170,12 @@ impl From<VariantDef> for VariantId {
 impl From<StructField> for StructFieldId {
     fn from(def: StructField) -> Self {
         StructFieldId { parent: def.parent.into(), local_id: def.id }
+    }
+}
+
+impl From<StructFieldId> for StructField {
+    fn from(def: StructFieldId) -> Self {
+        StructField { parent: def.parent.into(), id: def.local_id }
     }
 }
 
@@ -254,6 +192,16 @@ impl From<AttrDef> for AttrDefId {
             AttrDef::Trait(it) => AttrDefId::TraitId(it.id),
             AttrDef::TypeAlias(it) => AttrDefId::TypeAliasId(it.id),
             AttrDef::MacroDef(it) => AttrDefId::MacroDefId(it.id),
+        }
+    }
+}
+
+impl From<AssocItem> for GenericDefId {
+    fn from(item: AssocItem) -> Self {
+        match item {
+            AssocItem::Function(f) => f.id.into(),
+            AssocItem::Const(c) => c.id.into(),
+            AssocItem::TypeAlias(t) => t.id.into(),
         }
     }
 }

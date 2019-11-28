@@ -1,0 +1,32 @@
+[package]
+edition = "2018"
+name = "ra_hir_ty"
+version = "0.1.0"
+authors = ["rust-analyzer developers"]
+
+[lib]
+doctest = false
+
+[dependencies]
+arrayvec = "0.5.1"
+ena = "0.13"
+log = "0.4.5"
+rustc-hash = "1.0"
+
+hir_def = { path = "../ra_hir_def", package = "ra_hir_def" }
+hir_expand = { path = "../ra_hir_expand", package = "ra_hir_expand" }
+ra_arena = { path = "../ra_arena" }
+ra_db = { path = "../ra_db" }
+ra_prof = { path = "../ra_prof" }
+ra_syntax = { path = "../ra_syntax" }
+test_utils = { path = "../test_utils" }
+
+# https://github.com/rust-lang/chalk/pull/294
+chalk-solve =   { git = "https://github.com/jackh726/chalk.git", rev = "095cd38a4f16337913bba487f2055b9ca0179f30" }
+chalk-rust-ir = { git = "https://github.com/jackh726/chalk.git", rev = "095cd38a4f16337913bba487f2055b9ca0179f30" }
+chalk-ir =      { git = "https://github.com/jackh726/chalk.git", rev = "095cd38a4f16337913bba487f2055b9ca0179f30" }
+
+lalrpop-intern = "0.15.1"
+
+[dev-dependencies]
+insta = "0.12.0"

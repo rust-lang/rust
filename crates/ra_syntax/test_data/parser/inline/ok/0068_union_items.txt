@@ -1,5 +1,5 @@
 SOURCE_FILE@[0; 51)
-  STRUCT_DEF@[0; 12)
+  UNION_DEF@[0; 12)
     UNION_KW@[0; 5) "union"
     WHITESPACE@[5; 6) " "
     NAME@[6; 9)
@@ -9,7 +9,7 @@ SOURCE_FILE@[0; 51)
       L_CURLY@[10; 11) "{"
       R_CURLY@[11; 12) "}"
   WHITESPACE@[12; 13) "\n"
-  STRUCT_DEF@[13; 50)
+  UNION_DEF@[13; 50)
     UNION_KW@[13; 18) "union"
     WHITESPACE@[18; 19) " "
     NAME@[19; 22)

@@ -6,8 +6,7 @@ pub mod scope;
 use std::{ops::Index, sync::Arc};
 
 use hir_expand::{
-    either::Either, hygiene::Hygiene, AstId, HirFileId, MacroCallLoc, MacroDefId, MacroFileKind,
-    Source,
+    either::Either, hygiene::Hygiene, AstId, HirFileId, MacroDefId, MacroFileKind, Source,
 };
 use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::{ast, AstNode, AstPtr};
@@ -47,7 +46,7 @@ impl Expander {
 
         if let Some(path) = macro_call.path().and_then(|path| self.parse_path(path)) {
             if let Some(def) = self.resolve_path_as_macro(db, &path) {
-                let call_id = db.intern_macro(MacroCallLoc { def, ast_id });
+                let call_id = def.as_call_id(db, ast_id);
                 let file_id = call_id.as_file(MacroFileKind::Expr);
                 if let Some(node) = db.parse_or_expand(file_id) {
                     if let Some(expr) = ast::Expr::cast(node) {
@@ -83,7 +82,7 @@ impl Expander {
     }
 
     fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
-        self.crate_def_map.resolve_path(db, self.module.module_id, path).0.take_macros()
+        self.crate_def_map.resolve_path(db, self.module.local_id, path).0.take_macros()
     }
 }
 
