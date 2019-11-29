@@ -529,7 +529,7 @@ impl Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 
 fn is_c_like_enum(item: &Item<'_>) -> bool {
     if let ItemKind::Enum(ref def, _) = item.kind {
-        for variant in &def.variants {
+        for variant in def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }
                 _ => return false,

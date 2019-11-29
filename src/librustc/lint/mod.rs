@@ -128,11 +128,11 @@ macro_rules! late_lint_methods {
             fn check_trait_item_post(a: &$hir hir::TraitItem<$hir>);
             fn check_impl_item(a: &$hir hir::ImplItem<$hir>);
             fn check_impl_item_post(a: &$hir hir::ImplItem<$hir>);
-            fn check_struct_def(a: &$hir hir::VariantData);
-            fn check_struct_def_post(a: &$hir hir::VariantData);
+            fn check_struct_def(a: &$hir hir::VariantData<$hir>);
+            fn check_struct_def_post(a: &$hir hir::VariantData<$hir>);
             fn check_struct_field(a: &$hir hir::StructField);
-            fn check_variant(a: &$hir hir::Variant);
-            fn check_variant_post(a: &$hir hir::Variant);
+            fn check_variant(a: &$hir hir::Variant<$hir>);
+            fn check_variant_post(a: &$hir hir::Variant<$hir>);
             fn check_lifetime(a: &$hir hir::Lifetime);
             fn check_path(a: &$hir hir::Path, b: hir::HirId);
             fn check_attribute(a: &$hir ast::Attribute);
@@ -629,7 +629,7 @@ impl intravisit::Visitor<'tcx> for LintLevelMapBuilder<'_, 'tcx> {
     }
 
     fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
+                     v: &'tcx hir::Variant<'tcx>,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
         self.with_lint_attrs(v.id, &v.attrs, |builder| {

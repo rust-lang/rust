@@ -980,7 +980,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData {
+    pub fn expect_variant_data(&self, id: HirId) -> &'hir VariantData<'hir> {
         match self.find(id) {
             Some(Node::Item(i)) => {
                 match i.kind {
@@ -995,7 +995,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_variant(&self, id: HirId) -> &'hir Variant {
+    pub fn expect_variant(&self, id: HirId) -> &'hir Variant<'hir> {
         match self.find(id) {
             Some(Node::Variant(variant)) => variant,
             _ => bug!("expected variant, found {}", self.node_to_string(id)),
@@ -1250,7 +1250,7 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 
 impl Named for Item<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for ForeignItem<'_> { fn name(&self) -> Name { self.ident.name } }
-impl Named for Variant { fn name(&self) -> Name { self.ident.name } }
+impl Named for Variant<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem<'_> { fn name(&self) -> Name { self.ident.name } }

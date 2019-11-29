@@ -317,7 +317,7 @@ pub trait Visitor<'v>: Sized {
         walk_poly_trait_ref(self, t, m)
     }
     fn visit_variant_data(&mut self,
-                          s: &'v VariantData,
+                          s: &'v VariantData<'v>,
                           _: Name,
                           _: &'v Generics,
                           _parent_id: HirId,
@@ -328,13 +328,13 @@ pub trait Visitor<'v>: Sized {
         walk_struct_field(self, s)
     }
     fn visit_enum_def(&mut self,
-                      enum_definition: &'v EnumDef,
+                      enum_definition: &'v EnumDef<'v>,
                       generics: &'v Generics,
                       item_id: HirId,
                       _: Span) {
         walk_enum_def(self, enum_definition, generics, item_id)
     }
-    fn visit_variant(&mut self, v: &'v Variant, g: &'v Generics, item_id: HirId) {
+    fn visit_variant(&mut self, v: &'v Variant<'v>, g: &'v Generics, item_id: HirId) {
         walk_variant(self, v, g, item_id)
     }
     fn visit_label(&mut self, label: &'v Label) {
@@ -565,19 +565,19 @@ pub fn walk_use<'v, V: Visitor<'v>>(visitor: &mut V,
 }
 
 pub fn walk_enum_def<'v, V: Visitor<'v>>(visitor: &mut V,
-                                         enum_definition: &'v EnumDef,
+                                         enum_definition: &'v EnumDef<'v>,
                                          generics: &'v Generics,
                                          item_id: HirId) {
     visitor.visit_id(item_id);
     walk_list!(visitor,
                visit_variant,
-               &enum_definition.variants,
+               enum_definition.variants,
                generics,
                item_id);
 }
 
 pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
-                                        variant: &'v Variant,
+                                        variant: &'v Variant<'v>,
                                         generics: &'v Generics,
                                         parent_item_id: HirId) {
     visitor.visit_ident(variant.ident);
@@ -588,7 +588,7 @@ pub fn walk_variant<'v, V: Visitor<'v>>(visitor: &mut V,
                                parent_item_id,
                                variant.span);
     walk_list!(visitor, visit_anon_const, &variant.disr_expr);
-    walk_list!(visitor, visit_attribute, &variant.attrs);
+    walk_list!(visitor, visit_attribute, variant.attrs);
 }
 
 pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
@@ -948,7 +948,7 @@ pub fn walk_impl_item_ref<'v, V: Visitor<'v>>(visitor: &mut V, impl_item_ref: &'
     visitor.visit_defaultness(defaultness);
 }
 
-pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &'v VariantData) {
+pub fn walk_struct_def<'v, V: Visitor<'v>>(visitor: &mut V, struct_definition: &'v VariantData<'v>) {
     if let Some(ctor_hir_id) = struct_definition.ctor_hir_id() {
         visitor.visit_id(ctor_hir_id);
     }

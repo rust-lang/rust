@@ -2263,21 +2263,21 @@ pub struct GlobalAsm {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct EnumDef {
-    pub variants: HirVec<Variant>,
+pub struct EnumDef<'hir> {
+    pub variants: &'hir [Variant<'hir>],
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct Variant {
+pub struct Variant<'hir> {
     /// Name of the variant.
     #[stable_hasher(project(name))]
     pub ident: Ident,
     /// Attributes of the variant.
-    pub attrs: HirVec<Attribute>,
+    pub attrs: &'hir [Attribute],
     /// Id of the variant (not the constructor, see `VariantData::ctor_hir_id()`).
     pub id: HirId,
     /// Fields and constructor id of the variant.
-    pub data: VariantData,
+    pub data: VariantData<'hir>,
     /// Explicit discriminant (e.g., `Foo = 1`).
     pub disr_expr: Option<AnonConst>,
     /// Span
@@ -2397,24 +2397,24 @@ impl StructField {
 
 /// Fields and constructor IDs of enum variants and structs.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum VariantData {
+pub enum VariantData<'hir> {
     /// A struct variant.
     ///
     /// E.g., `Bar { .. }` as in `enum Foo { Bar { .. } }`.
-    Struct(HirVec<StructField>, /* recovered */ bool),
+    Struct(&'hir [StructField], /* recovered */ bool),
     /// A tuple variant.
     ///
     /// E.g., `Bar(..)` as in `enum Foo { Bar(..) }`.
-    Tuple(HirVec<StructField>, HirId),
+    Tuple(&'hir [StructField], HirId),
     /// A unit variant.
     ///
     /// E.g., `Bar = ..` as in `enum Foo { Bar = .. }`.
     Unit(HirId),
 }
 
-impl VariantData {
+impl VariantData<'hir> {
     /// Return the fields of this variant.
-    pub fn fields(&self) -> &[StructField] {
+    pub fn fields(&self) -> &'hir [StructField] {
         match *self {
             VariantData::Struct(ref fields, ..) | VariantData::Tuple(ref fields, ..) => fields,
             _ => &[],
@@ -2499,11 +2499,11 @@ pub enum ItemKind<'hir> {
     /// An opaque `impl Trait` type alias, e.g., `type Foo = impl Bar;`.
     OpaqueTy(OpaqueTy),
     /// An enum definition, e.g., `enum Foo<A, B> {C<A>, D<B>}`.
-    Enum(EnumDef, Generics),
+    Enum(EnumDef<'hir>, Generics),
     /// A struct definition, e.g., `struct Foo<A> {x: A}`.
-    Struct(VariantData, Generics),
+    Struct(VariantData<'hir>, Generics),
     /// A union definition, e.g., `union Foo<A, B> {x: A, y: B}`.
-    Union(VariantData, Generics),
+    Union(VariantData<'hir>, Generics),
     /// A trait definition.
     Trait(IsAuto, Unsafety, Generics, GenericBounds, &'hir [TraitItemRef]),
     /// A trait alias.
@@ -2791,7 +2791,7 @@ pub enum Node<'hir> {
     ForeignItem(&'hir ForeignItem<'hir>),
     TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem<'hir>),
-    Variant(&'hir Variant),
+    Variant(&'hir Variant<'hir>),
     Field(&'hir StructField),
     AnonConst(&'hir AnonConst),
     Expr(&'hir Expr),
@@ -2808,7 +2808,7 @@ pub enum Node<'hir> {
 
     /// `Ctor` refers to the constructor of an enum variant or struct. Only tuple or unit variants
     /// with synthesized constructors.
-    Ctor(&'hir VariantData),
+    Ctor(&'hir VariantData<'hir>),
 
     Lifetime(&'hir Lifetime),
     GenericParam(&'hir GenericParam),

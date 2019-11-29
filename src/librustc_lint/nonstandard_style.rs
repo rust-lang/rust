@@ -349,7 +349,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
     fn check_struct_def(
         &mut self,
         cx: &LateContext<'_, '_>,
-        s: &hir::VariantData,
+        s: &hir::VariantData<'_>,
     ) {
         for sf in s.fields() {
             self.check_snake_case(cx, "structure field", &sf.ident);

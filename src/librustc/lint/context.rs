@@ -990,7 +990,7 @@ for LateContextAndPass<'a, 'tcx, T> {
     }
 
     fn visit_variant_data(&mut self,
-                        s: &'tcx hir::VariantData,
+                        s: &'tcx hir::VariantData<'tcx>,
                         _: ast::Name,
                         _: &'tcx hir::Generics,
                         _: hir::HirId,
@@ -1008,7 +1008,7 @@ for LateContextAndPass<'a, 'tcx, T> {
     }
 
     fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
+                     v: &'tcx hir::Variant<'tcx>,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
         self.with_lint_attrs(v.id, &v.attrs, |cx| {

@@ -1113,7 +1113,7 @@ struct AdtField<'tcx> {
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    fn non_enum_variant(&self, struct_def: &hir::VariantData) -> AdtVariant<'tcx> {
+    fn non_enum_variant(&self, struct_def: &hir::VariantData<'_>) -> AdtVariant<'tcx> {
         let fields = struct_def.fields().iter().map(|field| {
             let field_ty = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
             let field_ty = self.normalize_associated_types_in(field.span,
@@ -1126,7 +1126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         AdtVariant { fields }
     }
 
-    fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {
+    fn enum_variants(&self, enum_def: &hir::EnumDef<'_>) -> Vec<AdtVariant<'tcx>> {
         enum_def.variants.iter()
             .map(|variant| self.non_enum_variant(&variant.data))
             .collect()

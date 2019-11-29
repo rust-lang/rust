@@ -118,7 +118,7 @@ pub struct Variant<'hir> {
     pub name: Name,
     pub id: hir::HirId,
     pub attrs: &'hir [ast::Attribute],
-    pub def: &'hir hir::VariantData,
+    pub def: &'hir hir::VariantData<'hir>,
     pub whence: Span,
 }
 

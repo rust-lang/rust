@@ -708,7 +708,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_enum_def(&mut self,
-                          enum_definition: &hir::EnumDef,
+                          enum_definition: &hir::EnumDef<'_>,
                           generics: &hir::Generics,
                           name: ast::Name,
                           span: syntax_pos::Span,
@@ -723,7 +723,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_variants(&mut self,
-                          variants: &[hir::Variant],
+                          variants: &[hir::Variant<'_>],
                           span: syntax_pos::Span)
                           {
         self.bopen();
@@ -770,7 +770,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_struct(&mut self,
-                        struct_def: &hir::VariantData,
+                        struct_def: &hir::VariantData<'_>,
                         generics: &hir::Generics,
                         name: ast::Name,
                         span: syntax_pos::Span,
@@ -819,7 +819,7 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_variant(&mut self, v: &hir::Variant) {
+    pub fn print_variant(&mut self, v: &hir::Variant<'_>) {
         self.head("");
         let generics = hir::Generics::empty();
         self.print_struct(&v.data, &generics, v.ident.name, v.span, false);

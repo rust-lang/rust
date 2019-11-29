@@ -81,7 +81,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemKind::Enum(ref enum_def, _) => {
                 self.visit_node_helper(item.hir_id);
 
-                for variant in &enum_def.variants {
+                for variant in enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.data {
                         self.visit_node_helper(variant.data.ctor_hir_id().unwrap());
                     }

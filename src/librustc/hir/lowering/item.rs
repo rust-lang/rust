@@ -363,11 +363,12 @@ impl LoweringContext<'_, 'hir> {
             ItemKind::Enum(ref enum_definition, ref generics) => {
                 hir::ItemKind::Enum(
                     hir::EnumDef {
-                        variants: enum_definition
+                        variants: self.arena.alloc_from_iter(
+                            enum_definition
                             .variants
                             .iter()
                             .map(|x| self.lower_variant(x))
-                            .collect(),
+                        ),
                     },
                     self.lower_generics(generics, ImplTraitContext::disallowed()),
                 )
@@ -756,9 +757,9 @@ impl LoweringContext<'_, 'hir> {
         self.arena.alloc(hir::GlobalAsm { asm: ga.asm })
     }
 
-    fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
+    fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
         hir::Variant {
-            attrs: self.lower_attrs(&v.attrs),
+            attrs: self.lower_attrs_arena(&v.attrs),
             data: self.lower_variant_data(&v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
             id: self.lower_node_id(v.id),
@@ -767,19 +768,20 @@ impl LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_variant_data(&mut self, vdata: &VariantData) -> hir::VariantData {
+    fn lower_variant_data(&mut self, vdata: &VariantData) -> hir::VariantData<'hir> {
         match *vdata {
             VariantData::Struct(ref fields, recovered) => hir::VariantData::Struct(
-                fields.iter().enumerate().map(|f| self.lower_struct_field(f)).collect(),
+                self.arena.alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_struct_field(f))),
                 recovered,
             ),
             VariantData::Tuple(ref fields, id) => {
                 hir::VariantData::Tuple(
-                    fields
+                    self.arena.alloc_from_iter(
+                        fields
                         .iter()
                         .enumerate()
                         .map(|f| self.lower_struct_field(f))
-                        .collect(),
+                    ),
                     self.lower_node_id(id),
                 )
             },

@@ -675,7 +675,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         // Update levels of nested things.
         match item.kind {
             hir::ItemKind::Enum(ref def, _) => {
-                for variant in &def.variants {
+                for variant in def.variants {
                     let variant_level = self.update(variant.id, item_level);
                     if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
                         self.update(ctor_hir_id, item_level);
@@ -798,7 +798,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
                 if item_level.is_some() {
                     self.reach(item.hir_id, item_level).generics().predicates();
                 }
-                for variant in &def.variants {
+                for variant in def.variants {
                     let variant_level = self.get(variant.id);
                     if variant_level.is_some() {
                         for field in variant.data.fields() {
@@ -1637,7 +1637,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_variant(&mut self,
-                     v: &'tcx hir::Variant,
+                     v: &'tcx hir::Variant<'tcx>,
                      g: &'tcx hir::Generics,
                      item_id: hir::HirId) {
         if self.access_levels.is_reachable(v.id) {
@@ -1890,7 +1890,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemKind::Enum(ref def, _) => {
                 self.check(item.hir_id, item_visibility).generics().predicates();
 
-                for variant in &def.variants {
+                for variant in def.variants {
                     for field in variant.data.fields() {
                         self.check(field.hir_id, item_visibility).ty();
                     }

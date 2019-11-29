@@ -529,7 +529,7 @@ fn convert_variant_ctor(tcx: TyCtxt<'_>, ctor_id: hir::HirId) {
 fn convert_enum_variant_types(
     tcx: TyCtxt<'_>,
     def_id: DefId,
-    variants: &[hir::Variant]
+    variants: &[hir::Variant<'_>]
 ) {
     let def = tcx.adt_def(def_id);
     let repr_type = def.repr.discr_type();
@@ -584,7 +584,7 @@ fn convert_variant(
     ctor_did: Option<DefId>,
     ident: Ident,
     discr: ty::VariantDiscr,
-    def: &hir::VariantData,
+    def: &hir::VariantData<'_>,
     adt_kind: ty::AdtKind,
     parent_did: DefId,
 ) -> ty::VariantDef {

@@ -539,7 +539,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_variant(&mut self, v: &'hir Variant, g: &'hir Generics, item_id: HirId) {
+    fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics, item_id: HirId) {
         self.insert(v.span, v.id, Node::Variant(v));
         self.with_parent(v.id, |this| {
             // Register the constructor of this variant.

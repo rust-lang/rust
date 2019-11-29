@@ -223,7 +223,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MarkSymbolVisitor<'a, 'tcx> {
         self.tables = old_tables;
     }
 
-    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData, _: ast::Name,
+    fn visit_variant_data(&mut self, def: &'tcx hir::VariantData<'tcx>, _: ast::Name,
                           _: &hir::Generics, _: hir::HirId, _: syntax_pos::Span) {
         let has_repr_c = self.repr_has_repr_c;
         let inherited_pub_visibility = self.inherited_pub_visibility;
@@ -375,7 +375,7 @@ impl<'v, 'k, 'tcx> ItemLikeVisitor<'v> for LifeSeeder<'k, 'tcx> {
                     self.worklist.extend(enum_def.variants.iter().map(|variant| variant.id));
                 }
 
-                for variant in &enum_def.variants {
+                for variant in enum_def.variants {
                     if let Some(ctor_hir_id) = variant.data.ctor_hir_id() {
                         self.struct_constructors.insert(ctor_hir_id, variant.id);
                     }
@@ -503,7 +503,7 @@ impl DeadVisitor<'tcx> {
             && !has_allow_dead_code_or_lang_attr(self.tcx, field.hir_id, &field.attrs)
     }
 
-    fn should_warn_about_variant(&mut self, variant: &hir::Variant) -> bool {
+    fn should_warn_about_variant(&mut self, variant: &hir::Variant<'_>) -> bool {
         !self.symbol_is_live(variant.id)
             && !has_allow_dead_code_or_lang_attr(self.tcx,
                                                  variant.id,
@@ -610,7 +610,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
     }
 
     fn visit_variant(&mut self,
-                     variant: &'tcx hir::Variant,
+                     variant: &'tcx hir::Variant<'tcx>,
                      g: &'tcx hir::Generics,
                      id: hir::HirId) {
         if self.should_warn_about_variant(&variant) {

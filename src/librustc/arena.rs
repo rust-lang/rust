@@ -131,8 +131,10 @@ macro_rules! arena_types {
             [] impl_item_ref: rustc::hir::ImplItemRef,
             [] macro_def: rustc::hir::MacroDef<$tcx>,
             [] path: rustc::hir::Path,
+            [] struct_field: rustc::hir::StructField,
             [] trait_item_ref: rustc::hir::TraitItemRef,
             [] ty: rustc::hir::Ty,
+            [] variant: rustc::hir::Variant<$tcx>,
         ], $tcx);
     )
 }

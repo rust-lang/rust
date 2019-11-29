@@ -209,7 +209,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
     }
 
     fn visit_variant(&mut self,
-                     v: &'v hir::Variant,
+                     v: &'v hir::Variant<'v>,
                      g: &'v hir::Generics,
                      item_id: hir::HirId) {
         self.record("Variant", Id::None, v);

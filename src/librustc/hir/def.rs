@@ -340,7 +340,7 @@ impl CtorKind {
         }
     }
 
-    pub fn from_hir(vdata: &hir::VariantData) -> CtorKind {
+    pub fn from_hir(vdata: &hir::VariantData<'_>) -> CtorKind {
         match *vdata {
             hir::VariantData::Tuple(..) => CtorKind::Fn,
             hir::VariantData::Unit(..) => CtorKind::Const,

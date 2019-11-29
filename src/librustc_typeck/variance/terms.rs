@@ -144,7 +144,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for TermsContext<'a, 'tcx> {
             hir::ItemKind::Enum(ref enum_def, _) => {
                 self.add_inferreds_for_item(item.hir_id);
 
-                for variant in &enum_def.variants {
+                for variant in enum_def.variants {
                     if let hir::VariantData::Tuple(..) = variant.data {
                         self.add_inferreds_for_item(variant.data.ctor_hir_id().unwrap());
                     }

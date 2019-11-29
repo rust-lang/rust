@@ -1836,7 +1836,7 @@ impl Clean<Item> for doctree::Union<'_> {
     }
 }
 
-impl Clean<VariantStruct> for ::rustc::hir::VariantData {
+impl Clean<VariantStruct> for ::rustc::hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantStruct {
         VariantStruct {
             struct_type: doctree::struct_type_from_def(self),
@@ -1923,7 +1923,7 @@ impl Clean<Item> for ty::VariantDef {
     }
 }
 
-impl Clean<VariantKind> for hir::VariantData {
+impl Clean<VariantKind> for hir::VariantData<'_> {
     fn clean(&self, cx: &DocContext<'_>) -> VariantKind {
         match self {
             hir::VariantData::Struct(..) => VariantKind::Struct(self.clean(cx)),
