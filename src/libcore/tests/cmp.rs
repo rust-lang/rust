@@ -10,6 +10,14 @@ fn test_int_totalord() {
 }
 
 #[test]
+fn test_bool_totalord() {
+    assert_eq!(true.cmp(&false), Greater);
+    assert_eq!(false.cmp(&true), Less);
+    assert_eq!(true.cmp(&true), Equal);
+    assert_eq!(false.cmp(&false), Equal);
+}
+
+#[test]
 fn test_mut_int_totalord() {
     assert_eq!((&mut 5).cmp(&&mut 10), Less);
     assert_eq!((&mut 10).cmp(&&mut 5), Greater);
