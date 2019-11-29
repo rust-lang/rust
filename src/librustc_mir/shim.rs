@@ -196,19 +196,14 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
 
-    let mut body = Body::new(
+    let mut body = new_body(
         blocks,
         IndexVec::from_elem_n(
-            SourceScopeData { span: span, parent_scope: None }, 1
+            SourceScopeData { span, parent_scope: None }, 1
         ),
-        ClearCrossCrate::Clear,
         local_decls_for_sig(&sig, span),
-        IndexVec::new(),
         sig.inputs().len(),
-        vec![],
-        span,
-        vec![],
-    );
+        span);
 
     if let Some(..) = ty {
         // The first argument (index 0), but add 1 for the return value.
@@ -245,6 +240,27 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     }
 
     body
+}
+
+fn new_body<'tcx>(
+    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    source_scopes: IndexVec<SourceScope, SourceScopeData>,
+    local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    arg_count: usize,
+    span: Span,
+) -> Body<'tcx> {
+    Body::new(
+        basic_blocks,
+        source_scopes,
+        ClearCrossCrate::Clear,
+        local_decls,
+        IndexVec::new(),
+        arg_count,
+        vec![],
+        span,
+        vec![],
+        None,
+    )
 }
 
 pub struct DropShimElaborator<'a, 'tcx> {
@@ -362,18 +378,14 @@ impl CloneShimBuilder<'tcx> {
     }
 
     fn into_mir(self) -> Body<'tcx> {
-        Body::new(
+        new_body(
             self.blocks,
             IndexVec::from_elem_n(
                 SourceScopeData { span: self.span, parent_scope: None }, 1
             ),
-            ClearCrossCrate::Clear,
             self.local_decls,
-            IndexVec::new(),
             self.sig.inputs().len(),
-            vec![],
             self.span,
-            vec![],
         )
     }
 
@@ -822,19 +834,16 @@ fn build_call_shim<'tcx>(
         block(&mut blocks, vec![], TerminatorKind::Resume, true);
     }
 
-    let mut body = Body::new(
+    let mut body = new_body(
         blocks,
         IndexVec::from_elem_n(
-            SourceScopeData { span: span, parent_scope: None }, 1
+            SourceScopeData { span, parent_scope: None }, 1
         ),
-        ClearCrossCrate::Clear,
         local_decls,
-        IndexVec::new(),
         sig.inputs().len(),
-        vec![],
         span,
-        vec![],
     );
+
     if let Abi::RustCall = sig.abi {
         body.spread_arg = Some(Local::new(sig.inputs().len()));
     }
@@ -908,18 +917,14 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
         is_cleanup: false
     };
 
-    let body = Body::new(
+    let body = new_body(
         IndexVec::from_elem_n(start_block, 1),
         IndexVec::from_elem_n(
-            SourceScopeData { span: span, parent_scope: None }, 1
+            SourceScopeData { span, parent_scope: None }, 1
         ),
-        ClearCrossCrate::Clear,
         local_decls,
-        IndexVec::new(),
         sig.inputs().len(),
-        vec![],
         span,
-        vec![],
     );
 
     crate::util::dump_mir(

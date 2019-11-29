@@ -5,7 +5,7 @@ use crate::hair::{LintLevel, BindingMode, PatKind};
 use crate::transform::MirSource;
 use crate::util as mir_util;
 use rustc::hir;
-use rustc::hir::Node;
+use rustc::hir::{Node, GeneratorKind};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items;
 use rustc::middle::region;
@@ -279,7 +279,7 @@ struct Builder<'a, 'tcx> {
 
     fn_span: Span,
     arg_count: usize,
-    is_generator: bool,
+    generator_kind: Option<GeneratorKind>,
 
     /// The current set of scopes, updated as we traverse;
     /// see the `scope` module for more details.
@@ -570,7 +570,7 @@ where
         safety,
         return_ty,
         return_ty_span,
-        body.generator_kind.is_some());
+        body.generator_kind);
 
     let call_site_scope = region::Scope {
         id: body.value.hir_id.local_id,
@@ -647,7 +647,7 @@ fn construct_const<'a, 'tcx>(
         Safety::Safe,
         const_ty,
         const_ty_span,
-        false,
+        None,
     );
 
     let mut block = START_BLOCK;
@@ -678,7 +678,7 @@ fn construct_error<'a, 'tcx>(
     let owner_id = hir.tcx().hir().body_owner(body_id);
     let span = hir.tcx().hir().span(owner_id);
     let ty = hir.tcx().types.err;
-    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, false);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, span, None);
     let source_info = builder.source_info(span);
     builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
     builder.finish()
@@ -691,7 +691,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
            safety: Safety,
            return_ty: Ty<'tcx>,
            return_span: Span,
-           is_generator: bool)
+           generator_kind: Option<GeneratorKind>)
            -> Builder<'a, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
         let mut builder = Builder {
@@ -699,7 +699,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             cfg: CFG { basic_blocks: IndexVec::new() },
             fn_span: span,
             arg_count,
-            is_generator,
+            generator_kind,
             scopes: Default::default(),
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
@@ -748,6 +748,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.var_debug_info,
             self.fn_span,
             self.hir.control_flow_destroyed(),
+            self.generator_kind
         )
     }
 

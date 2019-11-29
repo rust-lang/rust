@@ -142,8 +142,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         OverflowNeg => err_panic!(OverflowNeg),
                         DivisionByZero => err_panic!(DivisionByZero),
                         RemainderByZero => err_panic!(RemainderByZero),
-                        GeneratorResumedAfterReturn => err_panic!(GeneratorResumedAfterReturn),
-                        GeneratorResumedAfterPanic => err_panic!(GeneratorResumedAfterPanic),
+                        ResumedAfterReturn(generator_kind)
+                            => err_panic!(ResumedAfterReturn(*generator_kind)),
+                        ResumedAfterPanic(generator_kind)
+                            => err_panic!(ResumedAfterPanic(*generator_kind)),
                         Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
                     }
                     .into());

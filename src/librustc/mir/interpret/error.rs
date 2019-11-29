@@ -13,7 +13,7 @@ use rustc_macros::HashStable;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
-
+use hir::GeneratorKind;
 use std::{fmt, env};
 
 use rustc_error_codes::*;
@@ -264,8 +264,8 @@ pub enum PanicInfo<O> {
     OverflowNeg,
     DivisionByZero,
     RemainderByZero,
-    GeneratorResumedAfterReturn,
-    GeneratorResumedAfterPanic,
+    ResumedAfterReturn(GeneratorKind),
+    ResumedAfterPanic(GeneratorKind),
 }
 
 /// Type for MIR `Assert` terminator error messages.
@@ -300,10 +300,14 @@ impl<O> PanicInfo<O> {
                 "attempt to divide by zero",
             RemainderByZero =>
                 "attempt to calculate the remainder with a divisor of zero",
-            GeneratorResumedAfterReturn =>
+            ResumedAfterReturn(GeneratorKind::Gen) =>
                 "generator resumed after completion",
-            GeneratorResumedAfterPanic =>
+            ResumedAfterReturn(GeneratorKind::Async(_)) =>
+                "`async fn` resumed after completion",
+            ResumedAfterPanic(GeneratorKind::Gen) =>
                 "generator resumed after panicking",
+            ResumedAfterPanic(GeneratorKind::Async(_)) =>
+                "`async fn` resumed after panicking",
             Panic { .. } | BoundsCheck { .. } =>
                 bug!("Unexpected PanicInfo"),
         }

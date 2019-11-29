@@ -1056,16 +1056,23 @@ fn create_generator_resume_function<'tcx>(
     let mut cases = create_cases(body, &transform, |point| Some(point.resume));
 
     use rustc::mir::interpret::PanicInfo::{
-        GeneratorResumedAfterPanic,
-        GeneratorResumedAfterReturn,
+        ResumedAfterPanic,
+        ResumedAfterReturn,
     };
 
     // Jump to the entry point on the unresumed
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
-    // Panic when resumed on the returned state
-    cases.insert(1, (RETURNED, insert_panic_block(tcx, body, GeneratorResumedAfterReturn)));
-    // Panic when resumed on the poisoned state
-    cases.insert(2, (POISONED, insert_panic_block(tcx, body, GeneratorResumedAfterPanic)));
+
+    // Panic when resumed on the returned or poisoned state
+    let generator_kind = body.generator_kind.unwrap();
+    cases.insert(1, (RETURNED, insert_panic_block(
+        tcx,
+        body,
+        ResumedAfterReturn(generator_kind))));
+    cases.insert(2, (POISONED, insert_panic_block(
+        tcx,
+        body,
+        ResumedAfterPanic(generator_kind))));
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
 
