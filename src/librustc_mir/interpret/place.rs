@@ -1034,6 +1034,24 @@ where
         MPlaceTy::from_aligned_ptr(ptr, layout)
     }
 
+    /// Returns a fat MPlace.
+    pub fn allocate_str(
+        &mut self,
+        str: &str,
+        kind: MemoryKind<M::MemoryKinds>,
+    ) -> MPlaceTy<'tcx, M::PointerTag> {
+        let ptr = self.memory.allocate_static_bytes(str.as_bytes(), kind);
+        let meta = Scalar::from_uint(str.len() as u128, self.pointer_size());
+        let mplace = MemPlace {
+            ptr: ptr.into(),
+            align: Align::from_bytes(1).unwrap(),
+            meta: Some(meta),
+        };
+
+        let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
+        MPlaceTy { mplace, layout }
+    }
+
     pub fn write_discriminant_index(
         &mut self,
         variant_index: VariantIdx,

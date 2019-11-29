@@ -331,7 +331,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
-    // Turn the MPlace into a string (must already be dereferenced!)
+    // Turn the fat MPlace into a string (must already be dereferenced!)
     pub fn read_str(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,

@@ -110,7 +110,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match intrinsic_name {
             "caller_location" => {
-                let location = self.alloc_caller_location_for_span(span)?;
+                let location = self.alloc_caller_location_for_span(span);
                 self.write_scalar(location.ptr, dest)?;
             }
 

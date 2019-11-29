@@ -552,7 +552,7 @@ pub fn const_caller_location<'tcx>(
         tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
             .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
     );
-    let loc_place = ecx.alloc_caller_location(file, line, col).unwrap();
+    let loc_place = ecx.alloc_caller_location(file, line, col);
     intern_const_alloc_recursive(&mut ecx, None, loc_place).unwrap();
     let loc_const = ty::Const {
         ty: loc_ty,
