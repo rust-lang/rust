@@ -47,6 +47,13 @@ impl<Tag> From<Scalar<Tag>> for Immediate<Tag> {
     }
 }
 
+impl<Tag> From<Pointer<Tag>> for Immediate<Tag> {
+    #[inline(always)]
+    fn from(val: Pointer<Tag>) -> Self {
+        Immediate::Scalar(Scalar::from(val).into())
+    }
+}
+
 impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(
         val: Scalar<Tag>,
@@ -60,7 +67,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     pub fn new_dyn_trait(val: Scalar<Tag>, vtable: Pointer<Tag>) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::Ptr(vtable).into())
+        Immediate::ScalarPair(val.into(), vtable.into())
     }
 
     #[inline]

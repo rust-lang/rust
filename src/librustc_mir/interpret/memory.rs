@@ -350,7 +350,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             sptr
         } else {
             // A "real" access, we must get a pointer.
-            Scalar::Ptr(self.force_ptr(sptr)?)
+            Scalar::from(self.force_ptr(sptr)?)
         };
         Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
             Ok(bits) => {

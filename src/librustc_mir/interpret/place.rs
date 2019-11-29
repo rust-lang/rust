@@ -686,6 +686,7 @@ where
     }
 
     /// Write a scalar to a place
+    #[inline(always)]
     pub fn write_scalar(
         &mut self,
         val: impl Into<ScalarMaybeUndef<M::PointerTag>>,

@@ -67,7 +67,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
         // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
         let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
-        vtable_alloc.write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
+        vtable_alloc.write_ptr_sized(tcx, vtable, drop.into())?;
 
         let size_ptr = vtable.offset(ptr_size, tcx)?;
         vtable_alloc.write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
@@ -87,7 +87,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), tcx)?;
                 self.memory.get_raw_mut(vtable.alloc_id)?
-                    .write_ptr_sized(tcx, method_ptr, Scalar::Ptr(fn_ptr).into())?;
+                    .write_ptr_sized(tcx, method_ptr, fn_ptr.into())?;
             }
         }
 
