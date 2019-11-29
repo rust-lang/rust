@@ -8,13 +8,13 @@ use matches::matches;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc_typeck::expr_use_visitor as euv;
 use rustc::traits;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
+use rustc_typeck::expr_use_visitor as euv;
 use std::borrow::Cow;
 use syntax::ast::Attribute;
 use syntax::errors::DiagnosticBuilder;
@@ -134,8 +134,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             ..
         } = {
             let mut ctx = MovedVariablesCtxt::default();
-            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, fn_def_id, cx.param_env, cx.tables)
-                .consume_body(body);
+            cx.tcx.infer_ctxt().enter(|infcx| {
+                euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.tables).consume_body(body);
+            });
             ctx
         };
 
@@ -342,4 +343,3 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
 
     fn mutate(&mut self, _: &euv::Place<'tcx>) {}
 }
-

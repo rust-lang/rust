@@ -1,11 +1,11 @@
 use rustc::hir::intravisit as visit;
 use rustc::hir::{self, *};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc_typeck::expr_use_visitor::*;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use rustc::util::nodemap::HirIdSet;
 use rustc::{declare_tool_lint, impl_lint_pass};
+use rustc_typeck::expr_use_visitor::*;
 use syntax::source_map::Span;
 
 use crate::utils::span_lint;
@@ -76,7 +76,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoxedLocal {
         };
 
         let fn_def_id = cx.tcx.hir().local_def_id(hir_id);
-        ExprUseVisitor::new(&mut v, cx.tcx, fn_def_id, cx.param_env, cx.tables).consume_body(body);
+        cx.tcx.infer_ctxt().enter(|infcx| {
+            ExprUseVisitor::new(&mut v, &infcx, fn_def_id, cx.param_env, cx.tables).consume_body(body);
+        });
 
         for node in v.set {
             span_lint(
