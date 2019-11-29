@@ -66,7 +66,7 @@ pub struct ErrorReportingCtx<'a, 'b, 'tcx> {
     pub(super) body: &'b Body<'tcx>,
 
     /// User variable names for MIR locals (where applicable).
-    local_names: &'b IndexVec<Local, Option<Symbol>>,
+    pub(super) local_names: &'b IndexVec<Local, Option<Symbol>>,
 
     /// Any upvars for the MIR body we have kept track of during borrow checking.
     pub(super) upvars: &'b [Upvar],
