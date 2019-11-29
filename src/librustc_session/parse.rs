@@ -1,10 +1,10 @@
 //! Contains `ParseSess` which holds state living beyond what one `Parser` might.
 //! It also serves as an input to the parser itself.
 
-use crate::ast::{CrateConfig, NodeId};
-use crate::early_buffered_lints::BufferedEarlyLint;
+use crate::node_id::NodeId;
+use crate::lint::BufferedEarlyLint;
 
-use errors::{Applicability, emitter::SilentEmitter, Handler, ColorConfig, DiagnosticBuilder};
+use rustc_errors::{Applicability, emitter::SilentEmitter, Handler, ColorConfig, DiagnosticBuilder};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock, Once};
 use rustc_feature::UnstableFeatures;
@@ -15,6 +15,9 @@ use syntax_pos::source_map::{SourceMap, FilePathMapping};
 
 use std::path::PathBuf;
 use std::str;
+
+// Duplicated from syntax::ast for now
+type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.
@@ -137,7 +140,7 @@ impl ParseSess {
 
     pub fn buffer_lint(
         &self,
-        lint_id: &'static rustc_session::lint::Lint,
+        lint_id: &'static crate::lint::Lint,
         span: impl Into<MultiSpan>,
         id: NodeId,
         msg: &str,
