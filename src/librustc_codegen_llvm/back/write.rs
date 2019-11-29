@@ -384,8 +384,8 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
             // we'll get errors in LLVM.
             let using_thin_buffers = config.bitcode_needed();
             if !config.no_prepopulate_passes {
-                llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
-                llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+                llvm::LLVMAddAnalysisPasses(tm, fpm);
+                llvm::LLVMAddAnalysisPasses(tm, mpm);
                 let opt_level = to_llvm_opt_settings(opt_level).0;
                 let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal ||
                     (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
@@ -509,7 +509,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             where F: FnOnce(&'ll mut PassManager<'ll>) -> R,
         {
             let cpm = llvm::LLVMCreatePassManager();
-            llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
+            llvm::LLVMAddAnalysisPasses(tm, cpm);
             llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
             f(cpm)
         }
