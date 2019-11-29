@@ -2,7 +2,6 @@
 //! The main routine here is `ast_ty_to_ty()`; each use is parameterized by an
 //! instance of `AstConv`.
 
-use errors::{Applicability, DiagnosticId};
 use crate::hir::{self, GenericArg, GenericArgs, ExprKind};
 use crate::hir::def::{CtorOf, Res, DefKind};
 use crate::hir::def_id::DefId;
@@ -12,6 +11,10 @@ use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
 use crate::middle::resolve_lifetime as rl;
 use crate::namespace::Namespace;
+use crate::require_c_abi_if_c_variadic;
+use crate::util::common::ErrorReported;
+use crate::util::nodemap::FxHashMap;
+
 use rustc::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
 use rustc::traits;
 use rustc::ty::{self, DefIdTree, Ty, TyCtxt, Const, ToPredicate, TypeFoldable};
@@ -19,24 +22,22 @@ use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{self, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
 use rustc_target::spec::abi;
-use crate::require_c_abi_if_c_variadic;
-use smallvec::SmallVec;
+
 use syntax::ast;
 use syntax::errors::pluralize;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
-use crate::util::common::ErrorReported;
-use crate::util::nodemap::FxHashMap;
+
+use errors::{Applicability, DiagnosticId};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_error_codes::*;
+use smallvec::SmallVec;
 
 use std::collections::BTreeSet;
 use std::iter;
 use std::slice;
-
-use rustc_data_structures::fx::FxHashSet;
-
-use rustc_error_codes::*;
 
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);
@@ -64,8 +65,7 @@ pub trait AstConv<'tcx> {
         &self,
         param: Option<&ty::GenericParamDef>,
         span: Span,
-    )
-                -> Option<ty::Region<'tcx>>;
+    ) -> Option<ty::Region<'tcx>>;
 
     /// Returns the type to use when a type is omitted.
     fn ty_infer(&self, param: Option<&ty::GenericParamDef>, span: Span) -> Ty<'tcx>;

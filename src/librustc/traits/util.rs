@@ -365,12 +365,15 @@ impl<'tcx> TraitAliasExpander<'tcx> {
 
         // Don't recurse if this trait alias is already on the stack for the DFS search.
         let anon_pred = anonymize_predicate(tcx, &pred);
-        if item.path.iter().rev().skip(1)
-                .any(|(tr, _)| anonymize_predicate(tcx, &tr.to_predicate()) == anon_pred) {
+        if item.path.iter()
+            .rev()
+            .skip(1)
+            .any(|(tr, _)| anonymize_predicate(tcx, &tr.to_predicate()) == anon_pred)
+        {
             return false;
         }
 
-        // Get components of trait alias.
+        // Get the components of this trait alias.
         let predicates = tcx.super_predicates_of(trait_ref.def_id());
 
         let items = predicates.predicates
