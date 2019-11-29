@@ -14,6 +14,7 @@
 
 use hir_expand::name::Name;
 use ra_arena::{impl_arena_id, RawId};
+use ra_syntax::ast::RangeOp;
 
 use crate::{
     builtin_type::{BuiltinFloat, BuiltinInt},
@@ -130,23 +131,10 @@ pub enum Expr {
         rhs: ExprId,
         op: Option<BinaryOp>,
     },
-    RangeFull,
-    RangeFrom {
-        lhs: ExprId,
-    },
-    RangeTo {
-        rhs: ExprId,
-    },
     Range {
-        lhs: ExprId,
-        rhs: ExprId,
-    },
-    RangeToInclusive {
-        rhs: ExprId,
-    },
-    RangeInclusive {
-        lhs: ExprId,
-        rhs: ExprId,
+        lhs: Option<ExprId>,
+        rhs: Option<ExprId>,
+        range_type: RangeOp,
     },
     Index {
         base: ExprId,
@@ -302,21 +290,23 @@ impl Expr {
             Expr::Lambda { body, .. } => {
                 f(*body);
             }
-            Expr::BinaryOp { lhs, rhs, .. }
-            | Expr::Range { lhs, rhs }
-            | Expr::RangeInclusive { lhs, rhs } => {
+            Expr::BinaryOp { lhs, rhs, .. } => {
                 f(*lhs);
                 f(*rhs);
+            }
+            Expr::Range { lhs, rhs, .. } => {
+                if let Some(lhs) = rhs {
+                    f(*lhs);
+                }
+                if let Some(rhs) = lhs {
+                    f(*rhs);
+                }
             }
             Expr::Index { base, index } => {
                 f(*base);
                 f(*index);
             }
-            Expr::RangeFull => {}
-            Expr::RangeFrom { lhs: expr }
-            | Expr::RangeTo { rhs: expr }
-            | Expr::RangeToInclusive { rhs: expr }
-            | Expr::Field { expr, .. }
+            Expr::Field { expr, .. }
             | Expr::Await { expr }
             | Expr::Try { expr }
             | Expr::Cast { expr, .. }

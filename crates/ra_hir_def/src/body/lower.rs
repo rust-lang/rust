@@ -8,7 +8,7 @@ use hir_expand::{
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
-        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner, RangeOp,
+        self, ArgListOwner, ArrayExprKind, LiteralKind, LoopBodyOwner, NameOwner,
         TypeAscriptionOwner,
     },
     AstNode, AstPtr,
@@ -432,20 +432,11 @@ where
             ast::Expr::RangeExpr(e) => {
                 let lhs = e.start().map(|lhs| self.collect_expr(lhs));
                 let rhs = e.end().map(|rhs| self.collect_expr(rhs));
-                match (lhs, e.op_kind(), rhs) {
-                    (None, _, None) => self.alloc_expr(Expr::RangeFull, syntax_ptr),
-                    (Some(lhs), _, None) => self.alloc_expr(Expr::RangeFrom { lhs }, syntax_ptr),
-                    (None, Some(RangeOp::Inclusive), Some(rhs)) => {
-                        self.alloc_expr(Expr::RangeToInclusive { rhs }, syntax_ptr)
+                match e.op_kind() {
+                    Some(range_type) => {
+                        self.alloc_expr(Expr::Range { lhs, rhs, range_type }, syntax_ptr)
                     }
-                    (Some(lhs), Some(RangeOp::Inclusive), Some(rhs)) => {
-                        self.alloc_expr(Expr::RangeInclusive { lhs, rhs }, syntax_ptr)
-                    }
-                    // If RangeOp is missing, fallback to exclusive range.
-                    (None, _, Some(rhs)) => self.alloc_expr(Expr::RangeTo { rhs }, syntax_ptr),
-                    (Some(lhs), _, Some(rhs)) => {
-                        self.alloc_expr(Expr::Range { lhs, rhs }, syntax_ptr)
-                    }
+                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
 
