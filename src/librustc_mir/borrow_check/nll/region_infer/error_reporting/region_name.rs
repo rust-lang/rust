@@ -121,10 +121,6 @@ impl RegionName {
         }
     }
 
-    crate fn name(&self) -> Symbol {
-        self.name
-    }
-
     crate fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
         match &self.source {
             RegionNameSource::NamedFreeRegion(span)
@@ -309,7 +305,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         // happen if we have an elided name in an async fn for example: the
                         // compiler will generate a region named `'_`, but reporting such a name is
                         // not actually useful, so we synthesize a name for it instead.
-                        let name = self.synthesize_region_name(renctx);
+                        let name = renctx.synthesize_region_name();
                         Some(RegionName {
                             name,
                             source: RegionNameSource::AnonRegionFromAsyncFn(span),
