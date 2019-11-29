@@ -132,9 +132,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Push frame.
         let mir = this.load_mir(f.def, None)?;
+        let span = this.stack().last()
+            .and_then(Frame::current_source_info)
+            .map(|si| si.span)
+            .unwrap_or(DUMMY_SP);
         this.push_stack_frame(
             f,
-            DUMMY_SP, // There is no call site.
+            span,
             mir,
             dest,
             stack_pop,

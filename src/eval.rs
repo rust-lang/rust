@@ -221,12 +221,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
             };
             e.print_backtrace();
             if let Some(frame) = ecx.stack().last() {
-                let block = &frame.body.basic_blocks()[frame.block.unwrap()];
-                let span = if frame.stmt < block.statements.len() {
-                    block.statements[frame.stmt].source_info.span
-                } else {
-                    block.terminator().source_info.span
-                };
+                let span = frame.current_source_info().unwrap().span;
 
                 let msg = format!("Miri evaluation error: {}", msg);
                 let mut err = ecx.tcx.sess.struct_span_err(span, msg.as_str());

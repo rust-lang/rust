@@ -166,7 +166,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 // Forward to `panic_bounds_check` lang item.
 
                 // First arg: Caller location.
-                let location = this.alloc_caller_location_for_span(span)?;
+                let location = this.alloc_caller_location_for_span(span);
                 // Second arg: index.
                 let index = this.read_scalar(this.eval_operand(index, None)?)?;
                 // Third arg: len.
@@ -190,7 +190,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let msg = this.allocate_str(msg, MiriMemoryKind::Static.into());
 
                 // Second arg: Caller location.
-                let location = this.alloc_caller_location_for_span(span)?;
+                let location = this.alloc_caller_location_for_span(span);
 
                 // Call the lang item.
                 let panic = this.tcx.lang_items().panic_fn().unwrap();
