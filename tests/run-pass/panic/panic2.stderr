@@ -1,0 +1,1 @@
+thread 'main' panicked at '42-panicking from libstd', $DIR/panic2.rs:3:5

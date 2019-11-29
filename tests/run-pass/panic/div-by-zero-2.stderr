@@ -1,0 +1,1 @@
+thread 'main' panicked at 'attempt to divide by zero', $DIR/div-by-zero-2.rs:5:14
