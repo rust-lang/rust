@@ -100,7 +100,7 @@ fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
     // This match is just a canary for future changes to `MemoryKind`, which most likely need
     // changes in this function.
     match kind {
-        MemoryKind::Stack | MemoryKind::Vtable => {},
+        MemoryKind::Stack | MemoryKind::Vtable | MemoryKind::CallerLocation => {},
     }
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
     // read-only memory, and also by Miri when evluating other constants/statics that
