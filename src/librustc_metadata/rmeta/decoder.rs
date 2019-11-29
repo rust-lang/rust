@@ -4,7 +4,7 @@ use crate::rmeta::*;
 use crate::rmeta::table::{FixedSizeEncoding, Table};
 
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_data_structures::sync::{Lrc, Lock, Once, AtomicCell};
+use rustc_data_structures::sync::{Lrc, Lock, LockGuard, Once, AtomicCell};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir;
@@ -66,7 +66,7 @@ crate struct CrateMetadata {
     /// lifetime is only used behind `Lazy`, and therefore acts like an
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
     /// is being used to decode those values.
-    crate root: CrateRoot<'static>,
+    root: CrateRoot<'static>,
     /// For each definition in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
     /// hashmap, which gives the reverse mapping. This allows us to
@@ -97,11 +97,11 @@ crate struct CrateMetadata {
     /// IDs as they are seen from the current compilation session.
     cnum_map: CrateNumMap,
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    crate dependencies: Lock<Vec<CrateNum>>,
+    dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    crate dep_kind: Lock<DepKind>,
+    dep_kind: Lock<DepKind>,
     /// Filesystem location of this crate.
-    crate source: CrateSource,
+    source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
     private_dep: bool,
@@ -112,7 +112,7 @@ crate struct CrateMetadata {
 
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
     /// If this is `None`, then the crate was injected (e.g., by the allocator).
-    crate extern_crate: Lock<Option<ExternCrate>>,
+    extern_crate: Lock<Option<ExternCrate>>,
 }
 
 /// Holds information about a syntax_pos::SourceFile imported from another crate.
@@ -556,6 +556,22 @@ impl<'tcx> EntryKind<'tcx> {
 impl CrateRoot<'_> {
     crate fn is_proc_macro_crate(&self) -> bool {
         self.proc_macro_data.is_some()
+    }
+
+    crate fn name(&self) -> Symbol {
+        self.name
+    }
+
+    crate fn disambiguator(&self) -> CrateDisambiguator {
+        self.disambiguator
+    }
+
+    crate fn hash(&self) -> Svh {
+        self.hash
+    }
+
+    crate fn triple(&self) -> &TargetTriple {
+        &self.triple
     }
 
     crate fn decode_crate_deps(
@@ -1516,6 +1532,83 @@ impl<'a, 'tcx> CrateMetadata {
         }
 
         dep_node_index
+    }
+
+    crate fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
+        self.dependencies.borrow()
+    }
+
+    crate fn add_dependency(&self, cnum: CrateNum) {
+        self.dependencies.borrow_mut().push(cnum);
+    }
+
+    crate fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
+        let mut extern_crate = self.extern_crate.borrow_mut();
+        let update = Some(new_extern_crate.rank()) > extern_crate.as_ref().map(ExternCrate::rank);
+        if update {
+            *extern_crate = Some(new_extern_crate);
+        }
+        update
+    }
+
+    crate fn source(&self) -> &CrateSource {
+        &self.source
+    }
+
+    crate fn dep_kind(&self) -> DepKind {
+        *self.dep_kind.lock()
+    }
+
+    crate fn update_dep_kind(&self, f: impl FnOnce(DepKind) -> DepKind) {
+        self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
+    }
+
+    crate fn panic_strategy(&self) -> PanicStrategy {
+        self.root.panic_strategy
+    }
+
+    crate fn needs_panic_runtime(&self) -> bool {
+        self.root.needs_panic_runtime
+    }
+
+    crate fn is_panic_runtime(&self) -> bool {
+        self.root.panic_runtime
+    }
+
+    crate fn is_sanitizer_runtime(&self) -> bool {
+        self.root.sanitizer_runtime
+    }
+
+    crate fn is_profiler_runtime(&self) -> bool {
+        self.root.profiler_runtime
+    }
+
+    crate fn needs_allocator(&self) -> bool {
+        self.root.needs_allocator
+    }
+
+    crate fn has_global_allocator(&self) -> bool {
+        self.root.has_global_allocator
+    }
+
+    crate fn has_default_lib_allocator(&self) -> bool {
+        self.root.has_default_lib_allocator
+    }
+
+    crate fn is_proc_macro_crate(&self) -> bool {
+        self.root.is_proc_macro_crate()
+    }
+
+    crate fn name(&self) -> Symbol {
+        self.root.name
+    }
+
+    crate fn disambiguator(&self) -> CrateDisambiguator {
+        self.root.disambiguator
+    }
+
+    crate fn hash(&self) -> Svh {
+        self.root.hash
     }
 }
 

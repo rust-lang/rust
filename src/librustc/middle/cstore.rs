@@ -146,6 +146,13 @@ impl ExternCrate {
     pub fn is_direct(&self) -> bool {
         self.dependency_of == LOCAL_CRATE
     }
+
+    pub fn rank(&self) -> impl PartialOrd {
+        // Prefer:
+        // - direct extern crate to indirect
+        // - shorter paths to longer
+        (self.is_direct(), !self.path_len)
+    }
 }
 
 #[derive(Copy, Clone, Debug, HashStable)]
@@ -204,7 +211,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any;
+    fn as_any(&self) -> &dyn Any;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -217,9 +224,7 @@ pub trait CrateStore {
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn crate_host_hash_untracked(&self, cnum: CrateNum) -> Option<Svh>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
-    fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -228,7 +233,6 @@ pub trait CrateStore {
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
-    fn injected_panic_runtime(&self) -> Option<CrateNum>;
     fn allocator_kind(&self) -> Option<AllocatorKind>;
 }
 

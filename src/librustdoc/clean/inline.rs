@@ -10,7 +10,7 @@ use syntax_pos::Span;
 use rustc::hir;
 use rustc::hir::def::{Res, DefKind, CtorKind};
 use rustc::hir::def_id::DefId;
-use rustc_metadata::cstore::LoadedMacro;
+use rustc_metadata::creader::LoadedMacro;
 use rustc::ty;
 use rustc::util::nodemap::FxHashSet;
 

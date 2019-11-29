@@ -173,16 +173,16 @@ macro_rules! Lazy {
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct CrateRoot<'tcx> {
-    pub name: Symbol,
-    pub triple: TargetTriple,
+    name: Symbol,
+    triple: TargetTriple,
     extra_filename: String,
-    pub hash: Svh,
-    pub disambiguator: CrateDisambiguator,
-    pub panic_strategy: PanicStrategy,
+    hash: Svh,
+    disambiguator: CrateDisambiguator,
+    panic_strategy: PanicStrategy,
     edition: Edition,
-    pub has_global_allocator: bool,
+    has_global_allocator: bool,
     has_panic_handler: bool,
-    pub has_default_lib_allocator: bool,
+    has_default_lib_allocator: bool,
     plugin_registrar_fn: Option<DefIndex>,
     proc_macro_decls_static: Option<DefIndex>,
     proc_macro_stability: Option<attr::Stability>,
@@ -207,12 +207,12 @@ crate struct CrateRoot<'tcx> {
     proc_macro_data: Option<Lazy<[DefIndex]>>,
 
     compiler_builtins: bool,
-    pub needs_allocator: bool,
-    pub needs_panic_runtime: bool,
+    needs_allocator: bool,
+    needs_panic_runtime: bool,
     no_builtins: bool,
-    pub panic_runtime: bool,
-    pub profiler_runtime: bool,
-    pub sanitizer_runtime: bool,
+    panic_runtime: bool,
+    profiler_runtime: bool,
+    sanitizer_runtime: bool,
     symbol_mangling_version: SymbolManglingVersion,
 }
 
