@@ -25,31 +25,6 @@ enum AttrError {
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
 }
 
-/// A template that the attribute input must match.
-/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
-#[derive(Clone, Copy)]
-pub struct AttributeTemplate {
-    pub word: bool,
-    pub list: Option<&'static str>,
-    pub name_value_str: Option<&'static str>,
-}
-
-impl AttributeTemplate {
-    pub fn only_word() -> Self {
-        Self { word: true, list: None, name_value_str: None }
-    }
-
-    /// Checks that the given meta-item is compatible with this template.
-    pub fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
-        match meta_item_kind {
-            ast::MetaItemKind::Word => self.word,
-            ast::MetaItemKind::List(..) => self.list.is_some(),
-            ast::MetaItemKind::NameValue(lit) if lit.kind.is_str() => self.name_value_str.is_some(),
-            ast::MetaItemKind::NameValue(..) => false,
-        }
-    }
-}
-
 fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     let diag = &sess.span_diagnostic;
     match error {

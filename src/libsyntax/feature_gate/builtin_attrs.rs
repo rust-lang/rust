@@ -8,13 +8,13 @@ use super::check::{EXPLAIN_ALLOW_INTERNAL_UNSAFE, EXPLAIN_ALLOW_INTERNAL_UNSTABL
 use rustc_feature::{Features, Stability};
 
 use crate::ast;
-use crate::attr::AttributeTemplate;
 use crate::sess::ParseSess;
 
 use syntax_pos::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
 use lazy_static::lazy_static;
+
 
 type GateFn = fn(&Features) -> bool;
 
@@ -105,6 +105,21 @@ impl AttributeGate {
             Self::Gated(Stability::Deprecated(_, _), ..) => true,
             _ => false,
         }
+    }
+}
+
+/// A template that the attribute input must match.
+/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
+#[derive(Clone, Copy)]
+pub struct AttributeTemplate {
+    pub word: bool,
+    pub list: Option<&'static str>,
+    pub name_value_str: Option<&'static str>,
+}
+
+impl AttributeTemplate {
+    pub fn only_word() -> Self {
+        Self { word: true, list: None, name_value_str: None }
     }
 }
 
