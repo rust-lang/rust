@@ -61,14 +61,12 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=rust-lang/cargo
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    # FIXME: Output too large
-    # - env: INTEGRATION=rust-lang-nursery/chalk
-    #   if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
+    - env: INTEGRATION=rust-lang/chalk
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=Geal/nom
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-    # FIXME blocked on https://github.com/rust-lang/rust-clippy/issues/4727
-    #- env: INTEGRATION=rust-lang/rustfmt
-    #  if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
+    - env: INTEGRATION=rust-lang/rustfmt
+      if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=hyperium/hyper
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=bluss/rust-itertools
@@ -127,7 +125,7 @@ before_script:
 script:
   - |
     if [[ -n ${INTEGRATION} ]]; then
-      ./ci/integration-tests.sh && sleep 5
+      cargo test --test integration --features integration && sleep 5
     else
       ./ci/base-tests.sh && sleep 5
     fi
