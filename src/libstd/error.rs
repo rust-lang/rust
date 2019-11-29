@@ -67,6 +67,7 @@ pub trait Error: Debug + Display {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(hidden)]
     fn description(&self) -> &str {
         "description() is deprecated; use Display"
     }
@@ -132,6 +133,7 @@ pub trait Error: Debug + Display {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.33.0", reason = "replaced by Error::source, which can support \
                                                    downcasting")]
+    #[doc(hidden)]
     fn cause(&self) -> Option<&dyn Error> {
         self.source()
     }
