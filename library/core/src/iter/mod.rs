@@ -357,6 +357,8 @@ pub use self::adapters::MapWhile;
 pub use self::adapters::SourceIter;
 #[stable(feature = "iterator_step_by", since = "1.28.0")]
 pub use self::adapters::StepBy;
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::adapters::TrustedRandomAccess;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Chain, Cycle, Enumerate, Filter, FilterMap, Map, Rev, Zip};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -364,7 +366,7 @@ pub use self::adapters::{FlatMap, Peekable, Scan, Skip, SkipWhile, Take, TakeWhi
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::adapters::{Fuse, Inspect};
 
-pub(crate) use self::adapters::{process_results, TrustedRandomAccess};
+pub(crate) use self::adapters::process_results;
 
 mod adapters;
 mod range;

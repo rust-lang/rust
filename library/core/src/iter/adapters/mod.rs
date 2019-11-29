@@ -18,7 +18,8 @@ pub use self::chain::Chain;
 pub use self::flatten::{FlatMap, Flatten};
 pub use self::fuse::Fuse;
 use self::zip::try_get_unchecked;
-pub(crate) use self::zip::TrustedRandomAccess;
+#[unstable(feature = "trusted_random_access", issue = "none")]
+pub use self::zip::TrustedRandomAccess;
 pub use self::zip::Zip;
 
 /// This trait provides transitive access to source-stages in an interator-adapter pipeline
@@ -480,6 +481,7 @@ where
 unsafe impl<I> TrustedRandomAccess for Cloned<I>
 where
     I: TrustedRandomAccess,
+
 {
     #[inline]
     fn may_have_side_effect() -> bool {

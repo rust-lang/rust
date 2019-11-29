@@ -58,7 +58,9 @@ use core::cmp::{self, Ordering};
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::{arith_offset, assume};
-use core::iter::{FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen};
+use core::iter::{
+    FromIterator, FusedIterator, InPlaceIterable, SourceIter, TrustedLen, TrustedRandomAccess,
+};
 use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit};
 use core::ops::Bound::{Excluded, Included, Unbounded};
@@ -2935,6 +2937,25 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 #[unstable(feature = "trusted_len", issue = "37572")]
 unsafe impl<T> TrustedLen for IntoIter<T> {}
+
+#[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
+// T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr
+// and thus we can't implement drop-handling
+unsafe impl<T> TrustedRandomAccess for IntoIter<T>
+where
+    T: Copy,
+{
+    unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item {
+        unsafe {
+            if mem::size_of::<T>() == 0 { mem::zeroed() } else { ptr::read(self.ptr.add(i)) }
+        }
+    }
+
+    fn may_have_side_effect() -> bool {
+        false
+    }
+}
 
 #[stable(feature = "vec_into_iter_clone", since = "1.8.0")]
 impl<T: Clone> Clone for IntoIter<T> {
