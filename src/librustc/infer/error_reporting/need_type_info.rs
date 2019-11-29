@@ -460,7 +460,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// needed, suggest annotating the call, otherwise point out the resulting type of the call.
     fn annotate_method_call(
         &self,
-        segment: &hir::ptr::P<hir::PathSegment>,
+        segment: &hir::PathSegment,
         e: &Expr<'_>,
         err: &mut DiagnosticBuilder<'_>,
     ) {

@@ -126,7 +126,7 @@ impl hir::Pat<'_> {
     }
 
     /// Checks if the pattern satisfies the given predicate on some sub-pattern.
-    fn satisfies(&self, pred: impl Fn(&Self) -> bool) -> bool {
+    fn satisfies(&self, pred: impl Fn(&hir::Pat<'_>) -> bool) -> bool {
         let mut satisfies = false;
         self.walk_short(|p| {
             if pred(p) {

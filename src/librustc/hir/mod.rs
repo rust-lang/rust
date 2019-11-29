@@ -1714,7 +1714,7 @@ pub enum ExprKind<'hir> {
     Path(QPath),
 
     /// A referencing operation (i.e., `&a` or `&mut a`).
-    AddrOf(BorrowKind, &'hir Expr<'hir>),
+    AddrOf(BorrowKind, Mutability, &'hir Expr<'hir>),
     /// A `break`, with an optional label to break.
     Break(Destination, Option<&'hir Expr<'hir>>),
     /// A `continue`, with an optional label.

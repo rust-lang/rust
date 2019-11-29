@@ -228,7 +228,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprKind::Match(ref discr, ref arms, _) => {
+            hir::ExprKind::Match(ref discr, arms, _) => {
                 let discr_place = return_if_err!(self.mc.cat_expr(&discr));
                 self.borrow_expr(&discr, ty::ImmBorrow);
 
@@ -251,7 +251,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             }
 
             hir::ExprKind::InlineAsm(ref ia) => {
-                for (o, output) in ia.inner.outputs.iter().zip(&ia.outputs_exprs) {
+                for (o, output) in ia.inner.outputs.iter().zip(ia.outputs_exprs) {
                     if o.is_indirect {
                         self.consume_expr(output);
                     } else {
@@ -388,7 +388,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     fn walk_block(&mut self, blk: &hir::Block<'_>) {
         debug!("walk_block(blk.hir_id={})", blk.hir_id);
 
-        for stmt in &blk.stmts {
+        for stmt in blk.stmts {
             self.walk_stmt(stmt);
         }
 
@@ -397,7 +397,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    fn walk_struct_expr(&mut self, fields: &[hir::Field<'_>], opt_with: &Option<P<hir::Expr<'_>>>) {
+    fn walk_struct_expr(
+        &mut self,
+        fields: &[hir::Field<'_>],
+        opt_with: &Option<&'hir hir::Expr<'_>>,
+    ) {
         // Consume the expressions supplying values for each field.
         for field in fields {
             self.consume_expr(&field.expr);

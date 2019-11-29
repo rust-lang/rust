@@ -1271,12 +1271,12 @@ fn resolve_local<'tcx>(
                 record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 record_rvalue_scope(visitor, &subexpr, blk_id);
             }
-            hir::ExprKind::Struct(_, ref fields, _) => {
+            hir::ExprKind::Struct(_, fields, _) => {
                 for field in fields {
                     record_rvalue_scope_if_borrow_expr(visitor, &field.expr, blk_id);
                 }
             }
-            hir::ExprKind::Array(ref subexprs) | hir::ExprKind::Tup(ref subexprs) => {
+            hir::ExprKind::Array(subexprs) | hir::ExprKind::Tup(subexprs) => {
                 for subexpr in subexprs {
                     record_rvalue_scope_if_borrow_expr(visitor, &subexpr, blk_id);
                 }

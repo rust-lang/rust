@@ -465,7 +465,7 @@ where
 pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) {
     visitor.visit_id(param.hir_id);
     visitor.visit_pat(&param.pat);
-    walk_list!(visitor, visit_attribute, &param.attrs);
+    walk_list!(visitor, visit_attribute, param.attrs);
 }
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
@@ -687,14 +687,14 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V, type_binding
 pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
     visitor.visit_id(pattern.hir_id);
     match pattern.kind {
-        PatKind::TupleStruct(ref qpath, ref children, _) => {
+        PatKind::TupleStruct(ref qpath, children, _) => {
             visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
             walk_list!(visitor, visit_pat, children);
         }
         PatKind::Path(ref qpath) => {
             visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
         }
-        PatKind::Struct(ref qpath, ref fields, _) => {
+        PatKind::Struct(ref qpath, fields, _) => {
             visitor.visit_qpath(qpath, pattern.hir_id, pattern.span);
             for field in fields {
                 visitor.visit_id(field.hir_id);
@@ -702,8 +702,8 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
                 visitor.visit_pat(&field.pat)
             }
         }
-        PatKind::Or(ref pats) => walk_list!(visitor, visit_pat, pats),
-        PatKind::Tuple(ref tuple_elements, _) => {
+        PatKind::Or(pats) => walk_list!(visitor, visit_pat, pats),
+        PatKind::Tuple(tuple_elements, _) => {
             walk_list!(visitor, visit_pat, tuple_elements);
         }
         PatKind::Box(ref subpattern) | PatKind::Ref(ref subpattern, _) => {
@@ -719,7 +719,7 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
             visitor.visit_expr(upper_bound)
         }
         PatKind::Wild => (),
-        PatKind::Slice(ref prepatterns, ref slice_pattern, ref postpatterns) => {
+        PatKind::Slice(prepatterns, ref slice_pattern, postpatterns) => {
             walk_list!(visitor, visit_pat, prepatterns);
             walk_list!(visitor, visit_pat, slice_pattern);
             walk_list!(visitor, visit_pat, postpatterns);
@@ -957,7 +957,7 @@ pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V, struct_field: &'v 
 
 pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block<'v>) {
     visitor.visit_id(block.hir_id);
-    walk_list!(visitor, visit_stmt, &block.stmts);
+    walk_list!(visitor, visit_stmt, block.stmts);
     walk_list!(visitor, visit_expr, &block.expr);
 }
 
@@ -982,14 +982,14 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
     walk_list!(visitor, visit_attribute, expression.attrs.iter());
     match expression.kind {
         ExprKind::Box(ref subexpression) => visitor.visit_expr(subexpression),
-        ExprKind::Array(ref subexpressions) => {
+        ExprKind::Array(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
         ExprKind::Repeat(ref element, ref count) => {
             visitor.visit_expr(element);
             visitor.visit_anon_const(count)
         }
-        ExprKind::Struct(ref qpath, ref fields, ref optional_base) => {
+        ExprKind::Struct(ref qpath, fields, ref optional_base) => {
             visitor.visit_qpath(qpath, expression.hir_id, expression.span);
             for field in fields {
                 visitor.visit_id(field.hir_id);
@@ -998,14 +998,14 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             }
             walk_list!(visitor, visit_expr, optional_base);
         }
-        ExprKind::Tup(ref subexpressions) => {
+        ExprKind::Tup(subexpressions) => {
             walk_list!(visitor, visit_expr, subexpressions);
         }
-        ExprKind::Call(ref callee_expression, ref arguments) => {
+        ExprKind::Call(ref callee_expression, arguments) => {
             visitor.visit_expr(callee_expression);
             walk_list!(visitor, visit_expr, arguments);
         }
-        ExprKind::MethodCall(ref segment, _, ref arguments) => {
+        ExprKind::MethodCall(ref segment, _, arguments) => {
             visitor.visit_path_segment(expression.span, segment);
             walk_list!(visitor, visit_expr, arguments);
         }
@@ -1027,7 +1027,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_label, opt_label);
             visitor.visit_block(block);
         }
-        ExprKind::Match(ref subexpression, ref arms, _) => {
+        ExprKind::Match(ref subexpression, arms, _) => {
             visitor.visit_expr(subexpression);
             walk_list!(visitor, visit_arm, arms);
         }
@@ -1077,8 +1077,8 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             walk_list!(visitor, visit_expr, optional_expression);
         }
         ExprKind::InlineAsm(ref asm) => {
-            walk_list!(visitor, visit_expr, &asm.outputs_exprs);
-            walk_list!(visitor, visit_expr, &asm.inputs_exprs);
+            walk_list!(visitor, visit_expr, asm.outputs_exprs);
+            walk_list!(visitor, visit_expr, asm.inputs_exprs);
         }
         ExprKind::Yield(ref subexpression, _) => {
             visitor.visit_expr(subexpression);
@@ -1096,7 +1096,7 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
         }
     }
     visitor.visit_expr(&arm.body);
-    walk_list!(visitor, visit_attribute, &arm.attrs);
+    walk_list!(visitor, visit_attribute, arm.attrs);
 }
 
 pub fn walk_vis<'v, V: Visitor<'v>>(visitor: &mut V, vis: &'v Visibility) {

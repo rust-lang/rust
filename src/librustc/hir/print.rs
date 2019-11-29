@@ -10,7 +10,6 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use crate::hir;
-use crate::hir::ptr::P;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind};
 use crate::hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 
@@ -972,7 +971,7 @@ impl<'a> State<'a> {
 
         self.print_inner_attributes(attrs);
 
-        for st in &blk.stmts {
+        for st in blk.stmts {
             self.print_stmt(st);
         }
         if let Some(ref expr) = blk.expr {
@@ -1047,7 +1046,7 @@ impl<'a> State<'a> {
         &mut self,
         qpath: &hir::QPath,
         fields: &[hir::Field<'_>],
-        wth: &Option<P<hir::Expr<'_>>>,
+        wth: &Option<&'hir hir::Expr<'_>>,
     ) {
         self.print_qpath(qpath, true);
         self.s.word("{");
@@ -1187,8 +1186,8 @@ impl<'a> State<'a> {
             hir::ExprKind::Repeat(ref element, ref count) => {
                 self.print_expr_repeat(&element, count);
             }
-            hir::ExprKind::Struct(ref qpath, ref fields, ref wth) => {
-                self.print_expr_struct(qpath, &fields[..], wth);
+            hir::ExprKind::Struct(ref qpath, fields, ref wth) => {
+                self.print_expr_struct(qpath, fields, wth);
             }
             hir::ExprKind::Tup(ref exprs) => {
                 self.print_expr_tup(exprs);
@@ -1251,7 +1250,7 @@ impl<'a> State<'a> {
                 self.s.space();
                 self.print_block(&blk);
             }
-            hir::ExprKind::Match(ref expr, ref arms, _) => {
+            hir::ExprKind::Match(ref expr, arms, _) => {
                 self.cbox(INDENT_UNIT);
                 self.ibox(INDENT_UNIT);
                 self.word_nbsp("match");
