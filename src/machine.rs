@@ -291,27 +291,24 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn tag_allocation<'b>(
+    fn init_allocation_extra<'b>(
         memory_extra: &MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-    ) -> (
-        Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>,
-        Self::PointerTag,
-    ) {
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>> {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) = if !memory_extra.validate {
-            (None, Tag::Untagged)
-        } else {
-            let (stacks, base_tag) = Stacks::new_allocation(
+        let stacks = if memory_extra.validate {
+            Some(Stacks::new_allocation(
                 id,
                 alloc.size,
                 Rc::clone(&memory_extra.stacked_borrows),
                 kind,
-            );
-            (Some(stacks), base_tag)
+            ))
+        } else {
+            // No stacks.
+            None
         };
         let mut stacked_borrows = memory_extra.stacked_borrows.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
@@ -328,7 +325,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 stacked_borrows: stacks,
             },
         );
-        (Cow::Owned(alloc), base_tag)
+        Cow::Owned(alloc)
     }
 
     #[inline(always)]
