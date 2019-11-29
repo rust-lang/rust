@@ -16,14 +16,23 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, ModuleKind};
 use log::{info, debug};
 
 use std::ffi::{CStr, CString};
+use std::fs::File;
+use std::io;
+use std::mem;
+use std::path::Path;
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
+
+/// We keep track of past LTO imports that were used to produce the current set
+/// of compiled object files that we might choose to reuse during this
+/// compilation session.
+pub const THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-imports.bin";
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
@@ -472,13 +481,26 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
         info!("thin LTO data created");
 
-        let import_map = if cgcx.incr_comp_session_dir.is_some() {
-            ThinLTOImports::from_thin_lto_data(data)
+        let (import_map_path, prev_import_map, curr_import_map) =
+            if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir
+        {
+            let path = incr_comp_session_dir.join(THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME);
+            // If previous imports have been deleted, or we get an IO error
+            // reading the file storing them, then we'll just use `None` as the
+            // prev_import_map, which will force the code to be recompiled.
+            let prev = if path.exists() {
+                ThinLTOImports::load_from_file(&path).ok()
+            } else {
+                None
+            };
+            let curr = ThinLTOImports::from_thin_lto_data(data);
+            (Some(path), prev, curr)
         } else {
             // If we don't compile incrementally, we don't need to load the
             // import data from LLVM.
             assert!(green_modules.is_empty());
-            ThinLTOImports::default()
+            let curr = ThinLTOImports::default();
+            (None, None, curr)
         };
         info!("thin LTO import map loaded");
 
@@ -502,18 +524,36 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         for (module_index, module_name) in shared.module_names.iter().enumerate() {
             let module_name = module_name_to_str(module_name);
 
-            // If the module hasn't changed and none of the modules it imports
-            // from has changed, we can re-use the post-ThinLTO version of the
-            // module.
-            if green_modules.contains_key(module_name) {
-                let imports_all_green = import_map.modules_imported_by(module_name)
+            // If (1.) the module hasn't changed, and (2.) none of the modules
+            // it imports from has changed, *and* (3.) the import-set itself has
+            // not changed from the previous compile when it was last
+            // ThinLTO'ed, then we can re-use the post-ThinLTO version of the
+            // module. Otherwise, freshly perform LTO optimization.
+            //
+            // This strategy means we can always save the computed imports as
+            // canon: when we reuse the post-ThinLTO version, condition (3.)
+            // ensures that the curent import set is the same as the previous
+            // one. (And of course, when we don't reuse the post-ThinLTO
+            // version, the current import set *is* the correct one, since we
+            // are doing the ThinLTO in this current compilation cycle.)
+            //
+            // See rust-lang/rust#59535.
+            if let (Some(prev_import_map), true) =
+                (prev_import_map.as_ref(), green_modules.contains_key(module_name))
+            {
+                assert!(cgcx.incr_comp_session_dir.is_some());
+
+                let prev_imports = prev_import_map.modules_imported_by(module_name);
+                let curr_imports = curr_import_map.modules_imported_by(module_name);
+                let imports_all_green = curr_imports
                     .iter()
                     .all(|imported_module| green_modules.contains_key(imported_module));
 
-                if imports_all_green {
+                if imports_all_green && equivalent_as_sets(prev_imports, curr_imports) {
                     let work_product = green_modules[module_name].clone();
                     copy_jobs.push(work_product);
                     info!(" - {}: re-used", module_name);
+                    assert!(cgcx.incr_comp_session_dir.is_some());
                     cgcx.cgu_reuse_tracker.set_actual_reuse(module_name,
                                                             CguReuse::PostLto);
                     continue
@@ -527,8 +567,31 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }));
         }
 
+        // Save the curent ThinLTO import information for the next compilation
+        // session, overwriting the previous serialized imports (if any).
+        if let Some(path) = import_map_path {
+            if let Err(err) = curr_import_map.save_to_file(&path) {
+                let msg = format!("Error while writing ThinLTO import data: {}", err);
+                return Err(write::llvm_err(&diag_handler, &msg));
+            }
+        }
+
         Ok((opt_jobs, copy_jobs))
     }
+}
+
+/// Given two slices, each with no repeat elements. returns true if and only if
+/// the two slices have the same contents when considered as sets (i.e. when
+/// element order is disregarded).
+fn equivalent_as_sets(a: &[String], b: &[String]) -> bool {
+    // cheap path: unequal lengths means cannot possibly be set equivalent.
+    if a.len() != b.len() { return false; }
+    // fast path: before building new things, check if inputs are equivalent as is.
+    if a == b { return true; }
+    // slow path: general set comparison.
+    let a: FxHashSet<&str> = a.iter().map(|s| s.as_str()).collect();
+    let b: FxHashSet<&str> = b.iter().map(|s| s.as_str()).collect();
+    a == b
 }
 
 pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
@@ -830,6 +893,47 @@ pub struct ThinLTOImports {
 impl ThinLTOImports {
     fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
         self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
+    }
+
+    fn save_to_file(&self, path: &Path) -> io::Result<()> {
+        use std::io::Write;
+        let file = File::create(path)?;
+        let mut writer = io::BufWriter::new(file);
+        for (importing_module_name, imported_modules) in &self.imports {
+            writeln!(writer, "{}", importing_module_name)?;
+            for imported_module in imported_modules {
+                writeln!(writer, " {}", imported_module)?;
+            }
+            writeln!(writer)?;
+        }
+        Ok(())
+    }
+
+    fn load_from_file(path: &Path) -> io::Result<ThinLTOImports> {
+        use std::io::BufRead;
+        let mut imports = FxHashMap::default();
+        let mut current_module = None;
+        let mut current_imports = vec![];
+        let file = File::open(path)?;
+        for line in io::BufReader::new(file).lines() {
+            let line = line?;
+            if line.is_empty() {
+                let importing_module = current_module
+                    .take()
+                    .expect("Importing module not set");
+                imports.insert(importing_module,
+                               mem::replace(&mut current_imports, vec![]));
+            } else if line.starts_with(" ") {
+                // Space marks an imported module
+                assert_ne!(current_module, None);
+                current_imports.push(line.trim().to_string());
+            } else {
+                // Otherwise, beginning of a new module (must be start or follow empty line)
+                assert_eq!(current_module, None);
+                current_module = Some(line.trim().to_string());
+            }
+        }
+        Ok(ThinLTOImports { imports })
     }
 
     /// Loads the ThinLTO import map from ThinLTOData.
