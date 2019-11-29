@@ -57,7 +57,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         Ok(match this.machine.env_vars.map.get(name) {
             // The offset is used to strip the "{name}=" part of the string.
             Some(var_ptr) => {
-                Scalar::Ptr(var_ptr.offset(Size::from_bytes(name.len() as u64 + 1), this)?)
+                Scalar::from(var_ptr.offset(Size::from_bytes(name.len() as u64 + 1), this)?)
             }
             None => Scalar::ptr_null(&*this.tcx),
         })

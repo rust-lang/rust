@@ -253,7 +253,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
         ecx.call_function(
             malloc,
-            &[size, align],
+            &[size.into(), align.into()],
             Some(dest),
             // Don't do anything when we are done. The `statement()` function will increment
             // the old stack frame's stmt counter to the next statement, which means that when

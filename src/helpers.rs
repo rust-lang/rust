@@ -124,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn call_function(
         &mut self,
         f: ty::Instance<'tcx>,
-        args: &[Scalar<Tag>],
+        args: &[Immediate<Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
@@ -146,7 +146,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let callee_arg = this.local_place(
                 callee_args.next().expect("callee has fewer arguments than expected")
             )?;
-            this.write_scalar(*arg, callee_arg)?;
+            this.write_immediate(*arg, callee_arg)?;
         }
         callee_args.next().expect_none("callee has more arguments than expected");
 

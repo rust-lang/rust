@@ -86,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             MPlaceTy::dangling(this.layout_of(tcx.mk_unit())?, this).into();
         this.call_function(
             f_instance,
-            &[f_arg],
+            &[f_arg.into()],
             Some(ret_place),
             // Directly return to caller.
             StackPopCleanup::Goto { ret: Some(ret), unwind: None },
@@ -163,6 +163,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         match msg {
             BoundsCheck { ref index, ref len } => {
+                // Forward to `panic_bounds_check` lang item.
+
                 // First arg: Caller location.
                 let location = this.alloc_caller_location_for_span(span)?;
                 // Second arg: index.
@@ -175,12 +177,31 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 let panic_bounds_check = ty::Instance::mono(this.tcx.tcx, panic_bounds_check);
                 this.call_function(
                     panic_bounds_check,
-                    &[location.ptr, index.not_undef()?, len.not_undef()?],
+                    &[location.ptr.into(), index.into(), len.into()],
                     None,
                     StackPopCleanup::Goto { ret: None, unwind },
                 )?;
             }
-            _ => unimplemented!()
+            _ => {
+                // Forward everything else to `panic` lang item.
+
+                // First arg: Message.
+                let msg = msg.description();
+                let msg = this.allocate_str(msg, MiriMemoryKind::Static.into());
+
+                // Second arg: Caller location.
+                let location = this.alloc_caller_location_for_span(span)?;
+
+                // Call the lang item.
+                let panic = this.tcx.lang_items().panic_fn().unwrap();
+                let panic = ty::Instance::mono(this.tcx.tcx, panic);
+                this.call_function(
+                    panic,
+                    &[msg.to_ref(), location.ptr.into()],
+                    None,
+                    StackPopCleanup::Goto { ret: None, unwind },
+                )?;
+            }
         }
         Ok(())
     }

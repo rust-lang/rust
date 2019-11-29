@@ -103,7 +103,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
         for (idx, arg) in argvs.into_iter().enumerate() {
             let place = ecx.mplace_field(argvs_place, idx as u64)?;
-            ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
+            ecx.write_scalar(arg, place.into())?;
         }
         ecx.memory
             .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
@@ -149,7 +149,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Call start function.
     ecx.call_function(
         start_instance,
-        &[main_ptr.into(), argc, argv],
+        &[main_ptr.into(), argc.into(), argv.into()],
         Some(ret_place.into()),
         StackPopCleanup::None { cleanup: true },
     )?;
