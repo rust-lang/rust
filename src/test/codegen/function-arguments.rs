@@ -65,7 +65,9 @@ pub fn indirect_struct(_: S) {
 pub fn borrowed_struct(_: &S) {
 }
 
-// CHECK: noalias align 4 dereferenceable(4) i32* @_box(i32* noalias align 4 dereferenceable(4) %x)
+// `Box` can get deallocated during execution of the function, so it should
+// not get `dereferenceable`.
+// CHECK: noalias nonnull align 4 i32* @_box(i32* noalias nonnull align 4 %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
   x

@@ -2526,8 +2526,15 @@ where
 
             if let Some(pointee) = layout.pointee_info_at(cx, offset) {
                 if let Some(kind) = pointee.safe {
-                    attrs.pointee_size = pointee.size;
                     attrs.pointee_align = Some(pointee.align);
+
+                    // `Box` (`UniqueBorrowed`) are not necessarily dereferencable
+                    // for the entire duration of the function as they can be deallocated
+                    // any time. Set their valid size to 0.
+                    attrs.pointee_size = match kind {
+                        PointerKind::UniqueOwned => Size::ZERO,
+                        _ => pointee.size
+                    };
 
                     // `Box` pointer parameters never alias because ownership is transferred
                     // `&mut` pointer parameters never alias other parameters,

@@ -69,6 +69,8 @@ mod attr_impl {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct ArgAttributes {
     pub regular: ArgAttribute,
+    /// The minimum size of the pointee, guaranteed to be valid for the duration of the whole call
+    /// (corresponding to LLVM's dereferenceable and dereferenceable_or_null attributes).
     pub pointee_size: Size,
     pub pointee_align: Option<Align>
 }
