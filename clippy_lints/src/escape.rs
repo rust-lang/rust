@@ -106,44 +106,48 @@ fn is_argument(map: &hir::map::Map<'_>, id: HirId) -> bool {
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
     fn consume(&mut self, cmt: &Place<'tcx>, mode: ConsumeMode) {
-        if let PlaceBase::Local(lid) = cmt.base {
-            if let ConsumeMode::Move = mode {
-                // moved out or in. clearly can't be localized
-                self.set.remove(&lid);
-            }
-        }
-        let map = &self.cx.tcx.hir();
-        if let PlaceBase::Local(lid) = cmt.base {
-            if let Some(Node::Binding(_)) = map.find(cmt.hir_id) {
-                if self.set.contains(&lid) {
-                    // let y = x where x is known
-                    // remove x, insert y
-                    self.set.insert(cmt.hir_id);
+        if cmt.projections.is_empty() {
+            if let PlaceBase::Local(lid) = cmt.base {
+                if let ConsumeMode::Move = mode {
+                    // moved out or in. clearly can't be localized
                     self.set.remove(&lid);
+                }
+                let map = &self.cx.tcx.hir();
+                if let Some(Node::Binding(_)) = map.find(cmt.hir_id) {
+                    if self.set.contains(&lid) {
+                        // let y = x where x is known
+                        // remove x, insert y
+                        self.set.insert(cmt.hir_id);
+                        self.set.remove(&lid);
+                    }
                 }
             }
         }
     }
 
     fn borrow(&mut self, cmt: &Place<'tcx>, _: ty::BorrowKind) {
-        if let PlaceBase::Local(lid) = cmt.base {
-            self.set.remove(&lid);
+        if cmt.projections.is_empty() {
+            if let PlaceBase::Local(lid) = cmt.base {
+                self.set.remove(&lid);
+            }
         }
     }
 
     fn mutate(&mut self, cmt: &Place<'tcx>) {
-        let map = &self.cx.tcx.hir();
-        if is_argument(map, cmt.hir_id) {
-            // Skip closure arguments
-            let parent_id = map.get_parent_node(cmt.hir_id);
-            if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
+        if cmt.projections.is_empty() {
+            let map = &self.cx.tcx.hir();
+            if is_argument(map, cmt.hir_id) {
+                // Skip closure arguments
+                let parent_id = map.get_parent_node(cmt.hir_id);
+                if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
+                    return;
+                }
+
+                if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
+                    self.set.insert(cmt.hir_id);
+                }
                 return;
             }
-
-            if is_non_trait_box(cmt.ty) && !self.is_large_box(cmt.ty) {
-                self.set.insert(cmt.hir_id);
-            }
-            return;
         }
     }
 }
