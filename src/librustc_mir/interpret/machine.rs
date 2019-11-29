@@ -11,7 +11,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax_pos::Span;
 
 use super::{
-    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
+    Allocation, AllocId, InterpResult, Scalar, AllocationExtra, AssertMessage,
     InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
     Frame, Operand,
 };
@@ -172,6 +172,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
         ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
+
+    /// Called to evaluate `Assert` MIR terminators that trigger a panic.
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        msg: &AssertMessage<'tcx>,
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 

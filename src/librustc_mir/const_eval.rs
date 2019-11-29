@@ -23,7 +23,7 @@ use syntax::{source_map::{Span, DUMMY_SP}, symbol::Symbol};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue, Machine,
-    InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
+    InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup, AssertMessage,
     Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
@@ -393,6 +393,39 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Err(
             ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into()
         )
+    }
+
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        msg: &AssertMessage<'tcx>,
+        _unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        use rustc::mir::interpret::PanicInfo::*;
+        Err(match msg {
+            BoundsCheck { ref len, ref index } => {
+                let len = ecx
+                    .read_immediate(ecx.eval_operand(len, None)?)
+                    .expect("can't eval len")
+                    .to_scalar()?
+                    .to_machine_usize(&*ecx)?;
+                let index = ecx
+                    .read_immediate(ecx.eval_operand(index, None)?)
+                    .expect("can't eval index")
+                    .to_scalar()?
+                    .to_machine_usize(&*ecx)?;
+                err_panic!(BoundsCheck { len, index })
+            }
+            Overflow(op) => err_panic!(Overflow(*op)),
+            OverflowNeg => err_panic!(OverflowNeg),
+            DivisionByZero => err_panic!(DivisionByZero),
+            RemainderByZero => err_panic!(RemainderByZero),
+            ResumedAfterReturn(generator_kind)
+                => err_panic!(ResumedAfterReturn(*generator_kind)),
+            ResumedAfterPanic(generator_kind)
+                => err_panic!(ResumedAfterPanic(*generator_kind)),
+            Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
+        }
+        .into())
     }
 
     fn ptr_to_int(

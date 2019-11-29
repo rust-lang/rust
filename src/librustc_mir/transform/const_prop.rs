@@ -156,6 +156,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         throw_unsup!(ConstPropUnsupported("calling intrinsics isn't supported in ConstProp"));
     }
 
+    fn assert_panic(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _msg: &rustc::mir::interpret::AssertMessage<'tcx>,
+        _unwind: Option<rustc::mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        throw_unsup_format!("panics are not supported in ConstProp");
+    }
+
     fn ptr_to_int(
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer,
