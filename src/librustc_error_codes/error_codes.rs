@@ -107,6 +107,7 @@ E0199: include_str!("./error_codes/E0199.md"),
 E0200: include_str!("./error_codes/E0200.md"),
 E0201: include_str!("./error_codes/E0201.md"),
 E0202: include_str!("./error_codes/E0202.md"),
+E0203: include_str!("./error_codes/E0203.md"),
 E0204: include_str!("./error_codes/E0204.md"),
 E0205: include_str!("./error_codes/E0205.md"),
 E0206: include_str!("./error_codes/E0206.md"),
@@ -446,8 +447,6 @@ E0745: include_str!("./error_codes/E0745.md"),
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
-    E0203, // type parameter has more than one relaxed default bound,
-           // and only one is supported
     E0208,
 //  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
