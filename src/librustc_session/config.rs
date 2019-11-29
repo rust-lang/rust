@@ -12,13 +12,11 @@ use rustc_data_structures::impl_stable_hash_via_hash;
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
 
-// Duplicated from syntax::ast for now
-type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
-
 use syntax_pos::source_map::{FileName, FilePathMapping};
 use syntax_pos::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax_pos::symbol::{sym, Symbol};
 use rustc_feature::UnstableFeatures;
+use crate::parse::CrateConfig;
 
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, FatalError, Handler};

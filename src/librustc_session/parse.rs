@@ -16,8 +16,9 @@ use syntax_pos::source_map::{SourceMap, FilePathMapping};
 use std::path::PathBuf;
 use std::str;
 
-// Duplicated from syntax::ast for now
-type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
+/// The set of keys (and, optionally, values) that define the compilation
+/// environment of the crate, used to drive conditional compilation.
+pub type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
 
 /// Collected spans during parsing for places where a certain feature was
 /// used and should be feature gated accordingly in `check_crate`.

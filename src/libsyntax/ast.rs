@@ -32,7 +32,6 @@ use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP};
 
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
@@ -431,9 +430,7 @@ pub struct WhereEqPredicate {
     pub rhs_ty: P<Ty>,
 }
 
-/// The set of `MetaItem`s that define the compilation environment of the crate,
-/// used to drive conditional compilation.
-pub type CrateConfig = FxHashSet<(Name, Option<Symbol>)>;
+pub use rustc_session::parse::CrateConfig;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
