@@ -1260,7 +1260,7 @@ fn check_fn<'a, 'tcx>(
     fn_sig: ty::FnSig<'tcx>,
     decl: &'tcx hir::FnDecl,
     fn_id: hir::HirId,
-    body: &'tcx hir::Body,
+    body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
 ) -> (FnCtxt<'a, 'tcx>, Option<GeneratorTypes<'tcx>>) {
     let mut fn_sig = fn_sig.clone();
@@ -1327,7 +1327,7 @@ fn check_fn<'a, 'tcx>(
     for (param_ty, param) in
         fn_sig.inputs().iter().copied()
             .chain(maybe_va_list)
-            .zip(&body.params)
+            .zip(body.params)
     {
         // Check the pattern.
         fcx.check_pat_top(&param.pat, param_ty, None);

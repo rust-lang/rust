@@ -5,7 +5,7 @@ use super::ImplTraitTypeIdVisitor;
 use super::AnonymousLifetimeMode;
 use super::ParamMode;
 
-use crate::hir::{self, HirVec};
+use crate::hir;
 use crate::hir::ptr::P;
 use crate::hir::def_id::DefId;
 use crate::hir::def::{Res, DefKind};
@@ -107,7 +107,7 @@ impl<'a, 'lowering, 'hir> Visitor<'a> for ItemLowerer<'a, 'lowering, 'hir> {
     }
 }
 
-impl LoweringContext<'_, 'hir> {
+impl<'hir> LoweringContext<'_, 'hir> {
     // Same as the method above, but accepts `hir::GenericParam`s
     // instead of `ast::GenericParam`s.
     // This should only be used with generics that have already had their
@@ -1052,7 +1052,7 @@ impl LoweringContext<'_, 'hir> {
         }
     }
 
-    fn record_body(&mut self, params: HirVec<hir::Param>, value: hir::Expr) -> hir::BodyId {
+    fn record_body(&mut self, params: &'hir [hir::Param], value: hir::Expr) -> hir::BodyId {
         let body = hir::Body {
             generator_kind: self.generator_kind,
             params,
@@ -1065,7 +1065,7 @@ impl LoweringContext<'_, 'hir> {
 
     fn lower_body(
         &mut self,
-        f: impl FnOnce(&mut LoweringContext<'_, '_>) -> (HirVec<hir::Param>, hir::Expr),
+        f: impl FnOnce(&mut Self) -> (&'hir [hir::Param], hir::Expr),
     ) -> hir::BodyId {
         let prev_gen_kind = self.generator_kind.take();
         let (parameters, result) = f(self);
@@ -1089,7 +1089,9 @@ impl LoweringContext<'_, 'hir> {
         body: impl FnOnce(&mut LoweringContext<'_, '_>) -> hir::Expr,
     ) -> hir::BodyId {
         self.lower_body(|this| (
-            decl.inputs.iter().map(|x| this.lower_param(x)).collect(),
+            this.arena.alloc_from_iter(
+                decl.inputs.iter().map(|x| this.lower_param(x))
+            ),
             body(this),
         ))
     }
@@ -1111,7 +1113,7 @@ impl LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
-        self.lower_body(|this| (hir_vec![], match expr {
+        self.lower_body(|this| (&[], match expr {
             Some(expr) => this.lower_expr(expr),
             None => this.expr_err(span),
         }))
@@ -1299,7 +1301,8 @@ impl LoweringContext<'_, 'hir> {
                     );
                     this.expr_block(P(body), AttrVec::new())
                 });
-            (HirVec::from(parameters), this.expr(body_span, async_expr, AttrVec::new()))
+
+            (this.arena.alloc_from_iter(parameters), this.expr(body_span, async_expr, AttrVec::new()))
         })
     }
 

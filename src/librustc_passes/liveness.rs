@@ -371,7 +371,7 @@ fn visit_fn<'tcx>(
 
     let body = ir.tcx.hir().body(body_id);
 
-    for param in &body.params {
+    for param in body.params {
         let is_shorthand = match param.pat.kind {
             rustc::hir::PatKind::Struct(..) => true,
             _ => false,
@@ -1463,8 +1463,8 @@ impl<'tcx> Liveness<'_, 'tcx> {
         }
     }
 
-    fn warn_about_unused_args(&self, body: &hir::Body, entry_ln: LiveNode) {
-        for p in &body.params {
+    fn warn_about_unused_args(&self, body: &hir::Body<'_>, entry_ln: LiveNode) {
+        for p in body.params {
             self.check_unused_vars_in_pat(&p.pat, Some(entry_ln), |spans, hir_id, ln, var| {
                 if self.live_on_entry(ln, var).is_none() {
                     self.report_dead_assign(hir_id, spans, var, true);

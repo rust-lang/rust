@@ -760,7 +760,7 @@ pub struct Crate<'hir> {
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem<'hir>>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem<'hir>>,
-    pub bodies: BTreeMap<BodyId, Body>,
+    pub bodies: BTreeMap<BodyId, Body<'hir>>,
     pub trait_impls: BTreeMap<DefId, Vec<HirId>>,
 
     /// A list of the body ids written out in the order in which they
@@ -787,7 +787,7 @@ impl Crate<'hir> {
         &self.impl_items[&id]
     }
 
-    pub fn body(&self, id: BodyId) -> &Body {
+    pub fn body(&self, id: BodyId) -> &Body<'hir> {
         &self.bodies[&id]
     }
 }
@@ -1353,13 +1353,13 @@ pub struct BodyId {
 /// All bodies have an **owner**, which can be accessed via the HIR
 /// map using `body_owner_def_id()`.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Body {
-    pub params: HirVec<Param>,
+pub struct Body<'hir> {
+    pub params: &'hir [Param],
     pub value: Expr,
     pub generator_kind: Option<GeneratorKind>,
 }
 
-impl Body {
+impl Body<'hir> {
     pub fn id(&self) -> BodyId {
         BodyId {
             hir_id: self.value.hir_id,

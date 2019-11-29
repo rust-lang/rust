@@ -83,8 +83,8 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
         intravisit::walk_local(self, local);
     }
 
-    fn visit_body(&mut self, body: &'tcx Body) {
-        for param in &body.params {
+    fn visit_body(&mut self, body: &'tcx Body<'tcx>) {
+        for param in body.params {
             if let (None, Some(ty)) = (
                 self.found_arg_pattern,
                 self.node_matches_type(param.hir_id),
@@ -113,7 +113,7 @@ fn closure_return_type_suggestion(
     span: Span,
     err: &mut DiagnosticBuilder<'_>,
     output: &FunctionRetTy,
-    body: &Body,
+    body: &Body<'_>,
     descr: &str,
     name: &str,
     ret: &str,

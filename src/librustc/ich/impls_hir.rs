@@ -266,7 +266,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::Item<'_> {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Body {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Body<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Body {
             params,

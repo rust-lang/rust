@@ -61,7 +61,7 @@ struct BodyResolver<'tcx>(&'tcx hir::Crate<'tcx>);
 impl<'tcx> BodyResolver<'tcx> {
     /// Returns a reference to the `hir::Body` with the given `BodyId`.
     /// **Does not do any tracking**; use carefully.
-    fn body(self, id: hir::BodyId) -> &'tcx hir::Body {
+    fn body(self, id: hir::BodyId) -> &'tcx hir::Body<'tcx> {
         self.0.body(id)
     }
 }

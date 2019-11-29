@@ -459,7 +459,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.impl_item(id)
     }
 
-    pub fn body(&self, id: BodyId) -> &'hir Body {
+    pub fn body(&self, id: BodyId) -> &'hir Body<'hir> {
         self.read(id.hir_id);
 
         // N.B., intentionally bypass `self.forest.krate()` so that we

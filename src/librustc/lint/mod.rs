@@ -87,8 +87,8 @@ macro_rules! late_lint_methods {
     ($macro:path, $args:tt, [$hir:tt]) => (
         $macro!($args, [$hir], [
             fn check_param(a: &$hir hir::Param);
-            fn check_body(a: &$hir hir::Body);
-            fn check_body_post(a: &$hir hir::Body);
+            fn check_body(a: &$hir hir::Body<$hir>);
+            fn check_body_post(a: &$hir hir::Body<$hir>);
             fn check_name(a: Span, b: ast::Name);
             fn check_crate(a: &$hir hir::Crate<$hir>);
             fn check_crate_post(a: &$hir hir::Crate<$hir>);
@@ -114,13 +114,13 @@ macro_rules! late_lint_methods {
             fn check_fn(
                 a: hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl,
-                c: &$hir hir::Body,
+                c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId);
             fn check_fn_post(
                 a: hir::intravisit::FnKind<$hir>,
                 b: &$hir hir::FnDecl,
-                c: &$hir hir::Body,
+                c: &$hir hir::Body<$hir>,
                 d: Span,
                 e: hir::HirId
             );

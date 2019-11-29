@@ -130,6 +130,7 @@ macro_rules! arena_types {
             [] foreign_item: rustc::hir::ForeignItem<$tcx>,
             [] impl_item_ref: rustc::hir::ImplItemRef,
             [] macro_def: rustc::hir::MacroDef<$tcx>,
+            [] param: rustc::hir::Param,
             [] path: rustc::hir::Path,
             [] struct_field: rustc::hir::StructField<$tcx>,
             [] trait_item_ref: rustc::hir::TraitItemRef,

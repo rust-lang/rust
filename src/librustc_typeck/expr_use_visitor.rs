@@ -131,10 +131,10 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         }
     }
 
-    pub fn consume_body(&mut self, body: &hir::Body) {
+    pub fn consume_body(&mut self, body: &hir::Body<'_>) {
         debug!("consume_body(body={:?})", body);
 
-        for param in &body.params {
+        for param in body.params {
             let param_ty = return_if_err!(self.mc.pat_ty_adjusted(&param.pat));
             debug!("consume_body: param_ty = {:?}", param_ty);
 

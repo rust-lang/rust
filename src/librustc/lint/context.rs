@@ -924,7 +924,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         });
     }
 
-    fn visit_body(&mut self, body: &'tcx hir::Body) {
+    fn visit_body(&mut self, body: &'tcx hir::Body<'tcx>) {
         lint_callback!(self, check_body, body);
         hir_visit::walk_body(self, body);
         lint_callback!(self, check_body_post, body);

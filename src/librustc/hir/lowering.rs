@@ -99,7 +99,7 @@ pub struct LoweringContext<'a, 'hir: 'a> {
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem<'hir>>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem<'hir>>,
-    bodies: BTreeMap<hir::BodyId, hir::Body>,
+    bodies: BTreeMap<hir::BodyId, hir::Body<'hir>>,
     exported_macros: Vec<hir::MacroDef<'hir>>,
     non_exported_macro_attrs: Vec<ast::Attribute>,
 
@@ -3428,7 +3428,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
+fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'hir>>) -> Vec<hir::BodyId> {
     // Sorting by span ensures that we get things in order within a
     // file, and also puts the files in a sensible order.
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();

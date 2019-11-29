@@ -298,7 +298,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         cx: &LateContext<'_, '_>,
         fk: FnKind<'_>,
         _: &hir::FnDecl,
-        _: &hir::Body,
+        _: &hir::Body<'_>,
         _: Span,
         id: hir::HirId,
     ) {

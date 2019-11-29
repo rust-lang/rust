@@ -222,7 +222,7 @@ pub trait Visitor<'v>: Sized {
         walk_item(self, i)
     }
 
-    fn visit_body(&mut self, b: &'v Body) {
+    fn visit_body(&mut self, b: &'v Body<'v>) {
         walk_body(self, b);
     }
 
@@ -401,8 +401,8 @@ pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>, mod_hi
     }
 }
 
-pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body) {
-    walk_list!(visitor, visit_param, &body.params);
+pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body<'v>) {
+    walk_list!(visitor, visit_param, body.params);
     visitor.visit_expr(&body.value);
 }
 

@@ -1167,7 +1167,7 @@ fn signal_shadowing_problem(tcx: TyCtxt<'_>, name: ast::Name, orig: Original, sh
 
 // Adds all labels in `b` to `ctxt.labels_in_fn`, signalling a warning
 // if one of the label shadows a lifetime or another label.
-fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
+fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
     struct GatherLabels<'a, 'tcx> {
         tcx: TyCtxt<'tcx>,
         scope: ScopeRef<'a>,
