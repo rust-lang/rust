@@ -177,7 +177,7 @@ impl Visitor<'tcx> for IfThisChanged<'tcx> {
         intravisit::walk_impl_item(self, impl_item);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
         self.process_attrs(s.hir_id, &s.attrs);
         intravisit::walk_struct_field(self, s);
     }

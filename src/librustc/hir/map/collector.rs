@@ -550,7 +550,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_struct_field(&mut self, field: &'hir StructField) {
+    fn visit_struct_field(&mut self, field: &'hir StructField<'hir>) {
         self.insert(field.span, field.hir_id, Node::Field(field));
         self.with_parent(field.hir_id, |this| {
             intravisit::walk_struct_field(this, field);

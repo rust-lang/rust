@@ -203,7 +203,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_param_bound(self, bounds)
     }
 
-    fn visit_struct_field(&mut self, s: &'v hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'v hir::StructField<'v>) {
         self.record("StructField", Id::Node(s.hir_id), s);
         hir_visit::walk_struct_field(self, s)
     }

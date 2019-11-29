@@ -89,7 +89,7 @@ pub struct Struct<'hir> {
     pub name: Name,
     pub generics: &'hir hir::Generics,
     pub attrs: &'hir [ast::Attribute],
-    pub fields: &'hir [hir::StructField],
+    pub fields: &'hir [hir::StructField<'hir>],
     pub whence: Span,
 }
 
@@ -100,7 +100,7 @@ pub struct Union<'hir> {
     pub name: Name,
     pub generics: &'hir hir::Generics,
     pub attrs: &'hir [ast::Attribute],
-    pub fields: &'hir [hir::StructField],
+    pub fields: &'hir [hir::StructField<'hir>],
     pub whence: Span,
 }
 

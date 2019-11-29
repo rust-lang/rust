@@ -495,7 +495,7 @@ impl DeadVisitor<'tcx> {
         should_warn && !self.symbol_is_live(item.hir_id)
     }
 
-    fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
+    fn should_warn_about_field(&mut self, field: &hir::StructField<'_>) -> bool {
         let field_type = self.tcx.type_of(self.tcx.hir().local_def_id(field.hir_id));
         !field.is_positional()
             && !self.symbol_is_live(field.hir_id)
@@ -629,7 +629,7 @@ impl Visitor<'tcx> for DeadVisitor<'tcx> {
         intravisit::walk_foreign_item(self, fi);
     }
 
-    fn visit_struct_field(&mut self, field: &'tcx hir::StructField) {
+    fn visit_struct_field(&mut self, field: &'tcx hir::StructField<'tcx>) {
         if self.should_warn_about_field(&field) {
             self.warn_dead_code(field.hir_id, field.span, field.ident.name, "field", "read");
         }

@@ -791,7 +791,7 @@ impl LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField {
+    fn lower_struct_field(&mut self, (index, f): (usize, &StructField)) -> hir::StructField<'hir> {
         let ty = if let TyKind::Path(ref qself, ref path) = f.ty.kind {
             let t = self.lower_path_ty(
                 &f.ty,
@@ -800,9 +800,10 @@ impl LoweringContext<'_, 'hir> {
                 ParamMode::ExplicitNamed, // no `'_` in declarations (Issue #61124)
                 ImplTraitContext::disallowed()
             );
-            P(t)
+            self.arena.alloc(t)
         } else {
-            self.lower_ty(&f.ty, ImplTraitContext::disallowed())
+            let t = self.lower_ty(&f.ty, ImplTraitContext::disallowed());
+            self.arena.alloc(t.into_inner())
         };
         hir::StructField {
             span: f.span,
@@ -814,7 +815,7 @@ impl LoweringContext<'_, 'hir> {
             },
             vis: self.lower_visibility(&f.vis, None),
             ty,
-            attrs: self.lower_attrs(&f.attrs),
+            attrs: self.lower_attrs_arena(&f.attrs),
         }
     }
 

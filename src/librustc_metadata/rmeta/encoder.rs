@@ -727,7 +727,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.kind[def_id] <- EntryKind::Field);
         record!(self.per_def.visibility[def_id] <- field.vis);
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
-        record!(self.per_def.attributes[def_id] <- &variant_data.fields()[field_index].attrs);
+        record!(self.per_def.attributes[def_id] <- variant_data.fields()[field_index].attrs);
         self.encode_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);

@@ -1251,7 +1251,7 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 impl Named for Item<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for ForeignItem<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for Variant<'_> { fn name(&self) -> Name { self.ident.name } }
-impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
+impl Named for StructField<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem<'_> { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem<'_> { fn name(&self) -> Name { self.ident.name } }
 

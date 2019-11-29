@@ -1000,7 +1000,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         lint_callback!(self, check_struct_def_post, s);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx hir::StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx hir::StructField<'tcx>) {
         self.with_lint_attrs(s.hir_id, &s.attrs, |cx| {
             lint_callback!(cx, check_struct_field, s);
             hir_visit::walk_struct_field(cx, s);

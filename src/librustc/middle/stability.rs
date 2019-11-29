@@ -312,7 +312,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Annotator<'a, 'tcx> {
             })
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
         self.annotate(s.hir_id, &s.attrs, s.span, AnnotationKind::Required, |v| {
             intravisit::walk_struct_field(v, s);
         });
@@ -387,7 +387,7 @@ impl<'a, 'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'a, 'tcx> {
         intravisit::walk_variant(self, var, g, item_id);
     }
 
-    fn visit_struct_field(&mut self, s: &'tcx StructField) {
+    fn visit_struct_field(&mut self, s: &'tcx StructField<'tcx>) {
         self.check_missing_stability(s.hir_id, s.span, "field");
         intravisit::walk_struct_field(self, s);
     }
