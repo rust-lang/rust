@@ -19,9 +19,18 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, ModuleKind};
 
 use std::ffi::{CStr, CString};
+use std::fs::File;
+use std::io;
+use std::mem;
+use std::path::Path;
 use std::ptr;
 use std::slice;
 use std::sync::Arc;
+
+/// We keep track of past LTO imports that were used to produce the current set
+/// of compiled object files that we might choose to reuse during this
+/// compilation session.
+pub const THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-imports.bin";
 
 pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     match crate_type {
@@ -470,13 +479,26 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
         info!("thin LTO data created");
 
-        let import_map = if cgcx.incr_comp_session_dir.is_some() {
-            ThinLTOImports::from_thin_lto_data(data)
+        let (import_map_path, prev_import_map, mut curr_import_map) =
+            if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir
+        {
+            let path = incr_comp_session_dir.join(THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME);
+            let prev = if path.exists() {
+                // FIXME: can/should we recover from IO error occuring here
+                // (e.g. by clearing green_modules), rather than panicking from
+                // unwrap call?
+                Some(ThinLTOImports::load_from_file(&path).unwrap())
+            } else {
+                None
+            };
+            let curr = ThinLTOImports::from_thin_lto_data(data);
+            (Some(path), prev, curr)
         } else {
             // If we don't compile incrementally, we don't need to load the
             // import data from LLVM.
             assert!(green_modules.is_empty());
-            ThinLTOImports::default()
+            let curr = ThinLTOImports::default();
+            (None, None, curr)
         };
         info!("thin LTO import map loaded");
 
@@ -500,11 +522,24 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         for (module_index, module_name) in shared.module_names.iter().enumerate() {
             let module_name = module_name_to_str(module_name);
 
-            // If the module hasn't changed and none of the modules it imports
-            // from has changed, we can re-use the post-ThinLTO version of the
-            // module.
+            // If the module hasn't changed, and none of the modules it imported
+            // from (*) has changed, then we can (1.) re-use the post-ThinLTO
+            // version of the module, and thus (2.) save those previous ThinLTO
+            // imports as its current set of imports.
+            //
+            // (*): that is, "imported from" at the time it was previously ThinLTO'ed;
+            // see rust-lang/rust#59535.
+            //
+            // If we do *not* re-use the post-ThinLTO version of the module,
+            // then we should save the computed imports that LLVM reported to us
+            // during this cycle.
             if green_modules.contains_key(module_name) {
-                let imports_all_green = import_map.modules_imported_by(module_name)
+                assert!(cgcx.incr_comp_session_dir.is_some());
+                assert!(prev_import_map.is_some());
+
+                let prev_import_map = prev_import_map.as_ref().unwrap();
+                let prev_imports = prev_import_map.modules_imported_by(module_name);
+                let imports_all_green = prev_imports
                     .iter()
                     .all(|imported_module| green_modules.contains_key(imported_module));
 
@@ -512,8 +547,10 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
                     let work_product = green_modules[module_name].clone();
                     copy_jobs.push(work_product);
                     info!(" - {}: re-used", module_name);
+                    assert!(cgcx.incr_comp_session_dir.is_some());
                     cgcx.cgu_reuse_tracker.set_actual_reuse(module_name,
                                                             CguReuse::PostLto);
+                    curr_import_map.overwrite_with_past_import_state(module_name, prev_imports);
                     continue
                 }
             }
@@ -523,6 +560,14 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
                 shared: shared.clone(),
                 idx: module_index,
             }));
+        }
+
+        // Save the accumulated ThinLTO import information
+        if let Some(path) = import_map_path {
+            if let Err(err) = curr_import_map.save_to_file(&path) {
+                let msg = format!("Error while writing ThinLTO import data: {}", err);
+                return Err(write::llvm_err(&diag_handler, &msg));
+            }
         }
 
         Ok((opt_jobs, copy_jobs))
@@ -826,8 +871,74 @@ pub struct ThinLTOImports {
 }
 
 impl ThinLTOImports {
+    /// Records `llvm_module_name` as importing `prev_imports` rather than what
+    /// we have currently computed. Ensures that the previous imports are a
+    /// superset of what imports LLVM currently computed.
+    fn overwrite_with_past_import_state(&mut self,
+                                        llvm_module_name: &str,
+                                        prev_imports: &[String]) {
+        // There were imports used to previous LTO optimize the module; make
+        // sure they are a superset of whatever we have in our current state,
+        // and then store them as our new current state.
+        let curr_imports_for_mod = self.modules_imported_by(llvm_module_name);
+        for imported in curr_imports_for_mod {
+            assert!(prev_imports.contains(imported));
+        }
+        // We can avoid doing the insertion entirely if the sets are equivalent,
+        // and we can determine equivalence cheaply via a length comparison,
+        // since we have already asserted the past state to be a superset of the
+        // current state.
+        if prev_imports.len() != curr_imports_for_mod.len() {
+            debug!("ThinLTOImports::restore_past_import_state \
+                    mod: {:?} replacing curr state: {:?} with prev state: {:?}",
+                   llvm_module_name, curr_imports_for_mod, prev_imports);
+            self.imports.insert(llvm_module_name.to_owned(), prev_imports.to_vec());
+        }
+    }
+
     fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
         self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
+    }
+
+    fn save_to_file(&self, path: &Path) -> io::Result<()> {
+        use std::io::Write;
+        let file = File::create(path)?;
+        let mut writer = io::BufWriter::new(file);
+        for (importing_module_name, imported_modules) in &self.imports {
+            writeln!(writer, "{}", importing_module_name)?;
+            for imported_module in imported_modules {
+                writeln!(writer, " {}", imported_module)?;
+            }
+            writeln!(writer)?;
+        }
+        Ok(())
+    }
+
+    fn load_from_file(path: &Path) -> io::Result<ThinLTOImports> {
+        use std::io::BufRead;
+        let mut imports = FxHashMap::default();
+        let mut current_module = None;
+        let mut current_imports = vec![];
+        let file = File::open(path)?;
+        for line in io::BufReader::new(file).lines() {
+            let line = line?;
+            if line.is_empty() {
+                let importing_module = current_module
+                    .take()
+                    .expect("Importing module not set");
+                imports.insert(importing_module,
+                               mem::replace(&mut current_imports, vec![]));
+            } else if line.starts_with(" ") {
+                // Space marks an imported module
+                assert_ne!(current_module, None);
+                current_imports.push(line.trim().to_string());
+            } else {
+                // Otherwise, beginning of a new module (must be start or follow empty line)
+                assert_eq!(current_module, None);
+                current_module = Some(line.trim().to_string());
+            }
+        }
+        Ok(ThinLTOImports { imports })
     }
 
     /// Loads the ThinLTO import map from ThinLTOData.
