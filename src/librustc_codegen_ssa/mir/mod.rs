@@ -156,7 +156,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }).collect();
 
     let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
-    let mir_body: &Body<'_> = &mir;
+    let mir_body: &Body<'_> = mir.body();
     let mut fx = FunctionCx {
         instance,
         mir,

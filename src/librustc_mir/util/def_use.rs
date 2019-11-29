@@ -62,7 +62,7 @@ impl DefUseAnalysis {
         let mut visitor = MutateUseVisitor::new(local, new_local, tcx);
         let info = &self.info[local];
         for place_use in &info.defs_and_uses {
-            visitor.visit_location(body_cache, place_use.location)
+            visitor.visit_location(body, place_use.location)
         }
         // Update debuginfo as well, alongside defs/uses.
         for &i in &info.var_debug_info_indices {

@@ -64,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
 
         let promotable_candidates
-            = validate_candidates(tcx, read_only, def_id, &temps, &all_candidates);
+            = validate_candidates(tcx, read_only!(body), def_id, &temps, &all_candidates);
 
         let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);

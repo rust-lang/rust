@@ -199,7 +199,7 @@ fn build_drop_shim<'tcx>(
     block(&mut blocks, TerminatorKind::Goto { target: return_block });
     block(&mut blocks, TerminatorKind::Return);
 
-    let mut body = new_body(
+    let body = new_body(
         blocks,
         local_decls_for_sig(&sig, span),
         sig.inputs().len(),
@@ -914,7 +914,7 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &BodyCache<'_> {
         is_cleanup: false
     };
 
-    let mut body = new_body(
+    let body = new_body(
         IndexVec::from_elem_n(start_block, 1),
         local_decls,
         sig.inputs().len(),
