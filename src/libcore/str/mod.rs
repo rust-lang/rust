@@ -863,6 +863,7 @@ impl FusedIterator for Bytes<'_> {}
 unsafe impl TrustedLen for Bytes<'_> {}
 
 #[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl TrustedRandomAccess for Bytes<'_> {
     unsafe fn get_unchecked(&mut self, i: usize) -> u8 {
         self.0.get_unchecked(i)

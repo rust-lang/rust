@@ -262,6 +262,7 @@ where
 }
 
 #[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl<A, B> TrustedRandomAccess for Zip<A, B>
 where
     A: TrustedRandomAccess,
@@ -322,7 +323,10 @@ unsafe impl<A: InPlaceIterable, B: Iterator> InPlaceIterable for Zip<A, B> {}
 /// .get_unchecked() must return distinct mutable references for distinct
 /// indices (if applicable), and must return a valid reference if index is in
 /// 0..self.len().
-pub(crate) unsafe trait TrustedRandomAccess: ExactSizeIterator {
+#[unstable(issue = "0", feature = "std_internals")]
+pub unsafe trait TrustedRandomAccess: ExactSizeIterator {
+    /// Returns item at offset `i` from the current position of the iterator.
+    /// It does not advance the iterator.
     unsafe fn get_unchecked(&mut self, i: usize) -> Self::Item;
     /// Returns `true` if getting an iterator element may have
     /// side effects. Remember to take inner iterators into account.

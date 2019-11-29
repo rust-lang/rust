@@ -16,8 +16,9 @@ mod zip;
 pub use self::chain::Chain;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::flatten::{FlatMap, Flatten};
-pub(crate) use self::zip::TrustedRandomAccess;
 pub use self::zip::Zip;
+#[unstable(issue = "0", feature = "std_internals")]
+pub use self::zip::TrustedRandomAccess;
 
 /// This trait provides transitive access to source-stages in an interator-adapter pipeline
 /// under the conditions that
@@ -318,6 +319,7 @@ where
 }
 
 #[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Copied<I>
 where
     I: TrustedRandomAccess<Item = &'a T>,
@@ -448,6 +450,7 @@ where
 }
 
 #[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
 where
     I: TrustedRandomAccess<Item = &'a T>,
@@ -464,6 +467,7 @@ where
 }
 
 #[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl<'a, I, T: 'a> TrustedRandomAccess for Cloned<I>
 where
     I: TrustedRandomAccess<Item = &'a T>,
@@ -931,6 +935,7 @@ where
 }
 
 #[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl<B, I, F> TrustedRandomAccess for Map<I, F>
 where
     I: TrustedRandomAccess,
@@ -1446,6 +1451,7 @@ where
 }
 
 #[doc(hidden)]
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl<I> TrustedRandomAccess for Enumerate<I>
 where
     I: TrustedRandomAccess,
@@ -2638,6 +2644,7 @@ where
     }
 }
 
+#[unstable(issue = "0", feature = "std_internals")]
 unsafe impl<I> TrustedRandomAccess for Fuse<I>
 where
     I: TrustedRandomAccess,
