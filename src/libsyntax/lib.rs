@@ -96,7 +96,7 @@ pub mod feature_gate {
     mod check;
     pub use check::{
         check_crate, check_attribute, get_features, feature_err, emit_feature_err,
-        Stability, GateIssue, UnstableFeatures,
+        GateIssue, UnstableFeatures,
         EXPLAIN_STMT_ATTR_SYNTAX, EXPLAIN_UNSIZED_TUPLE_COERCION,
     };
     mod builtin_attrs;

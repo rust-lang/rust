@@ -4,8 +4,8 @@ use AttributeType::*;
 use AttributeGate::*;
 
 use super::check::{emit_feature_err, GateIssue};
-use super::check::{Stability, EXPLAIN_ALLOW_INTERNAL_UNSAFE, EXPLAIN_ALLOW_INTERNAL_UNSTABLE};
-use rustc_feature::Features;
+use super::check::{EXPLAIN_ALLOW_INTERNAL_UNSAFE, EXPLAIN_ALLOW_INTERNAL_UNSTABLE};
+use rustc_feature::{Features, Stability};
 
 use crate::ast;
 use crate::attr::AttributeTemplate;

@@ -34,6 +34,7 @@ use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
 use rustc::util::nodemap::FxHashSet;
+use rustc_feature::Stability;
 
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast::{self, Expr};
@@ -42,7 +43,7 @@ use syntax::attr::{self, HasAttrs, AttributeTemplate};
 use syntax::source_map::Spanned;
 use syntax::edition::Edition;
 use syntax::feature_gate::{AttributeGate, AttributeType};
-use syntax::feature_gate::{Stability, deprecated_attributes};
+use syntax::feature_gate::deprecated_attributes;
 use syntax_pos::{BytePos, Span};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};

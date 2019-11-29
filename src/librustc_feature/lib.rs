@@ -56,6 +56,14 @@ impl Feature {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum Stability {
+    Unstable,
+    // First argument is tracking issue link; second argument is an optional
+    // help message, which defaults to "remove this attribute".
+    Deprecated(&'static str, Option<&'static str>),
+}
+
 pub use accepted::ACCEPTED_FEATURES;
 pub use active::{ACTIVE_FEATURES, Features, INCOMPLETE_FEATURES};
 pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};

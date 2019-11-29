@@ -22,14 +22,6 @@ use rustc_error_codes::*;
 use std::env;
 use std::num::NonZeroU32;
 
-#[derive(Copy, Clone, Debug)]
-pub enum Stability {
-    Unstable,
-    // First argument is tracking issue link; second argument is an optional
-    // help message, which defaults to "remove this attribute"
-    Deprecated(&'static str, Option<&'static str>),
-}
-
 macro_rules! gate_feature_fn {
     ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{
         let (cx, has_feature, span,
