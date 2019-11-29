@@ -1,13 +1,13 @@
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
-use rustc_session::lint;
-use rustc_session::utils::NativeLibraryKind;
-use crate::session::{early_error, early_warn, Session};
-use crate::session::search_paths::SearchPath;
+use crate::lint;
+use crate::utils::NativeLibraryKind;
+use crate::{early_error, early_warn, Session};
+use crate::search_paths::SearchPath;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_feature::UnstableFeatures;
+use rustc_data_structures::impl_stable_hash_via_hash;
 
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
@@ -15,12 +15,13 @@ use rustc_target::spec::{Target, TargetTriple};
 // Duplicated from syntax::ast for now
 type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
 
-use syntax::source_map::{FileName, FilePathMapping};
-use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
-use syntax::symbol::{sym, Symbol};
+use syntax_pos::source_map::{FileName, FilePathMapping};
+use syntax_pos::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
+use syntax_pos::symbol::{sym, Symbol};
+use rustc_feature::UnstableFeatures;
 
-use errors::emitter::HumanReadableErrorType;
-use errors::{ColorConfig, FatalError, Handler};
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 
@@ -349,7 +350,7 @@ macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
         if $sub_hashes.insert(stringify!($opt_name),
                               $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
-            bug!("duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
+            panic!("duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
 }
@@ -702,7 +703,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, HashStable)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
 pub enum CrateType {
     Executable,
     Dylib,
@@ -711,6 +712,8 @@ pub enum CrateType {
     Cdylib,
     ProcMacro,
 }
+
+impl_stable_hash_via_hash!(CrateType);
 
 #[derive(Clone, Hash)]
 pub enum Passes {
@@ -782,7 +785,7 @@ macro_rules! options {
                                                                value, $outputname,
                                                                key, type_desc))
                         }
-                        (None, None) => bug!()
+                        (None, None) => panic!()
                     }
                 }
                 found = true;
@@ -2720,7 +2723,7 @@ pub mod nightly_options {
     use getopts;
     use rustc_feature::UnstableFeatures;
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
-    use crate::session::early_error;
+    use crate::early_error;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
         is_nightly_build()
@@ -2858,8 +2861,8 @@ impl PpMode {
 /// we have an opt-in scheme here, so one is hopefully forced to think about
 /// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
-    use rustc_session::lint;
-    use rustc_session::utils::NativeLibraryKind;
+    use crate::lint;
+    use crate::utils::NativeLibraryKind;
     use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
@@ -2867,9 +2870,9 @@ mod dep_tracking {
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
                 Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
                 SymbolManglingVersion};
-    use rustc_feature::UnstableFeatures;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
-    use syntax::edition::Edition;
+    use syntax_pos::edition::Edition;
+    use rustc_feature::UnstableFeatures;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);

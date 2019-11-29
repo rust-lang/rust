@@ -7,8 +7,9 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::session::search_paths::{SearchPath, PathKind};
+use crate::search_paths::{SearchPath, PathKind};
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
+use log::debug;
 
 #[derive(Copy, Clone)]
 pub enum FileMatch {
@@ -124,7 +125,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
                 // gcc chokes on verbatim paths which fs::canonicalize generates
                 // so we try to avoid those kinds of paths.
                 Ok(canon) => Some(fix_windows_verbatim_for_gcc(&canon)),
-                Err(e) => bug!("failed to get realpath: {}", e),
+                Err(e) => panic!("failed to get realpath: {}", e),
             }
         })
     }
@@ -133,7 +134,7 @@ pub fn get_or_default_sysroot() -> PathBuf {
         Ok(exe) => {
             match canonicalize(Some(exe)) {
                 Some(mut p) => { p.pop(); p.pop(); p },
-                None => bug!("can't determine value for sysroot")
+                None => panic!("can't determine value for sysroot")
             }
         }
         Err(ref e) => panic!(format!("failed to get current_exe: {}", e))

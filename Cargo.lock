@@ -3893,9 +3893,13 @@ name = "rustc_session"
 version = "0.0.0"
 dependencies = [
  "log",
+ "num_cpus",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_feature",
+ "rustc_fs_util",
  "rustc_index",
+ "rustc_target",
  "serialize",
  "syntax_pos",
 ]
