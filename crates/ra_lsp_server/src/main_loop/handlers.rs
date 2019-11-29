@@ -13,7 +13,7 @@ use ra_ide::{
     AssistId, FileId, FilePosition, FileRange, Query, Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
-use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
+use ra_syntax::{tokenize, AstNode, SyntaxKind, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
@@ -504,6 +504,12 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
             "New Name cannot be empty".into(),
         )
         .into());
+    }
+
+    // Only rename to valid identifiers
+    let tokens = tokenize(&params.new_name);
+    if tokens.len() != 1 || tokens[0].kind != SyntaxKind::IDENT {
+        return Ok(None);
     }
 
     let optional_change = world.analysis().rename(position, &*params.new_name)?;
