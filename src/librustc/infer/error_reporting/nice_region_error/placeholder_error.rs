@@ -401,7 +401,7 @@ impl NiceRegionError<'me, 'tcx> {
                 format!(
                     "{}`{}` would have to be implemented for the type `{}`",
                     if leading_ellipsis { "..." } else { "" },
-                    expected_trait_ref,
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
                     expected_trait_ref.map(|tr| tr.self_ty()),
                 )
             } else {
@@ -409,7 +409,7 @@ impl NiceRegionError<'me, 'tcx> {
                     "{}`{}` must implement `{}`",
                     if leading_ellipsis { "..." } else { "" },
                     expected_trait_ref.map(|tr| tr.self_ty()),
-                    expected_trait_ref,
+                    expected_trait_ref.map(|tr| tr.print_only_trait_path()),
                 )
             };
 
@@ -449,14 +449,14 @@ impl NiceRegionError<'me, 'tcx> {
             let mut note = if passive_voice {
                 format!(
                     "...but `{}` is actually implemented for the type `{}`",
-                    actual_trait_ref,
+                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
                     actual_trait_ref.map(|tr| tr.self_ty()),
                 )
             } else {
                 format!(
                     "...but `{}` actually implements `{}`",
                     actual_trait_ref.map(|tr| tr.self_ty()),
-                    actual_trait_ref,
+                    actual_trait_ref.map(|tr| tr.print_only_trait_path()),
                 )
             };
 

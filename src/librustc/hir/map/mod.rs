@@ -200,7 +200,7 @@ pub struct Map<'hir> {
 
     map: HirEntryMap<'hir>,
 
-    definitions: &'hir Definitions,
+    definitions: Definitions,
 
     /// The reverse mapping of `node_to_hir_id`.
     hir_to_node_id: FxHashMap<HirId, NodeId>,
@@ -267,8 +267,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn definitions(&self) -> &'hir Definitions {
-        self.definitions
+    pub fn definitions(&self) -> &Definitions {
+        &self.definitions
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
@@ -1251,7 +1251,7 @@ impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 pub fn map_crate<'hir>(sess: &crate::session::Session,
                        cstore: &CrateStoreDyn,
                        forest: &'hir Forest,
-                       definitions: &'hir Definitions)
+                       definitions: Definitions)
                        -> Map<'hir> {
     let _prof_timer = sess.prof.generic_activity("build_hir_map");
 
@@ -1260,7 +1260,7 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
         .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();
 
     let (map, crate_hash) = {
-        let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
+        let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, &definitions, cstore);
 
         let mut collector = NodeCollector::root(sess,
                                                 &forest.krate,

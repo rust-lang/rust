@@ -343,14 +343,14 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         registry: rustc_driver::diagnostics_registry(),
     };
 
-    interface::run_compiler_in_existing_thread_pool(config, |compiler| {
+    interface::run_compiler_in_existing_thread_pool(config, |compiler| compiler.enter(|queries| {
         let sess = compiler.session();
 
         // We need to hold on to the complete resolver, so we cause everything to be
         // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
         let resolver = {
-            let parts = abort_on_err(compiler.expansion(), sess).peek();
+            let parts = abort_on_err(queries.expansion(), sess).peek();
             let resolver = parts.1.borrow();
 
             // Before we actually clone it, let's force all the extern'd crates to
@@ -358,10 +358,11 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             // intra-doc-links
             resolver.borrow_mut().access(|resolver| {
                 for extern_name in &extern_names {
-                    resolver.resolve_str_path_error(DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID)
-                        .unwrap_or_else(
-                            |()| panic!("Unable to resolve external crate {}", extern_name)
-                        );
+                    resolver.resolve_str_path_error(
+                        DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID
+                    ).unwrap_or_else(
+                        |()| panic!("Unable to resolve external crate {}", extern_name)
+                    );
                 }
             });
 
@@ -373,7 +374,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
-        let mut global_ctxt = abort_on_err(compiler.global_ctxt(), sess).take();
+        let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
         global_ctxt.enter(|tcx| {
             tcx.analysis(LOCAL_CRATE).ok();
@@ -447,8 +448,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         },
                         sym::plugins => {
                             report_deprecated_attr("plugins = \"...\"", diag);
-                            eprintln!("WARNING: `#![doc(plugins = \"...\")]` no longer functions; \
-                                      see CVE-2018-1000622");
+                            eprintln!("WARNING: `#![doc(plugins = \"...\")]` \
+                                      no longer functions; see CVE-2018-1000622");
                             continue
                         },
                         _ => continue,
@@ -486,7 +487,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             (krate, ctxt.renderinfo.into_inner(), render_options)
         })
-    })
+    }))
 }
 
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter

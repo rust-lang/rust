@@ -68,7 +68,7 @@ use crate::intrinsics;
 // Any trait
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A type to emulate dynamic typing.
+/// A trait to emulate dynamic typing.
 ///
 /// Most types implement `Any`. However, any type which contains a non-`'static` reference does not.
 /// See the [module-level documentation][mod] for more details.

@@ -933,14 +933,7 @@ fn convert_path_expr<'a, 'tcx>(
         // We encode uses of statics as a `*&STATIC` where the `&STATIC` part is
         // a constant reference (or constant raw pointer for `static mut`) in MIR
         Res::Def(DefKind::Static, id) => {
-            let ty = cx.tcx.type_of(id);
-            let ty = if cx.tcx.is_mutable_static(id) {
-                cx.tcx.mk_mut_ptr(ty)
-            } else if cx.tcx.is_foreign_item(id) {
-                cx.tcx.mk_imm_ptr(ty)
-            } else {
-                cx.tcx.mk_imm_ref(cx.tcx.lifetimes.re_static, ty)
-            };
+            let ty = cx.tcx.static_ptr_ty(id);
             let ptr = cx.tcx.alloc_map.lock().create_static_alloc(id);
             let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
             ExprKind::Deref { arg: Expr {

@@ -425,5 +425,5 @@ pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
 /// ```
 #[stable(feature = "resume_unwind", since = "1.9.0")]
 pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
-    panicking::update_count_then_panic(payload)
+    panicking::rust_panic_without_hook(payload)
 }
