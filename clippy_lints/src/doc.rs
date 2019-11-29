@@ -343,7 +343,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
 }
 
 fn check_code(cx: &LateContext<'_, '_>, text: &str, span: Span) {
-    if text.contains("fn main() {") {
+    if text.contains("fn main() {") && !(text.contains("static") || text.contains("fn main() {}")) {
         span_lint(cx, NEEDLESS_DOCTEST_MAIN, span, "needless `fn main` in doctest");
     }
 }
