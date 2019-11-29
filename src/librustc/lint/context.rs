@@ -800,8 +800,13 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 // This shouldn't ever be needed, but just in case:
                 path.push(match trait_ref {
                     Some(trait_ref) => {
-                        Symbol::intern(&format!("<impl {} for {}>", trait_ref,
-                                                    self_ty))
+                        Symbol::intern(
+                            &format!(
+                                "<impl {} for {}>",
+                                trait_ref.print_only_trait_path(),
+                                self_ty
+                            )
+                        )
                     },
                     None => Symbol::intern(&format!("<impl {}>", self_ty)),
                 });

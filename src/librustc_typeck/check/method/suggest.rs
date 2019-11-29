@@ -502,7 +502,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 if !unsatisfied_predicates.is_empty() {
                     let mut bound_list = unsatisfied_predicates.iter()
-                        .map(|p| format!("`{} : {}`", p.self_ty(), p))
+                        .map(|p| format!("`{} : {}`", p.self_ty(), p.print_only_trait_path()))
                         .collect::<Vec<_>>();
                     bound_list.sort();
                     bound_list.dedup();  // #35677

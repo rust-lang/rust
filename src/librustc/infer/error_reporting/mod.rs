@@ -1545,8 +1545,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Types(ref exp_found) => self.expected_found_str_ty(exp_found),
             infer::Regions(ref exp_found) => self.expected_found_str(exp_found),
             infer::Consts(ref exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
-            infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
+            infer::TraitRefs(ref exp_found) => {
+                let pretty_exp_found = ty::error::ExpectedFound {
+                    expected: exp_found.expected.print_only_trait_path(),
+                    found: exp_found.found.print_only_trait_path()
+                };
+                self.expected_found_str(&pretty_exp_found)
+            },
+            infer::PolyTraitRefs(ref exp_found) => {
+                let pretty_exp_found = ty::error::ExpectedFound {
+                    expected: exp_found.expected.print_only_trait_path(),
+                    found: exp_found.found.print_only_trait_path()
+                };
+                self.expected_found_str(&pretty_exp_found)
+            },
         }
     }
 
