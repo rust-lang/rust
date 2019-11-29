@@ -737,7 +737,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         let is_try = self.tcx.sess.source_map().span_to_snippet(span)
                             .map(|s| &s == "?")
                             .unwrap_or(false);
-                        let is_from = format!("{}", trait_ref).starts_with("std::convert::From<");
+                        let is_from =
+                            format!("{}", trait_ref.print_only_trait_path())
+                            .starts_with("std::convert::From<");
                         let (message, note) = if is_try && is_from {
                             (Some(format!(
                                 "`?` couldn't convert the error to `{}`",
@@ -768,7 +770,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                 format!(
                                     "{}the trait `{}` is not implemented for `{}`",
                                     pre_message,
-                                    trait_ref,
+                                    trait_ref.print_only_trait_path(),
                                     trait_ref.self_ty(),
                                 )
                             };
@@ -1189,7 +1191,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 if param_ty => {
                     // Missing generic type parameter bound.
                     let param_name = self_ty.to_string();
-                    let constraint = trait_ref.to_string();
+                    let constraint = trait_ref.print_only_trait_path().to_string();
                     if suggest_constraining_type_param(
                         generics,
                         &mut err,
@@ -1416,7 +1418,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     let msg = format!(
                         "the trait bound `{}: {}` is not satisfied",
                         found,
-                        obligation.parent_trait_ref.skip_binder(),
+                        obligation.parent_trait_ref.skip_binder().print_only_trait_path(),
                     );
                     if has_custom_message {
                         err.note(&msg);
@@ -1430,7 +1432,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     }
                     err.span_label(span, &format!(
                         "expected an implementor of trait `{}`",
-                        obligation.parent_trait_ref.skip_binder(),
+                        obligation.parent_trait_ref.skip_binder().print_only_trait_path(),
                     ));
                     err.span_suggestion(
                         span,
@@ -1562,7 +1564,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     } else {
                         err.note(&format!(
                             "`{}` is implemented for `{:?}`, but not for `{:?}`",
-                            trait_ref,
+                            trait_ref.print_only_trait_path(),
                             trait_type,
                             trait_ref.skip_binder().self_ty(),
                         ));
@@ -2226,7 +2228,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
             err.span_note(span, &format!(
                 "future does not implement `{}` as this value is used across an await",
-                trait_ref,
+                trait_ref.print_only_trait_path(),
             ));
 
             // Add a note for the item obligation that remains - normally a note pointing to the
@@ -2409,7 +2411,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let parent_trait_ref = self.resolve_vars_if_possible(&data.parent_trait_ref);
                 err.note(
                     &format!("required because of the requirements on the impl of `{}` for `{}`",
-                             parent_trait_ref,
+                             parent_trait_ref.print_only_trait_path(),
                              parent_trait_ref.skip_binder().self_ty()));
                 let parent_predicate = parent_trait_ref.to_predicate();
                 self.note_obligation_cause_code(err,
