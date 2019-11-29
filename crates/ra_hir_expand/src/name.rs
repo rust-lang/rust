@@ -140,6 +140,12 @@ pub const RESULT_TYPE: Name = Name::new_inline_ascii(6, b"Result");
 pub const OUTPUT_TYPE: Name = Name::new_inline_ascii(6, b"Output");
 pub const TARGET_TYPE: Name = Name::new_inline_ascii(6, b"Target");
 pub const BOX_TYPE: Name = Name::new_inline_ascii(3, b"Box");
+pub const RANGE_FROM_TYPE: Name = Name::new_inline_ascii(9, b"RangeFrom");
+pub const RANGE_FULL_TYPE: Name = Name::new_inline_ascii(9, b"RangeFull");
+pub const RANGE_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(14, b"RangeInclusive");
+pub const RANGE_TO_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(16, b"RangeToInclusive");
+pub const RANGE_TO_TYPE: Name = Name::new_inline_ascii(7, b"RangeTo");
+pub const RANGE_TYPE: Name = Name::new_inline_ascii(5, b"Range");
 
 // Builtin Macros
 pub const FILE_MACRO: Name = Name::new_inline_ascii(4, b"file");

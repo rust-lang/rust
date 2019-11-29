@@ -409,6 +409,36 @@ pub mod known {
         Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::TRY_TYPE])
     }
 
+    pub fn std_ops_range() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_TYPE])
+    }
+
+    pub fn std_ops_range_from() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_FROM_TYPE])
+    }
+
+    pub fn std_ops_range_full() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_FULL_TYPE])
+    }
+
+    pub fn std_ops_range_inclusive() -> Path {
+        Path::from_simple_segments(
+            PathKind::Abs,
+            vec![name::STD, name::OPS, name::RANGE_INCLUSIVE_TYPE],
+        )
+    }
+
+    pub fn std_ops_range_to() -> Path {
+        Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::OPS, name::RANGE_TO_TYPE])
+    }
+
+    pub fn std_ops_range_to_inclusive() -> Path {
+        Path::from_simple_segments(
+            PathKind::Abs,
+            vec![name::STD, name::OPS, name::RANGE_TO_INCLUSIVE_TYPE],
+        )
+    }
+
     pub fn std_result_result() -> Path {
         Path::from_simple_segments(PathKind::Abs, vec![name::STD, name::RESULT, name::RESULT_TYPE])
     }

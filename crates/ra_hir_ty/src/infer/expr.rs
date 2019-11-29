@@ -12,6 +12,7 @@ use hir_def::{
     AdtId, ContainerId, Lookup, StructFieldId,
 };
 use hir_expand::name::{self, Name};
+use ra_syntax::ast::RangeOp;
 
 use crate::{
     autoderef, db::HirDatabase, method_resolution, op, traits::InEnvironment, utils::variant_data,
@@ -415,6 +416,44 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
                 _ => Ty::Unknown,
             },
+            Expr::Range { lhs, rhs, range_type } => {
+                let lhs_ty = lhs.map(|e| self.infer_expr(e, &Expectation::none()));
+                let rhs_expect = lhs_ty
+                    .as_ref()
+                    .map_or_else(Expectation::none, |ty| Expectation::has_type(ty.clone()));
+                let rhs_ty = rhs.map(|e| self.infer_expr(e, &rhs_expect));
+                match (range_type, lhs_ty, rhs_ty) {
+                    (RangeOp::Exclusive, None, None) => match self.resolve_range_full() {
+                        Some(adt) => Ty::simple(TypeCtor::Adt(adt)),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Exclusive, None, Some(ty)) => match self.resolve_range_to() {
+                        Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Inclusive, None, Some(ty)) => {
+                        match self.resolve_range_to_inclusive() {
+                            Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                            None => Ty::Unknown,
+                        }
+                    }
+                    (RangeOp::Exclusive, Some(_), Some(ty)) => match self.resolve_range() {
+                        Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Inclusive, Some(_), Some(ty)) => {
+                        match self.resolve_range_inclusive() {
+                            Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                            None => Ty::Unknown,
+                        }
+                    }
+                    (RangeOp::Exclusive, Some(ty), None) => match self.resolve_range_from() {
+                        Some(adt) => Ty::apply_one(TypeCtor::Adt(adt), ty),
+                        None => Ty::Unknown,
+                    },
+                    (RangeOp::Inclusive, _, None) => Ty::Unknown,
+                }
+            }
             Expr::Index { base, index } => {
                 let _base_ty = self.infer_expr(*base, &Expectation::none());
                 let _index_ty = self.infer_expr(*index, &Expectation::none());

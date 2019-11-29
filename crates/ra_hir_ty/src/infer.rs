@@ -577,6 +577,42 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
         Some(struct_.into())
     }
+
+    fn resolve_range_full(&self) -> Option<AdtId> {
+        let path = known::std_ops_range_full();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
+
+    fn resolve_range(&self) -> Option<AdtId> {
+        let path = known::std_ops_range();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
+
+    fn resolve_range_inclusive(&self) -> Option<AdtId> {
+        let path = known::std_ops_range_inclusive();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
+
+    fn resolve_range_from(&self) -> Option<AdtId> {
+        let path = known::std_ops_range_from();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
+
+    fn resolve_range_to(&self) -> Option<AdtId> {
+        let path = known::std_ops_range_to();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
+
+    fn resolve_range_to_inclusive(&self) -> Option<AdtId> {
+        let path = known::std_ops_range_to_inclusive();
+        let struct_ = self.resolver.resolve_known_struct(self.db, &path)?;
+        Some(struct_.into())
+    }
 }
 
 /// The ID of a type variable.

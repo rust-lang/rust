@@ -222,6 +222,56 @@ mod collections {
 }
 
 #[test]
+fn infer_ranges() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+fn test() {
+    let a = ..;
+    let b = 1..;
+    let c = ..2u32;
+    let d = 1..2usize;
+    let e = ..=10;
+    let f = 'a'..='z';
+
+    let t = (a, b, c, d, e, f);
+    t<|>;
+}
+
+//- /std.rs crate:std
+#[prelude_import] use prelude::*;
+mod prelude {}
+
+pub mod ops {
+    pub struct Range<Idx> {
+        pub start: Idx,
+        pub end: Idx,
+    }
+    pub struct RangeFrom<Idx> {
+        pub start: Idx,
+    }
+    struct RangeFull;
+    pub struct RangeInclusive<Idx> {
+        start: Idx,
+        end: Idx,
+        is_empty: u8,
+    }
+    pub struct RangeTo<Idx> {
+        pub end: Idx,
+    }
+    pub struct RangeToInclusive<Idx> {
+        pub end: Idx,
+    }
+}
+"#,
+    );
+    assert_eq!(
+        "(RangeFull, RangeFrom<i32>, RangeTo<u32>, Range<usize>, RangeToInclusive<i32>, RangeInclusive<char>)",
+        type_at_pos(&db, pos),
+    );
+}
+
+#[test]
 fn infer_while_let() {
     let (db, pos) = TestDB::with_position(
         r#"

@@ -429,10 +429,19 @@ where
                 let index = self.collect_expr_opt(e.index());
                 self.alloc_expr(Expr::Index { base, index }, syntax_ptr)
             }
+            ast::Expr::RangeExpr(e) => {
+                let lhs = e.start().map(|lhs| self.collect_expr(lhs));
+                let rhs = e.end().map(|rhs| self.collect_expr(rhs));
+                match e.op_kind() {
+                    Some(range_type) => {
+                        self.alloc_expr(Expr::Range { lhs, rhs, range_type }, syntax_ptr)
+                    }
+                    None => self.alloc_expr(Expr::Missing, syntax_ptr),
+                }
+            }
 
             // FIXME implement HIR for these:
             ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
-            ast::Expr::RangeExpr(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
             ast::Expr::MacroCall(e) => match self.expander.enter_expand(self.db, e) {
                 Some((mark, expansion)) => {
                     let id = self.collect_expr(expansion);
