@@ -65,7 +65,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let main_ptr = ecx
         .memory
         .create_fn_alloc(FnVal::Instance(main_instance));
-    // Second argument (argc): `1`.
+    // Second argument (argc): length of `config.args`.
     let argc = Scalar::from_uint(config.args.len() as u128, ecx.pointer_size());
     // Third argument (`argv`): created from `config.args`.
     let argv = {
