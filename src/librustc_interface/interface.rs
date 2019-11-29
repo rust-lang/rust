@@ -1,4 +1,3 @@
-use crate::queries::Queries;
 use crate::util;
 pub use crate::passes::BoxedResolver;
 
@@ -36,7 +35,6 @@ pub struct Compiler {
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
-    pub(crate) queries: Queries,
     pub(crate) crate_name: Option<String>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
     pub(crate) override_queries:
@@ -169,7 +167,6 @@ pub fn run_compiler_in_existing_thread_pool<R>(
         input_path: config.input_path,
         output_dir: config.output_dir,
         output_file: config.output_file,
-        queries: Default::default(),
         crate_name: config.crate_name,
         register_lints: config.register_lints,
         override_queries: config.override_queries,
