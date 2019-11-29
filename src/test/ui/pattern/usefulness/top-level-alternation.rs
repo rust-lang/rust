@@ -2,8 +2,7 @@
 
 fn main() {
     while let 0..=2 | 1 = 0 {} //~ ERROR unreachable pattern
-    if let 0..=2 | 1 = 0 {} //~ WARN irrefutable if-let pattern
-    // this one ^ is incorrect
+    if let 0..=2 | 1 = 0 {} //~ ERROR unreachable pattern
 
     match 0u8 {
         0

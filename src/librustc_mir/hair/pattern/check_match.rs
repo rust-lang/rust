@@ -414,16 +414,9 @@ fn check_arms<'p, 'tcx>(
                         hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => {
                             bug!()
                         }
-                        hir::MatchSource::IfLetDesugar { .. } => {
-                            cx.tcx.lint_hir(
-                                lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                hir_pat.hir_id,
-                                pat.span,
-                                "irrefutable if-let pattern",
-                            );
-                        }
 
-                        hir::MatchSource::WhileLetDesugar => {
+                        hir::MatchSource::IfLetDesugar { .. }
+                        | hir::MatchSource::WhileLetDesugar => {
                             // check which arm we're on.
                             match arm_index {
                                 // The arm with the user-specified pattern.
@@ -437,11 +430,20 @@ fn check_arms<'p, 'tcx>(
                                 }
                                 // The arm with the wildcard pattern.
                                 1 => {
+                                    let msg = match source {
+                                        hir::MatchSource::IfLetDesugar { .. } => {
+                                            "irrefutable if-let pattern"
+                                        }
+                                        hir::MatchSource::WhileLetDesugar => {
+                                            "irrefutable while-let pattern"
+                                        }
+                                        _ => bug!(),
+                                    };
                                     cx.tcx.lint_hir(
                                         lint::builtin::IRREFUTABLE_LET_PATTERNS,
                                         hir_pat.hir_id,
                                         pat.span,
-                                        "irrefutable while-let pattern",
+                                        msg,
                                     );
                                 }
                                 _ => bug!(),
