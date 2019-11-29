@@ -1050,7 +1050,6 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&unicode::NON_ASCII_LITERAL),
         LintId::of(&unicode::UNICODE_NOT_NFC),
         LintId::of(&unused_self::UNUSED_SELF),
-        LintId::of(&use_self::USE_SELF),
     ]);
 
     store.register_group(true, "clippy::internal", Some("clippy_internal"), vec![
@@ -1579,6 +1578,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),
         LintId::of(&path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
+        LintId::of(&use_self::USE_SELF),
     ]);
 }
 
