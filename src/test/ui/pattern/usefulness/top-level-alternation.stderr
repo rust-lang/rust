@@ -55,20 +55,14 @@ LL |         None => {}
 error: unreachable pattern
   --> $DIR/top-level-alternation.rs:49:9
    |
-LL |         None
-   |         ^^^^
+LL |         None | Some(_) => {}
+   |         ^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:50:15
-   |
-LL |             | Some(_) => {}
-   |               ^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:54:9
+  --> $DIR/top-level-alternation.rs:53:9
    |
 LL |         1..=2 => {},
    |         ^^^^^
 
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 

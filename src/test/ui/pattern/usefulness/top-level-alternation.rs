@@ -46,8 +46,7 @@ fn main() {
     match Some(0u8) {
         Some(_) => {}
         None => {}
-        None //~ ERROR unreachable pattern
-            | Some(_) => {} //~ ERROR unreachable pattern
+        None | Some(_) => {} //~ ERROR unreachable pattern
     }
     match 0u8 {
         1 | 2 => {},

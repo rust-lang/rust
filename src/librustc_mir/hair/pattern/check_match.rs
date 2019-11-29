@@ -139,39 +139,22 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
         MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
-            let inlined_arms: Vec<(Vec<_>, _)> = arms
+            let inlined_arms: Vec<_> = arms
                 .iter()
                 .map(|arm| {
-                    (
-                        // HACK(or_patterns; Centril | dlrobertson): Remove this and
-                        // correctly handle exhaustiveness checking for nested or-patterns.
-                        match &arm.pat.kind {
-                            hir::PatKind::Or(pats) => pats,
-                            _ => std::slice::from_ref(&arm.pat),
-                        }
-                        .iter()
-                        .map(|pat| {
-                            let mut patcx = PatCtxt::new(
-                                self.tcx,
-                                self.param_env.and(self.identity_substs),
-                                self.tables,
-                            );
-                            patcx.include_lint_checks();
-                            let pattern = cx
-                                .pattern_arena
-                                .alloc(expand_pattern(cx, patcx.lower_pattern(&pat)))
-                                as &_;
-                            if !patcx.errors.is_empty() {
-                                patcx.report_inlining_errors(pat.span);
-                                have_errors = true;
-                            }
-                            (pattern, &**pat)
-                        })
-                        .collect(),
-                        arm.guard.as_ref().map(|g| match g {
-                            hir::Guard::If(ref e) => &**e,
-                        }),
-                    )
+                    let mut patcx = PatCtxt::new(
+                        self.tcx,
+                        self.param_env.and(self.identity_substs),
+                        self.tables,
+                    );
+                    patcx.include_lint_checks();
+                    let pattern: &_ =
+                        cx.pattern_arena.alloc(expand_pattern(cx, patcx.lower_pattern(&arm.pat)));
+                    if !patcx.errors.is_empty() {
+                        patcx.report_inlining_errors(arm.pat.span);
+                        have_errors = true;
+                    }
+                    (pattern, &*arm.pat, arm.guard.is_some())
                 })
                 .collect();
 
@@ -399,94 +382,89 @@ fn pat_is_catchall(pat: &Pat) -> bool {
 // Check for unreachable patterns
 fn check_arms<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
-    arms: &[(Vec<(&'p super::Pat<'tcx>, &hir::Pat)>, Option<&hir::Expr>)],
+    arms: &[(&'p super::Pat<'tcx>, &hir::Pat, bool)],
     source: hir::MatchSource,
 ) -> Matrix<'p, 'tcx> {
     let mut seen = Matrix::empty();
     let mut catchall = None;
-    for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
-        for &(pat, hir_pat) in pats {
-            let v = PatStack::from_pattern(pat);
+    for (arm_index, (pat, hir_pat, has_guard)) in arms.iter().enumerate() {
+        let v = PatStack::from_pattern(pat);
 
-            match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id) {
-                NotUseful => {
-                    match source {
-                        hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => {
-                            bug!()
-                        }
+        match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id) {
+            NotUseful => {
+                match source {
+                    hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
 
-                        hir::MatchSource::IfLetDesugar { .. }
-                        | hir::MatchSource::WhileLetDesugar => {
-                            // check which arm we're on.
-                            match arm_index {
-                                // The arm with the user-specified pattern.
-                                0 => {
-                                    cx.tcx.lint_hir(
-                                        lint::builtin::UNREACHABLE_PATTERNS,
-                                        hir_pat.hir_id,
-                                        pat.span,
-                                        "unreachable pattern",
-                                    );
-                                }
-                                // The arm with the wildcard pattern.
-                                1 => {
-                                    let msg = match source {
-                                        hir::MatchSource::IfLetDesugar { .. } => {
-                                            "irrefutable if-let pattern"
-                                        }
-                                        hir::MatchSource::WhileLetDesugar => {
-                                            "irrefutable while-let pattern"
-                                        }
-                                        _ => bug!(),
-                                    };
-                                    cx.tcx.lint_hir(
-                                        lint::builtin::IRREFUTABLE_LET_PATTERNS,
-                                        hir_pat.hir_id,
-                                        pat.span,
-                                        msg,
-                                    );
-                                }
-                                _ => bug!(),
+                    hir::MatchSource::IfLetDesugar { .. } | hir::MatchSource::WhileLetDesugar => {
+                        // check which arm we're on.
+                        match arm_index {
+                            // The arm with the user-specified pattern.
+                            0 => {
+                                cx.tcx.lint_hir(
+                                    lint::builtin::UNREACHABLE_PATTERNS,
+                                    hir_pat.hir_id,
+                                    pat.span,
+                                    "unreachable pattern",
+                                );
                             }
-                        }
-
-                        hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
-                            let mut err = cx.tcx.struct_span_lint_hir(
-                                lint::builtin::UNREACHABLE_PATTERNS,
-                                hir_pat.hir_id,
-                                pat.span,
-                                "unreachable pattern",
-                            );
-                            // if we had a catchall pattern, hint at that
-                            if let Some(catchall) = catchall {
-                                err.span_label(pat.span, "unreachable pattern");
-                                err.span_label(catchall, "matches any value");
+                            // The arm with the wildcard pattern.
+                            1 => {
+                                let msg = match source {
+                                    hir::MatchSource::IfLetDesugar { .. } => {
+                                        "irrefutable if-let pattern"
+                                    }
+                                    hir::MatchSource::WhileLetDesugar => {
+                                        "irrefutable while-let pattern"
+                                    }
+                                    _ => bug!(),
+                                };
+                                cx.tcx.lint_hir(
+                                    lint::builtin::IRREFUTABLE_LET_PATTERNS,
+                                    hir_pat.hir_id,
+                                    pat.span,
+                                    msg,
+                                );
                             }
-                            err.emit();
+                            _ => bug!(),
                         }
-
-                        // Unreachable patterns in try and await expressions occur when one of
-                        // the arms are an uninhabited type. Which is OK.
-                        hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                     }
-                }
-                Useful(unreachable_subpatterns) => {
-                    for pat in unreachable_subpatterns {
-                        cx.tcx.lint_hir(
+
+                    hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
+                        let mut err = cx.tcx.struct_span_lint_hir(
                             lint::builtin::UNREACHABLE_PATTERNS,
                             hir_pat.hir_id,
                             pat.span,
                             "unreachable pattern",
                         );
+                        // if we had a catchall pattern, hint at that
+                        if let Some(catchall) = catchall {
+                            err.span_label(pat.span, "unreachable pattern");
+                            err.span_label(catchall, "matches any value");
+                        }
+                        err.emit();
                     }
+
+                    // Unreachable patterns in try and await expressions occur when one of
+                    // the arms are an uninhabited type. Which is OK.
+                    hir::MatchSource::AwaitDesugar | hir::MatchSource::TryDesugar => {}
                 }
-                UsefulWithWitness(_) => bug!(),
             }
-            if guard.is_none() {
-                seen.push(v);
-                if catchall.is_none() && pat_is_catchall(hir_pat) {
-                    catchall = Some(pat.span);
+            Useful(unreachable_subpatterns) => {
+                for pat in unreachable_subpatterns {
+                    cx.tcx.lint_hir(
+                        lint::builtin::UNREACHABLE_PATTERNS,
+                        hir_pat.hir_id,
+                        pat.span,
+                        "unreachable pattern",
+                    );
                 }
+            }
+            UsefulWithWitness(_) => bug!(),
+        }
+        if !has_guard {
+            seen.push(v);
+            if catchall.is_none() && pat_is_catchall(hir_pat) {
+                catchall = Some(pat.span);
             }
         }
     }
