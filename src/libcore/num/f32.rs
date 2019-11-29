@@ -26,7 +26,7 @@ pub const DIGITS: u32 = 6;
 
 /// [Machine epsilon] value for `f32`.
 ///
-/// This is the difference between `1.0` and the next largest representable number.
+/// This is the difference between `1.0` and the next larger representable number.
 ///
 /// [Machine epsilon]: https://en.wikipedia.org/wiki/Machine_epsilon
 #[stable(feature = "rust1", since = "1.0.0")]
