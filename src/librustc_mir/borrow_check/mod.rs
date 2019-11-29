@@ -300,11 +300,10 @@ fn do_mir_borrowck<'a, 'tcx>(
         let mut initial_diag =
             mbcx.report_conflicting_borrow(location, (&place, span), bk, &borrow);
 
-        let lint_root = if let ClearCrossCrate::Set(ref vsi) = mbcx.body.source_scope_local_data {
-            let scope = mbcx.body.source_info(location).scope;
-            vsi[scope].lint_root
-        } else {
-            id
+        let scope = mbcx.body.source_info(location).scope;
+        let lint_root = match &mbcx.body.source_scopes[scope].local_data {
+            ClearCrossCrate::Set(data) => data.lint_root,
+            _ => id,
         };
 
         // Span and message don't matter; we overwrite them below anyway
@@ -338,38 +337,40 @@ fn do_mir_borrowck<'a, 'tcx>(
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
     let used_mut = mbcx.used_mut;
     for local in mbcx.body.mut_vars_and_args_iter().filter(|local| !used_mut.contains(local)) {
-        if let ClearCrossCrate::Set(ref vsi) = mbcx.body.source_scope_local_data {
-            let local_decl = &mbcx.body.local_decls[local];
+        let local_decl = &mbcx.body.local_decls[local];
+        let lint_root = match &mbcx.body.source_scopes[local_decl.source_info.scope].local_data {
+            ClearCrossCrate::Set(data) => data.lint_root,
+            _ => continue,
+        };
 
-            // Skip over locals that begin with an underscore or have no name
-            match mbcx.local_names[local] {
-                Some(name) => if name.as_str().starts_with("_") {
-                    continue;
-                },
-                None => continue,
-            }
-
-            let span = local_decl.source_info.span;
-            if span.desugaring_kind().is_some() {
-                // If the `mut` arises as part of a desugaring, we should ignore it.
+        // Skip over locals that begin with an underscore or have no name
+        match mbcx.local_names[local] {
+            Some(name) => if name.as_str().starts_with("_") {
                 continue;
-            }
-
-            let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
-            tcx.struct_span_lint_hir(
-                UNUSED_MUT,
-                vsi[local_decl.source_info.scope].lint_root,
-                span,
-                "variable does not need to be mutable",
-            )
-            .span_suggestion_short(
-                mut_span,
-                "remove this `mut`",
-                String::new(),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+            },
+            None => continue,
         }
+
+        let span = local_decl.source_info.span;
+        if span.desugaring_kind().is_some() {
+            // If the `mut` arises as part of a desugaring, we should ignore it.
+            continue;
+        }
+
+        let mut_span = tcx.sess.source_map().span_until_non_whitespace(span);
+        tcx.struct_span_lint_hir(
+            UNUSED_MUT,
+            lint_root,
+            span,
+            "variable does not need to be mutable",
+        )
+        .span_suggestion_short(
+            mut_span,
+            "remove this `mut`",
+            String::new(),
+            Applicability::MachineApplicable,
+        )
+        .emit();
     }
 
     // Buffer any move errors that we collected and de-duplicated.

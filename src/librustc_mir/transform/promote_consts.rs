@@ -1081,7 +1081,6 @@ pub fn promote_candidates<'tcx>(
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?
                 body.source_scopes.clone(),
-                body.source_scope_local_data.clone(),
                 initial_locals,
                 IndexVec::new(),
                 0,

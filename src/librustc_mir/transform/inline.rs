@@ -391,9 +391,14 @@ impl Inliner<'tcx> {
                 for mut scope in callee_body.source_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
                         scope.parent_scope = Some(callsite.location.scope);
+                        // FIXME(eddyb) is this really needed?
+                        // (also note that it's always overwritten below)
                         scope.span = callee_body.span;
                     }
 
+                    // FIXME(eddyb) this doesn't seem right at all.
+                    // The inlined source scopes should probably be annotated as
+                    // such, but also contain all of the original information.
                     scope.span = callsite.location.span;
 
                     let idx = caller_body.source_scopes.push(scope);
