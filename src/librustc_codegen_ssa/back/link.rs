@@ -531,19 +531,37 @@ fn check_for_buggy_ld_version(sess: &Session,
 
     debug!("check_for_buggy_ld_version out: {:?}", out);
 
-    let parse = |first_line: &str| -> Option<(u32, u32)> {
-        let suffix = first_line.splitn(2, "GNU ld version ").last()?;
-        let version_components: Vec<_> = suffix.split('.').collect();
-        let major: u32 = version_components.get(0)?.parse().ok()?;
-        let minor: u32 = version_components.get(1)?.parse().ok()?;
-        Some((major, minor))
+    let first_line = match out.lines().next() {
+        Some(line) => line,
+        None => {
+            sess.warn(&format!("Linker version inspection had no lines of output: `{}`",
+                               version_check_invocation));
+            return;
+        }
     };
-
-    let first_line = out.lines().next();
-
     debug!("check_for_buggy_ld_version first_line: {:?}", first_line);
 
-    let (major, minor) = match first_line.and_then(parse) {
+    let version_suffix_start = match first_line.find(" 2.") {
+        None => {
+            // if we cannot find ` 2.`, then assume that this an ld version that
+            // does not have the bug; no need for warning.
+            return;
+        }
+        Some(space_version_start) => {
+            // skip the space character so we are looking at "2.x.y-zzz"
+            space_version_start + 1
+        }
+    };
+    let version_suffix = &first_line[version_suffix_start..];
+    debug!("check_for_buggy_ld_version version_suffix: {:?}", version_suffix);
+
+    let parse = |suffix: &str| -> Option<(u32, u32)> {
+        let mut components = suffix.split('.');
+        let major: u32 = components.next()?.parse().ok()?;
+        let minor: u32 = components.next()?.parse().ok()?;
+        Some((major, minor))
+    };
+    let (major, minor) = match parse(version_suffix) {
         None => {
             sess.warn(&format!("Linker version inspection failed to parse: `{}`, output: {}",
                                version_check_invocation, out));
@@ -558,7 +576,7 @@ fn check_for_buggy_ld_version(sess: &Session,
     if is_old_buggy_version {
         let diag = sess.diagnostic();
         diag.warn(&format!("Using linker `{}` with Rust dynamic libraries has known bugs.",
-                           first_line.unwrap()));
+                           first_line));
         diag.note_without_error(
             "Consider upgrading to GNU ld version 2.29 or newer, or using a different linker.");
         diag.note_without_error(
