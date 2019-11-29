@@ -1,0 +1,76 @@
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:4:23
+   |
+LL |     while let 0..=2 | 1 = 0 {}
+   |                       ^
+   |
+note: lint level defined here
+  --> $DIR/top-level-alternation.rs:1:9
+   |
+LL | #![deny(unreachable_patterns)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+warning: irrefutable if-let pattern
+  --> $DIR/top-level-alternation.rs:5:20
+   |
+LL |     if let 0..=2 | 1 = 0 {}
+   |                    ^
+   |
+   = note: `#[warn(irrefutable_let_patterns)]` on by default
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:10:15
+   |
+LL |             | 0 => {}
+   |               ^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:15:15
+   |
+LL |             | Some(0) => {}
+   |               ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:20:9
+   |
+LL |         (0, 0) => {}
+   |         ^^^^^^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:40:9
+   |
+LL |         _ => {}
+   |         ^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:44:9
+   |
+LL |         Some(_) => {}
+   |         ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:45:9
+   |
+LL |         None => {}
+   |         ^^^^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:50:9
+   |
+LL |         None
+   |         ^^^^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:51:15
+   |
+LL |             | Some(_) => {}
+   |               ^^^^^^^
+
+error: unreachable pattern
+  --> $DIR/top-level-alternation.rs:55:9
+   |
+LL |         1..=2 => {},
+   |         ^^^^^
+
+error: aborting due to 10 previous errors
+
