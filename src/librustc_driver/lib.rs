@@ -283,120 +283,127 @@ pub fn run_compiler(
             return sess.compile_status();
         }
 
-        compiler.parse()?;
+        let linker = compiler.enter(|queries| {
+            let early_exit = || sess.compile_status().map(|_| None);
+            queries.parse()?;
 
-        if let Some(ppm) = &sess.opts.pretty {
-            if ppm.needs_ast_map() {
-                compiler.global_ctxt()?.peek_mut().enter(|tcx| {
-                    let expanded_crate = compiler.expansion()?.take().0;
-                    pretty::print_after_hir_lowering(
-                        tcx,
-                        compiler.input(),
-                        &expanded_crate,
+            if let Some(ppm) = &sess.opts.pretty {
+                if ppm.needs_ast_map() {
+                    queries.global_ctxt()?.peek_mut().enter(|tcx| {
+                        let expanded_crate = queries.expansion()?.take().0;
+                        pretty::print_after_hir_lowering(
+                            tcx,
+                            compiler.input(),
+                            &expanded_crate,
+                            *ppm,
+                            compiler.output_file().as_ref().map(|p| &**p),
+                        );
+                        Ok(())
+                    })?;
+                } else {
+                    let krate = queries.parse()?.take();
+                    pretty::print_after_parsing(
+                        sess,
+                        &compiler.input(),
+                        &krate,
                         *ppm,
                         compiler.output_file().as_ref().map(|p| &**p),
                     );
-                    Ok(())
+                }
+                return early_exit();
+            }
+
+            if callbacks.after_parsing(compiler) == Compilation::Stop {
+                return early_exit();
+            }
+
+            if sess.opts.debugging_opts.parse_only ||
+               sess.opts.debugging_opts.show_span.is_some() ||
+               sess.opts.debugging_opts.ast_json_noexpand {
+               return early_exit();
+            }
+
+            {
+                let (_, lint_store) = &*queries.register_plugins()?.peek();
+
+                // Lint plugins are registered; now we can process command line flags.
+                if sess.opts.describe_lints {
+                    describe_lints(&sess, &lint_store, true);
+                    return early_exit();
+                }
+            }
+
+            queries.expansion()?;
+            if callbacks.after_expansion(compiler) == Compilation::Stop {
+                return early_exit();
+            }
+
+            queries.prepare_outputs()?;
+
+            if sess.opts.output_types.contains_key(&OutputType::DepInfo)
+                && sess.opts.output_types.len() == 1
+            {
+                return early_exit();
+            }
+
+            queries.global_ctxt()?;
+
+            if sess.opts.debugging_opts.no_analysis ||
+               sess.opts.debugging_opts.ast_json {
+                   return early_exit();
+            }
+
+            if sess.opts.debugging_opts.save_analysis {
+                let expanded_crate = &queries.expansion()?.peek().0;
+                let crate_name = queries.crate_name()?.peek().clone();
+                queries.global_ctxt()?.peek_mut().enter(|tcx| {
+                    let result = tcx.analysis(LOCAL_CRATE);
+
+                    time(sess, "save analysis", || {
+                        save::process_crate(
+                            tcx,
+                            &expanded_crate,
+                            &crate_name,
+                            &compiler.input(),
+                            None,
+                            DumpHandler::new(
+                                compiler.output_dir().as_ref().map(|p| &**p), &crate_name
+                            )
+                        )
+                    });
+
+                    result
+                    // AST will be dropped *after* the `after_analysis` callback
+                    // (needed by the RLS)
                 })?;
             } else {
-                let krate = compiler.parse()?.take();
-                pretty::print_after_parsing(
-                    sess,
-                    &compiler.input(),
-                    &krate,
-                    *ppm,
-                    compiler.output_file().as_ref().map(|p| &**p),
-                );
+                // Drop AST after creating GlobalCtxt to free memory
+                mem::drop(queries.expansion()?.take());
             }
-            return sess.compile_status();
-        }
 
-        if callbacks.after_parsing(compiler) == Compilation::Stop {
-            return sess.compile_status();
-        }
+            queries.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
 
-        if sess.opts.debugging_opts.parse_only ||
-           sess.opts.debugging_opts.show_span.is_some() ||
-           sess.opts.debugging_opts.ast_json_noexpand {
-            return sess.compile_status();
-        }
-
-        {
-            let (_, lint_store) = &*compiler.register_plugins()?.peek();
-
-            // Lint plugins are registered; now we can process command line flags.
-            if sess.opts.describe_lints {
-                describe_lints(&sess, &lint_store, true);
-                return sess.compile_status();
+            if callbacks.after_analysis(compiler) == Compilation::Stop {
+                return early_exit();
             }
+
+            if sess.opts.debugging_opts.save_analysis {
+                mem::drop(queries.expansion()?.take());
+            }
+
+            queries.ongoing_codegen()?;
+
+            if sess.opts.debugging_opts.print_type_sizes {
+                sess.code_stats.print_type_sizes();
+            }
+
+            let linker = queries.linker()?;
+            Ok(Some(linker))
+        })?;
+
+        if let Some(linker) = linker {
+            linker.link()?
         }
-
-        compiler.expansion()?;
-        if callbacks.after_expansion(compiler) == Compilation::Stop {
-            return sess.compile_status();
-        }
-
-        compiler.prepare_outputs()?;
-
-        if sess.opts.output_types.contains_key(&OutputType::DepInfo)
-            && sess.opts.output_types.len() == 1
-        {
-            return sess.compile_status();
-        }
-
-        compiler.global_ctxt()?;
-
-        if sess.opts.debugging_opts.no_analysis ||
-           sess.opts.debugging_opts.ast_json {
-            return sess.compile_status();
-        }
-
-        if sess.opts.debugging_opts.save_analysis {
-            let expanded_crate = &compiler.expansion()?.peek().0;
-            let crate_name = compiler.crate_name()?.peek().clone();
-            compiler.global_ctxt()?.peek_mut().enter(|tcx| {
-                let result = tcx.analysis(LOCAL_CRATE);
-
-                time(sess, "save analysis", || {
-                    save::process_crate(
-                        tcx,
-                        &expanded_crate,
-                        &crate_name,
-                        &compiler.input(),
-                        None,
-                        DumpHandler::new(compiler.output_dir().as_ref().map(|p| &**p), &crate_name)
-                    )
-                });
-
-                result
-                // AST will be dropped *after* the `after_analysis` callback
-                // (needed by the RLS)
-            })?;
-        } else {
-            // Drop AST after creating GlobalCtxt to free memory
-            mem::drop(compiler.expansion()?.take());
-        }
-
-        compiler.global_ctxt()?.peek_mut().enter(|tcx| tcx.analysis(LOCAL_CRATE))?;
-
-        if callbacks.after_analysis(compiler) == Compilation::Stop {
-            return sess.compile_status();
-        }
-
-        if sess.opts.debugging_opts.save_analysis {
-            mem::drop(compiler.expansion()?.take());
-        }
-
-        compiler.ongoing_codegen()?;
-
-        // Drop GlobalCtxt after starting codegen to free memory
-        mem::drop(compiler.global_ctxt()?.take());
-
-        if sess.opts.debugging_opts.print_type_sizes {
-            sess.code_stats.print_type_sizes();
-        }
-
-        compiler.link()?;
 
         if sess.opts.debugging_opts.perf_stats {
             sess.print_perf_stats();

@@ -3,6 +3,7 @@ use crate::util;
 use crate::proc_macro_decls;
 
 use log::{info, warn, log_enabled};
+use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
@@ -22,7 +23,7 @@ use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
-use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
+use rustc_data_structures::sync::{Lrc, Once, ParallelIterator, par_iter, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_incremental;
 use rustc_mir as mir;
@@ -739,93 +740,77 @@ pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
     rustc_codegen_ssa::provide_extern(providers);
 }
 
-declare_box_region_type!(
-    pub BoxedGlobalCtxt,
-    for('tcx),
-    (&'tcx GlobalCtxt<'tcx>) -> ((), ())
-);
+pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
 
-impl BoxedGlobalCtxt {
+impl<'tcx> QueryContext<'tcx> {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
+        F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        self.access(|gcx| ty::tls::enter_global(gcx, |tcx| f(tcx)))
+        ty::tls::enter_global(self.0, |tcx| f(tcx))
+    }
+
+    pub fn print_stats(&self) {
+        self.0.queries.print_stats()
     }
 }
 
-pub fn create_global_ctxt(
-    compiler: &Compiler,
+pub fn create_global_ctxt<'tcx>(
+    compiler: &'tcx Compiler,
     lint_store: Lrc<lint::LintStore>,
-    mut hir_forest: hir::map::Forest,
+    hir_forest: &'tcx hir::map::Forest,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
-) -> BoxedGlobalCtxt {
-    let sess = compiler.session().clone();
-    let codegen_backend = compiler.codegen_backend().clone();
-    let crate_name = crate_name.to_string();
+    global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
+    all_arenas: &'tcx AllArenas,
+    arena: &'tcx WorkerLocal<Arena<'tcx>>,
+) -> QueryContext<'tcx> {
+    let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
-    let override_queries = compiler.override_queries;
 
-    let ((), result) = BoxedGlobalCtxt::new(static move || {
-        let sess = &*sess;
-
-        let global_ctxt: Option<GlobalCtxt<'_>>;
-        let arenas = AllArenas::new();
-
-        // Construct the HIR map.
-        let hir_map = time(sess, "indexing HIR", || {
-            hir::map::map_crate(sess, &*resolver_outputs.cstore, &mut hir_forest, &defs)
-        });
-
-        let query_result_on_disk_cache = time(sess, "load query result cache", || {
-            rustc_incremental::load_query_result_cache(sess)
-        });
-
-        let mut local_providers = ty::query::Providers::default();
-        default_provide(&mut local_providers);
-        codegen_backend.provide(&mut local_providers);
-
-        let mut extern_providers = local_providers;
-        default_provide_extern(&mut extern_providers);
-        codegen_backend.provide_extern(&mut extern_providers);
-
-        if let Some(callback) = override_queries {
-            callback(sess, &mut local_providers, &mut extern_providers);
-        }
-
-        let gcx = TyCtxt::create_global_ctxt(
-            sess,
-            lint_store,
-            local_providers,
-            extern_providers,
-            &arenas,
-            resolver_outputs,
-            hir_map,
-            query_result_on_disk_cache,
-            &crate_name,
-            &outputs
-        );
-
-        global_ctxt = Some(gcx);
-        let gcx = global_ctxt.as_ref().unwrap();
-
-        ty::tls::enter_global(gcx, |tcx| {
-            // Do some initialization of the DepGraph that can only be done with the
-            // tcx available.
-            time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
-        });
-
-        yield BoxedGlobalCtxt::initial_yield(());
-        box_region_allow_access!(for('tcx), (&'tcx GlobalCtxt<'tcx>), (gcx));
-
-        if sess.opts.debugging_opts.query_stats {
-            gcx.queries.print_stats();
-        }
+    // Construct the HIR map.
+    let hir_map = time(sess, "indexing HIR", || {
+        hir::map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
     });
 
-    result
+    let query_result_on_disk_cache = time(sess, "load query result cache", || {
+        rustc_incremental::load_query_result_cache(sess)
+    });
+
+    let codegen_backend = compiler.codegen_backend();
+    let mut local_providers = ty::query::Providers::default();
+    default_provide(&mut local_providers);
+    codegen_backend.provide(&mut local_providers);
+
+    let mut extern_providers = local_providers;
+    default_provide_extern(&mut extern_providers);
+    codegen_backend.provide_extern(&mut extern_providers);
+
+    if let Some(callback) = compiler.override_queries {
+        callback(sess, &mut local_providers, &mut extern_providers);
+    }
+
+    let gcx = global_ctxt.init_locking(|| TyCtxt::create_global_ctxt(
+        sess,
+        lint_store,
+        local_providers,
+        extern_providers,
+        &all_arenas,
+        arena,
+        resolver_outputs,
+        hir_map,
+        query_result_on_disk_cache,
+        &crate_name,
+        &outputs
+    ));
+
+    // Do some initialization of the DepGraph that can only be done with the tcx available.
+    ty::tls::enter_global(&gcx, |tcx| {
+        time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
+    });
+
+    QueryContext(gcx)
 }
 
 /// Runs the resolution, type-checking, region checking and other

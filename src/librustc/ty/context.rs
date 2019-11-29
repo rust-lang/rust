@@ -995,7 +995,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 }
 
 pub struct GlobalCtxt<'tcx> {
-    pub arena: WorkerLocal<Arena<'tcx>>,
+    pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
 
     interners: CtxtInterners<'tcx>,
 
@@ -1170,6 +1170,7 @@ impl<'tcx> TyCtxt<'tcx> {
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
+        arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
@@ -1225,7 +1226,7 @@ impl<'tcx> TyCtxt<'tcx> {
             sess: s,
             lint_store,
             cstore,
-            arena: WorkerLocal::new(|_| Arena::default()),
+            arena,
             interners,
             dep_graph,
             prof: s.prof.clone(),
