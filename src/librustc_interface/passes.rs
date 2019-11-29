@@ -229,8 +229,7 @@ pub fn register_plugins<'a>(
 
     time(sess, "plugin registration", || {
         for registrar in registrars {
-            registry.args_hidden = Some(registrar.args);
-            (registrar.fun)(&mut registry);
+            registrar(&mut registry);
         }
     });
 

@@ -2,7 +2,6 @@
 
 use rustc::lint::LintStore;
 use rustc::session::Session;
-use syntax::ast;
 use syntax_pos::Span;
 
 use std::borrow::ToOwned;
@@ -24,9 +23,6 @@ pub struct Registry<'a> {
     pub lint_store: &'a mut LintStore,
 
     #[doc(hidden)]
-    pub args_hidden: Option<Vec<ast::NestedMetaItem>>,
-
-    #[doc(hidden)]
     pub krate_span: Span,
 
     #[doc(hidden)]
@@ -39,24 +35,9 @@ impl<'a> Registry<'a> {
         Registry {
             sess,
             lint_store,
-            args_hidden: None,
             krate_span,
             llvm_passes: vec![],
         }
-    }
-
-    /// Gets the plugin's arguments, if any.
-    ///
-    /// These are specified inside the `plugin` crate attribute as
-    ///
-    /// ```no_run
-    /// #![plugin(my_plugin_name(... args ...))]
-    /// ```
-    ///
-    /// Returns empty slice in case the plugin was loaded
-    /// with `--extra-plugins`
-    pub fn args(&self) -> &[ast::NestedMetaItem] {
-        self.args_hidden.as_ref().map(|v| &v[..]).unwrap_or(&[])
     }
 
     /// Register an LLVM pass.
