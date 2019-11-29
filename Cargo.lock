@@ -3895,6 +3895,7 @@ dependencies = [
  "log",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_index",
  "serialize",
  "syntax_pos",
 ]

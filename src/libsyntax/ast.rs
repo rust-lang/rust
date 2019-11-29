@@ -30,7 +30,7 @@ use crate::token::{self, DelimToken};
 use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 
 use syntax_pos::symbol::{kw, sym, Symbol};
-use syntax_pos::{Span, DUMMY_SP, ExpnId};
+use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -268,46 +268,7 @@ impl ParenthesizedArgs {
     }
 }
 
-// hack to ensure that we don't try to access the private parts of `NodeId` in this module
-mod node_id_inner {
-    use rustc_index::vec::Idx;
-    rustc_index::newtype_index! {
-        pub struct NodeId {
-            ENCODABLE = custom
-            DEBUG_FORMAT = "NodeId({})"
-        }
-    }
-}
-
-pub use node_id_inner::NodeId;
-
-impl NodeId {
-    pub fn placeholder_from_expn_id(expn_id: ExpnId) -> Self {
-        NodeId::from_u32(expn_id.as_u32())
-    }
-
-    pub fn placeholder_to_expn_id(self) -> ExpnId {
-        ExpnId::from_u32(self.as_u32())
-    }
-}
-
-impl fmt::Display for NodeId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.as_u32(), f)
-    }
-}
-
-impl rustc_serialize::UseSpecializedEncodable for NodeId {
-    fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.as_u32())
-    }
-}
-
-impl rustc_serialize::UseSpecializedDecodable for NodeId {
-    fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
-        d.read_u32().map(NodeId::from_u32)
-    }
-}
+pub use rustc_session::node_id::NodeId;
 
 /// `NodeId` used to represent the root of the crate.
 pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);

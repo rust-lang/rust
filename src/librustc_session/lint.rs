@@ -1,7 +1,8 @@
-use syntax_pos::{Symbol, sym};
+use syntax_pos::{MultiSpan, Symbol, sym};
 use syntax_pos::edition::Edition;
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
 pub use self::Level::*;
+use crate::node_id::NodeId;
 
 /// Setting for how to handle a lint.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
@@ -170,6 +171,21 @@ impl<HCX> ToStableHashKey<HCX> for LintId {
     fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
         self.lint_name_raw()
     }
+}
+
+/// Stores buffered lint info which can later be passed to `librustc`.
+pub struct BufferedEarlyLint {
+    /// The span of code that we are linting on.
+   pub span: MultiSpan,
+
+   /// The lint message.
+   pub msg: String,
+
+   /// The `NodeId` of the AST node that generated the lint.
+   pub id: NodeId,
+
+   /// A lint Id that can be passed to `rustc::lint::Lint::from_parser_lint_id`.
+   pub lint_id: &'static Lint,
 }
 
 /// Declares a static item of type `&'static Lint`.
