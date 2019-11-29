@@ -2,12 +2,12 @@ use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::mir::interpret::{Pointer, PointerArithmetic, Scalar};
 use rustc::ty::subst::Subst;
 use rustc_target::abi::{LayoutOf, Size};
-use syntax_pos::Symbol;
+use syntax_pos::{Symbol, Span};
 
 use crate::interpret::{MemoryKind, MPlaceTy, intrinsics::{InterpCx, InterpResult, Machine}};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub fn alloc_caller_location(
+    crate fn alloc_caller_location(
         &mut self,
         filename: Symbol,
         line: u32,
@@ -46,5 +46,18 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         alloc.write_scalar(layout, col_out, col.into(), u32_size)?;
 
         Ok(location)
+    }
+
+    pub fn alloc_caller_location_for_span(
+        &mut self,
+        span: Span,
+    ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+        self.alloc_caller_location(
+            Symbol::intern(&caller.file.name.to_string()),
+            caller.line as u32,
+            caller.col_display as u32 + 1,
+        )
     }
 }
