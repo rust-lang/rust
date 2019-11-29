@@ -56,7 +56,7 @@ use ra_db::{
     salsa::{self, ParallelDatabase},
     CheckCanceled, Env, FileLoader, SourceDatabase,
 };
-use ra_syntax::{tokenize, SourceFile, SyntaxKind, TextRange, TextUnit};
+use ra_syntax::{SourceFile, TextRange, TextUnit};
 
 use crate::{db::LineIndexDatabase, display::ToNav, symbol_index::FileSymbol};
 
@@ -470,13 +470,6 @@ impl Analysis {
         position: FilePosition,
         new_name: &str,
     ) -> Cancelable<Option<RangeInfo<SourceChange>>> {
-        let tokens = tokenize(new_name);
-        if tokens.len() != 1
-            || (tokens[0].kind != SyntaxKind::IDENT && tokens[0].kind != SyntaxKind::UNDERSCORE)
-        {
-            return Ok(None);
-        }
-
         self.with_db(|db| references::rename(db, position, new_name))
     }
 
