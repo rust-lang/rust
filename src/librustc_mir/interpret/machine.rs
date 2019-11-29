@@ -240,15 +240,12 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    ///
-    /// For static allocations, the tag returned must be the same as the one returned by
-    /// `tag_static_base_pointer`.
-    fn tag_allocation<'b>(
+    fn init_allocation_extra<'b>(
         memory_extra: &Self::MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-    ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
 
     /// Return the "base" tag for the given static allocation: the one that is used for direct
     /// accesses to this static/const/fn allocation.

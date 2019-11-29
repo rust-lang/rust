@@ -457,14 +457,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn tag_allocation<'b>(
+    fn init_allocation_extra<'b>(
         _memory_extra: &(),
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<!>>,
-    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
+    ) -> Cow<'b, Allocation<Self::PointerTag>> {
         // We do not use a tag so we can just cheaply forward the allocation
-        (alloc, ())
+        alloc
     }
 
     #[inline(always)]
