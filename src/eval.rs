@@ -6,13 +6,8 @@ use rand::SeedableRng;
 use rustc::hir::def_id::DefId;
 use rustc::ty::layout::{LayoutOf, Size};
 use rustc::ty::{self, TyCtxt};
-use syntax::source_map::DUMMY_SP;
 
-use crate::{
-    EnvVars, Evaluator, FnVal, HelpersEvalContextExt, InterpCx, InterpError,
-    InterpResult, MemoryExtra, MiriMemoryKind, Pointer, Scalar, StackPopCleanup, Tag,
-    TlsEvalContextExt, MPlaceTy
-};
+use crate::*;
 
 /// Configuration needed to spawn a Miri instance.
 #[derive(Clone)]
@@ -65,107 +60,93 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         tcx.mk_substs(::std::iter::once(ty::subst::GenericArg::from(main_ret_ty))),
     )
     .unwrap();
-    let start_mir = ecx.load_mir(start_instance.def, None)?;
-
-    if start_mir.arg_count != 3 {
-        bug!(
-            "'start' lang item should have three arguments, but has {}",
-            start_mir.arg_count
-        );
-    }
-
-    // Return value (in static memory so that it does not count as leak).
-    let ret = ecx.layout_of(start_mir.return_ty())?;
-    let ret_ptr = ecx.allocate(ret, MiriMemoryKind::Static.into());
-
-    // Push our stack frame.
-    ecx.push_stack_frame(
-        start_instance,
-        // There is no call site.
-        DUMMY_SP,
-        start_mir,
-        Some(ret_ptr.into()),
-        StackPopCleanup::None { cleanup: true },
-    )?;
-
-    let mut args = ecx.frame().body.args_iter();
 
     // First argument: pointer to `main()`.
     let main_ptr = ecx
         .memory
         .create_fn_alloc(FnVal::Instance(main_instance));
-    let dest = ecx.local_place(args.next().unwrap())?;
-    ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
-
-    // Second argument (argc): `1`.
-    let dest = ecx.local_place(args.next().unwrap())?;
-    let argc = Scalar::from_uint(config.args.len() as u128, dest.layout.size);
-    ecx.write_scalar(argc, dest)?;
-    // Store argc for macOS's `_NSGetArgc`.
-    {
-        let argc_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
-        ecx.write_scalar(argc, argc_place.into())?;
-        ecx.machine.argc = Some(argc_place.ptr);
-    }
-
+    // Second argument (argc): length of `config.args`.
+    let argc = Scalar::from_uint(config.args.len() as u128, ecx.pointer_size());
     // Third argument (`argv`): created from `config.args`.
-    let dest = ecx.local_place(args.next().unwrap())?;
-    // For Windows, construct a command string with all the aguments.
-    let mut cmd = String::new();
-    for arg in config.args.iter() {
-        if !cmd.is_empty() {
-            cmd.push(' ');
+    let argv = {
+        // For Windows, construct a command string with all the aguments (before we take apart `config.args`).
+        let mut cmd = String::new();
+        for arg in config.args.iter() {
+            if !cmd.is_empty() {
+                cmd.push(' ');
+            }
+            cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
         }
-        cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
-    }
-    // Don't forget `0` terminator.
-    cmd.push(std::char::from_u32(0).unwrap());
-    // Collect the pointers to the individual strings.
-    let mut argvs = Vec::<Pointer<Tag>>::new();
-    for arg in config.args {
-        // Add `0` terminator.
-        let mut arg = arg.into_bytes();
-        arg.push(0);
-        argvs.push(
-            ecx.memory
-                .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()),
-        );
-    }
-    // Make an array with all these pointers, in the Miri memory.
-    let argvs_layout = ecx.layout_of(
-        tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), argvs.len() as u64),
-    )?;
-    let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
-    for (idx, arg) in argvs.into_iter().enumerate() {
-        let place = ecx.mplace_field(argvs_place, idx as u64)?;
-        ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
-    }
-    ecx.memory
-        .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
-    // Write a pointer to that place as the argument.
-    let argv = argvs_place.ptr;
-    ecx.write_scalar(argv, dest)?;
-    // Store `argv` for macOS `_NSGetArgv`.
-    {
-        let argv_place = ecx.allocate(dest.layout, MiriMemoryKind::Env.into());
-        ecx.write_scalar(argv, argv_place.into())?;
-        ecx.machine.argv = Some(argv_place.ptr);
-    }
-    // Store command line as UTF-16 for Windows `GetCommandLineW`.
-    {
-        let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
-        let cmd_type = tcx.mk_array(tcx.types.u16, cmd_utf16.len() as u64);
-        let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Env.into());
-        ecx.machine.cmd_line = Some(cmd_place.ptr);
-        // Store the UTF-16 string. We just allocated so we know the bounds are fine.
-        let char_size = Size::from_bytes(2);
-        for (idx, &c) in cmd_utf16.iter().enumerate() {
-            let place = ecx.mplace_field(cmd_place, idx as u64)?;
-            ecx.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
+        // Don't forget `0` terminator.
+        cmd.push(std::char::from_u32(0).unwrap());
+        // Collect the pointers to the individual strings.
+        let mut argvs = Vec::<Pointer<Tag>>::new();
+        for arg in config.args {
+            // Add `0` terminator.
+            let mut arg = arg.into_bytes();
+            arg.push(0);
+            argvs.push(
+                ecx.memory
+                    .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()),
+            );
         }
-    }
+        // Make an array with all these pointers, in the Miri memory.
+        let argvs_layout = ecx.layout_of(
+            tcx.mk_array(tcx.mk_imm_ptr(tcx.types.u8), argvs.len() as u64),
+        )?;
+        let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
+        for (idx, arg) in argvs.into_iter().enumerate() {
+            let place = ecx.mplace_field(argvs_place, idx as u64)?;
+            ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
+        }
+        ecx.memory
+            .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
+        // A pointer to that place is the argument.
+        let argv = argvs_place.ptr;
+        // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
+        {
+            let argc_place = ecx.allocate(
+                ecx.layout_of(tcx.types.isize)?,
+                MiriMemoryKind::Env.into(),
+            );
+            ecx.write_scalar(argc, argc_place.into())?;
+            ecx.machine.argc = Some(argc_place.ptr);
 
-    args.next().expect_none("start lang item has more arguments than expected");
+            let argv_place = ecx.allocate(
+                ecx.layout_of(tcx.mk_imm_ptr(tcx.types.unit))?,
+                MiriMemoryKind::Env.into(),
+            );
+            ecx.write_scalar(argv, argv_place.into())?;
+            ecx.machine.argv = Some(argv_place.ptr);
+        }
+        // Store command line as UTF-16 for Windows `GetCommandLineW`.
+        {
+            let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
+            let cmd_type = tcx.mk_array(tcx.types.u16, cmd_utf16.len() as u64);
+            let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Env.into());
+            ecx.machine.cmd_line = Some(cmd_place.ptr);
+            // Store the UTF-16 string. We just allocated so we know the bounds are fine.
+            let char_size = Size::from_bytes(2);
+            for (idx, &c) in cmd_utf16.iter().enumerate() {
+                let place = ecx.mplace_field(cmd_place, idx as u64)?;
+                ecx.write_scalar(Scalar::from_uint(c, char_size), place.into())?;
+            }
+        }
+        argv
+    };
+
+    // Return place (in static memory so that it does not count as leak).
+    let ret_place = ecx.allocate(
+        ecx.layout_of(tcx.types.isize)?,
+        MiriMemoryKind::Static.into(),
+    );
+    // Call start function.
+    ecx.call_function(
+        start_instance,
+        &[main_ptr.into(), argc, argv],
+        Some(ret_place.into()),
+        StackPopCleanup::None { cleanup: true },
+    )?;
 
     // Set the last_error to 0
     let errno_layout = ecx.layout_of(tcx.types.u32)?;
@@ -173,14 +154,14 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
     ecx.machine.last_error = Some(errno_place);
 
-    Ok((ecx, ret_ptr))
+    Ok((ecx, ret_place))
 }
 
 /// Evaluates the main function specified by `main_id`.
 /// Returns `Some(return_code)` if program executed completed.
 /// Returns `None` if an evaluation error occured.
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
-    let (mut ecx, ret_ptr) = match create_ecx(tcx, main_id, config) {
+    let (mut ecx, ret_place) = match create_ecx(tcx, main_id, config) {
         Ok(v) => v,
         Err(mut err) => {
             err.print_backtrace();
@@ -193,7 +174,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
         ecx.run()?;
         // Read the return code pointer *before* we run TLS destructors, to assert
         // that it was written to by the time that `start` lang item returned.
-        let return_code = ecx.read_scalar(ret_ptr.into())?.not_undef()?.to_machine_isize(&ecx)?;
+        let return_code = ecx.read_scalar(ret_place.into())?.not_undef()?.to_machine_isize(&ecx)?;
         ecx.run_tls_dtors()?;
         Ok(return_code)
     })();

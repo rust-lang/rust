@@ -146,22 +146,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
             assert!(!this.is_null(ptr).unwrap(), "Data can't be NULL when dtor is called!");
-            // TODO: Potentially, this has to support all the other possible instances?
-            // See eval_fn_call in interpret/terminator/mod.rs
-            let mir = this.load_mir(instance.def, None)?;
+
             let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
-            this.push_stack_frame(
+            this.call_function(
                 instance,
-                mir.span,
-                mir,
+                &[ptr],
                 Some(ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;
-            let arg_local = this.frame().body.args_iter().next().ok_or_else(
-                || err_ub_format!("TLS dtor does not take enough arguments."),
-            )?;
-            let dest = this.local_place(arg_local)?;
-            this.write_scalar(ptr, dest)?;
 
             // step until out of stackframes
             this.run()?;

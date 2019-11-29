@@ -230,37 +230,26 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         dest: PlaceTy<'tcx, Tag>,
     ) -> InterpResult<'tcx> {
         trace!("box_alloc for {:?}", dest.layout.ty);
+        let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
+        // First argument: `size`.
+        // (`0` is allowed here -- this is expected to be handled by the lang item).
+        let size = Scalar::from_uint(layout.size.bytes(), ecx.pointer_size());
+
+        // Second argument: `align`.
+        let align = Scalar::from_uint(layout.align.abi.bytes(), ecx.pointer_size());
+
         // Call the `exchange_malloc` lang item.
         let malloc = ecx.tcx.lang_items().exchange_malloc_fn().unwrap();
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
-        let malloc_mir = ecx.load_mir(malloc.def, None)?;
-        ecx.push_stack_frame(
+        ecx.call_function(
             malloc,
-            malloc_mir.span,
-            malloc_mir,
+            &[size, align],
             Some(dest),
             // Don't do anything when we are done. The `statement()` function will increment
             // the old stack frame's stmt counter to the next statement, which means that when
             // `exchange_malloc` returns, we go on evaluating exactly where we want to be.
             StackPopCleanup::None { cleanup: true },
         )?;
-
-        let mut args = ecx.frame().body.args_iter();
-        let layout = ecx.layout_of(dest.layout.ty.builtin_deref(false).unwrap().ty)?;
-
-        // First argument: `size`.
-        // (`0` is allowed here -- this is expected to be handled by the lang item).
-        let arg = ecx.local_place(args.next().unwrap())?;
-        let size = layout.size.bytes();
-        ecx.write_scalar(Scalar::from_uint(size, arg.layout.size), arg)?;
-
-        // Second argument: `align`.
-        let arg = ecx.local_place(args.next().unwrap())?;
-        let align = layout.align.abi.bytes();
-        ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
-
-        // No more arguments.
-        args.next().expect_none("`exchange_malloc` lang item has more arguments than expected");
         Ok(())
     }
 
