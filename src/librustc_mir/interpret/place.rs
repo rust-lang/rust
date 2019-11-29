@@ -1082,9 +1082,13 @@ where
                 }
                 if variant_index != dataful_variant {
                     let variants_start = niche_variants.start().as_u32();
-                    let variant_index_relative = variant_index.as_u32()
-                        .checked_sub(variants_start)
-                        .expect("overflow computing relative variant idx");
+
+                    let (variant_index_relative, op) = if variant_index.as_u32() >= variants_start {
+                        (variant_index.as_u32() - variants_start, mir::BinOp::Add)
+                    } else {
+                        (variants_start - variant_index.as_u32(), mir::BinOp::Sub)
+                    };
+
                     // We need to use machine arithmetic when taking into account `niche_start`:
                     // discr_val = variant_index_relative + niche_start_val
                     let discr_layout = self.layout_of(discr_layout.value.to_int_ty(*self.tcx))?;
@@ -1092,7 +1096,7 @@ where
                     let variant_index_relative_val =
                         ImmTy::from_uint(variant_index_relative, discr_layout);
                     let discr_val = self.binary_op(
-                        mir::BinOp::Add,
+                        op,
                         variant_index_relative_val,
                         niche_start_val,
                     )?;
