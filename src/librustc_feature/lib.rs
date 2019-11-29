@@ -15,13 +15,10 @@
 mod accepted;
 mod removed;
 mod active;
-mod builtin_attrs;
-mod check;
 
-use crate::{edition::Edition, symbol::Symbol};
 use std::fmt;
 use std::num::NonZeroU32;
-use syntax_pos::Span;
+use syntax_pos::{Span, edition::Edition, symbol::Symbol};
 
 #[derive(Clone, Copy)]
 pub enum State {
@@ -44,28 +41,21 @@ impl fmt::Debug for State {
 
 #[derive(Debug, Clone)]
 pub struct Feature {
-    state: State,
-    name: Symbol,
-    since: &'static str,
+    pub state: State,
+    pub name: Symbol,
+    pub since: &'static str,
     issue: Option<u32>,  // FIXME: once #58732 is done make this an Option<NonZeroU32>
-    edition: Option<Edition>,
+    pub edition: Option<Edition>,
     description: &'static str,
 }
 
 impl Feature {
-    fn issue(&self) -> Option<NonZeroU32> {
+    // FIXME(Centril): privatize again.
+    pub fn issue(&self) -> Option<NonZeroU32> {
         self.issue.and_then(|i| NonZeroU32::new(i))
     }
 }
 
-pub use active::{Features, INCOMPLETE_FEATURES};
-pub use builtin_attrs::{
-    AttributeGate, AttributeType, GatedCfg,
-    BuiltinAttribute, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
-    deprecated_attributes, is_builtin_attr,  is_builtin_attr_name,
-};
-pub use check::{
-    check_crate, check_attribute, get_features, feature_err, emit_feature_err,
-    Stability, GateIssue, UnstableFeatures,
-    EXPLAIN_STMT_ATTR_SYNTAX, EXPLAIN_UNSIZED_TUPLE_COERCION,
-};
+pub use accepted::ACCEPTED_FEATURES;
+pub use active::{ACTIVE_FEATURES, Features, INCOMPLETE_FEATURES};
+pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};

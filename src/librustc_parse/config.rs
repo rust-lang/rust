@@ -9,11 +9,11 @@
 //! [#64197]: https://github.com/rust-lang/rust/issues/64197
 
 use crate::validate_attr;
+use rustc_feature::Features;
 use syntax::attr::HasAttrs;
 use syntax::feature_gate::{
     feature_err,
     EXPLAIN_STMT_ATTR_SYNTAX,
-    Features,
     get_features,
     GateIssue,
 };

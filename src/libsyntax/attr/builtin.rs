@@ -1,14 +1,15 @@
 //! Parsing and validation of builtin attributes
 
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
-use crate::feature_gate::{Features, GatedCfg};
 use crate::print::pprust;
+use crate::feature_gate::GatedCfg;
 use crate::sess::ParseSess;
 
 use errors::{Applicability, Handler};
 use std::num::NonZeroU32;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
+use rustc_feature::Features;
 use rustc_macros::HashStable_Generic;
 
 use super::{mark_used, MetaItemKind};

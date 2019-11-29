@@ -2,10 +2,9 @@
 
 use super::{State, Feature};
 
-use crate::edition::Edition;
-use crate::symbol::{Symbol, sym};
-
+use syntax_pos::edition::Edition;
 use syntax_pos::Span;
+use syntax_pos::symbol::{Symbol, sym};
 
 macro_rules! set {
     ($field: ident) => {{

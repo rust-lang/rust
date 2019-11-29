@@ -3199,6 +3199,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_fs_util",
  "rustc_index",
  "rustc_macros",
@@ -3608,6 +3609,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_feature"
+version = "0.0.0"
+dependencies = [
+ "syntax_pos",
+]
+
+[[package]]
 name = "rustc_fs_util"
 version = "0.0.0"
 
@@ -3682,6 +3690,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_error_codes",
+ "rustc_feature",
  "rustc_index",
  "rustc_target",
  "syntax",
@@ -3786,6 +3795,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_lexer",
  "rustc_target",
  "smallvec 1.0.0",
@@ -3802,6 +3812,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_index",
  "rustc_parse",
  "rustc_target",
@@ -4442,6 +4453,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_index",
  "rustc_lexer",
  "rustc_macros",
@@ -4458,6 +4470,7 @@ dependencies = [
  "log",
  "rustc_data_structures",
  "rustc_errors",
+ "rustc_feature",
  "rustc_lexer",
  "rustc_parse",
  "serialize",
@@ -4475,6 +4488,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_parse",
  "rustc_target",
  "smallvec 1.0.0",

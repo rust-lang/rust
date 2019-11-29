@@ -92,7 +92,20 @@ pub mod attr;
 pub mod expand;
 pub use syntax_pos::source_map;
 pub mod entry;
-pub mod feature_gate;
+pub mod feature_gate {
+    mod check;
+    pub use check::{
+        check_crate, check_attribute, get_features, feature_err, emit_feature_err,
+        Stability, GateIssue, UnstableFeatures,
+        EXPLAIN_STMT_ATTR_SYNTAX, EXPLAIN_UNSIZED_TUPLE_COERCION,
+    };
+    mod builtin_attrs;
+    pub use builtin_attrs::{
+        AttributeGate, AttributeType, GatedCfg,
+        BuiltinAttribute, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
+        deprecated_attributes, is_builtin_attr,  is_builtin_attr_name,
+    };
+}
 pub mod mut_visit;
 pub mod ptr;
 pub mod show_span;

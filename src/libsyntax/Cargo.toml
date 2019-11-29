@@ -18,6 +18,7 @@ lazy_static = "1.0.0"
 syntax_pos = { path = "../libsyntax_pos" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
 rustc_data_structures = { path = "../librustc_data_structures" }
+rustc_feature = { path = "../librustc_feature" }
 rustc_index = { path = "../librustc_index" }
 rustc_lexer = { path = "../librustc_lexer" }
 rustc_macros = { path = "../librustc_macros" }

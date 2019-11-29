@@ -41,7 +41,7 @@ use syntax::ptr::P;
 use syntax::attr::{self, HasAttrs, AttributeTemplate};
 use syntax::source_map::Spanned;
 use syntax::edition::Edition;
-use syntax::feature_gate::{self, AttributeGate, AttributeType};
+use syntax::feature_gate::{AttributeGate, AttributeType};
 use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span};
 use syntax::symbol::{Symbol, kw, sym};
@@ -1850,7 +1850,7 @@ impl EarlyLintPass for IncompleteFeatures {
         features.declared_lang_features
             .iter().map(|(name, span, _)| (name, span))
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
-            .filter(|(name, _)| feature_gate::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
+            .filter(|(name, _)| rustc_feature::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
             .for_each(|(name, &span)| {
                 cx.struct_span_lint(
                     INCOMPLETE_FEATURES,

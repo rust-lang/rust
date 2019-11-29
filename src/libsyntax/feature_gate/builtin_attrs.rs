@@ -5,13 +5,13 @@ use AttributeGate::*;
 
 use super::check::{emit_feature_err, GateIssue};
 use super::check::{Stability, EXPLAIN_ALLOW_INTERNAL_UNSAFE, EXPLAIN_ALLOW_INTERNAL_UNSTABLE};
-use super::active::Features;
+use rustc_feature::Features;
 
 use crate::ast;
 use crate::attr::AttributeTemplate;
 use crate::sess::ParseSess;
-use crate::symbol::{Symbol, sym};
 
+use syntax_pos::symbol::{Symbol, sym};
 use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
 use lazy_static::lazy_static;
