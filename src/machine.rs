@@ -216,6 +216,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
+        msg: &AssertMessage<'tcx>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        ecx.assert_panic(span, msg, unwind)
+    }
+
+    #[inline(always)]
     fn binary_ptr_op(
         ecx: &rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
