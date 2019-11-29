@@ -8,14 +8,13 @@ use matches::matches;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::mem_categorization as mc;
 use rustc::traits;
 use rustc::ty::{self, RegionKind, TypeFoldable};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
 use rustc_target::spec::abi::Abi;
+use rustc_typeck::expr_use_visitor as euv;
 use std::borrow::Cow;
 use syntax::ast::Attribute;
 use syntax::errors::DiagnosticBuilder;
@@ -135,9 +134,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             ..
         } = {
             let mut ctx = MovedVariablesCtxt::default();
-            let region_scope_tree = &cx.tcx.region_scope_tree(fn_def_id);
-            euv::ExprUseVisitor::new(&mut ctx, cx.tcx, fn_def_id, cx.param_env, region_scope_tree, cx.tables)
-                .consume_body(body);
+            cx.tcx.infer_ctxt().enter(|infcx| {
+                euv::ExprUseVisitor::new(&mut ctx, &infcx, fn_def_id, cx.param_env, cx.tables).consume_body(body);
+            });
             ctx
         };
 
@@ -326,34 +325,21 @@ struct MovedVariablesCtxt {
 }
 
 impl MovedVariablesCtxt {
-    fn move_common(&mut self, cmt: &mc::cmt_<'_>) {
-        let cmt = unwrap_downcast_or_interior(cmt);
-
-        if let mc::Categorization::Local(vid) = cmt.cat {
+    fn move_common(&mut self, cmt: &euv::Place<'_>) {
+        if let euv::PlaceBase::Local(vid) = cmt.base {
             self.moved_vars.insert(vid);
         }
     }
 }
 
 impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
-    fn consume(&mut self, cmt: &mc::cmt_<'tcx>, mode: euv::ConsumeMode) {
+    fn consume(&mut self, cmt: &euv::Place<'tcx>, mode: euv::ConsumeMode) {
         if let euv::ConsumeMode::Move = mode {
             self.move_common(cmt);
         }
     }
 
-    fn borrow(&mut self, _: &mc::cmt_<'tcx>, _: ty::BorrowKind) {}
+    fn borrow(&mut self, _: &euv::Place<'tcx>, _: ty::BorrowKind) {}
 
-    fn mutate(&mut self, _: &mc::cmt_<'tcx>) {}
-}
-
-fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::cmt_<'tcx>) -> mc::cmt_<'tcx> {
-    loop {
-        match cmt.cat {
-            mc::Categorization::Downcast(ref c, _) | mc::Categorization::Interior(ref c, _) => {
-                cmt = c;
-            },
-            _ => return (*cmt).clone(),
-        }
-    }
+    fn mutate(&mut self, _: &euv::Place<'tcx>) {}
 }

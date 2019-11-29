@@ -12,13 +12,11 @@ use rustc::{declare_lint_pass, declare_tool_lint};
 use crate::consts::{constant, Constant};
 use crate::utils::usage::mutated_variables;
 use crate::utils::{is_type_diagnostic_item, qpath_res, sext, sugg};
-use rustc::middle::expr_use_visitor::*;
-use rustc::middle::mem_categorization::cmt_;
-use rustc::middle::mem_categorization::Categorization;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use rustc_typeck::expr_use_visitor::*;
 use std::iter::{once, Iterator};
 use std::mem;
 use syntax::ast;
@@ -1586,11 +1584,11 @@ struct MutatePairDelegate {
 }
 
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
-    fn consume(&mut self, _: &cmt_<'tcx>, _: ConsumeMode) {}
+    fn consume(&mut self, _: &Place<'tcx>, _: ConsumeMode) {}
 
-    fn borrow(&mut self, cmt: &cmt_<'tcx>, bk: ty::BorrowKind) {
+    fn borrow(&mut self, cmt: &Place<'tcx>, bk: ty::BorrowKind) {
         if let ty::BorrowKind::MutBorrow = bk {
-            if let Categorization::Local(id) = cmt.cat {
+            if let PlaceBase::Local(id) = cmt.base {
                 if Some(id) == self.hir_id_low {
                     self.span_low = Some(cmt.span)
                 }
@@ -1601,8 +1599,8 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate {
         }
     }
 
-    fn mutate(&mut self, cmt: &cmt_<'tcx>) {
-        if let Categorization::Local(id) = cmt.cat {
+    fn mutate(&mut self, cmt: &Place<'tcx>) {
+        if let PlaceBase::Local(id) = cmt.base {
             if Some(id) == self.hir_id_low {
                 self.span_low = Some(cmt.span)
             }
@@ -1680,16 +1678,9 @@ fn check_for_mutation(
         span_high: None,
     };
     let def_id = def_id::DefId::local(body.hir_id.owner);
-    let region_scope_tree = &cx.tcx.region_scope_tree(def_id);
-    ExprUseVisitor::new(
-        &mut delegate,
-        cx.tcx,
-        def_id,
-        cx.param_env,
-        region_scope_tree,
-        cx.tables,
-    )
-    .walk_expr(body);
+    cx.tcx.infer_ctxt().enter(|infcx| {
+        ExprUseVisitor::new(&mut delegate, &infcx, def_id, cx.param_env, cx.tables).walk_expr(body);
+    });
     delegate.mutation_span()
 }
 
