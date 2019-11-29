@@ -259,9 +259,9 @@ impl<'a> State<'a> {
         self.commasep_cmnt(b, exprs, |s, e| s.print_expr(&e), |e| e.span)
     }
 
-    pub fn print_mod(&mut self, _mod: &hir::Mod, attrs: &[ast::Attribute]) {
+    pub fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[ast::Attribute]) {
         self.print_inner_attributes(attrs);
-        for &item_id in &_mod.item_ids {
+        for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
         }
     }

@@ -743,7 +743,7 @@ pub struct ModuleItems {
 /// [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate<'hir> {
-    pub module: Mod,
+    pub module: Mod<'hir>,
     pub attrs: &'hir [Attribute],
     pub span: Span,
     pub exported_macros: &'hir [MacroDef<'hir>],
@@ -2243,12 +2243,12 @@ impl FunctionRetTy {
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug)]
-pub struct Mod {
+pub struct Mod<'hir> {
     /// A span from the first token past `{` to the last token until `}`.
     /// For `mod foo;`, the inner span ranges from the first token
     /// to the last token in the external file.
     pub inner: Span,
-    pub item_ids: HirVec<ItemId>,
+    pub item_ids: &'hir [ItemId],
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
@@ -2489,7 +2489,7 @@ pub enum ItemKind<'hir> {
     /// A function declaration.
     Fn(FnSig, Generics, BodyId),
     /// A module.
-    Mod(Mod),
+    Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
     ForeignMod(ForeignMod<'hir>),
     /// Module-level inline assembly (from `global_asm!`).

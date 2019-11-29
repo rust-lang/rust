@@ -247,7 +247,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_ident(&mut self, ident: Ident) {
         walk_ident(self, ident)
     }
-    fn visit_mod(&mut self, m: &'v Mod, _s: Span, n: HirId) {
+    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, n: HirId) {
         walk_mod(self, m, n)
     }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) {
@@ -394,9 +394,9 @@ pub fn walk_macro_def<'v, V: Visitor<'v>>(visitor: &mut V, macro_def: &'v MacroD
     walk_list!(visitor, visit_attribute, macro_def.attrs);
 }
 
-pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod, mod_hir_id: HirId) {
+pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>, mod_hir_id: HirId) {
     visitor.visit_id(mod_hir_id);
-    for &item_id in &module.item_ids {
+    for &item_id in module.item_ids {
         visitor.visit_nested_item(item_id);
     }
 }

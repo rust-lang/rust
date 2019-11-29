@@ -682,7 +682,7 @@ impl EncodeContext<'tcx> {
     fn encode_info_for_mod(
         &mut self,
         id: hir::HirId,
-        md: &hir::Mod,
+        md: &hir::Mod<'_>,
         attrs: &[ast::Attribute],
         vis: &hir::Visibility,
     ) {

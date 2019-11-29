@@ -883,7 +883,7 @@ impl<'a, 'tcx, T: LateLintPass<'a, 'tcx>> LateContextAndPass<'a, 'tcx, T> {
         self.context.param_env = old_param_env;
     }
 
-    fn process_mod(&mut self, m: &'tcx hir::Mod, s: Span, n: hir::HirId) {
+    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
         lint_callback!(self, check_mod, m, s, n);
         hir_visit::walk_mod(self, m, n);
         lint_callback!(self, check_mod_post, m, s, n);
@@ -1027,7 +1027,7 @@ for LateContextAndPass<'a, 'tcx, T> {
         lint_callback!(self, check_name, sp, name);
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod, s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, s: Span, n: hir::HirId) {
         if !self.context.only_module {
             self.process_mod(m, s, n);
         }

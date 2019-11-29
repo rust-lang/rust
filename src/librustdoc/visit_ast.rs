@@ -215,7 +215,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     fn visit_mod_contents(&mut self, span: Span, attrs: &'tcx [ast::Attribute],
                               vis: &'tcx hir::Visibility, id: hir::HirId,
-                              m: &'tcx hir::Mod,
+                              m: &'tcx hir::Mod<'tcx>,
                               name: Option<ast::Name>) -> Module<'tcx> {
         let mut om = Module::new(name, attrs, vis);
         om.where_outer = span;
@@ -224,7 +224,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
         self.inside_public_path &= vis.node.is_pub();
-        for i in &m.item_ids {
+        for i in m.item_ids {
             let item = self.cx.tcx.hir().expect_item(i.id);
             self.visit_item(item, None, &mut om);
         }
@@ -322,7 +322,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let ret = match tcx.hir().get(res_hir_id) {
             Node::Item(&hir::Item { kind: hir::ItemKind::Mod(ref m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
-                for i in &m.item_ids {
+                for i in m.item_ids {
                     let i = self.cx.tcx.hir().expect_item(i.id);
                     self.visit_item(i, None, om);
                 }

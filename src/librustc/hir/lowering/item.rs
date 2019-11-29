@@ -161,10 +161,10 @@ impl LoweringContext<'_, 'hir> {
         res
     }
 
-    pub(super) fn lower_mod(&mut self, m: &Mod) -> hir::Mod {
+    pub(super) fn lower_mod(&mut self, m: &Mod) -> hir::Mod<'hir> {
         hir::Mod {
             inner: m.inner,
-            item_ids: m.items.iter().flat_map(|x| self.lower_item_id(x)).collect(),
+            item_ids: self.arena.alloc_from_iter(m.items.iter().flat_map(|x| self.lower_item_id(x))),
         }
     }
 

@@ -92,8 +92,8 @@ macro_rules! late_lint_methods {
             fn check_name(a: Span, b: ast::Name);
             fn check_crate(a: &$hir hir::Crate<$hir>);
             fn check_crate_post(a: &$hir hir::Crate<$hir>);
-            fn check_mod(a: &$hir hir::Mod, b: Span, c: hir::HirId);
-            fn check_mod_post(a: &$hir hir::Mod, b: Span, c: hir::HirId);
+            fn check_mod(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
+            fn check_mod_post(a: &$hir hir::Mod<$hir>, b: Span, c: hir::HirId);
             fn check_foreign_item(a: &$hir hir::ForeignItem<$hir>);
             fn check_foreign_item_post(a: &$hir hir::ForeignItem<$hir>);
             fn check_item(a: &$hir hir::Item<$hir>);

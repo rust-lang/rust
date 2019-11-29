@@ -510,7 +510,7 @@ impl EmbargoVisitor<'tcx> {
     fn update_macro_reachable_mod(&mut self, reachable_mod: hir::HirId, defining_mod: DefId) {
         let module_def_id = self.tcx.hir().local_def_id(reachable_mod);
         let module = self.tcx.hir().get_module(module_def_id).0;
-        for item_id in &module.item_ids {
+        for item_id in module.item_ids {
             let hir_id = item_id.id;
             let item_def_id = self.tcx.hir().local_def_id(hir_id);
             if let Some(def_kind) = self.tcx.def_kind(item_def_id) {
@@ -849,7 +849,7 @@ impl Visitor<'tcx> for EmbargoVisitor<'tcx> {
         self.prev_level = orig_level;
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod, _sp: Span, id: hir::HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _sp: Span, id: hir::HirId) {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
@@ -992,7 +992,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NamePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: hir::HirId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `privacy_access_levels`
     }
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir())
     }
 
-    fn visit_mod(&mut self, _m: &'tcx hir::Mod, _s: Span, _n: hir::HirId) {
+    fn visit_mod(&mut self, _m: &'tcx hir::Mod<'tcx>, _s: Span, _n: hir::HirId) {
         // Don't visit nested modules, since we run a separate visitor walk
         // for each module in `privacy_access_levels`
     }

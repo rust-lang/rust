@@ -1093,7 +1093,7 @@ impl UsePlacementFinder<'tcx> {
 impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
     fn visit_mod(
         &mut self,
-        module: &'tcx hir::Mod,
+        module: &'tcx hir::Mod<'tcx>,
         _: Span,
         hir_id: hir::HirId,
     ) {
@@ -1105,7 +1105,7 @@ impl hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'tcx> {
             return;
         }
         // Find a `use` statement.
-        for item_id in &module.item_ids {
+        for item_id in module.item_ids {
             let item = self.tcx.hir().expect_item(item_id.id);
             match item.kind {
                 hir::ItemKind::Use(..) => {

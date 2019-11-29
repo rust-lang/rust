@@ -128,7 +128,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_item(self, i)
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod, _s: Span, n: hir::HirId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: hir::HirId) {
         self.record("Mod", Id::None, m);
         hir_visit::walk_mod(self, m, n)
     }

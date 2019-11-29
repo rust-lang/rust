@@ -218,7 +218,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Mod<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         let hir::Mod {
             inner: ref inner_span,
