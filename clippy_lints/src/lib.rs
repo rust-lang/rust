@@ -963,6 +963,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     let array_size_threshold = conf.array_size_threshold;
     store.register_late_pass(move || box large_stack_arrays::LargeStackArrays::new(array_size_threshold));
     store.register_early_pass(|| box as_conversions::AsConversions);
+    store.register_early_pass(|| box utils::internal_lints::ProduceIce);
 
     store.register_group(true, "clippy::restriction", Some("clippy_restriction"), vec![
         LintId::of(&arithmetic::FLOAT_ARITHMETIC),
@@ -1057,6 +1058,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&utils::internal_lints::COMPILER_LINT_FUNCTIONS),
         LintId::of(&utils::internal_lints::LINT_WITHOUT_LINT_PASS),
         LintId::of(&utils::internal_lints::OUTER_EXPN_EXPN_DATA),
+        LintId::of(&utils::internal_lints::PRODUCE_ICE),
     ]);
 
     store.register_group(true, "clippy::all", Some("clippy"), vec![
