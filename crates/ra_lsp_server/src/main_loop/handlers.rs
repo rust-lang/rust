@@ -13,7 +13,7 @@ use ra_ide::{
     AssistId, FileId, FilePosition, FileRange, Query, Runnable, RunnableKind, SearchScope,
 };
 use ra_prof::profile;
-use ra_syntax::{tokenize, AstNode, SyntaxKind, TextRange, TextUnit};
+use ra_syntax::{AstNode, SyntaxKind, TextRange, TextUnit};
 use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::to_value;
@@ -480,8 +480,6 @@ pub fn handle_prepare_rename(
     let _p = profile("handle_prepare_rename");
     let position = params.try_conv_with(&world)?;
 
-    // We support renaming references like handle_rename does.
-    // In the future we may want to reject the renaming of things like keywords here too.
     let optional_change = world.analysis().rename(position, "dummy")?;
     let range = match optional_change {
         None => return Ok(None),
@@ -504,14 +502,6 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
             "New Name cannot be empty".into(),
         )
         .into());
-    }
-
-    // Only rename to valid identifiers
-    let tokens = tokenize(&params.new_name);
-    if tokens.len() != 1
-        || (tokens[0].kind != SyntaxKind::IDENT && tokens[0].kind != SyntaxKind::UNDERSCORE)
-    {
-        return Ok(None);
     }
 
     let optional_change = world.analysis().rename(position, &*params.new_name)?;
