@@ -24,11 +24,13 @@ use super::{
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
-    /// Error if deallocated except during a stack pop
+    /// Stack memory. Error if deallocated except during a stack pop.
     Stack,
-    /// Error if ever deallocated
+    /// Memory backing vtables. Error if ever deallocated.
     Vtable,
-    /// Additional memory kinds a machine wishes to distinguish from the builtin ones
+    /// Memory allocated by `caller_location` intrinsic. Error if ever deallocated.
+    CallerLocation,
+    /// Additional memory kinds a machine wishes to distinguish from the builtin ones.
     Machine(T),
 }
 
@@ -38,6 +40,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
         match self {
             MemoryKind::Stack => false,
             MemoryKind::Vtable => true,
+            MemoryKind::CallerLocation => true,
             MemoryKind::Machine(k) => k.may_leak()
         }
     }
@@ -719,6 +722,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     let extra = match kind {
                         MemoryKind::Stack => " (stack)".to_owned(),
                         MemoryKind::Vtable => " (vtable)".to_owned(),
+                        MemoryKind::CallerLocation => " (caller_location)".to_owned(),
                         MemoryKind::Machine(m) => format!(" ({:?})", m),
                     };
                     self.dump_alloc_helper(

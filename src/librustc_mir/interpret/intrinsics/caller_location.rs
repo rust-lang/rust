@@ -28,7 +28,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let file = Scalar::Ptr(self.tag_static_base_pointer(file_ptr));
         let file_len = Scalar::from_uint(filename.as_str().len() as u128, ptr_size);
 
-        let location = self.allocate(loc_layout, MemoryKind::Stack);
+        let location = self.allocate(loc_layout, MemoryKind::CallerLocation);
 
         let file_out = self.mplace_field(location, 0)?;
         let file_ptr_out = self.force_ptr(self.mplace_field(file_out, 0)?.ptr)?;
