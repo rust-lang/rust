@@ -1,5 +1,5 @@
 error[E0225]: only auto traits can be used as additional traits in a trait object
-  --> $DIR/bad-sized.rs:4:28
+  --> $DIR/bad-sized.rs:6:28
    |
 LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |                    -----   ^^^^^
@@ -9,27 +9,43 @@ LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |                    first non-auto trait
    |                    trait alias used in trait object type (first use)
 
-error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
-  --> $DIR/bad-sized.rs:4:12
+error[E0277]: the size for values of type `dyn std::marker::Sized` cannot be known at compilation time
+  --> $DIR/bad-sized.rs:6:12
    |
 LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |            ^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
+   = help: the trait `std::marker::Sized` is not implemented for `dyn std::marker::Sized`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::vec::Vec`
 
-error[E0277]: the size for values of type `dyn Trait` cannot be known at compilation time
-  --> $DIR/bad-sized.rs:4:37
+error[E0038]: the trait `std::marker::Sized` cannot be made into an object
+  --> $DIR/bad-sized.rs:6:12
+   |
+LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
+   |            ^^^^^^^^^^^^^^^^^^^^^^ the trait `std::marker::Sized` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
+
+error[E0277]: the size for values of type `dyn std::marker::Sized` cannot be known at compilation time
+  --> $DIR/bad-sized.rs:6:37
    |
 LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
    |                                     ^^^^^^^^ doesn't have a size known at compile-time
    |
-   = help: the trait `std::marker::Sized` is not implemented for `dyn Trait`
+   = help: the trait `std::marker::Sized` is not implemented for `dyn std::marker::Sized`
    = note: to learn more, visit <https://doc.rust-lang.org/book/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: required by `std::vec::Vec::<T>::new`
 
-error: aborting due to 3 previous errors
+error[E0038]: the trait `std::marker::Sized` cannot be made into an object
+  --> $DIR/bad-sized.rs:6:37
+   |
+LL |     let x: Vec<dyn Trait + Sized> = Vec::new();
+   |                                     ^^^^^^^^ the trait `std::marker::Sized` cannot be made into an object
+   |
+   = note: the trait cannot require that `Self : Sized`
 
-Some errors have detailed explanations: E0225, E0277.
-For more information about an error, try `rustc --explain E0225`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0038, E0225, E0277.
+For more information about an error, try `rustc --explain E0038`.
