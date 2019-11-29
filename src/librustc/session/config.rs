@@ -12,7 +12,9 @@ use rustc_feature::UnstableFeatures;
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
 
-use syntax::ast::CrateConfig;
+// Duplicated from syntax::ast for now
+type CrateConfig = FxHashSet<(Symbol, Option<Symbol>)>;
+
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::symbol::{sym, Symbol};
