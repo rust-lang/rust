@@ -266,6 +266,16 @@ impl fmt::Display for Location<'_> {
 #[unstable(feature = "std_internals", issue = "0")]
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
-    fn box_me_up(&mut self) -> *mut (dyn Any + Send);
+    /// Take full ownership of the contents.
+    /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in libcore.
+    ///
+    /// After this method got called, only some dummy default value is left in `self`.
+    /// Calling this method twice, or calling `get` after calling this method, is an error.
+    ///
+    /// The argument is borrowed because the panic runtime (`__rust_start_panic`) only
+    /// gets a borrowed `dyn BoxMeUp`.
+    fn take_box(&mut self) -> *mut (dyn Any + Send);
+
+    /// Just borrow the contents.
     fn get(&mut self) -> &(dyn Any + Send);
 }
