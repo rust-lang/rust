@@ -1,44 +1,8 @@
-error: unreachable pattern
-  --> $DIR/exhaustiveness-pass.rs:48:12
-   |
-LL |          | 1,) => {}
-   |            ^
-   |
-note: lint level defined here
-  --> $DIR/exhaustiveness-pass.rs:4:9
-   |
-LL | #![deny(unreachable_patterns)]
-   |         ^^^^^^^^^^^^^^^^^^^^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-pass.rs:55:15
-   |
-LL |             | 0] => {}
-   |               ^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-pass.rs:53:15
-   |
-LL |             | 0
-   |               ^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-pass.rs:63:10
-   |
-LL |         [1
-   |          ^
-
-error: unreachable pattern
-  --> $DIR/exhaustiveness-pass.rs:69:14
-   |
-LL |         Some(0
-   |              ^
-
 error: or-patterns are not fully implemented yet
   --> $DIR/exhaustiveness-pass.rs:10:10
    |
 LL |         (0 | _,) => {}
    |          ^^^^^
 
-error: aborting due to 6 previous errors
+error: aborting due to previous error
 
