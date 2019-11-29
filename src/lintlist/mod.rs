@@ -2193,7 +2193,7 @@ pub const ALL_LINTS: [Lint; 338] = [
     },
     Lint {
         name: "use_self",
-        group: "pedantic",
+        group: "nursery",
         desc: "Unnecessary structure name repetition whereas `Self` is applicable",
         deprecation: None,
         module: "use_self",

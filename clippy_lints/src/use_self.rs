@@ -43,7 +43,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     pub USE_SELF,
-    pedantic,
+    nursery,
     "Unnecessary structure name repetition whereas `Self` is applicable"
 }
 
