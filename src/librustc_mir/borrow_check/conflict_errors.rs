@@ -7,6 +7,7 @@ use rustc::mir::{
     PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, TerminatorKind, VarBindingForm,
 };
 use rustc::ty::{self, Ty};
+use rustc::traits::error_reporting::suggest_constraining_type_param;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::Idx;
 use rustc_errors::{Applicability, DiagnosticBuilder};
@@ -231,13 +232,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let ty::Param(param_ty) = ty.kind {
                     let tcx = self.infcx.tcx;
                     let generics = tcx.generics_of(self.mir_def_id);
-                    let def_id = generics.type_param(&param_ty, tcx).def_id;
-                    if let Some(sp) = tcx.hir().span_if_local(def_id) {
-                        err.span_label(
-                            sp,
-                            "consider adding a `Copy` constraint to this type argument",
-                        );
-                    }
+                    let param = generics.type_param(&param_ty, tcx);
+                    let generics = tcx.hir().get_generics(self.mir_def_id).unwrap();
+                    suggest_constraining_type_param(
+                        generics,
+                        &mut err,
+                        &param.name.as_str(),
+                        "Copy",
+                        tcx.sess.source_map(),
+                        span,
+                    );
                 }
                 let span = if let Some(local) = place.as_local() {
                     let decl = &self.body.local_decls[local];

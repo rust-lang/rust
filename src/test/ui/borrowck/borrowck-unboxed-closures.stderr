@@ -20,9 +20,9 @@ error[E0382]: use of moved value: `f`
   --> $DIR/borrowck-unboxed-closures.rs:12:5
    |
 LL | fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
-   |      -                                - move occurs because `f` has type `F`, which does not implement the `Copy` trait
+   |      --                               - move occurs because `f` has type `F`, which does not implement the `Copy` trait
    |      |
-   |      consider adding a `Copy` constraint to this type argument
+   |      help: consider further restricting this bound: `F: Copy +`
 LL |     f(1, 2);
    |     - value moved here
 LL |     f(1, 2);

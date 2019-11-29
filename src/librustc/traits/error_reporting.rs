@@ -39,6 +39,7 @@ use syntax::ast;
 use syntax::symbol::{sym, kw};
 use syntax_pos::{DUMMY_SP, Span, ExpnKind, MultiSpan};
 use rustc::hir::def_id::LOCAL_CRATE;
+use syntax_pos::source_map::SourceMap;
 
 use rustc_error_codes::*;
 
@@ -1091,7 +1092,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
     fn suggest_restricting_param_bound(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
+        mut err: &mut DiagnosticBuilder<'_>,
         trait_ref: &ty::PolyTraitRef<'_>,
         body_id: hir::HirId,
     ) {
@@ -1102,7 +1103,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             _ => return,
         };
 
-        let mut suggest_restriction = |generics: &hir::Generics, msg| {
+        let suggest_restriction = |
+            generics: &hir::Generics,
+            msg,
+            err: &mut DiagnosticBuilder<'_>,
+        | {
             let span = generics.where_clause.span_for_predicates_or_empty_place();
             if !span.from_expansion() && span.desugaring_kind().is_none() {
                 err.span_suggestion(
@@ -1132,7 +1137,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     kind: hir::TraitItemKind::Method(..), ..
                 }) if param_ty && self_ty == self.tcx.types.self_param => {
                     // Restricting `Self` for a single method.
-                    suggest_restriction(&generics, "`Self`");
+                    suggest_restriction(&generics, "`Self`", err);
                     return;
                 }
 
@@ -1154,7 +1159,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     kind: hir::ItemKind::Impl(_, _, _, generics, ..), ..
                 }) if projection.is_some() => {
                     // Missing associated type bound.
-                    suggest_restriction(&generics, "the associated type");
+                    suggest_restriction(&generics, "the associated type", err);
                     return;
                 }
 
@@ -1183,68 +1188,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 hir::Node::ImplItem(hir::ImplItem { generics, span, .. })
                 if param_ty => {
                     // Missing generic type parameter bound.
-                    let restrict_msg = "consider further restricting this bound";
                     let param_name = self_ty.to_string();
-                    for param in generics.params.iter().filter(|p| {
-                        p.name.ident().as_str() == param_name
-                    }) {
-                        if param_name.starts_with("impl ") {
-                            // `impl Trait` in argument:
-                            // `fn foo(x: impl Trait) {}` → `fn foo(t: impl Trait + Trait2) {}`
-                            err.span_suggestion(
-                                param.span,
-                                restrict_msg,
-                                // `impl CurrentTrait + MissingTrait`
-                                format!("{} + {}", param.name.ident(), trait_ref),
-                                Applicability::MachineApplicable,
-                            );
-                        } else if generics.where_clause.predicates.is_empty() &&
-                                param.bounds.is_empty()
-                        {
-                            // If there are no bounds whatsoever, suggest adding a constraint
-                            // to the type parameter:
-                            // `fn foo<T>(t: T) {}` → `fn foo<T: Trait>(t: T) {}`
-                            err.span_suggestion(
-                                param.span,
-                                "consider restricting this bound",
-                                format!("{}", trait_ref.to_predicate()),
-                                Applicability::MachineApplicable,
-                            );
-                        } else if !generics.where_clause.predicates.is_empty() {
-                            // There is a `where` clause, so suggest expanding it:
-                            // `fn foo<T>(t: T) where T: Debug {}` →
-                            // `fn foo<T>(t: T) where T: Debug, T: Trait {}`
-                            err.span_suggestion(
-                                generics.where_clause.span().unwrap().shrink_to_hi(),
-                                &format!(
-                                    "consider further restricting type parameter `{}`",
-                                    param_name,
-                                ),
-                                format!(", {}", trait_ref.to_predicate()),
-                                Applicability::MachineApplicable,
-                            );
-                        } else {
-                            // If there is no `where` clause lean towards constraining to the
-                            // type parameter:
-                            // `fn foo<X: Bar, T>(t: T, x: X) {}` → `fn foo<T: Trait>(t: T) {}`
-                            // `fn foo<T: Bar>(t: T) {}` → `fn foo<T: Bar + Trait>(t: T) {}`
-                            let sp = param.span.with_hi(span.hi());
-                            let span = self.tcx.sess.source_map()
-                                .span_through_char(sp, ':');
-                            if sp != param.span && sp != span {
-                                // Only suggest if we have high certainty that the span
-                                // covers the colon in `foo<T: Trait>`.
-                                err.span_suggestion(span, restrict_msg, format!(
-                                    "{} + ",
-                                    trait_ref.to_predicate(),
-                                ), Applicability::MachineApplicable);
-                            } else {
-                                err.span_label(param.span, &format!(
-                                    "consider adding a `where {}` bound",
-                                    trait_ref.to_predicate(),
-                                ));
-                            }
-                        }
+                    let constraint = trait_ref.to_string();
+                    if suggest_constraining_type_param(
+                        generics,
+                        &mut err,
+                        &param_name,
+                        &constraint,
+                        self.tcx.sess.source_map(),
+                        *span,
+                    ) {
                         return;
                     }
                 }
@@ -2545,4 +2498,77 @@ impl ArgKind {
             _ => ArgKind::Arg("_".to_owned(), t.to_string()),
         }
     }
+}
+
+/// Suggest restricting a type param with a new bound.
+pub fn suggest_constraining_type_param(
+    generics: &hir::Generics,
+    err: &mut DiagnosticBuilder<'_>,
+    param_name: &str,
+    constraint: &str,
+    source_map: &SourceMap,
+    span: Span,
+) -> bool {
+    let restrict_msg = "consider further restricting this bound";
+    if let Some(param) = generics.params.iter().filter(|p| {
+        p.name.ident().as_str() == param_name
+    }).next() {
+        if param_name.starts_with("impl ") {
+            // `impl Trait` in argument:
+            // `fn foo(x: impl Trait) {}` → `fn foo(t: impl Trait + Trait2) {}`
+            err.span_suggestion(
+                param.span,
+                restrict_msg,
+                // `impl CurrentTrait + MissingTrait`
+                format!("{} + {}", param_name, constraint),
+                Applicability::MachineApplicable,
+            );
+        } else if generics.where_clause.predicates.is_empty() &&
+                param.bounds.is_empty()
+        {
+            // If there are no bounds whatsoever, suggest adding a constraint
+            // to the type parameter:
+            // `fn foo<T>(t: T) {}` → `fn foo<T: Trait>(t: T) {}`
+            err.span_suggestion(
+                param.span,
+                "consider restricting this bound",
+                format!("{}: {}", param_name, constraint),
+                Applicability::MachineApplicable,
+            );
+        } else if !generics.where_clause.predicates.is_empty() {
+            // There is a `where` clause, so suggest expanding it:
+            // `fn foo<T>(t: T) where T: Debug {}` →
+            // `fn foo<T>(t: T) where T: Debug, T: Trait {}`
+            err.span_suggestion(
+                generics.where_clause.span().unwrap().shrink_to_hi(),
+                &format!("consider further restricting type parameter `{}`", param_name),
+                format!(", {}: {}", param_name, constraint),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            // If there is no `where` clause lean towards constraining to the
+            // type parameter:
+            // `fn foo<X: Bar, T>(t: T, x: X) {}` → `fn foo<T: Trait>(t: T) {}`
+            // `fn foo<T: Bar>(t: T) {}` → `fn foo<T: Bar + Trait>(t: T) {}`
+            let sp = param.span.with_hi(span.hi());
+            let span = source_map.span_through_char(sp, ':');
+            if sp != param.span && sp != span {
+                // Only suggest if we have high certainty that the span
+                // covers the colon in `foo<T: Trait>`.
+                err.span_suggestion(
+                    span,
+                    restrict_msg,
+                    format!("{}: {} + ", param_name, constraint),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                err.span_label(
+                    param.span,
+                    &format!("consider adding a `where {}: {}` bound", param_name, constraint),
+                );
+            }
+        }
+        return true;
+    }
+    false
 }
