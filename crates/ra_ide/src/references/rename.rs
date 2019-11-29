@@ -124,6 +124,49 @@ mod tests {
     };
 
     #[test]
+    fn test_rename_to_underscore() {
+        test_rename(
+            r#"
+    fn main() {
+        let i<|> = 1;
+    }"#,
+            "_",
+            r#"
+    fn main() {
+        let _ = 1;
+    }"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_to_raw_identifier() {
+        test_rename(
+            r#"
+    fn main() {
+        let i<|> = 1;
+    }"#,
+            "r#fn",
+            r#"
+    fn main() {
+        let r#fn = 1;
+    }"#,
+        );
+    }
+
+    #[test]
+    fn test_rename_to_invalid_identifier() {
+        let (analysis, position) = single_file_with_position(
+            "
+    fn main() {
+        let i<|> = 1;
+    }",
+        );
+        let new_name = "invalid!";
+        let source_change = analysis.rename(position, new_name).unwrap();
+        assert!(source_change.is_none());
+    }
+
+    #[test]
     fn test_rename_for_local() {
         test_rename(
             r#"
