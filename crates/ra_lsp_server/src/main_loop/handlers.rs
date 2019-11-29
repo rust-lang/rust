@@ -508,7 +508,9 @@ pub fn handle_rename(world: WorldSnapshot, params: RenameParams) -> Result<Optio
 
     // Only rename to valid identifiers
     let tokens = tokenize(&params.new_name);
-    if tokens.len() != 1 || tokens[0].kind != SyntaxKind::IDENT {
+    if tokens.len() != 1
+        || (tokens[0].kind != SyntaxKind::IDENT && tokens[0].kind != SyntaxKind::UNDERSCORE)
+    {
         return Ok(None);
     }
 
