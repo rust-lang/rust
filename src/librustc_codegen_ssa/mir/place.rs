@@ -473,14 +473,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }),
                 projection: [],
             } => {
-                let param_env = ty::ParamEnv::reveal_all();
                 let instance = Instance::new(*def_id, self.monomorphize(substs));
-                let cid = mir::interpret::GlobalId {
-                    instance: instance,
-                    promoted: Some(*promoted),
-                };
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                match bx.tcx().const_eval(param_env.and(cid)) {
+                match bx.tcx().const_eval_promoted(instance, *promoted) {
                     Ok(val) => match val.val {
                         ty::ConstKind::Value(mir::interpret::ConstValue::ByRef {
                             alloc, offset

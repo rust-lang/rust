@@ -11,7 +11,7 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::TyCtxt;
 use rustc::mir::{
     self, BinOp,
-    interpret::{InterpResult, Scalar, GlobalId, ConstValue}
+    interpret::{InterpResult, Scalar, ConstValue}
 };
 
 use super::{
@@ -123,11 +123,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::size_of |
             sym::type_id |
             sym::type_name => {
-                let gid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                let val = self.tcx.const_eval(self.param_env.and(gid))?;
+                let val = self.tcx.const_eval_instance(self.param_env,
+                                                       instance,
+                                                       Some(self.tcx.span))?;
                 let val = self.eval_const_to_op(val, None)?;
                 self.copy_op(val, dest)?;
             }

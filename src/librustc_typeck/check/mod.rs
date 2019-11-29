@@ -106,7 +106,7 @@ use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::infer::error_reporting::TypeAnnotationNeeded::E0282;
 use rustc::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKind};
 use rustc::middle::region;
-use rustc::mir::interpret::{ConstValue, GlobalId};
+use rustc::mir::interpret::ConstValue;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
 use rustc::ty::{
     self, AdtKind, CanonicalUserType, Ty, TyCtxt, Const, GenericParamDefKind,
@@ -1836,13 +1836,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: DefId, span: Span) 
     // `#[link_section]` may contain arbitrary, or even undefined bytes, but it is
     // the consumer's responsibility to ensure all bytes that have been read
     // have defined values.
-    let instance = ty::Instance::mono(tcx, id);
-    let cid = GlobalId {
-        instance,
-        promoted: None
-    };
-    let param_env = ty::ParamEnv::reveal_all();
-    if let Ok(static_) = tcx.const_eval(param_env.and(cid)) {
+    if let Ok(static_) = tcx.const_eval_poly(id) {
         let alloc = if let ty::ConstKind::Value(ConstValue::ByRef { alloc, .. }) = static_.val {
             alloc
         } else {

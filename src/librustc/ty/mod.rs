@@ -19,7 +19,7 @@ use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
 use crate::mir::ReadOnlyBodyAndCache;
-use crate::mir::interpret::{GlobalId, ErrorHandled};
+use crate::mir::interpret::ErrorHandled;
 use crate::mir::GeneratorLayout;
 use crate::session::CrateDisambiguator;
 use crate::traits::{self, Reveal};
@@ -2344,13 +2344,7 @@ impl<'tcx> AdtDef {
     pub fn eval_explicit_discr(&self, tcx: TyCtxt<'tcx>, expr_did: DefId) -> Option<Discr<'tcx>> {
         let param_env = tcx.param_env(expr_did);
         let repr_type = self.repr.discr_type();
-        let substs = InternalSubsts::identity_for_item(tcx, expr_did);
-        let instance = ty::Instance::new(expr_did, substs);
-        let cid = GlobalId {
-            instance,
-            promoted: None
-        };
-        match tcx.const_eval(param_env.and(cid)) {
+        match tcx.const_eval_poly(expr_did) {
             Ok(val) => {
                 // FIXME: Find the right type and use it instead of `val.ty` here
                 if let Some(b) = val.try_eval_bits(tcx, param_env, val.ty) {

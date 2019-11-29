@@ -101,6 +101,7 @@ mod error;
 mod value;
 mod allocation;
 mod pointer;
+mod queries;
 
 pub use self::error::{
     InterpErrorInfo, InterpResult, InterpError, AssertMessage, ConstEvalErr, struct_error,
@@ -116,9 +117,10 @@ pub use self::pointer::{Pointer, PointerArithmetic, CheckInAllocMsg};
 
 use crate::mir;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, TyCtxt, Instance, subst::GenericArgKind};
+use crate::ty::{self, TyCtxt, Instance};
 use crate::ty::codec::TyDecoder;
 use crate::ty::layout::{self, Size};
+use crate::ty::subst::GenericArgKind;
 use std::io;
 use std::fmt;
 use std::num::NonZeroU32;

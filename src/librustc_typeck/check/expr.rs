@@ -31,7 +31,6 @@ use rustc::hir::ptr::P;
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc::middle::lang_items;
-use rustc::mir::interpret::GlobalId;
 use rustc::ty;
 use rustc::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
@@ -39,7 +38,6 @@ use rustc::ty::adjustment::{
 use rustc::ty::{AdtKind, Visibility};
 use rustc::ty::Ty;
 use rustc::ty::TypeFoldable;
-use rustc::ty::subst::InternalSubsts;
 use rustc::traits::{self, ObligationCauseCode};
 
 use rustc_error_codes::*;
@@ -1023,20 +1021,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let count = if self.const_param_def_id(count).is_some() {
             Ok(self.to_const(count, tcx.type_of(count_def_id)))
         } else {
-            let param_env = ty::ParamEnv::empty();
-            let substs = InternalSubsts::identity_for_item(tcx, count_def_id);
-            let instance = ty::Instance::resolve(
-                tcx,
-                param_env,
-                count_def_id,
-                substs,
-            ).unwrap();
-            let global_id = GlobalId {
-                instance,
-                promoted: None
-            };
-
-            tcx.const_eval(param_env.and(global_id))
+            tcx.const_eval_poly(count_def_id)
         };
 
         let uty = match expected {
