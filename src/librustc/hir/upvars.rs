@@ -46,7 +46,7 @@ impl Visitor<'tcx> for LocalCollector {
         NestedVisitorMap::None
     }
 
-    fn visit_pat(&mut self, pat: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, pat: &'tcx hir::Pat<'tcx>) {
         if let hir::PatKind::Binding(_, hir_id, ..) = pat.kind {
             self.locals.insert(hir_id);
         }
@@ -81,7 +81,7 @@ impl Visitor<'tcx> for CaptureCollector<'a, 'tcx> {
         intravisit::walk_path(self, path);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(..) = expr.kind {
             let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
             if let Some(upvars) = self.tcx.upvars(closure_def_id) {

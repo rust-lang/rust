@@ -66,7 +66,7 @@ impl MaybeFnLike for ast::TraitItem<'_> {
     }
 }
 
-impl MaybeFnLike for ast::Expr {
+impl MaybeFnLike for ast::Expr<'_> {
     fn is_fn_like(&self) -> bool {
         match self.kind {
             ast::ExprKind::Closure(..) => true,
@@ -81,7 +81,7 @@ impl MaybeFnLike for ast::Expr {
 #[derive(Copy, Clone)]
 pub enum Code<'a> {
     FnLike(FnLikeNode<'a>),
-    Expr(&'a Expr),
+    Expr(&'a Expr<'a>),
 }
 
 impl<'a> Code<'a> {

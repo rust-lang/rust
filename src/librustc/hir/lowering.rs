@@ -2022,7 +2022,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn lower_local(&mut self, l: &Local) -> (hir::Local, SmallVec<[NodeId; 1]>) {
+    fn lower_local(&mut self, l: &Local) -> (hir::Local<'hir>, SmallVec<[NodeId; 1]>) {
         let mut ids = SmallVec::<[NodeId; 1]>::new();
         if self.sess.features_untracked().impl_trait_in_bindings {
             if let Some(ref ty) = l.ty {
@@ -2586,7 +2586,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         bounds.iter().map(|bound| self.lower_param_bound(bound, itctx.reborrow())).collect()
     }
 
-    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block> {
+    fn lower_block(&mut self, b: &Block, targeted_by_break: bool) -> P<hir::Block<'hir>> {
         let mut stmts = vec![];
         let mut expr = None;
 
@@ -2614,12 +2614,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Lowers a block directly to an expression, presuming that it
     /// has no attributes and is not targeted by a `break`.
-    fn lower_block_expr(&mut self, b: &Block) -> hir::Expr {
+    fn lower_block_expr(&mut self, b: &Block) -> hir::Expr<'hir> {
         let block = self.lower_block(b, false);
         self.expr_block(block, AttrVec::new())
     }
 
-    fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat> {
+    fn lower_pat(&mut self, p: &Pat) -> P<hir::Pat<'hir>> {
         let node = match p.kind {
             PatKind::Wild => hir::PatKind::Wild,
             PatKind::Ident(ref binding_mode, ident, ref sub) => {
@@ -2700,7 +2700,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         pats: &[AstP<Pat>],
         ctx: &str,
-    ) -> (HirVec<P<hir::Pat>>, Option<usize>) {
+    ) -> (HirVec<P<hir::Pat<'hir>>>, Option<usize>) {
         let mut elems = Vec::with_capacity(pats.len());
         let mut rest = None;
 
@@ -2737,7 +2737,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// When encountering `($binding_mode $ident @)? ..` (`slice`),
     /// this is interpreted as a sub-slice pattern semantically.
     /// Patterns that follow, which are not like `slice` -- or an error occurs, are in `after`.
-    fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind {
+    fn lower_pat_slice(&mut self, pats: &[AstP<Pat>]) -> hir::PatKind<'hir> {
         let mut before = Vec::new();
         let mut after = Vec::new();
         let mut slice = None;
@@ -2796,8 +2796,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &Pat,
         binding_mode: &BindingMode,
         ident: Ident,
-        lower_sub: impl FnOnce(&mut Self) -> Option<P<hir::Pat>>,
-    ) -> hir::PatKind {
+        lower_sub: impl FnOnce(&mut Self) -> Option<P<hir::Pat<'hir>>>,
+    ) -> hir::PatKind<'hir> {
         match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
             // `None` can occur in body-less function signatures
             res @ None | res @ Some(Res::Local(_)) => {
@@ -2824,12 +2824,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> P<hir::Pat> {
+    fn pat_wild_with_node_id_of(&mut self, p: &Pat) -> P<hir::Pat<'hir>> {
         self.pat_with_node_id_of(p, hir::PatKind::Wild)
     }
 
     /// Construct a `Pat` with the `HirId` of `p.id` lowered.
-    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind) -> P<hir::Pat> {
+    fn pat_with_node_id_of(&mut self, p: &Pat, kind: hir::PatKind<'hir>) -> P<hir::Pat<'hir>> {
         P(hir::Pat { hir_id: self.lower_node_id(p.id), kind, span: p.span })
     }
 
@@ -2843,7 +2843,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Used to ban the `..` pattern in places it shouldn't be semantically.
-    fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind {
+    fn ban_illegal_rest_pat(&self, sp: Span) -> hir::PatKind<'hir> {
         self.diagnostic()
             .struct_span_err(sp, "`..` patterns are not allowed here")
             .note("only allowed in tuple, tuple struct, and slice patterns")
@@ -2869,11 +2869,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt; 1]> {
+    fn lower_stmt(&mut self, s: &Stmt) -> SmallVec<[hir::Stmt<'hir>; 1]> {
         let kind = match s.kind {
             StmtKind::Local(ref l) => {
                 let (l, item_ids) = self.lower_local(l);
-                let mut ids: SmallVec<[hir::Stmt; 1]> = item_ids
+                let mut ids: SmallVec<[hir::Stmt<'hir>; 1]> = item_ids
                     .into_iter()
                     .map(|item_id| {
                         let item_id = hir::ItemId { id: self.lower_node_id(item_id) };
@@ -2944,11 +2944,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     // Helper methods for building HIR.
 
-    fn stmt(&mut self, span: Span, kind: hir::StmtKind) -> hir::Stmt {
+    fn stmt(&mut self, span: Span, kind: hir::StmtKind<'hir>) -> hir::Stmt<'hir> {
         hir::Stmt { span, kind, hir_id: self.next_id() }
     }
 
-    fn stmt_expr(&mut self, span: Span, expr: hir::Expr) -> hir::Stmt {
+    fn stmt_expr(&mut self, span: Span, expr: hir::Expr<'hir>) -> hir::Stmt<'hir> {
         self.stmt(span, hir::StmtKind::Expr(P(expr)))
     }
 
@@ -2956,24 +2956,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         attrs: AttrVec,
         span: Span,
-        init: Option<P<hir::Expr>>,
-        pat: P<hir::Pat>,
+        init: Option<P<hir::Expr<'hir>>>,
+        pat: P<hir::Pat<'hir>>,
         source: hir::LocalSource,
-    ) -> hir::Stmt {
+    ) -> hir::Stmt<'hir> {
         let local = hir::Local { attrs, hir_id: self.next_id(), init, pat, source, span, ty: None };
         self.stmt(span, hir::StmtKind::Local(P(local)))
     }
 
-    fn block_expr(&mut self, expr: P<hir::Expr>) -> hir::Block {
+    fn block_expr(&mut self, expr: P<hir::Expr<'hir>>) -> hir::Block<'hir> {
         self.block_all(expr.span, hir::HirVec::new(), Some(expr))
     }
 
     fn block_all(
         &mut self,
         span: Span,
-        stmts: hir::HirVec<hir::Stmt>,
-        expr: Option<P<hir::Expr>>,
-    ) -> hir::Block {
+        stmts: hir::HirVec<hir::Stmt<'hir>>,
+        expr: Option<P<hir::Expr<'hir>>>,
+    ) -> hir::Block<'hir> {
         hir::Block {
             stmts,
             expr,
@@ -2985,24 +2985,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     /// Constructs a `true` or `false` literal pattern.
-    fn pat_bool(&mut self, span: Span, val: bool) -> P<hir::Pat> {
+    fn pat_bool(&mut self, span: Span, val: bool) -> P<hir::Pat<'hir>> {
         let expr = self.expr_bool(span, val);
         self.pat(span, hir::PatKind::Lit(P(expr)))
     }
 
-    fn pat_ok(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+    fn pat_ok(&mut self, span: Span, pat: P<hir::Pat<'hir>>) -> P<hir::Pat<'hir>> {
         self.pat_std_enum(span, &[sym::result, sym::Result, sym::Ok], hir_vec![pat])
     }
 
-    fn pat_err(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+    fn pat_err(&mut self, span: Span, pat: P<hir::Pat<'hir>>) -> P<hir::Pat<'hir>> {
         self.pat_std_enum(span, &[sym::result, sym::Result, sym::Err], hir_vec![pat])
     }
 
-    fn pat_some(&mut self, span: Span, pat: P<hir::Pat>) -> P<hir::Pat> {
+    fn pat_some(&mut self, span: Span, pat: P<hir::Pat<'hir>>) -> P<hir::Pat<'hir>> {
         self.pat_std_enum(span, &[sym::option, sym::Option, sym::Some], hir_vec![pat])
     }
 
-    fn pat_none(&mut self, span: Span) -> P<hir::Pat> {
+    fn pat_none(&mut self, span: Span) -> P<hir::Pat<'hir>> {
         self.pat_std_enum(span, &[sym::option, sym::Option, sym::None], hir_vec![])
     }
 
@@ -3010,8 +3010,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         span: Span,
         components: &[Symbol],
-        subpats: hir::HirVec<P<hir::Pat>>,
-    ) -> P<hir::Pat> {
+        subpats: hir::HirVec<P<hir::Pat<'hir>>>,
+    ) -> P<hir::Pat<'hir>> {
         let path = self.std_path(span, components, None, true);
         let qpath = hir::QPath::Resolved(None, P(path));
         let pt = if subpats.is_empty() {
@@ -3022,7 +3022,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.pat(span, pt)
     }
 
-    fn pat_ident(&mut self, span: Span, ident: Ident) -> (P<hir::Pat>, hir::HirId) {
+    fn pat_ident(&mut self, span: Span, ident: Ident) -> (P<hir::Pat<'hir>>, hir::HirId) {
         self.pat_ident_binding_mode(span, ident, hir::BindingAnnotation::Unannotated)
     }
 
@@ -3031,7 +3031,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         ident: Ident,
         bm: hir::BindingAnnotation,
-    ) -> (P<hir::Pat>, hir::HirId) {
+    ) -> (P<hir::Pat<'hir>>, hir::HirId) {
         let hir_id = self.next_id();
 
         (
@@ -3044,11 +3044,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    fn pat_wild(&mut self, span: Span) -> P<hir::Pat> {
+    fn pat_wild(&mut self, span: Span) -> P<hir::Pat<'hir>> {
         self.pat(span, hir::PatKind::Wild)
     }
 
-    fn pat(&mut self, span: Span, kind: hir::PatKind) -> P<hir::Pat> {
+    fn pat(&mut self, span: Span, kind: hir::PatKind<'hir>) -> P<hir::Pat<'hir>> {
         P(hir::Pat { hir_id: self.next_id(), kind, span })
     }
 

@@ -212,7 +212,7 @@ pub trait Visitor<'v>: Sized {
         }
     }
 
-    fn visit_param(&mut self, param: &'v Param) {
+    fn visit_param(&mut self, param: &'v Param<'v>) {
         walk_param(self, param)
     }
 
@@ -253,25 +253,25 @@ pub trait Visitor<'v>: Sized {
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) {
         walk_foreign_item(self, i)
     }
-    fn visit_local(&mut self, l: &'v Local) {
+    fn visit_local(&mut self, l: &'v Local<'v>) {
         walk_local(self, l)
     }
-    fn visit_block(&mut self, b: &'v Block) {
+    fn visit_block(&mut self, b: &'v Block<'v>) {
         walk_block(self, b)
     }
-    fn visit_stmt(&mut self, s: &'v Stmt) {
+    fn visit_stmt(&mut self, s: &'v Stmt<'v>) {
         walk_stmt(self, s)
     }
-    fn visit_arm(&mut self, a: &'v Arm) {
+    fn visit_arm(&mut self, a: &'v Arm<'v>) {
         walk_arm(self, a)
     }
-    fn visit_pat(&mut self, p: &'v Pat) {
+    fn visit_pat(&mut self, p: &'v Pat<'v>) {
         walk_pat(self, p)
     }
     fn visit_anon_const(&mut self, c: &'v AnonConst) {
         walk_anon_const(self, c)
     }
-    fn visit_expr(&mut self, ex: &'v Expr) {
+    fn visit_expr(&mut self, ex: &'v Expr<'v>) {
         walk_expr(self, ex)
     }
     fn visit_ty(&mut self, t: &'v Ty) {
@@ -409,7 +409,7 @@ pub fn walk_body<'v, V: Visitor<'v>>(visitor: &mut V, body: &'v Body<'v>) {
     visitor.visit_expr(&body.value);
 }
 
-pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local) {
+pub fn walk_local<'v, V: Visitor<'v>>(visitor: &mut V, local: &'v Local<'v>) {
     // Intentionally visiting the expr first - the initialization expr
     // dominates the local's definition.
     walk_list!(visitor, visit_expr, &local.init);
@@ -462,7 +462,7 @@ where
     visitor.visit_path(&trait_ref.path, trait_ref.hir_ref_id)
 }
 
-pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param) {
+pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) {
     visitor.visit_id(param.hir_id);
     visitor.visit_pat(&param.pat);
     walk_list!(visitor, visit_attribute, &param.attrs);
@@ -684,7 +684,7 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(visitor: &mut V, type_binding
     }
 }
 
-pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
+pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat<'v>) {
     visitor.visit_id(pattern.hir_id);
     match pattern.kind {
         PatKind::TupleStruct(ref qpath, ref children, _) => {
@@ -955,13 +955,13 @@ pub fn walk_struct_field<'v, V: Visitor<'v>>(visitor: &mut V, struct_field: &'v 
     walk_list!(visitor, visit_attribute, struct_field.attrs);
 }
 
-pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block) {
+pub fn walk_block<'v, V: Visitor<'v>>(visitor: &mut V, block: &'v Block<'v>) {
     visitor.visit_id(block.hir_id);
     walk_list!(visitor, visit_stmt, &block.stmts);
     walk_list!(visitor, visit_expr, &block.expr);
 }
 
-pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt) {
+pub fn walk_stmt<'v, V: Visitor<'v>>(visitor: &mut V, statement: &'v Stmt<'v>) {
     visitor.visit_id(statement.hir_id);
     match statement.kind {
         StmtKind::Local(ref local) => visitor.visit_local(local),
@@ -977,7 +977,7 @@ pub fn walk_anon_const<'v, V: Visitor<'v>>(visitor: &mut V, constant: &'v AnonCo
     visitor.visit_nested_body(constant.body);
 }
 
-pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
+pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) {
     visitor.visit_id(expression.hir_id);
     walk_list!(visitor, visit_attribute, expression.attrs.iter());
     match expression.kind {
@@ -1087,7 +1087,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
     }
 }
 
-pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm) {
+pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) {
     visitor.visit_id(arm.hir_id);
     visitor.visit_pat(&arm.pat);
     if let Some(ref g) = arm.guard {

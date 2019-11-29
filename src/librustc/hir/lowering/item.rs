@@ -840,7 +840,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     /// Construct `ExprKind::Err` for the given `span`.
-    fn expr_err(&mut self, span: Span) -> hir::Expr {
+    fn expr_err(&mut self, span: Span) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Err, AttrVec::new())
     }
 
@@ -981,7 +981,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn record_body(&mut self, params: &'hir [hir::Param], value: hir::Expr) -> hir::BodyId {
+    fn record_body(
+        &mut self,
+        params: &'hir [hir::Param<'hir>],
+        value: hir::Expr<'hir>,
+    ) -> hir::BodyId {
         let body = hir::Body { generator_kind: self.generator_kind, params, value };
         let id = body.id();
         self.bodies.insert(id, body);
@@ -990,7 +994,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_body(
         &mut self,
-        f: impl FnOnce(&mut Self) -> (&'hir [hir::Param], hir::Expr),
+        f: impl FnOnce(&mut Self) -> (&'hir [hir::Param<'hir>], hir::Expr<'hir>),
     ) -> hir::BodyId {
         let prev_gen_kind = self.generator_kind.take();
         let (parameters, result) = f(self);
@@ -999,7 +1003,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         body_id
     }
 
-    fn lower_param(&mut self, param: &Param) -> hir::Param {
+    fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         hir::Param {
             attrs: self.lower_attrs(&param.attrs),
             hir_id: self.lower_node_id(param.id),
@@ -1011,7 +1015,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_fn_body(
         &mut self,
         decl: &FnDecl,
-        body: impl FnOnce(&mut LoweringContext<'_, '_>) -> hir::Expr,
+        body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
     ) -> hir::BodyId {
         self.lower_body(|this| {
             (
@@ -1030,7 +1034,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.lower_fn_body(decl, |this| this.lower_block_expr_opt(span, body))
     }
 
-    fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr {
+    fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr<'hir> {
         match block {
             Some(block) => self.lower_block_expr(block),
             None => self.expr_err(span),
@@ -1062,8 +1066,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         self.lower_body(|this| {
-            let mut parameters: Vec<hir::Param> = Vec::new();
-            let mut statements: Vec<hir::Stmt> = Vec::new();
+            let mut parameters: Vec<hir::Param<'hir>> = Vec::new();
+            let mut statements: Vec<hir::Stmt<'hir>> = Vec::new();
 
             // Async function parameters are lowered into the closure body so that they are
             // captured and so that the drop order matches the equivalent non-async functions.

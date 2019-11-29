@@ -782,7 +782,7 @@ impl<'hir> Map<'hir> {
     ///
     /// Used by error reporting when there's a type error in a match arm caused by the `match`
     /// expression needing to be unit.
-    pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&Expr> {
+    pub fn get_match_if_cause(&self, hir_id: HirId) -> Option<&Expr<'hir>> {
         for (_, node) in ParentHirIterator::new(hir_id, &self) {
             match node {
                 Node::Item(_) | Node::ForeignItem(_) | Node::TraitItem(_) | Node::ImplItem(_) => {
@@ -925,7 +925,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn expect_expr(&self, id: HirId) -> &'hir Expr {
+    pub fn expect_expr(&self, id: HirId) -> &'hir Expr<'hir> {
         match self.find(id) {
             // read recorded by find
             Some(Node::Expr(expr)) => expr,

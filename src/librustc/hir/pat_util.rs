@@ -57,7 +57,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
     }
 }
 
-impl hir::Pat {
+impl hir::Pat<'_> {
     pub fn is_refutable(&self) -> bool {
         match self.kind {
             PatKind::Lit(_)

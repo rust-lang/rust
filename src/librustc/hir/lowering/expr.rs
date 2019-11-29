@@ -13,12 +13,12 @@ use syntax::symbol::{sym, Symbol};
 
 use rustc_error_codes::*;
 
-impl LoweringContext<'_, '_> {
-    fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> HirVec<hir::Expr> {
+impl<'hir> LoweringContext<'_, 'hir> {
+    fn lower_exprs(&mut self, exprs: &[AstP<Expr>]) -> HirVec<hir::Expr<'hir>> {
         exprs.iter().map(|x| self.lower_expr(x)).collect()
     }
 
-    pub(super) fn lower_expr(&mut self, e: &Expr) -> hir::Expr {
+    pub(super) fn lower_expr(&mut self, e: &Expr) -> hir::Expr<'hir> {
         let kind = match e.kind {
             ExprKind::Box(ref inner) => hir::ExprKind::Box(P(self.lower_expr(inner))),
             ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
@@ -237,7 +237,7 @@ impl LoweringContext<'_, '_> {
     /// ```rust
     /// match scrutinee { pats => true, _ => false }
     /// ```
-    fn lower_expr_let(&mut self, span: Span, pat: &Pat, scrutinee: &Expr) -> hir::ExprKind {
+    fn lower_expr_let(&mut self, span: Span, pat: &Pat, scrutinee: &Expr) -> hir::ExprKind<'hir> {
         // If we got here, the `let` expression is not allowed.
 
         if self.sess.opts.unstable_features.is_nightly_build() {
@@ -286,7 +286,7 @@ impl LoweringContext<'_, '_> {
         cond: &Expr,
         then: &Block,
         else_opt: Option<&Expr>,
-    ) -> hir::ExprKind {
+    ) -> hir::ExprKind<'hir> {
         // FIXME(#53667): handle lowering of && and parens.
 
         // `_ => else_block` where `else_block` is `{}` if there's `None`:
@@ -331,7 +331,7 @@ impl LoweringContext<'_, '_> {
         cond: &Expr,
         body: &Block,
         opt_label: Option<Label>,
-    ) -> hir::ExprKind {
+    ) -> hir::ExprKind<'hir> {
         // FIXME(#53667): handle lowering of && and parens.
 
         // Note that the block AND the condition are evaluated in the loop scope.
@@ -398,7 +398,7 @@ impl LoweringContext<'_, '_> {
     /// Desugar `try { <stmts>; <expr> }` into `{ <stmts>; ::std::ops::Try::from_ok(<expr>) }`,
     /// `try { <stmts>; }` into `{ <stmts>; ::std::ops::Try::from_ok(()) }`
     /// and save the block id to use it as a break target for desugaring of the `?` operator.
-    fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind {
+    fn lower_expr_try_block(&mut self, body: &Block) -> hir::ExprKind<'hir> {
         self.with_catch_scope(body.id, |this| {
             let mut block = this.lower_block(body, true).into_inner();
 
@@ -411,7 +411,7 @@ impl LoweringContext<'_, '_> {
             // Final expression of the block (if present) or `()` with span at the end of block
             let tail_expr = block.expr.take().map_or_else(
                 || this.expr_unit(this.sess.source_map().end_point(try_span)),
-                |x: P<hir::Expr>| x.into_inner(),
+                |x: P<hir::Expr<'hir>>| x.into_inner(),
             );
 
             let ok_wrapped_span =
@@ -433,15 +433,15 @@ impl LoweringContext<'_, '_> {
         &mut self,
         method: Symbol,
         method_span: Span,
-        expr: hir::Expr,
+        expr: hir::Expr<'hir>,
         overall_span: Span,
-    ) -> P<hir::Expr> {
+    ) -> P<hir::Expr<'hir>> {
         let path = &[sym::ops, sym::Try, method];
         let constructor = P(self.expr_std_path(method_span, path, None, ThinVec::new()));
         P(self.expr_call(overall_span, constructor, hir_vec![expr]))
     }
 
-    fn lower_arm(&mut self, arm: &Arm) -> hir::Arm {
+    fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         hir::Arm {
             hir_id: self.next_id(),
             attrs: self.lower_attrs(&arm.attrs),
@@ -462,8 +462,8 @@ impl LoweringContext<'_, '_> {
         ret_ty: Option<AstP<Ty>>,
         span: Span,
         async_gen_kind: hir::AsyncGeneratorKind,
-        body: impl FnOnce(&mut LoweringContext<'_, '_>) -> hir::Expr,
-    ) -> hir::ExprKind {
+        body: impl FnOnce(&mut Self) -> hir::Expr<'hir>,
+    ) -> hir::ExprKind<'hir> {
         let output = match ret_ty {
             Some(ty) => FunctionRetTy::Ty(ty),
             None => FunctionRetTy::Default(span),
@@ -518,7 +518,7 @@ impl LoweringContext<'_, '_> {
     ///     }
     /// }
     /// ```
-    fn lower_expr_await(&mut self, await_span: Span, expr: &Expr) -> hir::ExprKind {
+    fn lower_expr_await(&mut self, await_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Async(_)) => {}
             Some(hir::GeneratorKind::Gen) | None => {
@@ -641,7 +641,7 @@ impl LoweringContext<'_, '_> {
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
-    ) -> hir::ExprKind {
+    ) -> hir::ExprKind<'hir> {
         // Lower outside new scope to preserve `is_in_loop_condition`.
         let fn_decl = self.lower_fn_decl(decl, None, false, None);
 
@@ -699,7 +699,7 @@ impl LoweringContext<'_, '_> {
         decl: &FnDecl,
         body: &Expr,
         fn_decl_span: Span,
-    ) -> hir::ExprKind {
+    ) -> hir::ExprKind<'hir> {
         let outer_decl =
             FnDecl { inputs: decl.inputs.clone(), output: FunctionRetTy::Default(fn_decl_span) };
         // We need to lower the declaration outside the new scope, because we
@@ -743,7 +743,7 @@ impl LoweringContext<'_, '_> {
     }
 
     /// Desugar `<start>..=<end>` into `std::ops::RangeInclusive::new(<start>, <end>)`.
-    fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind {
+    fn lower_expr_range_closed(&mut self, span: Span, e1: &Expr, e2: &Expr) -> hir::ExprKind<'hir> {
         let id = self.next_id();
         let e1 = self.lower_expr(e1);
         let e2 = self.lower_expr(e2);
@@ -762,7 +762,7 @@ impl LoweringContext<'_, '_> {
         e1: Option<&Expr>,
         e2: Option<&Expr>,
         lims: RangeLimits,
-    ) -> hir::ExprKind {
+    ) -> hir::ExprKind<'hir> {
         use syntax::ast::RangeLimits::*;
 
         let path = match (e1, e2, lims) {
@@ -786,7 +786,7 @@ impl LoweringContext<'_, '_> {
                 let ident = Ident::new(Symbol::intern(s), e.span);
                 self.field(ident, expr, e.span)
             })
-            .collect::<P<[hir::Field]>>();
+            .collect::<P<[hir::Field<'hir>]>>();
 
         let is_unit = fields.is_empty();
         let struct_path = [sym::ops, path];
@@ -893,7 +893,7 @@ impl LoweringContext<'_, '_> {
         result
     }
 
-    fn lower_expr_asm(&mut self, asm: &InlineAsm) -> hir::ExprKind {
+    fn lower_expr_asm(&mut self, asm: &InlineAsm) -> hir::ExprKind<'hir> {
         let inner = hir::InlineAsmInner {
             inputs: asm.inputs.iter().map(|&(ref c, _)| c.clone()).collect(),
             outputs: asm
@@ -921,7 +921,7 @@ impl LoweringContext<'_, '_> {
         hir::ExprKind::InlineAsm(P(hir_asm))
     }
 
-    fn lower_field(&mut self, f: &Field) -> hir::Field {
+    fn lower_field(&mut self, f: &Field) -> hir::Field<'hir> {
         hir::Field {
             hir_id: self.next_id(),
             ident: f.ident,
@@ -931,7 +931,7 @@ impl LoweringContext<'_, '_> {
         }
     }
 
-    fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind {
+    fn lower_expr_yield(&mut self, span: Span, opt_expr: Option<&Expr>) -> hir::ExprKind<'hir> {
         match self.generator_kind {
             Some(hir::GeneratorKind::Gen) => {}
             Some(hir::GeneratorKind::Async(_)) => {
@@ -973,7 +973,7 @@ impl LoweringContext<'_, '_> {
         head: &Expr,
         body: &Block,
         opt_label: Option<Label>,
-    ) -> hir::Expr {
+    ) -> hir::Expr<'hir> {
         // expand <head>
         let mut head = self.lower_expr(head);
         let desugared_span = self.mark_span_with_reason(DesugaringKind::ForLoop, head.span, None);
@@ -1102,7 +1102,7 @@ impl LoweringContext<'_, '_> {
     ///                 return Try::from_error(From::from(err)),
     /// }
     /// ```
-    fn lower_expr_try(&mut self, span: Span, sub_expr: &Expr) -> hir::ExprKind {
+    fn lower_expr_try(&mut self, span: Span, sub_expr: &Expr) -> hir::ExprKind<'hir> {
         let unstable_span = self.mark_span_with_reason(
             DesugaringKind::QuestionMark,
             span,
@@ -1191,7 +1191,7 @@ impl LoweringContext<'_, '_> {
     // =========================================================================
 
     /// Constructs a `true` or `false` literal expression.
-    pub(super) fn expr_bool(&mut self, span: Span, val: bool) -> hir::Expr {
+    pub(super) fn expr_bool(&mut self, span: Span, val: bool) -> hir::Expr<'hir> {
         let lit = Spanned { span, node: LitKind::Bool(val) };
         self.expr(span, hir::ExprKind::Lit(lit), ThinVec::new())
     }
@@ -1205,28 +1205,28 @@ impl LoweringContext<'_, '_> {
     pub(super) fn expr_drop_temps(
         &mut self,
         span: Span,
-        expr: P<hir::Expr>,
+        expr: P<hir::Expr<'hir>>,
         attrs: AttrVec,
-    ) -> hir::Expr {
+    ) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::DropTemps(expr), attrs)
     }
 
     fn expr_match(
         &mut self,
         span: Span,
-        arg: P<hir::Expr>,
-        arms: hir::HirVec<hir::Arm>,
+        arg: P<hir::Expr<'hir>>,
+        arms: hir::HirVec<hir::Arm<'hir>>,
         source: hir::MatchSource,
-    ) -> hir::Expr {
+    ) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Match(arg, arms, source), ThinVec::new())
     }
 
-    fn expr_break(&mut self, span: Span, attrs: AttrVec) -> P<hir::Expr> {
+    fn expr_break(&mut self, span: Span, attrs: AttrVec) -> P<hir::Expr<'hir>> {
         let expr_break = hir::ExprKind::Break(self.lower_loop_destination(None), None);
         P(self.expr(span, expr_break, attrs))
     }
 
-    fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr>) -> hir::Expr {
+    fn expr_mut_addr_of(&mut self, span: Span, e: P<hir::Expr<'_>>) -> hir::Expr<'_> {
         self.expr(
             span,
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Mut, e),
@@ -1234,20 +1234,20 @@ impl LoweringContext<'_, '_> {
         )
     }
 
-    fn expr_unit(&mut self, sp: Span) -> hir::Expr {
+    fn expr_unit(&mut self, sp: Span) -> hir::Expr<'hir> {
         self.expr_tuple(sp, hir_vec![])
     }
 
-    fn expr_tuple(&mut self, sp: Span, exprs: hir::HirVec<hir::Expr>) -> hir::Expr {
+    fn expr_tuple(&mut self, sp: Span, exprs: hir::HirVec<hir::Expr<'hir>>) -> hir::Expr<'hir> {
         self.expr(sp, hir::ExprKind::Tup(exprs), ThinVec::new())
     }
 
     fn expr_call(
         &mut self,
         span: Span,
-        e: P<hir::Expr>,
-        args: hir::HirVec<hir::Expr>,
-    ) -> hir::Expr {
+        e: P<hir::Expr<'hir>>,
+        args: hir::HirVec<hir::Expr<'hir>>,
+    ) -> hir::Expr<'hir> {
         self.expr(span, hir::ExprKind::Call(e, args), ThinVec::new())
     }
 
@@ -1256,8 +1256,8 @@ impl LoweringContext<'_, '_> {
         &mut self,
         span: Span,
         path_components: &[Symbol],
-        args: hir::HirVec<hir::Expr>,
-    ) -> hir::Expr {
+        args: hir::HirVec<hir::Expr<'hir>>,
+    ) -> hir::Expr<'hir> {
         let path = P(self.expr_std_path(span, path_components, None, ThinVec::new()));
         self.expr_call(span, path, args)
     }
@@ -1277,8 +1277,8 @@ impl LoweringContext<'_, '_> {
         span: Span,
         ty_path_components: &[Symbol],
         assoc_fn_name: &str,
-        args: hir::HirVec<hir::Expr>,
-    ) -> hir::ExprKind {
+        args: hir::HirVec<hir::Expr<'hir>>,
+    ) -> hir::ExprKind<'hir> {
         let ty_path = P(self.std_path(span, ty_path_components, None, false));
         let ty = P(self.ty_path(ty_path_id, span, hir::QPath::Resolved(None, ty_path)));
         let fn_seg = P(hir::PathSegment::from_ident(Ident::from_str(assoc_fn_name)));
@@ -1293,12 +1293,17 @@ impl LoweringContext<'_, '_> {
         components: &[Symbol],
         params: Option<P<hir::GenericArgs>>,
         attrs: AttrVec,
-    ) -> hir::Expr {
+    ) -> hir::Expr<'hir> {
         let path = self.std_path(span, components, params, true);
         self.expr(span, hir::ExprKind::Path(hir::QPath::Resolved(None, P(path))), attrs)
     }
 
-    pub(super) fn expr_ident(&mut self, sp: Span, ident: Ident, binding: hir::HirId) -> hir::Expr {
+    pub(super) fn expr_ident(
+        &mut self,
+        sp: Span,
+        ident: Ident,
+        binding: hir::HirId,
+    ) -> hir::Expr<'hir> {
         self.expr_ident_with_attrs(sp, ident, binding, ThinVec::new())
     }
 
@@ -1308,7 +1313,7 @@ impl LoweringContext<'_, '_> {
         ident: Ident,
         binding: hir::HirId,
         attrs: AttrVec,
-    ) -> hir::Expr {
+    ) -> hir::Expr<'hir> {
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
             None,
             P(hir::Path {
@@ -1321,7 +1326,7 @@ impl LoweringContext<'_, '_> {
         self.expr(span, expr_path, attrs)
     }
 
-    fn expr_unsafe(&mut self, expr: P<hir::Expr>) -> hir::Expr {
+    fn expr_unsafe(&mut self, expr: P<hir::Expr<'hir>>) -> hir::Expr<'hir> {
         let hir_id = self.next_id();
         let span = expr.span;
         self.expr(
@@ -1341,24 +1346,29 @@ impl LoweringContext<'_, '_> {
         )
     }
 
-    fn expr_block_empty(&mut self, span: Span) -> hir::Expr {
+    fn expr_block_empty(&mut self, span: Span) -> hir::Expr<'hir> {
         let blk = self.block_all(span, hir_vec![], None);
         self.expr_block(P(blk), ThinVec::new())
     }
 
-    pub(super) fn expr_block(&mut self, b: P<hir::Block>, attrs: AttrVec) -> hir::Expr {
+    pub(super) fn expr_block(&mut self, b: P<hir::Block<'hir>>, attrs: AttrVec) -> hir::Expr<'hir> {
         self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
     }
 
-    pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind, attrs: AttrVec) -> hir::Expr {
+    pub(super) fn expr(
+        &mut self,
+        span: Span,
+        kind: hir::ExprKind<'hir>,
+        attrs: AttrVec,
+    ) -> hir::Expr<'hir> {
         hir::Expr { hir_id: self.next_id(), kind, span, attrs }
     }
 
-    fn field(&mut self, ident: Ident, expr: P<hir::Expr>, span: Span) -> hir::Field {
+    fn field(&mut self, ident: Ident, expr: P<hir::Expr<'hir>>, span: Span) -> hir::Field<'hir> {
         hir::Field { hir_id: self.next_id(), ident, span, expr, is_shorthand: false }
     }
 
-    fn arm(&mut self, pat: P<hir::Pat>, expr: P<hir::Expr>) -> hir::Arm {
+    fn arm(&mut self, pat: P<hir::Pat<'hir>>, expr: P<hir::Expr<'hir>>) -> hir::Arm<'hir> {
         hir::Arm {
             hir_id: self.next_id(),
             attrs: hir_vec![],

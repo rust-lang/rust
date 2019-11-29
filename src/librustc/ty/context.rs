@@ -553,11 +553,11 @@ impl<'tcx> TypeckTables<'tcx> {
 
     // Returns the type of a pattern as a monotype. Like @expr_ty, this function
     // doesn't provide type parameter substitutions.
-    pub fn pat_ty(&self, pat: &hir::Pat) -> Ty<'tcx> {
+    pub fn pat_ty(&self, pat: &hir::Pat<'_>) -> Ty<'tcx> {
         self.node_type(pat.hir_id)
     }
 
-    pub fn pat_ty_opt(&self, pat: &hir::Pat) -> Option<Ty<'tcx>> {
+    pub fn pat_ty_opt(&self, pat: &hir::Pat<'_>) -> Option<Ty<'tcx>> {
         self.node_type_opt(pat.hir_id)
     }
 
@@ -571,11 +571,11 @@ impl<'tcx> TypeckTables<'tcx> {
     // NB (2): This type doesn't provide type parameter substitutions; e.g., if you
     // ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
     // instead of "fn(ty) -> T with T = isize".
-    pub fn expr_ty(&self, expr: &hir::Expr) -> Ty<'tcx> {
+    pub fn expr_ty(&self, expr: &hir::Expr<'_>) -> Ty<'tcx> {
         self.node_type(expr.hir_id)
     }
 
-    pub fn expr_ty_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+    pub fn expr_ty_opt(&self, expr: &hir::Expr<'_>) -> Option<Ty<'tcx>> {
         self.node_type_opt(expr.hir_id)
     }
 
@@ -589,22 +589,22 @@ impl<'tcx> TypeckTables<'tcx> {
         LocalTableInContextMut { local_id_root: self.local_id_root, data: &mut self.adjustments }
     }
 
-    pub fn expr_adjustments(&self, expr: &hir::Expr) -> &[ty::adjustment::Adjustment<'tcx>] {
+    pub fn expr_adjustments(&self, expr: &hir::Expr<'_>) -> &[ty::adjustment::Adjustment<'tcx>] {
         validate_hir_id_for_typeck_tables(self.local_id_root, expr.hir_id, false);
         self.adjustments.get(&expr.hir_id.local_id).map_or(&[], |a| &a[..])
     }
 
     /// Returns the type of `expr`, considering any `Adjustment`
     /// entry recorded for that expression.
-    pub fn expr_ty_adjusted(&self, expr: &hir::Expr) -> Ty<'tcx> {
+    pub fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> Ty<'tcx> {
         self.expr_adjustments(expr).last().map_or_else(|| self.expr_ty(expr), |adj| adj.target)
     }
 
-    pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr) -> Option<Ty<'tcx>> {
+    pub fn expr_ty_adjusted_opt(&self, expr: &hir::Expr<'_>) -> Option<Ty<'tcx>> {
         self.expr_adjustments(expr).last().map(|adj| adj.target).or_else(|| self.expr_ty_opt(expr))
     }
 
-    pub fn is_method_call(&self, expr: &hir::Expr) -> bool {
+    pub fn is_method_call(&self, expr: &hir::Expr<'_>) -> bool {
         // Only paths and method calls/overloaded operators have
         // entries in type_dependent_defs, ignore the former here.
         if let hir::ExprKind::Path(_) = expr.kind {

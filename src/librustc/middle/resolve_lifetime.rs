@@ -1133,7 +1133,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
             NestedVisitorMap::None
         }
 
-        fn visit_expr(&mut self, ex: &hir::Expr) {
+        fn visit_expr(&mut self, ex: &hir::Expr<'_>) {
             if let Some(label) = expression_label(ex) {
                 for prior_label in &self.labels_in_fn[..] {
                     // FIXME (#24278): non-hygienic comparison
@@ -1155,7 +1155,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body<'_>) {
         }
     }
 
-    fn expression_label(ex: &hir::Expr) -> Option<ast::Ident> {
+    fn expression_label(ex: &hir::Expr<'_>) -> Option<ast::Ident> {
         if let hir::ExprKind::Loop(_, Some(label), _) = ex.kind { Some(label.ident) } else { None }
     }
 

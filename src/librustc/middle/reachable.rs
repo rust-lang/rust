@@ -96,7 +96,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
         self.tables = old_tables;
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         let res = match expr.kind {
             hir::ExprKind::Path(ref qpath) => Some(self.tables.qpath_res(qpath, expr.hir_id)),
             hir::ExprKind::MethodCall(..) => self
