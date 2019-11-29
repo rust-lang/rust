@@ -135,7 +135,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             // Normally, this will be either `libpanic_unwind` or `libpanic_abort`, but it could
             // also be a custom user-provided implementation via `#![feature(panic_runtime)]`
             "__rust_start_panic" => {
-                let panic_runtime = tcx.crate_name(tcx.injected_panic_runtime().expect("No panic runtime found!"));
+                // FIXME we might want to cache this... but it's not really performance-critical.
+                let panic_runtime = tcx.crates().iter()
+                    .find(|cnum| tcx.is_panic_runtime(**cnum))
+                    .expect("No panic runtime found!");
+                let panic_runtime = tcx.crate_name(*panic_runtime);
                 let start_panic_instance = this.resolve_path(&[&*panic_runtime.as_str(), "__rust_start_panic"])?;
                 return Ok(Some(this.load_mir(start_panic_instance.def, None)?));
             }
