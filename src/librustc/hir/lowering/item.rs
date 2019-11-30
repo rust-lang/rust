@@ -787,6 +787,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Fn(ref sig, None) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
+                let names: &[Ident] = self.arena.alloc_from_iter(names.into_iter());
                 let (generics, sig) =
                     self.lower_method_sig(&i.generics, sig, trait_item_def_id, false, None);
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))

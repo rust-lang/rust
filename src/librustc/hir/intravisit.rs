@@ -850,7 +850,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_nested_body, default);
         }
-        TraitItemKind::Method(ref sig, TraitMethod::Required(ref param_names)) => {
+        TraitItemKind::Method(ref sig, TraitMethod::Required(param_names)) => {
             visitor.visit_id(trait_item.hir_id);
             visitor.visit_fn_decl(&sig.decl);
             for &param_name in param_names {

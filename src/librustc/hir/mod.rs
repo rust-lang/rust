@@ -1946,9 +1946,9 @@ pub struct TraitItem<'hir> {
 
 /// Represents a trait method's body (or just argument names).
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub enum TraitMethod {
+pub enum TraitMethod<'hir> {
     /// No default body in the trait, just a signature.
-    Required(HirVec<Ident>),
+    Required(&'hir [Ident]),
 
     /// Both signature and body are provided in the trait.
     Provided(BodyId),
@@ -1960,7 +1960,7 @@ pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty, Option<BodyId>),
     /// A method with an optional body.
-    Method(FnSig<'hir>, TraitMethod),
+    Method(FnSig<'hir>, TraitMethod<'hir>),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds, Option<&'hir Ty>),
