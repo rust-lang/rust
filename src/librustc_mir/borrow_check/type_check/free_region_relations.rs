@@ -1,4 +1,3 @@
-
 use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::outlives::free_region_map::FreeRegionRelations;
 use rustc::infer::region_constraints::GenericKind;
