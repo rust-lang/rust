@@ -809,6 +809,12 @@ impl AtomicBool {
     /// This method is mostly useful for FFI, where the function signature may use
     /// `*mut bool` instead of `&AtomicBool`.
     ///
+    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
+    /// atomic types work with interior mutability. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
+    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
+    /// restriction: operations on it must be atomic.
+    ///
     /// [`bool`]: ../../../std/primitive.bool.html
     ///
     /// # Examples
@@ -1928,6 +1934,12 @@ assert_eq!(min_foo, 12);
 Doing non-atomic reads and writes on the resulting integer can be a data race.
 This method is mostly useful for FFI, where the function signature may use
 `*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.
+
+Returning an `*mut` pointer from a shared reference to this atomic is safe because the
+atomic types work with interior mutability. All modifications of an atomic change the value
+through a shared reference, and can do so safely as long as they use atomic operations. Any
+use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
+restriction: operations on it must be atomic.
 
 # Examples
 
