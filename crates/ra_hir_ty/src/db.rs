@@ -22,6 +22,7 @@ pub trait HirDatabase: DefDatabase {
     fn infer(&self, def: DefWithBodyId) -> Arc<InferenceResult>;
 
     #[salsa::invoke(crate::lower::ty_query)]
+    #[salsa::cycle(crate::lower::ty_recover)]
     fn ty(&self, def: TyDefId) -> Ty;
 
     #[salsa::invoke(crate::lower::value_ty_query)]

@@ -2154,7 +2154,6 @@ fn test(x: Foo, y: Bar<&str>, z: Baz<i8, u8>) {
 }
 
 #[test]
-#[should_panic] // we currently can't handle this
 fn recursive_type_alias() {
     assert_snapshot!(
         infer(r#"
@@ -2163,7 +2162,10 @@ type Foo = Foo;
 type Bar = A<Bar>;
 fn test(x: Foo) {}
 "#),
-        @""
+        @r###"
+    [59; 60) 'x': {unknown}
+    [67; 69) '{}': ()
+    "###
     )
 }
 

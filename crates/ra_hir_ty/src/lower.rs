@@ -742,6 +742,11 @@ pub(crate) fn ty_query(db: &impl HirDatabase, def: TyDefId) -> Ty {
         TyDefId::TypeAliasId(it) => type_for_type_alias(db, it),
     }
 }
+
+pub(crate) fn ty_recover(_db: &impl HirDatabase, _cycle: &[String], _def: &TyDefId) -> Ty {
+    Ty::Unknown
+}
+
 pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Ty {
     match def {
         ValueTyDefId::FunctionId(it) => type_for_fn(db, it),
