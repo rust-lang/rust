@@ -1341,6 +1341,8 @@ extern "C" {
 
     pub fn LLVMInitializePasses();
 
+    pub fn LLVMAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>);
+
     pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
     pub fn LLVMPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
     pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: &PassManagerBuilder, Value: Bool);
@@ -1703,7 +1705,6 @@ extern "C" {
                                        EmitStackSizeSection: bool)
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
-    pub fn LLVMRustAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>, M: &'a Module);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: &'a PassManagerBuilder,
                                          M: &'a Module,
                                          DisableSimplifyLibCalls: bool);
