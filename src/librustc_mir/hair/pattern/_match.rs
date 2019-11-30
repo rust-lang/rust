@@ -1267,23 +1267,14 @@ fn all_constructors<'a, 'tcx>(
             let is_declared_nonexhaustive =
                 def.is_variant_list_non_exhaustive() && !cx.is_local(pcx.ty);
 
-            // If our scrutinee is *privately* an empty enum, we must treat it as though it had
-            // an "unknown" constructor (in that case, all other patterns obviously can't be
-            // variants) to avoid exposing its emptyness. See the `match_privately_empty` test
-            // for details.
-            let is_privately_empty = if cx.tcx.features().exhaustive_patterns {
-                // This cannot happen because we have already filtered out uninhabited variants.
-                false
-            } else {
-                // FIXME: this is fishy
-                def.variants.is_empty()
-            };
+            // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
+            // as though it had an "unknown" constructor to avoid exposing its emptyness. Note that
+            // an empty match will still be considered exhaustive because that case is handled
+            // separately in `check_match`.
+            let is_secretly_empty =
+                def.variants.is_empty() && !cx.tcx.features().exhaustive_patterns;
 
-            if is_privately_empty || is_declared_nonexhaustive {
-                vec![NonExhaustive]
-            } else {
-                ctors
-            }
+            if is_secretly_empty || is_declared_nonexhaustive { vec![NonExhaustive] } else { ctors }
         }
         ty::Char => {
             vec![
