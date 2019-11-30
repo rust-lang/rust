@@ -160,7 +160,7 @@ Several `-Z` flags are relevant for Miri:
   the program has access to host resources such as environment variables and
   randomness (and, eventually, file systems and more).
 * `-Zmiri-ignore-leaks` disables the memory leak checker.
-* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from 
+* `-Zmiri-env-exclude=<var>` keeps the `var` environment variable isolated from
   the host. Can be used multiple times to exclude several variables. The `TERM`
   environment variable is excluded by default.
 * `-Zmir-opt-level` controls how many MIR optimizations are performed.  Miri
@@ -171,6 +171,11 @@ Several `-Z` flags are relevant for Miri:
   sets this flag per default.
 * `-Zmir-emit-retag` controls whether `Retag` statements are emitted. Miri
   enables this per default because it is needed for validation.
+* `-Zmiri-track-pointer-tag` aborts interpretation with a backtrace when the
+  given pointer tag is popped from a borrow stack (which is where the tag
+  becomes invalid and any future use of it will error anyway).  This helps you
+  in finding out why UB is happening and where in your code would be a good
+  place to look for it.
 
 Moreover, Miri recognizes some environment variables:
 
