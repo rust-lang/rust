@@ -1,10 +1,5 @@
-use crate::borrow_check::nll::constraints::OutlivesConstraint;
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
-use crate::borrow_check::nll::type_check::Locations;
-use crate::borrow_check::nll::universal_regions::DefiningTy;
-use crate::borrow_check::nll::ConstraintDescription;
-use crate::borrow_check::Upvar;
-use crate::util::borrowck_errors;
+//! Error reporting machinery for lifetime errors.
+
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
@@ -18,6 +13,17 @@ use syntax::errors::Applicability;
 use syntax::symbol::kw;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
+
+use crate::util::borrowck_errors;
+
+use crate::borrow_check::{
+    constraints::OutlivesConstraint,
+    region_infer::RegionInferenceContext,
+    type_check::Locations,
+    universal_regions::DefiningTy,
+    nll::ConstraintDescription,
+    Upvar,
+};
 
 use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource, RegionErrorNamingCtx};
 

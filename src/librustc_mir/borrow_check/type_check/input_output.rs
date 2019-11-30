@@ -7,13 +7,14 @@
 //! `RETURN_PLACE` the MIR arguments) are always fully normalized (and
 //! contain revealed `impl Trait` values).
 
-use crate::borrow_check::nll::universal_regions::UniversalRegions;
 use rustc::infer::LateBoundRegionConversionTime;
 use rustc::mir::*;
 use rustc::ty::Ty;
 
 use rustc_index::vec::Idx;
 use syntax_pos::Span;
+
+use crate::borrow_check::universal_regions::UniversalRegions;
 
 use super::{Locations, TypeChecker};
 

@@ -25,7 +25,7 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_errors::DiagnosticBuilder;
 use std::iter;
 
-use super::ToRegionVid;
+use crate::borrow_check::nll::ToRegionVid;
 
 #[derive(Debug)]
 pub struct UniversalRegions<'tcx> {

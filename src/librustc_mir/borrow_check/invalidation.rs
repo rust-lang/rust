@@ -1,14 +1,3 @@
-use crate::borrow_check::borrow_set::BorrowSet;
-use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::{JustWrite, WriteAndRead};
-use crate::borrow_check::{AccessDepth, Deep, Shallow};
-use crate::borrow_check::{ReadOrWrite, Activation, Read, Reservation, Write};
-use crate::borrow_check::{LocalMutationIsAllowed, MutateMode};
-use crate::borrow_check::ArtificialField;
-use crate::borrow_check::{ReadKind, WriteKind};
-use crate::borrow_check::nll::facts::AllFacts;
-use crate::borrow_check::path_utils::*;
-use crate::dataflow::indexes::BorrowIndex;
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, Location, Body, Place, ReadOnlyBodyAndCache, Rvalue};
@@ -16,6 +5,17 @@ use rustc::mir::{Statement, StatementKind};
 use rustc::mir::TerminatorKind;
 use rustc::mir::{Operand, BorrowKind};
 use rustc_data_structures::graph::dominators::Dominators;
+
+use crate::dataflow::indexes::BorrowIndex;
+
+use crate::borrow_check::{
+    borrow_set::BorrowSet,
+    location::LocationTable,
+    facts::AllFacts,
+    path_utils::*,
+    JustWrite, WriteAndRead, AccessDepth, Deep, Shallow, ReadOrWrite, Activation, Read,
+    Reservation, Write, LocalMutationIsAllowed, MutateMode, ArtificialField, ReadKind, WriteKind,
+};
 
 pub(super) fn generate_invalidates<'tcx>(
     tcx: TyCtxt<'tcx>,

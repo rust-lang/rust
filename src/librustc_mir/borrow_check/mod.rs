@@ -1,6 +1,5 @@
 //! This query borrow-checks the MIR to (further) ensure it is not broken.
 
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir::{self, HirId};
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
@@ -47,20 +46,30 @@ use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
 use self::diagnostics::AccessKind;
+use self::region_infer::RegionInferenceContext;
 
 use self::path_utils::*;
 
-crate mod borrow_set;
 mod diagnostics;
 mod flows;
 mod location;
 mod path_utils;
-crate mod place_ext;
-crate mod places_conflict;
 mod prefixes;
 mod used_muts;
+mod constraint_generation;
+mod facts;
+mod invalidation;
+mod renumber;
+mod member_constraints;
 
-pub(crate) mod nll;
+crate mod constraints;
+crate mod universal_regions;
+crate mod type_check;
+crate mod region_infer;
+crate mod borrow_set;
+crate mod place_ext;
+crate mod places_conflict;
+crate mod nll;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]

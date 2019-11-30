@@ -2,10 +2,11 @@
 //! libgraphviz traits, specialized to attaching borrowck analysis
 //! data to rendered labels.
 
-use super::*;
-use crate::borrow_check::nll::constraints::OutlivesConstraint;
 use std::borrow::Cow;
 use std::io::{self, Write};
+
+use super::*;
+use crate::borrow_check::constraints::OutlivesConstraint;
 
 impl<'tcx> RegionInferenceContext<'tcx> {
     /// Write out the region constraint graph.

@@ -1,8 +1,3 @@
-use crate::borrow_check::nll::constraints::OutlivesConstraint;
-use crate::borrow_check::nll::region_infer::TypeTest;
-use crate::borrow_check::nll::type_check::{Locations, MirTypeckRegionConstraints};
-use crate::borrow_check::nll::universal_regions::UniversalRegions;
-use crate::borrow_check::nll::ToRegionVid;
 use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::infer::canonical::QueryOutlivesConstraint;
 use rustc::infer::outlives::env::RegionBoundPairs;
@@ -13,6 +8,14 @@ use rustc::mir::ConstraintCategory;
 use rustc::ty::subst::GenericArgKind;
 use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;
+
+use crate::borrow_check::{
+    constraints::OutlivesConstraint,
+    region_infer::TypeTest,
+    type_check::{Locations, MirTypeckRegionConstraints},
+    universal_regions::UniversalRegions,
+    nll::ToRegionVid,
+};
 
 crate struct ConstraintConversion<'a, 'tcx> {
     infcx: &'a InferCtxt<'a, 'tcx>,

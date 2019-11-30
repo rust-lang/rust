@@ -1,5 +1,3 @@
-use crate::borrow_check::nll::constraints::OutlivesConstraint;
-use crate::borrow_check::nll::type_check::{BorrowCheckContext, Locations};
 use rustc::infer::nll_relate::{TypeRelating, TypeRelatingDelegate, NormalizationStrategy};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc::mir::ConstraintCategory;
@@ -7,6 +5,9 @@ use rustc::traits::query::Fallible;
 use rustc::traits::DomainGoal;
 use rustc::ty::relate::TypeRelation;
 use rustc::ty::{self, Ty};
+
+use crate::borrow_check::constraints::OutlivesConstraint;
+use crate::borrow_check::type_check::{BorrowCheckContext, Locations};
 
 /// Adds sufficient constraints to ensure that `a R b` where `R` depends on `v`:
 ///

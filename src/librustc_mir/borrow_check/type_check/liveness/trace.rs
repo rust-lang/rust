@@ -1,11 +1,3 @@
-use crate::borrow_check::nll::region_infer::values::{self, PointIndex, RegionValueElements};
-use crate::borrow_check::nll::type_check::liveness::local_use_map::LocalUseMap;
-use crate::borrow_check::nll::type_check::liveness::polonius;
-use crate::borrow_check::nll::type_check::NormalizeLocation;
-use crate::borrow_check::nll::type_check::TypeChecker;
-use crate::dataflow::indexes::MovePathIndex;
-use crate::dataflow::move_paths::MoveData;
-use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
 use rustc::infer::canonical::QueryRegionConstraints;
 use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
@@ -15,6 +7,18 @@ use rustc::ty::{Ty, TypeFoldable};
 use rustc_index::bit_set::HybridBitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::rc::Rc;
+
+use crate::dataflow::indexes::MovePathIndex;
+use crate::dataflow::move_paths::MoveData;
+use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
+
+use crate::borrow_check::{
+    region_infer::values::{self, PointIndex, RegionValueElements},
+    type_check::liveness::local_use_map::LocalUseMap,
+    type_check::liveness::polonius,
+    type_check::NormalizeLocation,
+    type_check::TypeChecker,
+};
 
 /// This is the heart of the liveness computation. For each variable X
 /// that requires a liveness computation, it walks over all the uses

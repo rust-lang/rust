@@ -15,13 +15,12 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax_pos::{Span, symbol::Symbol, DUMMY_SP};
 
 use crate::borrow_check::{
-    nll::region_infer::RegionInferenceContext,
-    nll::universal_regions::DefiningTy,
+    diagnostics::region_errors::ErrorReportingCtx,
+    region_infer::RegionInferenceContext,
+    universal_regions::DefiningTy,
     nll::ToRegionVid,
     Upvar,
 };
-
-use super::region_errors::ErrorReportingCtx;
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
