@@ -30,7 +30,6 @@ use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_plugin_impl::registry::Registry;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
@@ -218,7 +217,7 @@ pub fn register_plugins<'a>(
         plugin::load::load_plugins(sess, metadata_loader, &krate)
     });
     time(sess, "plugin registration", || {
-        let mut registry = Registry::new(sess, &mut lint_store, krate.span);
+        let mut registry = plugin::Registry { lint_store: &mut lint_store };
         for registrar in registrars {
             registrar(&mut registry);
         }

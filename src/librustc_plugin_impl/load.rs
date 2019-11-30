@@ -3,7 +3,7 @@
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::Session;
 use rustc_metadata::locator;
-use crate::registry::Registry;
+use crate::Registry;
 
 use std::borrow::ToOwned;
 use std::env;

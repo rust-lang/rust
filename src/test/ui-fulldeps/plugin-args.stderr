@@ -1,11 +1,11 @@
 error[E0498]: malformed `plugin` attribute
-  --> $DIR/plugin-args-2.rs:5:11
+  --> $DIR/plugin-args.rs:5:11
    |
 LL | #![plugin(empty_plugin(args))]
    |           ^^^^^^^^^^^^^^^^^^ malformed attribute
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
-  --> $DIR/plugin-args-2.rs:5:1
+  --> $DIR/plugin-args.rs:5:1
    |
 LL | #![plugin(empty_plugin(args))]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
