@@ -1235,43 +1235,51 @@ fn all_constructors<'a, 'tcx>(
             vec![Slice(Slice { array_len: None, kind })]
         }
         ty::Adt(def, substs) if def.is_enum() => {
-            let ctors: Vec<_> = def
-                .variants
-                .iter()
-                .filter(|v| {
-                    !cx.tcx.features().exhaustive_patterns
-                        || !v
-                            .uninhabited_from(cx.tcx, substs, def.adt_kind())
+            let ctors: Vec<_> = if cx.tcx.features().exhaustive_patterns {
+                // If `exhaustive_patterns` is enabled, we exclude variants known to be
+                // uninhabited.
+                def.variants
+                    .iter()
+                    .filter(|v| {
+                        !v.uninhabited_from(cx.tcx, substs, def.adt_kind())
                             .contains(cx.tcx, cx.module)
-                })
-                .map(|v| Variant(v.def_id))
-                .collect();
+                    })
+                    .map(|v| Variant(v.def_id))
+                    .collect()
+            } else {
+                def.variants.iter().map(|v| Variant(v.def_id)).collect()
+            };
 
-            // If our scrutinee is *privately* an empty enum, we must treat it as though it had an
-            // "unknown" constructor (in that case, all other patterns obviously can't be variants)
-            // to avoid exposing its emptyness. See the `match_privately_empty` test for details.
-            // FIXME: currently the only way I know of something can be a privately-empty enum is
-            // when the exhaustive_patterns feature flag is not present, so this is only needed for
-            // that case.
-            let is_privately_empty = ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
             // If the enum is declared as `#[non_exhaustive]`, we treat it as if it had an
-            // additionnal "unknown" constructor.
+            // additional "unknown" constructor.
+            // There is no point in enumerating all possible variants, because the user can't
+            // actually match against them all themselves. So we always return only the fictitious
+            // constructor.
+            // E.g., in an example like:
+            // ```
+            //     let err: io::ErrorKind = ...;
+            //     match err {
+            //         io::ErrorKind::NotFound => {},
+            //     }
+            // ```
+            // we don't want to show every possible IO error, but instead have only `_` as the
+            // witness.
             let is_declared_nonexhaustive =
                 def.is_variant_list_non_exhaustive() && !cx.is_local(pcx.ty);
 
+            // If our scrutinee is *privately* an empty enum, we must treat it as though it had
+            // an "unknown" constructor (in that case, all other patterns obviously can't be
+            // variants) to avoid exposing its emptyness. See the `match_privately_empty` test
+            // for details.
+            let is_privately_empty = if cx.tcx.features().exhaustive_patterns {
+                // This cannot happen because we have already filtered out uninhabited variants.
+                false
+            } else {
+                // FIXME: this is fishy
+                def.variants.is_empty()
+            };
+
             if is_privately_empty || is_declared_nonexhaustive {
-                // There is no point in enumerating all possible variants, because the user can't
-                // actually match against them themselves. So we return only the fictitious
-                // constructor.
-                // E.g., in an example like:
-                // ```
-                //     let err: io::ErrorKind = ...;
-                //     match err {
-                //         io::ErrorKind::NotFound => {},
-                //     }
-                // ```
-                // we don't want to show every possible IO error, but instead have only `_` as the
-                // witness.
                 vec![NonExhaustive]
             } else {
                 ctors
