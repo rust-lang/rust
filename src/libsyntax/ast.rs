@@ -2488,14 +2488,14 @@ impl VariantData {
 ///
 /// The name might be a dummy name in case of anonymous items.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct Item {
+pub struct Item<K = ItemKind> {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
     pub ident: Ident,
 
-    pub kind: ItemKind,
+    pub kind: K,
 
     /// Original tokens this item was parsed from. This isn't necessarily
     /// available for all items, although over time more and more items should
@@ -2650,16 +2650,7 @@ impl ItemKind {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ForeignItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub kind: ForeignItemKind,
-}
+pub type ForeignItem = Item<ForeignItemKind>;
 
 /// An item within an `extern` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
