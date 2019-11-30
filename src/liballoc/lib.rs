@@ -123,6 +123,7 @@
 #![feature(associated_type_bounds)]
 #![feature(inplace_iteration)]
 #![feature(type_alias_impl_trait)]
+#![cfg_attr(bootstrap, feature(never_type))]
 
 // Allow testing this library
 
