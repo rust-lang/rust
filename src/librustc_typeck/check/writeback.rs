@@ -61,7 +61,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_fru_field_types();
         wbcx.visit_opaque_types(body.value.span);
         wbcx.visit_coercion_casts();
-        wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
         wbcx.visit_user_provided_sigs();
         wbcx.visit_generator_interior_types();
@@ -355,11 +354,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         for local_id in fcx_coercion_casts {
             self.tables.set_coercion_cast(*local_id);
         }
-    }
-
-    fn visit_free_region_map(&mut self) {
-        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
-        debug_assert!(!self.tables.free_region_map.elements().any(|r| r.has_local_value()));
     }
 
     fn visit_user_provided_tys(&mut self) {
