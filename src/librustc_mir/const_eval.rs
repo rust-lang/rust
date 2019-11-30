@@ -328,14 +328,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         false // for now, we don't enforce validity
     }
 
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
         ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
         _unwind: Option<mir::BasicBlock> // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
-        debug!("eval_fn_call: {:?}", instance);
+        debug!("find_mir_or_eval_fn: {:?}", instance);
 
         // If this function is a `const fn` then as an optimization we can query this
         // evaluation immediately.
