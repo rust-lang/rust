@@ -442,20 +442,9 @@ impl<'a> Parser<'a> {
             Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(_, c)) if c.is_alphabetic() => {
+                Some(&(_, c)) if rustc_lexer::is_id_start(c) => {
                     Some(ArgumentNamed(Symbol::intern(self.word())))
                 }
-                Some(&(pos, c)) if c == '_' => {
-                    let invalid_name = self.string(pos);
-                    self.err_with_note(format!("invalid argument name `{}`", invalid_name),
-                                       "invalid argument name",
-                                       "argument names cannot start with an underscore",
-                                        self.to_span_index(pos).to(
-                                            self.to_span_index(pos + invalid_name.len())
-                                        ),
-                                        );
-                    Some(ArgumentNamed(Symbol::intern(invalid_name)))
-                },
 
                 // This is an `ArgumentNext`.
                 // Record the fact and do the resolution after parsing the
@@ -611,22 +600,34 @@ impl<'a> Parser<'a> {
     /// Rust identifier, except that it can't start with `_` character.
     fn word(&mut self) -> &'a str {
         let start = match self.cur.peek() {
-            Some(&(pos, c)) if c != '_' && rustc_lexer::is_id_start(c) => {
+            Some(&(pos, c)) if rustc_lexer::is_id_start(c) => {
                 self.cur.next();
                 pos
             }
             _ => {
-                return &self.input[..0];
+                return "";
             }
         };
+        let mut end = None;
         while let Some(&(pos, c)) = self.cur.peek() {
             if rustc_lexer::is_id_continue(c) {
                 self.cur.next();
             } else {
-                return &self.input[start..pos];
+                end = Some(pos);
+                break;
             }
         }
-        &self.input[start..self.input.len()]
+        let end = end.unwrap_or(self.input.len());
+        let word = &self.input[start..end];
+        if word == "_" {
+            self.err_with_note(
+                "invalid argument name `_`",
+                "invalid argument name",
+                "argument name cannot be a single underscore",
+                self.to_span_index(start).to(self.to_span_index(end)),
+            );
+        }
+        word
     }
 
     /// Optionally parses an integer at the current position. This doesn't deal
