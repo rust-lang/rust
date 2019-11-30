@@ -643,9 +643,7 @@ fn bench_rev_1(b: &mut test::Bencher) {
 #[bench]
 fn bench_rev_2(b: &mut test::Bencher) {
     let data = black_box([0; LEN]);
-    b.iter(|| {
-        example_plain_slow(&data);
-    });
+    b.iter(|| example_plain_slow(&data));
 }
 
 #[bench]
