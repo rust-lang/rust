@@ -277,6 +277,7 @@ const LONG: &'static str = repeat!(r#"
     The Manlet (1903)[106]
 "#);
 
+#[rustfmt::skip]
 const ASCII_UPPERCASE_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -330,6 +331,7 @@ enum AsciiCharacterClass {
 }
 use self::AsciiCharacterClass::*;
 
+#[rustfmt::skip]
 static ASCII_CHARACTER_CLASS: [AsciiCharacterClass; 256] = [
 //  _0 _1 _2 _3 _4 _5 _6 _7 _8 _9 _a _b _c _d _e _f
     C, C, C, C, C, C, C, C, C, Cw,Cw,C, Cw,Cw,C, C, // 0_
