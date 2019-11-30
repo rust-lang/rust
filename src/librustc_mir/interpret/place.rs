@@ -125,7 +125,7 @@ impl<Tag> MemPlace<Tag> {
         Self::from_scalar_ptr(ptr.into(), align)
     }
 
-    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
+    /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
     /// This is the inverse of `ref_to_mplace`.
     #[inline(always)]
     pub fn to_ref(self) -> Immediate<Tag> {
@@ -278,7 +278,7 @@ where
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<Tag>,
 {
-    /// Take a value, which represents a (thin or fat) reference, and make it a place.
+    /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
     ///
     /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
@@ -1034,7 +1034,7 @@ where
         MPlaceTy::from_aligned_ptr(ptr, layout)
     }
 
-    /// Returns a fat MPlace.
+    /// Returns a wide MPlace.
     pub fn allocate_str(
         &mut self,
         str: &str,

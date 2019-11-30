@@ -24,7 +24,7 @@ use rustc_macros::HashStable;
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary
-/// operations and fat pointers. This idea was taken from rustc's codegen.
+/// operations and wide pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
@@ -74,7 +74,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef<Tag> {
         match self {
             Immediate::Scalar(val) => val,
-            Immediate::ScalarPair(..) => bug!("Got a fat pointer where a scalar was expected"),
+            Immediate::ScalarPair(..) => bug!("Got a wide pointer where a scalar was expected"),
         }
     }
 
@@ -331,7 +331,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
-    // Turn the fat MPlace into a string (must already be dereferenced!)
+    // Turn the wide MPlace into a string (must already be dereferenced!)
     pub fn read_str(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
