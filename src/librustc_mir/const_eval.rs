@@ -337,25 +337,23 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
         debug!("find_mir_or_eval_fn: {:?}", instance);
 
-        // If this function is a `const fn` then as an optimization we can query this
-        // evaluation immediately.
-        //
-        // For the moment we only do this for functions which take no arguments
-        // (or all arguments are ZSTs) so that we don't memoize too much.
-        if ecx.tcx.is_const_fn_raw(instance.def.def_id()) &&
-            args.iter().all(|a| a.layout.is_zst())
-        {
-            let gid = GlobalId { instance, promoted: None };
-            ecx.eval_const_fn_call(gid, ret)?;
-            return Ok(None);
-        }
-
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def_id) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
-            if !ecx.tcx.is_const_fn_raw(def_id) {
+            if ecx.tcx.is_const_fn_raw(def_id) {
+                // If this function is a `const fn` then as an optimization we can query this
+                // evaluation immediately.
+                //
+                // For the moment we only do this for functions which take no arguments
+                // (or all arguments are ZSTs) so that we don't memoize too much.
+                if args.iter().all(|a| a.layout.is_zst()) {
+                    let gid = GlobalId { instance, promoted: None };
+                    ecx.eval_const_fn_call(gid, ret)?;
+                    return Ok(None);
+                }
+            } else {
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!  We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
