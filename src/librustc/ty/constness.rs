@@ -116,7 +116,7 @@ pub fn provide(providers: &mut Providers<'_>) {
                     // This whitelist is a list of intrinsics that have a miri-engine implementation
                     // and can thus be called when enabling enough feature gates. The similar
                     // whitelist in `is_intrinsic_min_const_fn` (in this file), exists for allowing
-                    // the intrinsics to be transitively called by stable const fns.
+                    // the intrinsics to be called by stable const fns.
                     | sym::caller_location
 
                     | sym::min_align_of
