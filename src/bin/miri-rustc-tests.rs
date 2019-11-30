@@ -15,7 +15,7 @@ use std::sync::{Mutex, Arc};
 use std::io;
 
 
-use rustc_interface::interface;
+use rustc_interface::{interface, Queries};
 use rustc::hir::{self, itemlikevisit};
 use rustc::ty::TyCtxt;
 use rustc::hir::def_id::LOCAL_CRATE;
@@ -29,9 +29,9 @@ struct MiriCompilerCalls {
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls {
-    fn after_analysis(&mut self, compiler: &interface::Compiler) -> Compilation {
+    fn after_analysis<'tcx>(&mut self, compiler: &interface::Compiler, queries: &'tcx Queries<'tcx>) -> Compilation {
         compiler.session().abort_if_errors();
-        compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+        queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             if std::env::args().any(|arg| arg == "--test") {
                 struct Visitor<'tcx>(TyCtxt<'tcx>);
                 impl<'tcx, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'tcx> {

@@ -7,7 +7,7 @@ extern crate test;
 
 use self::miri::eval_main;
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc_interface::interface;
+use rustc_interface::{interface, Queries};
 use rustc_driver::Compilation;
 use crate::test::Bencher;
 
@@ -16,10 +16,10 @@ struct MiriCompilerCalls<'a> {
 }
 
 impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
-    fn after_analysis(&mut self, compiler: &interface::Compiler) -> Compilation {
+    fn after_analysis<'tcx>(&mut self, compiler: &interface::Compiler, queries: &'tcx Queries<'tcx>) -> Compilation {
         compiler.session().abort_if_errors();
 
-        compiler.global_ctxt().unwrap().peek_mut().enter(|tcx| {
+        queries.global_ctxt().unwrap().peek_mut().enter(|tcx| {
             let (entry_def_id, _) = tcx.entry_fn(LOCAL_CRATE).expect(
                 "no main or start function found",
             );
