@@ -253,6 +253,37 @@ impl<'a> LateResolutionVisitor<'a, '_> {
                 }
                 return (err, candidates);
             }
+
+            // Check if the first argument is `self` and suggest calling a method.
+            let mut has_self_arg = false;
+            if let PathSource::Expr(parent) = source {
+                match &parent.map(|p| &p.kind) {
+                    Some(ExprKind::Call(_, args)) if args.len() > 0 => {
+                        let mut expr_kind = &args.first().unwrap().kind;
+                        loop {
+                            match expr_kind {
+                                ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
+                                    has_self_arg = arg_name.segments[0].ident.name == kw::SelfLower;
+                                    break;
+                                },
+                                ExprKind::AddrOf(_, _, expr) => { expr_kind = &expr.kind; }
+                                _ => break,
+                            }
+                        }
+                    }
+                    _ => (),
+                }
+            };
+
+            if has_self_arg {
+                err.span_suggestion(
+                    span,
+                    &"try calling method instead of passing `self` as parameter",
+                    format!("self.{}", path_str),
+                    Applicability::MachineApplicable,
+                );
+                return (err, candidates);
+            }
         }
 
         // Try Levenshtein algorithm.
@@ -553,13 +584,13 @@ impl<'a> LateResolutionVisitor<'a, '_> {
         // Look for associated items in the current trait.
         if let Some((module, _)) = self.current_trait_ref {
             if let Ok(binding) = self.r.resolve_ident_in_module(
-                    ModuleOrUniformRoot::Module(module),
-                    ident,
-                    ns,
-                    &self.parent_scope,
-                    false,
-                    module.span,
-                ) {
+                ModuleOrUniformRoot::Module(module),
+                ident,
+                ns,
+                &self.parent_scope,
+                false,
+                module.span,
+            ) {
                 let res = binding.res();
                 if filter_fn(res) {
                     return Some(if self.r.has_self.contains(&res.def_id()) {
