@@ -153,11 +153,6 @@ const EXPLAIN_BOX_SYNTAX: &str =
 pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
     "attributes on expressions are experimental";
 
-pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &str =
-    "allow_internal_unstable side-steps feature gating and stability checks";
-pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &str =
-    "allow_internal_unsafe side-steps the unsafe_code lint";
-
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
     "unsized tuple coercion is not stable enough for use and is subject to change";
 

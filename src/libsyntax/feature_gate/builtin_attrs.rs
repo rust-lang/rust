@@ -3,7 +3,6 @@
 use AttributeType::*;
 use AttributeGate::*;
 
-use super::check::{EXPLAIN_ALLOW_INTERNAL_UNSAFE, EXPLAIN_ALLOW_INTERNAL_UNSTABLE};
 use rustc_feature::{Features, Stability};
 
 use crate::ast;
@@ -352,9 +351,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
-        EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
+        "allow_internal_unstable side-steps feature gating and stability checks",
     ),
-    gated!(allow_internal_unsafe, Normal, template!(Word), EXPLAIN_ALLOW_INTERNAL_UNSAFE),
+    gated!(
+        allow_internal_unsafe, Normal, template!(Word),
+        "allow_internal_unsafe side-steps the unsafe_code lint",
+    ),
 
     // ==========================================================================
     // Internal attributes: Type system related:
