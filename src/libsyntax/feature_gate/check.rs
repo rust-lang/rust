@@ -641,7 +641,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         err.emit();
     }
 
-    let mut features = Features::new();
+    let mut features = Features::default();
     let mut edition_enabled_features = FxHashMap::default();
 
     for &edition in ALL_EDITIONS {

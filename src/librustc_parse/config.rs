@@ -47,7 +47,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition,
         } else { // the entire crate is unconfigured
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
-            return (krate, Features::new());
+            return (krate, Features::default());
         }
 
         features = get_features(&sess.span_diagnostic, &krate.attrs, edition, allow_features);
