@@ -150,12 +150,6 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
 const EXPLAIN_BOX_SYNTAX: &str =
     "box expression syntax is experimental; you can call `Box::new` instead";
 
-pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
-    "attributes on expressions are experimental";
-
-pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
-    "unsized tuple coercion is not stable enough for use and is subject to change";
-
 struct PostExpansionVisitor<'a> {
     parse_sess: &'a ParseSess,
     features: &'a Features,

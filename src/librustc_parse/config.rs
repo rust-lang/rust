@@ -11,12 +11,7 @@
 use crate::validate_attr;
 use rustc_feature::Features;
 use syntax::attr::HasAttrs;
-use syntax::feature_gate::{
-    feature_err,
-    EXPLAIN_STMT_ATTR_SYNTAX,
-    get_features,
-    GateIssue,
-};
+use syntax::feature_gate::{feature_err, get_features, GateIssue};
 use syntax::attr;
 use syntax::ast;
 use syntax::edition::Edition;
@@ -218,7 +213,7 @@ impl<'a> StripUnconfigured<'a> {
                                       sym::stmt_expr_attributes,
                                       attr.span,
                                       GateIssue::Language,
-                                      EXPLAIN_STMT_ATTR_SYNTAX);
+                                      "attributes on expressions are experimental");
 
             if attr.is_doc_comment() {
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
