@@ -802,6 +802,43 @@ impl AtomicBool {
     pub fn fetch_xor(&self, val: bool, order: Ordering) -> bool {
         unsafe { atomic_xor(self.v.get(), val as u8, order) != 0 }
     }
+
+    /// Returns a mutable pointer to the underlying [`bool`].
+    ///
+    /// Doing non-atomic reads and writes on the resulting integer can be a data race.
+    /// This method is mostly useful for FFI, where the function signature may use
+    /// `*mut bool` instead of `&AtomicBool`.
+    ///
+    /// Returning an `*mut` pointer from a shared reference to this atomic is safe because the
+    /// atomic types work with interior mutability. All modifications of an atomic change the value
+    /// through a shared reference, and can do so safely as long as they use atomic operations. Any
+    /// use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
+    /// restriction: operations on it must be atomic.
+    ///
+    /// [`bool`]: ../../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```ignore (extern-declaration)
+    /// # fn main() {
+    /// use std::sync::atomic::AtomicBool;
+    /// extern {
+    ///     fn my_atomic_op(arg: *mut bool);
+    /// }
+    ///
+    /// let mut atomic = AtomicBool::new(true);
+    /// unsafe {
+    ///     my_atomic_op(atomic.as_mut_ptr());
+    /// }
+    /// # }
+    /// ```
+    #[inline]
+    #[unstable(feature = "atomic_mut_ptr",
+           reason = "recently added",
+           issue = "66893")]
+    pub fn as_mut_ptr(&self) -> *mut bool {
+        self.v.get() as *mut bool
+    }
 }
 
 #[cfg(target_has_atomic_load_store = "ptr")]
@@ -1891,6 +1928,43 @@ assert_eq!(min_foo, 12);
                 }
             }
 
+            doc_comment! {
+                concat!("Returns a mutable pointer to the underlying integer.
+
+Doing non-atomic reads and writes on the resulting integer can be a data race.
+This method is mostly useful for FFI, where the function signature may use
+`*mut ", stringify!($int_type), "` instead of `&", stringify!($atomic_type), "`.
+
+Returning an `*mut` pointer from a shared reference to this atomic is safe because the
+atomic types work with interior mutability. All modifications of an atomic change the value
+through a shared reference, and can do so safely as long as they use atomic operations. Any
+use of the returned raw pointer requires an `unsafe` block and still has to uphold the same
+restriction: operations on it must be atomic.
+
+# Examples
+
+```ignore (extern-declaration)
+# fn main() {
+", $extra_feature, "use std::sync::atomic::", stringify!($atomic_type), ";
+
+extern {
+    fn my_atomic_op(arg: *mut ", stringify!($int_type), ");
+}
+
+let mut atomic = ", stringify!($atomic_type), "::new(1);
+unsafe {
+    my_atomic_op(atomic.as_mut_ptr());
+}
+# }
+```"),
+                #[inline]
+                #[unstable(feature = "atomic_mut_ptr",
+                       reason = "recently added",
+                       issue = "66893")]
+                pub fn as_mut_ptr(&self) -> *mut $int_type {
+                    self.v.get()
+                }
+            }
         }
     }
 }
