@@ -162,7 +162,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _msg: &rustc::mir::interpret::AssertMessage<'tcx>,
         _unwind: Option<rustc::mir::BasicBlock>,
     ) -> InterpResult<'tcx> {
-        throw_unsup_format!("panics are not supported in ConstProp");
+        bug!("panics terminators are not evaluated in ConstProp");
     }
 
     fn ptr_to_int(
