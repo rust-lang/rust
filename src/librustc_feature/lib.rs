@@ -65,6 +65,40 @@ pub enum Stability {
     Deprecated(&'static str, Option<&'static str>),
 }
 
+#[derive(Clone, Copy, Hash)]
+pub enum UnstableFeatures {
+    /// Hard errors for unstable features are active, as on beta/stable channels.
+    Disallow,
+    /// Allow features to be activated, as on nightly.
+    Allow,
+    /// Errors are bypassed for bootstrapping. This is required any time
+    /// during the build that feature-related lints are set to warn or above
+    /// because the build turns on warnings-as-errors and uses lots of unstable
+    /// features. As a result, this is always required for building Rust itself.
+    Cheat
+}
+
+impl UnstableFeatures {
+    pub fn from_environment() -> UnstableFeatures {
+        // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
+        let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+        // `true` if we should enable unstable features for bootstrapping.
+        let bootstrap = std::env::var("RUSTC_BOOTSTRAP").is_ok();
+        match (disable_unstable_features, bootstrap) {
+            (_, true) => UnstableFeatures::Cheat,
+            (true, _) => UnstableFeatures::Disallow,
+            (false, _) => UnstableFeatures::Allow
+        }
+    }
+
+    pub fn is_nightly_build(&self) -> bool {
+        match *self {
+            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
+            UnstableFeatures::Disallow => false,
+        }
+    }
+}
+
 pub use accepted::ACCEPTED_FEATURES;
 pub use active::{ACTIVE_FEATURES, Features, INCOMPLETE_FEATURES};
 pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};

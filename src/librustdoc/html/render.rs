@@ -45,7 +45,6 @@ use errors;
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::edition::Edition;
-use syntax::feature_gate::UnstableFeatures;
 use syntax::print::pprust;
 use syntax::source_map::FileName;
 use syntax::symbol::{Symbol, sym};
@@ -56,6 +55,7 @@ use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
+use rustc_feature::UnstableFeatures;
 
 use crate::clean::{self, AttributesExt, Deprecation, GetDefId, SelfTy, Mutability};
 use crate::config::RenderOptions;

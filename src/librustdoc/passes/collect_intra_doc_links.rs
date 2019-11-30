@@ -5,10 +5,10 @@ use rustc::hir;
 use rustc::lint as lint;
 use rustc::ty;
 use rustc_resolve::ParentScope;
+use rustc_feature::UnstableFeatures;
 use syntax;
 use syntax::ast::{self, Ident};
 use syntax_expand::base::SyntaxExtensionKind;
-use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
 

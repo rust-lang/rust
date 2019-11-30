@@ -96,7 +96,7 @@ pub mod feature_gate {
     mod check;
     pub use check::{
         check_crate, check_attribute, get_features, feature_err, emit_feature_err,
-        GateIssue, UnstableFeatures,
+        GateIssue,
     };
 }
 pub mod mut_visit;

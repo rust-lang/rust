@@ -3,15 +3,15 @@
 
 use crate::ast::{CrateConfig, NodeId};
 use crate::early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
-use crate::source_map::{SourceMap, FilePathMapping};
-use crate::feature_gate::UnstableFeatures;
 
 use errors::{Applicability, emitter::SilentEmitter, Handler, ColorConfig, DiagnosticBuilder};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_data_structures::sync::{Lrc, Lock, Once};
+use rustc_feature::UnstableFeatures;
 use syntax_pos::{Symbol, Span, MultiSpan};
 use syntax_pos::edition::Edition;
 use syntax_pos::hygiene::ExpnId;
+use syntax_pos::source_map::{SourceMap, FilePathMapping};
 
 use std::path::PathBuf;
 use std::str;
