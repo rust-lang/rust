@@ -480,8 +480,6 @@ pub fn handle_prepare_rename(
     let _p = profile("handle_prepare_rename");
     let position = params.try_conv_with(&world)?;
 
-    // We support renaming references like handle_rename does.
-    // In the future we may want to reject the renaming of things like keywords here too.
     let optional_change = world.analysis().rename(position, "dummy")?;
     let range = match optional_change {
         None => return Ok(None),
