@@ -1338,7 +1338,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         span: Span,
         components: &[Symbol],
-        params: Option<P<hir::GenericArgs>>,
+        params: Option<P<hir::GenericArgs<'hir>>>,
         attrs: AttrVec,
     ) -> hir::Expr<'hir> {
         let path = self.std_path(span, components, params, true);

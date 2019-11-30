@@ -107,7 +107,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
 fn closure_return_type_suggestion(
     span: Span,
     err: &mut DiagnosticBuilder<'_>,
-    output: &FunctionRetTy,
+    output: &FunctionRetTy<'_>,
     body: &Body<'_>,
     descr: &str,
     name: &str,
@@ -460,7 +460,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     /// needed, suggest annotating the call, otherwise point out the resulting type of the call.
     fn annotate_method_call(
         &self,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'_>,
         e: &Expr<'_>,
         err: &mut DiagnosticBuilder<'_>,
     ) {

@@ -106,7 +106,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         &self,
         scope_def_id: DefId,
         br: ty::BoundRegion,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
     ) -> Option<Span> {
         let ret_ty = self.tcx().type_of(scope_def_id);
         if let ty::FnDef(_, _) = ret_ty.kind {

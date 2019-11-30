@@ -43,7 +43,7 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn fn_decl(&self) -> Option<&'hir FnDecl> {
+    fn fn_decl(&self) -> Option<&'hir FnDecl<'hir>> {
         match self.node {
             Node::Item(ref item) => match item.kind {
                 ItemKind::Fn(ref sig, _, _) => Some(&sig.decl),
@@ -429,7 +429,7 @@ impl<'hir> Map<'hir> {
         self.forest.krate.body(id)
     }
 
-    pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl> {
+    pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
         if let Some(entry) = self.find_entry(hir_id) {
             entry.fn_decl()
         } else {
@@ -584,7 +584,7 @@ impl<'hir> Map<'hir> {
         self.as_local_hir_id(id).map(|id| self.get(id)) // read recorded by `get`
     }
 
-    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics> {
+    pub fn get_generics(&self, id: DefId) -> Option<&'hir Generics<'hir>> {
         self.get_if_local(id).and_then(|node| match node {
             Node::ImplItem(ref impl_item) => Some(&impl_item.generics),
             Node::TraitItem(ref trait_item) => Some(&trait_item.generics),

@@ -694,7 +694,7 @@ pub fn object_region_bounds<'tcx>(
 
 /// Find the span of a generic bound affecting an associated type.
 fn get_generic_bound_spans(
-    generics: &hir::Generics,
+    generics: &hir::Generics<'_>,
     trait_name: Option<&Ident>,
     assoc_item_name: Ident,
 ) -> Vec<Span> {
@@ -729,7 +729,7 @@ fn get_generic_bound_spans(
     bounds
 }
 
-fn is_self_path(kind: &hir::TyKind) -> bool {
+fn is_self_path(kind: &hir::TyKind<'_>) -> bool {
     match kind {
         hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
             let mut s = path.segments.iter();

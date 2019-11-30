@@ -401,7 +401,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_generic_param(&mut self, param: &'hir GenericParam) {
+    fn visit_generic_param(&mut self, param: &'hir GenericParam<'hir>) {
         self.insert(param.span, param.hir_id, Node::GenericParam(param));
         intravisit::walk_generic_param(self, param);
     }
@@ -478,14 +478,14 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment) {
+    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment<'hir>) {
         if let Some(hir_id) = path_segment.hir_id {
             self.insert(path_span, hir_id, Node::PathSegment(path_segment));
         }
         intravisit::walk_path_segment(self, path_span, path_segment);
     }
 
-    fn visit_ty(&mut self, ty: &'hir Ty) {
+    fn visit_ty(&mut self, ty: &'hir Ty<'hir>) {
         self.insert(ty.span, ty.hir_id, Node::Ty(ty));
 
         self.with_parent(ty.hir_id, |this| {
@@ -493,7 +493,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_trait_ref(&mut self, tr: &'hir TraitRef) {
+    fn visit_trait_ref(&mut self, tr: &'hir TraitRef<'hir>) {
         self.insert(tr.path.span, tr.hir_ref_id, Node::TraitRef(tr));
 
         self.with_parent(tr.hir_ref_id, |this| {
@@ -504,7 +504,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_fn(
         &mut self,
         fk: intravisit::FnKind<'hir>,
-        fd: &'hir FnDecl,
+        fd: &'hir FnDecl<'hir>,
         b: BodyId,
         s: Span,
         id: HirId,
@@ -529,7 +529,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.insert(lifetime.span, lifetime.hir_id, Node::Lifetime(lifetime));
     }
 
-    fn visit_vis(&mut self, visibility: &'hir Visibility) {
+    fn visit_vis(&mut self, visibility: &'hir Visibility<'hir>) {
         match visibility.node {
             VisibilityKind::Public | VisibilityKind::Crate(_) | VisibilityKind::Inherited => {}
             VisibilityKind::Restricted { hir_id, .. } => {
@@ -550,7 +550,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics, item_id: HirId) {
+    fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics<'hir>, item_id: HirId) {
         self.insert(v.span, v.id, Node::Variant(v));
         self.with_parent(v.id, |this| {
             // Register the constructor of this variant.
@@ -576,7 +576,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         self.visit_nested_trait_item(id);
     }
 
-    fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) {
+    fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef<'hir>) {
         // Do not visit the duplicate information in ImplItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
         let ImplItemRef { id, ident: _, kind: _, span: _, vis: _, defaultness: _ } = *ii;

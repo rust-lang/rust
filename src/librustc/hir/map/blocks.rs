@@ -109,10 +109,10 @@ impl<'a> Code<'a> {
 /// use when implementing FnLikeNode operations.
 struct ItemFnParts<'a> {
     ident: Ident,
-    decl: &'a ast::FnDecl,
+    decl: &'a ast::FnDecl<'a>,
     header: ast::FnHeader,
-    vis: &'a ast::Visibility,
-    generics: &'a ast::Generics,
+    vis: &'a ast::Visibility<'a>,
+    generics: &'a ast::Generics<'a>,
     body: ast::BodyId,
     id: ast::HirId,
     span: Span,
@@ -122,7 +122,7 @@ struct ItemFnParts<'a> {
 /// These are all the components one can extract from a closure expr
 /// for use when implementing FnLikeNode operations.
 struct ClosureParts<'a> {
-    decl: &'a FnDecl,
+    decl: &'a FnDecl<'a>,
     body: ast::BodyId,
     id: ast::HirId,
     span: Span,
@@ -130,7 +130,13 @@ struct ClosureParts<'a> {
 }
 
 impl<'a> ClosureParts<'a> {
-    fn new(d: &'a FnDecl, b: ast::BodyId, id: ast::HirId, s: Span, attrs: &'a [Attribute]) -> Self {
+    fn new(
+        d: &'a FnDecl<'a>,
+        b: ast::BodyId,
+        id: ast::HirId,
+        s: Span,
+        attrs: &'a [Attribute],
+    ) -> Self {
         ClosureParts { decl: d, body: b, id, span: s, attrs }
     }
 }
@@ -156,7 +162,7 @@ impl<'a> FnLikeNode<'a> {
         )
     }
 
-    pub fn decl(self) -> &'a FnDecl {
+    pub fn decl(self) -> &'a FnDecl<'a> {
         self.handle(
             |i: ItemFnParts<'a>| &*i.decl,
             |_, _, sig: &'a ast::FnSig<'a>, _, _, _, _| &sig.decl,
@@ -210,7 +216,7 @@ impl<'a> FnLikeNode<'a> {
             ast::HirId,
             Ident,
             &'a ast::FnSig<'a>,
-            Option<&'a ast::Visibility>,
+            Option<&'a ast::Visibility<'a>>,
             ast::BodyId,
             Span,
             &'a [Attribute],

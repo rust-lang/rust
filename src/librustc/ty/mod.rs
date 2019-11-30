@@ -298,7 +298,7 @@ impl<'tcx> DefIdTree for TyCtxt<'tcx> {
 }
 
 impl Visibility {
-    pub fn from_hir(visibility: &hir::Visibility, id: hir::HirId, tcx: TyCtxt<'_>) -> Self {
+    pub fn from_hir(visibility: &hir::Visibility<'_>, id: hir::HirId, tcx: TyCtxt<'_>) -> Self {
         match visibility.node {
             hir::VisibilityKind::Public => Visibility::Public,
             hir::VisibilityKind::Crate(_) => Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)),
@@ -2757,7 +2757,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn associated_item_from_trait_item_ref(
         self,
         parent_def_id: DefId,
-        parent_vis: &hir::Visibility,
+        parent_vis: &hir::Visibility<'_>,
         trait_item_ref: &hir::TraitItemRef,
     ) -> AssocItem {
         let def_id = self.hir().local_def_id(trait_item_ref.id.hir_id);
@@ -2783,7 +2783,7 @@ impl<'tcx> TyCtxt<'tcx> {
     fn associated_item_from_impl_item_ref(
         self,
         parent_def_id: DefId,
-        impl_item_ref: &hir::ImplItemRef,
+        impl_item_ref: &hir::ImplItemRef<'_>,
     ) -> AssocItem {
         let def_id = self.hir().local_def_id(impl_item_ref.id.hir_id);
         let (kind, has_self) = match impl_item_ref.kind {

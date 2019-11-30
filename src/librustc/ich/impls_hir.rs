@@ -106,7 +106,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::Ty<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         hcx.while_hashing_hir_bodies(true, |hcx| {
             let hir::Ty { hir_id: _, ref kind, ref span } = *self;
@@ -168,7 +168,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItem<'_> {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind {
+impl<'a> HashStable<StableHashingContext<'a>> for hir::VisibilityKind<'_> {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
         mem::discriminant(self).hash_stable(hcx, hasher);
         match *self {

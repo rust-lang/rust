@@ -44,7 +44,7 @@ pub enum LifetimeDefOrigin {
 }
 
 impl LifetimeDefOrigin {
-    fn from_param(param: &GenericParam) -> Self {
+    fn from_param(param: &GenericParam<'_>) -> Self {
         match param.kind {
             GenericParamKind::Lifetime { kind } => match kind {
                 LifetimeParamKind::InBand => LifetimeDefOrigin::InBand,
@@ -74,7 +74,7 @@ pub enum Region {
 }
 
 impl Region {
-    fn early(hir_map: &Map<'_>, index: &mut u32, param: &GenericParam) -> (ParamName, Region) {
+    fn early(hir_map: &Map<'_>, index: &mut u32, param: &GenericParam<'_>) -> (ParamName, Region) {
         let i = *index;
         *index += 1;
         let def_id = hir_map.local_def_id(param.hir_id);
@@ -83,7 +83,7 @@ impl Region {
         (param.name.modern(), Region::EarlyBound(i, def_id, origin))
     }
 
-    fn late(hir_map: &Map<'_>, param: &GenericParam) -> (ParamName, Region) {
+    fn late(hir_map: &Map<'_>, param: &GenericParam<'_>) -> (ParamName, Region) {
         let depth = ty::INNERMOST;
         let def_id = hir_map.local_def_id(param.hir_id);
         let origin = LifetimeDefOrigin::from_param(param);
@@ -517,7 +517,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+    fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
         debug!("visit_ty: id={:?} ty={:?}", ty.hir_id, ty);
         debug!("visit_ty: ty.kind={:?}", ty.kind);
         match ty.kind {
@@ -881,7 +881,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         self.resolve_lifetime_ref(lifetime_ref);
     }
 
-    fn visit_path(&mut self, path: &'tcx hir::Path, _: hir::HirId) {
+    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
             if let Some(ref args) = segment.args {
@@ -890,7 +890,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl) {
+    fn visit_fn_decl(&mut self, fd: &'tcx hir::FnDecl<'tcx>) {
         let output = match fd.output {
             hir::DefaultReturn(_) => None,
             hir::Return(ref ty) => Some(&**ty),
@@ -898,7 +898,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
         self.visit_fn_like_elision(&fd.inputs, output);
     }
 
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         check_mixed_explicit_and_in_band_defs(self.tcx, &generics.params);
         for param in &generics.params {
             match param.kind {
@@ -976,7 +976,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
 
     fn visit_poly_trait_ref(
         &mut self,
-        trait_ref: &'tcx hir::PolyTraitRef,
+        trait_ref: &'tcx hir::PolyTraitRef<'tcx>,
         _modifier: hir::TraitBoundModifier,
     ) {
         debug!("visit_poly_trait_ref(trait_ref={:?})", trait_ref);
@@ -1046,7 +1046,7 @@ fn shadower_label(span: Span) -> Shadower {
 fn original_lifetime(span: Span) -> Original {
     Original { kind: ShadowKind::Lifetime, span: span }
 }
-fn shadower_lifetime(param: &hir::GenericParam) -> Shadower {
+fn shadower_lifetime(param: &hir::GenericParam<'_>) -> Shadower {
     Shadower { kind: ShadowKind::Lifetime, span: param.span }
 }
 
@@ -1059,7 +1059,7 @@ impl ShadowKind {
     }
 }
 
-fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &P<[hir::GenericParam]>) {
+fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &P<[hir::GenericParam<'_>]>) {
     let lifetime_params: Vec<_> = params
         .iter()
         .filter_map(|param| match param.kind {
@@ -1252,9 +1252,9 @@ fn compute_object_lifetime_defaults(tcx: TyCtxt<'_>) -> HirIdMap<Vec<ObjectLifet
 /// for each type parameter.
 fn object_lifetime_defaults_for_item(
     tcx: TyCtxt<'_>,
-    generics: &hir::Generics,
+    generics: &hir::Generics<'_>,
 ) -> Vec<ObjectLifetimeDefault> {
-    fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound]) {
+    fn add_bounds(set: &mut Set1<hir::LifetimeName>, bounds: &[hir::GenericBound<'_>]) {
         for bound in bounds {
             if let hir::GenericBound::Outlives(ref lifetime) = *bound {
                 set.insert(lifetime.name.modern());
@@ -1368,7 +1368,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
     /// helper method to determine the span to remove when suggesting the
     /// deletion of a lifetime
-    fn lifetime_deletion_span(&self, name: ast::Ident, generics: &hir::Generics) -> Option<Span> {
+    fn lifetime_deletion_span(
+        &self,
+        name: ast::Ident,
+        generics: &hir::Generics<'_>,
+    ) -> Option<Span> {
         generics.params.iter().enumerate().find_map(|(i, param)| {
             if param.name.ident() == name {
                 let mut in_band = false;
@@ -1417,7 +1421,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         let mut remove_use = None;
         let mut elide_use = None;
-        let mut find_arg_use_span = |inputs: &hir::HirVec<hir::Ty>| {
+        let mut find_arg_use_span = |inputs: &hir::HirVec<hir::Ty<'_>>| {
             for input in inputs {
                 match input.kind {
                     hir::TyKind::Rptr(lt, _) => {
@@ -1656,8 +1660,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn visit_early_late<F>(
         &mut self,
         parent_id: Option<hir::HirId>,
-        decl: &'tcx hir::FnDecl,
-        generics: &'tcx hir::Generics,
+        decl: &'tcx hir::FnDecl<'tcx>,
+        generics: &'tcx hir::Generics<'tcx>,
         walk: F,
     ) where
         F: for<'b, 'c> FnOnce(&'b mut LifetimeContext<'c, 'tcx>),
@@ -1854,7 +1858,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_segment_args(&mut self, res: Res, depth: usize, generic_args: &'tcx hir::GenericArgs) {
+    fn visit_segment_args(
+        &mut self,
+        res: Res,
+        depth: usize,
+        generic_args: &'tcx hir::GenericArgs<'tcx>,
+    ) {
         debug!(
             "visit_segment_args(res={:?}, depth={:?}, generic_args={:?})",
             res, depth, generic_args,
@@ -2045,7 +2054,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         }
     }
 
-    fn visit_fn_like_elision(&mut self, inputs: &'tcx [hir::Ty], output: Option<&'tcx hir::Ty>) {
+    fn visit_fn_like_elision(
+        &mut self,
+        inputs: &'tcx [hir::Ty<'tcx>],
+        output: Option<&'tcx hir::Ty<'tcx>>,
+    ) {
         debug!("visit_fn_like_elision: enter");
         let mut arg_elide = Elide::FreshLateAnon(Cell::new(0));
         let arg_scope = Scope::Elision { elide: arg_elide.clone(), s: self.scope };
@@ -2125,7 +2138,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         if has_self {
             struct SelfVisitor<'a> {
                 map: &'a NamedRegionMap,
-                impl_self: Option<&'a hir::TyKind>,
+                impl_self: Option<&'a hir::TyKind<'a>>,
                 lifetime: Set1<Region>,
             }
 
@@ -2163,7 +2176,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     NestedVisitorMap::None
                 }
 
-                fn visit_ty(&mut self, ty: &'a hir::Ty) {
+                fn visit_ty(&mut self, ty: &'a hir::Ty<'a>) {
                     if let hir::TyKind::Rptr(lifetime_ref, ref mt) = ty.kind {
                         if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = mt.ty.kind
                         {
@@ -2251,7 +2264,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 NestedVisitorMap::None
             }
 
-            fn visit_ty(&mut self, ty: &hir::Ty) {
+            fn visit_ty(&mut self, ty: &hir::Ty<'_>) {
                 if let hir::TyKind::BareFn(_) = ty.kind {
                     self.outer_index.shift_in(1);
                 }
@@ -2276,7 +2289,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
             }
 
-            fn visit_generic_param(&mut self, param: &hir::GenericParam) {
+            fn visit_generic_param(&mut self, param: &hir::GenericParam<'_>) {
                 if let hir::GenericParamKind::Lifetime { .. } = param.kind {
                     // FIXME(eddyb) Do we want this? It only makes a difference
                     // if this `for<'a>` lifetime parameter is never used.
@@ -2288,7 +2301,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
             fn visit_poly_trait_ref(
                 &mut self,
-                trait_ref: &hir::PolyTraitRef,
+                trait_ref: &hir::PolyTraitRef<'_>,
                 modifier: hir::TraitBoundModifier,
             ) {
                 self.outer_index.shift_in(1);
@@ -2523,7 +2536,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn check_lifetime_params(
         &mut self,
         old_scope: ScopeRef<'_>,
-        params: &'tcx [hir::GenericParam],
+        params: &'tcx [hir::GenericParam<'tcx>],
     ) {
         let lifetimes: Vec<_> = params
             .iter()
@@ -2617,7 +2630,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn check_lifetime_param_for_shadowing(
         &self,
         mut old_scope: ScopeRef<'_>,
-        param: &'tcx hir::GenericParam,
+        param: &'tcx hir::GenericParam<'tcx>,
     ) {
         for label in &self.labels_in_fn {
             // FIXME (#24278): non-hygienic comparison
@@ -2755,8 +2768,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 /// T as Trait<''b>>::Foo` does not constrain `'a` or `'b`.
 fn insert_late_bound_lifetimes(
     map: &mut NamedRegionMap,
-    decl: &hir::FnDecl,
-    generics: &hir::Generics,
+    decl: &hir::FnDecl<'_>,
+    generics: &hir::Generics<'_>,
 ) {
     debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
 
@@ -2840,7 +2853,7 @@ fn insert_late_bound_lifetimes(
             NestedVisitorMap::None
         }
 
-        fn visit_ty(&mut self, ty: &'v hir::Ty) {
+        fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
             match ty.kind {
                 hir::TyKind::Path(hir::QPath::Resolved(Some(_), _))
                 | hir::TyKind::Path(hir::QPath::TypeRelative(..)) => {

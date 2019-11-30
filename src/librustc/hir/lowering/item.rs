@@ -258,7 +258,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         ident: &mut Ident,
         attrs: &'hir [Attribute],
-        vis: &mut hir::Visibility,
+        vis: &mut hir::Visibility<'hir>,
         i: &ItemKind,
     ) -> hir::ItemKind<'hir> {
         match *i {
@@ -466,7 +466,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         tree: &UseTree,
         prefix: &Path,
         id: NodeId,
-        vis: &mut hir::Visibility,
+        vis: &mut hir::Visibility<'hir>,
         ident: &mut Ident,
         attrs: &'hir [Attribute],
     ) -> hir::ItemKind<'hir> {
@@ -635,7 +635,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
     /// many times in the HIR tree; for each occurrence, we need to assign distinct
     /// `NodeId`s. (See, e.g., #56128.)
-    fn rebuild_use_path(&mut self, path: &hir::Path) -> hir::Path {
+    fn rebuild_use_path(&mut self, path: &hir::Path<'hir>) -> hir::Path<'hir> {
         debug!("rebuild_use_path(path = {:?})", path);
         let segments = path
             .segments
@@ -651,7 +651,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::Path { span: path.span, res: path.res, segments }
     }
 
-    fn rebuild_vis(&mut self, vis: &hir::Visibility) -> hir::Visibility {
+    fn rebuild_vis(&mut self, vis: &hir::Visibility<'hir>) -> hir::Visibility<'hir> {
         let vis_kind = match vis.node {
             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
             hir::VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
@@ -918,7 +918,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // [1] since `default impl` is not yet implemented, this is always true in impls
     }
 
-    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef {
+    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef<'hir> {
         hir::ImplItemRef {
             id: hir::ImplItemId { hir_id: self.lower_node_id(i.id) },
             ident: i.ident,
@@ -952,7 +952,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         v: &Visibility,
         explicit_owner: Option<NodeId>,
-    ) -> hir::Visibility {
+    ) -> hir::Visibility<'hir> {
         let node = match v.node {
             VisibilityKind::Public => hir::VisibilityKind::Public,
             VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
@@ -1255,7 +1255,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
-    ) -> (hir::Generics, hir::FnSig<'hir>) {
+    ) -> (hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let (generics, decl) = self.add_in_band_defs(
             generics,
@@ -1316,7 +1316,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         generics: &Generics,
         itctx: ImplTraitContext<'_>,
-    ) -> hir::Generics {
+    ) -> hir::Generics<'hir> {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
         // FIXME: this could probably be done with less rightward drift. It also looks like two
         // control paths where `report_error` is called are the only paths that advance to after the
@@ -1379,7 +1379,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    fn lower_where_clause(&mut self, wc: &WhereClause) -> hir::WhereClause {
+    fn lower_where_clause(&mut self, wc: &WhereClause) -> hir::WhereClause<'hir> {
         self.with_anonymous_lifetime_mode(AnonymousLifetimeMode::ReportError, |this| {
             hir::WhereClause {
                 predicates: wc
@@ -1392,7 +1392,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         })
     }
 
-    fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate {
+    fn lower_where_predicate(&mut self, pred: &WherePredicate) -> hir::WherePredicate<'hir> {
         match *pred {
             WherePredicate::BoundPredicate(WhereBoundPredicate {
                 ref bound_generic_params,
