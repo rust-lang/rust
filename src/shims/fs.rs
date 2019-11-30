@@ -1,12 +1,16 @@
 use std::collections::HashMap;
-use std::convert::TryFrom;
+use std::convert::{TryInto, TryFrom};
 use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Write};
+use std::path::PathBuf;
+use std::time::SystemTime;
 
-use rustc::ty::layout::{Size, Align};
+use rustc::ty::layout::{Size, Align, LayoutOf};
 
 use crate::stacked_borrows::Tag;
 use crate::*;
+use helpers::immty_from_uint_checked;
+use shims::time::system_time_to_duration;
 
 #[derive(Debug)]
 pub struct FileHandle {
@@ -98,7 +102,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
-        let fd = options.open(path).map(|file| {
+        let fd = options.open(&path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
             fh.low += 1;
             fh.handles.insert(fh.low, FileHandle { file }).unwrap_none();
@@ -257,6 +261,181 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         this.try_unwrap_io_result(result)
     }
 
+    fn statx(
+        &mut self,
+        dirfd_op: OpTy<'tcx, Tag>, // Should be an `int`
+        pathname_op: OpTy<'tcx, Tag>, // Should be a `const char *`
+        flags_op: OpTy<'tcx, Tag>, // Should be an `int`
+        _mask_op: OpTy<'tcx, Tag>, // Should be an `unsigned int`
+        statxbuf_op: OpTy<'tcx, Tag> // Should be a `struct statx *`
+    ) -> InterpResult<'tcx, i32> {
+        let this = self.eval_context_mut();
+
+        this.check_no_isolation("statx")?;
+
+        let statxbuf_scalar = this.read_scalar(statxbuf_op)?.not_undef()?;
+        let pathname_scalar = this.read_scalar(pathname_op)?.not_undef()?;
+
+        // If the statxbuf or pathname pointers are null, the function fails with `EFAULT`.
+        if this.is_null(statxbuf_scalar)? || this.is_null(pathname_scalar)? {
+            let efault = this.eval_libc("EFAULT")?;
+            this.set_last_error(efault)?;
+            return Ok(-1);
+        }
+
+        // Under normal circumstances, we would use `deref_operand(statxbuf_op)` to produce a
+        // proper `MemPlace` and then write the results of this function to it. However, the
+        // `syscall` function is untyped. This means that all the `statx` parameters are provided
+        // as `isize`s instead of having the proper types. Thus, we have to recover the layout of
+        // `statxbuf_op` by using the `libc::statx` struct type.
+        let statxbuf_place = {
+            // FIXME: This long path is required because `libc::statx` is an struct and also a
+            // function and `resolve_path` is returning the latter.
+            let statx_ty = this
+                .resolve_path(&["libc", "unix", "linux_like", "linux", "gnu", "statx"])?
+                .ty(*this.tcx);
+            let statxbuf_ty = this.tcx.mk_mut_ptr(statx_ty);
+            let statxbuf_layout = this.layout_of(statxbuf_ty)?;
+            let statxbuf_imm = ImmTy::from_scalar(statxbuf_scalar, statxbuf_layout);
+            this.ref_to_mplace(statxbuf_imm)?
+        };
+
+        let path: PathBuf = this.read_os_str_from_c_str(pathname_scalar)?.into();
+        // `flags` should be a `c_int` but the `syscall` function provides an `isize`.
+        let flags: i32 = this
+            .read_scalar(flags_op)?
+            .to_machine_isize(&*this.tcx)?
+            .try_into()
+            .map_err(|e| err_unsup_format!(
+                "Failed to convert pointer sized operand to integer: {}",
+                e
+            ))?;
+        // `dirfd` should be a `c_int` but the `syscall` function provides an `isize`.
+        let dirfd: i32 = this
+            .read_scalar(dirfd_op)?
+            .to_machine_isize(&*this.tcx)?
+            .try_into()
+            .map_err(|e| err_unsup_format!(
+                "Failed to convert pointer sized operand to integer: {}",
+                e
+            ))?;
+        // we only support interpreting `path` as an absolute directory or as a directory relative
+        // to `dirfd` when the latter is `AT_FDCWD`. The behavior of `statx` with a relative path
+        // and a directory file descriptor other than `AT_FDCWD` is specified but it cannot be
+        // tested from `libstd`. If you found this error, please open an issue reporting it.
+        if !(path.is_absolute() || dirfd == this.eval_libc_i32("AT_FDCWD")?)
+        {
+            throw_unsup_format!(
+                "Using statx with a relative path and a file descriptor different from `AT_FDCWD` is not supported"
+            )
+        }
+
+        // the `_mask_op` paramter specifies the file information that the caller requested.
+        // However `statx` is allowed to return information that was not requested or to not
+        // return information that was requested. This `mask` represents the information we can
+        // actually provide in any host platform.
+        let mut mask =
+            this.eval_libc("STATX_TYPE")?.to_u32()? | this.eval_libc("STATX_SIZE")?.to_u32()?;
+
+        // If the `AT_SYMLINK_NOFOLLOW` flag is set, we query the file's metadata without following
+        // symbolic links.
+        let metadata = if flags & this.eval_libc("AT_SYMLINK_NOFOLLOW")?.to_i32()? != 0 {
+            // FIXME: metadata for symlinks need testing.
+            std::fs::symlink_metadata(path)
+        } else {
+            std::fs::metadata(path)
+        };
+
+        let metadata = match metadata {
+            Ok(metadata) => metadata,
+            Err(e) => {
+                this.set_last_error_from_io_error(e)?;
+                return Ok(-1);
+            }
+        };
+
+        let file_type = metadata.file_type();
+
+        let mode_name = if file_type.is_file() {
+            "S_IFREG"
+        } else if file_type.is_dir() {
+            "S_IFDIR"
+        } else {
+            "S_IFLNK"
+        };
+
+        // The `mode` field specifies the type of the file and the permissions over the file for
+        // the owner, its group and other users. Given that we can only provide the file type
+        // without using platform specific methods, we only set the bits corresponding to the file
+        // type. This should be an `__u16` but `libc` provides its values as `u32`.
+        let mode: u16 = this.eval_libc(mode_name)?
+                .to_u32()?
+                .try_into()
+                .unwrap_or_else(|_| bug!("libc contains bad value for `{}` constant", mode_name));
+
+        let size = metadata.len();
+
+        let (access_sec, access_nsec) = extract_sec_and_nsec(
+            metadata.accessed(),
+            &mut mask,
+            this.eval_libc("STATX_ATIME")?.to_u32()?
+        )?;
+
+        let (created_sec, created_nsec) = extract_sec_and_nsec(
+            metadata.created(),
+            &mut mask,
+            this.eval_libc("STATX_BTIME")?.to_u32()?
+        )?;
+
+        let (modified_sec, modified_nsec) = extract_sec_and_nsec(
+            metadata.modified(),
+            &mut mask,
+            this.eval_libc("STATX_MTIME")?.to_u32()?
+        )?;
+
+        let __u32_layout = this.libc_ty_layout("__u32")?;
+        let __u64_layout = this.libc_ty_layout("__u64")?;
+        let __u16_layout = this.libc_ty_layout("__u16")?;
+
+        // Now we transform all this fields into `ImmTy`s and write them to `statxbuf`. We write a
+        // zero for the unavailable fields.
+        // FIXME: Provide more fields using platform specific methods.
+        let imms = [
+            immty_from_uint_checked(mask, __u32_layout)?,  // stx_mask
+            immty_from_uint_checked(0u128, __u32_layout)?, // stx_blksize
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_attributes
+            immty_from_uint_checked(0u128, __u32_layout)?, // stx_nlink
+            immty_from_uint_checked(0u128, __u32_layout)?, // stx_uid
+            immty_from_uint_checked(0u128, __u32_layout)?, // stx_gid
+            immty_from_uint_checked(mode, __u16_layout)?,  // stx_mode
+            immty_from_uint_checked(0u128, __u16_layout)?, // statx padding
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_ino
+            immty_from_uint_checked(size, __u64_layout)?,  // stx_size
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_blocks
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_attributes
+            immty_from_uint_checked(access_sec, __u64_layout)?, // stx_atime.tv_sec
+            immty_from_uint_checked(access_nsec, __u32_layout)?, // stx_atime.tv_nsec
+            immty_from_uint_checked(0u128, __u32_layout)?, // statx_timestamp padding
+            immty_from_uint_checked(created_sec, __u64_layout)?, // stx_btime.tv_sec
+            immty_from_uint_checked(created_nsec, __u32_layout)?, // stx_btime.tv_nsec
+            immty_from_uint_checked(0u128, __u32_layout)?, // statx_timestamp padding
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_ctime.tv_sec
+            immty_from_uint_checked(0u128, __u32_layout)?, // stx_ctime.tv_nsec
+            immty_from_uint_checked(0u128, __u32_layout)?, // statx_timestamp padding
+            immty_from_uint_checked(modified_sec, __u64_layout)?, // stx_mtime.tv_sec
+            immty_from_uint_checked(modified_nsec, __u32_layout)?, // stx_mtime.tv_nsec
+            immty_from_uint_checked(0u128, __u32_layout)?, // statx_timestamp padding
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_rdev_major
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_rdev_minor
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_dev_major
+            immty_from_uint_checked(0u128, __u64_layout)?, // stx_dev_minor
+        ];
+
+        this.write_packed_immediates(&statxbuf_place, &imms)?;
+
+        Ok(0)
+    }
+
     /// Function used when a handle is not found inside `FileHandler`. It returns `Ok(-1)`and sets
     /// the last OS error to `libc::EBADF` (invalid file descriptor). This function uses
     /// `T: From<i32>` instead of `i32` directly because some fs functions return different integer
@@ -266,5 +445,18 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let ebadf = this.eval_libc("EBADF")?;
         this.set_last_error(ebadf)?;
         Ok((-1).into())
+    }
+}
+
+// Extracts the number of seconds and nanoseconds elapsed between `time` and the unix epoch, and
+// then sets the `mask` bits determined by `flag` when `time` is Ok. If `time` is an error, it
+// returns `(0, 0)` without setting any bits.
+fn extract_sec_and_nsec<'tcx>(time: std::io::Result<SystemTime>, mask: &mut u32, flag: u32) -> InterpResult<'tcx, (u64, u32)> {
+    if let Ok(time) = time {
+        let duration = system_time_to_duration(&time)?;
+        *mask |= flag;
+        Ok((duration.as_secs(), duration.subsec_nanos()))
+    } else {
+        Ok((0, 0))
     }
 }

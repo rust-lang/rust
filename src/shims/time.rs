@@ -1,34 +1,19 @@
 use std::time::{Duration, SystemTime};
 
-use rustc::ty::layout::TyLayout;
-
 use crate::stacked_borrows::Tag;
 use crate::*;
+use helpers::immty_from_int_checked;
 
-// Returns the time elapsed between now and the unix epoch as a `Duration` and the sign of the time
-// interval
+// Returns the time elapsed between now and the unix epoch as a `Duration`.
 fn get_time<'tcx>() -> InterpResult<'tcx, Duration> {
-    SystemTime::now()
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .map_err(|_| err_unsup_format!("Times before the Unix epoch are not supported").into())
+    system_time_to_duration(&SystemTime::now())
 }
 
-fn int_to_immty_checked<'tcx>(
-    int: i128,
-    layout: TyLayout<'tcx>,
-) -> InterpResult<'tcx, ImmTy<'tcx, Tag>> {
-    // If `int` does not fit in `size` bits, we error instead of letting
-    // `ImmTy::from_int` panic.
-    let size = layout.size;
-    let truncated = truncate(int as u128, size);
-    if sign_extend(truncated, size) as i128 != int {
-        throw_unsup_format!(
-            "Signed value {:#x} does not fit in {} bits",
-            int,
-            size.bits()
-        )
-    }
-    Ok(ImmTy::from_int(int, layout))
+// Returns the time elapsed between the provided time and the unix epoch as a `Duration`.
+pub fn system_time_to_duration<'tcx>(time: &SystemTime) -> InterpResult<'tcx, Duration> {
+    time
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map_err(|_| err_unsup_format!("Times before the Unix epoch are not supported").into())
 }
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
@@ -57,8 +42,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tv_nsec = duration.subsec_nanos() as i128;
 
         let imms = [
-            int_to_immty_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
-            int_to_immty_checked(tv_nsec, this.libc_ty_layout("c_long")?)?,
+            immty_from_int_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
+            immty_from_int_checked(tv_nsec, this.libc_ty_layout("c_long")?)?,
         ];
 
         this.write_packed_immediates(&tp, &imms)?;
@@ -89,8 +74,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let tv_usec = duration.subsec_micros() as i128;
 
         let imms = [
-            int_to_immty_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
-            int_to_immty_checked(tv_usec, this.libc_ty_layout("suseconds_t")?)?,
+            immty_from_int_checked(tv_sec, this.libc_ty_layout("time_t")?)?,
+            immty_from_int_checked(tv_usec, this.libc_ty_layout("suseconds_t")?)?,
         ];
 
         this.write_packed_immediates(&tv, &imms)?;

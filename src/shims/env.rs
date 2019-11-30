@@ -20,8 +20,12 @@ impl EnvVars {
         ecx: &mut InterpCx<'mir, 'tcx, Evaluator<'tcx>>,
         mut excluded_env_vars: Vec<String>,
     ) {
-        // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
-        excluded_env_vars.push("TERM".to_owned());
+
+        // FIXME: this can be removed when we have the `stat64` shim for macos.
+        if ecx.tcx.sess.target.target.target_os.to_lowercase() != "linux" {
+            // Exclude `TERM` var to avoid terminfo trying to open the termcap file.
+            excluded_env_vars.push("TERM".to_owned());
+        }
 
         if ecx.machine.communicate {
             for (name, value) in env::vars() {

@@ -303,13 +303,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .expect("Failed to get libc::SYS_getrandom")
                     .to_machine_usize(this)?;
 
-                // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
-                // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
+                let sys_statx = this
+                    .eval_path_scalar(&["libc", "SYS_statx"])?
+                    .expect("Failed to get libc::SYS_statx")
+                    .to_machine_usize(this)?;
+
                 match this.read_scalar(args[0])?.to_machine_usize(this)? {
+                    // `libc::syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), GRND_NONBLOCK)`
+                    // is called if a `HashMap` is created the regular way (e.g. HashMap<K, V>).
                     id if id == sys_getrandom => {
                         // The first argument is the syscall id,
                         // so skip over it.
                         linux_getrandom(this, &args[1..], dest)?;
+                    }
+                    id if id == sys_statx => {
+                        // The first argument is the syscall id,
+                        // so skip over it.
+                        let result = this.statx(args[1], args[2], args[3], args[4], args[5])?;
+                        this.write_scalar(Scalar::from_int(result, dest.layout.size), dest)?;
                     }
                     id => throw_unsup_format!("miri does not support syscall ID {}", id),
                 }
