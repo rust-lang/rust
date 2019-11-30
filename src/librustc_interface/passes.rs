@@ -106,8 +106,7 @@ declare_box_region_type!(
     (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
 );
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing,
-/// loading compiler plugins (including those from `addl_plugins`),
+/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
@@ -210,12 +209,7 @@ pub fn register_plugins<'a>(
     });
 
     let registrars = time(sess, "plugin loading", || {
-        plugin::load::load_plugins(
-            sess,
-            metadata_loader,
-            &krate,
-            Some(sess.opts.debugging_opts.extra_plugins.clone()),
-        )
+        plugin::load::load_plugins(sess, metadata_loader, &krate)
     });
 
     let mut lint_store = rustc_lint::new_lint_store(

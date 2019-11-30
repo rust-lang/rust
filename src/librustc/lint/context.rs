@@ -47,8 +47,7 @@ use rustc_error_codes::*;
 /// This is basically the subset of `Context` that we can
 /// build early in the compile pipeline.
 pub struct LintStore {
-    /// Registered lints. The bool is true if the lint was
-    /// added by a plugin.
+    /// Registered lints.
     lints: Vec<&'static Lint>,
 
     /// Constructor functions for each variety of lint pass.

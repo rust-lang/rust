@@ -28,10 +28,8 @@ fn call_malformed_plugin_attribute(sess: &Session, span: Span) {
 /// Read plugin metadata and dynamically load registrar functions.
 pub fn load_plugins(sess: &Session,
                     metadata_loader: &dyn MetadataLoader,
-                    krate: &Crate,
-                    addl_plugins: Option<Vec<String>>) -> Vec<PluginRegistrarFn> {
+                    krate: &Crate) -> Vec<PluginRegistrarFn> {
     let mut plugins = Vec::new();
-    let mut load_plugin = |ident| load_plugin(&mut plugins, sess, metadata_loader, ident);
 
     for attr in &krate.attrs {
         if !attr.check_name(sym::plugin) {
@@ -40,14 +38,11 @@ pub fn load_plugins(sess: &Session,
 
         for plugin in attr.meta_item_list().unwrap_or_default() {
             match plugin.ident() {
-                Some(ident) if plugin.is_word() => load_plugin(ident),
+                Some(ident) if plugin.is_word() =>
+                    load_plugin(&mut plugins, sess, metadata_loader, ident),
                 _ => call_malformed_plugin_attribute(sess, plugin.span()),
             }
         }
-    }
-
-    for plugin in addl_plugins.unwrap_or_default() {
-        load_plugin(Ident::from_str(&plugin));
     }
 
     plugins
