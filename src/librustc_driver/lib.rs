@@ -62,9 +62,9 @@ use std::time::Instant;
 
 use syntax::ast;
 use syntax::source_map::FileLoader;
-use syntax::feature_gate::{GatedCfg, UnstableFeatures};
-use syntax::symbol::sym;
-use syntax_pos::{DUMMY_SP, FileName};
+use syntax::feature_gate::{find_gated_cfg, UnstableFeatures};
+use syntax_pos::symbol::sym;
+use syntax_pos::FileName;
 
 pub mod pretty;
 mod args;
@@ -677,12 +677,6 @@ impl RustcDefaultCalls {
                         .is_nightly_build();
 
                     let mut cfgs = sess.parse_sess.config.iter().filter_map(|&(name, ref value)| {
-                        let gated_cfg = GatedCfg::gate(&ast::MetaItem {
-                            path: ast::Path::from_ident(ast::Ident::with_dummy_span(name)),
-                            kind: ast::MetaItemKind::Word,
-                            span: DUMMY_SP,
-                        });
-
                         // Note that crt-static is a specially recognized cfg
                         // directive that's printed out here as part of
                         // rust-lang/rust#37406, but in general the
@@ -693,10 +687,11 @@ impl RustcDefaultCalls {
                         // through to build scripts.
                         let value = value.as_ref().map(|s| s.as_str());
                         let value = value.as_ref().map(|s| s.as_ref());
-                        if name != sym::target_feature || value != Some("crt-static") {
-                            if !allow_unstable_cfg && gated_cfg.is_some() {
-                                return None
-                            }
+                        if (name != sym::target_feature || value != Some("crt-static"))
+                            && !allow_unstable_cfg
+                            && find_gated_cfg(|cfg_sym| cfg_sym == name).is_some()
+                        {
+                            return None;
                         }
 
                         if let Some(value) = value {

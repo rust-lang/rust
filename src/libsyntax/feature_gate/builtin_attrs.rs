@@ -3,18 +3,14 @@
 use AttributeType::*;
 use AttributeGate::*;
 
-use super::check::{emit_feature_err, GateIssue};
 use super::check::{EXPLAIN_ALLOW_INTERNAL_UNSAFE, EXPLAIN_ALLOW_INTERNAL_UNSTABLE};
 use rustc_feature::{Features, Stability};
 
 use crate::ast;
-use crate::sess::ParseSess;
 
 use syntax_pos::symbol::{Symbol, sym};
-use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
 use lazy_static::lazy_static;
-
 
 type GateFn = fn(&Features) -> bool;
 
@@ -24,39 +20,19 @@ macro_rules! cfg_fn {
     }
 }
 
+pub type GatedCfg = (Symbol, Symbol, GateFn);
+
 /// `cfg(...)`'s that are feature gated.
-const GATED_CFGS: &[(Symbol, Symbol, GateFn)] = &[
+const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
 ];
 
-#[derive(Debug)]
-pub struct GatedCfg {
-    span: Span,
-    index: usize,
-}
-
-impl GatedCfg {
-    pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        GATED_CFGS.iter()
-                  .position(|info| cfg.check_name(info.0))
-                  .map(|idx| {
-                      GatedCfg {
-                          span: cfg.span,
-                          index: idx
-                      }
-                  })
-    }
-
-    pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
-        let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) && !self.span.allows_unstable(feature) {
-            let explain = format!("`cfg({})` is experimental and subject to change", cfg);
-            emit_feature_err(sess, feature, self.span, GateIssue::Language, &explain);
-        }
-    }
+/// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
+pub fn find_gated_cfg(pred: impl Fn(Symbol) -> bool) -> Option<&'static GatedCfg> {
+    GATED_CFGS.iter().find(|(cfg_sym, ..)| pred(*cfg_sym))
 }
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must

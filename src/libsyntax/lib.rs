@@ -101,7 +101,7 @@ pub mod feature_gate {
     };
     mod builtin_attrs;
     pub use builtin_attrs::{
-        AttributeGate, AttributeTemplate, AttributeType, GatedCfg,
+        AttributeGate, AttributeTemplate, AttributeType, find_gated_cfg, GatedCfg,
         BuiltinAttribute, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
         deprecated_attributes, is_builtin_attr,  is_builtin_attr_name,
     };

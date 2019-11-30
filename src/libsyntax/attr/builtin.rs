@@ -1,8 +1,8 @@
 //! Parsing and validation of builtin attributes
 
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
+use crate::feature_gate::{find_gated_cfg, emit_feature_err, GatedCfg, GateIssue};
 use crate::print::pprust;
-use crate::feature_gate::GatedCfg;
 use crate::sess::ParseSess;
 
 use errors::{Applicability, Handler};
@@ -531,8 +531,9 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
     eval_condition(cfg, sess, &mut |cfg| {
-        if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
-            gated_cfg.check_and_emit(sess, feats);
+        let gate = find_gated_cfg(|sym| cfg.check_name(sym));
+        if let (Some(feats), Some(gated_cfg)) = (features, gate) {
+            gate_cfg(&gated_cfg, cfg.span, sess, feats);
         }
         let error = |span, msg| { sess.span_diagnostic.span_err(span, msg); true };
         if cfg.path.segments.len() != 1 {
@@ -561,12 +562,21 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
     })
 }
 
+fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &Features) {
+    let (cfg, feature, has_feature) = gated_cfg;
+    if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
+        let explain = format!("`cfg({})` is experimental and subject to change", cfg);
+        emit_feature_err(sess, *feature, cfg_span, GateIssue::Language, &explain);
+    }
+}
+
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
-pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
-                         -> bool
-    where F: FnMut(&ast::MetaItem) -> bool
-{
+pub fn eval_condition(
+    cfg: &ast::MetaItem,
+    sess: &ParseSess,
+    eval: &mut impl FnMut(&ast::MetaItem) -> bool,
+) -> bool {
     match cfg.kind {
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
