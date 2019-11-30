@@ -1550,6 +1550,7 @@ impl<'a> State<'a> {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
         self.print_outer_attributes(&ti.attrs);
+        self.print_defaultness(ti.defaultness);
         match ti.kind {
             ast::TraitItemKind::Const(ref ty, ref default) => {
                 self.print_associated_const(

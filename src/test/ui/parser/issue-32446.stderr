@@ -1,8 +1,8 @@
-error: expected one of `async`, `const`, `crate`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `...`
+error: expected one of `async`, `const`, `crate`, `default`, `extern`, `fn`, `pub`, `type`, `unsafe`, or `}`, found `...`
   --> $DIR/issue-32446.rs:4:11
    |
 LL | trait T { ... }
-   |           ^^^ expected one of 9 possible tokens
+   |           ^^^ expected one of 10 possible tokens
 
 error: aborting due to previous error
 

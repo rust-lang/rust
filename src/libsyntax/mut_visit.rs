@@ -939,7 +939,8 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
 pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, visitor: &mut T)
     -> SmallVec<[TraitItem; 1]>
 {
-    let TraitItem { id, ident, vis, attrs, generics, kind, span, tokens: _ } = &mut item;
+    let TraitItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
+        &mut item;
     visitor.visit_id(id);
     visitor.visit_ident(ident);
     visitor.visit_vis(vis);

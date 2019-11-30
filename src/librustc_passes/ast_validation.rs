@@ -271,6 +271,14 @@ impl<'a> AstValidator<'a> {
                 forbid, and warn are the only allowed built-in attributes in function parameters")
             });
     }
+
+    fn check_defaultness(&self, span: Span, defaultness: Defaultness) {
+        if let Defaultness::Default = defaultness {
+            self.err_handler()
+                .struct_span_err(span, "`default` is only allowed on items in `impl` definitions")
+                .emit();
+        }
+    }
 }
 
 enum GenericPosition {
@@ -746,6 +754,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_trait_item(&mut self, ti: &'a TraitItem) {
         self.invalid_visibility(&ti.vis, None);
+        self.check_defaultness(ti.span, ti.defaultness);
         visit::walk_trait_item(self, ti);
     }
 }

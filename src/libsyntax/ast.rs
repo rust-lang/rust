@@ -1603,24 +1603,12 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-/// Represents an item declaration within a trait declaration,
+pub type TraitItem = ImplItem<TraitItemKind>;
+
+/// Represents the kind of an item declaration within a trait declaration,
 /// possibly including a default implementation. A trait item is
 /// either required (meaning it doesn't have an implementation, just a
 /// signature) or provided (meaning it has a default implementation).
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct TraitItem {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
-    pub ident: Ident,
-
-    pub generics: Generics,
-    pub kind: TraitItemKind,
-    /// See `Item::tokens` for what this is.
-    pub tokens: Option<TokenStream>,
-}
-
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
@@ -1631,7 +1619,7 @@ pub enum TraitItemKind {
 
 /// Represents anything within an `impl` block.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ImplItem {
+pub struct ImplItem<K = ImplItemKind> {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
@@ -1640,7 +1628,7 @@ pub struct ImplItem {
 
     pub defaultness: Defaultness,
     pub generics: Generics,
-    pub kind: ImplItemKind,
+    pub kind: K,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }

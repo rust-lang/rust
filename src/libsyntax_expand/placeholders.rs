@@ -53,6 +53,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::TraitItem {
             id, span, ident, vis, attrs, generics,
             kind: ast::TraitItemKind::Macro(mac_placeholder()),
+            defaultness: ast::Defaultness::Final,
             tokens: None,
         }]),
         AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::ImplItem {

@@ -714,9 +714,9 @@ impl<'a> Parser<'a> {
             id: DUMMY_NODE_ID,
             span: lo.to(self.prev_span),
             ident: name,
+            attrs,
             vis,
             defaultness,
-            attrs,
             generics,
             kind,
             tokens: None,
@@ -882,6 +882,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TraitItem> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
+        let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
@@ -895,12 +896,13 @@ impl<'a> Parser<'a> {
 
         Ok(TraitItem {
             id: DUMMY_NODE_ID,
+            span: lo.to(self.prev_span),
             ident: name,
             attrs,
             vis,
+            defaultness,
             generics,
             kind,
-            span: lo.to(self.prev_span),
             tokens: None,
         })
     }
