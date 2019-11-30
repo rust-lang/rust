@@ -208,26 +208,21 @@ pub fn register_plugins<'a>(
         middle::recursion_limit::update_limits(sess, &krate);
     });
 
-    let registrars = time(sess, "plugin loading", || {
-        plugin::load::load_plugins(sess, metadata_loader, &krate)
-    });
-
     let mut lint_store = rustc_lint::new_lint_store(
         sess.opts.debugging_opts.no_interleave_lints,
         sess.unstable_options(),
     );
+    register_lints(&sess, &mut lint_store);
 
-    (register_lints)(&sess, &mut lint_store);
-
-    let mut registry = Registry::new(sess, &mut lint_store, krate.span);
-
+    let registrars = time(sess, "plugin loading", || {
+        plugin::load::load_plugins(sess, metadata_loader, &krate)
+    });
     time(sess, "plugin registration", || {
+        let mut registry = Registry::new(sess, &mut lint_store, krate.span);
         for registrar in registrars {
             registrar(&mut registry);
         }
     });
-
-    *sess.plugin_llvm_passes.borrow_mut() = registry.llvm_passes;
 
     Ok((krate, Lrc::new(lint_store)))
 }

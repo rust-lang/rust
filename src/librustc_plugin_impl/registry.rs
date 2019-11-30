@@ -4,8 +4,6 @@ use rustc::lint::LintStore;
 use rustc::session::Session;
 use syntax_pos::Span;
 
-use std::borrow::ToOwned;
-
 /// Structure used to register plugins.
 ///
 /// A plugin registrar function takes an `&mut Registry` and should call
@@ -24,9 +22,6 @@ pub struct Registry<'a> {
 
     #[doc(hidden)]
     pub krate_span: Span,
-
-    #[doc(hidden)]
-    pub llvm_passes: Vec<String>,
 }
 
 impl<'a> Registry<'a> {
@@ -36,16 +31,6 @@ impl<'a> Registry<'a> {
             sess,
             lint_store,
             krate_span,
-            llvm_passes: vec![],
         }
-    }
-
-    /// Register an LLVM pass.
-    ///
-    /// Registration with LLVM itself is handled through static C++ objects with
-    /// constructors. This method simply adds a name to the list of passes to
-    /// execute.
-    pub fn register_llvm_pass(&mut self, name: &str) {
-        self.llvm_passes.push(name.to_owned());
     }
 }
