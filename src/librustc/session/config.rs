@@ -7,6 +7,7 @@ use crate::session::{early_error, early_warn, Session};
 use crate::session::search_paths::SearchPath;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_feature::UnstableFeatures;
 
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
@@ -16,7 +17,6 @@ use syntax::ast;
 use syntax::source_map::{FileName, FilePathMapping};
 use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
 use syntax::symbol::{sym, Symbol};
-use syntax::feature_gate::UnstableFeatures;
 
 use errors::emitter::HumanReadableErrorType;
 use errors::{ColorConfig, FatalError, Handler};
@@ -2701,7 +2701,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
 
 pub mod nightly_options {
     use getopts;
-    use syntax::feature_gate::UnstableFeatures;
+    use rustc_feature::UnstableFeatures;
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
     use crate::session::early_error;
 
@@ -2850,9 +2850,9 @@ mod dep_tracking {
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
                 Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
                 SymbolManglingVersion};
+    use rustc_feature::UnstableFeatures;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
-    use syntax::feature_gate::UnstableFeatures;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);

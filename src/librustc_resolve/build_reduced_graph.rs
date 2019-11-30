@@ -29,10 +29,8 @@ use errors::Applicability;
 
 use syntax::ast::{Name, Ident};
 use syntax::attr;
-
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
-use syntax::feature_gate::is_builtin_attr;
 use syntax::token::{self, Token};
 use syntax::print::pprust;
 use syntax::{span_err, struct_span_err};
@@ -1231,7 +1229,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
-        if !attr.is_doc_comment() && is_builtin_attr(attr) {
+        if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
             self.r.builtin_attrs.push(
                 (attr.get_normal_item().path.segments[0].ident, self.parent_scope)
             );

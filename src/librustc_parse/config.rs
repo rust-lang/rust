@@ -9,14 +9,9 @@
 //! [#64197]: https://github.com/rust-lang/rust/issues/64197
 
 use crate::validate_attr;
+use rustc_feature::Features;
 use syntax::attr::HasAttrs;
-use syntax::feature_gate::{
-    feature_err,
-    EXPLAIN_STMT_ATTR_SYNTAX,
-    Features,
-    get_features,
-    GateIssue,
-};
+use syntax::feature_gate::{feature_err, get_features};
 use syntax::attr;
 use syntax::ast;
 use syntax::edition::Edition;
@@ -52,7 +47,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition,
         } else { // the entire crate is unconfigured
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
-            return (krate, Features::new());
+            return (krate, Features::default());
         }
 
         features = get_features(&sess.span_diagnostic, &krate.attrs, edition, allow_features);
@@ -217,8 +212,7 @@ impl<'a> StripUnconfigured<'a> {
             let mut err = feature_err(self.sess,
                                       sym::stmt_expr_attributes,
                                       attr.span,
-                                      GateIssue::Language,
-                                      EXPLAIN_STMT_ATTR_SYNTAX);
+                                      "attributes on expressions are experimental");
 
             if attr.is_doc_comment() {
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");

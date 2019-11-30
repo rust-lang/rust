@@ -232,13 +232,13 @@ impl<'a> LintLevelsBuilder<'a> {
                             // don't have any lint names (`#[level(reason = "foo")]`)
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
                                 if !self.sess.features_untracked().lint_reasons {
-                                    feature_gate::emit_feature_err(
+                                    feature_gate::feature_err(
                                         &self.sess.parse_sess,
                                         sym::lint_reasons,
                                         item.span,
-                                        feature_gate::GateIssue::Language,
                                         "lint reasons are experimental"
-                                    );
+                                    )
+                                    .emit();
                                 }
                                 reason = Some(rationale);
                             } else {

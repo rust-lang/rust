@@ -6,7 +6,7 @@ use rustc::session::config::PrintRequest;
 use rustc_target::spec::{MergeFunctions, PanicStrategy};
 use libc::c_int;
 use std::ffi::CString;
-use syntax::feature_gate::UnstableFeatures;
+use rustc_feature::UnstableFeatures;
 use syntax::symbol::sym;
 
 use std::str;

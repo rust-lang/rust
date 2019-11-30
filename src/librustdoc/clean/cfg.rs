@@ -7,10 +7,10 @@ use std::mem;
 use std::fmt::{self, Write};
 use std::ops;
 
+use rustc_feature::Features;
 use syntax::symbol::{Symbol, sym};
 use syntax::ast::{MetaItem, MetaItemKind, NestedMetaItem, LitKind};
 use syntax::sess::ParseSess;
-use syntax::feature_gate::Features;
 
 use syntax_pos::Span;
 

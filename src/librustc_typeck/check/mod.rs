@@ -125,7 +125,7 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 use syntax_pos::hygiene::DesugaringKind;
 use syntax::ast;
 use syntax::attr;
-use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::feature_gate::feature_err;
 use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
@@ -2373,13 +2373,13 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
 
     if adt.is_enum() {
         if !tcx.features().transparent_enums {
-            emit_feature_err(
+            feature_err(
                 &tcx.sess.parse_sess,
                 sym::transparent_enums,
                 sp,
-                GateIssue::Language,
                 "transparent enums are unstable",
-            );
+            )
+            .emit();
         }
         if adt.variants.len() != 1 {
             bad_variant_count(tcx, adt, sp, def_id);
@@ -2391,11 +2391,13 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
     }
 
     if adt.is_union() && !tcx.features().transparent_unions {
-        emit_feature_err(&tcx.sess.parse_sess,
-                         sym::transparent_unions,
-                         sp,
-                         GateIssue::Language,
-                         "transparent unions are unstable");
+        feature_err(
+            &tcx.sess.parse_sess,
+            sym::transparent_unions,
+            sp,
+            "transparent unions are unstable",
+        )
+        .emit();
     }
 
     // For each field, figure out if it's known to be a ZST and align(1)
@@ -2452,11 +2454,13 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
         if !tcx.features().repr128 {
-            emit_feature_err(&tcx.sess.parse_sess,
-                             sym::repr128,
-                             sp,
-                             GateIssue::Language,
-                             "repr with 128-bit type is unstable");
+            feature_err(
+                &tcx.sess.parse_sess,
+                sym::repr128,
+                sp,
+                "repr with 128-bit type is unstable",
+            )
+            .emit();
         }
     }
 

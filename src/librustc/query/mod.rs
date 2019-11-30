@@ -1130,7 +1130,7 @@ rustc_queries! {
             desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
         }
 
-        query features_query(_: CrateNum) -> &'tcx feature_gate::Features {
+        query features_query(_: CrateNum) -> &'tcx rustc_feature::Features {
             eval_always
             desc { "looking up enabled feature gates" }
         }

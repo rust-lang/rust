@@ -56,7 +56,6 @@ use std::any::type_name;
 use syntax_pos::{Span, DUMMY_SP};
 use syntax::attr;
 use syntax::ast;
-use syntax::feature_gate;
 use syntax::symbol::Symbol;
 
 #[macro_use]

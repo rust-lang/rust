@@ -1492,16 +1492,16 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         _ => None,
                     };
                     if let Some(unsupported_type) = err {
-                        feature_gate::emit_feature_err(
+                        feature_gate::feature_err(
                             &tcx.sess.parse_sess,
                             sym::const_compare_raw_pointers,
                             hir_ty.span,
-                            feature_gate::GateIssue::Language,
                             &format!(
                                 "using {} as const generic parameters is unstable",
                                 unsupported_type
                             ),
-                        );
+                        )
+                        .emit();
                     };
                 }
                 if ty::search_for_structural_match_violation(
@@ -2520,13 +2520,13 @@ fn from_target_feature(
                 None => true,
             };
             if !allowed && id.is_local() {
-                feature_gate::emit_feature_err(
+                feature_gate::feature_err(
                     &tcx.sess.parse_sess,
                     feature_gate.unwrap(),
                     item.span(),
-                    feature_gate::GateIssue::Language,
                     &format!("the target feature `{}` is currently unstable", feature),
-                );
+                )
+                .emit();
             }
             Some(Symbol::intern(feature))
         }));

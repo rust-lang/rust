@@ -72,7 +72,6 @@ use rustc_macros::HashStable;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
-use syntax::feature_gate;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 use syntax::expand::allocator::AllocatorKind;
@@ -1312,7 +1311,7 @@ impl<'tcx> TyCtxt<'tcx> {
         self.cstore.allocator_kind()
     }
 
-    pub fn features(self) -> &'tcx feature_gate::Features {
+    pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(LOCAL_CRATE)
     }
 

@@ -13,11 +13,12 @@ use crate::ty::query::Providers;
 use crate::middle::privacy::AccessLevels;
 use crate::session::{DiagnosticMessageId, Session};
 use errors::DiagnosticBuilder;
+use rustc_feature::GateIssue;
 use syntax::symbol::{Symbol, sym};
 use syntax_pos::{Span, MultiSpan};
 use syntax::ast::{Attribute, CRATE_NODE_ID};
 use syntax::errors::Applicability;
-use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::feature_gate::{feature_err, feature_err_issue};
 use syntax::attr::{self, Stability, Deprecation, RustcDeprecation};
 use crate::ty::{self, TyCtxt};
 use crate::util::nodemap::{FxHashSet, FxHashMap};
@@ -512,9 +513,8 @@ pub fn report_unstable(
         if is_soft {
             soft_handler(lint::builtin::SOFT_UNSTABLE, span, &msg)
         } else {
-            emit_feature_err(
-                &sess.parse_sess, feature, span, GateIssue::Library(issue), &msg
-            );
+            feature_err_issue(&sess.parse_sess, feature, span, GateIssue::Library(issue), &msg)
+                .emit();
         }
     }
 }
@@ -842,15 +842,19 @@ impl Visitor<'tcx> for Checker<'tcx> {
                 let ty = self.tcx.type_of(def_id);
 
                 if adt_def.has_dtor(self.tcx) {
-                    emit_feature_err(&self.tcx.sess.parse_sess,
-                                     sym::untagged_unions, item.span, GateIssue::Language,
-                                     "unions with `Drop` implementations are unstable");
+                    feature_err(
+                        &self.tcx.sess.parse_sess, sym::untagged_unions, item.span,
+                        "unions with `Drop` implementations are unstable"
+                    )
+                    .emit();
                 } else {
                     let param_env = self.tcx.param_env(def_id);
                     if !param_env.can_type_implement_copy(self.tcx, ty).is_ok() {
-                        emit_feature_err(&self.tcx.sess.parse_sess,
-                                         sym::untagged_unions, item.span, GateIssue::Language,
-                                         "unions with non-`Copy` fields are unstable");
+                        feature_err(
+                            &self.tcx.sess.parse_sess, sym::untagged_unions, item.span,
+                            "unions with non-`Copy` fields are unstable"
+                        )
+                        .emit();
                     }
                 }
             }

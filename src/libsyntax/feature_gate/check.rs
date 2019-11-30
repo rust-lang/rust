@@ -1,7 +1,7 @@
-use super::{active::{ACTIVE_FEATURES, Features}, Feature, State as FeatureState};
-use super::accepted::ACCEPTED_FEATURES;
-use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
-use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{Features, Feature, State as FeatureState, UnstableFeatures};
+use rustc_feature::{find_feature_issue, GateIssue};
 
 use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
@@ -18,18 +18,6 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
 
 use rustc_error_codes::*;
-
-
-use std::env;
-use std::num::NonZeroU32;
-
-#[derive(Copy, Clone, Debug)]
-pub enum Stability {
-    Unstable,
-    // First argument is tracking issue link; second argument is an optional
-    // help message, which defaults to "remove this attribute"
-    Deprecated(&'static str, Option<&'static str>),
-}
 
 macro_rules! gate_feature_fn {
     ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{
@@ -59,30 +47,6 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
 }
 
-fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
-    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
-        // FIXME (#28244): enforce that active features have issue numbers
-        // assert!(info.issue().is_some())
-        info.issue()
-    } else {
-        // search in Accepted, Removed, or Stable Removed features
-        let found = ACCEPTED_FEATURES
-            .iter()
-            .chain(REMOVED_FEATURES)
-            .chain(STABLE_REMOVED_FEATURES)
-            .find(|t| t.name == feature);
-        match found {
-            Some(found) => found.issue(),
-            None => panic!("feature `{}` is not declared anywhere", feature),
-        }
-    }
-}
-
-pub enum GateIssue {
-    Language,
-    Library(Option<NonZeroU32>)
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GateStrength {
     /// A hard error. (Most feature gates should use this.)
@@ -91,40 +55,34 @@ pub enum GateStrength {
     Soft,
 }
 
-pub fn emit_feature_err(
-    sess: &ParseSess,
-    feature: Symbol,
-    span: Span,
-    issue: GateIssue,
-    explain: &str,
-) {
-    feature_err(sess, feature, span, issue, explain).emit();
-}
-
-pub fn feature_err<'a, S: Into<MultiSpan>>(
+pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: S,
+    span: impl Into<MultiSpan>,
+    explain: &str,
+) -> DiagnosticBuilder<'a> {
+    feature_err_issue(sess, feature, span, GateIssue::Language, explain)
+}
+
+pub fn feature_err_issue<'a>(
+    sess: &'a ParseSess,
+    feature: Symbol,
+    span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
 ) -> DiagnosticBuilder<'a> {
     leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
 }
 
-fn leveled_feature_err<'a, S: Into<MultiSpan>>(
+fn leveled_feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: S,
+    span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
     level: GateStrength,
 ) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
-
-    let issue = match issue {
-        GateIssue::Language => find_lang_feature_issue(feature),
-        GateIssue::Library(lib) => lib,
-    };
 
     let mut err = match level {
         GateStrength::Hard => {
@@ -133,7 +91,7 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
         GateStrength::Soft => diag.struct_span_warn(span, explain),
     };
 
-    if let Some(n) = issue {
+    if let Some(n) = find_feature_issue(feature, issue) {
         err.note(&format!(
             "for more information, see https://github.com/rust-lang/rust/issues/{}",
             n,
@@ -155,20 +113,6 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
     err
 
 }
-
-const EXPLAIN_BOX_SYNTAX: &str =
-    "box expression syntax is experimental; you can call `Box::new` instead";
-
-pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
-    "attributes on expressions are experimental";
-
-pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &str =
-    "allow_internal_unstable side-steps feature gating and stability checks";
-pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &str =
-    "allow_internal_unsafe side-steps the unsafe_code lint";
-
-pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
-    "unsized tuple coercion is not stable enough for use and is subject to change";
 
 struct PostExpansionVisitor<'a> {
     parse_sess: &'a ParseSess,
@@ -282,7 +226,6 @@ impl<'a> PostExpansionVisitor<'a> {
                 self.parse_sess,
                 sym::arbitrary_enum_discriminant,
                 discriminant_spans.clone(),
-                crate::feature_gate::GateIssue::Language,
                 "custom discriminant values are not allowed in enums with tuple or struct variants",
             );
             for sp in discriminant_spans {
@@ -529,7 +472,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::Box(_) => {
-                gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
+                gate_feature_post!(
+                    &self, box_syntax, e.span,
+                    "box expression syntax is experimental; you can call `Box::new` instead"
+                );
             }
             ast::ExprKind::Type(..) => {
                 // To avoid noise about type ascription in common syntax errors, only emit if it
@@ -695,7 +641,7 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
         err.emit();
     }
 
-    let mut features = Features::new();
+    let mut features = Features::default();
     let mut edition_enabled_features = FxHashMap::default();
 
     for &edition in ALL_EDITIONS {
@@ -898,40 +844,6 @@ pub fn check_crate(krate: &ast::Crate,
     }
 
     visit::walk_crate(&mut visitor, krate);
-}
-
-#[derive(Clone, Copy, Hash)]
-pub enum UnstableFeatures {
-    /// Hard errors for unstable features are active, as on beta/stable channels.
-    Disallow,
-    /// Allow features to be activated, as on nightly.
-    Allow,
-    /// Errors are bypassed for bootstrapping. This is required any time
-    /// during the build that feature-related lints are set to warn or above
-    /// because the build turns on warnings-as-errors and uses lots of unstable
-    /// features. As a result, this is always required for building Rust itself.
-    Cheat
-}
-
-impl UnstableFeatures {
-    pub fn from_environment() -> UnstableFeatures {
-        // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
-        let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-        // `true` if we should enable unstable features for bootstrapping.
-        let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
-        match (disable_unstable_features, bootstrap) {
-            (_, true) => UnstableFeatures::Cheat,
-            (true, _) => UnstableFeatures::Disallow,
-            (false, _) => UnstableFeatures::Allow
-        }
-    }
-
-    pub fn is_nightly_build(&self) -> bool {
-        match *self {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            UnstableFeatures::Disallow => false,
-        }
-    }
 }
 
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate, unstable: UnstableFeatures) {

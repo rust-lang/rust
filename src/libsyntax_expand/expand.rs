@@ -4,16 +4,17 @@ use crate::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::config::StripUnconfigured;
-use rustc_parse::configure;
 
+use rustc_feature::Features;
+use rustc_parse::configure;
 use rustc_parse::DirectoryOwnership;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
 use syntax::ast::{MacStmtStyle, StmtKind, ItemKind};
-use syntax::attr::{self, HasAttrs};
+use syntax::attr::{self, HasAttrs, is_builtin_attr};
 use syntax::source_map::respan;
-use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
+use syntax::feature_gate::{self, feature_err};
 use syntax::mut_visit::*;
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -726,13 +727,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if self.cx.ecfg.proc_macro_hygiene() {
             return
         }
-        emit_feature_err(
+        feature_err(
             self.cx.parse_sess,
             sym::proc_macro_hygiene,
             span,
-            GateIssue::Language,
             &format!("custom attributes cannot be applied to {}", kind),
-        );
+        )
+        .emit();
     }
 
     fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
@@ -744,13 +745,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
                     ast::ItemKind::Mod(module) if !module.inline => {
-                        emit_feature_err(
+                        feature_err(
                             self.parse_sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            GateIssue::Language,
                             "non-inline modules in proc macro input are unstable",
-                        );
+                        )
+                        .emit();
                     }
                     _ => {}
                 }
@@ -789,13 +790,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if self.cx.ecfg.proc_macro_hygiene() {
             return
         }
-        emit_feature_err(
+        feature_err(
             self.cx.parse_sess,
             sym::proc_macro_hygiene,
             span,
-            GateIssue::Language,
             &format!("procedural macros cannot be expanded to {}", kind),
-        );
+        )
+        .emit();
     }
 
     fn parse_ast_fragment(
@@ -991,9 +992,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         if let Some(attr) = &attr {
             if !self.cx.ecfg.custom_inner_attributes() &&
                attr.style == ast::AttrStyle::Inner && !attr.has_name(sym::test) {
-                emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
-                                 attr.span, GateIssue::Language,
-                                 "non-builtin inner attributes are unstable");
+                feature_err(
+                    &self.cx.parse_sess, sym::custom_inner_attributes, attr.span,
+                    "non-builtin inner attributes are unstable"
+                )
+                .emit();
             }
         }
         attr

@@ -1,10 +1,10 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
 use errors::{PResult, Applicability};
-use syntax::ast::{self, Attribute, AttrKind, Ident, MetaItem};
-use syntax::attr::{AttributeTemplate, mk_name_value_item_str};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
+use syntax::ast::{self, Attribute, AttrKind, Ident, MetaItem, MetaItemKind};
+use syntax::attr::mk_name_value_item_str;
 use syntax::early_buffered_lints::BufferedEarlyLintId;
-use syntax::feature_gate::BUILTIN_ATTRIBUTE_MAP;
 use syntax::token;
 use syntax::tokenstream::TokenTree;
 use syntax::sess::ParseSess;
@@ -41,6 +41,16 @@ pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Meta
     })
 }
 
+/// Checks that the given meta-item is compatible with this `AttributeTemplate`.
+fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaItemKind) -> bool {
+    match meta {
+        MetaItemKind::Word => template.word,
+        MetaItemKind::List(..) => template.list.is_some(),
+        MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
+        MetaItemKind::NameValue(..) => false,
+    }
+}
+
 pub fn check_builtin_attribute(
     sess: &ParseSess,
     attr: &Attribute,
@@ -57,7 +67,7 @@ pub fn check_builtin_attribute(
                              name == sym::test || name == sym::bench;
 
     match parse_meta(sess, attr) {
-        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.kind) {
+        Ok(meta) => if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
             let error_msg = format!("malformed `{}` attribute input", name);
             let mut msg = "attribute must be of the form ".to_owned();
             let mut suggestions = vec![];

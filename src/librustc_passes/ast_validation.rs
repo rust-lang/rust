@@ -14,7 +14,6 @@ use rustc_parse::validate_attr;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::feature_gate::is_builtin_attr;
 use syntax::print::pprust;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
@@ -257,7 +256,7 @@ impl<'a> AstValidator<'a> {
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| {
                 let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
-                !arr.contains(&attr.name_or_empty()) && is_builtin_attr(attr)
+                !arr.contains(&attr.name_or_empty()) && attr::is_builtin_attr(attr)
             })
             .for_each(|attr| if attr.is_doc_comment() {
                 let mut err = self.err_handler().struct_span_err(

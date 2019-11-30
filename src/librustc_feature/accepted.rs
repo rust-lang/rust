@@ -1,7 +1,7 @@
 //! List of the accepted feature gates.
 
-use crate::symbol::sym;
 use super::{State, Feature};
+use syntax_pos::symbol::sym;
 
 macro_rules! declare_features {
     ($(

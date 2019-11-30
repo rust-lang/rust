@@ -13,8 +13,9 @@ use rustc::hir::map::Map;
 use rustc::hir;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
+use rustc_feature::Features;
 use syntax::ast::Mutability;
-use syntax::feature_gate::{emit_feature_err, Features, GateIssue};
+use syntax::feature_gate::feature_err;
 use syntax::span_err;
 use syntax_pos::{sym, Span};
 use rustc_error_codes::*;
@@ -140,13 +141,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             | NonConstExpr::Match(hir::MatchSource::Normal)
             | NonConstExpr::Match(hir::MatchSource::IfDesugar { .. })
             | NonConstExpr::Match(hir::MatchSource::IfLetDesugar { .. })
-            => emit_feature_err(
-                &self.tcx.sess.parse_sess,
-                sym::const_if_match,
-                span,
-                GateIssue::Language,
-                &msg
-            ),
+            => feature_err(&self.tcx.sess.parse_sess, sym::const_if_match, span, &msg).emit(),
 
             _ => span_err!(self.tcx.sess, span, E0744, "{}", msg),
         }

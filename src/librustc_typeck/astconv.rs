@@ -23,7 +23,7 @@ use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::errors::pluralize;
-use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::feature_gate::feature_err;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
@@ -914,8 +914,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 "parenthetical notation is only stable when used with `Fn`-family traits"
             };
-            emit_feature_err(&self.tcx().sess.parse_sess, sym::unboxed_closures,
-                             span, GateIssue::Language, msg);
+            feature_err(&self.tcx().sess.parse_sess, sym::unboxed_closures, span, msg).emit();
         }
 
         self.create_substs_for_ast_path(span,

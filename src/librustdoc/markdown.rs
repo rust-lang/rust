@@ -6,7 +6,7 @@ use errors;
 use testing;
 use syntax::edition::Edition;
 use syntax::source_map::DUMMY_SP;
-use syntax::feature_gate::UnstableFeatures;
+use rustc_feature::UnstableFeatures;
 
 use crate::externalfiles::{LoadStringError, load_string};
 use crate::config::{Options, RenderOptions};
