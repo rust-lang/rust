@@ -217,6 +217,8 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                 }
                 err_unsup!(NoMirFor(..)) =>
                     format!("{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.", e),
+                InterpError::Panic(_) | InterpError::InvalidProgram(_) =>
+                    bug!("This error should be impossible in Miri: {}", e),
                 _ => e.to_string()
             };
             e.print_backtrace();
