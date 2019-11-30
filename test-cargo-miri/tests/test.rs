@@ -12,7 +12,7 @@ fn simple2() {
     assert_ne!(42, 24);
 }
 
-// A test that won't work on miri (tests disabling tests)
+// A test that won't work on miri (tests disabling tests).
 #[cfg(not(miri))]
 #[test]
 fn does_not_work_on_miri() {
@@ -45,9 +45,9 @@ fn num_cpus() {
 
 // FIXME: Remove this `cfg` once we fix https://github.com/rust-lang/miri/issues/1059
 // We cfg-gate the `should_panic` attribute and the `panic!` itself, so that the test
-// stdout does not depend on the platform
+// stdout does not depend on the platform.
 #[test]
-#[cfg_attr(not(windows), should_panic)]
+#[cfg_attr(not(windows), should_panic(expected="Explicit panic"))]
 fn do_panic() { // In large, friendly letters :)
     #[cfg(not(windows))]
     panic!("Explicit panic from test!");
