@@ -2330,22 +2330,43 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
     ) -> &Const<'tcx> {
-        // FIXME(const_generics): this doesn't work right now,
-        // because it tries to relate an `Infer` to a `Param`.
+        let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs| {
+            let param_env_and_substs = param_env.with_reveal_all().and(substs);
+
+            // Avoid querying `tcx.const_eval(...)` with any e.g. inference vars.
+            if param_env_and_substs.has_local_value() {
+                return None;
+            }
+
+            let (param_env, substs) = param_env_and_substs.into_parts();
+
+            // try to resolve e.g. associated constants to their definition on an impl
+            let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
+            let gid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            tcx.const_eval(param_env.and(gid)).ok()
+        };
+
         match self.val {
             ConstKind::Unevaluated(did, substs) => {
-                // if `substs` has no unresolved components, use and empty param_env
-                let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
-                // try to resolve e.g. associated constants to their definition on an impl
-                let instance = match ty::Instance::resolve(tcx, param_env, did, substs) {
-                    Some(instance) => instance,
-                    None => return self,
-                };
-                let gid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                tcx.const_eval(param_env.and(gid)).unwrap_or(self)
+                // HACK(eddyb) when substs contain e.g. inference variables,
+                // attempt using identity substs instead, that will succeed
+                // when the expression doesn't depend on any parameters.
+                // FIXME(eddyb) make `const_eval` a canonical query instead,
+                // that would properly handle inference variables in `substs`.
+                if substs.has_local_value() {
+                    let identity_substs = InternalSubsts::identity_for_item(tcx, did);
+                    // The `ParamEnv` needs to match the `identity_substs`.
+                    let identity_param_env = tcx.param_env(did);
+                    match try_const_eval(did, identity_param_env, identity_substs) {
+                        Some(ct) => ct.subst(tcx, substs),
+                        None => self,
+                    }
+                } else {
+                    try_const_eval(did, param_env, substs).unwrap_or(self)
+                }
             },
             _ => self,
         }
