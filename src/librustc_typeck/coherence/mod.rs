@@ -11,6 +11,7 @@ use rustc::traits;
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::util::common::time;
+use syntax_pos::symbol::sym;
 
 use rustc_error_codes::*;
 
@@ -68,7 +69,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
         return;
     }
 
-    if tcx.features().unboxed_closures {
+    if tcx.features().on(sym::unboxed_closures) {
         // the feature gate allows all Fn traits
         return;
     }

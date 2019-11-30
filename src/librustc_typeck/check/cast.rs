@@ -43,7 +43,7 @@ use rustc::ty::cast::{CastKind, CastTy};
 use rustc::ty::error::TypeError;
 use rustc::middle::lang_items;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, symbol::sym};
 use crate::util::common::ErrorReported;
 
 use rustc_error_codes::*;
@@ -391,7 +391,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
         let t_cast = self.cast_ty;
         let t_expr = self.expr_ty;
-        let type_asc_or = if fcx.tcx.features().type_ascription {
+        let type_asc_or = if fcx.tcx.features().on(sym::type_ascription) {
             "type ascription or "
         } else {
             ""

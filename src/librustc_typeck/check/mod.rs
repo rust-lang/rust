@@ -125,7 +125,7 @@ use syntax_pos::{self, BytePos, Span, MultiSpan};
 use syntax_pos::hygiene::DesugaringKind;
 use syntax::ast;
 use syntax::attr;
-use syntax::feature_gate::feature_err;
+use syntax::feature_gate::gate_feature;
 use syntax::source_map::{DUMMY_SP, original_sp};
 use syntax::symbol::{kw, sym, Ident};
 use syntax::util::parser::ExprPrecedence;
@@ -1029,7 +1029,7 @@ fn typeck_tables_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TypeckTables<'_> {
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
-            let revealed_ty = if tcx.features().impl_trait_in_bindings {
+            let revealed_ty = if tcx.features().on(sym::impl_trait_in_bindings) {
                 fcx.instantiate_opaque_types_from_value(
                     id,
                     &expected_type,
@@ -1173,7 +1173,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
             Some(ref ty) => {
                 let o_ty = self.fcx.to_ty(&ty);
 
-                let revealed_ty = if self.fcx.tcx.features().impl_trait_in_bindings {
+                let revealed_ty = if self.fcx.tcx.features().on(sym::impl_trait_in_bindings) {
                     self.fcx.instantiate_opaque_types_from_value(
                         self.parent_id,
                         &o_ty,
@@ -1208,7 +1208,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         if let PatKind::Binding(_, _, ident, _) = p.kind {
             let var_ty = self.assign(p.span, p.hir_id, None);
 
-            if !self.fcx.tcx.features().unsized_locals {
+            if !self.fcx.tcx.features().on(sym::unsized_locals) {
                 self.fcx.require_type_is_sized(var_ty, p.span,
                                                traits::VariableType(p.hir_id));
             }
@@ -1335,7 +1335,7 @@ fn check_fn<'a, 'tcx>(
         // The check for a non-trivial pattern is a hack to avoid duplicate warnings
         // for simple cases like `fn foo(x: Trait)`,
         // where we would error once on the parameter as a whole, and once on the binding `x`.
-        if param.pat.simple_ident().is_none() && !fcx.tcx.features().unsized_locals {
+        if param.pat.simple_ident().is_none() && !fcx.tcx.features().on(sym::unsized_locals) {
             fcx.require_type_is_sized(param_ty, decl.output.span(), traits::SizedArgumentType);
         }
 
@@ -2372,15 +2372,13 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
     let sp = tcx.sess.source_map().def_span(sp);
 
     if adt.is_enum() {
-        if !tcx.features().transparent_enums {
-            feature_err(
-                &tcx.sess.parse_sess,
-                sym::transparent_enums,
-                sp,
-                "transparent enums are unstable",
-            )
-            .emit();
-        }
+        gate_feature(
+            &tcx.sess.parse_sess,
+            tcx.features(),
+            sp,
+            sym::transparent_enums,
+            "transparent enums are unstable",
+        );
         if adt.variants.len() != 1 {
             bad_variant_count(tcx, adt, sp, def_id);
             if adt.variants.is_empty() {
@@ -2390,14 +2388,14 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
         }
     }
 
-    if adt.is_union() && !tcx.features().transparent_unions {
-        feature_err(
+    if adt.is_union() {
+        gate_feature(
             &tcx.sess.parse_sess,
-            sym::transparent_unions,
+            tcx.features(),
             sp,
+            sym::transparent_unions,
             "transparent unions are unstable",
-        )
-        .emit();
+        );
     }
 
     // For each field, figure out if it's known to be a ZST and align(1)
@@ -2453,15 +2451,13 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
 
     let repr_type_ty = def.repr.discr_type().to_ty(tcx);
     if repr_type_ty == tcx.types.i128 || repr_type_ty == tcx.types.u128 {
-        if !tcx.features().repr128 {
-            feature_err(
-                &tcx.sess.parse_sess,
-                sym::repr128,
-                sp,
-                "repr with 128-bit type is unstable",
-            )
-            .emit();
-        }
+        gate_feature(
+            &tcx.sess.parse_sess,
+            tcx.features(),
+            sp,
+            sym::repr128,
+            "repr with 128-bit type is unstable",
+        );
     }
 
     for v in vs {
@@ -2470,7 +2466,9 @@ pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant], i
         }
     }
 
-    if tcx.adt_def(def_id).repr.int.is_none() && tcx.features().arbitrary_enum_discriminant {
+    if tcx.adt_def(def_id).repr.int.is_none()
+        && tcx.features().on(sym::arbitrary_enum_discriminant)
+    {
         let is_unit =
             |var: &hir::Variant| match var.data {
                 hir::VariantData::Unit(..) => true,

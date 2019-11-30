@@ -694,13 +694,12 @@ impl EarlyLintPass for DeprecatedAttr {
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &ast::Attribute) {
         for &&(n, _, _, ref g) in &self.depr_attrs {
             if attr.ident().map(|ident| ident.name) == Some(n) {
-                if let &AttributeGate::Gated(Stability::Deprecated(link, suggestion),
-                                             ref name,
-                                             ref reason,
-                                             _) = g {
+                if let AttributeGate::Gated(Stability::Deprecated(link, suggestion), name, reason)
+                    = g
+                {
                     let msg = format!("use of deprecated attribute `{}`: {}. See {}",
                                       name, reason, link);
-                    lint_deprecated_attr(cx, attr, &msg, suggestion);
+                    lint_deprecated_attr(cx, attr, &msg, *suggestion);
                 }
                 return;
             }
@@ -969,7 +968,7 @@ impl UnreachablePub {
                 let def_span = cx.tcx.sess.source_map().def_span(span);
                 let mut err = cx.struct_span_lint(UNREACHABLE_PUB, def_span,
                                                   &format!("unreachable `pub` {}", what));
-                let replacement = if cx.tcx.features().crate_visibility_modifier {
+                let replacement = if cx.tcx.features().on(sym::crate_visibility_modifier) {
                     "crate"
                 } else {
                     "pub(crate)"
@@ -1184,7 +1183,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TrivialConstraints {
         use rustc::ty::fold::TypeFoldable;
         use rustc::ty::Predicate::*;
 
-        if cx.tcx.features().trivial_bounds {
+        if cx.tcx.features().on(sym::trivial_bounds) {
             let def_id = cx.tcx.hir().local_def_id(item.hir_id);
             let predicates = cx.tcx.predicates_of(def_id);
             for &(predicate, span) in predicates.predicates {
@@ -1627,7 +1626,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx hir::Item) {
         use rustc::middle::resolve_lifetime::Region;
 
-        let infer_static = cx.tcx.features().infer_static_outlives_requirements;
+        let infer_static = cx.tcx.features().on(sym::infer_static_outlives_requirements);
         let def_id = cx.tcx.hir().local_def_id(item.hir_id);
         if let hir::ItemKind::Struct(_, ref hir_generics)
             | hir::ItemKind::Enum(_, ref hir_generics)

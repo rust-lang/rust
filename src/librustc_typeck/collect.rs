@@ -769,7 +769,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::TraitDef {
     };
 
     let paren_sugar = tcx.has_attr(def_id, sym::rustc_paren_sugar);
-    if paren_sugar && !tcx.features().unboxed_closures {
+    if paren_sugar && !tcx.features().on(sym::unboxed_closures) {
         let mut err = tcx.sess.struct_span_err(
             item.span,
             "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
@@ -914,7 +914,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
             // HACK(eddyb) this provides the correct generics when
             // `feature(const_generics)` is enabled, so that const expressions
             // used with const generics, e.g. `Foo<{N+1}>`, can work at all.
-            if tcx.features().const_generics {
+            if tcx.features().on(sym::const_generics) {
                 let parent_id = tcx.hir().get_parent_item(hir_id);
                 Some(tcx.hir().local_def_id(parent_id))
             } else {
@@ -1036,7 +1036,7 @@ fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::Generics {
                         ..
                     } => {
                         if !allow_defaults && default.is_some() {
-                            if !tcx.features().default_type_parameter_fallback {
+                            if !tcx.features().on(sym::default_type_parameter_fallback) {
                                 tcx.lint_hir(
                                     lint::builtin::INVALID_TYPE_PARAM_DEFAULT,
                                     param.hir_id,
@@ -1485,7 +1485,7 @@ fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
             hir::GenericParamKind::Type { default: Some(ref ty), .. } => icx.to_ty(ty),
             hir::GenericParamKind::Const { ty: ref hir_ty, .. } => {
                 let ty = icx.to_ty(hir_ty);
-                if !tcx.features().const_compare_raw_pointers {
+                if !tcx.features().on(sym::const_compare_raw_pointers) {
                     let err = match ty.peel_refs().kind {
                         ty::FnPtr(_) => Some("function pointers"),
                         ty::RawPtr(_) => Some("raw pointers"),
@@ -2389,7 +2389,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
     // ABIs are handled at all correctly. -huonw
     if abi != abi::Abi::RustIntrinsic
         && abi != abi::Abi::PlatformIntrinsic
-        && !tcx.features().simd_ffi
+        && !tcx.features().on(sym::simd_ffi)
     {
         let check = |ast_ty: &hir::Ty, ty: Ty<'_>| {
             if ty.is_simd() {
@@ -2500,33 +2500,32 @@ fn from_target_feature(
             };
 
             // Only allow features whose feature gates have been enabled.
-            let allowed = match feature_gate.as_ref().map(|s| *s) {
-                Some(sym::arm_target_feature) => rust_features.arm_target_feature,
-                Some(sym::aarch64_target_feature) => rust_features.aarch64_target_feature,
-                Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
-                Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
-                Some(sym::mips_target_feature) => rust_features.mips_target_feature,
-                Some(sym::avx512_target_feature) => rust_features.avx512_target_feature,
-                Some(sym::mmx_target_feature) => rust_features.mmx_target_feature,
-                Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
-                Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
-                Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
-                Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
-                Some(sym::adx_target_feature) => rust_features.adx_target_feature,
-                Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
-                Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
-                Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
+            match feature_gate.as_ref().copied() {
+                Some(f @ sym::arm_target_feature) |
+                Some(f @ sym::aarch64_target_feature) |
+                Some(f @ sym::hexagon_target_feature) |
+                Some(f @ sym::powerpc_target_feature) |
+                Some(f @ sym::mips_target_feature) |
+                Some(f @ sym::avx512_target_feature) |
+                Some(f @ sym::mmx_target_feature) |
+                Some(f @ sym::sse4a_target_feature) |
+                Some(f @ sym::tbm_target_feature) |
+                Some(f @ sym::wasm_target_feature) |
+                Some(f @ sym::cmpxchg16b_target_feature) |
+                Some(f @ sym::adx_target_feature) |
+                Some(f @ sym::movbe_target_feature) |
+                Some(f @ sym::rtm_target_feature) |
+                Some(f @ sym::f16c_target_feature) => if id.is_local() {
+                    feature_gate::gate_feature(
+                        &tcx.sess.parse_sess,
+                        rust_features,
+                        item.span(),
+                        f,
+                        &format!("the target feature `{}` is currently unstable", feature),
+                    );
+                }
                 Some(name) => bug!("unknown target feature gate {}", name),
-                None => true,
-            };
-            if !allowed && id.is_local() {
-                feature_gate::feature_err(
-                    &tcx.sess.parse_sess,
-                    feature_gate.unwrap(),
-                    item.span(),
-                    &format!("the target feature `{}` is currently unstable", feature),
-                )
-                .emit();
+                None => {},
             }
             Some(Symbol::intern(feature))
         }));

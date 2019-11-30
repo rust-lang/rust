@@ -45,7 +45,7 @@ impl NonConstExpr {
             | Self::Match(Normal)
             | Self::Match(IfDesugar { .. })
             | Self::Match(IfLetDesugar { .. })
-            => Some(features.const_if_match),
+            => Some(features.on(sym::const_if_match)),
 
             _ => None,
         }

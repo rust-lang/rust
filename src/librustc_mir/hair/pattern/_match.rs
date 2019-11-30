@@ -247,7 +247,7 @@ use rustc::util::captures::Captures;
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP, symbol::sym};
 
 use arena::TypedArena;
 
@@ -589,7 +589,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     }
 
     fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
-        if self.tcx.features().exhaustive_patterns {
+        if self.tcx.features().on(sym::exhaustive_patterns) {
             self.tcx.is_ty_uninhabited_from(self.module, ty)
         } else {
             false
@@ -1239,7 +1239,7 @@ fn all_constructors<'a, 'tcx>(
                 .variants
                 .iter()
                 .filter(|v| {
-                    !cx.tcx.features().exhaustive_patterns
+                    !cx.tcx.features().on(sym::exhaustive_patterns)
                         || !v
                             .uninhabited_from(cx.tcx, substs, def.adt_kind())
                             .contains(cx.tcx, cx.module)
@@ -1286,7 +1286,7 @@ fn all_constructors<'a, 'tcx>(
         }
         ty::Int(_) | ty::Uint(_)
             if pcx.ty.is_ptr_sized_integral()
-                && !cx.tcx.features().precise_pointer_size_matching =>
+                && !cx.tcx.features().on(sym::precise_pointer_size_matching) =>
         {
             // `usize`/`isize` are not allowed to be matched exhaustively unless the
             // `precise_pointer_size_matching` feature is enabled. So we treat those types like
@@ -1351,7 +1351,7 @@ impl<'tcx> IntRange<'tcx> {
     /// Don't treat `usize`/`isize` exhaustively unless the `precise_pointer_size_matching` feature
     /// is enabled.
     fn treat_exhaustively(&self, tcx: TyCtxt<'tcx>) -> bool {
-        !self.ty.is_ptr_sized_integral() || tcx.features().precise_pointer_size_matching
+        !self.ty.is_ptr_sized_integral() || tcx.features().on(sym::precise_pointer_size_matching)
     }
 
     #[inline]

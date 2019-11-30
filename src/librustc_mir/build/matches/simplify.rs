@@ -20,6 +20,7 @@ use rustc::ty::layout::{Integer, IntegerExt, Size};
 use syntax::attr::{SignedInt, UnsignedInt};
 use rustc::hir::RangeEnd;
 use rustc::mir::interpret::truncate;
+use syntax_pos::symbol::sym;
 
 use std::mem;
 
@@ -161,7 +162,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
                 let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
-                        self.hir.tcx().features().exhaustive_patterns &&
+                        self.hir.tcx().features().on(sym::exhaustive_patterns) &&
                         !v.uninhabited_from(self.hir.tcx(), substs, adt_def.adt_kind()).is_empty()
                     }
                 }) && (adt_def.did.is_local() || !adt_def.is_variant_list_non_exhaustive());

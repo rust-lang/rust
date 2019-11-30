@@ -904,7 +904,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
         let trait_def = self.tcx().trait_def(trait_def_id);
 
-        if !self.tcx().features().unboxed_closures &&
+        if !self.tcx().features().on(sym::unboxed_closures) &&
             trait_segment.generic_args().parenthesized != trait_def.paren_sugar
         {
             // For now, require that parenthetical notation be used only with `Fn()` etc.

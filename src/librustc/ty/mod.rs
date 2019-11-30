@@ -2898,7 +2898,7 @@ impl<'tcx> TyCtxt<'tcx> {
             (ImplPolarity::Negative, ImplPolarity::Negative) => {}
         };
 
-        let is_marker_overlap = if self.features().overlapping_marker_traits {
+        let is_marker_overlap = if self.features().on(sym::overlapping_marker_traits) {
             let trait1_is_empty = self.impl_trait_ref(def_id1)
                 .map_or(false, |trait_ref| {
                     self.associated_item_def_ids(trait_ref.def_id).is_empty()

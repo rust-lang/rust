@@ -16,7 +16,7 @@ use crate::infer::{InferCtxt, InferOk};
 use crate::lint;
 use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
 use rustc_data_structures::fx::FxHashSet;
-use syntax_pos::DUMMY_SP;
+use syntax_pos::{DUMMY_SP, symbol::sym};
 use crate::traits::select::IntercrateAmbiguityCause;
 use crate::ty::{self, TyCtxt, TypeFoldable};
 use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
@@ -155,7 +155,7 @@ pub(super) fn specializes(
 
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
-    if !tcx.features().specialization &&
+    if !tcx.features().on(sym::specialization) &&
         (impl1_def_id.is_local() || impl2_def_id.is_local()) {
         return false;
     }

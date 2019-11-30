@@ -1473,7 +1473,7 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // * Otherwise, use the behavior requested via `-Z borrowck=...`
 
-        if self.features().nll { return BorrowckMode::Mir; }
+        if self.features().on(sym::nll) { return BorrowckMode::Mir; }
 
         self.sess.opts.borrowck_mode
     }
@@ -2437,7 +2437,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type_fallback {
+        if self.features().on(sym::never_type_fallback) {
             self.types.never
         } else {
             self.types.unit

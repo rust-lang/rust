@@ -3,7 +3,7 @@ use rustc::ty::subst::{GenericArg, GenericArgKind};
 use rustc::ty::{self, Region, RegionKind, Ty, TyCtxt};
 use smallvec::smallvec;
 use std::collections::BTreeMap;
-use syntax_pos::Span;
+use syntax_pos::{Span, symbol::sym};
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
 /// must be added to the struct header.
@@ -154,7 +154,7 @@ fn is_free_region(tcx: TyCtxt<'_>, region: Region<'_>) -> bool {
         RegionKind::ReStatic => {
             tcx.sess
                .features_untracked()
-               .infer_static_outlives_requirements
+               .on(sym::infer_static_outlives_requirements)
         }
 
         // Late-bound regions can appear in `fn` types:

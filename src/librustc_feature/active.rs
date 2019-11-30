@@ -6,34 +6,22 @@ use syntax_pos::edition::Edition;
 use syntax_pos::Span;
 use syntax_pos::symbol::{Symbol, sym};
 
-macro_rules! set {
-    ($field: ident) => {{
-        fn f(features: &mut Features, _: Span) {
-            features.$field = true;
-        }
-        f as fn(&mut Features, Span)
-    }}
-}
-
 macro_rules! declare_features {
     ($(
         $(#[doc = $doc:tt])* (active, $feature:ident, $ver:expr, $issue:expr, $edition:expr),
     )+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
-        pub const ACTIVE_FEATURES:
-            &[Feature] =
-            &[$(
-                // (sym::$feature, $ver, $issue, $edition, set!($feature))
-                Feature {
-                    state: State::Active { set: set!($feature) },
-                    name: sym::$feature,
-                    since: $ver,
-                    issue: $issue,
-                    edition: $edition,
-                    description: concat!($($doc,)*),
-                }
-            ),+];
+        pub const ACTIVE_FEATURES: &[Feature] = &[$(
+            Feature {
+                state: State::Active,
+                name: sym::$feature,
+                since: $ver,
+                issue: $issue,
+                edition: $edition,
+                description: concat!($($doc,)*),
+            }
+        ),+];
 
         /// A set of features to be used by later passes.
         #[derive(Clone, Default)]
@@ -44,26 +32,41 @@ macro_rules! declare_features {
             pub declared_lib_features: Vec<(Symbol, Span)>,
             $(
                 $(#[doc = $doc])*
-                pub $feature: bool
+                $feature: bool
             ),+
         }
 
         impl Features {
+            /// Is the given feature enabled?
+            ///
+            /// Panics if the symbol doesn't correspond to a declared feature.
+            pub fn on(&self, name: Symbol) -> bool {
+                match name {
+                    $(sym::$feature => self.$feature,)+
+                    _ => panic!("unknown feature `{}`", name),
+                }
+            }
+
+            /// Enable the given `feature`.
+            ///
+            /// Panics if called on a non-active feature
+            /// or a symbol not corresponding to a declared feature.
+            pub fn enable(&mut self, feature: &Feature, _: Span) {
+                let Feature { name, .. } = feature;
+                match feature.state {
+                    State::Active => match *name {
+                        $(sym::$feature => self.$feature = true,)+
+                        _ => panic!("unknown feature `{}`", name),
+                    },
+                    _ => panic!("called `set` on feature `{}` which is not `active`", name),
+                }
+            }
+
             pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
             }
         }
     };
-}
-
-impl Feature {
-    /// Sets this feature in `Features`. Panics if called on a non-active feature.
-    pub fn set(&self, features: &mut Features, span: Span) {
-        match self.state {
-            State::Active { set } => set(features, span),
-            _ => panic!("called `set` on feature `{}` which is not `active`", self.name)
-        }
-    }
 }
 
 // If you change this, please modify `src/doc/unstable-book` as well.

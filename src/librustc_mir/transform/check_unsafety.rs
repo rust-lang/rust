@@ -155,7 +155,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             // possibly know what the result of various operations like `address / 2` would be
             // pointers during const evaluation have no integral address, only an abstract one
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty)
-            if self.const_context && self.tcx.features().const_raw_ptr_to_usize_cast => {
+            if self.const_context && self.tcx.features().on(sym::const_raw_ptr_to_usize_cast) => {
                 let operand_ty = operand.ty(self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
@@ -177,7 +177,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             // or the linker will place various statics in memory. Without this information the
             // result of a comparison of addresses would differ between runtime and compile-time.
             Rvalue::BinaryOp(_, ref lhs, _)
-            if self.const_context && self.tcx.features().const_compare_raw_pointers => {
+            if self.const_context && self.tcx.features().on(sym::const_compare_raw_pointers) => {
                 if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
                     self.register_violations(&[UnsafetyViolation {
                         source_info: self.source_info,

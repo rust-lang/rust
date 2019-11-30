@@ -231,15 +231,13 @@ impl<'a> LintLevelsBuilder<'a> {
                             // FIXME (#55112): issue unused-attributes lint if we thereby
                             // don't have any lint names (`#[level(reason = "foo")]`)
                             if let ast::LitKind::Str(rationale, _) = name_value.kind {
-                                if !self.sess.features_untracked().lint_reasons {
-                                    feature_gate::feature_err(
-                                        &self.sess.parse_sess,
-                                        sym::lint_reasons,
-                                        item.span,
-                                        "lint reasons are experimental"
-                                    )
-                                    .emit();
-                                }
+                                feature_gate::gate_feature(
+                                    &self.sess.parse_sess,
+                                    self.sess.features_untracked(),
+                                    item.span,
+                                    sym::lint_reasons,
+                                    "lint reasons are experimental"
+                                );
                                 reason = Some(rationale);
                             } else {
                                 bad_attr(name_value.span)

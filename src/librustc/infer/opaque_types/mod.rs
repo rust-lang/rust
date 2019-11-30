@@ -13,7 +13,7 @@ use errors::DiagnosticBuilder;
 use rustc::session::config::nightly_options;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::Span;
+use syntax_pos::{Span, symbol::sym};
 
 use rustc_error_codes::*;
 
@@ -488,7 +488,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         conflict2: ty::Region<'tcx>,
     ) -> bool {
         // If we have `#![feature(member_constraints)]`, no problems.
-        if self.tcx.features().member_constraints {
+        if self.tcx.features().on(sym::member_constraints) {
             return false;
         }
 

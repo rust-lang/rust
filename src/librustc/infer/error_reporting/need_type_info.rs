@@ -5,8 +5,8 @@ use crate::infer::InferCtxt;
 use crate::infer::type_variable::TypeVariableOriginKind;
 use crate::ty::{self, Ty, Infer, TyVar};
 use crate::ty::print::Print;
-use syntax::source_map::DesugaringKind;
-use syntax_pos::Span;
+use syntax_pos::source_map::DesugaringKind;
+use syntax_pos::{Span, symbol::sym};
 use errors::{Applicability, DiagnosticBuilder};
 
 use rustc_error_codes::*;
@@ -217,7 +217,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let is_named_and_not_impl_trait = |ty: Ty<'_>| {
             &ty.to_string() != "_" &&
                 // FIXME: Remove this check after `impl_trait_in_bindings` is stabilized. #63527
-                (!ty.is_impl_trait() || self.tcx.features().impl_trait_in_bindings)
+                (!ty.is_impl_trait() || self.tcx.features().on(sym::impl_trait_in_bindings))
         };
 
         let ty_msg = match local_visitor.found_ty {

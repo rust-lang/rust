@@ -3,29 +3,21 @@
 use AttributeType::*;
 use AttributeGate::*;
 
-use crate::{Features, Stability};
+use crate::Stability;
 
 use rustc_data_structures::fx::FxHashMap;
 use syntax_pos::symbol::{Symbol, sym};
 use lazy_static::lazy_static;
 
-type GateFn = fn(&Features) -> bool;
-
-macro_rules! cfg_fn {
-    ($field: ident) => {
-        (|features| { features.$field }) as GateFn
-    }
-}
-
-pub type GatedCfg = (Symbol, Symbol, GateFn);
+pub type GatedCfg = (Symbol, Symbol);
 
 /// `cfg(...)`'s that are feature gated.
 const GATED_CFGS: &[GatedCfg] = &[
-    // (name in cfg, feature, function to check if the feature is enabled)
-    (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
-    (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
-    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
-    (sym::sanitize, sym::cfg_sanitize, cfg_fn!(cfg_sanitize)),
+    // (name in cfg, feature)
+    (sym::target_thread_local, sym::cfg_target_thread_local),
+    (sym::target_has_atomic, sym::cfg_target_has_atomic),
+    (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic),
+    (sym::sanitize, sym::cfg_sanitize),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
@@ -52,25 +44,13 @@ pub enum AttributeType {
     CrateLevel,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum AttributeGate {
     /// Is gated by a given feature gate, reason
-    /// and function to check if enabled
-    Gated(Stability, Symbol, &'static str, fn(&Features) -> bool),
+    Gated(Stability, Symbol, &'static str),
 
     /// Ungated attribute, can be used on all release channels
     Ungated,
-}
-
-// fn() is not Debug
-impl std::fmt::Debug for AttributeGate {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match *self {
-            Self::Gated(ref stab, name, expl, _) =>
-                write!(fmt, "Gated({:?}, {}, {})", stab, name, expl),
-            Self::Ungated => write!(fmt, "Ungated")
-        }
-    }
 }
 
 impl AttributeGate {
@@ -125,10 +105,10 @@ macro_rules! ungated {
 
 macro_rules! gated {
     ($attr:ident, $typ:expr, $tpl:expr, $gate:ident, $msg:expr $(,)?) => {
-        (sym::$attr, $typ, $tpl, Gated(Stability::Unstable, sym::$gate, $msg, cfg_fn!($gate)))
+        (sym::$attr, $typ, $tpl, Gated(Stability::Unstable, sym::$gate, $msg))
     };
     ($attr:ident, $typ:expr, $tpl:expr, $msg:expr $(,)?) => {
-        (sym::$attr, $typ, $tpl, Gated(Stability::Unstable, sym::$attr, $msg, cfg_fn!($attr)))
+        (sym::$attr, $typ, $tpl, Gated(Stability::Unstable, sym::$attr, $msg))
     };
 }
 
@@ -142,8 +122,7 @@ macro_rules! rustc_attr {
         )
     };
     ($attr:ident, $typ:expr, $tpl:expr, $msg:expr $(,)?) => {
-        (sym::$attr, $typ, $tpl,
-         Gated(Stability::Unstable, sym::rustc_attrs, $msg, cfg_fn!(rustc_attrs)))
+        (sym::$attr, $typ, $tpl, Gated(Stability::Unstable, sym::rustc_attrs, $msg))
     };
 }
 
@@ -280,7 +259,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             ),
             sym::plugin_registrar,
             "compiler plugins are deprecated",
-            cfg_fn!(plugin_registrar)
         )
     ),
     (
@@ -292,7 +270,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             ),
             sym::plugin,
             "compiler plugins are deprecated",
-            cfg_fn!(plugin)
         )
     ),
 
@@ -489,7 +466,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             Stability::Unstable,
             sym::rustc_attrs,
             "diagnostic items compiler internal support for linting",
-            cfg_fn!(rustc_attrs),
         ),
     ),
     (
@@ -499,7 +475,6 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
             sym::no_debug,
             "the `#[no_debug]` attribute was an experimental feature that has been \
             deprecated due to lack of demand",
-            cfg_fn!(no_debug)
         )
     ),
     gated!(

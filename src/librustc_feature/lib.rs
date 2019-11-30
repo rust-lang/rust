@@ -17,12 +17,12 @@ mod builtin_attrs;
 
 use std::fmt;
 use std::num::NonZeroU32;
-use syntax_pos::{Span, edition::Edition, symbol::Symbol};
+use syntax_pos::{edition::Edition, symbol::Symbol};
 
 #[derive(Clone, Copy)]
 pub enum State {
     Accepted,
-    Active { set: fn(&mut Features, Span) },
+    Active,
     Removed { reason: Option<&'static str> },
     Stabilized { reason: Option<&'static str> },
 }

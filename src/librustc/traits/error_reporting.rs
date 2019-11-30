@@ -2353,13 +2353,13 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             ObligationCauseCode::VariableType(_) => {
                 err.note("all local variables must have a statically known size");
-                if !self.tcx.features().unsized_locals {
+                if !self.tcx.features().on(sym::unsized_locals) {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }
             ObligationCauseCode::SizedArgumentType => {
                 err.note("all function arguments must have a statically known size");
-                if !self.tcx.features().unsized_locals {
+                if !self.tcx.features().on(sym::unsized_locals) {
                     err.help("unsized locals are gated as an unstable feature");
                 }
             }

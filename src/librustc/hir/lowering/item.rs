@@ -181,7 +181,7 @@ impl LoweringContext<'_> {
             ItemKind::Impl(.., None, _, _) => smallvec![i.id],
             ItemKind::Static(ref ty, ..) => {
                 let mut ids = smallvec![i.id];
-                if self.sess.features_untracked().impl_trait_in_bindings {
+                if self.sess.features_untracked().on(sym::impl_trait_in_bindings) {
                     let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
                     visitor.visit_ty(ty);
                 }
@@ -189,7 +189,7 @@ impl LoweringContext<'_> {
             },
             ItemKind::Const(ref ty, ..) => {
                 let mut ids = smallvec![i.id];
-                if self.sess.features_untracked().impl_trait_in_bindings {
+                if self.sess.features_untracked().on(sym::impl_trait_in_bindings) {
                     let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
                     visitor.visit_ty(ty);
                 }
@@ -285,7 +285,7 @@ impl LoweringContext<'_> {
                 hir::ItemKind::Static(
                     self.lower_ty(
                         t,
-                        if self.sess.features_untracked().impl_trait_in_bindings {
+                        if self.sess.features_untracked().on(sym::impl_trait_in_bindings) {
                             ImplTraitContext::OpaqueTy(None)
                         } else {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
@@ -299,7 +299,7 @@ impl LoweringContext<'_> {
                 hir::ItemKind::Const(
                     self.lower_ty(
                         t,
-                        if self.sess.features_untracked().impl_trait_in_bindings {
+                        if self.sess.features_untracked().on(sym::impl_trait_in_bindings) {
                             ImplTraitContext::OpaqueTy(None)
                         } else {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)

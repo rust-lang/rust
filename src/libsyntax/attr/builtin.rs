@@ -566,8 +566,8 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
 }
 
 fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &Features) {
-    let (cfg, feature, has_feature) = gated_cfg;
-    if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
+    let (cfg, feature) = gated_cfg;
+    if !features.on(*feature) && !cfg_span.allows_unstable(*feature) {
         let explain = format!("`cfg({})` is experimental and subject to change", cfg);
         feature_err(sess, *feature, cfg_span, &explain).emit()
     }

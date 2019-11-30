@@ -5,7 +5,7 @@ use crate::ty::subst::SubstsRef;
 use crate::traits::{self, AssocTypeBoundData};
 use crate::ty::{self, ToPredicate, Ty, TyCtxt, TypeFoldable};
 use std::iter::once;
-use syntax::symbol::{kw, Ident};
+use syntax::symbol::{kw, sym, Ident};
 use syntax_pos::Span;
 use crate::middle::lang_items;
 
@@ -538,7 +538,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     // checking those
 
                     let defer_to_coercion =
-                        self.infcx.tcx.features().object_safe_for_dispatch;
+                        self.infcx.tcx.features().on(sym::object_safe_for_dispatch);
 
                     if !defer_to_coercion {
                         let cause = self.cause(traits::MiscObligation);

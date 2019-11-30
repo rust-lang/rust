@@ -217,7 +217,7 @@ fn check_statement(
         }
 
         | StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _)
-        if !tcx.features().const_if_match
+        if !tcx.features().on(sym::const_if_match)
         => {
             Err((span, "loops and conditional expressions are not stable in const fn".into()))
         }
@@ -269,7 +269,7 @@ fn check_place(
     while let &[ref proj_base @ .., elem] = cursor {
         cursor = proj_base;
         match elem {
-            ProjectionElem::Downcast(..) if !tcx.features().const_if_match
+            ProjectionElem::Downcast(..) if !tcx.features().on(sym::const_if_match)
                 => return Err((span, "`match` or `if let` in `const fn` is unstable".into())),
             ProjectionElem::Downcast(_symbol, _variant_index) => {}
 
@@ -326,7 +326,7 @@ fn check_terminator(
 
         | TerminatorKind::FalseEdges { .. }
         | TerminatorKind::SwitchInt { .. }
-        if !tcx.features().const_if_match
+        if !tcx.features().on(sym::const_if_match)
         => Err((
             span,
             "loops and conditional expressions are not stable in const fn".into(),
@@ -338,7 +338,7 @@ fn check_terminator(
         }
 
         // FIXME(ecstaticmorse): We probably want to allow `Unreachable` unconditionally.
-        TerminatorKind::Unreachable if tcx.features().const_if_match => Ok(()),
+        TerminatorKind::Unreachable if tcx.features().on(sym::const_if_match) => Ok(()),
 
         | TerminatorKind::Abort | TerminatorKind::Unreachable => {
             Err((span, "const fn with unreachable code is not stable".into()))

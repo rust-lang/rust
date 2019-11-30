@@ -18,7 +18,7 @@ use rustc::hir::{self, Pat};
 
 use std::slice;
 
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span, symbol::sym};
 
 use rustc_error_codes::*;
 
@@ -173,7 +173,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut def_span = None;
             let mut missing_variants = vec![];
             if inlined_arms.is_empty() {
-                let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
+                let scrutinee_is_uninhabited = if self.tcx.features().on(sym::exhaustive_patterns) {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
                     match pat_ty.kind {

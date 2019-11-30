@@ -15,7 +15,7 @@ use syntax::ast::Attribute;
 use syntax::symbol::sym;
 
 pub fn test_layout(tcx: TyCtxt<'_>) {
-    if tcx.features().rustc_attrs {
+    if tcx.features().on(sym::rustc_attrs) {
         // if the `rustc_attrs` feature is not enabled, don't bother testing layout
         tcx.hir()
             .krate()

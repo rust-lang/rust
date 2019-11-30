@@ -612,7 +612,7 @@ pub fn program_clauses_for_associated_type_value(
 }
 
 pub fn dump_program_clauses(tcx: TyCtxt<'_>) {
-    if !tcx.features().rustc_attrs {
+    if !tcx.features().on(sym::rustc_attrs) {
         return;
     }
 

@@ -208,7 +208,7 @@ impl<'a> StripUnconfigured<'a> {
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
     pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
-        if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
+        if !self.features.map(|features| features.on(sym::stmt_expr_attributes)).unwrap_or(true) {
             let mut err = feature_err(self.sess,
                                       sym::stmt_expr_attributes,
                                       attr.span,

@@ -2,7 +2,7 @@ use crate::ty::query::Providers;
 use crate::hir::def_id::DefId;
 use crate::hir;
 use crate::ty::TyCtxt;
-use syntax_pos::symbol::Symbol;
+use syntax_pos::symbol::{sym, Symbol};
 use crate::hir::map::blocks::FnLikeNode;
 use syntax::attr;
 
@@ -42,7 +42,7 @@ impl<'tcx> TyCtxt<'tcx> {
             return false;
         }
 
-        if self.features().staged_api {
+        if self.features().on(sym::staged_api) {
             // in order for a libstd function to be considered min_const_fn
             // it needs to be stable and have no `rustc_const_unstable` attribute
             match self.lookup_stability(def_id) {
@@ -56,7 +56,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         } else {
             // users enabling the `const_fn` feature gate can do what they want
-            !self.features().const_fn
+            !self.features().on(sym::const_fn)
         }
     }
 }

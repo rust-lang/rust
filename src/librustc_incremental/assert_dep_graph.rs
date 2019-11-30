@@ -49,7 +49,7 @@ use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, symbol::sym};
 
 pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
@@ -60,7 +60,7 @@ pub fn assert_dep_graph(tcx: TyCtxt<'_>) {
         // if the `rustc_attrs` feature is not enabled, then the
         // attributes we are interested in cannot be present anyway, so
         // skip the walk.
-        if !tcx.features().rustc_attrs {
+        if !tcx.features().on(sym::rustc_attrs) {
             return;
         }
 

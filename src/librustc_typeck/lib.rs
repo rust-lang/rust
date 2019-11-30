@@ -105,7 +105,7 @@ use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::util;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::{DUMMY_SP, Span, symbol::sym};
 use util::common::time;
 
 use rustc_error_codes::*;
@@ -308,7 +308,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
         });
     })?;
 
-    if tcx.features().rustc_attrs {
+    if tcx.features().on(sym::rustc_attrs) {
         tcx.sess.track_errors(|| {
             time(tcx.sess, "outlives testing", ||
                 outlives::test::test_inferred_outlives(tcx));
@@ -325,7 +325,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
           coherence::check_coherence(tcx));
     })?;
 
-    if tcx.features().rustc_attrs {
+    if tcx.features().on(sym::rustc_attrs) {
         tcx.sess.track_errors(|| {
             time(tcx.sess, "variance testing", ||
                 variance::test::test_variance(tcx));

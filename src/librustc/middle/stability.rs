@@ -116,7 +116,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
                    item_sp: Span, kind: AnnotationKind, visit_children: F)
         where F: FnOnce(&mut Self)
     {
-        if self.tcx.features().staged_api {
+        if self.tcx.features().on(sym::staged_api) {
             // This crate explicitly wants staged API.
             debug!("annotate(id = {:?}, attrs = {:?})", hir_id, attrs);
             if let Some(..) = attr::find_deprecation(&self.tcx.sess.parse_sess, attrs, item_sp) {
@@ -393,7 +393,7 @@ impl<'tcx> Index<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Index<'tcx> {
         let is_staged_api =
             tcx.sess.opts.debugging_opts.force_unstable_if_unmarked ||
-            tcx.features().staged_api;
+            tcx.features().on(sym::staged_api);
         let mut staged_api = FxHashMap::default();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         let mut index = Index {
@@ -836,7 +836,7 @@ impl Visitor<'tcx> for Checker<'tcx> {
 
             // There's no good place to insert stability check for non-Copy unions,
             // so semi-randomly perform it here in stability.rs
-            hir::ItemKind::Union(..) if !self.tcx.features().untagged_unions => {
+            hir::ItemKind::Union(..) if !self.tcx.features().on(sym::untagged_unions) => {
                 let def_id = self.tcx.hir().local_def_id(item.hir_id);
                 let adt_def = self.tcx.adt_def(def_id);
                 let ty = self.tcx.type_of(def_id);

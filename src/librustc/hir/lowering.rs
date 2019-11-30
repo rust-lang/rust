@@ -834,7 +834,7 @@ impl<'a> LoweringContext<'a> {
             return;
         }
 
-        if !self.sess.features_untracked().in_band_lifetimes {
+        if !self.sess.features_untracked().on(sym::in_band_lifetimes) {
             return;
         }
 
@@ -1394,7 +1394,7 @@ impl<'a> LoweringContext<'a> {
                     }
                     ImplTraitContext::Disallowed(pos) => {
                         let allowed_in = if self.sess.features_untracked()
-                                                .impl_trait_in_bindings {
+                                                .on(sym::impl_trait_in_bindings) {
                             "bindings or function and inherent method return types"
                         } else {
                             "function and inherent method return types"
@@ -2118,7 +2118,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_local(&mut self, l: &Local) -> (hir::Local, SmallVec<[NodeId; 1]>) {
         let mut ids = SmallVec::<[NodeId; 1]>::new();
-        if self.sess.features_untracked().impl_trait_in_bindings {
+        if self.sess.features_untracked().on(sym::impl_trait_in_bindings) {
             if let Some(ref ty) = l.ty {
                 let mut visitor = ImplTraitTypeIdVisitor { ids: &mut ids };
                 visitor.visit_ty(ty);
@@ -2130,7 +2130,7 @@ impl<'a> LoweringContext<'a> {
             ty: l.ty
                 .as_ref()
                 .map(|t| self.lower_ty(t,
-                    if self.sess.features_untracked().impl_trait_in_bindings {
+                    if self.sess.features_untracked().on(sym::impl_trait_in_bindings) {
                         ImplTraitContext::OpaqueTy(Some(parent_def_id))
                     } else {
                         ImplTraitContext::Disallowed(ImplTraitPosition::Binding)

@@ -12,7 +12,7 @@ use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
 use rustc::mir::BorrowKind;
-use syntax_pos::Span;
+use syntax_pos::{Span, symbol::sym};
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
@@ -309,7 +309,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                 match (op.node, cx.constness) {
                     // Destroy control flow if `#![feature(const_if_match)]` is not enabled.
                     (hir::BinOpKind::And, hir::Constness::Const)
-                        if !cx.tcx.features().const_if_match =>
+                        if !cx.tcx.features().on(sym::const_if_match) =>
                     {
                         cx.control_flow_destroyed.push((
                             op.span,
@@ -322,7 +322,7 @@ fn make_mirror_unadjusted<'a, 'tcx>(
                         }
                     }
                     (hir::BinOpKind::Or, hir::Constness::Const)
-                        if !cx.tcx.features().const_if_match =>
+                        if !cx.tcx.features().on(sym::const_if_match) =>
                     {
                         cx.control_flow_destroyed.push((
                             op.span,

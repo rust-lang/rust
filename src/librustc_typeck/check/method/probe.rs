@@ -29,7 +29,7 @@ use rustc::infer::canonical::{OriginalQueryValues};
 use rustc::middle::stability;
 use syntax::ast;
 use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
-use syntax_pos::{DUMMY_SP, Span, symbol::Symbol};
+use syntax_pos::{DUMMY_SP, Span, symbol::{sym, Symbol}};
 use std::iter;
 use std::mem;
 use std::ops::Deref;
@@ -338,7 +338,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. Just keep going.
                 debug!("ProbeContext: encountered ambiguity in suggestion");
-            } else if bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
+            } else if bad_ty.reached_raw_pointer
+                && !self.tcx.features().on(sym::arbitrary_self_types)
+            {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)

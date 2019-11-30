@@ -356,7 +356,11 @@ fn validate_generics_order<'a>(
                 &format!(
                     "reorder the {}s: lifetimes, then types{}",
                     pos_str,
-                    if sess.features_untracked().const_generics { ", then consts" } else { "" },
+                    if sess.features_untracked().on(sym::const_generics) {
+                        ", then consts"
+                    } else {
+                        ""
+                    },
                 ),
                 ordered_params.clone(),
                 Applicability::MachineApplicable,

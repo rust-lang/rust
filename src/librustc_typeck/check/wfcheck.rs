@@ -43,7 +43,7 @@ impl<'tcx> CheckWfFcxBuilder<'tcx> {
         let param_env = self.param_env;
         self.inherited.enter(|inh| {
             let fcx = FnCtxt::new(&inh, param_env, id);
-            if !inh.tcx.features().trivial_bounds {
+            if !inh.tcx.features().on(sym::trivial_bounds) {
                 // As predicates are cached rather than obligations, this
                 // needsto be called first so that they are checked with an
                 // empty `param_env`.
@@ -817,7 +817,7 @@ fn check_method_receiver<'fcx, 'tcx>(
         &ty::Binder::bind(receiver_ty)
     );
 
-    if fcx.tcx.features().arbitrary_self_types {
+    if fcx.tcx.features().on(sym::arbitrary_self_types) {
         if !receiver_is_valid(fcx, span, receiver_ty, self_ty, true) {
             // Report error; `arbitrary_self_types` was enabled.
             e0307(fcx, span, receiver_ty);
