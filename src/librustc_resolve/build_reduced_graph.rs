@@ -759,8 +759,8 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             // These items live in both the type and value namespaces.
             ItemKind::Struct(ref vdata, _) => {
                 // Define a name in the type namespace.
-                let def_id = self.r.definitions.local_def_id(item.id);
-                let res = Res::Def(DefKind::Struct, def_id);
+                let item_def_id = self.r.definitions.local_def_id(item.id);
+                let res = Res::Def(DefKind::Struct, item_def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
                 // Record field names for error reporting.
@@ -798,12 +798,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             ItemKind::Union(ref vdata, _) => {
-                let def_id = self.r.definitions.local_def_id(item.id);
-                let res = Res::Def(DefKind::Union, def_id);
+                let item_def_id = self.r.definitions.local_def_id(item.id);
+                let res = Res::Def(DefKind::Union, item_def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
                 // Record field names for error reporting.
-                self.insert_field_names_local(def_id, vdata);
+                self.insert_field_names_local(item_def_id, vdata);
             }
 
             ItemKind::Trait(..) => {
