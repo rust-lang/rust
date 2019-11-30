@@ -1,16 +1,14 @@
-//! # Feature gating
+//! # Feature gates
 //!
-//! This module implements the gating necessary for preventing certain compiler
-//! features from being used by default. This module will crawl a pre-expanded
-//! AST to ensure that there are no features which are used that are not
-//! enabled.
+//! This crate declares the set of past and present unstable features in the compiler.
+//! Feature gate checking itself is done in `libsyntax/feature_gate/check.rs` at the moment.
 //!
 //! Features are enabled in programs via the crate-level attributes of
 //! `#![feature(...)]` with a comma-separated list of features.
 //!
-//! For the purpose of future feature-tracking, once code for detection of feature
-//! gate usage is added, *do not remove it again* even once the feature
-//! becomes stable.
+//! For the purpose of future feature-tracking, once a feature gate is added,
+//! even if it is stabilized or removed, *do not remove it*. Instead, move the
+//! symbol to the `accepted` or `removed` modules respectively.
 
 mod accepted;
 mod removed;
