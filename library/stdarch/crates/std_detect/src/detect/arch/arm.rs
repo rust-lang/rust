@@ -14,4 +14,6 @@ features! {
     /// ARM Advanced SIMD (NEON) - Aarch32
     @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] pmull: "pmull";
     /// Polynomial Multiply
+    @FEATURE: #[unstable(feature = "stdsimd", issue = "27731")] crc: "crc";
+    /// CRC32 (Cyclic Redundancy Check)
 }
