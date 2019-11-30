@@ -173,7 +173,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut def_span = None;
             let mut missing_variants = vec![];
             if inlined_arms.is_empty() {
-                let scrutinee_is_uninhabited = if self.tcx.features().exhaustive_patterns {
+                let scrutinee_is_visibly_uninhabited = if self.tcx.features().exhaustive_patterns {
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
                     match pat_ty.kind {
@@ -186,15 +186,12 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                                     def.variants.iter().map(|variant| variant.ident).collect();
                             }
 
-                            let is_non_exhaustive_and_non_local =
-                                def.is_variant_list_non_exhaustive() && !def.did.is_local();
-
-                            !(is_non_exhaustive_and_non_local) && def.variants.is_empty()
+                            def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(pat_ty)
                         }
                         _ => false,
                     }
                 };
-                if !scrutinee_is_uninhabited {
+                if !scrutinee_is_visibly_uninhabited {
                     // We know the type is inhabited, so this must be wrong
                     let mut err = create_e0004(
                         self.tcx.sess,

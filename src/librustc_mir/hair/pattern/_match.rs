@@ -238,7 +238,7 @@ use super::{FieldPat, Pat, PatKind, PatRange};
 use rustc::hir::def_id::DefId;
 use rustc::hir::{HirId, RangeEnd};
 use rustc::ty::layout::{Integer, IntegerExt, Size, VariantIdx};
-use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Const, Ty, TyCtxt, TypeFoldable, VariantDef};
 
 use rustc::lint;
 use rustc::mir::interpret::{truncate, AllocId, ConstValue, Pointer, Scalar};
@@ -596,9 +596,21 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
         }
     }
 
-    fn is_local(&self, ty: Ty<'tcx>) -> bool {
+    // Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
+    pub fn is_foreign_non_exhaustive_enum(&self, ty: Ty<'tcx>) -> bool {
         match ty.kind {
-            ty::Adt(adt_def, ..) => adt_def.did.is_local(),
+            ty::Adt(def, ..) => {
+                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did.is_local()
+            }
+            _ => false,
+        }
+    }
+
+    // Returns whether the given variant is from another crate and has its fields declared
+    // `#[non_exhaustive]`.
+    fn is_foreign_non_exhaustive_variant(&self, ty: Ty<'tcx>, variant: &VariantDef) -> bool {
+        match ty.kind {
+            ty::Adt(def, ..) => variant.is_field_list_non_exhaustive() && !def.did.is_local(),
             _ => false,
         }
     }
@@ -858,8 +870,7 @@ impl<'tcx> Constructor<'tcx> {
                         vec![Pat::wildcard_from_ty(substs.type_at(0))]
                     } else {
                         let variant = &adt.variants[self.variant_index_for_adt(cx, adt)];
-                        let is_non_exhaustive =
-                            variant.is_field_list_non_exhaustive() && !cx.is_local(ty);
+                        let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(ty, variant);
                         variant
                             .fields
                             .iter()
@@ -1264,8 +1275,7 @@ fn all_constructors<'a, 'tcx>(
             // ```
             // we don't want to show every possible IO error, but instead have only `_` as the
             // witness.
-            let is_declared_nonexhaustive =
-                def.is_variant_list_non_exhaustive() && !cx.is_local(pcx.ty);
+            let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(pcx.ty);
 
             // If `exhaustive_patterns` is disabled and our scrutinee is an empty enum, we treat it
             // as though it had an "unknown" constructor to avoid exposing its emptyness. Note that
@@ -2307,7 +2317,7 @@ fn specialize_one_pattern<'p, 'tcx>(
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
-            let is_non_exhaustive = variant.is_field_list_non_exhaustive() && !cx.is_local(pat.ty);
+            let is_non_exhaustive = cx.is_foreign_non_exhaustive_variant(pat.ty, variant);
             Some(Variant(variant.def_id))
                 .filter(|variant_constructor| variant_constructor == constructor)
                 .map(|_| {
