@@ -4676,6 +4676,48 @@ fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
 }
 
 #[test]
+fn trait_impl_self_ty() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait<T> {
+   fn foo(&self);
+}
+
+struct S;
+
+impl Trait<Self> for S {}
+
+fn test() {
+    S.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "()");
+}
+
+#[test]
+fn trait_impl_self_ty_cycle() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+   fn foo(&self);
+}
+
+struct S<T>;
+
+impl Trait for S<Self> {}
+
+fn test() {
+    S.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
 // FIXME this is currently a Salsa panic; it would be nicer if it just returned
 // in Unknown, and we should be able to do that once Salsa allows us to handle
 // the cycle. But at least it doesn't overflow for now.

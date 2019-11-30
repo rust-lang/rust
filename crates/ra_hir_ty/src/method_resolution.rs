@@ -19,7 +19,7 @@ use crate::{
     db::HirDatabase,
     primitive::{FloatBitness, Uncertain},
     utils::all_super_traits,
-    Canonical, ImplTy, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    Canonical, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor,
 };
 
 /// This is used as a key for indexing impls.
@@ -58,11 +58,12 @@ impl CrateImplBlocks {
         let crate_def_map = db.crate_def_map(krate);
         for (_module_id, module_data) in crate_def_map.modules.iter() {
             for &impl_id in module_data.impls.iter() {
-                match db.impl_ty(impl_id) {
-                    ImplTy::TraitRef(tr) => {
+                match db.impl_trait(impl_id) {
+                    Some(tr) => {
                         res.impls_by_trait.entry(tr.trait_).or_default().push(impl_id);
                     }
-                    ImplTy::Inherent(self_ty) => {
+                    None => {
+                        let self_ty = db.impl_self_ty(impl_id);
                         if let Some(self_ty_fp) = TyFingerprint::for_impl(&self_ty) {
                             res.impls.entry(self_ty_fp).or_default().push(impl_id);
                         }

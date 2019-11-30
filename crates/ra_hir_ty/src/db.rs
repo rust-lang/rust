@@ -11,7 +11,7 @@ use ra_db::{salsa, CrateId};
 use crate::{
     method_resolution::CrateImplBlocks,
     traits::{AssocTyValue, Impl},
-    CallableDef, FnSig, GenericPredicate, ImplTy, InferenceResult, Substs, Ty, TyDefId, TypeCtor,
+    CallableDef, FnSig, GenericPredicate, InferenceResult, Substs, TraitRef, Ty, TyDefId, TypeCtor,
     ValueTyDefId,
 };
 
@@ -27,8 +27,12 @@ pub trait HirDatabase: DefDatabase {
     #[salsa::invoke(crate::lower::value_ty_query)]
     fn value_ty(&self, def: ValueTyDefId) -> Ty;
 
-    #[salsa::invoke(crate::lower::impl_ty_query)]
-    fn impl_ty(&self, def: ImplId) -> ImplTy;
+    #[salsa::invoke(crate::lower::impl_self_ty_query)]
+    #[salsa::cycle(crate::lower::impl_self_ty_recover)]
+    fn impl_self_ty(&self, def: ImplId) -> Ty;
+
+    #[salsa::invoke(crate::lower::impl_trait_query)]
+    fn impl_trait(&self, def: ImplId) -> Option<TraitRef>;
 
     #[salsa::invoke(crate::lower::field_types_query)]
     fn field_types(&self, var: VariantId) -> Arc<ArenaMap<LocalStructFieldId, Ty>>;

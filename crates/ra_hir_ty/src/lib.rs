@@ -486,21 +486,6 @@ impl TypeWalk for TraitRef {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub enum ImplTy {
-    Inherent(Ty),
-    TraitRef(TraitRef),
-}
-
-impl ImplTy {
-    pub(crate) fn self_type(&self) -> &Ty {
-        match self {
-            ImplTy::Inherent(it) => it,
-            ImplTy::TraitRef(tr) => &tr.substs[0],
-        }
-    }
-}
-
 /// Like `generics::WherePredicate`, but with resolved types: A condition on the
 /// parameters of a generic item.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

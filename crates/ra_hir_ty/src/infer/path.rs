@@ -244,7 +244,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ContainerId::ImplId(it) => it,
                 _ => return None,
             };
-            let self_ty = self.db.impl_ty(impl_id).self_type().clone();
+            let self_ty = self.db.impl_self_ty(impl_id).clone();
             let self_ty_substs = self_ty.substs()?;
             let actual_substs = actual_def_ty.substs()?;
 

@@ -27,8 +27,8 @@ use crate::{
         all_super_traits, associated_type_by_name_including_super_traits, make_mut_slice,
         variant_data,
     },
-    FnSig, GenericPredicate, ImplTy, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment,
-    TraitRef, Ty, TypeCtor, TypeWalk,
+    FnSig, GenericPredicate, ProjectionPredicate, ProjectionTy, Substs, TraitEnvironment, TraitRef,
+    Ty, TypeCtor, TypeWalk,
 };
 
 impl Ty {
@@ -179,7 +179,7 @@ impl Ty {
                 let name = resolved_segment.name.clone();
                 Ty::Param { idx, name }
             }
-            TypeNs::SelfType(impl_id) => db.impl_ty(impl_id).self_type().clone(),
+            TypeNs::SelfType(impl_id) => db.impl_self_ty(impl_id).clone(),
             TypeNs::AdtSelfType(adt) => db.ty(adt.into()),
 
             TypeNs::AdtId(it) => Ty::from_hir_path_inner(db, resolver, resolved_segment, it.into()),
@@ -743,17 +743,24 @@ pub(crate) fn value_ty_query(db: &impl HirDatabase, def: ValueTyDefId) -> Ty {
     }
 }
 
-pub(crate) fn impl_ty_query(db: &impl HirDatabase, impl_id: ImplId) -> ImplTy {
+pub(crate) fn impl_self_ty_query(db: &impl HirDatabase, impl_id: ImplId) -> Ty {
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db);
-    let self_ty = Ty::from_hir(db, &resolver, &impl_data.target_type);
-    match impl_data.target_trait.as_ref() {
-        Some(trait_ref) => {
-            match TraitRef::from_hir(db, &resolver, trait_ref, Some(self_ty.clone())) {
-                Some(it) => ImplTy::TraitRef(it),
-                None => ImplTy::Inherent(self_ty),
-            }
-        }
-        None => ImplTy::Inherent(self_ty),
-    }
+    Ty::from_hir(db, &resolver, &impl_data.target_type)
+}
+
+pub(crate) fn impl_self_ty_recover(
+    _db: &impl HirDatabase,
+    _cycle: &[String],
+    _impl_id: &ImplId,
+) -> Ty {
+    Ty::Unknown
+}
+
+pub(crate) fn impl_trait_query(db: &impl HirDatabase, impl_id: ImplId) -> Option<TraitRef> {
+    let impl_data = db.impl_data(impl_id);
+    let resolver = impl_id.resolver(db);
+    let self_ty = db.impl_self_ty(impl_id);
+    let target_trait = impl_data.target_trait.as_ref()?;
+    TraitRef::from_hir(db, &resolver, target_trait, Some(self_ty.clone()))
 }

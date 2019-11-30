@@ -8,7 +8,7 @@ use hir_def::{lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutabilit
 use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
-use crate::{autoderef, db::HirDatabase, ImplTy, Substs, Ty, TypeCtor, TypeWalk};
+use crate::{autoderef, db::HirDatabase, Substs, Ty, TypeCtor, TypeWalk};
 
 use super::{InEnvironment, InferTy, InferenceContext, TypeVarValue};
 
@@ -54,10 +54,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         impls
             .iter()
             .filter_map(|&impl_id| {
-                let trait_ref = match db.impl_ty(impl_id) {
-                    ImplTy::TraitRef(it) => it,
-                    ImplTy::Inherent(_) => return None,
-                };
+                let trait_ref = db.impl_trait(impl_id)?;
 
                 // `CoerseUnsized` has one generic parameter for the target type.
                 let cur_from_ty = trait_ref.substs.0.get(0)?;
