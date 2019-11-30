@@ -145,9 +145,6 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
 
 }
 
-const EXPLAIN_BOX_SYNTAX: &str =
-    "box expression syntax is experimental; you can call `Box::new` instead";
-
 struct PostExpansionVisitor<'a> {
     parse_sess: &'a ParseSess,
     features: &'a Features,
@@ -507,7 +504,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::Box(_) => {
-                gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
+                gate_feature_post!(
+                    &self, box_syntax, e.span,
+                    "box expression syntax is experimental; you can call `Box::new` instead"
+                );
             }
             ast::ExprKind::Type(..) => {
                 // To avoid noise about type ascription in common syntax errors, only emit if it
