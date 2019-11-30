@@ -32,7 +32,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls<'_> {
                     excluded_env_vars: vec![],
                     args: vec![],
                     seed: None,
-                    tracked_id: None,
+                    tracked_pointer_tag: None,
                 };
                 eval_main(tcx, entry_def_id, config);
             });

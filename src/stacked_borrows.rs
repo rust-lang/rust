@@ -106,7 +106,7 @@ pub struct GlobalState {
     /// Those call IDs corresponding to functions that are still running.
     active_calls: HashSet<CallId>,
     /// The id to trace in this execution run
-    tracked_id: Option<PtrId>,
+    tracked_pointer_tag: Option<PtrId>,
 }
 /// Memory extra state gives us interior mutable access to the global state.
 pub type MemoryExtra = Rc<RefCell<GlobalState>>;
@@ -154,13 +154,13 @@ impl fmt::Display for RefKind {
 
 /// Utilities for initialization and ID generation
 impl GlobalState {
-    pub fn new(tracked_id: Option<PtrId>) -> Self {
+    pub fn new(tracked_pointer_tag: Option<PtrId>) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: HashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
             active_calls: HashSet::default(),
-            tracked_id,
+            tracked_pointer_tag,
         }
     }
 
@@ -272,7 +272,7 @@ impl<'tcx> Stack {
     /// Check if the given item is protected.
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         if let Tag::Tagged(id) = item.tag {
-            if Some(id) == global.tracked_id {
+            if Some(id) == global.tracked_pointer_tag {
                 throw_unsup!(Unsupported(format!("disabling item {:?} for tag {:?}", item, tag)));
             }
         }
