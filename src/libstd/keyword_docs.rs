@@ -875,7 +875,10 @@ mod mod_keyword { }
 /// variables, when `move` is used the closures is represented by the `FnOnce` trait.
 /// 
 /// ```rust
-/// 
+/// let capture = "hello";
+/// let closure = move || {
+///     println!("we say {}", capture);
+/// };
 /// ```
 /// 
 /// `move` is often used when [threads] are involved.
