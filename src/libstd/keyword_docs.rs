@@ -853,6 +853,7 @@ mod loop_keyword { }
 /// ```
 /// 
 /// For more information on `match` and matching in general, see the [Reference].
+/// 
 /// [Reference]: ../reference/expressions/match-expr.html
 mod match_keyword { }
 
@@ -892,11 +893,13 @@ mod mod_keyword { }
 /// 
 /// // x is no longer available
 /// ```
-///
+/// 
+/// For more information on the `move` keyword, see the [closure]'s section
+/// of the Rust book or the [threads] section
+/// 
 /// [`Fn` trait]: ../std/ops/trait.Fn.html
 /// [closure]: ../book/ch13-01-closures.html
 /// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
 mod move_keyword { }
 
 #[doc(keyword = "mut")]
