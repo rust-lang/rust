@@ -1838,7 +1838,7 @@ fn pat_constructor<'tcx>(
                 if slice.is_some() { VarLen(prefix, suffix) } else { FixedLen(prefix + suffix) };
             Some(Slice(Slice { array_len, kind }))
         }
-        PatKind::Or { .. } => bug!("Or-pattern hould have been expanded earlier on."),
+        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
 }
 
@@ -2444,7 +2444,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
         },
 
-        PatKind::Or { .. } => bug!("Or-pattern hould have been expanded earlier on."),
+        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     };
     debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
 

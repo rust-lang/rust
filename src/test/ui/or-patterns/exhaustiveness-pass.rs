@@ -17,7 +17,7 @@ fn main() {
     }
 
     match (0u8,) {
-        (1 | 1,) => {} // redundancy not detected for now
+        (1 | 1,) => {} // FIXME(or_patterns): redundancy not detected for now.
         _ => {}
     }
     match (0u8, 0u8) {
