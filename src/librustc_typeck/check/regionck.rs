@@ -125,9 +125,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcx.visit_region_obligations(id);
         }
         rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
-
-        assert!(self.tables.borrow().free_region_map.is_empty());
-        self.tables.borrow_mut().free_region_map = rcx.outlives_environment.into_free_region_map();
     }
 
     /// Region checking during the WF phase for items. `wf_tys` are the
@@ -169,12 +166,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         rcx.resolve_regions_and_report_errors(SuppressRegionErrors::when_nll_is_enabled(self.tcx));
-
-        // In this mode, we also copy the free-region-map into the
-        // tables of the enclosing fcx. In the other regionck modes
-        // (e.g., `regionck_item`), we don't have an enclosing tables.
-        assert!(self.tables.borrow().free_region_map.is_empty());
-        self.tables.borrow_mut().free_region_map = rcx.outlives_environment.into_free_region_map();
     }
 }
 
