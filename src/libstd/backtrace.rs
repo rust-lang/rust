@@ -95,10 +95,10 @@ use crate::env;
 use crate::fmt;
 use crate::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 use crate::sync::Mutex;
-use crate::sys_common::backtrace::{output_filename, lock};
+use crate::sys_common::backtrace::{lock, output_filename};
 use crate::vec::Vec;
-use backtrace_rs as backtrace;
 use backtrace::BytesOrWideString;
+use backtrace_rs as backtrace;
 
 /// A captured OS thread stack backtrace.
 ///

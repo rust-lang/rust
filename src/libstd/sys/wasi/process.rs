@@ -13,7 +13,7 @@ pub use crate::ffi::OsString as EnvKey;
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Command {
-    env: CommandEnv
+    env: CommandEnv,
 }
 
 // passed back to std::process with the pipes connected to the child, if any
@@ -32,32 +32,28 @@ pub enum Stdio {
 
 impl Command {
     pub fn new(_program: &OsStr) -> Command {
-        Command {
-            env: Default::default()
-        }
+        Command { env: Default::default() }
     }
 
-    pub fn arg(&mut self, _arg: &OsStr) {
-    }
+    pub fn arg(&mut self, _arg: &OsStr) {}
 
     pub fn env_mut(&mut self) -> &mut CommandEnv {
         &mut self.env
     }
 
-    pub fn cwd(&mut self, _dir: &OsStr) {
-    }
+    pub fn cwd(&mut self, _dir: &OsStr) {}
 
-    pub fn stdin(&mut self, _stdin: Stdio) {
-    }
+    pub fn stdin(&mut self, _stdin: Stdio) {}
 
-    pub fn stdout(&mut self, _stdout: Stdio) {
-    }
+    pub fn stdout(&mut self, _stdout: Stdio) {}
 
-    pub fn stderr(&mut self, _stderr: Stdio) {
-    }
+    pub fn stderr(&mut self, _stderr: Stdio) {}
 
-    pub fn spawn(&mut self, _default: Stdio, _needs_stdin: bool)
-        -> io::Result<(Process, StdioPipes)> {
+    pub fn spawn(
+        &mut self,
+        _default: Stdio,
+        _needs_stdin: bool,
+    ) -> io::Result<(Process, StdioPipes)> {
         unsupported()
     }
 }
@@ -106,8 +102,7 @@ impl PartialEq for ExitStatus {
     }
 }
 
-impl Eq for ExitStatus {
-}
+impl Eq for ExitStatus {}
 
 impl fmt::Debug for ExitStatus {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {

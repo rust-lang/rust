@@ -7,7 +7,7 @@ use crate::sys_common::mutex::Mutex;
 
 pub type Key = usize;
 
-type Dtor = unsafe extern fn(*mut u8);
+type Dtor = unsafe extern "C" fn(*mut u8);
 
 static NEXT_KEY: AtomicUsize = AtomicUsize::new(0);
 
@@ -41,11 +41,7 @@ pub unsafe fn create(dtor: Option<Dtor>) -> Key {
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    if let Some(&entry) = locals().get(&key) {
-        entry
-    } else {
-        ptr::null_mut()
-    }
+    if let Some(&entry) = locals().get(&key) { entry } else { ptr::null_mut() }
 }
 
 #[inline]

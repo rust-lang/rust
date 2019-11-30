@@ -7,21 +7,21 @@ use crate::cell::UnsafeCell;
 use crate::collections;
 use crate::fmt;
 use crate::future::Future;
-use crate::pin::Pin;
 use crate::ops::{Deref, DerefMut};
 use crate::panicking;
-use crate::ptr::{Unique, NonNull};
+use crate::pin::Pin;
+use crate::ptr::{NonNull, Unique};
 use crate::rc::Rc;
-use crate::sync::{Arc, Mutex, RwLock};
 use crate::sync::atomic;
+use crate::sync::{Arc, Mutex, RwLock};
 use crate::task::{Context, Poll};
 use crate::thread::Result;
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use crate::panicking::{take_hook, set_hook};
+pub use crate::panicking::{set_hook, take_hook};
 
 #[stable(feature = "panic_hooks", since = "1.10.0")]
-pub use core::panic::{PanicInfo, Location};
+pub use core::panic::{Location, PanicInfo};
 
 /// A marker trait which represents "panic safe" types in Rust.
 ///
@@ -103,8 +103,8 @@ pub use core::panic::{PanicInfo, Location};
 /// [`AssertUnwindSafe`]: ./struct.AssertUnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
-    message="the type `{Self}` may not be safely transferred across an unwind boundary",
-    label="`{Self}` may not be safely transferred across an unwind boundary",
+    message = "the type `{Self}` may not be safely transferred across an unwind boundary",
+    label = "`{Self}` may not be safely transferred across an unwind boundary"
 )]
 pub auto trait UnwindSafe {}
 
@@ -121,10 +121,10 @@ pub auto trait UnwindSafe {}
 /// [`UnwindSafe`]: ./trait.UnwindSafe.html
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented(
-    message="the type `{Self}` may contain interior mutability and a reference may not be safely \
-             transferrable across a catch_unwind boundary",
-    label="`{Self}` may contain interior mutability and a reference may not be safely \
-           transferrable across a catch_unwind boundary",
+    message = "the type `{Self}` may contain interior mutability and a reference may not be safely \
+               transferrable across a catch_unwind boundary",
+    label = "`{Self}` may contain interior mutability and a reference may not be safely \
+             transferrable across a catch_unwind boundary"
 )]
 pub auto trait RefUnwindSafe {}
 
@@ -187,10 +187,7 @@ pub auto trait RefUnwindSafe {}
 /// // ...
 /// ```
 #[stable(feature = "catch_unwind", since = "1.9.0")]
-pub struct AssertUnwindSafe<T>(
-    #[stable(feature = "catch_unwind", since = "1.9.0")]
-    pub T
-);
+pub struct AssertUnwindSafe<T>(#[stable(feature = "catch_unwind", since = "1.9.0")] pub T);
 
 // Implementations of the `UnwindSafe` trait:
 //
@@ -290,7 +287,12 @@ impl<T> RefUnwindSafe for atomic::AtomicPtr<T> {}
 // https://github.com/rust-lang/rust/issues/62301
 #[stable(feature = "hashbrown", since = "1.36.0")]
 impl<K, V, S> UnwindSafe for collections::HashMap<K, V, S>
-    where K: UnwindSafe, V: UnwindSafe, S: UnwindSafe {}
+where
+    K: UnwindSafe,
+    V: UnwindSafe,
+    S: UnwindSafe,
+{
+}
 
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> Deref for AssertUnwindSafe<T> {
@@ -320,9 +322,7 @@ impl<R, F: FnOnce() -> R> FnOnce<()> for AssertUnwindSafe<F> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug> fmt::Debug for AssertUnwindSafe<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("AssertUnwindSafe")
-            .field(&self.0)
-            .finish()
+        f.debug_tuple("AssertUnwindSafe").field(&self.0).finish()
     }
 }
 
@@ -391,9 +391,7 @@ impl<F: Future> Future for AssertUnwindSafe<F> {
 /// ```
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 pub fn catch_unwind<F: FnOnce() -> R + UnwindSafe, R>(f: F) -> Result<R> {
-    unsafe {
-        panicking::r#try(f)
-    }
+    unsafe { panicking::r#try(f) }
 }
 
 /// Triggers a panic without invoking the panic hook.

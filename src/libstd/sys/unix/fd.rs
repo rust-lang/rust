@@ -1,7 +1,7 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
 use crate::cmp;
-use crate::io::{self, Read, Initializer, IoSlice, IoSliceMut};
+use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read};
 use crate::mem;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sys::cvt;
@@ -35,7 +35,9 @@ impl FileDesc {
         FileDesc { fd }
     }
 
-    pub fn raw(&self) -> c_int { self.fd }
+    pub fn raw(&self) -> c_int {
+        self.fd
+    }
 
     /// Extracts the actual file descriptor without closing it.
     pub fn into_raw(self) -> c_int {
@@ -46,18 +48,18 @@ impl FileDesc {
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::read(self.fd,
-                       buf.as_mut_ptr() as *mut c_void,
-                       cmp::min(buf.len(), max_len()))
+            libc::read(self.fd, buf.as_mut_ptr() as *mut c_void, cmp::min(buf.len(), max_len()))
         })?;
         Ok(ret as usize)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::readv(self.fd,
-                        bufs.as_ptr() as *const libc::iovec,
-                        cmp::min(bufs.len(), c_int::max_value() as usize) as c_int)
+            libc::readv(
+                self.fd,
+                bufs.as_ptr() as *const libc::iovec,
+                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+            )
         })?;
         Ok(ret as usize)
     }
@@ -72,39 +74,44 @@ impl FileDesc {
         use super::android::cvt_pread64;
 
         #[cfg(not(target_os = "android"))]
-        unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: usize, offset: i64)
-            -> io::Result<isize>
-        {
-            #[cfg(target_os = "linux")]
-            use libc::pread64;
+        unsafe fn cvt_pread64(
+            fd: c_int,
+            buf: *mut c_void,
+            count: usize,
+            offset: i64,
+        ) -> io::Result<isize> {
             #[cfg(not(target_os = "linux"))]
             use libc::pread as pread64;
+            #[cfg(target_os = "linux")]
+            use libc::pread64;
             cvt(pread64(fd, buf, count, offset))
         }
 
         unsafe {
-            cvt_pread64(self.fd,
-                        buf.as_mut_ptr() as *mut c_void,
-                        cmp::min(buf.len(), max_len()),
-                        offset as i64)
-                .map(|n| n as usize)
+            cvt_pread64(
+                self.fd,
+                buf.as_mut_ptr() as *mut c_void,
+                cmp::min(buf.len(), max_len()),
+                offset as i64,
+            )
+            .map(|n| n as usize)
         }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::write(self.fd,
-                        buf.as_ptr() as *const c_void,
-                        cmp::min(buf.len(), max_len()))
+            libc::write(self.fd, buf.as_ptr() as *const c_void, cmp::min(buf.len(), max_len()))
         })?;
         Ok(ret as usize)
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
         let ret = cvt(unsafe {
-            libc::writev(self.fd,
-                         bufs.as_ptr() as *const libc::iovec,
-                         cmp::min(bufs.len(), c_int::max_value() as usize) as c_int)
+            libc::writev(
+                self.fd,
+                bufs.as_ptr() as *const libc::iovec,
+                cmp::min(bufs.len(), c_int::max_value() as usize) as c_int,
+            )
         })?;
         Ok(ret as usize)
     }
@@ -114,54 +121,61 @@ impl FileDesc {
         use super::android::cvt_pwrite64;
 
         #[cfg(not(target_os = "android"))]
-        unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: usize, offset: i64)
-            -> io::Result<isize>
-        {
-            #[cfg(target_os = "linux")]
-            use libc::pwrite64;
+        unsafe fn cvt_pwrite64(
+            fd: c_int,
+            buf: *const c_void,
+            count: usize,
+            offset: i64,
+        ) -> io::Result<isize> {
             #[cfg(not(target_os = "linux"))]
             use libc::pwrite as pwrite64;
+            #[cfg(target_os = "linux")]
+            use libc::pwrite64;
             cvt(pwrite64(fd, buf, count, offset))
         }
 
         unsafe {
-            cvt_pwrite64(self.fd,
-                         buf.as_ptr() as *const c_void,
-                         cmp::min(buf.len(), max_len()),
-                         offset as i64)
-                .map(|n| n as usize)
+            cvt_pwrite64(
+                self.fd,
+                buf.as_ptr() as *const c_void,
+                cmp::min(buf.len(), max_len()),
+                offset as i64,
+            )
+            .map(|n| n as usize)
         }
     }
 
     #[cfg(target_os = "linux")]
     pub fn get_cloexec(&self) -> io::Result<bool> {
-        unsafe {
-            Ok((cvt(libc::fcntl(self.fd, libc::F_GETFD))? & libc::FD_CLOEXEC) != 0)
-        }
+        unsafe { Ok((cvt(libc::fcntl(self.fd, libc::F_GETFD))? & libc::FD_CLOEXEC) != 0) }
     }
 
-    #[cfg(not(any(target_env = "newlib",
-                  target_os = "solaris",
-                  target_os = "emscripten",
-                  target_os = "fuchsia",
-                  target_os = "l4re",
-                  target_os = "linux",
-                  target_os = "haiku",
-                  target_os = "redox")))]
+    #[cfg(not(any(
+        target_env = "newlib",
+        target_os = "solaris",
+        target_os = "emscripten",
+        target_os = "fuchsia",
+        target_os = "l4re",
+        target_os = "linux",
+        target_os = "haiku",
+        target_os = "redox"
+    )))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
             Ok(())
         }
     }
-    #[cfg(any(target_env = "newlib",
-              target_os = "solaris",
-              target_os = "emscripten",
-              target_os = "fuchsia",
-              target_os = "l4re",
-              target_os = "linux",
-              target_os = "haiku",
-              target_os = "redox"))]
+    #[cfg(any(
+        target_env = "newlib",
+        target_os = "solaris",
+        target_os = "emscripten",
+        target_os = "fuchsia",
+        target_os = "l4re",
+        target_os = "linux",
+        target_os = "haiku",
+        target_os = "redox"
+    ))]
     pub fn set_cloexec(&self) -> io::Result<()> {
         unsafe {
             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
@@ -216,7 +230,7 @@ impl FileDesc {
         // [1]: http://comments.gmane.org/gmane.linux.lib.musl.general/2963
         #[cfg(any(target_os = "android", target_os = "haiku"))]
         use libc::F_DUPFD as F_DUPFD_CLOEXEC;
-        #[cfg(not(any(target_os = "android", target_os="haiku")))]
+        #[cfg(not(any(target_os = "android", target_os = "haiku")))]
         use libc::F_DUPFD_CLOEXEC;
 
         let make_filedesc = |fd| {
@@ -224,8 +238,7 @@ impl FileDesc {
             fd.set_cloexec()?;
             Ok(fd)
         };
-        static TRY_CLOEXEC: AtomicBool =
-            AtomicBool::new(!cfg!(target_os = "android"));
+        static TRY_CLOEXEC: AtomicBool = AtomicBool::new(!cfg!(target_os = "android"));
         let fd = self.raw();
         if TRY_CLOEXEC.load(Ordering::Relaxed) {
             match cvt(unsafe { libc::fcntl(fd, F_DUPFD_CLOEXEC, 0) }) {
@@ -237,7 +250,7 @@ impl FileDesc {
                         make_filedesc(fd)?
                     } else {
                         FileDesc::new(fd)
-                    })
+                    });
                 }
                 Err(ref e) if e.raw_os_error() == Some(libc::EINVAL) => {
                     TRY_CLOEXEC.store(false, Ordering::Relaxed);
@@ -261,7 +274,9 @@ impl<'a> Read for &'a FileDesc {
 }
 
 impl AsInner<c_int> for FileDesc {
-    fn as_inner(&self) -> &c_int { &self.fd }
+    fn as_inner(&self) -> &c_int {
+        &self.fd
+    }
 }
 
 impl Drop for FileDesc {

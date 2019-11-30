@@ -3,11 +3,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fs;
+use crate::io;
+use crate::net;
 use crate::os::raw;
 use crate::sys;
-use crate::io;
 use crate::sys_common::{self, AsInner, FromInner, IntoInner};
-use crate::net;
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -84,47 +84,65 @@ impl IntoRawFd for fs::File {
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stdin {
-    fn as_raw_fd(&self) -> RawFd { libc::STDIN_FILENO }
+    fn as_raw_fd(&self) -> RawFd {
+        libc::STDIN_FILENO
+    }
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stdout {
-    fn as_raw_fd(&self) -> RawFd { libc::STDOUT_FILENO }
+    fn as_raw_fd(&self) -> RawFd {
+        libc::STDOUT_FILENO
+    }
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
 impl AsRawFd for io::Stderr {
-    fn as_raw_fd(&self) -> RawFd { libc::STDERR_FILENO }
+    fn as_raw_fd(&self) -> RawFd {
+        libc::STDERR_FILENO
+    }
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawFd for io::StdinLock<'a> {
-    fn as_raw_fd(&self) -> RawFd { libc::STDIN_FILENO }
+    fn as_raw_fd(&self) -> RawFd {
+        libc::STDIN_FILENO
+    }
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawFd for io::StdoutLock<'a> {
-    fn as_raw_fd(&self) -> RawFd { libc::STDOUT_FILENO }
+    fn as_raw_fd(&self) -> RawFd {
+        libc::STDOUT_FILENO
+    }
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
 impl<'a> AsRawFd for io::StderrLock<'a> {
-    fn as_raw_fd(&self) -> RawFd { libc::STDERR_FILENO }
+    fn as_raw_fd(&self) -> RawFd {
+        libc::STDERR_FILENO
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for net::TcpStream {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().socket().as_inner()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for net::TcpListener {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().socket().as_inner()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for net::UdpSocket {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().socket().as_inner()
+    }
 }
 
 #[stable(feature = "from_raw_os", since = "1.1.0")]

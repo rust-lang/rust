@@ -21,22 +21,21 @@
 /// consuming the port). This upgrade is then also stored in the shared packet.
 /// The one caveat to consider is that when a port sees a disconnected channel
 /// it must check for data because there is no "data plus upgrade" state.
-
 pub use self::Failure::*;
-pub use self::UpgradeResult::*;
 use self::MyUpgrade::*;
+pub use self::UpgradeResult::*;
 
-use crate::sync::mpsc::Receiver;
-use crate::sync::mpsc::blocking::{self, SignalToken};
 use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::mpsc::blocking::{self, SignalToken};
+use crate::sync::mpsc::Receiver;
 use crate::time::Instant;
 
 // Various states you can find a port in.
-const EMPTY: usize = 0;          // initial state: no data, no blocked receiver
-const DATA: usize = 1;           // data ready for receiver to take
-const DISCONNECTED: usize = 2;   // channel is disconnected OR upgraded
+const EMPTY: usize = 0; // initial state: no data, no blocked receiver
+const DATA: usize = 1; // data ready for receiver to take
+const DISCONNECTED: usize = 2; // channel is disconnected OR upgraded
 // Any other value represents a pointer to a SignalToken value. The
 // protocol ensures that when the state moves *to* a pointer,
 // ownership of the token is given to the packet, and when the state
@@ -178,21 +177,17 @@ impl<T> Packet<T> {
                 // and an upgrade flags the channel as disconnected, so when we see
                 // this we first need to check if there's data available and *then*
                 // we go through and process the upgrade.
-                DISCONNECTED => {
-                    match (&mut *self.data.get()).take() {
-                        Some(data) => Ok(data),
-                        None => {
-                            match ptr::replace(self.upgrade.get(), SendUsed) {
-                                SendUsed | NothingSent => Err(Disconnected),
-                                GoUp(upgrade) => Err(Upgraded(upgrade))
-                            }
-                        }
-                    }
-                }
+                DISCONNECTED => match (&mut *self.data.get()).take() {
+                    Some(data) => Ok(data),
+                    None => match ptr::replace(self.upgrade.get(), SendUsed) {
+                        SendUsed | NothingSent => Err(Disconnected),
+                        GoUp(upgrade) => Err(Upgraded(upgrade)),
+                    },
+                },
 
                 // We are the sole receiver; there cannot be a blocking
                 // receiver already.
-                _ => unreachable!()
+                _ => unreachable!(),
             }
         }
     }
@@ -217,10 +212,13 @@ impl<T> Packet<T> {
 
                 // If the other end is already disconnected, then we failed the
                 // upgrade. Be sure to trash the port we were given.
-                DISCONNECTED => { ptr::replace(self.upgrade.get(), prev); UpDisconnected }
+                DISCONNECTED => {
+                    ptr::replace(self.upgrade.get(), prev);
+                    UpDisconnected
+                }
 
                 // If someone's waiting, we gotta wake them up
-                ptr => UpWoke(SignalToken::cast_from_usize(ptr))
+                ptr => UpWoke(SignalToken::cast_from_usize(ptr)),
             }
         }
     }
@@ -232,7 +230,7 @@ impl<T> Packet<T> {
             // If someone's waiting, we gotta wake them up
             ptr => unsafe {
                 SignalToken::cast_from_usize(ptr).signal();
-            }
+            },
         }
     }
 
@@ -246,10 +244,12 @@ impl<T> Packet<T> {
             // There's data on the channel, so make sure we destroy it promptly.
             // This is why not using an arc is a little difficult (need the box
             // to stay valid while we take the data).
-            DATA => unsafe { (&mut *self.data.get()).take().unwrap(); },
+            DATA => unsafe {
+                (&mut *self.data.get()).take().unwrap();
+            },
 
             // We're the only ones that can block on this port
-            _ => unreachable!()
+            _ => unreachable!(),
         }
     }
 
@@ -265,13 +265,11 @@ impl<T> Packet<T> {
         let state = match self.state.load(Ordering::SeqCst) {
             // Each of these states means that no further activity will happen
             // with regard to abortion selection
-            s @ EMPTY |
-            s @ DATA |
-            s @ DISCONNECTED => s,
+            s @ EMPTY | s @ DATA | s @ DISCONNECTED => s,
 
             // If we've got a blocked thread, then use an atomic to gain ownership
             // of it (may fail)
-            ptr => self.state.compare_and_swap(ptr, EMPTY, Ordering::SeqCst)
+            ptr => self.state.compare_and_swap(ptr, EMPTY, Ordering::SeqCst),
         };
 
         // Now that we've got ownership of our state, figure out what to do
@@ -302,7 +300,7 @@ impl<T> Packet<T> {
             ptr => unsafe {
                 drop(SignalToken::cast_from_usize(ptr));
                 Ok(false)
-            }
+            },
         }
     }
 }

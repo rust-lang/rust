@@ -90,6 +90,7 @@ pub fn main() {
     t!(format!("{foo} {bar}", foo=0, bar=1), "0 1");
     t!(format!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
     t!(format!("{} {0}", "a"), "a a");
+    t!(format!("{_foo}", _foo = 6usize), "6");
     t!(format!("{foo_bar}", foo_bar=1), "1");
     t!(format!("{}", 5 + 5), "10");
     t!(format!("{:#4}", C), "☃123");
@@ -125,6 +126,7 @@ pub fn main() {
     t!(format!("{:.*}", 4, "aaaaaaaaaaaaaaaaaa"), "aaaa");
     t!(format!("{:.1$}", "aaaaaaaaaaaaaaaaaa", 4), "aaaa");
     t!(format!("{:.a$}", "aaaaaaaaaaaaaaaaaa", a=4), "aaaa");
+    t!(format!("{:._a$}", "aaaaaaaaaaaaaaaaaa", _a=4), "aaaa");
     t!(format!("{:1$}", "a", 4), "a   ");
     t!(format!("{1:0$}", 4, "a"), "a   ");
     t!(format!("{:a$}", "a", a=4), "a   ");

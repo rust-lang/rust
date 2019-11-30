@@ -1,7 +1,7 @@
 pub type Key = usize;
 
 #[inline]
-pub unsafe fn create(_dtor: Option<unsafe extern fn(*mut u8)>) -> Key {
+pub unsafe fn create(_dtor: Option<unsafe extern "C" fn(*mut u8)>) -> Key {
     panic!("should not be used on the wasm target");
 }
 

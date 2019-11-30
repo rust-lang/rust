@@ -1,9 +1,9 @@
 //! Generic support for building blocking abstractions.
 
-use crate::thread::{self, Thread};
+use crate::mem;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::Arc;
-use crate::mem;
+use crate::thread::{self, Thread};
 use crate::time::Instant;
 
 struct Inner {
@@ -28,16 +28,9 @@ impl !Send for WaitToken {}
 impl !Sync for WaitToken {}
 
 pub fn tokens() -> (WaitToken, SignalToken) {
-    let inner = Arc::new(Inner {
-        thread: thread::current(),
-        woken: AtomicBool::new(false),
-    });
-    let wait_token = WaitToken {
-        inner: inner.clone(),
-    };
-    let signal_token = SignalToken {
-        inner,
-    };
+    let inner = Arc::new(Inner { thread: thread::current(), woken: AtomicBool::new(false) });
+    let wait_token = WaitToken { inner: inner.clone() };
+    let signal_token = SignalToken { inner };
     (wait_token, signal_token)
 }
 
