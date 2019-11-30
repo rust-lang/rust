@@ -24,8 +24,7 @@ mechanics of defining and loading a plugin.
 In the vast majority of cases, a plugin should *only* be used through
 `#![plugin]` and not through an `extern crate` item.  Linking a plugin would
 pull in all of libsyntax and librustc as dependencies of your crate.  This is
-generally unwanted unless you are building another plugin.  The
-`plugin_as_library` lint checks these guidelines.
+generally unwanted unless you are building another plugin.
 
 The usual practice is to put compiler plugins in their own crate, separate from
 any `macro_rules!` macros or ordinary Rust code meant to be used by consumers
