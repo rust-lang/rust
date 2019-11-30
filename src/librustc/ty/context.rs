@@ -23,7 +23,6 @@ use crate::mir::{
 };
 use crate::traits;
 use crate::traits::{Clause, Clauses, Goal, GoalKind, Goals};
-use crate::ty::free_region_map::FreeRegionMap;
 use crate::ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use crate::ty::query;
 use crate::ty::steal::Steal;
@@ -416,11 +415,6 @@ pub struct TypeckTables<'tcx> {
     /// this field will be set to `true`.
     pub tainted_by_errors: bool,
 
-    /// Stores the free-region relationships that were deduced from
-    /// its where-clauses and parameter types. These are then
-    /// read-again by borrowck.
-    pub free_region_map: FreeRegionMap<'tcx>,
-
     /// All the opaque types that are restricted to concrete types
     /// by this function.
     pub concrete_opaque_types: FxHashMap<DefId, ResolvedOpaqueTy<'tcx>>,
@@ -456,7 +450,6 @@ impl<'tcx> TypeckTables<'tcx> {
             coercion_casts: Default::default(),
             used_trait_imports: Lrc::new(Default::default()),
             tainted_by_errors: false,
-            free_region_map: Default::default(),
             concrete_opaque_types: Default::default(),
             upvar_list: Default::default(),
             generator_interior_types: Default::default(),
@@ -719,7 +712,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
 
             ref used_trait_imports,
             tainted_by_errors,
-            ref free_region_map,
             ref concrete_opaque_types,
             ref upvar_list,
             ref generator_interior_types,
@@ -757,7 +749,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             coercion_casts.hash_stable(hcx, hasher);
             used_trait_imports.hash_stable(hcx, hasher);
             tainted_by_errors.hash_stable(hcx, hasher);
-            free_region_map.hash_stable(hcx, hasher);
             concrete_opaque_types.hash_stable(hcx, hasher);
             upvar_list.hash_stable(hcx, hasher);
             generator_interior_types.hash_stable(hcx, hasher);
