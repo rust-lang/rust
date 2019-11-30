@@ -10,9 +10,9 @@ use syntax_pos::Span;
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_match(
         &self,
-        expr: &'tcx hir::Expr,
-        discrim: &'tcx hir::Expr,
-        arms: &'tcx [hir::Arm],
+        expr: &'tcx hir::Expr<'tcx>,
+        discrim: &'tcx hir::Expr<'tcx>,
+        arms: &'tcx [hir::Arm<'tcx>],
         expected: Expectation<'tcx>,
         match_src: hir::MatchSource,
     ) -> Ty<'tcx> {
@@ -194,7 +194,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// When the previously checked expression (the scrutinee) diverges,
     /// warn the user about the match arms being unreachable.
-    fn warn_arms_when_scrutinee_diverges(&self, arms: &'tcx [hir::Arm], source: hir::MatchSource) {
+    fn warn_arms_when_scrutinee_diverges(
+        &self,
+        arms: &'tcx [hir::Arm<'tcx>],
+        source: hir::MatchSource,
+    ) {
         if self.diverges.get().is_always() {
             use hir::MatchSource::*;
             let msg = match source {
@@ -214,8 +218,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn if_fallback_coercion(
         &self,
         span: Span,
-        then_expr: &'tcx hir::Expr,
-        coercion: &mut CoerceMany<'tcx, '_, rustc::hir::Arm>,
+        then_expr: &'tcx hir::Expr<'tcx>,
+        coercion: &mut CoerceMany<'tcx, '_, rustc::hir::Arm<'tcx>>,
     ) -> bool {
         // If this `if` expr is the parent's function return expr,
         // the cause of the type coercion is the return type, point at it. (#25228)
@@ -277,8 +281,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn if_cause(
         &self,
         span: Span,
-        then_expr: &'tcx hir::Expr,
-        else_expr: &'tcx hir::Expr,
+        then_expr: &'tcx hir::Expr<'tcx>,
+        else_expr: &'tcx hir::Expr<'tcx>,
         then_ty: Ty<'tcx>,
         else_ty: Ty<'tcx>,
     ) -> ObligationCause<'tcx> {
@@ -386,8 +390,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn demand_discriminant_type(
         &self,
-        arms: &'tcx [hir::Arm],
-        discrim: &'tcx hir::Expr,
+        arms: &'tcx [hir::Arm<'tcx>],
+        discrim: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         // Not entirely obvious: if matches may create ref bindings, we want to
         // use the *precise* type of the discriminant, *not* some supertype, as

@@ -52,7 +52,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
         self.with_context(AnonConst, |v| intravisit::walk_anon_const(v, c));
     }
 
-    fn visit_expr(&mut self, e: &'hir hir::Expr) {
+    fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
         match e.kind {
             hir::ExprKind::Loop(ref b, _, source) => {
                 self.with_context(Loop(source), |v| v.visit_block(&b));

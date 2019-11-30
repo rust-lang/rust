@@ -19,8 +19,8 @@ use std::ops::Deref;
 struct ConfirmContext<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     span: Span,
-    self_expr: &'tcx hir::Expr,
-    call_expr: &'tcx hir::Expr,
+    self_expr: &'tcx hir::Expr<'tcx>,
+    call_expr: &'tcx hir::Expr<'tcx>,
 }
 
 impl<'a, 'tcx> Deref for ConfirmContext<'a, 'tcx> {
@@ -39,8 +39,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn confirm_method(
         &self,
         span: Span,
-        self_expr: &'tcx hir::Expr,
-        call_expr: &'tcx hir::Expr,
+        self_expr: &'tcx hir::Expr<'tcx>,
+        call_expr: &'tcx hir::Expr<'tcx>,
         unadjusted_self_ty: Ty<'tcx>,
         pick: probe::Pick<'tcx>,
         segment: &hir::PathSegment,
@@ -59,8 +59,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn new(
         fcx: &'a FnCtxt<'a, 'tcx>,
         span: Span,
-        self_expr: &'tcx hir::Expr,
-        call_expr: &'tcx hir::Expr,
+        self_expr: &'tcx hir::Expr<'tcx>,
+        call_expr: &'tcx hir::Expr<'tcx>,
     ) -> ConfirmContext<'a, 'tcx> {
         ConfirmContext { fcx, span, self_expr, call_expr }
     }
@@ -482,8 +482,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn convert_place_op_to_mutable(
         &self,
         op: PlaceOp,
-        expr: &hir::Expr,
-        base_expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
+        base_expr: &hir::Expr<'_>,
         arg_tys: &[Ty<'tcx>],
     ) {
         debug!("convert_place_op_to_mutable({:?}, {:?}, {:?}, {:?})", op, expr, base_expr, arg_tys);

@@ -805,7 +805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The expressions *must not* have any pre-existing adjustments.
     pub fn try_coerce(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         target: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -844,7 +844,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         cause: &ObligationCause<'tcx>,
         exprs: &[E],
         prev_ty: Ty<'tcx>,
-        new: &hir::Expr,
+        new: &hir::Expr<'_>,
         new_ty: Ty<'tcx>,
     ) -> RelateResult<'tcx, Ty<'tcx>>
     where
@@ -1020,10 +1020,10 @@ pub struct CoerceMany<'tcx, 'exprs, E: AsCoercionSite> {
 
 /// The type of a `CoerceMany` that is storing up the expressions into
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, P<hir::Expr>>;
+pub type DynamicCoerceMany<'tcx> = CoerceMany<'tcx, 'tcx, &'tcx hir::Expr<'tcx>>;
 
 enum Expressions<'tcx, 'exprs, E: AsCoercionSite> {
-    Dynamic(Vec<&'tcx hir::Expr>),
+    Dynamic(Vec<&'tcx hir::Expr<'tcx>>),
     UpFront(&'exprs [E]),
 }
 
@@ -1077,7 +1077,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
-        expression: &'tcx hir::Expr,
+        expression: &'tcx hir::Expr<'tcx>,
         expression_ty: Ty<'tcx>,
     ) {
         self.coerce_inner(fcx, cause, Some(expression), expression_ty, None, false)
@@ -1119,7 +1119,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         &mut self,
         fcx: &FnCtxt<'a, 'tcx>,
         cause: &ObligationCause<'tcx>,
-        expression: Option<&'tcx hir::Expr>,
+        expression: Option<&'tcx hir::Expr<'tcx>>,
         mut expression_ty: Ty<'tcx>,
         augment_error: Option<&mut dyn FnMut(&mut DiagnosticBuilder<'_>)>,
         label_expression_as_expected: bool,
@@ -1298,7 +1298,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         ty_err: TypeError<'tcx>,
         fcx: &FnCtxt<'a, 'tcx>,
         id: hir::HirId,
-        expression: Option<(&'tcx hir::Expr, hir::HirId)>,
+        expression: Option<(&'tcx hir::Expr<'tcx>, hir::HirId)>,
     ) -> DiagnosticBuilder<'a> {
         let mut err = fcx.report_mismatched_types(cause, expected, found, ty_err);
 
@@ -1368,17 +1368,17 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 /// Something that can be converted into an expression to which we can
 /// apply a coercion.
 pub trait AsCoercionSite {
-    fn as_coercion_site(&self) -> &hir::Expr;
+    fn as_coercion_site(&self) -> &hir::Expr<'_>;
 }
 
-impl AsCoercionSite for hir::Expr {
-    fn as_coercion_site(&self) -> &hir::Expr {
+impl AsCoercionSite for hir::Expr<'_> {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
         self
     }
 }
 
-impl AsCoercionSite for P<hir::Expr> {
-    fn as_coercion_site(&self) -> &hir::Expr {
+impl AsCoercionSite for P<hir::Expr<'_>> {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
         self
     }
 }
@@ -1387,19 +1387,19 @@ impl<'a, T> AsCoercionSite for &'a T
 where
     T: AsCoercionSite,
 {
-    fn as_coercion_site(&self) -> &hir::Expr {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
         (**self).as_coercion_site()
     }
 }
 
 impl AsCoercionSite for ! {
-    fn as_coercion_site(&self) -> &hir::Expr {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
         unreachable!()
     }
 }
 
-impl AsCoercionSite for hir::Arm {
-    fn as_coercion_site(&self) -> &hir::Expr {
+impl AsCoercionSite for hir::Arm<'_> {
+    fn as_coercion_site(&self) -> &hir::Expr<'_> {
         &self.body
     }
 }

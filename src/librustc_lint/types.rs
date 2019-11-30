@@ -65,8 +65,8 @@ fn lint_overflowing_range_endpoint<'a, 'tcx>(
     lit: &hir::Lit,
     lit_val: u128,
     max: u128,
-    expr: &'tcx hir::Expr,
-    parent_expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'tcx>,
+    parent_expr: &'tcx hir::Expr<'tcx>,
     ty: &str,
 ) -> bool {
     // We only want to handle exclusive (`..`) ranges,
@@ -150,7 +150,7 @@ fn get_bin_hex_repr(cx: &LateContext<'_, '_>, lit: &hir::Lit) -> Option<String> 
 
 fn report_bin_hex_error(
     cx: &LateContext<'_, '_>,
-    expr: &hir::Expr,
+    expr: &hir::Expr<'_>,
     ty: attr::IntType,
     repr_str: String,
     val: u128,
@@ -244,7 +244,7 @@ fn get_type_suggestion(t: Ty<'_>, val: u128, negative: bool) -> Option<&'static 
 fn lint_int_literal<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     type_limits: &TypeLimits,
-    e: &'tcx hir::Expr,
+    e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
     t: ast::IntTy,
     v: u128,
@@ -284,7 +284,7 @@ fn lint_int_literal<'a, 'tcx>(
 
 fn lint_uint_literal<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
-    e: &'tcx hir::Expr,
+    e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
     t: ast::UintTy,
 ) {
@@ -342,7 +342,7 @@ fn lint_uint_literal<'a, 'tcx>(
 fn lint_literal<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     type_limits: &TypeLimits,
-    e: &'tcx hir::Expr,
+    e: &'tcx hir::Expr<'tcx>,
     lit: &hir::Lit,
 ) {
     match cx.tables.node_type(e.hir_id).kind {
@@ -377,7 +377,7 @@ fn lint_literal<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
-    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr) {
+    fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx hir::Expr<'tcx>) {
         match e.kind {
             hir::ExprKind::Unary(hir::UnNeg, ref expr) => {
                 // propagate negation, if the negation itself isn't negated
@@ -425,8 +425,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
         fn check_limits(
             cx: &LateContext<'_, '_>,
             binop: hir::BinOp,
-            l: &hir::Expr,
-            r: &hir::Expr,
+            l: &hir::Expr<'_>,
+            r: &hir::Expr<'_>,
         ) -> bool {
             let (lit, expr, swap) = match (&l.kind, &r.kind) {
                 (&hir::ExprKind::Lit(_), _) => (l, r, true),

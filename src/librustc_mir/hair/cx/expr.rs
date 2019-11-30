@@ -14,7 +14,7 @@ use rustc::ty::{self, AdtKind, Ty};
 use rustc_index::vec::Idx;
 use syntax_pos::Span;
 
-impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
+impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr<'tcx> {
     type Output = Expr<'tcx>;
 
     fn make_mirror(self, cx: &mut Cx<'_, 'tcx>) -> Expr<'tcx> {
@@ -65,7 +65,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
 
 fn apply_adjustment<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
-    hir_expr: &'tcx hir::Expr,
+    hir_expr: &'tcx hir::Expr<'tcx>,
     mut expr: Expr<'tcx>,
     adjustment: &Adjustment<'tcx>,
 ) -> Expr<'tcx> {
@@ -129,7 +129,10 @@ fn apply_adjustment<'a, 'tcx>(
     Expr { temp_lifetime, ty: adjustment.target, span, kind }
 }
 
-fn make_mirror_unadjusted<'a, 'tcx>(cx: &mut Cx<'a, 'tcx>, expr: &'tcx hir::Expr) -> Expr<'tcx> {
+fn make_mirror_unadjusted<'a, 'tcx>(
+    cx: &mut Cx<'a, 'tcx>,
+    expr: &'tcx hir::Expr<'tcx>,
+) -> Expr<'tcx> {
     let expr_ty = cx.tables().expr_ty(expr);
     let temp_lifetime = cx.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
@@ -608,7 +611,7 @@ fn user_substs_applied_to_res(
 
 fn method_callee<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
-    expr: &hir::Expr,
+    expr: &hir::Expr<'_>,
     span: Span,
     overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
 ) -> Expr<'tcx> {
@@ -662,7 +665,7 @@ impl ToBorrowKind for hir::Mutability {
     }
 }
 
-fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
+fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm<'tcx>) -> Arm<'tcx> {
     Arm {
         pattern: cx.pattern_from_hir(&arm.pat),
         guard: match arm.guard {
@@ -678,7 +681,7 @@ fn convert_arm<'tcx>(cx: &mut Cx<'_, 'tcx>, arm: &'tcx hir::Arm) -> Arm<'tcx> {
 
 fn convert_path_expr<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
-    expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'tcx>,
     res: Res,
 ) -> ExprKind<'tcx> {
     let substs = cx.tables().node_substs(expr.hir_id);
@@ -771,7 +774,7 @@ fn convert_path_expr<'a, 'tcx>(
 
 fn convert_var(
     cx: &mut Cx<'_, 'tcx>,
-    expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'tcx>,
     var_hir_id: hir::HirId,
 ) -> ExprKind<'tcx> {
     let upvar_index = cx
@@ -914,7 +917,7 @@ fn bin_op(op: hir::BinOpKind) -> BinOp {
 
 fn overloaded_operator<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
-    expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'tcx>,
     args: Vec<ExprRef<'tcx>>,
 ) -> ExprKind<'tcx> {
     let fun = method_callee(cx, expr, expr.span, None);
@@ -923,7 +926,7 @@ fn overloaded_operator<'a, 'tcx>(
 
 fn overloaded_place<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
-    expr: &'tcx hir::Expr,
+    expr: &'tcx hir::Expr<'tcx>,
     place_ty: Ty<'tcx>,
     overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
     args: Vec<ExprRef<'tcx>>,
@@ -963,7 +966,7 @@ fn overloaded_place<'a, 'tcx>(
 
 fn capture_upvar<'tcx>(
     cx: &mut Cx<'_, 'tcx>,
-    closure_expr: &'tcx hir::Expr,
+    closure_expr: &'tcx hir::Expr<'tcx>,
     var_hir_id: hir::HirId,
     upvar_ty: Ty<'tcx>,
 ) -> ExprRef<'tcx> {
@@ -1002,7 +1005,7 @@ fn capture_upvar<'tcx>(
 /// Converts a list of named fields (i.e., for struct-like struct/enum ADTs) into FieldExprRef.
 fn field_refs<'a, 'tcx>(
     cx: &mut Cx<'a, 'tcx>,
-    fields: &'tcx [hir::Field],
+    fields: &'tcx [hir::Field<'tcx>],
 ) -> Vec<FieldExprRef<'tcx>> {
     fields
         .iter()

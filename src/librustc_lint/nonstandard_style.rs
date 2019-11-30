@@ -344,7 +344,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat) {
+    fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat<'_>) {
         if let &PatKind::Binding(_, _, ident, _) = &p.kind {
             self.check_snake_case(cx, "variable", &ident);
         }
@@ -410,7 +410,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonUpperCaseGlobals {
         }
     }
 
-    fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat) {
+    fn check_pat(&mut self, cx: &LateContext<'_, '_>, p: &hir::Pat<'_>) {
         // Lint for constants that look like binding identifiers (#7526)
         if let PatKind::Path(hir::QPath::Resolved(None, ref path)) = p.kind {
             if let Res::Def(DefKind::Const, _) = path.res {

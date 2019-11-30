@@ -100,7 +100,6 @@ use rustc::hir;
 use rustc::hir::def::*;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, FnKind, NestedVisitorMap, Visitor};
-use rustc::hir::ptr::P;
 use rustc::hir::Node;
 use rustc::hir::{Expr, HirId};
 use rustc::lint;
@@ -171,13 +170,13 @@ impl<'tcx> Visitor<'tcx> for IrMaps<'tcx> {
         visit_fn(self, fk, fd, b, s, id);
     }
 
-    fn visit_local(&mut self, l: &'tcx hir::Local) {
+    fn visit_local(&mut self, l: &'tcx hir::Local<'tcx>) {
         visit_local(self, l);
     }
-    fn visit_expr(&mut self, ex: &'tcx Expr) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         visit_expr(self, ex);
     }
-    fn visit_arm(&mut self, a: &'tcx hir::Arm) {
+    fn visit_arm(&mut self, a: &'tcx hir::Arm<'tcx>) {
         visit_arm(self, a);
     }
 }
@@ -406,7 +405,7 @@ fn visit_fn<'tcx>(
     lsets.warn_about_unused_args(body, entry_ln);
 }
 
-fn add_from_pat(ir: &mut IrMaps<'_>, pat: &P<hir::Pat>) {
+fn add_from_pat(ir: &mut IrMaps<'_>, pat: &hir::Pat<'_>) {
     // For struct patterns, take note of which fields used shorthand
     // (`x` rather than `x: x`).
     let mut shorthand_field_ids = HirIdSet::default();
@@ -447,17 +446,17 @@ fn add_from_pat(ir: &mut IrMaps<'_>, pat: &P<hir::Pat>) {
     });
 }
 
-fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local) {
+fn visit_local<'tcx>(ir: &mut IrMaps<'tcx>, local: &'tcx hir::Local<'tcx>) {
     add_from_pat(ir, &local.pat);
     intravisit::walk_local(ir, local);
 }
 
-fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm) {
+fn visit_arm<'tcx>(ir: &mut IrMaps<'tcx>, arm: &'tcx hir::Arm<'tcx>) {
     add_from_pat(ir, &arm.pat);
     intravisit::walk_arm(ir, arm);
 }
 
-fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr) {
+fn visit_expr<'tcx>(ir: &mut IrMaps<'tcx>, expr: &'tcx Expr<'tcx>) {
     match expr.kind {
         // live nodes required for uses or definitions of variables:
         hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
@@ -714,7 +713,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.ir.variable(hir_id, span)
     }
 
-    fn define_bindings_in_pat(&mut self, pat: &hir::Pat, mut succ: LiveNode) -> LiveNode {
+    fn define_bindings_in_pat(&mut self, pat: &hir::Pat<'_>, mut succ: LiveNode) -> LiveNode {
         // In an or-pattern, only consider the first pattern; any later patterns
         // must have the same bindings, and we also consider the first pattern
         // to be the "authoritative" set of ids.
@@ -891,7 +890,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         self.rwu_table.assign_unpacked(idx, rwu);
     }
 
-    fn compute(&mut self, body: &hir::Expr) -> LiveNode {
+    fn compute(&mut self, body: &hir::Expr<'_>) -> LiveNode {
         debug!(
             "compute: using id for body, {}",
             self.ir.tcx.hir().hir_to_pretty_string(body.hir_id)
@@ -920,7 +919,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         entry_ln
     }
 
-    fn propagate_through_block(&mut self, blk: &hir::Block, succ: LiveNode) -> LiveNode {
+    fn propagate_through_block(&mut self, blk: &hir::Block<'_>, succ: LiveNode) -> LiveNode {
         if blk.targeted_by_break {
             self.break_ln.insert(blk.hir_id, succ);
         }
@@ -928,7 +927,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         blk.stmts.iter().rev().fold(succ, |succ, stmt| self.propagate_through_stmt(stmt, succ))
     }
 
-    fn propagate_through_stmt(&mut self, stmt: &hir::Stmt, succ: LiveNode) -> LiveNode {
+    fn propagate_through_stmt(&mut self, stmt: &hir::Stmt<'_>, succ: LiveNode) -> LiveNode {
         match stmt.kind {
             hir::StmtKind::Local(ref local) => {
                 // Note: we mark the variable as defined regardless of whether
@@ -955,15 +954,19 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn propagate_through_exprs(&mut self, exprs: &[Expr], succ: LiveNode) -> LiveNode {
+    fn propagate_through_exprs(&mut self, exprs: &[Expr<'_>], succ: LiveNode) -> LiveNode {
         exprs.iter().rev().fold(succ, |succ, expr| self.propagate_through_expr(&expr, succ))
     }
 
-    fn propagate_through_opt_expr(&mut self, opt_expr: Option<&Expr>, succ: LiveNode) -> LiveNode {
+    fn propagate_through_opt_expr(
+        &mut self,
+        opt_expr: Option<&Expr<'_>>,
+        succ: LiveNode,
+    ) -> LiveNode {
         opt_expr.map_or(succ, |expr| self.propagate_through_expr(expr, succ))
     }
 
-    fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode) -> LiveNode {
+    fn propagate_through_expr(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         debug!("propagate_through_expr: {}", self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id));
 
         match expr.kind {
@@ -1001,7 +1004,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             // at the label ident
             hir::ExprKind::Loop(ref blk, _, _) => self.propagate_through_loop(expr, &blk, succ),
 
-            hir::ExprKind::Match(ref e, ref arms, _) => {
+            hir::ExprKind::Match(ref e, arms, _) => {
                 //
                 //      (e)
                 //       |
@@ -1023,7 +1026,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     let body_succ = self.propagate_through_expr(&arm.body, succ);
 
                     let guard_succ = self.propagate_through_opt_expr(
-                        arm.guard.as_ref().map(|hir::Guard::If(e)| &**e),
+                        arm.guard.as_ref().map(|hir::Guard::If(e)| *e),
                         body_succ,
                     );
                     let arm_succ = self.define_bindings_in_pat(&arm.pat, guard_succ);
@@ -1162,8 +1165,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             hir::ExprKind::InlineAsm(ref asm) => {
                 let ia = &asm.inner;
-                let outputs = &asm.outputs_exprs;
-                let inputs = &asm.inputs_exprs;
+                let outputs = asm.outputs_exprs;
+                let inputs = asm.inputs_exprs;
                 let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
                     // see comment on places
                     // in propagate_through_place_components()
@@ -1190,7 +1193,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn propagate_through_place_components(&mut self, expr: &Expr, succ: LiveNode) -> LiveNode {
+    fn propagate_through_place_components(&mut self, expr: &Expr<'_>, succ: LiveNode) -> LiveNode {
         // # Places
         //
         // In general, the full flow graph structure for an
@@ -1248,7 +1251,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     // see comment on propagate_through_place()
-    fn write_place(&mut self, expr: &Expr, succ: LiveNode, acc: u32) -> LiveNode {
+    fn write_place(&mut self, expr: &Expr<'_>, succ: LiveNode, acc: u32) -> LiveNode {
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 self.access_path(expr.hir_id, path, succ, acc)
@@ -1301,8 +1304,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_loop(
         &mut self,
-        expr: &Expr,
-        body: &hir::Block,
+        expr: &Expr<'_>,
+        body: &hir::Block<'_>,
         succ: LiveNode,
     ) -> LiveNode {
         /*
@@ -1351,7 +1354,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_local(&mut self, local: &'tcx hir::Local) {
+    fn visit_local(&mut self, local: &'tcx hir::Local<'tcx>) {
         self.check_unused_vars_in_pat(&local.pat, None, |spans, hir_id, ln, var| {
             if local.init.is_some() {
                 self.warn_about_dead_assign(spans, hir_id, ln, var);
@@ -1361,17 +1364,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Liveness<'a, 'tcx> {
         intravisit::walk_local(self, local);
     }
 
-    fn visit_expr(&mut self, ex: &'tcx Expr) {
+    fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
         check_expr(self, ex);
     }
 
-    fn visit_arm(&mut self, arm: &'tcx hir::Arm) {
+    fn visit_arm(&mut self, arm: &'tcx hir::Arm<'tcx>) {
         self.check_unused_vars_in_pat(&arm.pat, None, |_, _, _, _| {});
         intravisit::walk_arm(self, arm);
     }
 }
 
-fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr) {
+fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr<'tcx>) {
     match expr.kind {
         hir::ExprKind::Assign(ref l, ..) => {
             this.check_place(&l);
@@ -1384,12 +1387,12 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr) {
         }
 
         hir::ExprKind::InlineAsm(ref asm) => {
-            for input in &asm.inputs_exprs {
+            for input in asm.inputs_exprs {
                 this.visit_expr(input);
             }
 
             // Output operands must be places
-            for (o, output) in asm.inner.outputs.iter().zip(&asm.outputs_exprs) {
+            for (o, output) in asm.inner.outputs.iter().zip(asm.outputs_exprs) {
                 if !o.is_indirect {
                     this.check_place(output);
                 }
@@ -1430,7 +1433,7 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr) {
 }
 
 impl<'tcx> Liveness<'_, 'tcx> {
-    fn check_place(&mut self, expr: &'tcx Expr) {
+    fn check_place(&mut self, expr: &'tcx Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => {
                 if let Res::Local(var_hid) = path.res {
@@ -1471,7 +1474,7 @@ impl<'tcx> Liveness<'_, 'tcx> {
 
     fn check_unused_vars_in_pat(
         &self,
-        pat: &hir::Pat,
+        pat: &hir::Pat<'_>,
         entry_ln: Option<LiveNode>,
         on_used_on_entry: impl Fn(Vec<Span>, HirId, LiveNode, Variable),
     ) {

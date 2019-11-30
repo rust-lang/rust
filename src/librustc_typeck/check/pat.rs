@@ -3,7 +3,6 @@ use crate::util::nodemap::FxHashMap;
 use errors::{pluralize, Applicability, DiagnosticBuilder};
 use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
-use rustc::hir::ptr::P;
 use rustc::hir::{self, HirId, Pat, PatKind};
 use rustc::infer;
 use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
@@ -31,7 +30,12 @@ You can read more about trait objects in the Trait Objects section of the Refere
 https://doc.rust-lang.org/reference/types.html#trait-objects";
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_pat_top(&self, pat: &'tcx Pat, expected: Ty<'tcx>, discrim_span: Option<Span>) {
+    pub fn check_pat_top(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        expected: Ty<'tcx>,
+        discrim_span: Option<Span>,
+    ) {
         let def_bm = BindingMode::BindByValue(hir::Mutability::Not);
         self.check_pat(pat, expected, def_bm, discrim_span);
     }
@@ -54,7 +58,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     fn check_pat(
         &self,
-        pat: &'tcx Pat,
+        pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         discrim_span: Option<Span>,
@@ -97,13 +101,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat_struct(pat, qpath, fields, *etc, expected, def_bm, discrim_span)
             }
             PatKind::Or(pats) => {
-                for pat in pats {
+                for pat in *pats {
                     self.check_pat(pat, expected, def_bm, discrim_span);
                 }
                 expected
             }
             PatKind::Tuple(elements, ddpos) => {
-                self.check_pat_tuple(pat.span, elements, *ddpos, expected, def_bm, discrim_span)
+                self.check_pat_tuple(pat.span, *elements, *ddpos, expected, def_bm, discrim_span)
             }
             PatKind::Box(inner) => {
                 self.check_pat_box(pat.span, inner, expected, def_bm, discrim_span)
@@ -113,7 +117,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             PatKind::Slice(before, slice, after) => {
                 let slice = slice.as_deref();
-                self.check_pat_slice(pat.span, before, slice, after, expected, def_bm, discrim_span)
+                self.check_pat_slice(
+                    pat.span,
+                    *before,
+                    slice,
+                    *after,
+                    expected,
+                    def_bm,
+                    discrim_span,
+                )
             }
         };
 
@@ -173,7 +185,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// as well as the pattern form we are currently checking.
     fn calc_default_binding_mode(
         &self,
-        pat: &'tcx Pat,
+        pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         is_non_ref_pat: bool,
@@ -203,7 +215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Is the pattern a "non reference pattern"?
     /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
-    fn is_non_ref_pat(&self, pat: &'tcx Pat, opt_path_res: Option<Res>) -> bool {
+    fn is_non_ref_pat(&self, pat: &'tcx Pat<'tcx>, opt_path_res: Option<Res>) -> bool {
         match pat.kind {
             PatKind::Struct(..)
             | PatKind::TupleStruct(..)
@@ -242,7 +254,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// The adjustments vector, if non-empty is stored in a table.
     fn peel_off_references(
         &self,
-        pat: &'tcx Pat,
+        pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         mut def_bm: BindingMode,
     ) -> (Ty<'tcx>, BindingMode) {
@@ -288,7 +300,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_lit(
         &self,
         span: Span,
-        lt: &hir::Expr,
+        lt: &hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         discrim_span: Option<Span>,
     ) -> Ty<'tcx> {
@@ -341,8 +353,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_range(
         &self,
         span: Span,
-        begin: &'tcx hir::Expr,
-        end: &'tcx hir::Expr,
+        begin: &'tcx hir::Expr<'tcx>,
+        end: &'tcx hir::Expr<'tcx>,
         expected: Ty<'tcx>,
         discrim_span: Option<Span>,
     ) -> Option<Ty<'tcx>> {
@@ -422,10 +434,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_ident(
         &self,
-        pat: &Pat,
+        pat: &Pat<'_>,
         ba: hir::BindingAnnotation,
         var_id: HirId,
-        sub: Option<&'tcx Pat>,
+        sub: Option<&'tcx Pat<'tcx>>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         discrim_span: Option<Span>,
@@ -477,8 +489,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn borrow_pat_suggestion(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        pat: &Pat,
-        inner: &Pat,
+        pat: &Pat<'_>,
+        inner: &Pat<'_>,
         expected: Ty<'tcx>,
     ) {
         let tcx = self.tcx;
@@ -513,7 +525,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn check_dereferenceable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat) -> bool {
+    pub fn check_dereferenceable(&self, span: Span, expected: Ty<'tcx>, inner: &Pat<'_>) -> bool {
         if let PatKind::Binding(..) = inner.kind {
             if let Some(mt) = self.shallow_resolve(expected).builtin_deref(true) {
                 if let ty::Dynamic(..) = mt.ty.kind {
@@ -541,9 +553,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_struct(
         &self,
-        pat: &'tcx Pat,
+        pat: &'tcx Pat<'tcx>,
         qpath: &hir::QPath,
-        fields: &'tcx [hir::FieldPat],
+        fields: &'tcx [hir::FieldPat<'tcx>],
         etc: bool,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
@@ -574,7 +586,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_path(
         &self,
-        pat: &Pat,
+        pat: &Pat<'_>,
         path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment]),
         qpath: &hir::QPath,
         expected: Ty<'tcx>,
@@ -609,9 +621,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_tuple_struct(
         &self,
-        pat: &Pat,
+        pat: &Pat<'_>,
         qpath: &hir::QPath,
-        subpats: &'tcx [P<Pat>],
+        subpats: &'tcx [&'tcx Pat<'tcx>],
         ddpos: Option<usize>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
@@ -713,7 +725,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_span: Span,
         res: Res,
         qpath: &hir::QPath,
-        subpats: &'tcx [P<Pat>],
+        subpats: &'tcx [&'tcx Pat<'tcx>],
         fields: &'tcx [ty::FieldDef],
         expected: Ty<'tcx>,
         had_err: bool,
@@ -795,7 +807,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_tuple(
         &self,
         span: Span,
-        elements: &'tcx [P<Pat>],
+        elements: &'tcx [&'tcx Pat<'tcx>],
         ddpos: Option<usize>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
@@ -843,7 +855,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_id: HirId,
         span: Span,
         variant: &'tcx ty::VariantDef,
-        fields: &'tcx [hir::FieldPat],
+        fields: &'tcx [hir::FieldPat<'tcx>],
         etc: bool,
         def_bm: BindingMode,
     ) -> bool {
@@ -1069,7 +1081,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_box(
         &self,
         span: Span,
-        inner: &'tcx Pat,
+        inner: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         discrim_span: Option<Span>,
@@ -1094,8 +1106,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_pat_ref(
         &self,
-        pat: &Pat,
-        inner: &'tcx Pat,
+        pat: &Pat<'_>,
+        inner: &'tcx Pat<'tcx>,
         mutbl: hir::Mutability,
         expected: Ty<'tcx>,
         def_bm: BindingMode,
@@ -1158,9 +1170,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_slice(
         &self,
         span: Span,
-        before: &'tcx [P<Pat>],
-        slice: Option<&'tcx Pat>,
-        after: &'tcx [P<Pat>],
+        before: &'tcx [&'tcx Pat<'tcx>],
+        slice: Option<&'tcx Pat<'tcx>>,
+        after: &'tcx [&'tcx Pat<'tcx>],
         expected: Ty<'tcx>,
         def_bm: BindingMode,
         discrim_span: Option<Span>,
@@ -1208,7 +1220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_array_pat_len(
         &self,
         span: Span,
-        slice: Option<&'tcx Pat>,
+        slice: Option<&'tcx Pat<'tcx>>,
         len: &ty::Const<'tcx>,
         min_len: u64,
     ) -> Option<u64> {

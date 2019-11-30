@@ -11,7 +11,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         &mut self,
         destination: &Place<'tcx>,
         block: BasicBlock,
-        ast_block: &'tcx hir::Block,
+        ast_block: &'tcx hir::Block<'tcx>,
         source_info: SourceInfo,
     ) -> BlockAnd<()> {
         let Block {

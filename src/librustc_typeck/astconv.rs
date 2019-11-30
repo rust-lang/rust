@@ -2648,7 +2648,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Returns the `DefId` of the constant parameter that the provided expression is a path to.
-    pub fn const_param_def_id(&self, expr: &hir::Expr) -> Option<DefId> {
+    pub fn const_param_def_id(&self, expr: &hir::Expr<'_>) -> Option<DefId> {
         // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
         // currently have to be wrapped in curly brackets, so it's necessary to special-case.
         let expr = match &expr.kind {

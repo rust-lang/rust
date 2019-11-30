@@ -134,7 +134,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_generics(self, generics);
     }
 
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::ExprKind::Closure(..) = expr.kind {
             let def_id = self.tcx.hir().local_def_id(expr.hir_id);
             self.tcx.generics_of(def_id);

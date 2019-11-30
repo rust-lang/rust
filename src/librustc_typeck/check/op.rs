@@ -17,10 +17,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
     pub fn check_binop_assign(
         &self,
-        expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
-        lhs: &'tcx hir::Expr,
-        rhs: &'tcx hir::Expr,
+        lhs: &'tcx hir::Expr<'tcx>,
+        rhs: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let (lhs_ty, rhs_ty, return_ty) =
             self.check_overloaded_binop(expr, lhs, rhs, op, IsAssign::Yes);
@@ -41,10 +41,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a potentially overloaded binary operator.
     pub fn check_binop(
         &self,
-        expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
-        lhs_expr: &'tcx hir::Expr,
-        rhs_expr: &'tcx hir::Expr,
+        lhs_expr: &'tcx hir::Expr<'tcx>,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
 
@@ -100,9 +100,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn enforce_builtin_binop_types(
         &self,
-        lhs_expr: &'tcx hir::Expr,
+        lhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
-        rhs_expr: &'tcx hir::Expr,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
         rhs_ty: Ty<'tcx>,
         op: hir::BinOp,
     ) -> Ty<'tcx> {
@@ -137,9 +137,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn check_overloaded_binop(
         &self,
-        expr: &'tcx hir::Expr,
-        lhs_expr: &'tcx hir::Expr,
-        rhs_expr: &'tcx hir::Expr,
+        expr: &'tcx hir::Expr<'tcx>,
+        lhs_expr: &'tcx hir::Expr<'tcx>,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
         op: hir::BinOp,
         is_assign: IsAssign,
     ) -> (Ty<'tcx>, Ty<'tcx>, Ty<'tcx>) {
@@ -561,8 +561,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// to print the normal "implementation of `std::ops::Add` might be missing" note
     fn check_str_addition(
         &self,
-        lhs_expr: &'tcx hir::Expr,
-        rhs_expr: &'tcx hir::Expr,
+        lhs_expr: &'tcx hir::Expr<'tcx>,
+        rhs_expr: &'tcx hir::Expr<'tcx>,
         lhs_ty: Ty<'tcx>,
         rhs_ty: Ty<'tcx>,
         err: &mut errors::DiagnosticBuilder<'_>,
@@ -659,7 +659,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_user_unop(
         &self,
-        ex: &'tcx hir::Expr,
+        ex: &'tcx hir::Expr<'tcx>,
         operand_ty: Ty<'tcx>,
         op: hir::UnOp,
     ) -> Ty<'tcx> {

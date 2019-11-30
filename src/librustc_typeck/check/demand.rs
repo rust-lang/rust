@@ -16,7 +16,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn emit_coerce_suggestions(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) {
@@ -110,7 +110,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn demand_coerce(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -129,7 +129,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // diverges flag is currently "always".
     pub fn demand_coerce_diag(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         allow_two_phase: AllowTwoPhase,
@@ -157,7 +157,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (expected, Some(err))
     }
 
-    fn annotate_expected_due_to_let_ty(&self, err: &mut DiagnosticBuilder<'_>, expr: &hir::Expr) {
+    fn annotate_expected_due_to_let_ty(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr<'_>,
+    ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
         if let Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })) =
             self.tcx.hir().find(parent)
@@ -170,7 +174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Returns whether the expected type is `bool` and the expression is `x = y`.
-    pub fn is_assign_to_bool(&self, expr: &hir::Expr, expected: Ty<'tcx>) -> bool {
+    pub fn is_assign_to_bool(&self, expr: &hir::Expr<'_>, expected: Ty<'tcx>) -> bool {
         if let hir::ExprKind::Assign(..) = expr.kind {
             return expected == self.tcx.types.bool;
         }
@@ -182,7 +186,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_compatible_variants(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         expected: Ty<'tcx>,
         expr_ty: Ty<'tcx>,
     ) {
@@ -282,7 +286,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// ```
     /// opt.map(|param| { takes_ref(param) });
     /// ```
-    fn can_use_as_ref(&self, expr: &hir::Expr) -> Option<(Span, &'static str, String)> {
+    fn can_use_as_ref(&self, expr: &hir::Expr<'_>) -> Option<(Span, &'static str, String)> {
         let path = match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, ref path)) => path,
             _ => return None,
@@ -352,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if let Node::Expr(hir::Expr { kind: hir::ExprKind::Struct(_, fields, ..), .. }) = parent
             {
                 if let Ok(src) = cm.span_to_snippet(sp) {
-                    for field in fields {
+                    for field in *fields {
                         if field.ident.as_str() == src && field.is_shorthand {
                             return true;
                         }
@@ -381,7 +385,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// `&mut`!".
     pub fn check_ref(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) -> Option<(Span, &'static str, String)> {
@@ -605,7 +609,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_for_cast(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
         expected_ty: Ty<'tcx>,
     ) -> bool {
@@ -635,7 +639,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
         {
             // `expr` is a literal field for a struct, only suggest if appropriate
-            for field in fields {
+            for field in *fields {
                 if field.expr.hir_id == expr.hir_id && field.is_shorthand {
                     // This is a field literal
                     prefix = format!("{}: ", field.ident);
@@ -728,7 +732,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 expected_ty,
                 if needs_paren { ")" } else { "" },
             );
-            let literal_is_ty_suffixed = |expr: &hir::Expr| {
+            let literal_is_ty_suffixed = |expr: &hir::Expr<'_>| {
                 if let hir::ExprKind::Lit(lit) = &expr.kind {
                     lit.node.is_suffixed()
                 } else {

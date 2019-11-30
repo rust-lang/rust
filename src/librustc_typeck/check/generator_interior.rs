@@ -27,7 +27,7 @@ impl<'a, 'tcx> InteriorVisitor<'a, 'tcx> {
         &mut self,
         ty: Ty<'tcx>,
         scope: Option<region::Scope>,
-        expr: Option<&'tcx Expr>,
+        expr: Option<&'tcx Expr<'tcx>>,
         source_span: Span,
     ) {
         use syntax_pos::DUMMY_SP;
@@ -196,7 +196,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         NestedVisitorMap::None
     }
 
-    fn visit_pat(&mut self, pat: &'tcx Pat) {
+    fn visit_pat(&mut self, pat: &'tcx Pat<'tcx>) {
         intravisit::walk_pat(self, pat);
 
         self.expr_count += 1;
@@ -208,7 +208,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
+    fn visit_expr(&mut self, expr: &'tcx Expr<'tcx>) {
         let scope = self.region_scope_tree.temporary_scope(expr.hir_id.local_id);
 
         match &expr.kind {
@@ -227,7 +227,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
                             self.expr_count += 1;
 
                             // Record the rest of the call expression normally.
-                            for arg in args {
+                            for arg in *args {
                                 self.visit_expr(arg);
                             }
                         }

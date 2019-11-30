@@ -214,7 +214,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         self.recurse_into(kind, |this| hir::intravisit::walk_body(this, body));
     }
 
-    fn visit_pat(&mut self, p: &'tcx hir::Pat) {
+    fn visit_pat(&mut self, p: &'tcx hir::Pat<'tcx>) {
         if self.const_kind.is_some() {
             if let hir::PatKind::Or { .. } = p.kind {
                 self.const_check_violated(NonConstExpr::OrPattern, p.span);
@@ -223,7 +223,7 @@ impl<'tcx> Visitor<'tcx> for CheckConstVisitor<'tcx> {
         hir::intravisit::walk_pat(self, p)
     }
 
-    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
+    fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         match &e.kind {
             // Skip the following checks if we are not currently in a const context.
             _ if self.const_kind.is_none() => {}

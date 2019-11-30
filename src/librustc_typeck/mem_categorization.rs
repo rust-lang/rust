@@ -117,7 +117,7 @@ crate trait HirNode {
     fn span(&self) -> Span;
 }
 
-impl HirNode for hir::Expr {
+impl HirNode for hir::Expr<'_> {
     fn hir_id(&self) -> hir::HirId {
         self.hir_id
     }
@@ -126,7 +126,7 @@ impl HirNode for hir::Expr {
     }
 }
 
-impl HirNode for hir::Pat {
+impl HirNode for hir::Pat<'_> {
     fn hir_id(&self) -> hir::HirId {
         self.hir_id
     }
@@ -213,11 +213,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         self.resolve_type_vars_or_error(hir_id, self.tables.node_type_opt(hir_id))
     }
 
-    fn expr_ty(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
+    fn expr_ty(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_opt(expr))
     }
 
-    crate fn expr_ty_adjusted(&self, expr: &hir::Expr) -> McResult<Ty<'tcx>> {
+    crate fn expr_ty_adjusted(&self, expr: &hir::Expr<'_>) -> McResult<Ty<'tcx>> {
         self.resolve_type_vars_or_error(expr.hir_id, self.tables.expr_ty_adjusted_opt(expr))
     }
 
@@ -231,7 +231,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     ///   implicit deref patterns attached (e.g., it is really
     ///   `&Some(x)`). In that case, we return the "outermost" type
     ///   (e.g., `&Option<T>).
-    crate fn pat_ty_adjusted(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
+    crate fn pat_ty_adjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
         // Check for implicit `&` types wrapping the pattern; note
         // that these are never attached to binding patterns, so
         // actually this is somewhat "disjoint" from the code below
@@ -247,7 +247,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
     }
 
     /// Like `pat_ty`, but ignores implicit `&` patterns.
-    fn pat_ty_unadjusted(&self, pat: &hir::Pat) -> McResult<Ty<'tcx>> {
+    fn pat_ty_unadjusted(&self, pat: &hir::Pat<'_>) -> McResult<Ty<'tcx>> {
         let base_ty = self.node_ty(pat.hir_id)?;
         debug!("pat_ty(pat={:?}) base_ty={:?}", pat, base_ty);
 
@@ -280,12 +280,12 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret_ty)
     }
 
-    crate fn cat_expr(&self, expr: &hir::Expr) -> McResult<Place<'tcx>> {
+    crate fn cat_expr(&self, expr: &hir::Expr<'_>) -> McResult<Place<'tcx>> {
         // This recursion helper avoids going through *too many*
         // adjustments, since *only* non-overloaded deref recurses.
         fn helper<'a, 'tcx>(
             mc: &MemCategorizationContext<'a, 'tcx>,
-            expr: &hir::Expr,
+            expr: &hir::Expr<'_>,
             adjustments: &[adjustment::Adjustment<'tcx>],
         ) -> McResult<Place<'tcx>> {
             match adjustments.split_last() {
@@ -301,7 +301,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     crate fn cat_expr_adjusted(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         previous: Place<'tcx>,
         adjustment: &adjustment::Adjustment<'tcx>,
     ) -> McResult<Place<'tcx>> {
@@ -310,7 +310,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
 
     fn cat_expr_adjusted_with<F>(
         &self,
-        expr: &hir::Expr,
+        expr: &hir::Expr<'_>,
         previous: F,
         adjustment: &adjustment::Adjustment<'tcx>,
     ) -> McResult<Place<'tcx>>
@@ -342,7 +342,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         }
     }
 
-    crate fn cat_expr_unadjusted(&self, expr: &hir::Expr) -> McResult<Place<'tcx>> {
+    crate fn cat_expr_unadjusted(&self, expr: &hir::Expr<'_>) -> McResult<Place<'tcx>> {
         debug!("cat_expr: id={} expr={:?}", expr.hir_id, expr);
 
         let expr_ty = self.expr_ty(expr)?;
@@ -513,7 +513,11 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         ret
     }
 
-    fn cat_overloaded_place(&self, expr: &hir::Expr, base: &hir::Expr) -> McResult<Place<'tcx>> {
+    fn cat_overloaded_place(
+        &self,
+        expr: &hir::Expr<'_>,
+        base: &hir::Expr<'_>,
+    ) -> McResult<Place<'tcx>> {
         debug!("cat_overloaded_place(expr={:?}, base={:?})", expr, base);
 
         // Reconstruct the output assuming it's a reference with the
@@ -557,17 +561,27 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
         Ok(ret)
     }
 
-    crate fn cat_pattern<F>(&self, place: Place<'tcx>, pat: &hir::Pat, mut op: F) -> McResult<()>
+    crate fn cat_pattern<F>(
+        &self,
+        place: Place<'tcx>,
+        pat: &hir::Pat<'_>,
+        mut op: F,
+    ) -> McResult<()>
     where
-        F: FnMut(&Place<'tcx>, &hir::Pat),
+        F: FnMut(&Place<'tcx>, &hir::Pat<'_>),
     {
         self.cat_pattern_(place, pat, &mut op)
     }
 
     // FIXME(#19596) This is a workaround, but there should be a better way to do this
-    fn cat_pattern_<F>(&self, mut place: Place<'tcx>, pat: &hir::Pat, op: &mut F) -> McResult<()>
+    fn cat_pattern_<F>(
+        &self,
+        mut place: Place<'tcx>,
+        pat: &hir::Pat<'_>,
+        op: &mut F,
+    ) -> McResult<()>
     where
-        F: FnMut(&Place<'tcx>, &hir::Pat),
+        F: FnMut(&Place<'tcx>, &hir::Pat<'_>),
     {
         // Here, `place` is the `Place` being matched and pat is the pattern it
         // is being matched against.
@@ -638,7 +652,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Struct(_, ref field_pats, _) => {
+            PatKind::Struct(_, field_pats, _) => {
                 // S { f1: p1, ..., fN: pN }
                 for fp in field_pats {
                     let field_ty = self.pat_ty_adjusted(&fp.pat)?;
@@ -647,7 +661,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 }
             }
 
-            PatKind::Or(ref pats) => {
+            PatKind::Or(pats) => {
                 for pat in pats {
                     self.cat_pattern_(place.clone(), &pat, op)?;
                 }
@@ -665,7 +679,7 @@ impl<'a, 'tcx> MemCategorizationContext<'a, 'tcx> {
                 self.cat_pattern_(subplace, &subpat, op)?;
             }
 
-            PatKind::Slice(ref before, ref slice, ref after) => {
+            PatKind::Slice(before, ref slice, after) => {
                 let element_ty = match place.ty.builtin_index() {
                     Some(ty) => ty,
                     None => {

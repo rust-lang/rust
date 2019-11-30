@@ -10,7 +10,6 @@ pub use mc::{Place, PlaceBase, Projection};
 
 use rustc::hir::def::Res;
 use rustc::hir::def_id::DefId;
-use rustc::hir::ptr::P;
 use rustc::hir::{self, PatKind};
 use rustc::infer::InferCtxt;
 use rustc::ty::{self, adjustment, TyCtxt};
