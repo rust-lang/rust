@@ -1,6 +1,5 @@
 //! `ra_lsp_server` binary
 
-use flexi_logger::{Duplicate, Logger};
 use lsp_server::Connection;
 use ra_lsp_server::{show_message, Result, ServerConfig};
 use ra_prof;
@@ -14,11 +13,7 @@ fn main() -> Result<()> {
 fn setup_logging() -> Result<()> {
     std::env::set_var("RUST_BACKTRACE", "short");
 
-    let logger = Logger::with_env_or_str("error").duplicate_to_stderr(Duplicate::All);
-    match std::env::var("RA_LOG_DIR") {
-        Ok(ref v) if v == "1" => logger.log_to_file().directory("log").start()?,
-        _ => logger.start()?,
-    };
+    env_logger::try_init()?;
 
     ra_prof::set_filter(match std::env::var("RA_PROFILE") {
         Ok(spec) => ra_prof::Filter::from_spec(&spec),

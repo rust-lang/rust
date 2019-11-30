@@ -8,6 +8,7 @@ publish = false
 [dependencies]
 pico-args = "0.3.0"
 log = "0.4"
+env_logger = { version = "0.7.1", default-features = false, features = ["humantime"] }
 
 ra_syntax = { path = "../ra_syntax" }
 ra_ide = { path = "../ra_ide" }
@@ -19,8 +20,3 @@ ra_db = { path = "../ra_db" }
 path = "../ra_prof"
 # features = [ "cpu_profiler" ]
 # features = [ "jemalloc" ]
-
-[dependencies.env_logger]
-version = "0.7.1"
-default-features = false
-features = ["humantime"]
