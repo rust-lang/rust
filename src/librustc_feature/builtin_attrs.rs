@@ -3,8 +3,9 @@
 use AttributeType::*;
 use AttributeGate::*;
 
+use crate::{Features, Stability};
+
 use rustc_data_structures::fx::FxHashMap;
-use rustc_feature::{Features, Stability};
 use syntax_pos::symbol::{Symbol, sym};
 use lazy_static::lazy_static;
 

@@ -1,11 +1,10 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
 use errors::{PResult, Applicability};
-use syntax::feature_gate::AttributeTemplate;
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use syntax::ast::{self, Attribute, AttrKind, Ident, MetaItem, MetaItemKind};
 use syntax::attr::mk_name_value_item_str;
 use syntax::early_buffered_lints::BufferedEarlyLintId;
-use syntax::feature_gate::BUILTIN_ATTRIBUTE_MAP;
 use syntax::token;
 use syntax::tokenstream::TokenTree;
 use syntax::sess::ParseSess;

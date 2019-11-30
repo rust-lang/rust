@@ -3575,6 +3575,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_interface",
  "rustc_lint",
  "rustc_metadata",
@@ -3612,6 +3613,8 @@ dependencies = [
 name = "rustc_feature"
 version = "0.0.0"
 dependencies = [
+ "lazy_static 1.3.0",
+ "rustc_data_structures",
  "syntax_pos",
 ]
 
@@ -3855,6 +3858,7 @@ dependencies = [
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_errors",
+ "rustc_feature",
  "rustc_metadata",
  "smallvec 1.0.0",
  "syntax",

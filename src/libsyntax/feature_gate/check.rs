@@ -1,6 +1,6 @@
 use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, Features, Feature, State as FeatureState};
 use rustc_feature::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
-use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 
 use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};

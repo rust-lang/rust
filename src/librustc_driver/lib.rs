@@ -44,6 +44,7 @@ use errors::{PResult, registry::Registry};
 use rustc_interface::interface;
 use rustc_interface::util::get_codegen_sysroot;
 use rustc_data_structures::sync::SeqCst;
+use rustc_feature::find_gated_cfg;
 
 use rustc_serialize::json::ToJson;
 
@@ -62,7 +63,7 @@ use std::time::Instant;
 
 use syntax::ast;
 use syntax::source_map::FileLoader;
-use syntax::feature_gate::{find_gated_cfg, UnstableFeatures};
+use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::symbol::sym;
 use syntax_pos::FileName;
 

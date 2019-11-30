@@ -15,6 +15,7 @@
 mod accepted;
 mod removed;
 mod active;
+mod builtin_attrs;
 
 use std::fmt;
 use std::num::NonZeroU32;
@@ -67,3 +68,8 @@ pub enum Stability {
 pub use accepted::ACCEPTED_FEATURES;
 pub use active::{ACTIVE_FEATURES, Features, INCOMPLETE_FEATURES};
 pub use removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
+pub use builtin_attrs::{
+    AttributeGate, AttributeTemplate, AttributeType, find_gated_cfg, GatedCfg,
+    BuiltinAttribute, BUILTIN_ATTRIBUTES, BUILTIN_ATTRIBUTE_MAP,
+    deprecated_attributes, is_builtin_attr_name,
+};
