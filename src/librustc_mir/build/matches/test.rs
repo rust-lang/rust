@@ -84,10 +84,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
+            PatKind::Or { .. } => {
+                self.hir.tcx().sess.span_fatal(
+                    match_pair.pattern.span,
+                    "or-patterns are not fully implemented yet"
+                )
+            }
+
             PatKind::AscribeUserType { .. } |
             PatKind::Array { .. } |
             PatKind::Wild |
-            PatKind::Or { .. } |
             PatKind::Binding { .. } |
             PatKind::Leaf { .. } |
             PatKind::Deref { .. } => {
