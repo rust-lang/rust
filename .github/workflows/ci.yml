@@ -297,6 +297,9 @@ jobs:
           - name: dist-powerpc64le-linux
             os: ubuntu-latest-xl
             env: {}
+          - name: dist-riscv64-linux
+            os: ubuntu-latest-xl
+            env: {}
           - name: dist-s390x-linux
             os: ubuntu-latest-xl
             env: {}

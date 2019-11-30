@@ -275,6 +275,11 @@ fn main() {
         "stdc++"
     };
 
+    // RISC-V requires libatomic for sub-word atomic operations
+    if target.starts_with("riscv") {
+        println!("cargo:rustc-link-lib=atomic");
+    }
+
     // C++ runtime library
     if !target.contains("msvc") {
         if let Some(s) = llvm_static_stdcpp {
