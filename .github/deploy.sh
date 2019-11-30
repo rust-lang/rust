@@ -60,6 +60,7 @@ if git diff --exit-code --quiet; then
     echo "No changes to the output on this push; exiting."
     exit 0
 fi
+cd -
 
 # Get the deploy key by using Travis's stored variables to decrypt deploy_key.enc
 ENCRYPTION_LABEL=e3a2d77100be
