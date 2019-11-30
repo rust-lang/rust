@@ -15,7 +15,6 @@ use tempfile::TempDir;
 
 use crate::support::{project, Project};
 
-const LOG: &'static str = "";
 const PROFILE: &'static str = "";
 // const PROFILE: &'static str = "*@3>100";
 
