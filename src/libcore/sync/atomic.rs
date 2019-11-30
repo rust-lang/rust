@@ -835,7 +835,7 @@ impl AtomicBool {
     #[inline]
     #[unstable(feature = "atomic_mut_ptr",
            reason = "recently added",
-           issue = "0")]
+           issue = "66893")]
     pub fn as_mut_ptr(&self) -> *mut bool {
         self.v.get() as *mut bool
     }
@@ -1960,7 +1960,7 @@ unsafe {
                 #[inline]
                 #[unstable(feature = "atomic_mut_ptr",
                        reason = "recently added",
-                       issue = "0")]
+                       issue = "66893")]
                 pub fn as_mut_ptr(&self) -> *mut $int_type {
                     self.v.get()
                 }
