@@ -73,6 +73,7 @@ chmod 600 .github/deploy_key
 eval "$(ssh-agent -s)"
 ssh-add .github/deploy_key
 
+cd out
 git add .
 git commit -m "Automatic deploy to GitHub Pages: ${SHA}"
 
