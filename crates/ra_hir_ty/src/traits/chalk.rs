@@ -20,8 +20,8 @@ use ra_db::salsa::{InternId, InternKey};
 
 use super::{AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
-    db::HirDatabase, display::HirDisplay, ApplicationTy, GenericPredicate, ImplTy, ProjectionTy,
-    Substs, TraitRef, Ty, TypeCtor, TypeWalk,
+    db::HirDatabase, display::HirDisplay, ApplicationTy, GenericPredicate, ProjectionTy, Substs,
+    TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -630,10 +630,7 @@ fn impl_block_datum(
     chalk_id: chalk_ir::ImplId,
     impl_id: ImplId,
 ) -> Option<Arc<ImplDatum<ChalkIr>>> {
-    let trait_ref = match db.impl_ty(impl_id) {
-        ImplTy::TraitRef(it) => it,
-        ImplTy::Inherent(_) => return None,
-    };
+    let trait_ref = db.impl_trait(impl_id)?;
     let impl_data = db.impl_data(impl_id);
 
     let generic_params = db.generic_params(impl_id.into());
@@ -787,11 +784,7 @@ fn type_alias_associated_ty_value(
         _ => panic!("assoc ty value should be in impl"),
     };
 
-    let trait_ref = match db.impl_ty(impl_id) {
-        ImplTy::TraitRef(it) => it,
-        // we don't return any assoc ty values if the impl'd trait can't be resolved
-        ImplTy::Inherent(_) => panic!("assoc ty value should not exist"),
-    };
+    let trait_ref = db.impl_trait(impl_id).expect("assoc ty value should not exist"); // we don't return any assoc ty values if the impl'd trait can't be resolved
 
     let assoc_ty = db
         .trait_data(trait_ref.trait_)

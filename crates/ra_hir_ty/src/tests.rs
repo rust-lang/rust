@@ -2154,7 +2154,6 @@ fn test(x: Foo, y: Bar<&str>, z: Baz<i8, u8>) {
 }
 
 #[test]
-#[should_panic] // we currently can't handle this
 fn recursive_type_alias() {
     assert_snapshot!(
         infer(r#"
@@ -2163,7 +2162,10 @@ type Foo = Foo;
 type Bar = A<Bar>;
 fn test(x: Foo) {}
 "#),
-        @""
+        @r###"
+    [59; 60) 'x': {unknown}
+    [67; 69) '{}': ()
+    "###
     )
 }
 
@@ -4676,10 +4678,48 @@ fn test<T, U>() where T::Item: Trait2, T: Trait<U::Item>, U: Trait<()> {
 }
 
 #[test]
-// FIXME this is currently a Salsa panic; it would be nicer if it just returned
-// in Unknown, and we should be able to do that once Salsa allows us to handle
-// the cycle. But at least it doesn't overflow for now.
-#[should_panic]
+fn trait_impl_self_ty() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait<T> {
+   fn foo(&self);
+}
+
+struct S;
+
+impl Trait<Self> for S {}
+
+fn test() {
+    S.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "()");
+}
+
+#[test]
+fn trait_impl_self_ty_cycle() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait {
+   fn foo(&self);
+}
+
+struct S<T>;
+
+impl Trait for S<Self> {}
+
+fn test() {
+    S.foo()<|>;
+}
+"#,
+    );
+    assert_eq!(t, "{unknown}");
+}
+
+#[test]
 fn unselected_projection_in_trait_env_cycle_1() {
     let t = type_at(
         r#"
@@ -4700,10 +4740,6 @@ fn test<T: Trait>() where T: Trait2<T::Item> {
 }
 
 #[test]
-// FIXME this is currently a Salsa panic; it would be nicer if it just returned
-// in Unknown, and we should be able to do that once Salsa allows us to handle
-// the cycle. But at least it doesn't overflow for now.
-#[should_panic]
 fn unselected_projection_in_trait_env_cycle_2() {
     let t = type_at(
         r#"
