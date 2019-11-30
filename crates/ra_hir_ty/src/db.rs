@@ -41,6 +41,7 @@ pub trait HirDatabase: DefDatabase {
     fn callable_item_signature(&self, def: CallableDef) -> FnSig;
 
     #[salsa::invoke(crate::lower::generic_predicates_for_param_query)]
+    #[salsa::cycle(crate::lower::generic_predicates_for_param_recover)]
     fn generic_predicates_for_param(
         &self,
         def: GenericDefId,

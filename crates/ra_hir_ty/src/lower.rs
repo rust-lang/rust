@@ -532,6 +532,15 @@ pub(crate) fn generic_predicates_for_param_query(
         .collect()
 }
 
+pub(crate) fn generic_predicates_for_param_recover(
+    _db: &impl HirDatabase,
+    _cycle: &[String],
+    _def: &GenericDefId,
+    _param_idx: &u32,
+) -> Arc<[GenericPredicate]> {
+    Arc::new([])
+}
+
 impl TraitEnvironment {
     pub fn lower(db: &impl HirDatabase, resolver: &Resolver) -> Arc<TraitEnvironment> {
         let predicates = resolver

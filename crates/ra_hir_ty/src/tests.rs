@@ -4718,10 +4718,6 @@ fn test() {
 }
 
 #[test]
-// FIXME this is currently a Salsa panic; it would be nicer if it just returned
-// in Unknown, and we should be able to do that once Salsa allows us to handle
-// the cycle. But at least it doesn't overflow for now.
-#[should_panic]
 fn unselected_projection_in_trait_env_cycle_1() {
     let t = type_at(
         r#"
@@ -4742,10 +4738,6 @@ fn test<T: Trait>() where T: Trait2<T::Item> {
 }
 
 #[test]
-// FIXME this is currently a Salsa panic; it would be nicer if it just returned
-// in Unknown, and we should be able to do that once Salsa allows us to handle
-// the cycle. But at least it doesn't overflow for now.
-#[should_panic]
 fn unselected_projection_in_trait_env_cycle_2() {
     let t = type_at(
         r#"
