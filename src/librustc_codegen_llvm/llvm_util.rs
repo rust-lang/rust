@@ -108,6 +108,8 @@ const ARM_WHITELIST: &[(&str, Option<Symbol>)] = &[
     ("rclass", Some(sym::arm_target_feature)),
     ("dsp", Some(sym::arm_target_feature)),
     ("neon", Some(sym::arm_target_feature)),
+    ("crc", Some(sym::arm_target_feature)),
+    ("crypto", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
