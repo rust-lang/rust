@@ -829,8 +829,9 @@ mod loop_keyword { }
 /// match a_number {
 ///     Some(x) if x <= 5 => println!("0 to 5 num = {}", x),
 ///     Some(x @ 6..=10) => println!("6 to 10 num = {}", x),
-///     None => oh_no(),
-///     _ => all_other_numbers(),
+///     None => panic!(),
+///     // all other numbers
+///     _ => panic!(),
 /// }
 /// ```
 ///
@@ -848,7 +849,7 @@ mod loop_keyword { }
 /// match get_inner {
 ///     Outer::Double(None, Some(st)) => println!("{}", st),
 ///     Outer::Single(opt) => println!("{:?}", opt),
-///     _ => the_rest(),
+///     _ => panic!(),
 /// }
 /// ```
 ///
@@ -878,7 +879,7 @@ mod mod_keyword { }
 /// ```rust
 /// let capture = "hello";
 /// let closure = move || {
-///     println!("we say {}", capture);
+///     println!("rust says {}", capture);
 /// };
 /// ```
 ///
