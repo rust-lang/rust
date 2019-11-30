@@ -323,6 +323,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             )
                         },
                     );
+                    let decl = this.arena.alloc(decl.into_inner());
                     let sig = hir::FnSig { decl, header: this.lower_fn_header(header) };
                     hir::ItemKind::Fn(sig, generics, body_id)
                 })
@@ -1253,7 +1254,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         fn_def_id: DefId,
         impl_trait_return_allow: bool,
         is_async: Option<NodeId>,
-    ) -> (hir::Generics, hir::FnSig) {
+    ) -> (hir::Generics, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
         let (generics, decl) = self.add_in_band_defs(
             generics,
@@ -1268,6 +1269,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             },
         );
+        let decl = self.arena.alloc(decl.into_inner());
         (generics, hir::FnSig { header, decl })
     }
 

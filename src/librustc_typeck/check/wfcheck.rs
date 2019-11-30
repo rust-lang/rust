@@ -194,7 +194,7 @@ fn check_associated_item(
     tcx: TyCtxt<'_>,
     item_id: hir::HirId,
     span: Span,
-    sig_if_method: Option<&hir::FnSig>,
+    sig_if_method: Option<&hir::FnSig<'_>>,
 ) {
     debug!("check_associated_item: {:?}", item_id);
 
@@ -774,7 +774,7 @@ const HELP_FOR_SELF_TYPE: &str = "consider changing to `self`, `&self`, `&mut se
 
 fn check_method_receiver<'fcx, 'tcx>(
     fcx: &FnCtxt<'fcx, 'tcx>,
-    fn_sig: &hir::FnSig,
+    fn_sig: &hir::FnSig<'_>,
     method: &ty::AssocItem,
     self_ty: Ty<'tcx>,
 ) {

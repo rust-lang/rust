@@ -1917,9 +1917,9 @@ pub struct MutTy {
 /// Represents a function's signature in a trait declaration,
 /// trait implementation, or a free function.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct FnSig {
+pub struct FnSig<'hir> {
     pub header: FnHeader,
-    pub decl: P<FnDecl>,
+    pub decl: &'hir FnDecl,
 }
 
 // The bodies for items are stored "out of line", in a separate
@@ -1960,7 +1960,7 @@ pub enum TraitItemKind<'hir> {
     /// An associated constant with an optional value (otherwise `impl`s must contain a value).
     Const(&'hir Ty, Option<BodyId>),
     /// A method with an optional body.
-    Method(FnSig, TraitMethod),
+    Method(FnSig<'hir>, TraitMethod),
     /// An associated type with (possibly empty) bounds and optional concrete
     /// type.
     Type(GenericBounds, Option<&'hir Ty>),
@@ -1994,7 +1994,7 @@ pub enum ImplItemKind<'hir> {
     /// of the expression.
     Const(&'hir Ty, BodyId),
     /// A method implementation with the given signature and body.
-    Method(FnSig, BodyId),
+    Method(FnSig<'hir>, BodyId),
     /// An associated type.
     TyAlias(&'hir Ty),
     /// An associated `type = impl Trait`.
@@ -2528,7 +2528,7 @@ pub enum ItemKind<'hir> {
     /// A `const` item.
     Const(&'hir Ty, BodyId),
     /// A function declaration.
-    Fn(FnSig, Generics, BodyId),
+    Fn(FnSig<'hir>, Generics, BodyId),
     /// A module.
     Mod(Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.

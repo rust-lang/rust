@@ -822,7 +822,7 @@ impl<'a> State<'a> {
     pub fn print_method_sig(
         &mut self,
         ident: ast::Ident,
-        m: &hir::FnSig,
+        m: &hir::FnSig<'_>,
         generics: &hir::Generics,
         vis: &hir::Visibility,
         arg_names: &[ast::Ident],

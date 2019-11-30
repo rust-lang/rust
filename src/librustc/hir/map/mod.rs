@@ -69,7 +69,7 @@ impl<'hir> Entry<'hir> {
         }
     }
 
-    fn fn_sig(&self) -> Option<&'hir FnSig> {
+    fn fn_sig(&self) -> Option<&'hir FnSig<'hir>> {
         match &self.node {
             Node::Item(item) => match &item.kind {
                 ItemKind::Fn(sig, _, _) => Some(sig),
@@ -437,7 +437,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    pub fn fn_sig_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnSig> {
+    pub fn fn_sig_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
         if let Some(entry) = self.find_entry(hir_id) {
             entry.fn_sig()
         } else {

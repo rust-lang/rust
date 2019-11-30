@@ -892,7 +892,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics, ty::GenericPredicates<'tcx
 }
 
 impl<'a> Clean<Method>
-    for (&'a hir::FnSig, &'a hir::Generics, hir::BodyId, Option<hir::Defaultness>)
+    for (&'a hir::FnSig<'a>, &'a hir::Generics, hir::BodyId, Option<hir::Defaultness>)
 {
     fn clean(&self, cx: &DocContext<'_>) -> Method {
         let (generics, decl) =
