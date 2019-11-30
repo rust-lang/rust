@@ -34,10 +34,7 @@ pub trait MetadataExt {
     /// }
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
-    #[rustc_deprecated(
-        since = "1.8.0",
-        reason = "other methods of this trait are now prefered"
-    )]
+    #[rustc_deprecated(since = "1.8.0", reason = "other methods of this trait are now prefered")]
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat;
 
@@ -328,10 +325,7 @@ pub trait MetadataExt {
 impl MetadataExt for Metadata {
     #[allow(deprecated)]
     fn as_raw_stat(&self) -> &raw::stat {
-        unsafe {
-            &*(self.as_inner().as_inner() as *const libc::stat64
-                                          as *const raw::stat)
-        }
+        unsafe { &*(self.as_inner().as_inner() as *const libc::stat64 as *const raw::stat) }
     }
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
