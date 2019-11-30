@@ -450,7 +450,7 @@ pub fn walk_poly_trait_ref<'v, V>(
 ) where
     V: Visitor<'v>,
 {
-    walk_list!(visitor, visit_generic_param, &trait_ref.bound_generic_params);
+    walk_list!(visitor, visit_generic_param, trait_ref.bound_generic_params);
     visitor.visit_trait_ref(&trait_ref.trait_ref);
 }
 
@@ -509,7 +509,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
             visitor.visit_ty(ty);
             visitor.visit_generics(generics)
         }
-        ItemKind::OpaqueTy(OpaqueTy { ref generics, ref bounds, .. }) => {
+        ItemKind::OpaqueTy(OpaqueTy { ref generics, bounds, .. }) => {
             visitor.visit_id(item.hir_id);
             walk_generics(visitor, generics);
             walk_list!(visitor, visit_param_bound, bounds);
@@ -538,13 +538,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) {
                 item.span,
             );
         }
-        ItemKind::Trait(.., ref generics, ref bounds, trait_item_refs) => {
+        ItemKind::Trait(.., ref generics, bounds, trait_item_refs) => {
             visitor.visit_id(item.hir_id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
-        ItemKind::TraitAlias(ref generics, ref bounds) => {
+        ItemKind::TraitAlias(ref generics, bounds) => {
             visitor.visit_id(item.hir_id);
             visitor.visit_generics(generics);
             walk_list!(visitor, visit_param_bound, bounds);
@@ -598,17 +598,17 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
             visitor.visit_ty(&mutable_type.ty)
         }
         TyKind::Never => {}
-        TyKind::Tup(ref tuple_element_types) => {
+        TyKind::Tup(tuple_element_types) => {
             walk_list!(visitor, visit_ty, tuple_element_types);
         }
         TyKind::BareFn(ref function_declaration) => {
-            walk_list!(visitor, visit_generic_param, &function_declaration.generic_params);
+            walk_list!(visitor, visit_generic_param, function_declaration.generic_params);
             visitor.visit_fn_decl(&function_declaration.decl);
         }
         TyKind::Path(ref qpath) => {
             visitor.visit_qpath(qpath, typ.hir_id, typ.span);
         }
-        TyKind::Def(item_id, ref lifetimes) => {
+        TyKind::Def(item_id, lifetimes) => {
             visitor.visit_nested_item(item_id);
             walk_list!(visitor, visit_generic_arg, lifetimes);
         }
@@ -616,7 +616,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty<'v>) {
             visitor.visit_ty(ty);
             visitor.visit_anon_const(length)
         }
-        TyKind::TraitObject(ref bounds, ref lifetime) => {
+        TyKind::TraitObject(bounds, ref lifetime) => {
             for bound in bounds {
                 visitor.visit_poly_trait_ref(bound, TraitBoundModifier::None);
             }
@@ -648,7 +648,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
 }
 
 pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path<'v>) {
-    for segment in &path.segments {
+    for segment in path.segments {
         visitor.visit_path_segment(path.span, segment);
     }
 }
@@ -673,7 +673,7 @@ pub fn walk_generic_args<'v, V: Visitor<'v>>(
     generic_args: &'v GenericArgs<'v>,
 ) {
     walk_list!(visitor, visit_generic_arg, &generic_args.args);
-    walk_list!(visitor, visit_assoc_type_binding, &generic_args.bindings);
+    walk_list!(visitor, visit_assoc_type_binding, generic_args.bindings);
 }
 
 pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(
@@ -686,7 +686,7 @@ pub fn walk_assoc_type_binding<'v, V: Visitor<'v>>(
         TypeBindingKind::Equality { ref ty } => {
             visitor.visit_ty(ty);
         }
-        TypeBindingKind::Constraint { ref bounds } => {
+        TypeBindingKind::Constraint { bounds } => {
             walk_list!(visitor, visit_param_bound, bounds);
         }
     }
@@ -766,7 +766,7 @@ pub fn walk_param_bound<'v, V: Visitor<'v>>(visitor: &mut V, bound: &'v GenericB
 
 pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v GenericParam<'v>) {
     visitor.visit_id(param.hir_id);
-    walk_list!(visitor, visit_attribute, &param.attrs);
+    walk_list!(visitor, visit_attribute, param.attrs);
     match param.name {
         ParamName::Plain(ident) => visitor.visit_ident(ident),
         ParamName::Error | ParamName::Fresh(_) => {}
@@ -776,12 +776,12 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
         GenericParamKind::Type { ref default, .. } => walk_list!(visitor, visit_ty, default),
         GenericParamKind::Const { ref ty } => visitor.visit_ty(ty),
     }
-    walk_list!(visitor, visit_param_bound, &param.bounds);
+    walk_list!(visitor, visit_param_bound, param.bounds);
 }
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics<'v>) {
     walk_list!(visitor, visit_generic_param, &generics.params);
-    walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
+    walk_list!(visitor, visit_where_predicate, generics.where_clause.predicates);
 }
 
 pub fn walk_where_predicate<'v, V: Visitor<'v>>(
@@ -791,17 +791,15 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
     match predicate {
         &WherePredicate::BoundPredicate(WhereBoundPredicate {
             ref bounded_ty,
-            ref bounds,
-            ref bound_generic_params,
+            bounds,
+            bound_generic_params,
             ..
         }) => {
             visitor.visit_ty(bounded_ty);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_generic_param, bound_generic_params);
         }
-        &WherePredicate::RegionPredicate(WhereRegionPredicate {
-            ref lifetime, ref bounds, ..
-        }) => {
+        &WherePredicate::RegionPredicate(WhereRegionPredicate { ref lifetime, bounds, .. }) => {
             visitor.visit_lifetime(lifetime);
             walk_list!(visitor, visit_param_bound, bounds);
         }
@@ -822,7 +820,7 @@ pub fn walk_fn_ret_ty<'v, V: Visitor<'v>>(visitor: &mut V, ret_ty: &'v FunctionR
 }
 
 pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &'v FnDecl<'v>) {
-    for ty in &function_declaration.inputs {
+    for ty in function_declaration.inputs {
         visitor.visit_ty(ty)
     }
     walk_fn_ret_ty(visitor, &function_declaration.output)
@@ -877,7 +875,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
                 trait_item.hir_id,
             );
         }
-        TraitItemKind::Type(ref bounds, ref default) => {
+        TraitItemKind::Type(bounds, ref default) => {
             visitor.visit_id(trait_item.hir_id);
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
@@ -931,7 +929,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
             visitor.visit_id(impl_item.hir_id);
             visitor.visit_ty(ty);
         }
-        ImplItemKind::OpaqueTy(ref bounds) => {
+        ImplItemKind::OpaqueTy(bounds) => {
             visitor.visit_id(impl_item.hir_id);
             walk_list!(visitor, visit_param_bound, bounds);
         }

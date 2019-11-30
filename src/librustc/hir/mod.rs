@@ -443,7 +443,7 @@ pub struct GenericArgs<'hir> {
 
 impl GenericArgs<'_> {
     pub const fn none() -> Self {
-        Self { args: HirVec::new(), bindings: HirVec::new(), parenthesized: false }
+        Self { args: HirVec::new(), bindings: &[], parenthesized: false }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -580,7 +580,7 @@ impl Generics<'hir> {
     pub const fn empty() -> Generics<'hir> {
         Generics {
             params: HirVec::new(),
-            where_clause: WhereClause { predicates: HirVec::new(), span: DUMMY_SP },
+            where_clause: WhereClause { predicates: &[], span: DUMMY_SP },
             span: DUMMY_SP,
         }
     }

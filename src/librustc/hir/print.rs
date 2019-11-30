@@ -10,6 +10,7 @@ use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
 
 use crate::hir;
+use crate::hir::HirVec;
 use crate::hir::{GenericArg, GenericParam, GenericParamKind};
 use crate::hir::{GenericBound, PatKind, RangeEnd, TraitBoundModifier};
 
@@ -307,7 +308,7 @@ impl<'a> State<'a> {
             }
             hir::TyKind::Def(..) => {}
             hir::TyKind::Path(ref qpath) => self.print_qpath(qpath, false),
-            hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(bounds, ref lifetime) => {
                 let mut first = true;
                 for bound in bounds {
                     if first {
@@ -418,7 +419,7 @@ impl<'a> State<'a> {
     fn print_associated_type(
         &mut self,
         ident: ast::Ident,
-        bounds: Option<&hir::GenericBounds<'_>>,
+        bounds: Option<hir::GenericBounds<'_>>,
         ty: Option<&hir::Ty<'_>>,
     ) {
         self.word_space("type");
@@ -891,7 +892,7 @@ impl<'a> State<'a> {
             hir::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));
             }
-            hir::ImplItemKind::OpaqueTy(ref bounds) => {
+            hir::ImplItemKind::OpaqueTy(bounds) => {
                 self.word_space("type");
                 self.print_ident(ii.ident);
                 self.print_bounds("= impl", bounds);
@@ -1586,7 +1587,7 @@ impl<'a> State<'a> {
                         self.word_space("=");
                         self.print_type(ty);
                     }
-                    hir::TypeBindingKind::Constraint { ref bounds } => {
+                    hir::TypeBindingKind::Constraint { bounds } => {
                         self.print_bounds(":", bounds);
                     }
                 }
@@ -1953,9 +1954,9 @@ impl<'a> State<'a> {
         match param.kind {
             GenericParamKind::Lifetime { .. } => {
                 let mut sep = ":";
-                for bound in &param.bounds {
+                for bound in param.bounds {
                     match bound {
-                        GenericBound::Outlives(lt) => {
+                        GenericBound::Outlives(ref lt) => {
                             self.s.word(sep);
                             self.print_lifetime(lt);
                             sep = "+";
@@ -1965,7 +1966,7 @@ impl<'a> State<'a> {
                 }
             }
             GenericParamKind::Type { ref default, .. } => {
-                self.print_bounds(":", &param.bounds);
+                self.print_bounds(":", param.bounds);
                 match default {
                     Some(default) => {
                         self.s.space();
@@ -2003,7 +2004,7 @@ impl<'a> State<'a> {
                 &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                     ref bound_generic_params,
                     ref bounded_ty,
-                    ref bounds,
+                    bounds,
                     ..
                 }) => {
                     self.print_formal_generic_params(bound_generic_params);
@@ -2096,11 +2097,8 @@ impl<'a> State<'a> {
             self.print_generic_params(generic_params);
         }
         let generics = hir::Generics {
-            params: hir::HirVec::new(),
-            where_clause: hir::WhereClause {
-                predicates: hir::HirVec::new(),
-                span: syntax_pos::DUMMY_SP,
-            },
+            params: HirVec::new(),
+            where_clause: hir::WhereClause { predicates: &[], span: syntax_pos::DUMMY_SP },
             span: syntax_pos::DUMMY_SP,
         };
         self.print_fn(

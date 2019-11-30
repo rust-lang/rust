@@ -8,7 +8,6 @@
 use crate::hir::def::{DefKind, Res};
 use crate::hir::def_id::{CrateNum, DefId, LocalDefId, LOCAL_CRATE};
 use crate::hir::map::Map;
-use crate::hir::ptr::P;
 use crate::hir::{GenericArg, GenericParam, ItemLocalId, LifetimeName, Node, ParamName, QPath};
 use crate::ty::{self, DefIdTree, GenericParamDefKind, TyCtxt};
 
@@ -549,7 +548,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 });
                 self.is_in_fn_syntax = was_in_fn_syntax;
             }
-            hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
+            hir::TyKind::TraitObject(bounds, ref lifetime) => {
                 debug!("visit_ty: TraitObject(bounds={:?}, lifetime={:?})", bounds, lifetime);
                 for bound in bounds {
                     self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
@@ -590,7 +589,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 };
                 self.with(scope, |_, this| this.visit_ty(&mt.ty));
             }
-            hir::TyKind::Def(item_id, ref lifetimes) => {
+            hir::TyKind::Def(item_id, lifetimes) => {
                 // Resolve the lifetimes in the bounds to the lifetime defs in the generics.
                 // `fn foo<'a>() -> impl MyTrait<'a> { ... }` desugars to
                 // `type MyAnonTy<'b> = impl MyTrait<'b>;`
@@ -604,7 +603,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                         return;
                     }
                     // RPIT (return position impl trait)
-                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, ref bounds, .. }) => {
+                    hir::ItemKind::OpaqueTy(hir::OpaqueTy { ref generics, bounds, .. }) => {
                         (generics, bounds)
                     }
                     ref i => bug!("`impl Trait` pointed to non-opaque type?? {:#?}", i),
@@ -738,7 +737,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     |this| intravisit::walk_trait_item(this, trait_item),
                 );
             }
-            Type(ref bounds, ref ty) => {
+            Type(bounds, ref ty) => {
                 let generics = &trait_item.generics;
                 let mut index = self.next_early_index();
                 debug!("visit_ty: index = {}", index);
@@ -823,7 +822,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     this.visit_ty(ty);
                 });
             }
-            OpaqueTy(ref bounds) => {
+            OpaqueTy(bounds) => {
                 let generics = &impl_item.generics;
                 let mut index = self.next_early_index();
                 let mut next_early_index = index;
@@ -904,22 +903,22 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => {}
                 GenericParamKind::Type { ref default, .. } => {
-                    walk_list!(self, visit_param_bound, &param.bounds);
+                    walk_list!(self, visit_param_bound, param.bounds);
                     if let Some(ref ty) = default {
                         self.visit_ty(&ty);
                     }
                 }
                 GenericParamKind::Const { ref ty, .. } => {
-                    walk_list!(self, visit_param_bound, &param.bounds);
+                    walk_list!(self, visit_param_bound, param.bounds);
                     self.visit_ty(&ty);
                 }
             }
         }
-        for predicate in &generics.where_clause.predicates {
+        for predicate in generics.where_clause.predicates {
             match predicate {
                 &hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                     ref bounded_ty,
-                    ref bounds,
+                    bounds,
                     ref bound_generic_params,
                     ..
                 }) => {
@@ -956,7 +955,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                 }
                 &hir::WherePredicate::RegionPredicate(hir::WhereRegionPredicate {
                     ref lifetime,
-                    ref bounds,
+                    bounds,
                     ..
                 }) => {
                     self.visit_lifetime(lifetime);
@@ -1014,7 +1013,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             };
             self.with(scope, |old_scope, this| {
                 this.check_lifetime_params(old_scope, &trait_ref.bound_generic_params);
-                walk_list!(this, visit_generic_param, &trait_ref.bound_generic_params);
+                walk_list!(this, visit_generic_param, trait_ref.bound_generic_params);
                 this.visit_trait_ref(&trait_ref.trait_ref)
             })
         } else {
@@ -1059,7 +1058,7 @@ impl ShadowKind {
     }
 }
 
-fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &P<[hir::GenericParam<'_>]>) {
+fn check_mixed_explicit_and_in_band_defs(tcx: TyCtxt<'_>, params: &[hir::GenericParam<'_>]) {
     let lifetime_params: Vec<_> = params
         .iter()
         .filter_map(|param| match param.kind {
@@ -1273,7 +1272,7 @@ fn object_lifetime_defaults_for_item(
                 add_bounds(&mut set, &param.bounds);
 
                 let param_def_id = tcx.hir().local_def_id(param.hir_id);
-                for predicate in &generics.where_clause.predicates {
+                for predicate in generics.where_clause.predicates {
                     // Look for `type: ...` where clauses.
                     let data = match *predicate {
                         hir::WherePredicate::BoundPredicate(ref data) => data,
@@ -1421,7 +1420,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
 
         let mut remove_use = None;
         let mut elide_use = None;
-        let mut find_arg_use_span = |inputs: &hir::HirVec<hir::Ty<'_>>| {
+        let mut find_arg_use_span = |inputs: &[hir::Ty<'_>]| {
             for input in inputs {
                 match input.kind {
                     hir::TyKind::Rptr(lt, _) => {
@@ -1463,12 +1462,12 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 match parent {
                     Node::Item(item) => {
                         if let hir::ItemKind::Fn(sig, _, _) = &item.kind {
-                            find_arg_use_span(&sig.decl.inputs);
+                            find_arg_use_span(sig.decl.inputs);
                         }
                     }
                     Node::ImplItem(impl_item) => {
                         if let hir::ImplItemKind::Method(sig, _) = &impl_item.kind {
-                            find_arg_use_span(&sig.decl.inputs);
+                            find_arg_use_span(sig.decl.inputs);
                         }
                     }
                     _ => {}
@@ -2045,7 +2044,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         });
 
         // Resolve lifetimes found in the type `XX` from `Item = XX` bindings.
-        for b in &generic_args.bindings {
+        for b in generic_args.bindings {
             let scope = Scope::ObjectLifetimeDefault {
                 lifetime: if has_lifetime_parameter { None } else { Some(Region::Static) },
                 s: self.scope,
@@ -2269,7 +2268,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     self.outer_index.shift_in(1);
                 }
                 match ty.kind {
-                    hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
+                    hir::TyKind::TraitObject(bounds, ref lifetime) => {
                         for bound in bounds {
                             self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
                         }
@@ -2583,9 +2582,9 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             // It is a soft error to shadow a lifetime within a parent scope.
             self.check_lifetime_param_for_shadowing(old_scope, &lifetime_i);
 
-            for bound in &lifetime_i.bounds {
+            for bound in lifetime_i.bounds {
                 match bound {
-                    hir::GenericBound::Outlives(lt) => match lt.name {
+                    hir::GenericBound::Outlives(ref lt) => match lt.name {
                         hir::LifetimeName::Underscore => self.tcx.sess.delay_span_bug(
                             lt.span,
                             "use of `'_` in illegal place, but not caught by lowering",
@@ -2774,7 +2773,7 @@ fn insert_late_bound_lifetimes(
     debug!("insert_late_bound_lifetimes(decl={:?}, generics={:?})", decl, generics);
 
     let mut constrained_by_input = ConstrainedCollector::default();
-    for arg_ty in &decl.inputs {
+    for arg_ty in decl.inputs {
         constrained_by_input.visit_ty(arg_ty);
     }
 
