@@ -431,6 +431,9 @@ pub use alloc_crate::collections::TryReserveError;
 
 mod hash;
 
+#[unstable(feature = "deterministic_hashing", reason = "new API", issue = "0")]
+pub use hash::enable_deterministic_hashing;
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_map {
     //! A hash map implemented with linear probing and Robin Hood bucket stealing.
