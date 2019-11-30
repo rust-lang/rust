@@ -1,9 +1,7 @@
+//! Print diagnostics to explain why values are borrowed.
+
 use std::collections::VecDeque;
 
-use crate::borrow_check::borrow_set::BorrowData;
-use crate::borrow_check::nll::region_infer::Cause;
-use crate::borrow_check::nll::ConstraintDescription;
-use crate::borrow_check::{MirBorrowckCtxt, WriteKind};
 use rustc::mir::{
     CastKind, ConstraintCategory, FakeReadCause, Local, Location, Body, Operand, Place, Rvalue,
     Statement, StatementKind, TerminatorKind,
@@ -15,6 +13,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
+
+use crate::borrow_check::{
+    borrow_set::BorrowData,
+    region_infer::Cause,
+    nll::ConstraintDescription,
+    MirBorrowckCtxt, WriteKind,
+};
 
 use super::{UseSpans, find_use, RegionName};
 

@@ -13,7 +13,7 @@ use syntax_pos::symbol::Symbol;
 
 use smallvec::SmallVec;
 
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
+use crate::borrow_check::region_infer::RegionInferenceContext;
 
 use super::{
     RegionName, RegionNameSource, ErrorConstraintInfo, ErrorReportingCtx, RegionErrorNamingCtx,

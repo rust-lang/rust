@@ -1,9 +1,11 @@
-use crate::borrow_check::nll::region_infer::values::{PointIndex, RegionValueElements};
-use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{PlaceContext, Visitor};
 use rustc::mir::{Local, Location, ReadOnlyBodyAndCache};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::vec_linked_list as vll;
+
+use crate::util::liveness::{categorize, DefUse};
+
+use crate::borrow_check::region_infer::values::{PointIndex, RegionValueElements};
 
 /// A map that cross references each local with the locations where it
 /// is defined (assigned), used, or dropped. Used during liveness

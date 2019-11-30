@@ -1,6 +1,3 @@
-use crate::borrow_check::borrow_set::{BorrowSet, BorrowData};
-use crate::borrow_check::place_ext::PlaceExt;
-
 use rustc::mir::{self, Location, Place, PlaceBase, Body};
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::RegionVid;
@@ -10,9 +7,14 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
 
 use crate::dataflow::{BitDenotation, BottomValue, GenKillSet};
-use crate::borrow_check::nll::region_infer::RegionInferenceContext;
-use crate::borrow_check::nll::ToRegionVid;
-use crate::borrow_check::places_conflict;
+
+use crate::borrow_check::{
+    borrow_set::{BorrowSet, BorrowData},
+    place_ext::PlaceExt,
+    region_infer::RegionInferenceContext,
+    nll::ToRegionVid,
+    places_conflict,
+};
 
 use std::rc::Rc;
 
