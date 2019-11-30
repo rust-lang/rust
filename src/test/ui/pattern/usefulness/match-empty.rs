@@ -44,5 +44,5 @@ fn main() {
     match NonEmptyEnum2::Foo(true) {}
     //~^ ERROR multiple patterns of type `NonEmptyEnum2` are not handled
     match NonEmptyEnum5::V1 {}
-    //~^ ERROR type `NonEmptyEnum5` is non-empty
+    //~^ ERROR multiple patterns of type `NonEmptyEnum5` are not handled
 }

@@ -180,11 +180,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                         ty::Never => true,
                         ty::Adt(def, _) => {
                             def_span = self.tcx.hir().span_if_local(def.did);
-                            if def.variants.len() < 4 && !def.variants.is_empty() {
-                                // keep around to point at the definition of non-covered variants
-                                missing_variants =
-                                    def.variants.iter().map(|variant| variant.ident).collect();
-                            }
+                            missing_variants =
+                                def.variants.iter().map(|variant| variant.ident).collect();
 
                             def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(pat_ty)
                         }
@@ -219,8 +216,10 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                         err.span_label(sp, format!("`{}` defined here", pat_ty));
                     }
                     // point at the definition of non-covered enum variants
-                    for variant in &missing_variants {
-                        err.span_label(variant.span, "variant not covered");
+                    if missing_variants.len() < 4 {
+                        for variant in &missing_variants {
+                            err.span_label(variant.span, "variant not covered");
+                        }
                     }
                     err.emit();
                 }
