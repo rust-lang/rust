@@ -822,7 +822,7 @@ mod loop_keyword { }
 /// let x = match opt {
 ///     Some(int) => int,
 ///     None => 10,
-/// }
+/// };
 /// assert_eq!(x, 10);
 ///
 /// let a_number = Option::Some(10);
