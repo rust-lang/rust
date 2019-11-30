@@ -1,6 +1,6 @@
 use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
-use crate::ast::{Attribute, MacDelimiter, GenericArg};
+use crate::ast::{Attribute, GenericArg};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::util::comments;
 use crate::attr;
@@ -1097,9 +1097,8 @@ impl<'a> State<'a> {
             }
             ast::ForeignItemKind::Macro(ref m) => {
                 self.print_mac(m);
-                match m.delim {
-                    MacDelimiter::Brace => {},
-                    _ => self.s.word(";")
+                if m.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1361,9 +1360,8 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
@@ -1578,9 +1576,8 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1608,9 +1605,8 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1775,7 +1771,7 @@ impl<'a> State<'a> {
             Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.delim.to_token(),
+            m.args.delim(),
             m.stream(),
             true,
             m.span,

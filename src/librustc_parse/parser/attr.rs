@@ -244,7 +244,7 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
+    pub(super) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 

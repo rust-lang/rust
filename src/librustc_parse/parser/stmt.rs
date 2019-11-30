@@ -10,7 +10,7 @@ use syntax::ThinVec;
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::{DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
-use syntax::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac, MacDelimiter};
+use syntax::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac};
 use syntax::util::classify;
 use syntax::token;
 use syntax::source_map::{respan, Span};
@@ -93,10 +93,11 @@ impl<'a> Parser<'a> {
                 }));
             }
 
-            let (delim, tts) = self.expect_delimited_token_tree()?;
+            let args = self.parse_mac_args()?;
+            let delim = args.delim();
             let hi = self.prev_span;
 
-            let style = if delim == MacDelimiter::Brace {
+            let style = if delim == token::Brace {
                 MacStmtStyle::Braces
             } else {
                 MacStmtStyle::NoBraces
@@ -104,12 +105,11 @@ impl<'a> Parser<'a> {
 
             let mac = Mac {
                 path,
-                tts,
-                delim,
+                args,
                 span: lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
             };
-            let kind = if delim == MacDelimiter::Brace ||
+            let kind = if delim == token::Brace ||
                           self.token == token::Semi || self.token == token::Eof {
                 StmtKind::Mac(P((mac, style, attrs.into())))
             }

@@ -922,12 +922,11 @@ impl<'a> Parser<'a> {
                     // `!`, as an operator, is prefix, so we know this isn't that.
                     if self.eat(&token::Not) {
                         // MACRO INVOCATION expression
-                        let (delim, tts) = self.expect_delimited_token_tree()?;
+                        let args = self.parse_mac_args()?;
                         hi = self.prev_span;
                         ex = ExprKind::Mac(Mac {
                             path,
-                            tts,
-                            delim,
+                            args,
                             span: lo.to(hi),
                             prior_type_ascription: self.last_type_ascription,
                         });

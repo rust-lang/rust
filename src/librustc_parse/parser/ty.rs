@@ -177,11 +177,10 @@ impl<'a> Parser<'a> {
             let path = self.parse_path(PathStyle::Type)?;
             if self.eat(&token::Not) {
                 // Macro invocation in type position
-                let (delim, tts) = self.expect_delimited_token_tree()?;
+                let args = self.parse_mac_args()?;
                 let mac = Mac {
                     path,
-                    tts,
-                    delim,
+                    args,
                     span: lo.to(self.prev_span),
                     prior_type_ascription: self.last_type_ascription,
                 };

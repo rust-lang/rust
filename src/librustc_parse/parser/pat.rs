@@ -595,11 +595,10 @@ impl<'a> Parser<'a> {
     /// Parse macro invocation
     fn parse_pat_mac_invoc(&mut self, lo: Span, path: Path) -> PResult<'a, PatKind> {
         self.bump();
-        let (delim, tts) = self.expect_delimited_token_tree()?;
+        let args = self.parse_mac_args()?;
         let mac = Mac {
             path,
-            tts,
-            delim,
+            args,
             span: lo.to(self.prev_span),
             prior_type_ascription: self.last_type_ascription,
         };

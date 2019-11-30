@@ -359,6 +359,26 @@ pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl }: &mut FnSig, vis: &mut
     vis.visit_fn_decl(decl);
 }
 
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
+    match args {
+        MacArgs::Empty => {}
+        MacArgs::Delimited(dspan, _delim, tokens) => {
+            visit_delim_span(dspan, vis);
+            vis.visit_tts(tokens);
+        }
+        MacArgs::Eq(eq_span, tokens) => {
+            vis.visit_span(eq_span);
+            vis.visit_tts(tokens);
+        }
+    }
+}
+
+pub fn visit_delim_span<T: MutVisitor>(dspan: &mut DelimSpan, vis: &mut T) {
+    vis.visit_span(&mut dspan.open);
+    vis.visit_span(&mut dspan.close);
+}
+
 pub fn noop_flat_map_field_pattern<T: MutVisitor>(
     mut fp: FieldPat,
     vis: &mut T,
@@ -560,9 +580,9 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
 }
 
 pub fn noop_visit_mac<T: MutVisitor>(mac: &mut Mac, vis: &mut T) {
-    let Mac { path, delim: _, tts, span, prior_type_ascription: _ } = mac;
+    let Mac { path, args, span, prior_type_ascription: _ } = mac;
     vis.visit_path(path);
-    vis.visit_tts(tts);
+    visit_mac_args(args, vis);
     vis.visit_span(span);
 }
 

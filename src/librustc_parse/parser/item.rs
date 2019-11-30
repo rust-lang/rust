@@ -8,7 +8,7 @@ use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, Us
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, Variant, VariantData, StructField};
-use syntax::ast::{Mac, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
+use syntax::ast::{Mac, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::ThinVec;
@@ -437,16 +437,15 @@ impl<'a> Parser<'a> {
             // Item macro
             let path = self.parse_path(PathStyle::Mod)?;
             self.expect(&token::Not)?;
-            let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != MacDelimiter::Brace && !self.eat(&token::Semi) {
+            let args = self.parse_mac_args()?;
+            if args.need_semicolon() && !self.eat(&token::Semi) {
                 self.report_invalid_macro_expansion_item();
             }
 
             let hi = self.prev_span;
             let mac = Mac {
                 path,
-                tts,
-                delim,
+                args,
                 span: mac_lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
             };
@@ -518,15 +517,14 @@ impl<'a> Parser<'a> {
             *at_end = true;
 
             // eat a matched-delimiter token tree:
-            let (delim, tts) = self.expect_delimited_token_tree()?;
-            if delim != MacDelimiter::Brace {
+            let args = self.parse_mac_args()?;
+            if args.need_semicolon() {
                 self.expect_semi()?;
             }
 
             Ok(Some(Mac {
                 path,
-                tts,
-                delim,
+                args,
                 span: lo.to(self.prev_span),
                 prior_type_ascription: self.last_type_ascription,
             }))
@@ -1660,12 +1658,12 @@ impl<'a> Parser<'a> {
             self.bump();
 
             let ident = self.parse_ident()?;
-            let (delim, tokens) = self.expect_delimited_token_tree()?;
-            if delim != MacDelimiter::Brace && !self.eat(&token::Semi) {
+            let args = self.parse_mac_args()?;
+            if args.need_semicolon() && !self.eat(&token::Semi) {
                 self.report_invalid_macro_expansion_item();
             }
 
-            (ident, ast::MacroDef { tokens, legacy: true })
+            (ident, ast::MacroDef { tokens: args.inner_tokens(), legacy: true })
         } else {
             return Ok(None);
         };

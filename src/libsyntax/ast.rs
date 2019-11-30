@@ -27,7 +27,7 @@ pub use syntax_pos::symbol::{Ident, Symbol as Name};
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::token::{self, DelimToken};
-use crate::tokenstream::TokenStream;
+use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP, ExpnId};
@@ -40,6 +40,7 @@ use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
 use rustc_macros::HashStable_Generic;
 
+use std::iter;
 use std::fmt;
 
 #[cfg(test)]
@@ -1372,19 +1373,69 @@ pub enum Movability {
     Movable,
 }
 
-/// Represents a macro invocation. The `Path` indicates which macro
-/// is being invoked, and the vector of token-trees contains the source
-/// of the macro invocation.
-///
-/// N.B., the additional ident for a `macro_rules`-style macro is actually
-/// stored in the enclosing item.
+/// Represents a macro invocation. The `path` indicates which macro
+/// is being invoked, and the `args` are arguments passed to it.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mac {
     pub path: Path,
-    pub delim: MacDelimiter,
-    pub tts: TokenStream,
+    pub args: P<MacArgs>,
     pub span: Span,
     pub prior_type_ascription: Option<(Span, bool)>,
+}
+
+/// Arguments passed to an attribute or a function-like macro.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub enum MacArgs {
+    /// No arguments - `#[attr]`.
+    Empty,
+    /// Delimited arguments - `#[attr()/[]/{}]` or `mac!()/[]/{}`.
+    Delimited(DelimSpan, MacDelimiter, TokenStream),
+    /// Arguments of a key-value attribute - `#[attr = "value"]`.
+    /// Span belongs to the `=` token, token stream is the "value".
+    Eq(Span, TokenStream),
+}
+
+impl MacArgs {
+    pub fn delim(&self) -> DelimToken {
+        match self {
+            MacArgs::Delimited(_, delim, _) => delim.to_token(),
+            MacArgs::Empty | MacArgs::Eq(..) => token::NoDelim,
+        }
+    }
+
+    /// Tokens inside the delimiters or after `=`.
+    /// Proc macros see these tokens, for example.
+    pub fn inner_tokens(&self) -> TokenStream {
+        match self {
+            MacArgs::Empty => TokenStream::default(),
+            MacArgs::Delimited(.., tokens) => tokens.clone(),
+            MacArgs::Eq(.., tokens) => tokens.clone(),
+        }
+    }
+
+    /// Tokens together with the delimiters or `=`.
+    /// Use of this functions generally means that something suspicious or hacky is happening.
+    pub fn outer_tokens(&self) -> TokenStream {
+        match *self {
+            MacArgs::Empty => TokenStream::default(),
+            MacArgs::Delimited(dspan, delim, ref tokens) =>
+                TokenTree::Delimited(dspan, delim.to_token(), tokens.clone()).into(),
+            MacArgs::Eq(eq_span, ref tokens) => iter::once(TokenTree::token(token::Eq, eq_span))
+                                                .chain(tokens.trees()).collect(),
+        }
+    }
+
+    /// Whether a macro with these arguments needs a semicolon
+    /// when used as a standalone item or statement.
+    pub fn need_semicolon(&self) -> bool {
+        !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace ,_))
+    }
+}
+
+impl Mac {
+    pub fn stream(&self) -> TokenStream {
+        self.args.inner_tokens()
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
@@ -1394,18 +1445,21 @@ pub enum MacDelimiter {
     Brace,
 }
 
-impl Mac {
-    pub fn stream(&self) -> TokenStream {
-        self.tts.clone()
-    }
-}
-
 impl MacDelimiter {
     crate fn to_token(self) -> DelimToken {
         match self {
             MacDelimiter::Parenthesis => DelimToken::Paren,
             MacDelimiter::Bracket => DelimToken::Bracket,
             MacDelimiter::Brace => DelimToken::Brace,
+        }
+    }
+
+    pub fn from_token(delim: DelimToken) -> MacDelimiter {
+        match delim {
+            token::Paren => MacDelimiter::Parenthesis,
+            token::Bracket => MacDelimiter::Bracket,
+            token::Brace => MacDelimiter::Brace,
+            token::NoDelim => panic!("expected a delimiter"),
         }
     }
 }
