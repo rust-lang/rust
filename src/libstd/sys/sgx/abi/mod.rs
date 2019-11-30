@@ -1,11 +1,11 @@
 #![cfg_attr(test, allow(unused))] // RT initialization logic is not compiled for test
 
-use core::sync::atomic::{AtomicUsize, Ordering};
 use crate::io::Write;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 // runtime features
-mod reloc;
 pub(super) mod panic;
+mod reloc;
 
 // library features
 pub mod mem;
@@ -38,14 +38,16 @@ unsafe extern "C" fn tcs_init(secondary: bool) {
         UNINIT => {
             reloc::relocate_elf_rela();
             RELOC_STATE.store(DONE, Ordering::Release);
-        },
+        }
         // We need to wait until the initialization is done.
-        BUSY => while RELOC_STATE.load(Ordering::Acquire) == BUSY  {
-            core::arch::x86_64::_mm_pause()
-        },
+        BUSY => {
+            while RELOC_STATE.load(Ordering::Acquire) == BUSY {
+                core::arch::x86_64::_mm_pause()
+            }
+        }
         // Initialization is done.
-        DONE => {},
-        _ => unreachable!()
+        DONE => {}
+        _ => unreachable!(),
     }
 }
 

@@ -6,8 +6,8 @@ use crate::mem;
 use crate::path::Path;
 use crate::ptr;
 use crate::slice;
-use crate::sync::atomic::Ordering::SeqCst;
 use crate::sync::atomic::AtomicUsize;
+use crate::sync::atomic::Ordering::SeqCst;
 use crate::sys::c;
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
@@ -63,32 +63,32 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         let mut reject_remote_clients_flag = c::PIPE_REJECT_REMOTE_CLIENTS;
         loop {
             tries += 1;
-            name = format!(r"\\.\pipe\__rust_anonymous_pipe1__.{}.{}",
-                           c::GetCurrentProcessId(),
-                           random_number());
-            let wide_name = OsStr::new(&name)
-                                  .encode_wide()
-                                  .chain(Some(0))
-                                  .collect::<Vec<_>>();
-            let mut flags = c::FILE_FLAG_FIRST_PIPE_INSTANCE |
-                c::FILE_FLAG_OVERLAPPED;
+            name = format!(
+                r"\\.\pipe\__rust_anonymous_pipe1__.{}.{}",
+                c::GetCurrentProcessId(),
+                random_number()
+            );
+            let wide_name = OsStr::new(&name).encode_wide().chain(Some(0)).collect::<Vec<_>>();
+            let mut flags = c::FILE_FLAG_FIRST_PIPE_INSTANCE | c::FILE_FLAG_OVERLAPPED;
             if ours_readable {
                 flags |= c::PIPE_ACCESS_INBOUND;
             } else {
                 flags |= c::PIPE_ACCESS_OUTBOUND;
             }
 
-            let handle = c::CreateNamedPipeW(wide_name.as_ptr(),
-                                             flags,
-                                             c::PIPE_TYPE_BYTE |
-                                             c::PIPE_READMODE_BYTE |
-                                             c::PIPE_WAIT |
-                                             reject_remote_clients_flag,
-                                             1,
-                                             4096,
-                                             4096,
-                                             0,
-                                             ptr::null_mut());
+            let handle = c::CreateNamedPipeW(
+                wide_name.as_ptr(),
+                flags,
+                c::PIPE_TYPE_BYTE
+                    | c::PIPE_READMODE_BYTE
+                    | c::PIPE_WAIT
+                    | reject_remote_clients_flag,
+                1,
+                4096,
+                4096,
+                0,
+                ptr::null_mut(),
+            );
 
             // We pass the `FILE_FLAG_FIRST_PIPE_INSTANCE` flag above, and we're
             // also just doing a best effort at selecting a unique name. If
@@ -112,18 +112,19 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
                 let raw_os_err = err.raw_os_error();
                 if tries < 10 {
                     if raw_os_err == Some(c::ERROR_ACCESS_DENIED as i32) {
-                        continue
-                    } else if reject_remote_clients_flag != 0 &&
-                        raw_os_err == Some(c::ERROR_INVALID_PARAMETER as i32) {
+                        continue;
+                    } else if reject_remote_clients_flag != 0
+                        && raw_os_err == Some(c::ERROR_INVALID_PARAMETER as i32)
+                    {
                         reject_remote_clients_flag = 0;
                         tries -= 1;
-                        continue
+                        continue;
                     }
                 }
-                return Err(err)
+                return Err(err);
             }
             ours = Handle::new(handle);
-            break
+            break;
         }
 
         // Connect to the named pipe we just created. This handle is going to be
@@ -158,7 +159,7 @@ fn random_number() -> usize {
     static N: AtomicUsize = AtomicUsize::new(0);
     loop {
         if N.load(SeqCst) != 0 {
-            return N.fetch_add(1, SeqCst)
+            return N.fetch_add(1, SeqCst);
         }
 
         N.store(hashmap_random_keys().0 as usize, SeqCst);
@@ -166,8 +167,12 @@ fn random_number() -> usize {
 }
 
 impl AnonPipe {
-    pub fn handle(&self) -> &Handle { &self.inner }
-    pub fn into_handle(self) -> Handle { self.inner }
+    pub fn handle(&self) -> &Handle {
+        &self.inner
+    }
+    pub fn into_handle(self) -> Handle {
+        self.inner
+    }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -186,10 +191,7 @@ impl AnonPipe {
     }
 }
 
-pub fn read2(p1: AnonPipe,
-             v1: &mut Vec<u8>,
-             p2: AnonPipe,
-             v2: &mut Vec<u8>) -> io::Result<()> {
+pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> io::Result<()> {
     let p1 = p1.into_handle();
     let p2 = p2.into_handle();
 
@@ -206,19 +208,17 @@ pub fn read2(p1: AnonPipe,
     // duration of the I/O operation (where tons of operations can also fail).
     // The destructor for `AsyncPipe` ends up taking care of most of this.
     loop {
-        let res = unsafe {
-            c::WaitForMultipleObjects(2, objs.as_ptr(), c::FALSE, c::INFINITE)
-        };
+        let res = unsafe { c::WaitForMultipleObjects(2, objs.as_ptr(), c::FALSE, c::INFINITE) };
         if res == c::WAIT_OBJECT_0 {
             if !p1.result()? || !p1.schedule_read()? {
-                return p2.finish()
+                return p2.finish();
             }
         } else if res == c::WAIT_OBJECT_0 + 1 {
             if !p2.result()? || !p2.schedule_read()? {
-                return p1.finish()
+                return p1.finish();
             }
         } else {
-            return Err(io::Error::last_os_error())
+            return Err(io::Error::last_os_error());
         }
     }
 }
@@ -251,17 +251,9 @@ impl<'a> AsyncPipe<'a> {
         // and the only time an even will go back to "unset" will be once an
         // I/O operation is successfully scheduled (what we want).
         let event = Handle::new_event(true, true)?;
-        let mut overlapped: Box<c::OVERLAPPED> = unsafe {
-            Box::new(mem::zeroed())
-        };
+        let mut overlapped: Box<c::OVERLAPPED> = unsafe { Box::new(mem::zeroed()) };
         overlapped.hEvent = event.raw();
-        Ok(AsyncPipe {
-            pipe,
-            overlapped,
-            event,
-            dst,
-            state: State::NotReading,
-        })
+        Ok(AsyncPipe { pipe, overlapped, event, dst, state: State::NotReading })
     }
 
     /// Executes an overlapped read operation.
@@ -306,9 +298,7 @@ impl<'a> AsyncPipe<'a> {
     fn result(&mut self) -> io::Result<bool> {
         let amt = match self.state {
             State::NotReading => return Ok(true),
-            State::Reading => {
-                self.pipe.overlapped_result(&mut *self.overlapped, true)?
-            }
+            State::Reading => self.pipe.overlapped_result(&mut *self.overlapped, true)?,
             State::Read(amt) => amt,
         };
         self.state = State::NotReading;
@@ -364,6 +354,5 @@ unsafe fn slice_to_end(v: &mut Vec<u8>) -> &mut [u8] {
     if v.capacity() == v.len() {
         v.reserve(1);
     }
-    slice::from_raw_parts_mut(v.as_mut_ptr().add(v.len()),
-                              v.capacity() - v.len())
+    slice::from_raw_parts_mut(v.as_mut_ptr().add(v.len()), v.capacity() - v.len())
 }

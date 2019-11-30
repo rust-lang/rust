@@ -6,14 +6,10 @@ pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
     // On wasm these should always be null, so there's nothing for us to do here
 }
 
-pub unsafe fn cleanup() {
-}
+pub unsafe fn cleanup() {}
 
 pub fn args() -> Args {
-    Args {
-        iter: Vec::new().into_iter(),
-        _dont_send_or_sync_me: PhantomData,
-    }
+    Args { iter: Vec::new().into_iter(), _dont_send_or_sync_me: PhantomData }
 }
 
 pub struct Args {

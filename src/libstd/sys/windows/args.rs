@@ -1,26 +1,26 @@
 #![allow(dead_code)] // runtime init functions not used during testing
 
-use crate::os::windows::prelude::*;
-use crate::sys::windows::os::current_exe;
-use crate::sys::c;
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::vec;
-use crate::slice;
+use crate::os::windows::prelude::*;
 use crate::path::PathBuf;
+use crate::slice;
+use crate::sys::c;
+use crate::sys::windows::os::current_exe;
+use crate::vec;
 
 use core::iter;
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) { }
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
-pub unsafe fn cleanup() { }
+pub unsafe fn cleanup() {}
 
 pub fn args() -> Args {
     unsafe {
         let lp_cmd_line = c::GetCommandLineW();
-        let parsed_args_list = parse_lp_cmd_line(
-            lp_cmd_line as *const u16,
-            || current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new()));
+        let parsed_args_list = parse_lp_cmd_line(lp_cmd_line as *const u16, || {
+            current_exe().map(PathBuf::into_os_string).unwrap_or_else(|_| OsString::new())
+        });
 
         Args { parsed_args_list: parsed_args_list.into_iter() }
     }
@@ -40,8 +40,10 @@ pub fn args() -> Args {
 /// Windows 10 Pro v1803, using an exhaustive test suite available at
 /// <https://gist.github.com/notriddle/dde431930c392e428055b2dc22e638f5> or
 /// <https://paste.gg/p/anonymous/47d6ed5f5bd549168b1c69c799825223>.
-unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_name: F)
-                                                 -> Vec<OsString> {
+unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(
+    lp_cmd_line: *const u16,
+    exe_name: F,
+) -> Vec<OsString> {
     const BACKSLASH: u16 = '\\' as u16;
     const QUOTE: u16 = '"' as u16;
     const TAB: u16 = '\t' as u16;
@@ -84,7 +86,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
         0..=SPACE => {
             ret_val.push(OsString::new());
             &cmd_line[1..]
-        },
+        }
         // The executable name ends at the next whitespace,
         // no matter what.
         _ => {
@@ -112,7 +114,7 @@ unsafe fn parse_lp_cmd_line<F: Fn() -> OsString>(lp_cmd_line: *const u16, exe_na
             BACKSLASH => {
                 backslash_count += 1;
                 was_in_quotes = false;
-            },
+            }
             QUOTE if backslash_count % 2 == 0 => {
                 cur.extend(iter::repeat(b'\\' as u16).take(backslash_count / 2));
                 backslash_count = 0;
@@ -171,30 +173,36 @@ impl<'a> fmt::Debug for ArgsInnerDebug<'a> {
 
 impl Args {
     pub fn inner_debug(&self) -> ArgsInnerDebug<'_> {
-        ArgsInnerDebug {
-            args: self
-        }
+        ArgsInnerDebug { args: self }
     }
 }
 
 impl Iterator for Args {
     type Item = OsString;
-    fn next(&mut self) -> Option<OsString> { self.parsed_args_list.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.parsed_args_list.size_hint() }
+    fn next(&mut self) -> Option<OsString> {
+        self.parsed_args_list.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.parsed_args_list.size_hint()
+    }
 }
 
 impl DoubleEndedIterator for Args {
-    fn next_back(&mut self) -> Option<OsString> { self.parsed_args_list.next_back() }
+    fn next_back(&mut self) -> Option<OsString> {
+        self.parsed_args_list.next_back()
+    }
 }
 
 impl ExactSizeIterator for Args {
-    fn len(&self) -> usize { self.parsed_args_list.len() }
+    fn len(&self) -> usize {
+        self.parsed_args_list.len()
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::sys::windows::args::*;
     use crate::ffi::OsString;
+    use crate::sys::windows::args::*;
 
     fn chk(string: &str, parts: &[&str]) {
         let mut wide: Vec<u16> = OsString::from(string).encode_wide().collect();
@@ -245,7 +253,7 @@ mod tests {
         chk(r#"EXE "" """"#, &["EXE", "", "\""]);
         chk(
             r#"EXE "this is """all""" in the same argument""#,
-            &["EXE", "this is \"all\" in the same argument"]
+            &["EXE", "this is \"all\" in the same argument"],
         );
         chk(r#"EXE "a"""#, &["EXE", "a\""]);
         chk(r#"EXE "a"" a"#, &["EXE", "a\"", "a"]);
@@ -253,6 +261,6 @@ mod tests {
         chk(r#""EXE" check"#, &["EXE", "check"]);
         chk(r#""EXE check""#, &["EXE check"]);
         chk(r#""EXE """for""" check"#, &["EXE ", r#"for""#, "check"]);
-        chk(r#""EXE \"for\" check"#, &[r#"EXE \"#, r#"for""#,  "check"]);
+        chk(r#""EXE \"for\" check"#, &[r#"EXE \"#, r#"for""#, "check"]);
     }
 }

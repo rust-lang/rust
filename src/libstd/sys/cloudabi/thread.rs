@@ -58,8 +58,8 @@ impl Thread {
     }
 
     pub fn sleep(dur: Duration) {
-        let timeout = checked_dur2intervals(&dur)
-            .expect("overflow converting duration to nanoseconds");
+        let timeout =
+            checked_dur2intervals(&dur).expect("overflow converting duration to nanoseconds");
         unsafe {
             let subscription = abi::subscription {
                 type_: abi::eventtype::CLOCK,
@@ -85,11 +85,7 @@ impl Thread {
         unsafe {
             let ret = libc::pthread_join(self.id, ptr::null_mut());
             mem::forget(self);
-            assert!(
-                ret == 0,
-                "failed to join thread: {}",
-                io::Error::from_raw_os_error(ret)
-            );
+            assert!(ret == 0, "failed to join thread: {}", io::Error::from_raw_os_error(ret));
         }
     }
 }

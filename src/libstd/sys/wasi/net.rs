@@ -1,11 +1,11 @@
+use crate::convert::TryFrom;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
-use crate::time::Duration;
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
+use crate::sys::fd::WasiFd;
 use crate::sys::{unsupported, Void};
-use crate::convert::TryFrom;
-use crate::sys::fd::{WasiFd};
 use crate::sys_common::FromInner;
+use crate::time::Duration;
 
 pub struct TcpStream {
     fd: WasiFd,
@@ -107,24 +107,18 @@ impl TcpStream {
 
 impl FromInner<u32> for TcpStream {
     fn from_inner(fd: u32) -> TcpStream {
-        unsafe {
-            TcpStream {
-                fd: WasiFd::from_raw(fd),
-            }
-        }
+        unsafe { TcpStream { fd: WasiFd::from_raw(fd) } }
     }
 }
 
 impl fmt::Debug for TcpStream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TcpStream")
-            .field("fd", &self.fd.as_raw())
-            .finish()
+        f.debug_struct("TcpStream").field("fd", &self.fd.as_raw()).finish()
     }
 }
 
 pub struct TcpListener {
-    fd: WasiFd
+    fd: WasiFd,
 }
 
 impl TcpListener {
@@ -179,19 +173,13 @@ impl TcpListener {
 
 impl FromInner<u32> for TcpListener {
     fn from_inner(fd: u32) -> TcpListener {
-        unsafe {
-            TcpListener {
-                fd: WasiFd::from_raw(fd),
-            }
-        }
+        unsafe { TcpListener { fd: WasiFd::from_raw(fd) } }
     }
 }
 
 impl fmt::Debug for TcpListener {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("TcpListener")
-            .field("fd", &self.fd.as_raw())
-            .finish()
+        f.debug_struct("TcpListener").field("fd", &self.fd.as_raw()).finish()
     }
 }
 
@@ -276,23 +264,19 @@ impl UdpSocket {
         unsupported()
     }
 
-    pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr)
-                         -> io::Result<()> {
+    pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
         unsupported()
     }
 
-    pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32)
-                         -> io::Result<()> {
+    pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
         unsupported()
     }
 
-    pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr)
-                          -> io::Result<()> {
+    pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
         unsupported()
     }
 
-    pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32)
-                          -> io::Result<()> {
+    pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
         unsupported()
     }
 
@@ -339,19 +323,13 @@ impl UdpSocket {
 
 impl FromInner<u32> for UdpSocket {
     fn from_inner(fd: u32) -> UdpSocket {
-        unsafe {
-            UdpSocket {
-                fd: WasiFd::from_raw(fd),
-            }
-        }
+        unsafe { UdpSocket { fd: WasiFd::from_raw(fd) } }
     }
 }
 
 impl fmt::Debug for UdpSocket {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("UdpSocket")
-            .field("fd", &self.fd.as_raw())
-            .finish()
+        f.debug_struct("UdpSocket").field("fd", &self.fd.as_raw()).finish()
     }
 }
 
@@ -419,8 +397,7 @@ pub mod netc {
     }
 
     #[derive(Copy, Clone)]
-    pub struct sockaddr {
-    }
+    pub struct sockaddr {}
 
     pub type socklen_t = usize;
 }

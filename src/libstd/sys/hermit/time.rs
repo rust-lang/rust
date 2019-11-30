@@ -1,34 +1,35 @@
 #![allow(dead_code)]
 
-use crate::time::Duration;
 use crate::cmp::Ordering;
 use crate::convert::TryInto;
-use core::hash::{Hash, Hasher};
 use crate::sys::hermit::abi;
-use crate::sys::hermit::abi::{CLOCK_REALTIME, CLOCK_MONOTONIC, NSEC_PER_SEC};
 use crate::sys::hermit::abi::timespec;
+use crate::sys::hermit::abi::{CLOCK_MONOTONIC, CLOCK_REALTIME, NSEC_PER_SEC};
+use crate::time::Duration;
+use core::hash::{Hash, Hasher};
 
 #[derive(Copy, Clone, Debug)]
 struct Timespec {
-    t: timespec
+    t: timespec,
 }
 
 impl Timespec {
     const fn zero() -> Timespec {
-        Timespec {
-            t: timespec { tv_sec: 0, tv_nsec: 0 },
-        }
+        Timespec { t: timespec { tv_sec: 0, tv_nsec: 0 } }
     }
 
     fn sub_timespec(&self, other: &Timespec) -> Result<Duration, Duration> {
         if self >= other {
             Ok(if self.t.tv_nsec >= other.t.tv_nsec {
-                Duration::new((self.t.tv_sec - other.t.tv_sec) as u64,
-                              (self.t.tv_nsec - other.t.tv_nsec) as u32)
+                Duration::new(
+                    (self.t.tv_sec - other.t.tv_sec) as u64,
+                    (self.t.tv_nsec - other.t.tv_nsec) as u32,
+                )
             } else {
-                Duration::new((self.t.tv_sec - 1 - other.t.tv_sec) as u64,
-                              self.t.tv_nsec as u32 + (NSEC_PER_SEC as u32) -
-                              other.t.tv_nsec as u32)
+                Duration::new(
+                    (self.t.tv_sec - 1 - other.t.tv_sec) as u64,
+                    self.t.tv_nsec as u32 + (NSEC_PER_SEC as u32) - other.t.tv_nsec as u32,
+                )
             })
         } else {
             match other.sub_timespec(self) {
@@ -52,12 +53,7 @@ impl Timespec {
             nsec -= NSEC_PER_SEC as u32;
             secs = secs.checked_add(1)?;
         }
-        Some(Timespec {
-            t: timespec {
-                tv_sec: secs,
-                tv_nsec: nsec as _,
-            },
-        })
+        Some(Timespec { t: timespec { tv_sec: secs, tv_nsec: nsec as _ } })
     }
 
     fn checked_sub_duration(&self, other: &Duration) -> Option<Timespec> {
@@ -73,12 +69,7 @@ impl Timespec {
             nsec += NSEC_PER_SEC as i32;
             secs = secs.checked_sub(1)?;
         }
-        Some(Timespec {
-            t: timespec {
-                tv_sec: secs,
-                tv_nsec: nsec as _,
-            },
-        })
+        Some(Timespec { t: timespec { tv_sec: secs, tv_nsec: nsec as _ } })
     }
 }
 
@@ -105,7 +96,7 @@ impl Ord for Timespec {
 }
 
 impl Hash for Timespec {
-    fn hash<H : Hasher>(&self, state: &mut H) {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.t.tv_sec.hash(state);
         self.t.tv_nsec.hash(state);
     }
@@ -150,9 +141,7 @@ pub struct SystemTime {
     t: Timespec,
 }
 
-pub const UNIX_EPOCH: SystemTime = SystemTime {
-    t: Timespec::zero(),
-};
+pub const UNIX_EPOCH: SystemTime = SystemTime { t: Timespec::zero() };
 
 impl SystemTime {
     pub fn now() -> SystemTime {

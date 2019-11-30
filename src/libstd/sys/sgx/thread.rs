@@ -10,8 +10,8 @@ pub struct Thread(task_queue::JoinHandle);
 pub const DEFAULT_MIN_STACK_SIZE: usize = 4096;
 
 mod task_queue {
-    use crate::sync::{Mutex, MutexGuard, Once};
     use crate::sync::mpsc;
+    use crate::sync::{Mutex, MutexGuard, Once};
 
     pub type JoinHandle = mpsc::Receiver<()>;
 
@@ -41,7 +41,7 @@ mod task_queue {
 
     pub(super) fn lock() -> MutexGuard<'static, Vec<Task>> {
         unsafe {
-            TASK_QUEUE_INIT.call_once(|| TASK_QUEUE = Some(Default::default()) );
+            TASK_QUEUE_INIT.call_once(|| TASK_QUEUE = Some(Default::default()));
             TASK_QUEUE.as_ref().unwrap().lock().unwrap()
         }
     }
@@ -49,9 +49,7 @@ mod task_queue {
 
 impl Thread {
     // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-    pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>)
-        -> io::Result<Thread>
-    {
+    pub unsafe fn new(_stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         let mut queue_lock = task_queue::lock();
         usercalls::launch_thread()?;
         let (task, handle) = task_queue::Task::new(p);
@@ -86,6 +84,10 @@ impl Thread {
 
 pub mod guard {
     pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> { None }
-    pub unsafe fn init() -> Option<Guard> { None }
+    pub unsafe fn current() -> Option<Guard> {
+        None
+    }
+    pub unsafe fn init() -> Option<Guard> {
+        None
+    }
 }

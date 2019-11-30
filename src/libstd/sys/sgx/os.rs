@@ -1,17 +1,17 @@
 use fortanix_sgx_abi::{Error, RESULT_SUCCESS};
 
+use crate::collections::HashMap;
 use crate::error::Error as StdError;
-use crate::ffi::{OsString, OsStr};
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::path::{self, PathBuf};
 use crate::str;
-use crate::sys::{unsupported, Void, sgx_ineffective, decode_error_kind};
-use crate::collections::HashMap;
-use crate::vec;
-use crate::sync::Mutex;
 use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sync::Mutex;
 use crate::sync::Once;
+use crate::sys::{decode_error_kind, sgx_ineffective, unsupported, Void};
+use crate::vec;
 
 pub fn errno() -> i32 {
     RESULT_SUCCESS
@@ -52,7 +52,9 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsRef<OsStr>
+where
+    I: Iterator<Item = T>,
+    T: AsRef<OsStr>,
 {
     Err(JoinPathsError)
 }
@@ -89,26 +91,21 @@ fn create_env_store() -> &'static EnvStore {
     ENV_INIT.call_once(|| {
         ENV.store(Box::into_raw(Box::new(EnvStore::default())) as _, Ordering::Relaxed)
     });
-    unsafe {
-        &*(ENV.load(Ordering::Relaxed) as *const EnvStore)
-    }
+    unsafe { &*(ENV.load(Ordering::Relaxed) as *const EnvStore) }
 }
 
 pub type Env = vec::IntoIter<(OsString, OsString)>;
 
 pub fn env() -> Env {
     let clone_to_vec = |map: &HashMap<OsString, OsString>| -> Vec<_> {
-        map.iter().map(|(k, v)| (k.clone(), v.clone()) ).collect()
+        map.iter().map(|(k, v)| (k.clone(), v.clone())).collect()
     };
 
-    get_env_store()
-        .map(|env| clone_to_vec(&env.lock().unwrap()) )
-        .unwrap_or_default()
-        .into_iter()
+    get_env_store().map(|env| clone_to_vec(&env.lock().unwrap())).unwrap_or_default().into_iter()
 }
 
 pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
-    Ok(get_env_store().and_then(|s| s.lock().unwrap().get(k).cloned() ))
+    Ok(get_env_store().and_then(|s| s.lock().unwrap().get(k).cloned()))
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {

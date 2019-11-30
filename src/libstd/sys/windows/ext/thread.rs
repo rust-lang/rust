@@ -2,9 +2,9 @@
 
 #![stable(feature = "thread_extensions", since = "1.9.0")]
 
-use crate::os::windows::io::{RawHandle, AsRawHandle, IntoRawHandle};
-use crate::thread;
+use crate::os::windows::io::{AsRawHandle, IntoRawHandle, RawHandle};
 use crate::sys_common::{AsInner, IntoInner};
+use crate::thread;
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
 impl<T> AsRawHandle for thread::JoinHandle<T> {
@@ -14,7 +14,7 @@ impl<T> AsRawHandle for thread::JoinHandle<T> {
 }
 
 #[stable(feature = "thread_extensions", since = "1.9.0")]
-impl<T> IntoRawHandle for thread::JoinHandle<T>  {
+impl<T> IntoRawHandle for thread::JoinHandle<T> {
     fn into_raw_handle(self) -> RawHandle {
         self.into_inner().into_handle().into_raw() as *mut _
     }
