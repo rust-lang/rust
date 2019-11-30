@@ -2,6 +2,7 @@
 
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
 use crate::feature_gate::{find_gated_cfg, emit_feature_err, GatedCfg, GateIssue};
+use crate::feature_gate::is_builtin_attr_name;
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
@@ -10,11 +11,16 @@ use std::num::NonZeroU32;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
 use rustc_feature::Features;
+
 use rustc_macros::HashStable_Generic;
 
 use super::{mark_used, MetaItemKind};
 
 use rustc_error_codes::*;
+
+pub fn is_builtin_attr(attr: &Attribute) -> bool {
+    attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
+}
 
 enum AttrError {
     MultipleItem(String),

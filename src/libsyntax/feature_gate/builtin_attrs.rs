@@ -3,12 +3,9 @@
 use AttributeType::*;
 use AttributeGate::*;
 
-use rustc_feature::{Features, Stability};
-
-use crate::ast;
-
-use syntax_pos::symbol::{Symbol, sym};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_feature::{Features, Stability};
+use syntax_pos::symbol::{Symbol, sym};
 use lazy_static::lazy_static;
 
 type GateFn = fn(&Features) -> bool;
@@ -580,12 +577,8 @@ pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {
     BUILTIN_ATTRIBUTES.iter().filter(|(.., gate)| gate.is_deprecated()).collect()
 }
 
-pub fn is_builtin_attr_name(name: ast::Name) -> bool {
+pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
-}
-
-pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
-    attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).is_some()
 }
 
 lazy_static! {
