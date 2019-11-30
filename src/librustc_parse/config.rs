@@ -11,7 +11,7 @@
 use crate::validate_attr;
 use rustc_feature::Features;
 use syntax::attr::HasAttrs;
-use syntax::feature_gate::{feature_err, get_features, GateIssue};
+use syntax::feature_gate::{feature_err, get_features};
 use syntax::attr;
 use syntax::ast;
 use syntax::edition::Edition;
@@ -212,7 +212,6 @@ impl<'a> StripUnconfigured<'a> {
             let mut err = feature_err(self.sess,
                                       sym::stmt_expr_attributes,
                                       attr.span,
-                                      GateIssue::Language,
                                       "attributes on expressions are experimental");
 
             if attr.is_doc_comment() {

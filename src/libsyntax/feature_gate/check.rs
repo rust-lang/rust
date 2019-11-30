@@ -1,6 +1,7 @@
 use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
 use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
 use rustc_feature::{Features, Feature, State as FeatureState, UnstableFeatures};
+use rustc_feature::{find_feature_issue, GateIssue};
 
 use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
 use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
@@ -17,8 +18,6 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
 
 use rustc_error_codes::*;
-
-use std::num::NonZeroU32;
 
 macro_rules! gate_feature_fn {
     ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{
@@ -48,30 +47,6 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
 }
 
-fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
-    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
-        // FIXME (#28244): enforce that active features have issue numbers
-        // assert!(info.issue().is_some())
-        info.issue()
-    } else {
-        // search in Accepted, Removed, or Stable Removed features
-        let found = ACCEPTED_FEATURES
-            .iter()
-            .chain(REMOVED_FEATURES)
-            .chain(STABLE_REMOVED_FEATURES)
-            .find(|t| t.name == feature);
-        match found {
-            Some(found) => found.issue(),
-            None => panic!("feature `{}` is not declared anywhere", feature),
-        }
-    }
-}
-
-pub enum GateIssue {
-    Language,
-    Library(Option<NonZeroU32>)
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GateStrength {
     /// A hard error. (Most feature gates should use this.)
@@ -80,40 +55,34 @@ pub enum GateStrength {
     Soft,
 }
 
-pub fn emit_feature_err(
-    sess: &ParseSess,
-    feature: Symbol,
-    span: Span,
-    issue: GateIssue,
-    explain: &str,
-) {
-    feature_err(sess, feature, span, issue, explain).emit();
-}
-
-pub fn feature_err<'a, S: Into<MultiSpan>>(
+pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: S,
+    span: impl Into<MultiSpan>,
+    explain: &str,
+) -> DiagnosticBuilder<'a> {
+    feature_err_issue(sess, feature, span, GateIssue::Language, explain)
+}
+
+pub fn feature_err_issue<'a>(
+    sess: &'a ParseSess,
+    feature: Symbol,
+    span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
 ) -> DiagnosticBuilder<'a> {
     leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
 }
 
-fn leveled_feature_err<'a, S: Into<MultiSpan>>(
+fn leveled_feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: S,
+    span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
     level: GateStrength,
 ) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
-
-    let issue = match issue {
-        GateIssue::Language => find_lang_feature_issue(feature),
-        GateIssue::Library(lib) => lib,
-    };
 
     let mut err = match level {
         GateStrength::Hard => {
@@ -122,7 +91,7 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
         GateStrength::Soft => diag.struct_span_warn(span, explain),
     };
 
-    if let Some(n) = issue {
+    if let Some(n) = find_feature_issue(feature, issue) {
         err.note(&format!(
             "for more information, see https://github.com/rust-lang/rust/issues/{}",
             n,
@@ -257,7 +226,6 @@ impl<'a> PostExpansionVisitor<'a> {
                 self.parse_sess,
                 sym::arbitrary_enum_discriminant,
                 discriminant_spans.clone(),
-                crate::feature_gate::GateIssue::Language,
                 "custom discriminant values are not allowed in enums with tuple or struct variants",
             );
             for sp in discriminant_spans {

@@ -2,7 +2,7 @@
 
 use super::{mark_used, MetaItemKind};
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
-use crate::feature_gate::{emit_feature_err, GateIssue};
+use crate::feature_gate::feature_err;
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
@@ -569,7 +569,7 @@ fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &F
     let (cfg, feature, has_feature) = gated_cfg;
     if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
         let explain = format!("`cfg({})` is experimental and subject to change", cfg);
-        emit_feature_err(sess, *feature, cfg_span, GateIssue::Language, &explain);
+        feature_err(sess, *feature, cfg_span, &explain).emit()
     }
 }
 

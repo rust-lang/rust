@@ -49,8 +49,7 @@ pub struct Feature {
 }
 
 impl Feature {
-    // FIXME(Centril): privatize again.
-    pub fn issue(&self) -> Option<NonZeroU32> {
+    fn issue(&self) -> Option<NonZeroU32> {
         self.issue.and_then(|i| NonZeroU32::new(i))
     }
 }
@@ -94,6 +93,37 @@ impl UnstableFeatures {
             UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
             UnstableFeatures::Disallow => false,
         }
+    }
+}
+
+fn find_lang_feature_issue(feature: Symbol) -> Option<NonZeroU32> {
+    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
+        // FIXME (#28244): enforce that active features have issue numbers
+        // assert!(info.issue().is_some())
+        info.issue()
+    } else {
+        // search in Accepted, Removed, or Stable Removed features
+        let found = ACCEPTED_FEATURES
+            .iter()
+            .chain(REMOVED_FEATURES)
+            .chain(STABLE_REMOVED_FEATURES)
+            .find(|t| t.name == feature);
+        match found {
+            Some(found) => found.issue(),
+            None => panic!("feature `{}` is not declared anywhere", feature),
+        }
+    }
+}
+
+pub enum GateIssue {
+    Language,
+    Library(Option<NonZeroU32>)
+}
+
+pub fn find_feature_issue(feature: Symbol, issue: GateIssue) -> Option<NonZeroU32> {
+    match issue {
+        GateIssue::Language => find_lang_feature_issue(feature),
+        GateIssue::Library(lib) => lib,
     }
 }
 

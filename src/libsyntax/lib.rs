@@ -94,10 +94,7 @@ pub use syntax_pos::source_map;
 pub mod entry;
 pub mod feature_gate {
     mod check;
-    pub use check::{
-        check_crate, check_attribute, get_features, feature_err, emit_feature_err,
-        GateIssue,
-    };
+    pub use check::{check_crate, check_attribute, get_features, feature_err, feature_err_issue};
 }
 pub mod mut_visit;
 pub mod ptr;

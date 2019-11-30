@@ -16,7 +16,7 @@ use rustc_feature::is_builtin_attr_name;
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::{self, StabilityLevel};
 use syntax::edition::Edition;
-use syntax::feature_gate::{emit_feature_err, GateIssue};
+use syntax::feature_gate::feature_err;
 use syntax::print::pprust;
 use syntax_expand::base::{self, InvocationRes, Indeterminate};
 use syntax_expand::base::SyntaxExtension;
@@ -346,13 +346,8 @@ impl<'a> Resolver<'a> {
                segment.ident.as_str().starts_with("rustc") {
                 let msg =
                     "attributes starting with `rustc` are reserved for use by the `rustc` compiler";
-                emit_feature_err(
-                    &self.session.parse_sess,
-                    sym::rustc_attrs,
-                    segment.ident.span,
-                    GateIssue::Language,
-                    msg,
-                );
+                feature_err(&self.session.parse_sess, sym::rustc_attrs, segment.ident.span, msg)
+                    .emit();
             }
         }
 

@@ -4,7 +4,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::BorrowKind;
 use rustc::session::config::nightly_options;
 use rustc::ty::TyCtxt;
-use syntax::feature_gate::{emit_feature_err, GateIssue};
+use syntax::feature_gate::feature_err;
 use syntax::symbol::sym;
 use syntax_pos::{Span, Symbol};
 
@@ -222,13 +222,13 @@ impl NonConstOp for Panic {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
+        feature_err(
             &item.tcx.sess.parse_sess,
             sym::const_panic,
             span,
-            GateIssue::Language,
             &format!("panicking in {}s is unstable", item.const_kind()),
-        );
+        )
+        .emit();
     }
 }
 
@@ -240,13 +240,13 @@ impl NonConstOp for RawPtrComparison {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
+        feature_err(
             &item.tcx.sess.parse_sess,
             sym::const_compare_raw_pointers,
             span,
-            GateIssue::Language,
             &format!("comparing raw pointers inside {}", item.const_kind()),
-        );
+        )
+        .emit();
     }
 }
 
@@ -258,14 +258,14 @@ impl NonConstOp for RawPtrDeref {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
-            span, GateIssue::Language,
+        feature_err(
+            &item.tcx.sess.parse_sess, sym::const_raw_ptr_deref, span,
             &format!(
                 "dereferencing raw pointers in {}s is unstable",
                 item.const_kind(),
             ),
-        );
+        )
+        .emit();
     }
 }
 
@@ -277,14 +277,14 @@ impl NonConstOp for RawPtrToIntCast {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_raw_ptr_to_usize_cast,
-            span, GateIssue::Language,
+        feature_err(
+            &item.tcx.sess.parse_sess, sym::const_raw_ptr_to_usize_cast, span,
             &format!(
                 "casting pointers to integers in {}s is unstable",
                 item.const_kind(),
             ),
-        );
+        )
+        .emit();
     }
 }
 
@@ -334,11 +334,11 @@ impl NonConstOp for Transmute {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_transmute,
-            span, GateIssue::Language,
-            &format!("The use of std::mem::transmute() \
-            is gated in {}s", item.const_kind()));
+        feature_err(
+            &item.tcx.sess.parse_sess, sym::const_transmute, span,
+            &format!("The use of std::mem::transmute() is gated in {}s", item.const_kind())
+        )
+        .emit();
     }
 }
 
@@ -355,10 +355,10 @@ impl NonConstOp for UnionAccess {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_fn_union,
-            span, GateIssue::Language,
+        feature_err(
+            &item.tcx.sess.parse_sess, sym::const_fn_union, span,
             "unions in const fn are unstable",
-        );
+        )
+        .emit();
     }
 }
