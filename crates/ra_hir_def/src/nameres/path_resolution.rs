@@ -16,7 +16,7 @@ use test_utils::tested_by;
 
 use crate::{
     db::DefDatabase,
-    nameres::CrateDefMap,
+    nameres::{BuiltinShadowMode, CrateDefMap},
     path::{Path, PathKind},
     per_ns::PerNs,
     AdtId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
@@ -68,8 +68,10 @@ impl CrateDefMap {
         mode: ResolveMode,
         original_module: LocalModuleId,
         path: &Path,
+        shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
-        let mut segments = path.segments.iter().enumerate();
+        let mut segments = path.segments.iter().enumerate().peekable();
+
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
@@ -101,7 +103,11 @@ impl CrateDefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
-                self.resolve_name_in_crate_root_or_extern_prelude(&segment.name)
+
+                self.resolve_name_in_crate_root_or_extern_prelude(
+                    &segment.name,
+                    prefer_module(&mut segments, shadow),
+                )
             }
             PathKind::Plain => {
                 let segment = match segments.next() {
@@ -109,7 +115,12 @@ impl CrateDefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in module", segment);
-                self.resolve_name_in_module(db, original_module, &segment.name)
+                self.resolve_name_in_module(
+                    db,
+                    original_module,
+                    &segment.name,
+                    prefer_module(&mut segments, shadow),
+                )
             }
             PathKind::Super => {
                 if let Some(p) = self.modules[original_module].parent {
@@ -139,7 +150,7 @@ impl CrateDefMap {
             }
         };
 
-        for (i, segment) in segments {
+        while let Some((i, segment)) = segments.next() {
             let curr = match curr_per_ns.take_types() {
                 Some(r) => r,
                 None => {
@@ -160,7 +171,7 @@ impl CrateDefMap {
                             Path { segments: path.segments[i..].to_vec(), kind: PathKind::Self_ };
                         log::debug!("resolving {:?} in other crate", path);
                         let defp_map = db.crate_def_map(module.krate);
-                        let (def, s) = defp_map.resolve_path(db, module.local_id, &path);
+                        let (def, s) = defp_map.resolve_path(db, module.local_id, &path, shadow);
                         return ResolvePathResult::with(
                             def,
                             ReachedFixedPoint::Yes,
@@ -169,7 +180,10 @@ impl CrateDefMap {
                     }
 
                     // Since it is a qualified path here, it should not contains legacy macros
-                    match self[module.local_id].scope.get(&segment.name) {
+                    match self[module.local_id]
+                        .scope
+                        .get(&segment.name, prefer_module(&mut segments, shadow))
+                    {
                         Some(res) => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
@@ -212,7 +226,22 @@ impl CrateDefMap {
                 }
             };
         }
-        ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
+        return ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None);
+
+        // if it is not the last segment, we prefer builtin as module
+        fn prefer_module<I>(
+            segments: &mut std::iter::Peekable<I>,
+            shadow: BuiltinShadowMode,
+        ) -> BuiltinShadowMode
+        where
+            I: Iterator,
+        {
+            if segments.peek().is_some() {
+                BuiltinShadowMode::Module
+            } else {
+                shadow
+            }
+        }
     }
 
     fn resolve_name_in_module(
@@ -220,6 +249,7 @@ impl CrateDefMap {
         db: &impl DefDatabase,
         module: LocalModuleId,
         name: &Name,
+        shadow: BuiltinShadowMode,
     ) -> PerNs {
         // Resolve in:
         //  - legacy scope of macro
@@ -228,23 +258,33 @@ impl CrateDefMap {
         //  - std prelude
         let from_legacy_macro =
             self[module].scope.get_legacy_macro(name).map_or_else(PerNs::none, PerNs::macros);
-        let from_scope = self[module].scope.get(name).map_or_else(PerNs::none, |res| res.def);
+        let from_scope =
+            self[module].scope.get(name, shadow).map_or_else(PerNs::none, |res| res.def);
         let from_extern_prelude =
             self.extern_prelude.get(name).map_or(PerNs::none(), |&it| PerNs::types(it));
-        let from_prelude = self.resolve_in_prelude(db, name);
+        let from_prelude = self.resolve_in_prelude(db, name, shadow);
 
         from_legacy_macro.or(from_scope).or(from_extern_prelude).or(from_prelude)
     }
 
-    fn resolve_name_in_crate_root_or_extern_prelude(&self, name: &Name) -> PerNs {
+    fn resolve_name_in_crate_root_or_extern_prelude(
+        &self,
+        name: &Name,
+        shadow: BuiltinShadowMode,
+    ) -> PerNs {
         let from_crate_root =
-            self[self.root].scope.get(name).map_or_else(PerNs::none, |res| res.def);
+            self[self.root].scope.get(name, shadow).map_or_else(PerNs::none, |res| res.def);
         let from_extern_prelude = self.resolve_name_in_extern_prelude(name);
 
         from_crate_root.or(from_extern_prelude)
     }
 
-    fn resolve_in_prelude(&self, db: &impl DefDatabase, name: &Name) -> PerNs {
+    fn resolve_in_prelude(
+        &self,
+        db: &impl DefDatabase,
+        name: &Name,
+        shadow: BuiltinShadowMode,
+    ) -> PerNs {
         if let Some(prelude) = self.prelude {
             let keep;
             let def_map = if prelude.krate == self.krate {
@@ -254,7 +294,10 @@ impl CrateDefMap {
                 keep = db.crate_def_map(prelude.krate);
                 &keep
             };
-            def_map[prelude.local_id].scope.get(name).map_or_else(PerNs::none, |res| res.def)
+            def_map[prelude.local_id]
+                .scope
+                .get(name, shadow)
+                .map_or_else(PerNs::none, |res| res.def)
         } else {
             PerNs::none()
         }

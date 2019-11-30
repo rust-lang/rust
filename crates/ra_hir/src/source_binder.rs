@@ -286,7 +286,7 @@ impl SourceAnalyzer {
 
         let items = self
             .resolver
-            .resolve_module_path(db, &path)
+            .resolve_module_path_in_items(db, &path)
             .take_types()
             .map(|it| PathResolution::Def(it.into()));
         types.or(values).or(items).or_else(|| {

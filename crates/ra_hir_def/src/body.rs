@@ -15,7 +15,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     db::DefDatabase,
     expr::{Expr, ExprId, Pat, PatId},
-    nameres::CrateDefMap,
+    nameres::{BuiltinShadowMode, CrateDefMap},
     path::Path,
     src::HasSource,
     DefWithBodyId, HasModule, Lookup, ModuleId,
@@ -83,7 +83,10 @@ impl Expander {
     }
 
     fn resolve_path_as_macro(&self, db: &impl DefDatabase, path: &Path) -> Option<MacroDefId> {
-        self.crate_def_map.resolve_path(db, self.module.local_id, path).0.take_macros()
+        self.crate_def_map
+            .resolve_path(db, self.module.local_id, path, BuiltinShadowMode::Other)
+            .0
+            .take_macros()
     }
 }
 

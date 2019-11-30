@@ -3642,6 +3642,42 @@ fn main() {
 }
 
 #[test]
+fn not_shadowing_primitive_by_module() {
+    let t = type_at(
+        r#"
+//- /str.rs
+fn foo() {}
+
+//- /main.rs
+mod str;
+fn foo() -> &'static str { "" }
+
+fn main() {
+    foo()<|>;
+}"#,
+    );
+    assert_eq!(t, "&str");
+}
+
+#[test]
+fn not_shadowing_module_by_primitive() {
+    let t = type_at(
+        r#"
+//- /str.rs
+fn foo() -> u32 {0}
+
+//- /main.rs
+mod str;
+fn foo() -> &'static str { "" }
+
+fn main() {
+    str::foo()<|>;
+}"#,
+    );
+    assert_eq!(t, "u32");
+}
+
+#[test]
 fn deref_trait() {
     let t = type_at(
         r#"
