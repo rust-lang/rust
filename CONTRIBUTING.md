@@ -23,7 +23,7 @@ tested against. Other versions will likely not work. After installing
 [`rustup-toolchain-install-master`], you can run the following command to
 install that exact version of rustc as a toolchain:
 ```
-./toolchain
+./rustup-toolchain
 ```
 
 [`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
@@ -38,7 +38,7 @@ needed.
 
 To update the `rustc-version` file and install the latest rustc, you can run:
 ```
-./toolchain HEAD
+./rustup-toolchain HEAD
 ```
 
 Now try `./miri test`, and submit a PR once that works again.

@@ -7,11 +7,11 @@ set -e
 #
 # USAGE:
 #
-# ./toolchain: Update "miri" toolchain to match `rust-version` (the known-good version for this commit).
+# ./rustup-toolchain: Update "miri" toolchain to match `rust-version` (the known-good version for this commit).
 # 
-# ./toolchain HEAD: Update "miri" toolchain and `rust-version` file to latest rustc HEAD.
+# ./rustup-toolchain HEAD: Update "miri" toolchain and `rust-version` file to latest rustc HEAD.
 # 
-# ./toolchain $COMMIT: Update "miri" toolchain and `rust-version` file to match that commit.
+# ./rustup-toolchain $COMMIT: Update "miri" toolchain and `rust-version` file to match that commit.
 
 # Determine new commit.
 if [[ "$1" == "" ]]; then
