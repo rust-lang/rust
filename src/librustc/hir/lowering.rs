@@ -37,7 +37,6 @@ use crate::dep_graph::DepGraph;
 use crate::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::map::{DefKey, DefPathData, Definitions};
-use crate::hir::ptr::P;
 use crate::hir::{self, ParamName};
 use crate::hir::{ConstArg, GenericArg};
 use crate::lint;
@@ -3205,7 +3204,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// `std::cell::Ref<T>`; note that implicit lifetimes in these
     /// sorts of cases are deprecated. This may therefore report a warning or an
     /// error, depending on the mode.
-    fn elided_path_lifetimes(&mut self, span: Span, count: usize) -> P<[hir::Lifetime]> {
+    fn elided_path_lifetimes(&mut self, span: Span, count: usize) -> Vec<hir::Lifetime> {
         (0..count).map(|_| self.elided_path_lifetime(span)).collect()
     }
 

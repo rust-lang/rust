@@ -43,7 +43,6 @@ pub mod lowering;
 pub mod map;
 pub mod pat_util;
 pub mod print;
-pub mod ptr;
 pub mod upvars;
 
 /// Uniquely identifies a node in the HIR of the current crate. It is

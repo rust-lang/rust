@@ -5,7 +5,6 @@
 use crate::hir::def::{CtorOf, DefKind, Res};
 use crate::hir::def_id::DefId;
 use crate::hir::print;
-use crate::hir::ptr::P;
 use crate::hir::{self, ExprKind, GenericArg, GenericArgs};
 use crate::lint;
 use crate::middle::lang_items::SizedTraitLangItem;
@@ -255,7 +254,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         seg: &hir::PathSegment<'_>,
         is_method_call: bool,
     ) -> bool {
-        let empty_args = P(hir::GenericArgs { args: &[], bindings: &[], parenthesized: false });
+        let empty_args = hir::GenericArgs::none();
         let suppress_mismatch = Self::check_impl_trait(tcx, seg, &def);
         Self::check_generic_arg_count(
             tcx,
