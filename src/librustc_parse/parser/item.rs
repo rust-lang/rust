@@ -6,7 +6,7 @@ use crate::maybe_whole;
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 use rustc_error_codes::*;
 use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
-use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
+use syntax::ast::{ItemKind, ImplItem, TraitItem, TraitItemKind, UseTree, UseTreeKind};
 use syntax::ast::{AssocItemKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
@@ -705,7 +705,7 @@ impl<'a> Parser<'a> {
             // FIXME: code copied from `parse_macro_use_or_failure` -- use abstraction!
             (Ident::invalid(), ast::ImplItemKind::Macro(mac), Generics::default())
         } else {
-            self.parse_impl_method(at_end, &mut attrs)?
+            self.parse_assoc_fn(at_end, &mut attrs, |_| true)?
         };
 
         Ok(ImplItem {
@@ -876,7 +876,11 @@ impl<'a> Parser<'a> {
             // trait item macro.
             (Ident::invalid(), TraitItemKind::Macro(mac), Generics::default())
         } else {
-            self.parse_trait_item_method(at_end, &mut attrs)?
+            // This is somewhat dubious; We don't want to allow
+            // param names to be left off if there is a definition...
+            //
+            // We don't allow param names to be left off in edition 2018.
+            self.parse_assoc_fn(at_end, &mut attrs, |t| t.span.rust_2018())?
         };
 
         Ok(TraitItem {
@@ -1823,48 +1827,40 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses a method or a macro invocation in a trait impl.
-    fn parse_impl_method(
+    fn parse_assoc_fn(
         &mut self,
         at_end: &mut bool,
         attrs: &mut Vec<Attribute>,
-    ) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
-        let (ident, sig, generics) = self.parse_method_sig(|_| true)?;
-        let body = self.parse_trait_method_body(at_end, attrs)?;
-        Ok((ident, ast::ImplItemKind::Method(sig, body), generics))
+        is_name_required: fn(&token::Token) -> bool,
+    ) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
+        let header = self.parse_fn_front_matter()?;
+        let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
+            is_self_allowed: true,
+            allow_c_variadic: false,
+            is_name_required,
+        })?;
+        let sig = FnSig { header, decl };
+        let body = self.parse_assoc_fn_body(at_end, attrs)?;
+        Ok((ident, AssocItemKind::Method(sig, body), generics))
     }
 
-    fn parse_trait_item_method(
-        &mut self,
-        at_end: &mut bool,
-        attrs: &mut Vec<Attribute>,
-    ) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
-        // This is somewhat dubious; We don't want to allow
-        // argument names to be left off if there is a definition...
-        //
-        // We don't allow argument names to be left off in edition 2018.
-        let (ident, sig, generics) = self.parse_method_sig(|t| t.span.rust_2018())?;
-        let body = self.parse_trait_method_body(at_end, attrs)?;
-        Ok((ident, TraitItemKind::Method(sig, body), generics))
-    }
-
-    /// Parse the "body" of a method in a trait item definition.
+    /// Parse the "body" of a method in an associated item definition.
     /// This can either be `;` when there's no body,
     /// or e.g. a block when the method is a provided one.
-    fn parse_trait_method_body(
+    fn parse_assoc_fn_body(
         &mut self,
         at_end: &mut bool,
         attrs: &mut Vec<Attribute>,
     ) -> PResult<'a, Option<P<Block>>> {
         Ok(match self.token.kind {
             token::Semi => {
-                debug!("parse_trait_method_body(): parsing required method");
+                debug!("parse_assoc_fn_body(): parsing required method");
                 self.bump();
                 *at_end = true;
                 None
             }
             token::OpenDelim(token::Brace) => {
-                debug!("parse_trait_method_body(): parsing provided method");
+                debug!("parse_assoc_fn_body(): parsing provided method");
                 *at_end = true;
                 let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
                 attrs.extend(inner_attrs.iter().cloned());
@@ -1883,21 +1879,6 @@ impl<'a> Parser<'a> {
             }
             _ => return self.expected_semi_or_open_brace(),
         })
-    }
-
-    /// Parse the "signature", including the identifier, parameters, and generics
-    /// of a method. The body is not parsed as that differs between `trait`s and `impl`s.
-    fn parse_method_sig(
-        &mut self,
-        is_name_required: fn(&token::Token) -> bool,
-    ) -> PResult<'a, (Ident, FnSig, Generics)> {
-        let header = self.parse_fn_front_matter()?;
-        let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
-            is_self_allowed: true,
-            allow_c_variadic: false,
-            is_name_required,
-        })?;
-        Ok((ident, FnSig { header, decl }, generics))
     }
 
     /// Parses all the "front matter" for a `fn` declaration, up to
