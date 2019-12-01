@@ -1389,7 +1389,7 @@ impl Mac {
 }
 
 /// Arguments passed to an attribute or a function-like macro.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum MacArgs {
     /// No arguments - `#[attr]`.
     Empty,
@@ -1427,7 +1427,7 @@ impl MacArgs {
     }
 
     /// Tokens together with the delimiters or `=`.
-    /// Use of this functions generally means that something suspicious or hacky is happening.
+    /// Use of this functions generally means that something suboptimal or hacky is happening.
     pub fn outer_tokens(&self) -> TokenStream {
         match *self {
             MacArgs::Empty => TokenStream::default(),
@@ -1445,7 +1445,7 @@ impl MacArgs {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum MacDelimiter {
     Parenthesis,
     Bracket,
@@ -2384,7 +2384,7 @@ impl rustc_serialize::Decodable for AttrId {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,
-    pub tokens: TokenStream,
+    pub args: MacArgs,
 }
 
 /// Metadata associated with an item.

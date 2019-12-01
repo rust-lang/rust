@@ -277,7 +277,7 @@ pub fn parse_in_attr<'a, T>(
 ) -> PResult<'a, T> {
     let mut parser = Parser::new(
         sess,
-        attr.get_normal_item().tokens.clone(),
+        attr.get_normal_item().args.outer_tokens(),
         None,
         false,
         false,
@@ -409,7 +409,7 @@ fn prepend_attrs(
             brackets.push(stream);
         }
 
-        brackets.push(item.tokens.clone());
+        brackets.push(item.args.outer_tokens());
 
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good

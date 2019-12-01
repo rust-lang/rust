@@ -1,7 +1,7 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
-use syntax::ast::{self, ItemKind};
+use syntax::ast::{self, ItemKind, MacArgs};
 use syntax::errors::{Applicability, FatalError};
 use syntax::symbol::sym;
 use syntax::token;
@@ -183,7 +183,7 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
         }
 
         let parse_derive_paths = |attr: &ast::Attribute| {
-            if attr.get_normal_item().tokens.is_empty() {
+            if let MacArgs::Empty = attr.get_normal_item().args {
                 return Ok(Vec::new());
             }
             rustc_parse::parse_in_attr(cx.parse_sess, attr, |p| p.parse_derive_paths())

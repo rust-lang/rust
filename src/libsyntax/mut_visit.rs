@@ -570,9 +570,9 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
-        AttrKind::Normal(AttrItem { path, tokens }) => {
+        AttrKind::Normal(AttrItem { path, args }) => {
             vis.visit_path(path);
-            vis.visit_tts(tokens);
+            visit_mac_args(args, vis);
         }
         AttrKind::DocComment(_) => {}
     }
@@ -701,9 +701,9 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(AttrItem { path, tokens }) => {
+        token::NtMeta(AttrItem { path, args }) => {
             vis.visit_path(path);
-            vis.visit_tts(tokens);
+            visit_mac_args(args, vis);
         }
         token::NtPath(path) => vis.visit_path(path),
         token::NtTT(tt) => vis.visit_tt(tt),

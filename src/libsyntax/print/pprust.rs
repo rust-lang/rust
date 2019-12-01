@@ -1,6 +1,6 @@
 use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
-use crate::ast::{Attribute, GenericArg};
+use crate::ast::{Attribute, GenericArg, MacArgs};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::util::comments;
 use crate::attr;
@@ -639,17 +639,22 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
         self.ibox(0);
-        match item.tokens.trees().next() {
-            Some(TokenTree::Delimited(_, delim, tts)) => {
-                self.print_mac_common(
-                    Some(MacHeader::Path(&item.path)), false, None, delim, tts, true, span
-                );
-            }
-            tree => {
+        match &item.args {
+            MacArgs::Delimited(_, delim, tokens) => self.print_mac_common(
+                Some(MacHeader::Path(&item.path)),
+                false,
+                None,
+                delim.to_token(),
+                tokens.clone(),
+                true,
+                span,
+            ),
+            MacArgs::Empty | MacArgs::Eq(..) => {
                 self.print_path(&item.path, false, 0);
-                if tree.is_some() {
+                if let MacArgs::Eq(_, tokens) = &item.args {
                     self.space();
-                    self.print_tts(item.tokens.clone(), true);
+                    self.word_space("=");
+                    self.print_tts(tokens.clone(), true);
                 }
             }
         }
