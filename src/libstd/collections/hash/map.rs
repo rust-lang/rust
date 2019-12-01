@@ -2463,10 +2463,10 @@ pub struct RandomState {
     k1: u64,
 }
 
-pub(crate) const DETERMINISTIC_HASHING_ENABLED: u8 = 0x01;
-pub(crate) const RANDOM_STATE_CONSTRUCTED: u8 = 0x02;
+pub(super) const DETERMINISTIC_HASHING_ENABLED: u8 = 0x01;
+pub(super) const RANDOM_STATE_CONSTRUCTED: u8 = 0x02;
 
-pub(crate) static HASHING_FLAGS: AtomicU8 = AtomicU8::new(0);
+pub(super) static HASHING_FLAGS: AtomicU8 = AtomicU8::new(0);
 
 impl RandomState {
     /// Constructs a new `RandomState` that is initialized with random keys.
