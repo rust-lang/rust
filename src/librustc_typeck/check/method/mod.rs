@@ -178,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn lookup_method(
         &self,
         self_ty: Ty<'tcx>,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'_>,
         span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         self_expr: &'tcx hir::Expr<'tcx>,

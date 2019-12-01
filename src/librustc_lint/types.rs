@@ -963,12 +963,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl) {
+    fn check_foreign_fn(&mut self, id: hir::HirId, decl: &hir::FnDecl<'_>) {
         let def_id = self.cx.tcx.hir().local_def_id(id);
         let sig = self.cx.tcx.fn_sig(def_id);
         let sig = self.cx.tcx.erase_late_bound_regions(&sig);
 
-        for (input_ty, input_hir) in sig.inputs().iter().zip(&decl.inputs) {
+        for (input_ty, input_hir) in sig.inputs().iter().zip(decl.inputs) {
             self.check_type_for_ffi_and_report_errors(input_hir.span, input_ty, false);
         }
 

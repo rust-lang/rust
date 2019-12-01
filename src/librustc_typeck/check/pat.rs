@@ -554,7 +554,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
-        qpath: &hir::QPath,
+        qpath: &hir::QPath<'_>,
         fields: &'tcx [hir::FieldPat<'tcx>],
         etc: bool,
         expected: Ty<'tcx>,
@@ -587,8 +587,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_path(
         &self,
         pat: &Pat<'_>,
-        path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment]),
-        qpath: &hir::QPath,
+        path_resolution: (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]),
+        qpath: &hir::QPath<'_>,
         expected: Ty<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self.tcx;
@@ -622,7 +622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat_tuple_struct(
         &self,
         pat: &Pat<'_>,
-        qpath: &hir::QPath,
+        qpath: &hir::QPath<'_>,
         subpats: &'tcx [&'tcx Pat<'tcx>],
         ddpos: Option<usize>,
         expected: Ty<'tcx>,
@@ -724,7 +724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat_span: Span,
         res: Res,
-        qpath: &hir::QPath,
+        qpath: &hir::QPath<'_>,
         subpats: &'tcx [&'tcx Pat<'tcx>],
         fields: &'tcx [ty::FieldDef],
         expected: Ty<'tcx>,

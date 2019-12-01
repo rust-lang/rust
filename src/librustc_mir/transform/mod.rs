@@ -77,7 +77,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
             &mut self,
             v: &'tcx hir::VariantData<'tcx>,
             _: ast::Name,
-            _: &'tcx hir::Generics,
+            _: &'tcx hir::Generics<'tcx>,
             _: hir::HirId,
             _: Span,
         ) {

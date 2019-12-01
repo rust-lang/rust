@@ -20,7 +20,7 @@ impl UnsafetyChecker<'tcx> {
     fn check_unsafety_coherence(
         &mut self,
         item: &'v hir::Item<'v>,
-        impl_generics: Option<&hir::Generics>,
+        impl_generics: Option<&hir::Generics<'_>>,
         unsafety: hir::Unsafety,
         polarity: hir::ImplPolarity,
     ) {

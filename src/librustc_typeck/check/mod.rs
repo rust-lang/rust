@@ -784,7 +784,7 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 fn primary_body_of(
     tcx: TyCtxt<'_>,
     id: hir::HirId,
-) -> Option<(hir::BodyId, Option<&hir::Ty>, Option<&hir::FnHeader>, Option<&hir::FnDecl>)> {
+) -> Option<(hir::BodyId, Option<&hir::Ty<'_>>, Option<&hir::FnHeader>, Option<&hir::FnDecl<'_>>)> {
     match tcx.hir().get(id) {
         Node::Item(item) => match item.kind {
             hir::ItemKind::Const(ref ty, body) | hir::ItemKind::Static(ref ty, _, body) => {
@@ -1196,7 +1196,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
     fn visit_fn(
         &mut self,
         _: intravisit::FnKind<'tcx>,
-        _: &'tcx hir::FnDecl,
+        _: &'tcx hir::FnDecl<'tcx>,
         _: hir::BodyId,
         _: Span,
         _: hir::HirId,
@@ -1228,7 +1228,7 @@ fn check_fn<'a, 'tcx>(
     inherited: &'a Inherited<'a, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
-    decl: &'tcx hir::FnDecl,
+    decl: &'tcx hir::FnDecl<'tcx>,
     fn_id: hir::HirId,
     body: &'tcx hir::Body<'tcx>,
     can_be_generator: Option<hir::Movability>,
@@ -1902,7 +1902,7 @@ fn check_impl_items_against_trait<'tcx>(
     full_impl_span: Span,
     impl_id: DefId,
     impl_trait_ref: ty::TraitRef<'tcx>,
-    impl_item_refs: &[hir::ImplItemRef],
+    impl_item_refs: &[hir::ImplItemRef<'_>],
 ) {
     let impl_span = tcx.sess.source_map().def_span(full_impl_span);
 
@@ -2511,7 +2511,7 @@ pub fn check_enum<'tcx>(
     check_transparent(tcx, sp, def_id);
 }
 
-fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &QPath) {
+fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &QPath<'_>) {
     span_err!(
         tcx.sess,
         span,
@@ -2600,7 +2600,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &hir::PathSegment,
+        item_segment: &hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         let (trait_ref, _) = self.replace_bound_vars_with_fresh_vars(
@@ -3105,13 +3105,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_t: &hir::Ty<'_>) -> Ty<'tcx> {
         let t = AstConv::ast_ty_to_ty(self, ast_t);
         self.register_wf_obligation(t, ast_t.span, traits::MiscObligation);
         t
     }
 
-    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty<'_>) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
         debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
@@ -4100,7 +4100,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn check_struct_path(
         &self,
-        qpath: &QPath,
+        qpath: &QPath<'_>,
         hir_id: hir::HirId,
     ) -> Option<(&'tcx ty::VariantDef, Ty<'tcx>)> {
         let path_span = match *qpath {
@@ -4159,7 +4159,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // The newly resolved definition is written into `type_dependent_defs`.
     fn finish_resolving_struct_path(
         &self,
-        qpath: &QPath,
+        qpath: &QPath<'_>,
         path_span: Span,
         hir_id: hir::HirId,
     ) -> (Res, Ty<'tcx>) {
@@ -4194,10 +4194,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// resolution. The newly resolved definition is written into `type_dependent_defs`.
     pub fn resolve_ty_and_res_ufcs<'b>(
         &self,
-        qpath: &'b QPath,
+        qpath: &'b QPath<'b>,
         hir_id: hir::HirId,
         span: Span,
-    ) -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment]) {
+    ) -> (Res, Option<Ty<'tcx>>, &'b [hir::PathSegment<'b>]) {
         debug!("resolve_ty_and_res_ufcs: qpath={:?} hir_id={:?} span={:?}", qpath, hir_id, span);
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
@@ -4545,13 +4545,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Given a function block's `HirId`, returns its `FnDecl` if it exists, or `None` otherwise.
-    fn get_parent_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl, ast::Ident)> {
+    fn get_parent_fn_decl(
+        &self,
+        blk_id: hir::HirId,
+    ) -> Option<(&'tcx hir::FnDecl<'tcx>, ast::Ident)> {
         let parent = self.tcx.hir().get(self.tcx.hir().get_parent_item(blk_id));
         self.get_node_fn_decl(parent).map(|(fn_decl, ident, _)| (fn_decl, ident))
     }
 
     /// Given a function `Node`, return its `FnDecl` if it exists, or `None` otherwise.
-    fn get_node_fn_decl(&self, node: Node<'tcx>) -> Option<(&'tcx hir::FnDecl, ast::Ident, bool)> {
+    fn get_node_fn_decl(
+        &self,
+        node: Node<'tcx>,
+    ) -> Option<(&'tcx hir::FnDecl<'tcx>, ast::Ident, bool)> {
         match node {
             Node::Item(&hir::Item { ident, kind: hir::ItemKind::Fn(ref sig, ..), .. }) => {
                 // This is less than ideal, it will not suggest a return type span on any
@@ -4575,7 +4581,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Given a `HirId`, return the `FnDecl` of the method it is enclosed by and whether a
     /// suggestion can be made, `None` otherwise.
-    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl, bool)> {
+    pub fn get_fn_decl(&self, blk_id: hir::HirId) -> Option<(&'tcx hir::FnDecl<'tcx>, bool)> {
         // Get enclosing Fn, if it is a function or a trait method, unless there's a `loop` or
         // `while` before reaching it, as block tail returns are not available in them.
         self.tcx.hir().get_return_block(blk_id).and_then(|blk_id| {
@@ -4908,7 +4914,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn suggest_missing_return_type(
         &self,
         err: &mut DiagnosticBuilder<'_>,
-        fn_decl: &hir::FnDecl,
+        fn_decl: &hir::FnDecl<'_>,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
         can_suggest: bool,
@@ -5075,7 +5081,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // number of type parameters and type.
     pub fn instantiate_value_path(
         &self,
-        segments: &[hir::PathSegment],
+        segments: &[hir::PathSegment<'_>],
         self_ty: Option<Ty<'tcx>>,
         res: Res,
         span: Span,

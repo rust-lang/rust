@@ -116,7 +116,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
         intravisit::walk_item(self, item);
     }
 
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         for param in &generics.params {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
@@ -173,7 +173,7 @@ impl ItemCtxt<'tcx> {
         ItemCtxt { tcx, item_def_id }
     }
 
-    pub fn to_ty(&self, ast_ty: &'tcx hir::Ty) -> Ty<'tcx> {
+    pub fn to_ty(&self, ast_ty: &'tcx hir::Ty<'tcx>) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
     }
 }
@@ -216,7 +216,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
-        item_segment: &hir::PathSegment,
+        item_segment: &hir::PathSegment<'_>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
@@ -343,7 +343,7 @@ impl ItemCtxt<'tcx> {
     /// bounds for a type parameter `X` if `X::Foo` is used.
     fn type_parameter_bounds_in_generics(
         &self,
-        ast_generics: &'tcx hir::Generics,
+        ast_generics: &'tcx hir::Generics<'tcx>,
         param_id: hir::HirId,
         ty: Ty<'tcx>,
         only_self_bounds: OnlySelfBounds,
@@ -386,7 +386,7 @@ impl ItemCtxt<'tcx> {
 /// parameter with ID `param_id`. We use this so as to avoid running
 /// `ast_ty_to_ty`, because we want to avoid triggering an all-out
 /// conversion of the type to avoid inducing unnecessary cycles.
-fn is_param(tcx: TyCtxt<'_>, ast_ty: &hir::Ty, param_id: hir::HirId) -> bool {
+fn is_param(tcx: TyCtxt<'_>, ast_ty: &hir::Ty<'_>, param_id: hir::HirId) -> bool {
     if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ast_ty.kind {
         match path.res {
             Res::SelfTy(Some(def_id), None) | Res::Def(DefKind::TyParam, def_id) => {
@@ -803,7 +803,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             NestedVisitorMap::None
         }
 
-        fn visit_ty(&mut self, ty: &'tcx hir::Ty) {
+        fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
             if self.has_late_bound_regions.is_some() {
                 return;
             }
@@ -819,7 +819,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
         fn visit_poly_trait_ref(
             &mut self,
-            tr: &'tcx hir::PolyTraitRef,
+            tr: &'tcx hir::PolyTraitRef<'tcx>,
             m: hir::TraitBoundModifier,
         ) {
             if self.has_late_bound_regions.is_some() {
@@ -852,8 +852,8 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
 
     fn has_late_bound_regions<'tcx>(
         tcx: TyCtxt<'tcx>,
-        generics: &'tcx hir::Generics,
-        decl: &'tcx hir::FnDecl,
+        generics: &'tcx hir::Generics<'tcx>,
+        decl: &'tcx hir::FnDecl<'tcx>,
     ) -> Option<Span> {
         let mut visitor = LateBoundRegionsDetector {
             tcx,
@@ -1699,7 +1699,7 @@ fn find_opaque_ty_constraints(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
     }
 }
 
-pub fn get_infer_ret_ty(output: &'_ hir::FunctionRetTy) -> Option<&hir::Ty> {
+pub fn get_infer_ret_ty(output: &'hir hir::FunctionRetTy<'hir>) -> Option<&'hir hir::Ty<'hir>> {
     if let hir::FunctionRetTy::Return(ref ty) = output {
         if let hir::TyKind::Infer = ty.kind {
             return Some(&**ty);
@@ -1841,8 +1841,8 @@ fn impl_polarity(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ImplPolarity {
 /// `resolve_lifetime::early_bound_lifetimes`.
 fn early_bound_lifetimes_from_generics<'a, 'tcx: 'a>(
     tcx: TyCtxt<'tcx>,
-    generics: &'a hir::Generics,
-) -> impl Iterator<Item = &'a hir::GenericParam> + Captures<'tcx> {
+    generics: &'a hir::Generics<'a>,
+) -> impl Iterator<Item = &'a hir::GenericParam<'a>> + Captures<'tcx> {
     generics.params.iter().filter(move |param| match param.kind {
         GenericParamKind::Lifetime { .. } => !tcx.is_late_bound(param.hir_id),
         _ => false,
@@ -1947,7 +1947,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    const NO_GENERICS: &hir::Generics = &hir::Generics::empty();
+    const NO_GENERICS: &hir::Generics<'_> = &hir::Generics::empty();
 
     let mut predicates = UniquePredicates::new();
 
@@ -2116,7 +2116,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     // Add in the bounds that appear in the where-clause.
     let where_clause = &ast_generics.where_clause;
-    for predicate in &where_clause.predicates {
+    for predicate in where_clause.predicates {
         match predicate {
             &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
                 let ty = icx.to_ty(&bound_pred.bounded_ty);
@@ -2323,7 +2323,7 @@ fn associated_item_predicates(
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx>,
     param_ty: Ty<'tcx>,
-    bound: &'tcx hir::GenericBound,
+    bound: &'tcx hir::GenericBound<'tcx>,
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     match *bound {
         hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
@@ -2343,7 +2343,7 @@ fn predicates_from_bound<'tcx>(
 fn compute_sig_of_foreign_fn_decl<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    decl: &'tcx hir::FnDecl,
+    decl: &'tcx hir::FnDecl<'tcx>,
     abi: abi::Abi,
 ) -> ty::PolyFnSig<'tcx> {
     let unsafety = if abi == abi::Abi::RustIntrinsic {
@@ -2359,7 +2359,7 @@ fn compute_sig_of_foreign_fn_decl<'tcx>(
         && abi != abi::Abi::PlatformIntrinsic
         && !tcx.features().simd_ffi
     {
-        let check = |ast_ty: &hir::Ty, ty: Ty<'_>| {
+        let check = |ast_ty: &hir::Ty<'_>, ty: Ty<'_>| {
             if ty.is_simd() {
                 tcx.sess
                     .struct_span_err(

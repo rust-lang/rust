@@ -37,7 +37,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
         _capture: hir::CaptureBy,
-        decl: &'tcx hir::FnDecl,
+        decl: &'tcx hir::FnDecl<'tcx>,
         body_id: hir::BodyId,
         gen: Option<hir::Movability>,
         expected: Expectation<'tcx>,
@@ -59,7 +59,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
         opt_kind: Option<ty::ClosureKind>,
-        decl: &'tcx hir::FnDecl,
+        decl: &'tcx hir::FnDecl<'tcx>,
         body: &'tcx hir::Body<'tcx>,
         gen: Option<hir::Movability>,
         expected_sig: Option<ExpectedSig<'tcx>>,
@@ -282,7 +282,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure(
         &self,
         expr_def_id: DefId,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> ClosureSignatures<'tcx> {
@@ -298,7 +298,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure_no_expectation(
         &self,
         expr_def_id: DefId,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
     ) -> ClosureSignatures<'tcx> {
         debug!("sig_of_closure_no_expectation()");
@@ -358,7 +358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure_with_expectation(
         &self,
         expr_def_id: DefId,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
@@ -413,7 +413,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn sig_of_closure_with_mismatched_number_of_arguments(
         &self,
         expr_def_id: DefId,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
         expected_sig: ExpectedSig<'tcx>,
     ) -> ClosureSignatures<'tcx> {
@@ -446,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_supplied_sig_against_expectation(
         &self,
         expr_def_id: DefId,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
         expected_sigs: &ClosureSignatures<'tcx>,
     ) -> InferResult<'tcx, ()> {
@@ -535,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn supplied_sig_of_closure(
         &self,
         expr_def_id: DefId,
-        decl: &hir::FnDecl,
+        decl: &hir::FnDecl<'_>,
         body: &hir::Body<'_>,
     ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
@@ -687,7 +687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Converts the types that the user supplied, in case that doing
     /// so should yield an error, but returns back a signature where
     /// all parameters are of type `TyErr`.
-    fn error_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
+    fn error_sig_of_closure(&self, decl: &hir::FnDecl<'_>) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv<'_> = self;
 
         let supplied_arguments = decl.inputs.iter().map(|a| {

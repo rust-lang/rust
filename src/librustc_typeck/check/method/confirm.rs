@@ -43,7 +43,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &'tcx hir::Expr<'tcx>,
         unadjusted_self_ty: Ty<'tcx>,
         pick: probe::Pick<'tcx>,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         debug!(
             "confirm(unadjusted_self_ty={:?}, pick={:?}, generic_args={:?})",
@@ -69,7 +69,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         unadjusted_self_ty: Ty<'tcx>,
         pick: probe::Pick<'tcx>,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
         let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
@@ -292,7 +292,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn instantiate_method_substs(
         &mut self,
         pick: &probe::Pick<'tcx>,
-        seg: &hir::PathSegment,
+        seg: &hir::PathSegment<'_>,
         parent_substs: SubstsRef<'tcx>,
     ) -> SubstsRef<'tcx> {
         // Determine the values for the generic parameters of the method.

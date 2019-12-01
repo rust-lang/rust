@@ -664,7 +664,7 @@ impl EncodeContext<'tcx> {
         id: hir::HirId,
         md: &hir::Mod<'_>,
         attrs: &[ast::Attribute],
-        vis: &hir::Visibility,
+        vis: &hir::Visibility<'_>,
     ) {
         let tcx = self.tcx;
         let def_id = tcx.hir().local_def_id(id);
@@ -1547,7 +1547,7 @@ impl Visitor<'tcx> for EncodeContext<'tcx> {
         let def_id = self.tcx.hir().local_def_id(ni.hir_id);
         self.encode_info_for_foreign_item(def_id, ni);
     }
-    fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
+    fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
         intravisit::walk_generics(self, generics);
         self.encode_info_for_generics(generics);
     }
@@ -1568,7 +1568,7 @@ impl EncodeContext<'tcx> {
         }
     }
 
-    fn encode_info_for_generics(&mut self, generics: &hir::Generics) {
+    fn encode_info_for_generics(&mut self, generics: &hir::Generics<'tcx>) {
         for param in &generics.params {
             let def_id = self.tcx.hir().local_def_id(param.hir_id);
             match param.kind {

@@ -469,7 +469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn check_expr_path(&self, qpath: &hir::QPath, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
+    fn check_expr_path(&self, qpath: &hir::QPath<'_>, expr: &'tcx hir::Expr<'tcx>) -> Ty<'tcx> {
         let tcx = self.tcx;
         let (res, opt_ty, segs) = self.resolve_ty_and_res_ufcs(qpath, expr.hir_id, expr.span);
         let ty = match res {
@@ -853,7 +853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_method_call(
         &self,
         expr: &'tcx hir::Expr<'tcx>,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'_>,
         span: Span,
         args: &'tcx [hir::Expr<'tcx>],
         expected: Expectation<'tcx>,
@@ -893,7 +893,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn report_extended_method_error(
         &self,
-        segment: &hir::PathSegment,
+        segment: &hir::PathSegment<'_>,
         span: Span,
         args: &'tcx [hir::Expr<'tcx>],
         rcvr_t: Ty<'tcx>,
@@ -941,7 +941,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_expr_cast(
         &self,
         e: &'tcx hir::Expr<'tcx>,
-        t: &'tcx hir::Ty,
+        t: &'tcx hir::Ty<'tcx>,
         expr: &'tcx hir::Expr<'tcx>,
     ) -> Ty<'tcx> {
         // Find the type of `e`. Supply hints based on the type we are casting to,
@@ -1087,7 +1087,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         expr: &hir::Expr<'_>,
         expected: Expectation<'tcx>,
-        qpath: &QPath,
+        qpath: &QPath<'_>,
         fields: &'tcx [hir::Field<'tcx>],
         base_expr: &'tcx Option<&'tcx hir::Expr<'tcx>>,
     ) -> Ty<'tcx> {

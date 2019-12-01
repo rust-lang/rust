@@ -391,8 +391,8 @@ fn check_item_type(tcx: TyCtxt<'_>, item_id: hir::HirId, ty_span: Span, allow_fo
 fn check_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &'tcx hir::Item<'tcx>,
-    ast_self_ty: &hir::Ty,
-    ast_trait_ref: &Option<hir::TraitRef>,
+    ast_self_ty: &hir::Ty<'_>,
+    ast_trait_ref: &Option<hir::TraitRef<'_>>,
 ) {
     debug!("check_impl: {:?}", item);
 
@@ -961,7 +961,7 @@ fn receiver_is_implemented(
 fn check_variances_for_type_defn<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: &hir::Item<'tcx>,
-    hir_generics: &hir::Generics,
+    hir_generics: &hir::Generics<'_>,
 ) {
     let item_def_id = tcx.hir().local_def_id(item.hir_id);
     let ty = tcx.type_of(item_def_id);

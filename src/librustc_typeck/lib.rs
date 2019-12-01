@@ -119,7 +119,7 @@ pub struct TypeAndSubsts<'tcx> {
     ty: Ty<'tcx>,
 }
 
-fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl, abi: Abi, span: Span) {
+fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi, span: Span) {
     if decl.c_variadic && !(abi == Abi::C || abi == Abi::Cdecl) {
         let mut err = struct_span_err!(
             tcx.sess,
@@ -356,7 +356,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) -> Result<(), ErrorReported> {
 
 /// A quasi-deprecated helper used in rustdoc and clippy to get
 /// the type from a HIR node.
-pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
+pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'_>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
@@ -367,7 +367,10 @@ pub fn hir_ty_to_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty) -> Ty<'tcx> {
     astconv::AstConv::ast_ty_to_ty(&item_cx, hir_ty)
 }
 
-pub fn hir_trait_to_predicates<'tcx>(tcx: TyCtxt<'tcx>, hir_trait: &hir::TraitRef) -> Bounds<'tcx> {
+pub fn hir_trait_to_predicates<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    hir_trait: &hir::TraitRef<'_>,
+) -> Bounds<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope.  This is derived from the enclosing item-like thing.
