@@ -6,8 +6,7 @@ use crate::maybe_whole;
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 use rustc_error_codes::*;
 use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
-use syntax::ast::{ItemKind, ImplItem, TraitItem, TraitItemKind, UseTree, UseTreeKind};
-use syntax::ast::{AssocItemKind};
+use syntax::ast::{AssocItem, AssocItemKind, ItemKind, UseTree, UseTreeKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, Variant, VariantData, StructField};
@@ -649,7 +648,7 @@ impl<'a> Parser<'a> {
         Ok((Ident::invalid(), item_kind, Some(attrs)))
     }
 
-    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<ImplItem>, Vec<Attribute>)> {
+    fn parse_impl_body(&mut self) -> PResult<'a, (Vec<AssocItem>, Vec<Attribute>)> {
         self.expect(&token::OpenDelim(token::Brace))?;
         let attrs = self.parse_inner_attributes()?;
 
@@ -671,12 +670,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an impl item.
-    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
+    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
         maybe_whole!(self, NtImplItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_impl_item_(at_end, attrs);
+            let item = this.parse_assoc_item(at_end, attrs, |_| true);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
@@ -687,38 +686,6 @@ impl<'a> Parser<'a> {
             item.tokens = Some(tokens);
         }
         Ok(item)
-    }
-
-    fn parse_impl_item_(
-        &mut self,
-        at_end: &mut bool,
-        mut attrs: Vec<Attribute>,
-    ) -> PResult<'a, ImplItem> {
-        let lo = self.token.span;
-        let vis = self.parse_visibility(FollowedByType::No)?;
-        let defaultness = self.parse_defaultness();
-        let (name, kind, generics) = if self.eat_keyword(kw::Type) {
-            self.parse_assoc_ty()?
-        } else if self.is_const_item() {
-            self.parse_assoc_const()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(&vis), at_end)? {
-            // FIXME: code copied from `parse_macro_use_or_failure` -- use abstraction!
-            (Ident::invalid(), ast::ImplItemKind::Macro(mac), Generics::default())
-        } else {
-            self.parse_assoc_fn(at_end, &mut attrs, |_| true)?
-        };
-
-        Ok(ImplItem {
-            id: DUMMY_NODE_ID,
-            span: lo.to(self.prev_span),
-            ident: name,
-            attrs,
-            vis,
-            defaultness,
-            generics,
-            kind,
-            tokens: None,
-        })
     }
 
     /// Parses defaultness (i.e., `default` or nothing).
@@ -843,12 +810,19 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the items in a trait declaration.
-    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
+    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_trait_item_(at_end, attrs);
+            // This is somewhat dubious; We don't want to allow
+            // param names to be left off if there is a definition...
+            //
+            // We don't allow param names to be left off in edition 2018.
+            //
+            // FIXME(Centril): bake closure into param parsing.
+            // Also add semantic restrictions and add tests.
+            let item = this.parse_assoc_item(at_end, attrs, |t| t.span.rust_2018());
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
@@ -860,11 +834,12 @@ impl<'a> Parser<'a> {
         Ok(item)
     }
 
-    fn parse_trait_item_(
+    fn parse_assoc_item(
         &mut self,
         at_end: &mut bool,
         mut attrs: Vec<Attribute>,
-    ) -> PResult<'a, TraitItem> {
+        is_name_required: fn(&token::Token) -> bool,
+    ) -> PResult<'a, AssocItem> {
         let lo = self.token.span;
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
@@ -872,18 +847,13 @@ impl<'a> Parser<'a> {
             self.parse_assoc_ty()?
         } else if self.is_const_item() {
             self.parse_assoc_const()?
-        } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
-            // trait item macro.
-            (Ident::invalid(), TraitItemKind::Macro(mac), Generics::default())
+        } else if let Some(mac) = self.parse_assoc_macro_invoc("associated", Some(&vis), at_end)? {
+            (Ident::invalid(), AssocItemKind::Macro(mac), Generics::default())
         } else {
-            // This is somewhat dubious; We don't want to allow
-            // param names to be left off if there is a definition...
-            //
-            // We don't allow param names to be left off in edition 2018.
-            self.parse_assoc_fn(at_end, &mut attrs, |t| t.span.rust_2018())?
+            self.parse_assoc_fn(at_end, &mut attrs, is_name_required)?
         };
 
-        Ok(TraitItem {
+        Ok(AssocItem {
             id: DUMMY_NODE_ID,
             span: lo.to(self.prev_span),
             ident: name,

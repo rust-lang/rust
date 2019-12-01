@@ -1,4 +1,4 @@
-error: missing `fn`, `type`, or `const` for trait-item declaration
+error: missing `fn`, `type`, or `const` for associated-item declaration
   --> $DIR/issue-21153.rs:1:29
    |
 LL |   trait MyTrait<T>: Iterator {
