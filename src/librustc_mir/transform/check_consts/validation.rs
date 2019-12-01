@@ -364,12 +364,11 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 }
             }
 
-            // Taking a shared borrow of a `static` is always legal, even if that `static` has
-            // interior mutability.
+            // At the moment, `PlaceBase::Static` is only used for promoted MIR.
             | Rvalue::Ref(_, BorrowKind::Shared, ref place)
             | Rvalue::Ref(_, BorrowKind::Shallow, ref place)
             if matches!(place.base, PlaceBase::Static(_))
-            => {}
+            => bug!("Saw a promoted during const-checking, which must run before promotion"),
 
             | Rvalue::Ref(_, kind @ BorrowKind::Shared, ref place)
             | Rvalue::Ref(_, kind @ BorrowKind::Shallow, ref place)
@@ -708,8 +707,7 @@ fn place_as_reborrow(
             // A borrow of a `static` also looks like `&(*_1)` in the MIR, but `_1` is a `const`
             // that points to the allocation for the static. Don't treat these as reborrows.
             if let PlaceBase::Local(local) = place.base {
-                let decl = &body.local_decls[local];
-                if let LocalInfo::StaticRef { .. } = decl.local_info {
+                if body.local_decls[local].is_ref_to_static() {
                     return None;
                 }
             }
