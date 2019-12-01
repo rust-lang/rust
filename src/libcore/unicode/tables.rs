@@ -2,19 +2,16 @@
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case, clippy::unreadable_literal)]
 
-use crate::unicode::version::UnicodeVersion;
 use crate::unicode::bool_trie::{BoolTrie, SmallBoolTrie};
+use crate::unicode::version::UnicodeVersion;
 
 /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
 /// `char` and `str` methods are based on.
 #[unstable(feature = "unicode_version", issue = "49726")]
-pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {
-    major: 12,
-    minor: 1,
-    micro: 0,
-    _priv: (),
-};
+pub const UNICODE_VERSION: UnicodeVersion =
+    UnicodeVersion { major: 12, minor: 1, micro: 0, _priv: () };
 pub(crate) mod general_category {
+    #[rustfmt::skip]
     const Cc_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 0
@@ -28,6 +25,7 @@ pub(crate) mod general_category {
         Cc_table.lookup(c)
     }
 
+    #[rustfmt::skip]
     const N_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x03ff000000000000, 0x0000000000000000, 0x720c000000000000, 0x0000000000000000,
@@ -138,10 +136,10 @@ pub(crate) mod general_category {
     pub fn N(c: char) -> bool {
         N_table.lookup(c)
     }
-
 }
 
 pub(crate) mod derived_property {
+    #[rustfmt::skip]
     const Alphabetic_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
@@ -327,6 +325,7 @@ pub(crate) mod derived_property {
         Alphabetic_table.lookup(c)
     }
 
+    #[rustfmt::skip]
     const Case_Ignorable_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0400408000000000, 0x0000000140000000, 0x0190a10000000000, 0x0000000000000000,
@@ -464,6 +463,7 @@ pub(crate) mod derived_property {
         Case_Ignorable_table.lookup(c)
     }
 
+    #[rustfmt::skip]
     const Cased_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe07fffffe, 0x0420040000000000, 0xff7fffffff7fffff,
@@ -565,6 +565,7 @@ pub(crate) mod derived_property {
         Cased_table.lookup(c)
     }
 
+    #[rustfmt::skip]
     const Grapheme_Extend_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x0000000000000000, 0x0000000000000000, 0x0000000000000000,
@@ -689,6 +690,7 @@ pub(crate) mod derived_property {
         Grapheme_Extend_table.lookup(c)
     }
 
+    #[rustfmt::skip]
     const Lowercase_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x07fffffe00000000, 0x0420040000000000, 0xff7fffff80000000,
@@ -789,6 +791,7 @@ pub(crate) mod derived_property {
         Lowercase_table.lookup(c)
     }
 
+    #[rustfmt::skip]
     const Uppercase_table: &super::BoolTrie = &super::BoolTrie {
         r1: [
             0x0000000000000000, 0x0000000007fffffe, 0x0000000000000000, 0x000000007f7fffff,
@@ -889,10 +892,10 @@ pub(crate) mod derived_property {
     pub fn Uppercase(c: char) -> bool {
         Uppercase_table.lookup(c)
     }
-
 }
 
 pub(crate) mod property {
+    #[rustfmt::skip]
     const White_Space_table: &super::SmallBoolTrie = &super::SmallBoolTrie {
         r1: &[
             0, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
@@ -912,20 +915,19 @@ pub(crate) mod property {
     pub fn White_Space(c: char) -> bool {
         White_Space_table.lookup(c)
     }
-
 }
 
 pub(crate) mod conversions {
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
-            None        => [c, '\0', '\0'],
+            None => [c, '\0', '\0'],
             Some(index) => to_lowercase_table[index].1,
         }
     }
 
     pub fn to_upper(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_uppercase_table) {
-            None        => [c, '\0', '\0'],
+            None => [c, '\0', '\0'],
             Some(index) => to_uppercase_table[index].1,
         }
     }
@@ -934,6 +936,7 @@ pub(crate) mod conversions {
         table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
     }
 
+    #[rustfmt::skip]
     const to_lowercase_table: &[(char, [char; 3])] = &[
         ('\u{41}', ['\u{61}', '\0', '\0']), ('\u{42}', ['\u{62}', '\0', '\0']), ('\u{43}',
         ['\u{63}', '\0', '\0']), ('\u{44}', ['\u{64}', '\0', '\0']), ('\u{45}', ['\u{65}', '\0',
@@ -1558,6 +1561,7 @@ pub(crate) mod conversions {
         ('\u{1e920}', ['\u{1e942}', '\0', '\0']), ('\u{1e921}', ['\u{1e943}', '\0', '\0'])
     ];
 
+    #[rustfmt::skip]
     const to_uppercase_table: &[(char, [char; 3])] = &[
         ('\u{61}', ['\u{41}', '\0', '\0']), ('\u{62}', ['\u{42}', '\0', '\0']), ('\u{63}',
         ['\u{43}', '\0', '\0']), ('\u{64}', ['\u{44}', '\0', '\0']), ('\u{65}', ['\u{45}', '\0',
@@ -2228,5 +2232,4 @@ pub(crate) mod conversions {
         ('\u{1e940}', ['\u{1e91e}', '\0', '\0']), ('\u{1e941}', ['\u{1e91f}', '\0', '\0']),
         ('\u{1e942}', ['\u{1e920}', '\0', '\0']), ('\u{1e943}', ['\u{1e921}', '\0', '\0'])
     ];
-
 }

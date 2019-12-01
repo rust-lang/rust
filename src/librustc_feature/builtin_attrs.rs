@@ -3,17 +3,10 @@
 use AttributeType::*;
 use AttributeGate::*;
 
-use super::check::{emit_feature_err, GateIssue};
-use super::check::{Stability, EXPLAIN_ALLOW_INTERNAL_UNSAFE, EXPLAIN_ALLOW_INTERNAL_UNSTABLE};
-use super::active::Features;
+use crate::{Features, Stability};
 
-use crate::ast;
-use crate::attr::AttributeTemplate;
-use crate::sess::ParseSess;
-use crate::symbol::{Symbol, sym};
-
-use syntax_pos::Span;
 use rustc_data_structures::fx::FxHashMap;
+use syntax_pos::symbol::{Symbol, sym};
 use lazy_static::lazy_static;
 
 type GateFn = fn(&Features) -> bool;
@@ -24,39 +17,19 @@ macro_rules! cfg_fn {
     }
 }
 
+pub type GatedCfg = (Symbol, Symbol, GateFn);
+
 /// `cfg(...)`'s that are feature gated.
-const GATED_CFGS: &[(Symbol, Symbol, GateFn)] = &[
+const GATED_CFGS: &[GatedCfg] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     (sym::target_thread_local, sym::cfg_target_thread_local, cfg_fn!(cfg_target_thread_local)),
     (sym::target_has_atomic, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
     (sym::target_has_atomic_load_store, sym::cfg_target_has_atomic, cfg_fn!(cfg_target_has_atomic)),
 ];
 
-#[derive(Debug)]
-pub struct GatedCfg {
-    span: Span,
-    index: usize,
-}
-
-impl GatedCfg {
-    pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        GATED_CFGS.iter()
-                  .position(|info| cfg.check_name(info.0))
-                  .map(|idx| {
-                      GatedCfg {
-                          span: cfg.span,
-                          index: idx
-                      }
-                  })
-    }
-
-    pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
-        let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) && !self.span.allows_unstable(feature) {
-            let explain = format!("`cfg({})` is experimental and subject to change", cfg);
-            emit_feature_err(sess, feature, self.span, GateIssue::Language, &explain);
-        }
-    }
+/// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
+pub fn find_gated_cfg(pred: impl Fn(Symbol) -> bool) -> Option<&'static GatedCfg> {
+    GATED_CFGS.iter().find(|(cfg_sym, ..)| pred(*cfg_sym))
 }
 
 // If you change this, please modify `src/doc/unstable-book` as well. You must
@@ -105,6 +78,21 @@ impl AttributeGate {
             Self::Gated(Stability::Deprecated(_, _), ..) => true,
             _ => false,
         }
+    }
+}
+
+/// A template that the attribute input must match.
+/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
+#[derive(Clone, Copy)]
+pub struct AttributeTemplate {
+    pub word: bool,
+    pub list: Option<&'static str>,
+    pub name_value_str: Option<&'static str>,
+}
+
+impl AttributeTemplate {
+    pub fn only_word() -> Self {
+        Self { word: true, list: None, name_value_str: None }
     }
 }
 
@@ -361,9 +349,12 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     gated!(
         allow_internal_unstable, Normal, template!(Word, List: "feat1, feat2, ..."),
-        EXPLAIN_ALLOW_INTERNAL_UNSTABLE,
+        "allow_internal_unstable side-steps feature gating and stability checks",
     ),
-    gated!(allow_internal_unsafe, Normal, template!(Word), EXPLAIN_ALLOW_INTERNAL_UNSAFE),
+    gated!(
+        allow_internal_unsafe, Normal, template!(Word),
+        "allow_internal_unsafe side-steps the unsafe_code lint",
+    ),
 
     // ==========================================================================
     // Internal attributes: Type system related:
@@ -587,12 +578,8 @@ pub fn deprecated_attributes() -> Vec<&'static BuiltinAttribute> {
     BUILTIN_ATTRIBUTES.iter().filter(|(.., gate)| gate.is_deprecated()).collect()
 }
 
-pub fn is_builtin_attr_name(name: ast::Name) -> bool {
+pub fn is_builtin_attr_name(name: Symbol) -> bool {
     BUILTIN_ATTRIBUTE_MAP.get(&name).is_some()
-}
-
-pub fn is_builtin_attr(attr: &ast::Attribute) -> bool {
-    attr.ident().and_then(|ident| BUILTIN_ATTRIBUTE_MAP.get(&ident.name)).is_some()
 }
 
 lazy_static! {

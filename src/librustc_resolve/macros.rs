@@ -12,18 +12,18 @@ use rustc::middle::stability;
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashSet;
 use rustc::{ty, lint, span_bug};
+use rustc_feature::is_builtin_attr_name;
 use syntax::ast::{self, NodeId, Ident};
 use syntax::attr::{self, StabilityLevel};
 use syntax::edition::Edition;
-use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
-use syntax::feature_gate::GateIssue;
+use syntax::feature_gate::feature_err;
 use syntax::print::pprust;
-use syntax::symbol::{Symbol, kw, sym};
 use syntax_expand::base::{self, InvocationRes, Indeterminate};
 use syntax_expand::base::SyntaxExtension;
 use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax_expand::compile_declarative_macro;
 use syntax_pos::hygiene::{self, ExpnId, ExpnData, ExpnKind};
+use syntax_pos::symbol::{Symbol, kw, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
@@ -346,13 +346,8 @@ impl<'a> Resolver<'a> {
                segment.ident.as_str().starts_with("rustc") {
                 let msg =
                     "attributes starting with `rustc` are reserved for use by the `rustc` compiler";
-                emit_feature_err(
-                    &self.session.parse_sess,
-                    sym::rustc_attrs,
-                    segment.ident.span,
-                    GateIssue::Language,
-                    msg,
-                );
+                feature_err(&self.session.parse_sess, sym::rustc_attrs, segment.ident.span, msg)
+                    .emit();
             }
         }
 

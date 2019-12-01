@@ -10,7 +10,7 @@ use rustc::middle::lang_items;
 use rustc::infer::opaque_types::may_define_opaque_type;
 
 use syntax::ast;
-use syntax::feature_gate::{self, GateIssue};
+use syntax::feature_gate;
 use syntax_pos::Span;
 use syntax::symbol::sym;
 use errors::DiagnosticBuilder;
@@ -830,13 +830,13 @@ fn check_method_receiver<'fcx, 'tcx>(
                     &fcx.tcx.sess.parse_sess,
                     sym::arbitrary_self_types,
                     span,
-                    GateIssue::Language,
                     &format!(
                         "`{}` cannot be used as the type of `self` without \
                             the `arbitrary_self_types` feature",
                         receiver_ty,
                     ),
-                ).help(HELP_FOR_SELF_TYPE)
+                )
+                .help(HELP_FOR_SELF_TYPE)
                 .emit();
             } else {
                 // Report error; would not have worked with `arbitrary_self_types`.

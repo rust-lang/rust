@@ -8,12 +8,12 @@ use crate::mbe::macro_parser::{Error, Failure, Success};
 use crate::mbe::macro_parser::{MatchedNonterminal, MatchedSeq, NamedParseResult};
 use crate::mbe::transcribe::transcribe;
 
+use rustc_feature::Features;
 use rustc_parse::parser::Parser;
 use rustc_parse::Directory;
 use syntax::ast;
 use syntax::attr::{self, TransparencyError};
 use syntax::edition::Edition;
-use syntax::feature_gate::Features;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};

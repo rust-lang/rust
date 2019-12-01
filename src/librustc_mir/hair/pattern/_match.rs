@@ -400,6 +400,25 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.0.iter().map(|p| *p)
     }
 
+    // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.
+    fn expand_or_pat(&self) -> Option<Vec<Self>> {
+        if self.is_empty() {
+            None
+        } else if let PatKind::Or { pats } = &*self.head().kind {
+            Some(
+                pats.iter()
+                    .map(|pat| {
+                        let mut new_patstack = PatStack::from_pattern(pat);
+                        new_patstack.0.extend_from_slice(&self.0[1..]);
+                        new_patstack
+                    })
+                    .collect(),
+            )
+        } else {
+            None
+        }
+    }
+
     /// This computes `D(self)`. See top of the file for explanations.
     fn specialize_wildcard(&self) -> Option<Self> {
         if self.head().is_wildcard() { Some(self.to_tail()) } else { None }
@@ -447,8 +466,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         Matrix(vec![])
     }
 
+    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
     pub fn push(&mut self, row: PatStack<'p, 'tcx>) {
-        self.0.push(row)
+        if let Some(rows) = row.expand_or_pat() {
+            self.0.extend(rows);
+        } else {
+            self.0.push(row);
+        }
     }
 
     /// Iterate over the first component of each row
@@ -472,12 +496,10 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         'a: 'q,
         'p: 'q,
     {
-        Matrix(
-            self.0
-                .iter()
-                .filter_map(|r| r.specialize_constructor(cx, constructor, ctor_wild_subpatterns))
-                .collect(),
-        )
+        self.0
+            .iter()
+            .filter_map(|r| r.specialize_constructor(cx, constructor, ctor_wild_subpatterns))
+            .collect()
     }
 }
 
@@ -529,7 +551,12 @@ impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     where
         T: IntoIterator<Item = PatStack<'p, 'tcx>>,
     {
-        Matrix(iter.into_iter().collect())
+        let mut matrix = Matrix::empty();
+        for x in iter {
+            // Using `push` ensures we correctly expand or-patterns.
+            matrix.push(x);
+        }
+        matrix
     }
 }
 
@@ -1602,6 +1629,15 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
+    // If the first pattern is an or-pattern, expand it.
+    if let Some(vs) = v.expand_or_pat() {
+        return vs
+            .into_iter()
+            .map(|v| is_useful(cx, matrix, &v, witness_preference, hir_id))
+            .find(|result| result.is_useful())
+            .unwrap_or(NotUseful);
+    }
+
     let (ty, span) = matrix
         .heads()
         .map(|r| (r.ty, r.span))
@@ -1813,9 +1849,7 @@ fn pat_constructor<'tcx>(
                 if slice.is_some() { VarLen(prefix, suffix) } else { FixedLen(prefix + suffix) };
             Some(Slice(Slice { array_len, kind }))
         }
-        PatKind::Or { .. } => {
-            bug!("support for or-patterns has not been fully implemented yet.");
-        }
+        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
 }
 
@@ -2404,9 +2438,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
         },
 
-        PatKind::Or { .. } => {
-            bug!("support for or-patterns has not been fully implemented yet.");
-        }
+        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     };
     debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
 

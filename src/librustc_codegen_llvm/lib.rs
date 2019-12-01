@@ -30,6 +30,7 @@ extern crate libc;
 #[macro_use] extern crate rustc;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
+extern crate rustc_feature;
 extern crate rustc_index;
 extern crate rustc_incremental;
 extern crate rustc_codegen_utils;

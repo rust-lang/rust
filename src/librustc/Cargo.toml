@@ -22,6 +22,7 @@ rustc-rayon = "0.3.0"
 rustc-rayon-core = "0.3.0"
 polonius-engine  = "0.10.0"
 rustc_apfloat = { path = "../librustc_apfloat" }
+rustc_feature = { path = "../librustc_feature" }
 rustc_target = { path = "../librustc_target" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }

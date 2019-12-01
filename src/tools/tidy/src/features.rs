@@ -231,7 +231,7 @@ pub fn collect_lang_features(base_src_path: &Path, bad: &mut bool) -> Features {
 }
 
 fn collect_lang_features_in(base: &Path, file: &str, bad: &mut bool) -> Features {
-    let path = base.join("libsyntax/feature_gate").join(file);
+    let path = base.join("librustc_feature").join(file);
     let contents = t!(fs::read_to_string(&path));
 
     // We allow rustc-internal features to omit a tracking issue.

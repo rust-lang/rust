@@ -2703,6 +2703,9 @@ impl<T> ExactSizeIterator for Drain<'_, T> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Drain<'_, T> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Drain<'_, T> {}
 

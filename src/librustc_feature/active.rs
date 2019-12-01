@@ -2,10 +2,9 @@
 
 use super::{State, Feature};
 
-use crate::edition::Edition;
-use crate::symbol::{Symbol, sym};
-
+use syntax_pos::edition::Edition;
 use syntax_pos::Span;
+use syntax_pos::symbol::{Symbol, sym};
 
 macro_rules! set {
     ($field: ident) => {{
@@ -37,7 +36,7 @@ macro_rules! declare_features {
             ),+];
 
         /// A set of features to be used by later passes.
-        #[derive(Clone)]
+        #[derive(Clone, Default)]
         pub struct Features {
             /// `#![feature]` attrs for language features, for error reporting.
             pub declared_lang_features: Vec<(Symbol, Span, Option<Symbol>)>,
@@ -50,17 +49,7 @@ macro_rules! declare_features {
         }
 
         impl Features {
-            pub fn new() -> Features {
-                Features {
-                    declared_lang_features: Vec::new(),
-                    declared_lib_features: Vec::new(),
-                    $($feature: false),+
-                }
-            }
-
-            pub fn walk_feature_fields<F>(&self, mut f: F)
-                where F: FnMut(&str, bool)
-            {
+            pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
             }
         }

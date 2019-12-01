@@ -1,4 +1,3 @@
-use std::prelude::v1::*;
 use core::num::bignum::tests::Big8x3 as Big;
 
 #[test]

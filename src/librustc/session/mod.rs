@@ -21,7 +21,6 @@ use errors::emitter::{Emitter, EmitterWriter};
 use errors::emitter::HumanReadableErrorType;
 use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
 use syntax::edition::Edition;
-use syntax::feature_gate;
 use errors::json::JsonEmitter;
 use syntax::source_map;
 use syntax::sess::ParseSess;
@@ -86,7 +85,7 @@ pub struct Session {
     /// `rustc_codegen_llvm::back::symbol_names` module for more information.
     pub crate_disambiguator: Once<CrateDisambiguator>,
 
-    features: Once<feature_gate::Features>,
+    features: Once<rustc_feature::Features>,
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
@@ -470,11 +469,11 @@ impl Session {
     /// DO NOT USE THIS METHOD if there is a TyCtxt available, as it circumvents
     /// dependency tracking. Use tcx.features() instead.
     #[inline]
-    pub fn features_untracked(&self) -> &feature_gate::Features {
+    pub fn features_untracked(&self) -> &rustc_feature::Features {
         self.features.get()
     }
 
-    pub fn init_features(&self, features: feature_gate::Features) {
+    pub fn init_features(&self, features: rustc_feature::Features) {
         self.features.set(features);
     }
 

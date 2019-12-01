@@ -12,12 +12,12 @@ use rustc::session::DiagnosticOutput;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_interface::interface;
 use rustc_driver::abort_on_err;
+use rustc_feature::UnstableFeatures;
 use rustc_resolve as resolve;
 
 use syntax::ast::CRATE_NODE_ID;
 use syntax::source_map;
 use syntax::attr;
-use syntax::feature_gate::UnstableFeatures;
 use errors::json::JsonEmitter;
 use syntax::symbol::sym;
 use syntax_pos::DUMMY_SP;

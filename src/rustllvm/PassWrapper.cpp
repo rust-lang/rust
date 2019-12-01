@@ -445,17 +445,6 @@ extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
   delete unwrap(TM);
 }
 
-// Unfortunately, LLVM doesn't expose a C API to add the corresponding analysis
-// passes for a target to a pass manager. We export that functionality through
-// this function.
-extern "C" void LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
-                                          LLVMPassManagerRef PMR,
-                                          LLVMModuleRef M) {
-  PassManagerBase *PM = unwrap(PMR);
-  PM->add(
-      createTargetTransformInfoWrapperPass(unwrap(TM)->getTargetIRAnalysis()));
-}
-
 extern "C" void LLVMRustConfigurePassManagerBuilder(
     LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
     bool MergeFunctions, bool SLPVectorize, bool LoopVectorize, bool PrepareForThinLTO,

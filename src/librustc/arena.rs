@@ -101,7 +101,7 @@ macro_rules! arena_types {
             [few] resolve_lifetimes: rustc::middle::resolve_lifetime::ResolveLifetimes,
             [few] lint_levels: rustc::lint::LintLevelMap,
             [few] stability_index: rustc::middle::stability::Index<'tcx>,
-            [few] features: syntax::feature_gate::Features,
+            [few] features: rustc_feature::Features,
             [few] all_traits: Vec<rustc::hir::def_id::DefId>,
             [few] privacy_access_levels: rustc::middle::privacy::AccessLevels,
             [few] target_features_whitelist: rustc_data_structures::fx::FxHashMap<

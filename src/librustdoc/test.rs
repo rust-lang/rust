@@ -1,4 +1,5 @@
 use rustc_data_structures::sync::Lrc;
+use rustc_feature::UnstableFeatures;
 use rustc_interface::interface;
 use rustc_target::spec::TargetTriple;
 use rustc::hir;
@@ -9,7 +10,6 @@ use syntax::ast;
 use syntax::with_globals;
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
-use syntax::feature_gate::UnstableFeatures;
 use std::env;
 use std::io::{self, Write};
 use std::panic;
