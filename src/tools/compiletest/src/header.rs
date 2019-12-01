@@ -641,8 +641,12 @@ impl TestProps {
 
     pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
         if !self.ignore_pass {
-            if let (mode @ Some(_), Some(_)) = (config.force_pass_mode, self.pass_mode) {
-                return mode;
+            if let (mode @ Some(_), Some(pm_file)) = (config.force_pass_mode, self.pass_mode) {
+                if pm_file != PassMode::RunFail {
+                    // HACK(Centril): See #66929. Ensure that `--pass check`
+                    // does not cause `// run-fail` tests to fail.
+                    return mode;
+                }
             }
         }
         self.pass_mode
