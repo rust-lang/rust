@@ -698,7 +698,7 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
-            self.parse_impl_assoc_ty()?
+            self.parse_assoc_ty()?
         } else if self.is_const_item() {
             self.parse_assoc_const()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(&vis), at_end)? {
@@ -748,31 +748,6 @@ impl<'a> Parser<'a> {
     fn is_const_item(&self) -> bool {
         self.token.is_keyword(kw::Const) &&
             !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
-    }
-
-    /// Parses the following grammar:
-    ///
-    ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
-    fn parse_impl_assoc_ty(&mut self) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
-        let ident = self.parse_ident()?;
-        let mut generics = self.parse_generics()?;
-
-        // Parse optional colon and param bounds.
-        let bounds = if self.eat(&token::Colon) {
-            self.parse_generic_bounds(None)?
-        } else {
-            Vec::new()
-        };
-        generics.where_clause = self.parse_where_clause()?;
-
-        let default = if self.eat(&token::Eq) {
-            Some(self.parse_ty()?)
-        } else {
-            None
-        };
-        self.expect_semi()?;
-
-        Ok((ident, ImplItemKind::TyAlias(bounds, default), generics))
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
@@ -894,7 +869,7 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
-            self.parse_trait_item_assoc_ty()?
+            self.parse_assoc_ty()?
         } else if self.is_const_item() {
             self.parse_assoc_const()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
@@ -937,7 +912,7 @@ impl<'a> Parser<'a> {
     /// Parses the following grammar:
     ///
     ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
-    fn parse_trait_item_assoc_ty(&mut self) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
+    fn parse_assoc_ty(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;
 
@@ -956,7 +931,7 @@ impl<'a> Parser<'a> {
         };
         self.expect_semi()?;
 
-        Ok((ident, TraitItemKind::TyAlias(bounds, default), generics))
+        Ok((ident, AssocItemKind::TyAlias(bounds, default), generics))
     }
 
     /// Parses a `UseTree`.
