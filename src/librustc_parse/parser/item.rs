@@ -710,13 +710,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Returns `true` if we are looking at `const ID`
-    /// (returns `false` for things like `const fn`, etc.).
-    fn is_const_item(&self) -> bool {
-        self.token.is_keyword(kw::Const) &&
-            !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
-    }
-
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, lo: Span, unsafety: Unsafety) -> PResult<'a, ItemInfo> {
         // Parse optional `auto` prefix.
@@ -864,6 +857,13 @@ impl<'a> Parser<'a> {
             kind,
             tokens: None,
         })
+    }
+
+    /// Returns `true` if we are looking at `const ID`
+    /// (returns `false` for things like `const fn`, etc.).
+    fn is_const_item(&self) -> bool {
+        self.token.is_keyword(kw::Const) &&
+            !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
     }
 
     /// This parses the grammar:
