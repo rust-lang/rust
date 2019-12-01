@@ -107,7 +107,7 @@ pub const INDENT_UNIT: usize = 4;
 /// it can scan the input text for comments to copy forward.
 pub fn print_crate<'a>(cm: &'a SourceMap,
                        sess: &ParseSess,
-                       krate: &hir::Crate<'a>,
+                       krate: &hir::Crate<'_>,
                        filename: FileName,
                        input: String,
                        ann: &'a dyn PpAnn) -> String {
