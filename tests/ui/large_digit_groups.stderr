@@ -6,11 +6,13 @@ LL |         0b1_10110_i64,
    |
    = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
-error: digit groups should be smaller
+error: digits grouped inconsistently by underscores
   --> $DIR/large_digit_groups.rs:23:9
    |
-LL |         0x1_23456_78901_usize,
-   |         ^^^^^^^^^^^^^^^^^^^^^ help: consider: `0x0123_4567_8901_usize`
+LL |         0xd_e_adbee_f_usize,
+   |         ^^^^^^^^^^^^^^^^^^^ help: consider: `0xdead_beef_usize`
+   |
+   = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
 error: digit groups should be smaller
   --> $DIR/large_digit_groups.rs:24:9

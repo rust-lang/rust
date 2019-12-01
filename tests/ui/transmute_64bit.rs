@@ -1,5 +1,4 @@
-//ignore-x86
-//no-ignore-x86_64
+// ignore-32bit
 
 #[warn(clippy::wrong_transmute)]
 fn main() {

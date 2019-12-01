@@ -24,6 +24,7 @@ declare_clippy_lint! {
     ///
     /// **Example:**
     /// ```rust
+    /// # #[cfg(target_pointer_width = "64")]
     /// #[repr(usize)]
     /// enum NonPortable {
     ///     X = 0x1_0000_0000,

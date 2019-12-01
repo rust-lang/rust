@@ -26,5 +26,11 @@ if rustc +master -Vv 2>/dev/null | grep -q "$RUST_COMMIT"; then
     exit 0
 fi
 
-rustup-toolchain-install-master -f -n master -c rustc-dev -- "$RUST_COMMIT"
+if [[ -n "$HOST_TOOLCHAIN" ]]; then
+    TOOLCHAIN=('--host' "$HOST_TOOLCHAIN")
+else
+    TOOLCHAIN=()
+fi
+
+rustup-toolchain-install-master -f -n master "${TOOLCHAIN[@]}" -c rustc-dev -- "$RUST_COMMIT"
 rustup override set master

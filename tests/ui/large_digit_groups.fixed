@@ -1,6 +1,6 @@
 // run-rustfix
-#[warn(clippy::large_digit_groups)]
-#[allow(unused_variables)]
+#![warn(clippy::large_digit_groups)]
+
 fn main() {
     macro_rules! mac {
         () => {
@@ -8,7 +8,7 @@ fn main() {
         };
     }
 
-    let good = (
+    let _good = (
         0b1011_i64,
         0o1_234_u32,
         0x1_234_567,
@@ -18,15 +18,14 @@ fn main() {
         1_234.123_f32,
         1.123_4_f32,
     );
-    let bad = (
+    let _bad = (
         0b11_0110_i64,
-        0x0123_4567_8901_usize,
+        0xdead_beef_usize,
         123_456_f32,
         123_456.12_f32,
         123_456.123_45_f64,
         123_456.123_456_f64,
     );
-
     // Ignore literals in macros
     let _ = mac!();
 }
