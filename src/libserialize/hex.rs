@@ -68,14 +68,7 @@ impl fmt::Display for FromHexError {
     }
 }
 
-impl error::Error for FromHexError {
-    fn description(&self) -> &str {
-        match *self {
-            InvalidHexCharacter(..) => "invalid character",
-            InvalidHexLength => "invalid length",
-        }
-    }
-}
+impl error::Error for FromHexError {}
 
 impl FromHex for str {
     /// Converts any hexadecimal encoded string (literal, `@`, `&`, or `~`)

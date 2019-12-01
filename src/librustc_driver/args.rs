@@ -2,7 +2,6 @@ use std::error;
 use std::fmt;
 use std::fs;
 use std::io;
-use std::str;
 
 pub fn arg_expand(arg: String) -> Result<Vec<String>, Error> {
     if arg.starts_with("@") {
@@ -36,8 +35,4 @@ impl fmt::Display for Error {
     }
 }
 
-impl error::Error for Error {
-    fn description(&self) -> &'static str {
-        "argument error"
-    }
-}
+impl error::Error for Error {}

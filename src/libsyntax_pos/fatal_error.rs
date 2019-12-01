@@ -23,8 +23,4 @@ impl std::fmt::Display for FatalError {
     }
 }
 
-impl std::error::Error for FatalError {
-    fn description(&self) -> &str {
-        "The parser has encountered a fatal error"
-    }
-}
+impl std::error::Error for FatalError {}

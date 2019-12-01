@@ -42,14 +42,10 @@ pub enum Error {
 }
 
 impl error::Error for Error {
-    fn description(&self) -> &str {
-        "failed to create TermInfo"
-    }
-
-    fn cause(&self) -> Option<&dyn error::Error> {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         use Error::*;
-        match *self {
-            IoError(ref e) => Some(e),
+        match self {
+            IoError(e) => Some(e),
             _ => None,
         }
     }

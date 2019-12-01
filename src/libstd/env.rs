@@ -284,6 +284,7 @@ impl fmt::Display for VarError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for VarError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {
             VarError::NotPresent => "environment variable not found",
@@ -526,6 +527,7 @@ impl fmt::Display for JoinPathsError {
 
 #[stable(feature = "env", since = "1.0.0")]
 impl Error for JoinPathsError {
+    #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
         self.inner.description()
     }

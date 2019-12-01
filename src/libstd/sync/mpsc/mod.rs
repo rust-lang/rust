@@ -1550,6 +1550,7 @@ impl<T> fmt::Display for SendError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> error::Error for SendError<T> {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "sending on a closed channel"
     }
@@ -1577,6 +1578,7 @@ impl<T> fmt::Display for TrySendError<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> error::Error for TrySendError<T> {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {
             TrySendError::Full(..) => "sending on a full channel",
@@ -1603,6 +1605,7 @@ impl fmt::Display for RecvError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for RecvError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         "receiving on a closed channel"
     }
@@ -1620,6 +1623,7 @@ impl fmt::Display for TryRecvError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for TryRecvError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {
             TryRecvError::Empty => "receiving on an empty channel",
@@ -1649,6 +1653,7 @@ impl fmt::Display for RecvTimeoutError {
 
 #[stable(feature = "mpsc_recv_timeout_error", since = "1.15.0")]
 impl error::Error for RecvTimeoutError {
+    #[allow(deprecated)]
     fn description(&self) -> &str {
         match *self {
             RecvTimeoutError::Timeout => "timed out waiting on channel",
