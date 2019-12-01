@@ -187,7 +187,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
                 // First arg: Message.
                 let msg = msg.description();
-                let msg = this.allocate_str(msg, MiriMemoryKind::Static.into());
+                let msg = this.allocate_str(msg, MiriMemoryKind::Env.into());
 
                 // Second arg: Caller location.
                 let location = this.alloc_caller_location_for_span(span);

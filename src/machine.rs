@@ -43,9 +43,9 @@ pub enum MiriMemoryKind {
     C,
     /// Windows `HeapAlloc` memory.
     WinHeap,
-    /// Part of env var emulation.
+    /// Memory for env vars and args, errno and other parts of the machine-managed environment.
     Env,
-    /// Statics.
+    /// Rust statics.
     Static,
 }
 
@@ -296,19 +296,20 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>> {
+    ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let stacks = if memory_extra.validate {
-            Some(Stacks::new_allocation(
+        let (stacks, base_tag) = if memory_extra.validate {
+            let (stacks, base_tag) = Stacks::new_allocation(
                 id,
                 alloc.size,
                 Rc::clone(&memory_extra.stacked_borrows),
                 kind,
-            ))
+            );
+            (Some(stacks), base_tag)
         } else {
-            // No stacks.
-            None
+            // No stacks, no tag.
+            (None, Tag::Untagged)
         };
         let mut stacked_borrows = memory_extra.stacked_borrows.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(
@@ -325,7 +326,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 stacked_borrows: stacks,
             },
         );
-        Cow::Owned(alloc)
+        (Cow::Owned(alloc), base_tag)
     }
 
     #[inline(always)]

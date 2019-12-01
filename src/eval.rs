@@ -93,7 +93,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             arg.push(0);
             argvs.push(
                 ecx.memory
-                    .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()),
+                    .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Env.into()),
             );
         }
         // Make an array with all these pointers, in the Miri memory.
@@ -144,7 +144,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Return place (in static memory so that it does not count as leak).
     let ret_place = ecx.allocate(
         ecx.layout_of(tcx.types.isize)?,
-        MiriMemoryKind::Static.into(),
+        MiriMemoryKind::Env.into(),
     );
     // Call start function.
     ecx.call_function(
@@ -156,7 +156,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 
     // Set the last_error to 0
     let errno_layout = ecx.layout_of(tcx.types.u32)?;
-    let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Static.into());
+    let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Env.into());
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
     ecx.machine.last_error = Some(errno_place);
 

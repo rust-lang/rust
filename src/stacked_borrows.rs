@@ -462,7 +462,7 @@ impl Stacks {
         size: Size,
         extra: MemoryExtra,
         kind: MemoryKind<MiriMemoryKind>,
-    ) -> Self {
+    ) -> (Self, Tag) {
         let (tag, perm) = match kind {
             MemoryKind::Stack =>
                 // New unique borrow. This tag is not accessible by the program,
@@ -472,15 +472,17 @@ impl Stacks {
                 // and in particular, *all* raw pointers.
                 (Tag::Tagged(extra.borrow_mut().new_ptr()), Permission::Unique),
             MemoryKind::Machine(MiriMemoryKind::Static) =>
-                // Statics are inherently shared, so we do not derive any uniqueness assumptions
-                // from direct accesses to a static. Thus, the base permission is `SharedReadWrite`.
+                // Static memory can be referenced by "global" pointers from `tcx`.
+                // Thus we call `static_base_ptr` such that the global pointers get the same tag
+                // as what we use here.
+                // The base pointer is not unique, so the base permission is `SharedReadWrite`.
                 (extra.borrow_mut().static_base_ptr(id), Permission::SharedReadWrite),
             _ =>
                 // Everything else we handle entirely untagged for now.
                 // FIXME: experiment with more precise tracking.
                 (Tag::Untagged, Permission::SharedReadWrite),
         };
-        Stacks::new(size, perm, tag, extra)
+        (Stacks::new(size, perm, tag, extra), tag)
     }
 
     #[inline(always)]
