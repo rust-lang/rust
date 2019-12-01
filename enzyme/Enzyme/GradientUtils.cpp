@@ -98,14 +98,16 @@
     }
   }
 
-bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
-  if (available.count(val)) return false;
+//! Given the option to recompute a value or re-use an old one, return true if we should recompute this value from scratch
+bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& available) {
+  if (available.count(val)) return true;
   if (isa<Argument>(val) || isa<Constant>(val)) {
-    return false;
+    return true;
   } else if (auto op = dyn_cast<CastInst>(val)) {
     return shouldRecompute(op->getOperand(0), available);
   } else if (isa<AllocaInst>(val)) {
-    return true;
+    //don't recompute an alloca inst (and thereby create a new allocation)
+    return false;
   } else if (auto op = dyn_cast<BinaryOperator>(val)) {
     bool a0 = shouldRecompute(op->getOperand(0), available);
     if (a0) {
@@ -115,44 +117,59 @@ bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
     if (a1) {
         //llvm::errs() << "need recompute: " << *op->getOperand(1) << "\n";
     }
-    return a0 || a1;
+    return a0 && a1;
   } else if (auto op = dyn_cast<CmpInst>(val)) {
-    return shouldRecompute(op->getOperand(0), available) || shouldRecompute(op->getOperand(1), available);
+    return shouldRecompute(op->getOperand(0), available) && shouldRecompute(op->getOperand(1), available);
   } else if (auto op = dyn_cast<SelectInst>(val)) {
-    return shouldRecompute(op->getOperand(0), available) || shouldRecompute(op->getOperand(1), available) || shouldRecompute(op->getOperand(2), available);
+    return shouldRecompute(op->getOperand(0), available) && shouldRecompute(op->getOperand(1), available) && shouldRecompute(op->getOperand(2), available);
   } else if (auto load = dyn_cast<LoadInst>(val)) {
     Value* idx = load->getOperand(0);
+
     while (!isa<Argument>(idx)) {
+
       if (auto gep = dyn_cast<GetElementPtrInst>(idx)) {
         for(auto &a : gep->indices()) {
-          if (shouldRecompute(a, available)) {
-                        //llvm::errs() << "not recomputable: " << *a << "\n";
-            return true;
+          if (!shouldRecompute(a, available)) {
+            //llvm::errs() << "not recomputable load " << *load << " as arg " << *gep << " has bad idx " << *a << "\n";
+            return false;
           }
         }
         idx = gep->getPointerOperand();
+
       } else if(auto cast = dyn_cast<CastInst>(idx)) {
         idx = cast->getOperand(0);
-      } else if(isa<CallInst>(idx)) {
-            //} else if(auto call = dyn_cast<CallInst>(idx)) {
-                //if (call->getCalledFunction()->getName() == "malloc")
-                //    return false;
-                //else
-        {
-                    //llvm::errs() << "unknown call " << *call << "\n";
+
+      } else if(auto ci = dyn_cast<CallInst>(idx)) {
+        if (!shouldRecompute(idx, available)) {
+            //llvm::errs() << "not recomputable load " << *load << " as arg " << *idx << "\n";
+            return false;
+        }
+        
+        if (ci->hasRetAttr(Attribute::ReadOnly) || ci->hasRetAttr(Attribute::ReadNone)) {
+          //llvm::errs() << "recomputable load " << *load << " from call readonly ret " << *ci << "\n";
           return true;
         }
+
+        //llvm::errs() << "not recomputable load " << *load << " as arg " << *idx << "\n";
+        return false;
+
       } else {
               //llvm::errs() << "not a gep " << *idx << "\n";
-        return true;
+        //llvm::errs() << "not recomputable load " << *load << " unknown as arg " << *idx << "\n";
+        return false;
       }
     }
+
     Argument* arg = cast<Argument>(idx);
-    if (! ( arg->hasAttribute(Attribute::ReadOnly) || arg->hasAttribute(Attribute::ReadNone)) ) {
+    if (arg->hasAttribute(Attribute::ReadOnly) || arg->hasAttribute(Attribute::ReadNone)) {
             //llvm::errs() << "argument " << *arg << " not marked read only\n";
+      //llvm::errs() << "recomputable load " << *load << " from as argument " << *arg << "\n";
       return true;
     }
+
+    //llvm::errs() << "not recomputable load " << *load << " unknown as argument " << *arg << "\n";
     return false;
+
   } else if (auto phi = dyn_cast<PHINode>(val)) {
     if (phi->getNumIncomingValues () == 1) {
       bool b = shouldRecompute(phi->getIncomingValue(0) , available);
@@ -162,19 +179,19 @@ bool shouldRecompute(Value* val, const ValueToValueMapTy& available) {
       return b;
     }
 
-    return true;
+    return false;
   } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
     switch(op->getIntrinsicID()) {
       case Intrinsic::sin:
       case Intrinsic::cos:
-      return false;
+      return true;
       return shouldRecompute(op->getOperand(0), available);
       default:
-      return true;
+      return false;
     }
   }
   //llvm::errs() << "unknown inst " << *val << " unable to recompute\n";
-  return true;
+  return false;
 }
 
 GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, llvm::Type* additionalArg) {
@@ -252,7 +269,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
     } else if (auto fn = dyn_cast<Function>(val)) {
       //! Todo allow tape propagation
       std::set<unsigned> uncacheable_args;
-      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/nullptr, uncacheable_args);
+      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/nullptr, uncacheable_args, /*map*/{});
       return BuilderM.CreatePointerCast(newf, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
       auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");
@@ -785,7 +802,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
     }
 
     if (!(*(this->can_modref_map))[inst]) {
-      if (!shouldRecompute(inst, available)) {
+      if (shouldRecompute(inst, available)) {
           auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/true);
           assert(op);
           return op;

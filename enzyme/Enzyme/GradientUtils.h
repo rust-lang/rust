@@ -122,6 +122,9 @@ public:
     assert(0 && "could not invert new inst");
     report_fatal_error("could not invert new inst");
   }
+  Instruction* getOriginal(Instruction* newinst) {
+    return cast<Instruction>(getOriginal((Value*)newinst));
+  }
 
   Value* getOriginalPointer(Value* newinst) {
     for(auto v: originalToNewFn) {
@@ -136,6 +139,8 @@ private:
   unsigned tapeidx;
   Value* tape;
 public:
+  bool shouldRecompute(Value* val, const ValueToValueMapTy& available);
+
   void replaceAWithB(Value* A, Value* B) {
       for(unsigned i=0; i<addedMallocs.size(); i++) {
         if (addedMallocs[i] == A) {
@@ -263,7 +268,7 @@ public:
     llvm::errs() << "end scope\n";
   }
 
-  Instruction* createAntiMalloc(CallInst *call) {
+  Instruction* createAntiMalloc(CallInst *call, unsigned idx) {
     assert(call->getParent()->getParent() == newFunc);
     PHINode* placeholder = cast<PHINode>(invertedPointers[call]);
 
@@ -289,7 +294,7 @@ public:
     replaceAWithB(placeholder, anti);
     erase(placeholder);
 
-    anti = cast<Instruction>(addMalloc(bb, anti));
+    anti = cast<Instruction>(addMalloc(bb, anti, idx));
     invertedPointers[call] = anti;
 
     if (tape == nullptr) {
@@ -315,22 +320,41 @@ public:
     return anti;
   }
 
-  Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc) {
+  unsigned getIndex(std::pair<Instruction*, std::string> idx, std::map<std::pair<Instruction*, std::string>, unsigned> &mapping) {
+    if (tape) {
+        if (mapping.find(idx) == mapping.end()) {
+            llvm::errs() << "idx: " << *idx.first << "," << idx.second << "\n";
+            assert(0 && "could not find index in mapping");
+        }
+        return mapping[idx];
+    } else {
+        if (mapping.find(idx) != mapping.end()) {
+            return mapping[idx];
+        }
+        mapping[idx] = tapeidx;
+        tapeidx++;
+        return mapping[idx];
+    }
+  }
+
+  Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc, unsigned idx) {
+
+
     if (tape) {
         if (!tape->getType()->isStructTy()) {
             llvm::errs() << "addMalloc incorrect tape type: " << *tape << "\n";
         }
         assert(tape->getType()->isStructTy());
-        if (tapeidx >= cast<StructType>(tape->getType())->getNumElements()) {
+        if (idx >= cast<StructType>(tape->getType())->getNumElements()) {
             llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
             llvm::errs() << "newFunc: " <<*newFunc << "\n";
             if (malloc)
             llvm::errs() << "malloc: " <<*malloc << "\n";
             llvm::errs() << "tape: " <<*tape << "\n";
-            llvm::errs() << "tapeidx: " << tapeidx << "\n";
+            llvm::errs() << "idx: " << idx << "\n";
         }
-        assert(tapeidx < cast<StructType>(tape->getType())->getNumElements());
-        Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {tapeidx}));
+        assert(idx < cast<StructType>(tape->getType())->getNumElements());
+        Instruction* ret = cast<Instruction>(BuilderQ.CreateExtractValue(tape, {idx}));
 
         if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
             if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
@@ -342,7 +366,6 @@ public:
 
 
         //Instruction* origret = ret;
-        tapeidx++;
 
         if (ret->getType()->isEmptyTy()) {
             
@@ -369,7 +392,7 @@ public:
             erase(ret);
             IRBuilder<> entryBuilder(inversionAllocs);
             entryBuilder.setFastMathFlags(getFast());
-            ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {tapeidx-1}));
+            ret = cast<Instruction>(entryBuilder.CreateExtractValue(tape, {idx}));
 
         
             //scopeMap[inst] = cache;
@@ -378,8 +401,9 @@ public:
                 if (!isa<PointerType>(innerType)) {
                     llvm::errs() << "fn: " << *BuilderQ.GetInsertBlock()->getParent() << "\n";
                     llvm::errs() << "bq insertblock: " << *BuilderQ.GetInsertBlock() << "\n";
-                    llvm::errs() << "ret: " << *ret << "\n";
+                    llvm::errs() << "ret: " << *ret << " type: " << *ret->getType() << "\n";
                     llvm::errs() << "innerType: " << *innerType << "\n";
+                    if (malloc) llvm::errs() << " malloc: " << *malloc << "\n";
                 }
                 assert(isa<PointerType>(innerType));
                 innerType = cast<PointerType>(innerType)->getElementType();
@@ -539,9 +563,9 @@ public:
                     for( auto u : users) {
                         if (auto li = dyn_cast<LoadInst>(u)) {
                             IRBuilder<> lb(li);
-                            llvm::errs() << "fixing li: " << *li << "\n";
-                            auto replacewith = lb.CreateExtractValue(tape, {tapeidx-1});
-                            llvm::errs() << "fixing with rw: " << *replacewith << "\n";
+                            //llvm::errs() << "fixing li: " << *li << "\n";
+                            auto replacewith = lb.CreateExtractValue(tape, {idx});
+                            //llvm::errs() << "fixing with rw: " << *replacewith << "\n";
                             li->replaceAllUsesWith(replacewith);
                             erase(li);
                         } else {
@@ -1166,7 +1190,11 @@ endCheck:
             } else {
                 ValueToValueMapTy emptyMap;
                 IRBuilder <> allocationBuilder(&allocationPreheaders[i]->back());
-                Value* limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                Value* limitMinus1 = nullptr;
+                
+                if (shouldRecompute(contexts[i].limit, emptyMap)) {
+                    limitMinus1 = unwrapM(contexts[i].limit, allocationBuilder, emptyMap, /*lookupIfAble*/false);
+                }
                 
                 // We have a loop with static bounds, but whose limit is not available to be computed at the current loop preheader (such as the innermost loop of triangular iteration domain)
                 // Handle this case like a dynamic loop
