@@ -18,6 +18,7 @@ pub mod util;
 mod proc_macro_decls;
 
 pub use interface::{run_compiler, Config};
+pub use queries::Queries;
 
 #[cfg(test)]
 mod tests;
