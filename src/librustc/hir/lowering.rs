@@ -1253,6 +1253,14 @@ impl<'a> LoweringContext<'a> {
         ty
     }
 
+    fn ty(&mut self, span: Span, kind: hir::TyKind) -> hir::Ty {
+        hir::Ty { hir_id: self.next_id(), kind, span }
+    }
+
+    fn ty_tup(&mut self, span: Span, tys: HirVec<hir::Ty>) -> hir::Ty {
+        self.ty(span, hir::TyKind::Tup(tys))
+    }
+
     fn lower_ty_direct(&mut self, t: &Ty, mut itctx: ImplTraitContext<'_>) -> hir::Ty {
         let kind = match t.kind {
             TyKind::Infer => hir::TyKind::Infer,
@@ -2084,12 +2092,9 @@ impl<'a> LoweringContext<'a> {
                     .iter()
                     .map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed()))
                     .collect();
-                let mk_tup = |this: &mut Self, tys, span| {
-                    hir::Ty { kind: hir::TyKind::Tup(tys), hir_id: this.next_id(), span }
-                };
                 (
                     hir::GenericArgs {
-                        args: hir_vec![GenericArg::Type(mk_tup(this, inputs, span))],
+                        args: hir_vec![GenericArg::Type(this.ty_tup(span, inputs))],
                         bindings: hir_vec![
                             hir::TypeBinding {
                                 hir_id: this.next_id(),
@@ -2102,7 +2107,7 @@ impl<'a> LoweringContext<'a> {
                                             ImplTraitContext::disallowed()
                                         ))
                                         .unwrap_or_else(||
-                                            P(mk_tup(this, hir::HirVec::new(), span))
+                                            P(this.ty_tup(span, hir::HirVec::new()))
                                         ),
                                 },
                                 span: output.as_ref().map_or(span, |ty| ty.span),
@@ -2474,17 +2479,13 @@ impl<'a> LoweringContext<'a> {
             })
         );
 
-        // Create the `Foo<...>` refernece itself. Note that the `type
+        // Create the `Foo<...>` reference itself. Note that the `type
         // Foo = impl Trait` is, internally, created as a child of the
         // async fn, so the *type parameters* are inherited.  It's
         // only the lifetime parameters that we must supply.
         let opaque_ty_ref = hir::TyKind::Def(hir::ItemId { id: opaque_ty_id }, generic_args.into());
-
-        hir::FunctionRetTy::Return(P(hir::Ty {
-            kind: opaque_ty_ref,
-            span: opaque_ty_span,
-            hir_id: self.next_id(),
-        }))
+        let opaque_ty = self.ty(opaque_ty_span, opaque_ty_ref);
+        hir::FunctionRetTy::Return(P(opaque_ty))
     }
 
     /// Transforms `-> T` into `Future<Output = T>`
@@ -2496,16 +2497,8 @@ impl<'a> LoweringContext<'a> {
     ) -> hir::GenericBound {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
-            FunctionRetTy::Ty(ty) => {
-                self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(fn_def_id)))
-            }
-            FunctionRetTy::Default(ret_ty_span) => {
-                P(hir::Ty {
-                    hir_id: self.next_id(),
-                    kind: hir::TyKind::Tup(hir_vec![]),
-                    span: *ret_ty_span,
-                })
-            }
+            FunctionRetTy::Ty(ty) => self.lower_ty(ty, ImplTraitContext::OpaqueTy(Some(fn_def_id))),
+            FunctionRetTy::Default(ret_ty_span) => P(self.ty_tup(*ret_ty_span, hir_vec![])),
         };
 
         // "<Output = T>"

@@ -295,6 +295,17 @@ impl<'a> AstValidator<'a> {
             )
             .emit();
     }
+
+    fn check_impl_assoc_type_no_bounds(&self, bounds: &[GenericBound]) {
+        let span = match bounds {
+            [] => return,
+            [b0] => b0.span(),
+            [b0, .., bl] => b0.span().to(bl.span()),
+        };
+        self.err_handler()
+            .struct_span_err(span, "bounds on associated `type`s in `impl`s have no effect")
+            .emit();
+    }
 }
 
 enum GenericPosition {
@@ -769,6 +780,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ImplItemKind::Method(sig, body) => {
                 self.check_impl_item_provided(ii.span, body, "function", " { <body> }");
                 self.check_fn_decl(&sig.decl);
+            }
+            ImplItemKind::TyAlias(bounds, body) => {
+                self.check_impl_item_provided(ii.span, body, "type", " = <type>;");
+                self.check_impl_assoc_type_no_bounds(bounds);
             }
             _ => {}
         }

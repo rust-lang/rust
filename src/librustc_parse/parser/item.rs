@@ -697,8 +697,7 @@ impl<'a> Parser<'a> {
         let vis = self.parse_visibility(FollowedByType::No)?;
         let defaultness = self.parse_defaultness();
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
-            let (name, ty, generics) = self.parse_type_alias()?;
-            (name, ast::ImplItemKind::TyAlias(ty), generics)
+            self.parse_impl_assoc_ty()?
         } else if self.is_const_item() {
             self.parse_impl_const()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(&vis), at_end)? {
@@ -764,6 +763,31 @@ impl<'a> Parser<'a> {
         };
         self.expect_semi()?;
         Ok((ident, ImplItemKind::Const(ty, expr), Generics::default()))
+    }
+
+    /// Parses the following grammar:
+    ///
+    ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
+    fn parse_impl_assoc_ty(&mut self) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
+        let ident = self.parse_ident()?;
+        let mut generics = self.parse_generics()?;
+
+        // Parse optional colon and param bounds.
+        let bounds = if self.eat(&token::Colon) {
+            self.parse_generic_bounds(None)?
+        } else {
+            Vec::new()
+        };
+        generics.where_clause = self.parse_where_clause()?;
+
+        let default = if self.eat(&token::Eq) {
+            Some(self.parse_ty()?)
+        } else {
+            None
+        };
+        self.expect_semi()?;
+
+        Ok((ident, ImplItemKind::TyAlias(bounds, default), generics))
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
@@ -924,7 +948,7 @@ impl<'a> Parser<'a> {
 
     /// Parses the following grammar:
     ///
-    ///     TraitItemAssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
+    ///     AssocTy = Ident ["<"...">"] [":" [GenericBounds]] ["where" ...] ["=" Ty]
     fn parse_trait_item_assoc_ty(&mut self) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
         let ident = self.parse_ident()?;
         let mut generics = self.parse_generics()?;

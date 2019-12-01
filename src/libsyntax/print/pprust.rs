@@ -1128,16 +1128,15 @@ impl<'a> State<'a> {
         self.s.word(";")
     }
 
-    fn print_associated_type(&mut self,
-                             ident: ast::Ident,
-                             bounds: Option<&ast::GenericBounds>,
-                             ty: Option<&ast::Ty>)
-                             {
+    fn print_associated_type(
+        &mut self,
+        ident: ast::Ident,
+        bounds: &ast::GenericBounds,
+        ty: Option<&ast::Ty>,
+    ) {
         self.word_space("type");
         self.print_ident(ident);
-        if let Some(bounds) = bounds {
-            self.print_type_bounds(":", bounds);
-        }
+        self.print_type_bounds(":", bounds);
         if let Some(ty) = ty {
             self.s.space();
             self.word_space("=");
@@ -1568,8 +1567,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::TraitItemKind::TyAlias(ref bounds, ref default) => {
-                self.print_associated_type(ti.ident, Some(bounds),
-                                           default.as_ref().map(|ty| &**ty));
+                self.print_associated_type(ti.ident, bounds, default.as_deref());
             }
             ast::TraitItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
@@ -1603,8 +1601,8 @@ impl<'a> State<'a> {
                     self.s.word(";");
                 }
             }
-            ast::ImplItemKind::TyAlias(ref ty) => {
-                self.print_associated_type(ii.ident, None, Some(ty));
+            ast::ImplItemKind::TyAlias(ref bounds, ref ty) => {
+                self.print_associated_type(ii.ident, bounds, ty.as_deref());
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);

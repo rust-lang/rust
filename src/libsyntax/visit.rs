@@ -627,8 +627,9 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
             visitor.visit_fn(FnKind::Method(impl_item.ident, sig, &impl_item.vis, body),
                              &sig.decl, impl_item.span, impl_item.id);
         }
-        ImplItemKind::TyAlias(ref ty) => {
-            visitor.visit_ty(ty);
+        ImplItemKind::TyAlias(ref bounds, ref ty) => {
+            walk_list!(visitor, visit_param_bound, bounds);
+            walk_list!(visitor, visit_ty, ty);
         }
         ImplItemKind::Macro(ref mac) => {
             visitor.visit_mac(mac);

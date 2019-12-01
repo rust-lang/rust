@@ -1127,7 +1127,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     impl_item.span,
                 );
             }
-            ast::ImplItemKind::TyAlias(ref ty) => {
+            ast::ImplItemKind::TyAlias(_, None) => {}
+            ast::ImplItemKind::TyAlias(_, Some(ref ty)) => {
                 // FIXME: uses of the assoc type should ideally point to this
                 // 'def' and the name here should be a ref to the def in the
                 // trait.

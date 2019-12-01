@@ -932,16 +932,21 @@ impl LoweringContext<'_> {
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
-            ImplItemKind::TyAlias(ref ty) => {
+            ImplItemKind::TyAlias(_, ref ty) => {
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
-                let kind = match ty.kind.opaque_top_hack() {
+                let kind = match ty {
                     None => {
-                        let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
-                        hir::ImplItemKind::TyAlias(ty)
+                        hir::ImplItemKind::TyAlias(P(self.ty(i.span, hir::TyKind::Err)))
                     }
-                    Some(bs) => {
-                        let bounds = self.lower_param_bounds(bs, ImplTraitContext::disallowed());
-                        hir::ImplItemKind::OpaqueTy(bounds)
+                    Some(ty) => match ty.kind.opaque_top_hack() {
+                        None => {
+                            let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                            hir::ImplItemKind::TyAlias(ty)
+                        }
+                        Some(bs) => {
+                            let bs = self.lower_param_bounds(bs, ImplTraitContext::disallowed());
+                            hir::ImplItemKind::OpaqueTy(bs)
+                        }
                     }
                 };
                 (generics, kind)
@@ -972,7 +977,10 @@ impl LoweringContext<'_> {
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
             kind: match &i.kind {
                 ImplItemKind::Const(..) => hir::AssocItemKind::Const,
-                ImplItemKind::TyAlias(ty) => match ty.kind.opaque_top_hack() {
+                ImplItemKind::TyAlias(_, ty) => match ty
+                    .as_deref()
+                    .and_then(|ty| ty.kind.opaque_top_hack())
+                {
                     None => hir::AssocItemKind::Type,
                     Some(_) => hir::AssocItemKind::OpaqueTy,
                 },

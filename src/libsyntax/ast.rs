@@ -1638,7 +1638,7 @@ pub struct ImplItem<K = ImplItemKind> {
 pub enum ImplItemKind  {
     Const(P<Ty>, Option<P<Expr>>),
     Method(FnSig, Option<P<Block>>),
-    TyAlias(P<Ty>),
+    TyAlias(GenericBounds, Option<P<Ty>>),
     Macro(Mac),
 }
 

@@ -612,8 +612,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "C-variadic functions are unstable");
                 }
             }
-            ast::ImplItemKind::TyAlias(ref ty) => {
-                self.check_impl_trait(ty);
+            ast::ImplItemKind::TyAlias(_, ref ty) => {
+                if let Some(ty) = ty {
+                    self.check_impl_trait(ty);
+                }
                 self.check_gat(&ii.generics, ii.span);
             }
             _ => {}
