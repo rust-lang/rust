@@ -78,17 +78,7 @@ impl OutlivesSuggestionBuilder<'a> {
         match name.source {
             RegionNameSource::NamedEarlyBoundRegion(..)
             | RegionNameSource::NamedFreeRegion(..)
-            | RegionNameSource::Static => {
-                // FIXME: This is a bit hacky. We should ideally have a semantic way for checking
-                // if the name is `'_`...
-                if name.name().with(|name| name != "'_") {
-                    debug!("Region {:?} is suggestable", name);
-                    true
-                } else {
-                    debug!("Region {:?} is NOT suggestable", name);
-                    false
-                }
-            }
+            | RegionNameSource::Static => true,
 
             // Don't give suggestions for upvars, closure return types, or other unnamable
             // regions.
@@ -98,7 +88,8 @@ impl OutlivesSuggestionBuilder<'a> {
             | RegionNameSource::MatchedAdtAndSegment(..)
             | RegionNameSource::AnonRegionFromUpvar(..)
             | RegionNameSource::AnonRegionFromOutput(..)
-            | RegionNameSource::AnonRegionFromYieldTy(..) => {
+            | RegionNameSource::AnonRegionFromYieldTy(..)
+            | RegionNameSource::AnonRegionFromAsyncFn(..) => {
                 debug!("Region {:?} is NOT suggestable", name);
                 false
             }
