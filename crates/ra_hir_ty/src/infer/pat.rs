@@ -170,7 +170,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     }
                     BindingMode::Move => inner_ty.clone(),
                 };
-                let bound_ty = self.resolve_ty_as_possible(&mut vec![], bound_ty);
+                let bound_ty = self.resolve_ty_as_possible(bound_ty);
                 self.write_pat_ty(pat, bound_ty);
                 return inner_ty;
             }
@@ -179,7 +179,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
         self.unify(&ty, expected);
-        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        let ty = self.resolve_ty_as_possible(ty);
         self.write_pat_ty(pat, ty.clone());
         ty
     }

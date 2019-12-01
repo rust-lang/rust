@@ -32,7 +32,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 TypeMismatch { expected: expected.ty.clone(), actual: ty.clone() },
             );
         }
-        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        let ty = self.resolve_ty_as_possible(ty);
         ty
     }
 
@@ -53,7 +53,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             expected.ty.clone()
         };
 
-        self.resolve_ty_as_possible(&mut vec![], ty)
+        self.resolve_ty_as_possible(ty)
     }
 
     fn infer_expr_inner(&mut self, tgt_expr: ExprId, expected: &Expectation) -> Ty {
@@ -94,7 +94,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
                 let pat_ty = match self.resolve_into_iter_item() {
                     Some(into_iter_item_alias) => {
-                        let pat_ty = self.new_type_var();
+                        let pat_ty = self.table.new_type_var();
                         let projection = ProjectionPredicate {
                             ty: pat_ty.clone(),
                             projection_ty: ProjectionTy {
@@ -103,7 +103,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             },
                         };
                         self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(&mut vec![], pat_ty)
+                        self.resolve_ty_as_possible(pat_ty)
                     }
                     None => Ty::Unknown,
                 };
@@ -128,7 +128,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
 
                 // add return type
-                let ret_ty = self.new_type_var();
+                let ret_ty = self.table.new_type_var();
                 sig_tys.push(ret_ty.clone());
                 let sig_ty = Ty::apply(
                     TypeCtor::FnPtr { num_args: sig_tys.len() as u16 - 1 },
@@ -167,7 +167,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Expr::Match { expr, arms } => {
                 let input_ty = self.infer_expr(*expr, &Expectation::none());
 
-                let mut result_ty = self.new_maybe_never_type_var();
+                let mut result_ty = self.table.new_maybe_never_type_var();
 
                 for arm in arms {
                     for &pat in &arm.pats {
@@ -283,7 +283,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 let ty = match self.resolve_future_future_output() {
                     Some(future_future_output_alias) => {
-                        let ty = self.new_type_var();
+                        let ty = self.table.new_type_var();
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
@@ -292,7 +292,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             },
                         };
                         self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(&mut vec![], ty)
+                        self.resolve_ty_as_possible(ty)
                     }
                     None => Ty::Unknown,
                 };
@@ -302,7 +302,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 let inner_ty = self.infer_expr(*expr, &Expectation::none());
                 let ty = match self.resolve_ops_try_ok() {
                     Some(ops_try_ok_alias) => {
-                        let ty = self.new_type_var();
+                        let ty = self.table.new_type_var();
                         let projection = ProjectionPredicate {
                             ty: ty.clone(),
                             projection_ty: ProjectionTy {
@@ -311,7 +311,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                             },
                         };
                         self.obligations.push(Obligation::Projection(projection));
-                        self.resolve_ty_as_possible(&mut vec![], ty)
+                        self.resolve_ty_as_possible(ty)
                     }
                     None => Ty::Unknown,
                 };
@@ -465,10 +465,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ty_app!(TypeCtor::Tuple { .. }, st) => st
                         .iter()
                         .cloned()
-                        .chain(repeat_with(|| self.new_type_var()))
+                        .chain(repeat_with(|| self.table.new_type_var()))
                         .take(exprs.len())
                         .collect::<Vec<_>>(),
-                    _ => (0..exprs.len()).map(|_| self.new_type_var()).collect(),
+                    _ => (0..exprs.len()).map(|_| self.table.new_type_var()).collect(),
                 };
 
                 for (expr, ty) in exprs.iter().zip(tys.iter_mut()) {
@@ -482,7 +482,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     ty_app!(TypeCtor::Array, st) | ty_app!(TypeCtor::Slice, st) => {
                         st.as_single().clone()
                     }
-                    _ => self.new_type_var(),
+                    _ => self.table.new_type_var(),
                 };
 
                 match array {
@@ -524,7 +524,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         };
         // use a new type variable if we got Ty::Unknown here
         let ty = self.insert_type_vars_shallow(ty);
-        let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+        let ty = self.resolve_ty_as_possible(ty);
         self.write_expr_ty(tgt_expr, ty.clone());
         ty
     }
@@ -553,7 +553,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         }
                     }
 
-                    let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+                    let ty = self.resolve_ty_as_possible(ty);
                     self.infer_pat(*pat, &ty, BindingMode::default());
                 }
                 Statement::Expr(expr) => {

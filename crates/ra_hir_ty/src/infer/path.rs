@@ -57,7 +57,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let typable: ValueTyDefId = match value {
             ValueNs::LocalBinding(pat) => {
                 let ty = self.result.type_of_pat.get(pat)?.clone();
-                let ty = self.resolve_ty_as_possible(&mut vec![], ty);
+                let ty = self.resolve_ty_as_possible(ty);
                 return Some(ty);
             }
             ValueNs::FunctionId(it) => it.into(),
@@ -211,7 +211,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                         // we're picking this method
                         let trait_substs = Substs::build_for_def(self.db, trait_)
                             .push(ty.clone())
-                            .fill(std::iter::repeat_with(|| self.new_type_var()))
+                            .fill(std::iter::repeat_with(|| self.table.new_type_var()))
                             .build();
                         let substs = Substs::build_for_def(self.db, item)
                             .use_parent_substs(&trait_substs)
