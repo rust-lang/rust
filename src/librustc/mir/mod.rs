@@ -2313,10 +2313,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
                         if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
-                                format!("[closure@{:?}]", hir_id)
+                                let substs = tcx.lift(&substs).unwrap();
+                                format!(
+                                    "[closure@{}]",
+                                    tcx.def_path_str_with_substs(def_id, substs),
+                                )
                             } else {
                                 format!("[closure@{:?}]", tcx.hir().span(hir_id))
                             };
