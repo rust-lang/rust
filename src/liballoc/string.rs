@@ -1982,45 +1982,6 @@ impl Add<&str> for String {
     }
 }
 
-// This had to be added to avoid breakage after adding `impl Add<char> for String`
-#[allow(missing_docs)]
-#[stable(feature = "extra_add_string_and_dbl_ref_str", since = "1.41.0")]
-impl Add<&&str> for String {
-    type Output = String;
-
-    #[inline]
-    fn add(mut self, other: &&str) -> String {
-        self.push_str(other);
-        self
-    }
-}
-
-// This had to be added to avoid breakage after adding `impl Add<char> for String`
-#[allow(missing_docs)]
-#[stable(feature = "extra_add_string_and_ref_string", since = "1.41.0")]
-impl Add<&String> for String {
-    type Output = String;
-
-    #[inline]
-    fn add(mut self, other: &String) -> String {
-        self.push_str(other);
-        self
-    }
-}
-
-// This had to be added to avoid breakage after adding `impl Add<char> for String`
-#[allow(missing_docs)]
-#[stable(feature = "extra_add_string_and_dbl_ref_string", since = "1.41.0")]
-impl Add<&&String> for String {
-    type Output = String;
-
-    #[inline]
-    fn add(mut self, other: &&String) -> String {
-        self.push_str(other);
-        self
-    }
-}
-
 /// Implements the `+` operator for concatenating a string and a char together.
 ///
 /// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
@@ -2067,6 +2028,21 @@ impl Add<char> for String {
     }
 }
 
+// This had to be added to avoid breakage after adding `impl Add<char> for String`
+macro_rules! string_add_impl_extras {
+    ($($t:ty)*) => ($(
+        #[stable(feature = "string_add_extras", since = "1.41.0")]
+        impl Add<$t> for String {
+            type Output = String;
+
+            #[inline]
+            fn add(mut self, other: $t) -> String { self.push_str(other); self }
+        }
+    )*)
+}
+
+string_add_impl_extras! { &&str &&&str &&&&str &String &&String &&&String &&&&String }
+
 /// Implements the `+=` operator for appending to a `String`.
 ///
 /// This has the same behavior as the [`push_str`][String::push_str] method.
@@ -2074,17 +2050,6 @@ impl Add<char> for String {
 impl AddAssign<&str> for String {
     #[inline]
     fn add_assign(&mut self, other: &str) {
-        self.push_str(other);
-    }
-}
-
-/// Implements the `+=` operator for appending to a `String`.
-///
-/// This has the same behavior as the [`push_str`][String::push_str] method.
-#[stable(feature = "string_add_assign_string", since = "1.41.0")]
-impl AddAssign<&String> for String {
-    #[inline]
-    fn add_assign(&mut self, other: &String) {
         self.push_str(other);
     }
 }
@@ -2099,6 +2064,20 @@ impl AddAssign<char> for String {
         self.push(other);
     }
 }
+
+// This had to be added to avoid breakage after adding `impl AddAssign<char> for String`
+macro_rules! string_addassign_impl_extras {
+    ($($t:ty)*) => ($(
+        #[stable(feature = "string_addassign_extras", since = "1.41.0")]
+        impl AddAssign<$t> for String {
+
+            #[inline]
+            fn add_assign(&mut self, other: $t) { self.push_str(other); }
+        }
+    )*)
+}
+
+string_addassign_impl_extras! { &String &&String &&&String &&&&String &&str &&&str &&&&str }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::Range<usize>> for String {
