@@ -1603,23 +1603,16 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-pub type TraitItem = ImplItem<TraitItemKind>;
+// FIXME(Centril): Remove all of these.
+pub type TraitItem = AssocItem<AssocItemKind>;
+pub type TraitItemKind = AssocItemKind;
+pub type ImplItem = AssocItem<AssocItemKind>;
+pub type ImplItemKind = AssocItemKind;
 
-/// Represents the kind of an item declaration within a trait declaration,
-/// possibly including a default implementation. A trait item is
-/// either required (meaning it doesn't have an implementation, just a
-/// signature) or provided (meaning it has a default implementation).
+/// Represents associated items.
+/// These include items in `impl` and `trait` definitions.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum TraitItemKind {
-    Const(P<Ty>, Option<P<Expr>>),
-    Method(FnSig, Option<P<Block>>),
-    TyAlias(GenericBounds, Option<P<Ty>>),
-    Macro(Mac),
-}
-
-/// Represents anything within an `impl` block.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct ImplItem<K = ImplItemKind> {
+pub struct AssocItem<K = ImplItemKind> {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
@@ -1634,11 +1627,25 @@ pub struct ImplItem<K = ImplItemKind> {
 }
 
 /// Represents various kinds of content within an `impl`.
+///
+/// The term "provided" in the variants below refers to the item having a default
+/// definition / body. Meanwhile, a "required" item lacks a definition / body.
+/// In an implementation, all items must be provided.
+/// The `Option`s below denote the bodies, where `Some(_)`
+/// means "provided" and conversely `None` means "required".
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ImplItemKind  {
+pub enum AssocItemKind  {
+    /// An associated constant, `const $ident: $ty $def?;` where `def ::= "=" $expr? ;`.
+    /// If `def` is parsed, then the associated constant is provided, and otherwise required.
     Const(P<Ty>, Option<P<Expr>>),
+
+    /// An associated function.
     Method(FnSig, Option<P<Block>>),
+
+    /// An associated type.
     TyAlias(GenericBounds, Option<P<Ty>>),
+
+    /// A macro expanding to an associated item.
     Macro(Mac),
 }
 
