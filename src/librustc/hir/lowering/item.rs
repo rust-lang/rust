@@ -5,6 +5,7 @@ use super::ImplTraitTypeIdVisitor;
 use super::LoweringContext;
 use super::ParamMode;
 
+use crate::arena::Arena;
 use crate::hir;
 use crate::hir::def::{DefKind, Res};
 use crate::hir::def_id::DefId;
@@ -1295,11 +1296,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
-    pub(super) fn lower_generics(
+    pub(super) fn lower_generics_mut(
         &mut self,
         generics: &Generics,
         itctx: ImplTraitContext<'_, 'hir>,
-    ) -> hir::Generics<'hir> {
+    ) -> GenericsCtor<'hir> {
         // Collect `?Trait` bounds in where clause and move them to parameter definitions.
         // FIXME: this could probably be done with less rightward drift. It also looks like two
         // control paths where `report_error` is called are the only paths that advance to after the
@@ -1355,11 +1356,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
         }
 
-        hir::Generics {
-            params: self.lower_generic_params(&generics.params, &add_bounds, itctx),
+        GenericsCtor {
+            params: self.lower_generic_params_mut(&generics.params, &add_bounds, itctx),
             where_clause: self.lower_where_clause(&generics.where_clause),
             span: generics.span,
         }
+    }
+
+    pub(super) fn lower_generics(
+        &mut self,
+        generics: &Generics,
+        itctx: ImplTraitContext<'_, 'hir>,
+    ) -> hir::Generics<'hir> {
+        let generics_ctor = self.lower_generics_mut(generics, itctx);
+        generics_ctor.into_generics(self.arena)
     }
 
     fn lower_where_clause(&mut self, wc: &WhereClause) -> hir::WhereClause<'hir> {
@@ -1383,13 +1393,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => {
                 self.with_in_scope_lifetime_defs(&bound_generic_params, |this| {
                     hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
-                        bound_generic_params: this.arena.alloc_from_iter(
-                            this.lower_generic_params(
-                                bound_generic_params,
-                                &NodeMap::default(),
-                                ImplTraitContext::disallowed(),
-                            )
-                            .into_iter(),
+                        bound_generic_params: this.lower_generic_params(
+                            bound_generic_params,
+                            &NodeMap::default(),
+                            ImplTraitContext::disallowed(),
                         ),
                         bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
                         bounds: this.arena.alloc_from_iter(bounds.iter().filter_map(|bound| {
@@ -1423,6 +1430,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     span,
                 })
             }
+        }
+    }
+}
+
+/// Helper struct for delayed construction of Generics.
+pub(super) struct GenericsCtor<'hir> {
+    pub(super) params: Vec<hir::GenericParam<'hir>>,
+    where_clause: hir::WhereClause<'hir>,
+    span: Span,
+}
+
+impl GenericsCtor<'hir> {
+    pub(super) fn into_generics(self, arena: &'hir Arena<'hir>) -> hir::Generics<'hir> {
+        hir::Generics {
+            params: arena.alloc_from_iter(self.params),
+            where_clause: self.where_clause,
+            span: self.span,
         }
     }
 }

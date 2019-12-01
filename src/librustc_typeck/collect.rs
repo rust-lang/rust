@@ -117,7 +117,7 @@ impl Visitor<'tcx> for CollectItemTypesVisitor<'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &'tcx hir::Generics<'tcx>) {
-        for param in &generics.params {
+        for param in generics.params {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => {}
                 hir::GenericParamKind::Type { default: Some(_), .. } => {
@@ -860,7 +860,7 @@ fn has_late_bound_regions<'tcx>(tcx: TyCtxt<'tcx>, node: Node<'tcx>) -> Option<S
             outer_index: ty::INNERMOST,
             has_late_bound_regions: None,
         };
-        for param in &generics.params {
+        for param in generics.params {
             if let GenericParamKind::Lifetime { .. } = param.kind {
                 if tcx.is_late_bound(param.hir_id) {
                     return Some(param.span);
@@ -2102,7 +2102,7 @@ fn explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericPredicat
 
     // Collect the predicates that were written inline by the user on each
     // type parameter (e.g., `<T: Foo>`).
-    for param in &ast_generics.params {
+    for param in ast_generics.params {
         if let GenericParamKind::Type { .. } = param.kind {
             let name = param.name.ident().name;
             let param_ty = ty::ParamTy::new(index, name).to_ty(tcx);

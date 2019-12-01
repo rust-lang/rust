@@ -893,7 +893,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // in-band-lifetimes introduced by generics or where-clauses
                     // wouldn't have been added yet.
                     let generics =
-                        this.lower_generics(generics, ImplTraitContext::Universal(&mut params));
+                        this.lower_generics_mut(generics, ImplTraitContext::Universal(&mut params));
                     let res = f(this, &mut params);
                     (params, (generics, res))
                 })
@@ -914,6 +914,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         lowered_generics.params = lowered_params.into();
 
+        let lowered_generics = lowered_generics.into_generics(self.arena);
         (lowered_generics, res)
     }
 
@@ -1224,17 +1225,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
-            TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
-                this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
-                    hir::TyKind::BareFn(
-                        this.arena.alloc(hir::BareFnTy {
-                            generic_params: this.arena.alloc_from_iter(
-                                this.lower_generic_params(
-                                    &f.generic_params,
-                                    &NodeMap::default(),
-                                    ImplTraitContext::disallowed(),
-                                )
-                                .into_iter(),
+            TyKind::BareFn(ref f) => {
+                self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
+                    this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
+                        hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
+                            generic_params: this.lower_generic_params(
+                                &f.generic_params,
+                                &NodeMap::default(),
+                                ImplTraitContext::disallowed(),
                             ),
                             unsafety: f.unsafety,
                             abi: this.lower_extern(f.ext),
@@ -1242,10 +1240,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             param_names: this.arena.alloc_from_iter(
                                 this.lower_fn_params_to_names(&f.decl).into_iter(),
                             ),
-                        }),
-                    )
+                        }))
+                    })
                 })
-            }),
+            }
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => {
                 hir::TyKind::Tup(self.arena.alloc_from_iter(
@@ -1414,12 +1412,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             opaque_ty_def_index,
             &hir_bounds,
         );
+        let lifetime_defs = self.arena.alloc_from_iter(lifetime_defs.into_iter());
 
         debug!("lower_opaque_impl_trait: lifetimes={:#?}", lifetimes,);
 
         debug!("lower_opaque_impl_trait: lifetime_defs={:#?}", lifetime_defs,);
 
-        self.with_hir_id_owner(opaque_ty_node_id, |lctx| {
+        self.with_hir_id_owner(opaque_ty_node_id, move |lctx| {
             let opaque_ty_item = hir::OpaqueTy {
                 generics: hir::Generics {
                     params: lifetime_defs,
@@ -1978,7 +1977,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             hir_id: Some(id),
             res: Some(self.lower_res(res)),
             infer_args,
-            args: if generic_args.is_empty() { None } else { Some(self.arena.alloc(generic_args)) },
+            args: if generic_args.is_empty() {
+                None
+            } else {
+                Some(self.arena.alloc(generic_args.into_generic_args(self.arena)))
+            },
         }
     }
 
@@ -1987,7 +1990,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         data: &AngleBracketedArgs,
         param_mode: ParamMode,
         mut itctx: ImplTraitContext<'_, 'hir>,
-    ) -> (hir::GenericArgs<'hir>, bool) {
+    ) -> (GenericArgsCtor<'hir>, bool) {
         let &AngleBracketedArgs { ref args, ref constraints, .. } = data;
         let has_non_lt_args = args.iter().any(|arg| match arg {
             ast::GenericArg::Lifetime(_) => false,
@@ -1995,7 +1998,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ast::GenericArg::Const(_) => true,
         });
         (
-            hir::GenericArgs {
+            GenericArgsCtor {
                 args: args.iter().map(|a| self.lower_generic_arg(a, itctx.reborrow())).collect(),
                 bindings: self.arena.alloc_from_iter(
                     constraints.iter().map(|b| self.lower_assoc_ty_constraint(b, itctx.reborrow())),
@@ -2009,7 +2012,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_parenthesized_parameter_data(
         &mut self,
         data: &ParenthesizedArgs,
-    ) -> (hir::GenericArgs<'hir>, bool) {
+    ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has
         // a hidden lifetime parameter. This is needed for backwards
@@ -2024,7 +2027,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 FunctionRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
                 FunctionRetTy::Default(_) => this.arena.alloc(this.ty_tup(span, &[])),
             };
-            let args = hir_vec![GenericArg::Type(this.ty_tup(span, inputs))];
+            let args = vec![GenericArg::Type(this.ty_tup(span, inputs))];
             let binding = hir::TypeBinding {
                 hir_id: this.next_id(),
                 ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
@@ -2032,7 +2035,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 kind: hir::TypeBindingKind::Equality { ty: output_ty },
             };
             (
-                hir::GenericArgs { args, bindings: arena_vec![this; binding], parenthesized: true },
+                GenericArgsCtor { args, bindings: arena_vec![this; binding], parenthesized: true },
                 false,
             )
         })
@@ -2310,12 +2313,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             debug!("lower_async_fn_ret_ty: lifetimes_to_define={:#?}", this.lifetimes_to_define);
             debug!("lower_async_fn_ret_ty: lifetime_params={:#?}", lifetime_params);
 
-            let generic_params = lifetime_params
-                .iter()
-                .map(|(span, hir_name)| {
+            let generic_params =
+                this.arena.alloc_from_iter(lifetime_params.iter().map(|(span, hir_name)| {
                     this.lifetime_to_generic_param(*span, *hir_name, opaque_ty_def_index)
-                })
-                .collect();
+                }));
 
             let opaque_ty_item = hir::OpaqueTy {
                 generics: hir::Generics {
@@ -2395,7 +2396,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // "<Output = T>"
         let future_params = self.arena.alloc(hir::GenericArgs {
-            args: HirVec::new(),
+            args: &[],
             bindings: arena_vec![self; hir::TypeBinding {
                 ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
                 kind: hir::TypeBindingKind::Equality { ty: output_ty },
@@ -2474,16 +2475,25 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         hir::Lifetime { hir_id: self.lower_node_id(id), span, name }
     }
 
-    fn lower_generic_params(
+    fn lower_generic_params_mut(
         &mut self,
         params: &[GenericParam],
         add_bounds: &NodeMap<Vec<GenericBound>>,
         mut itctx: ImplTraitContext<'_, 'hir>,
-    ) -> HirVec<hir::GenericParam<'hir>> {
+    ) -> Vec<hir::GenericParam<'hir>> {
         params
             .iter()
             .map(|param| self.lower_generic_param(param, add_bounds, itctx.reborrow()))
             .collect()
+    }
+
+    fn lower_generic_params(
+        &mut self,
+        params: &[GenericParam],
+        add_bounds: &NodeMap<Vec<GenericBound>>,
+        itctx: ImplTraitContext<'_, 'hir>,
+    ) -> &'hir [hir::GenericParam<'hir>] {
+        self.arena.alloc_from_iter(self.lower_generic_params_mut(params, add_bounds, itctx))
     }
 
     fn lower_generic_param(
@@ -2593,11 +2603,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             this.lower_trait_ref(&p.trait_ref, itctx)
         });
 
-        hir::PolyTraitRef {
-            bound_generic_params: self.arena.alloc_from_iter(bound_generic_params.into_iter()),
-            trait_ref,
-            span: p.span,
-        }
+        hir::PolyTraitRef { bound_generic_params, trait_ref, span: p.span }
     }
 
     fn lower_mt(&mut self, mt: &MutTy, itctx: ImplTraitContext<'_, 'hir>) -> hir::MutTy<'hir> {
@@ -3303,4 +3309,25 @@ fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body<'hir>>) -> Vec<hir::BodyId>
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
     body_ids.sort_by_key(|b| bodies[b].value.span);
     body_ids
+}
+
+/// Helper struct for delayed construction of GenericArgs.
+struct GenericArgsCtor<'hir> {
+    args: Vec<hir::GenericArg<'hir>>,
+    bindings: &'hir [hir::TypeBinding<'hir>],
+    parenthesized: bool,
+}
+
+impl GenericArgsCtor<'hir> {
+    fn is_empty(&self) -> bool {
+        self.args.is_empty() && self.bindings.is_empty() && !self.parenthesized
+    }
+
+    fn into_generic_args(self, arena: &'hir Arena<'hir>) -> hir::GenericArgs<'hir> {
+        hir::GenericArgs {
+            args: arena.alloc_from_iter(self.args),
+            bindings: self.bindings,
+            parenthesized: self.parenthesized,
+        }
+    }
 }

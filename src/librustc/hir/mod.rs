@@ -41,15 +41,6 @@ use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 /// of `Vec` to avoid keeping extra capacity.
 pub type HirVec<T> = P<[T]>;
 
-macro_rules! hir_vec {
-    ($elem:expr; $n:expr) => (
-        $crate::hir::HirVec::from(vec![$elem; $n])
-    );
-    ($($x:expr),*) => (
-        $crate::hir::HirVec::from(vec![$($x),*])
-    );
-}
-
 pub mod check_attr;
 pub mod def;
 pub mod def_id;
@@ -415,7 +406,7 @@ impl GenericArg<'_> {
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct GenericArgs<'hir> {
     /// The generic arguments for this path segment.
-    pub args: HirVec<GenericArg<'hir>>,
+    pub args: &'hir [GenericArg<'hir>],
     /// Bindings (equality constraints) on associated types, if present.
     /// E.g., `Foo<A = Bar>`.
     pub bindings: &'hir [TypeBinding<'hir>],
@@ -427,7 +418,7 @@ pub struct GenericArgs<'hir> {
 
 impl GenericArgs<'_> {
     pub const fn none() -> Self {
-        Self { args: HirVec::new(), bindings: &[], parenthesized: false }
+        Self { args: &[], bindings: &[], parenthesized: false }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -436,7 +427,7 @@ impl GenericArgs<'_> {
 
     pub fn inputs(&self) -> &[Ty<'_>] {
         if self.parenthesized {
-            for arg in &self.args {
+            for arg in self.args {
                 match arg {
                     GenericArg::Lifetime(_) => {}
                     GenericArg::Type(ref ty) => {
@@ -458,7 +449,7 @@ impl GenericArgs<'_> {
         // presence of this method will be a constant reminder.
         let mut own_counts: GenericParamCount = Default::default();
 
-        for arg in &self.args {
+        for arg in self.args {
             match arg {
                 GenericArg::Lifetime(_) => own_counts.lifetimes += 1,
                 GenericArg::Type(_) => own_counts.types += 1,
@@ -555,7 +546,7 @@ pub struct GenericParamCount {
 /// of a function, enum, trait, etc.
 #[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub struct Generics<'hir> {
-    pub params: HirVec<GenericParam<'hir>>,
+    pub params: &'hir [GenericParam<'hir>],
     pub where_clause: WhereClause<'hir>,
     pub span: Span,
 }
@@ -563,7 +554,7 @@ pub struct Generics<'hir> {
 impl Generics<'hir> {
     pub const fn empty() -> Generics<'hir> {
         Generics {
-            params: HirVec::new(),
+            params: &[],
             where_clause: WhereClause { predicates: &[], span: DUMMY_SP },
             span: DUMMY_SP,
         }
@@ -575,7 +566,7 @@ impl Generics<'hir> {
         // presence of this method will be a constant reminder.
         let mut own_counts: GenericParamCount = Default::default();
 
-        for param in &self.params {
+        for param in self.params {
             match param.kind {
                 GenericParamKind::Lifetime { .. } => own_counts.lifetimes += 1,
                 GenericParamKind::Type { .. } => own_counts.types += 1,
@@ -587,7 +578,7 @@ impl Generics<'hir> {
     }
 
     pub fn get_named(&self, name: Symbol) -> Option<&GenericParam<'_>> {
-        for param in &self.params {
+        for param in self.params {
             if name == param.name.ident().name {
                 return Some(param);
             }
@@ -2128,7 +2119,7 @@ pub struct InlineAsmOutput {
 }
 
 // NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
-// it needs to be `Clone` and use plain `Vec<T>` instead of `HirVec<T>`.
+// it needs to be `Clone` and use plain `Vec<T>` instead of arena-allocated slice.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable, PartialEq)]
 pub struct InlineAsmInner {
     pub asm: Symbol,

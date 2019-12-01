@@ -672,7 +672,7 @@ pub fn walk_generic_args<'v, V: Visitor<'v>>(
     _path_span: Span,
     generic_args: &'v GenericArgs<'v>,
 ) {
-    walk_list!(visitor, visit_generic_arg, &generic_args.args);
+    walk_list!(visitor, visit_generic_arg, generic_args.args);
     walk_list!(visitor, visit_assoc_type_binding, generic_args.bindings);
 }
 
@@ -780,7 +780,7 @@ pub fn walk_generic_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Generi
 }
 
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics<'v>) {
-    walk_list!(visitor, visit_generic_param, &generics.params);
+    walk_list!(visitor, visit_generic_param, generics.params);
     walk_list!(visitor, visit_where_predicate, generics.where_clause.predicates);
 }
 

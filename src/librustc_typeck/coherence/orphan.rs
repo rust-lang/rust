@@ -83,7 +83,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                 }
                 Err(traits::OrphanCheckErr::UncoveredTy(param_ty, local_type)) => {
                     let mut sp = sp;
-                    for param in &generics.params {
+                    for param in generics.params {
                         if param.name.ident().to_string() == param_ty.to_string() {
                             sp = param.span;
                         }
