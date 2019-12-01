@@ -2042,10 +2042,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             )
         });
         let ty = ty.map(|ty| -> &'hir hir::Ty { self.arena.alloc(ty.into_inner()) });
-        let init = l
-            .init
-            .as_ref()
-            .map(|e| -> &'hir hir::Expr<'hir> { self.arena.alloc(self.lower_expr(e)) });
+        let init = l.init.as_ref().map(|e| -> &'hir hir::Expr<'hir> { self.lower_expr(e) });
         (
             hir::Local {
                 hir_id: self.lower_node_id(l.id),
@@ -2603,7 +2600,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         for (index, stmt) in b.stmts.iter().enumerate() {
             if index == b.stmts.len() - 1 {
                 if let StmtKind::Expr(ref e) = stmt.kind {
-                    expr = Some(self.arena.alloc(self.lower_expr(e)));
+                    expr = Some(self.lower_expr(e));
                 } else {
                     stmts.extend(self.lower_stmt(stmt));
                 }
@@ -2637,7 +2634,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let node = self.lower_pat_ident(p, binding_mode, ident, lower_sub);
                 node
             }
-            PatKind::Lit(ref e) => hir::PatKind::Lit(self.arena.alloc(self.lower_expr(e))),
+            PatKind::Lit(ref e) => hir::PatKind::Lit(self.lower_expr(e)),
             PatKind::TupleStruct(ref path, ref pats) => {
                 let qpath = self.lower_qpath(
                     p.id,
@@ -2687,8 +2684,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             PatKind::Box(ref inner) => hir::PatKind::Box(self.lower_pat(inner)),
             PatKind::Ref(ref inner, mutbl) => hir::PatKind::Ref(self.lower_pat(inner), mutbl),
             PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => hir::PatKind::Range(
-                self.arena.alloc(self.lower_expr(e1)),
-                self.arena.alloc(self.lower_expr(e2)),
+                self.lower_expr(e1),
+                self.lower_expr(e2),
                 self.lower_range_end(end),
             ),
             PatKind::Slice(ref pats) => self.lower_pat_slice(pats),
@@ -2916,8 +2913,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     })
                     .collect();
             }
-            StmtKind::Expr(ref e) => hir::StmtKind::Expr(self.arena.alloc(self.lower_expr(e))),
-            StmtKind::Semi(ref e) => hir::StmtKind::Semi(self.arena.alloc(self.lower_expr(e))),
+            StmtKind::Expr(ref e) => hir::StmtKind::Expr(self.lower_expr(e)),
+            StmtKind::Semi(ref e) => hir::StmtKind::Semi(self.lower_expr(e)),
             StmtKind::Mac(..) => panic!("shouldn't exist here"),
         };
         smallvec![hir::Stmt { hir_id: self.lower_node_id(s.id), kind, span: s.span }]
@@ -2975,7 +2972,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.stmt(span, hir::StmtKind::Local(self.arena.alloc(local)))
     }
 
-    fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> hir::Block<'hir> {
+    fn block_expr(&mut self, expr: &'hir hir::Expr<'hir>) -> &'hir hir::Block<'hir> {
         self.block_all(expr.span, &[], Some(expr))
     }
 
@@ -2984,21 +2981,22 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         stmts: &'hir [hir::Stmt<'hir>],
         expr: Option<&'hir hir::Expr<'hir>>,
-    ) -> hir::Block<'hir> {
-        hir::Block {
+    ) -> &'hir hir::Block<'hir> {
+        let blk = hir::Block {
             stmts,
             expr,
             hir_id: self.next_id(),
             rules: hir::DefaultBlock,
             span,
             targeted_by_break: false,
-        }
+        };
+        self.arena.alloc(blk)
     }
 
     /// Constructs a `true` or `false` literal pattern.
     fn pat_bool(&mut self, span: Span, val: bool) -> &'hir hir::Pat<'hir> {
         let expr = self.expr_bool(span, val);
-        self.pat(span, hir::PatKind::Lit(self.arena.alloc(expr)))
+        self.pat(span, hir::PatKind::Lit(expr))
     }
 
     fn pat_ok(&mut self, span: Span, pat: &'hir hir::Pat<'hir>) -> &'hir hir::Pat<'hir> {

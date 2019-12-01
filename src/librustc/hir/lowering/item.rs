@@ -1046,7 +1046,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             (
                 &[],
                 match expr {
-                    Some(expr) => this.lower_expr(expr),
+                    Some(expr) => this.lower_expr_mut(expr),
                     None => this.expr_err(span),
                 },
             )
@@ -1230,10 +1230,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     let body = this.block_all(
                         desugared_span,
                         this.arena.alloc_from_iter(statements),
-                        Some(this.arena.alloc(user_body)),
+                        Some(user_body),
                     );
 
-                    this.expr_block(this.arena.alloc(body), AttrVec::new())
+                    this.expr_block(body, AttrVec::new())
                 },
             );
 
