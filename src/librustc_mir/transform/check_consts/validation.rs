@@ -560,7 +560,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
         trace!("visit_statement: statement={:?} location={:?}", statement, location);
 
         match statement.kind {
-            StatementKind::Assign(..) => {
+            StatementKind::Assign(..) | StatementKind::SetDiscriminant { .. } => {
                 self.super_statement(statement, location);
             }
             StatementKind::FakeRead(FakeReadCause::ForMatchedPlace, _) => {
@@ -568,7 +568,6 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
             // FIXME(eddyb) should these really do nothing?
             StatementKind::FakeRead(..) |
-            StatementKind::SetDiscriminant { .. } |
             StatementKind::StorageLive(_) |
             StatementKind::StorageDead(_) |
             StatementKind::InlineAsm {..} |
