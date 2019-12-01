@@ -19,7 +19,7 @@ use crate::{
     db::DefDatabase,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        raw, CrateDefMap, ModuleData, Resolution, ResolveMode,
+        raw, BuiltinShadowMode, CrateDefMap, ModuleData, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
     per_ns::PerNs,
@@ -299,6 +299,7 @@ where
                 ResolveMode::Import,
                 module_id,
                 &import.path,
+                BuiltinShadowMode::Module,
             );
 
             (res.resolved_def, res.reached_fixedpoint)
@@ -477,6 +478,7 @@ where
                 ResolveMode::Other,
                 *module_id,
                 path,
+                BuiltinShadowMode::Module,
             );
 
             if let Some(def) = resolved_res.resolved_def.take_macros() {
