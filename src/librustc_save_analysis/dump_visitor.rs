@@ -1110,7 +1110,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     impl_item.id,
                     impl_item.ident,
                     &ty,
-                    Some(expr),
+                    expr.as_deref(),
                     impl_id,
                     impl_item.vis.clone(),
                     &impl_item.attrs,

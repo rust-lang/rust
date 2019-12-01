@@ -1599,7 +1599,7 @@ impl<'a> State<'a> {
         self.print_defaultness(ii.defaultness);
         match ii.kind {
             ast::ImplItemKind::Const(ref ty, ref expr) => {
-                self.print_associated_const(ii.ident, ty, Some(expr), &ii.vis);
+                self.print_associated_const(ii.ident, ty, expr.as_deref(), &ii.vis);
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.head("");

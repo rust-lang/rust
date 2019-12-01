@@ -1635,8 +1635,8 @@ pub struct ImplItem<K = ImplItemKind> {
 
 /// Represents various kinds of content within an `impl`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ImplItemKind {
-    Const(P<Ty>, P<Expr>),
+pub enum ImplItemKind  {
+    Const(P<Ty>, Option<P<Expr>>),
     Method(FnSig, P<Block>),
     TyAlias(P<Ty>),
     Macro(Mac),

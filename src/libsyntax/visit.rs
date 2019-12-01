@@ -617,7 +617,7 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
     match impl_item.kind {
         ImplItemKind::Const(ref ty, ref expr) => {
             visitor.visit_ty(ty);
-            visitor.visit_expr(expr);
+            walk_list!(visitor, visit_expr, expr);
         }
         ImplItemKind::Method(ref sig, ref body) => {
             visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), body),

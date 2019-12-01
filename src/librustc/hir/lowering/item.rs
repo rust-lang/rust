@@ -899,7 +899,13 @@ impl LoweringContext<'_> {
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::ImplItemKind::Const(
                     self.lower_ty(ty, ImplTraitContext::disallowed()),
-                    self.lower_const_body(expr),
+                    match expr {
+                        Some(expr) => self.lower_const_body(expr),
+                        None => self.lower_body(|this| (
+                            hir_vec![],
+                            this.expr(i.span, hir::ExprKind::Err, ThinVec::new()),
+                        )),
+                    }
                 ),
             ),
             ImplItemKind::Method(ref sig, ref body) => {

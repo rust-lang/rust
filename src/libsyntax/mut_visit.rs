@@ -981,7 +981,7 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
     match kind  {
         ImplItemKind::Const(ty, expr) => {
             visitor.visit_ty(ty);
-            visitor.visit_expr(expr);
+            visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
         ImplItemKind::Method(sig, body) => {
             visit_fn_sig(sig, visitor);

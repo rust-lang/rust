@@ -756,13 +756,16 @@ impl<'a> Parser<'a> {
     ///     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
     fn parse_impl_const(&mut self) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
         self.expect_keyword(kw::Const)?;
-        let name = self.parse_ident()?;
+        let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
-        let typ = self.parse_ty()?;
-        self.expect(&token::Eq)?;
-        let expr = self.parse_expr()?;
+        let ty = self.parse_ty()?;
+        let expr = if self.eat(&token::Eq) {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
         self.expect_semi()?;
-        Ok((name, ImplItemKind::Const(typ, expr), Generics::default()))
+        Ok((ident, ImplItemKind::Const(ty, expr), Generics::default()))
     }
 
     /// Parses `auto? trait Foo { ... }` or `trait Foo = Bar;`.
@@ -912,13 +915,13 @@ impl<'a> Parser<'a> {
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
-        let default = if self.eat(&token::Eq) {
+        let expr = if self.eat(&token::Eq) {
             Some(self.parse_expr()?)
         } else {
             None
         };
         self.expect_semi()?;
-        Ok((ident, TraitItemKind::Const(ty, default), Generics::default()))
+        Ok((ident, TraitItemKind::Const(ty, expr), Generics::default()))
     }
 
     /// Parses the following grammar:

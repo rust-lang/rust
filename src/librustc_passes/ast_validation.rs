@@ -259,12 +259,12 @@ impl<'a> AstValidator<'a> {
                 !arr.contains(&attr.name_or_empty()) && attr::is_builtin_attr(attr)
             })
             .for_each(|attr| if attr.is_doc_comment() {
-                let mut err = self.err_handler().struct_span_err(
+                self.err_handler().struct_span_err(
                     attr.span,
                     "documentation comments cannot be applied to function parameters"
-                );
-                err.span_label(attr.span, "doc comments are not allowed here");
-                err.emit();
+                )
+                .span_label(attr.span, "doc comments are not allowed here")
+                .emit();
             }
             else {
                 self.err_handler().span_err(attr.span, "allow, cfg, cfg_attr, deny, \
@@ -746,8 +746,22 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
-        if let ImplItemKind::Method(ref sig, _) = ii.kind {
-            self.check_fn_decl(&sig.decl);
+        match &ii.kind {
+            ImplItemKind::Const(ty, None) => {
+                self.err_handler()
+                    .struct_span_err(ii.span, "associated constant in `impl` without body")
+                    .span_suggestion(
+                        ii.span,
+                        "provide a definition for the constant",
+                        format!("const {}: {} = <expr>;", ii.ident, pprust::ty_to_string(ty)),
+                        Applicability::HasPlaceholders,
+                    )
+                    .emit();
+            }
+            ImplItemKind::Method(sig, _) => {
+                self.check_fn_decl(&sig.decl);
+            }
+            _ => {}
         }
         visit::walk_impl_item(self, ii);
     }
