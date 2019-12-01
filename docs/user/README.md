@@ -1,12 +1,12 @@
 The main interface to rust-analyzer is the
-[LSP](https://microsoft.github.io/language-server-protocol/)
-implementation. To install lsp server, clone the repository and
-then run `cargo xtask install --server`. This will produce a
-binary named `ra_lsp_server` which you should be able to use it
-with any LSP-compatible editor. We use custom extensions to LSP,
-so special client-side support is required to take full advantage
-of rust-analyzer. This repository contains support code for VS
-Code and Emacs. 
+[LSP](https://microsoft.github.io/language-server-protocol/) implementation. To
+install lsp server, clone the repository and then run `cargo xtask install
+--server` (which is shorthand for `cargo install --path
+./crates/ra_lsp_server`). This will produce a binary named `ra_lsp_server` which
+you should be able to use it with any LSP-compatible editor. We use custom
+extensions to LSP, so special client-side support is required to take full
+advantage of rust-analyzer. This repository contains support code for VS Code
+and Emacs.
 
 ```
 $ git clone git@github.com:rust-analyzer/rust-analyzer && cd rust-analyzer
