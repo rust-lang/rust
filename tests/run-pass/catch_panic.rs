@@ -44,14 +44,14 @@ fn main() {
         prev(panic_info)
     }));
 
-    test(|_old_val| panic!("Hello from panic: std"));
-    test(|old_val| panic!(format!("Hello from panic: {:?}", old_val)));
-    test(|old_val| panic!("Hello from panic: {:?}", old_val));
-    test(|_old_val| panic!(1337));
-    // FIXME https://github.com/rust-lang/miri/issues/1071
-    //test(|_old_val| core::panic!("Hello from panic: core"));
-    //test(|old_val| core::panic!(&format!("Hello from panic: {:?}", old_val)));
-    //test(|old_val| core::panic!("Hello from panic: {:?}", old_val));
+    test(|_old_val| std::panic!("Hello from panic: std"));
+    test(|old_val| std::panic!(format!("Hello from panic: {:?}", old_val)));
+    test(|old_val| std::panic!("Hello from panic: {:?}", old_val));
+    test(|_old_val| std::panic!(1337));
+
+    test(|_old_val| core::panic!("Hello from panic: core"));
+    test(|old_val| core::panic!(&format!("Hello from panic: {:?}", old_val)));
+    test(|old_val| core::panic!("Hello from panic: {:?}", old_val));
 
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());
