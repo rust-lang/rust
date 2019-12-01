@@ -144,9 +144,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
-    /// the *canonical* machine pointer to the allocation. This represents a *direct*
-    /// access to that memory, as opposed to access through a pointer that was created
-    /// by the program. Must never be used for derived (program-created) pointers!
+    /// the *canonical* machine pointer to the allocation.  Must never be used
+    /// for any other pointers!
+    ///
+    /// This represents a *direct* access to that memory, as opposed to access
+    /// through a pointer that was created by the program.
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
         ptr.with_tag(M::tag_static_base_pointer(&self.extra, ptr.alloc_id))
@@ -195,9 +197,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
         let id = self.tcx.alloc_map.lock().reserve();
-        let alloc = M::init_allocation_extra(&self.extra, id, Cow::Owned(alloc), Some(kind));
+        debug_assert_ne!(Some(kind), M::STATIC_KIND.map(MemoryKind::Machine),
+            "dynamically allocating static memory");
+        let (alloc, tag) = M::init_allocation_extra(&self.extra, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
-        self.tag_static_base_pointer(Pointer::from(id))
+        Pointer::from(id).with_tag(tag)
     }
 
     pub fn reallocate(
@@ -478,12 +482,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         };
         // We got tcx memory. Let the machine initialize its "extra" stuff.
-        Ok(M::init_allocation_extra(
+        let (alloc, tag) = M::init_allocation_extra(
             memory_extra,
             id, // always use the ID we got as input, not the "hidden" one.
             alloc,
             M::STATIC_KIND.map(MemoryKind::Machine),
-        ))
+        );
+        debug_assert_eq!(tag, M::tag_static_base_pointer(memory_extra, id));
+        Ok(alloc)
     }
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.

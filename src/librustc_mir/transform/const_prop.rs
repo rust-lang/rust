@@ -196,9 +196,9 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
         _kind: Option<MemoryKind<!>>,
-    ) -> Cow<'b, Allocation<Self::PointerTag>> {
+    ) -> (Cow<'b, Allocation<Self::PointerTag>>, Self::PointerTag) {
         // We do not use a tag so we can just cheaply forward the allocation
-        alloc
+        (alloc, ())
     }
 
     #[inline(always)]
