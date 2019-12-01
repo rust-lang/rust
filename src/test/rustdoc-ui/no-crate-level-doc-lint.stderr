@@ -1,0 +1,13 @@
+error: No documentation found on this crate top module.
+
+Maybe you could be interested into looking at this documentation:
+https://doc.rust-lang.org/nightly/rustdoc/how-to-write-documentation.html
+   |
+note: lint level defined here
+  --> $DIR/no-crate-level-doc-lint.rs:1:9
+   |
+LL | #![deny(no_crate_level_doc)]
+   |         ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
