@@ -651,20 +651,28 @@ where
         use rustc::mir::PlaceBase;
 
         let mut place_ty = match &place.base {
-            PlaceBase::Local(mir::RETURN_PLACE) => match self.frame().return_place {
-                Some(return_place) => {
-                    // We use our layout to verify our assumption; caller will validate
-                    // their layout on return.
-                    PlaceTy {
-                        place: *return_place,
-                        layout: self.layout_of(
-                            self.subst_from_frame_and_normalize_erasing_regions(
-                                self.frame().body.return_ty()
-                            )
-                        )?,
-                    }
+            PlaceBase::Local(mir::RETURN_PLACE) => {
+                // `return_place` has the *caller* layout, but we want to use our
+                // `layout to verify our assumption. The caller will validate
+                // their layout on return.
+                PlaceTy {
+                    place: match self.frame().return_place {
+                        Some(p) => *p,
+                        // Even if we don't have a return place, we sometimes need to
+                        // create this place, but any attempt to read from / write to it
+                        // (even a ZST read/write) needs to error, so let us make this
+                        // a NULL place.
+                        //
+                        // FIXME: Ideally we'd make sure that the place projections also
+                        // bail out.
+                        None => Place::null(&*self),
+                    },
+                    layout: self.layout_of(
+                        self.subst_from_frame_and_normalize_erasing_regions(
+                            self.frame().body.return_ty()
+                        )
+                    )?,
                 }
-                None => throw_unsup!(InvalidNullPointerUsage),
             },
             PlaceBase::Local(local) => PlaceTy {
                 // This works even for dead/uninitialized locals; we check further when writing
@@ -791,8 +799,8 @@ where
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        let ptr = match self.check_mplace_access(dest, None)
-            .expect("places should be checked on creation")
+        // Invalid places are a thing: the return place of a diverging function
+        let ptr = match self.check_mplace_access(dest, None)?
         {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
