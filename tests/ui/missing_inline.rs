@@ -60,3 +60,7 @@ impl Foo {
 impl PubFoo {
     pub fn PubFooImpl() {} // missing #[inline]
 }
+
+// do not lint this since users cannot control the external code
+#[derive(Debug)]
+pub struct S {}

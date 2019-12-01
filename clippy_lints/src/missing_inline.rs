@@ -1,6 +1,6 @@
 use crate::utils::span_lint;
 use rustc::hir;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{self, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::{declare_lint_pass, declare_tool_lint};
 use syntax::ast;
 use syntax::source_map::Span;
@@ -81,7 +81,7 @@ declare_lint_pass!(MissingInline => [MISSING_INLINE_IN_PUBLIC_ITEMS]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, it: &'tcx hir::Item) {
-        if is_executable(cx) {
+        if lint::in_external_macro(cx.sess(), it.span) || is_executable(cx) {
             return;
         }
 
@@ -131,7 +131,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
         use rustc::ty::{ImplContainer, TraitContainer};
-        if is_executable(cx) {
+        if lint::in_external_macro(cx.sess(), impl_item.span) || is_executable(cx) {
             return;
         }
 
