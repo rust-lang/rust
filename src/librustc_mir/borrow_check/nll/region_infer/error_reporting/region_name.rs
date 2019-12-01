@@ -13,13 +13,13 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{Local, Body};
 use rustc::ty::subst::{SubstsRef, GenericArgKind};
-use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
+use rustc::ty::{self, RegionVid, Ty, TyCtxt};
 use rustc::ty::print::RegionHighlightMode;
 use rustc_index::vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
 use syntax::symbol::kw;
 use rustc_data_structures::fx::FxHashMap;
-use syntax_pos::{Span, symbol::Symbol};
+use syntax_pos::{Span, symbol::Symbol, DUMMY_SP};
 
 /// A name for a particular region used in emitting diagnostics. This name could be a generated
 /// name like `'1`, a name used by the user like `'a`, or a name like `'static`.
@@ -55,7 +55,10 @@ crate enum RegionNameSource {
     AnonRegionFromUpvar(Span, String),
     /// The region corresponding to the return type of a closure.
     AnonRegionFromOutput(Span, String, String),
+    /// The region from a type yielded by a generator.
     AnonRegionFromYieldTy(Span, String),
+    /// An anonymous region from an async fn.
+    AnonRegionFromAsyncFn(Span),
 }
 
 /// Records region names that have been assigned before so that we can use the same ones in later
@@ -113,12 +116,9 @@ impl RegionName {
             RegionNameSource::MatchedAdtAndSegment(..) |
             RegionNameSource::AnonRegionFromUpvar(..) |
             RegionNameSource::AnonRegionFromOutput(..) |
-            RegionNameSource::AnonRegionFromYieldTy(..) => false,
+            RegionNameSource::AnonRegionFromYieldTy(..) |
+            RegionNameSource::AnonRegionFromAsyncFn(..) => false,
         }
-    }
-
-    crate fn name(&self) -> Symbol {
-        self.name
     }
 
     crate fn highlight_region_name(&self, diag: &mut DiagnosticBuilder<'_>) {
@@ -137,7 +137,8 @@ impl RegionName {
             RegionNameSource::CannotMatchHirTy(span, type_name) => {
                 diag.span_label(*span, format!("has type `{}`", type_name));
             }
-            RegionNameSource::MatchedHirTy(span) => {
+            RegionNameSource::MatchedHirTy(span) |
+            RegionNameSource::AnonRegionFromAsyncFn(span) => {
                 diag.span_label(
                     *span,
                     format!("let's call the lifetime of this reference `{}`", self),
@@ -270,7 +271,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         match error_region {
             ty::ReEarlyBound(ebr) => {
                 if ebr.has_name() {
-                    let span = self.get_named_span(tcx, error_region, ebr.name);
+                    let span = tcx.hir().span_if_local(ebr.def_id).unwrap_or(DUMMY_SP);
                     Some(RegionName {
                         name: ebr.name,
                         source: RegionNameSource::NamedEarlyBoundRegion(span),
@@ -286,12 +287,30 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }),
 
             ty::ReFree(free_region) => match free_region.bound_region {
-                ty::BoundRegion::BrNamed(_, name) => {
-                    let span = self.get_named_span(tcx, error_region, name);
-                    Some(RegionName {
-                        name,
-                        source: RegionNameSource::NamedFreeRegion(span),
-                    })
+                ty::BoundRegion::BrNamed(region_def_id, name) => {
+                    // Get the span to point to, even if we don't use the name.
+                    let span = tcx.hir().span_if_local(region_def_id).unwrap_or(DUMMY_SP);
+                    debug!("bound region named: {:?}, is_named: {:?}",
+                        name, free_region.bound_region.is_named());
+
+                    if free_region.bound_region.is_named() {
+                        // A named region that is actually named.
+                        Some(RegionName {
+                            name,
+                            source: RegionNameSource::NamedFreeRegion(span),
+                        })
+                    } else {
+                        // If we spuriously thought that the region is named, we should let the
+                        // system generate a true name for error messages. Currently this can
+                        // happen if we have an elided name in an async fn for example: the
+                        // compiler will generate a region named `'_`, but reporting such a name is
+                        // not actually useful, so we synthesize a name for it instead.
+                        let name = renctx.synthesize_region_name();
+                        Some(RegionName {
+                            name,
+                            source: RegionNameSource::AnonRegionFromAsyncFn(span),
+                        })
+                    }
                 }
 
                 ty::BoundRegion::BrEnv => {
@@ -347,40 +366,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | ty::ReEmpty
             | ty::ReErased
             | ty::ReClosureBound(..) => None,
-        }
-    }
-
-    /// Gets a span of a named region to provide context for error messages that
-    /// mention that span, for example:
-    ///
-    /// ```
-    ///  |
-    ///  | fn two_regions<'a, 'b, T>(cell: Cell<&'a ()>, t: T)
-    ///  |                --  -- lifetime `'b` defined here
-    ///  |                |
-    ///  |                lifetime `'a` defined here
-    ///  |
-    ///  |     with_signature(cell, t, |cell, t| require(cell, t));
-    ///  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'b` must
-    ///  |                                                         outlive `'a`
-    /// ```
-    fn get_named_span(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        error_region: &RegionKind,
-        name: Symbol,
-    ) -> Span {
-        let scope = error_region.free_region_binding_scope(tcx);
-        let node = tcx.hir().as_local_hir_id(scope).unwrap_or(hir::DUMMY_HIR_ID);
-
-        let span = tcx.sess.source_map().def_span(tcx.hir().span(node));
-        if let Some(param) = tcx.hir()
-            .get_generics(scope)
-            .and_then(|generics| generics.get_named(name))
-        {
-            param.span
-        } else {
-            span
         }
     }
 

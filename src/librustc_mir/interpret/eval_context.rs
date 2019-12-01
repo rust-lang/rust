@@ -548,7 +548,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
-        if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
+        if self.stack.len() > *self.tcx.sess.recursion_limit.get() {
             throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(())

@@ -69,7 +69,7 @@ pub enum BoundRegion {
 impl BoundRegion {
     pub fn is_named(&self) -> bool {
         match *self {
-            BoundRegion::BrNamed(..) => true,
+            BoundRegion::BrNamed(_, name) => name != kw::UnderscoreLifetime,
             _ => false,
         }
     }

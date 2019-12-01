@@ -82,7 +82,6 @@
 //! [`.chunks`]: ../../std/primitive.slice.html#method.chunks
 //! [`.windows`]: ../../std/primitive.slice.html#method.windows
 #![stable(feature = "rust1", since = "1.0.0")]
-
 // Many of the usings in this module are only used in the test configuration.
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![cfg_attr(test, allow(unused_imports, dead_code))]
@@ -91,32 +90,32 @@ use core::borrow::{Borrow, BorrowMut};
 use core::cmp::Ordering::{self, Less};
 use core::mem::{self, size_of};
 use core::ptr;
-use core::{u8, u16, u32};
+use core::{u16, u32, u8};
 
 use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
+#[stable(feature = "slice_get_slice", since = "1.28.0")]
+pub use core::slice::SliceIndex;
+#[stable(feature = "from_ref", since = "1.28.0")]
+pub use core::slice::{from_mut, from_ref};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Chunks, Windows};
+#[stable(feature = "chunks_exact", since = "1.31.0")]
+pub use core::slice::{ChunksExact, ChunksExactMut};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::slice::{ChunksMut, Split, SplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{Iter, IterMut};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::slice::{SplitMut, ChunksMut, Split};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
+#[stable(feature = "rchunks", since = "1.31.0")]
+pub use core::slice::{RChunks, RChunksExact, RChunksExactMut, RChunksMut};
 #[stable(feature = "slice_rsplit", since = "1.27.0")]
 pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::slice::{from_raw_parts, from_raw_parts_mut};
-#[stable(feature = "from_ref", since = "1.28.0")]
-pub use core::slice::{from_ref, from_mut};
-#[stable(feature = "slice_get_slice", since = "1.28.0")]
-pub use core::slice::SliceIndex;
-#[stable(feature = "chunks_exact", since = "1.31.0")]
-pub use core::slice::{ChunksExact, ChunksExactMut};
-#[stable(feature = "rchunks", since = "1.31.0")]
-pub use core::slice::{RChunks, RChunksMut, RChunksExact, RChunksExactMut};
+pub use core::slice::{RSplitN, RSplitNMut, SplitN, SplitNMut};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
@@ -138,9 +137,9 @@ pub use hack::to_vec;
 // `test_permutations` test
 mod hack {
     use crate::boxed::Box;
-    use crate::vec::Vec;
     #[cfg(test)]
     use crate::string::ToString;
+    use crate::vec::Vec;
 
     pub fn into_vec<T>(b: Box<[T]>) -> Vec<T> {
         unsafe {
@@ -153,7 +152,8 @@ mod hack {
 
     #[inline]
     pub fn to_vec<T>(s: &[T]) -> Vec<T>
-        where T: Clone
+    where
+        T: Clone,
     {
         let mut vector = Vec::with_capacity(s.len());
         vector.extend_from_slice(s);
@@ -193,7 +193,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sort(&mut self)
-        where T: Ord
+    where
+        T: Ord,
     {
         merge_sort(self, |a, b| a.lt(b));
     }
@@ -246,7 +247,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sort_by<F>(&mut self, mut compare: F)
-        where F: FnMut(&T, &T) -> Ordering
+    where
+        F: FnMut(&T, &T) -> Ordering,
     {
         merge_sort(self, |a, b| compare(a, b) == Less);
     }
@@ -285,7 +287,9 @@ impl<T> [T] {
     #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
     #[inline]
     pub fn sort_by_key<K, F>(&mut self, mut f: F)
-        where F: FnMut(&T) -> K, K: Ord
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
     {
         merge_sort(self, |a, b| f(a).lt(&f(b)));
     }
@@ -325,11 +329,13 @@ impl<T> [T] {
     #[stable(feature = "slice_sort_by_cached_key", since = "1.34.0")]
     #[inline]
     pub fn sort_by_cached_key<K, F>(&mut self, f: F)
-        where F: FnMut(&T) -> K, K: Ord
+    where
+        F: FnMut(&T) -> K,
+        K: Ord,
     {
         // Helper macro for indexing our vector by the smallest possible type, to reduce allocation.
         macro_rules! sort_by_key {
-            ($t:ty, $slice:ident, $f:ident) => ({
+            ($t:ty, $slice:ident, $f:ident) => {{
                 let mut indices: Vec<_> =
                     $slice.iter().map($f).enumerate().map(|(i, k)| (k, i as $t)).collect();
                 // The elements of `indices` are unique, as they are indexed, so any sort will be
@@ -344,19 +350,27 @@ impl<T> [T] {
                     indices[i].1 = index;
                     $slice.swap(i, index as usize);
                 }
-            })
+            }};
         }
 
-        let sz_u8    = mem::size_of::<(K, u8)>();
-        let sz_u16   = mem::size_of::<(K, u16)>();
-        let sz_u32   = mem::size_of::<(K, u32)>();
+        let sz_u8 = mem::size_of::<(K, u8)>();
+        let sz_u16 = mem::size_of::<(K, u16)>();
+        let sz_u32 = mem::size_of::<(K, u32)>();
         let sz_usize = mem::size_of::<(K, usize)>();
 
         let len = self.len();
-        if len < 2 { return }
-        if sz_u8  < sz_u16   && len <= ( u8::MAX as usize) { return sort_by_key!( u8, self, f) }
-        if sz_u16 < sz_u32   && len <= (u16::MAX as usize) { return sort_by_key!(u16, self, f) }
-        if sz_u32 < sz_usize && len <= (u32::MAX as usize) { return sort_by_key!(u32, self, f) }
+        if len < 2 {
+            return;
+        }
+        if sz_u8 < sz_u16 && len <= (u8::MAX as usize) {
+            return sort_by_key!(u8, self, f);
+        }
+        if sz_u16 < sz_u32 && len <= (u16::MAX as usize) {
+            return sort_by_key!(u16, self, f);
+        }
+        if sz_u32 < sz_usize && len <= (u32::MAX as usize) {
+            return sort_by_key!(u32, self, f);
+        }
         sort_by_key!(usize, self, f)
     }
 
@@ -373,7 +387,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_vec(&self) -> Vec<T>
-        where T: Clone
+    where
+        T: Clone,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self)
@@ -421,7 +436,10 @@ impl<T> [T] {
     /// b"0123456789abcdef".repeat(usize::max_value());
     /// ```
     #[stable(feature = "repeat_generic_slice", since = "1.40.0")]
-    pub fn repeat(&self, n: usize) -> Vec<T> where T: Copy {
+    pub fn repeat(&self, n: usize) -> Vec<T>
+    where
+        T: Copy,
+    {
         if n == 0 {
             return Vec::new();
         }
@@ -486,7 +504,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn concat<Item: ?Sized>(&self) -> <Self as Concat<Item>>::Output
-        where Self: Concat<Item>
+    where
+        Self: Concat<Item>,
     {
         Concat::concat(self)
     }
@@ -503,7 +522,8 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rename_connect_to_join", since = "1.3.0")]
     pub fn join<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
-        where Self: Join<Separator>
+    where
+        Self: Join<Separator>,
     {
         Join::join(self, sep)
     }
@@ -521,11 +541,11 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_deprecated(since = "1.3.0", reason = "renamed to join")]
     pub fn connect<Separator>(&self, sep: Separator) -> <Self as Join<Separator>>::Output
-        where Self: Join<Separator>
+    where
+        Self: Join<Separator>,
     {
         Join::join(self, sep)
     }
-
 }
 
 #[lang = "slice_u8_alloc"]
@@ -668,8 +688,8 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
             Some(first) => first,
             None => return vec![],
         };
-        let size = slice.iter().map(|v| v.borrow().len()).sum::<usize>() +
-            sep.len() * (slice.len() - 1);
+        let size =
+            slice.iter().map(|v| v.borrow().len()).sum::<usize>() + sep.len() * (slice.len() - 1);
         let mut result = Vec::with_capacity(size);
         result.extend_from_slice(first.borrow());
 
@@ -734,7 +754,8 @@ impl<T: Clone> ToOwned for [T] {
 ///
 /// This is the integral subroutine of insertion sort.
 fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     if v.len() >= 2 && is_less(&v[1], &v[0]) {
         unsafe {
@@ -767,10 +788,7 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
             // If `is_less` panics at any point during the process, `hole` will get dropped and
             // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
             // initially held exactly once.
-            let mut hole = InsertionHole {
-                src: &mut *tmp,
-                dest: &mut v[1],
-            };
+            let mut hole = InsertionHole { src: &mut *tmp, dest: &mut v[1] };
             ptr::copy_nonoverlapping(&v[1], &mut v[0], 1);
 
             for i in 2..v.len() {
@@ -792,7 +810,9 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
 
     impl<T> Drop for InsertionHole<T> {
         fn drop(&mut self) {
-            unsafe { ptr::copy_nonoverlapping(self.src, self.dest, 1); }
+            unsafe {
+                ptr::copy_nonoverlapping(self.src, self.dest, 1);
+            }
         }
     }
 }
@@ -805,7 +825,8 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
 /// The two slices must be non-empty and `mid` must be in bounds. Buffer `buf` must be long enough
 /// to hold a copy of the shorter slice. Also, `T` must not be a zero-sized type.
 unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     let len = v.len();
     let v = v.as_mut_ptr();
@@ -834,11 +855,7 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
     if mid <= len - mid {
         // The left run is shorter.
         ptr::copy_nonoverlapping(v, buf, mid);
-        hole = MergeHole {
-            start: buf,
-            end: buf.add(mid),
-            dest: v,
-        };
+        hole = MergeHole { start: buf, end: buf.add(mid), dest: v };
 
         // Initially, these pointers point to the beginnings of their arrays.
         let left = &mut hole.start;
@@ -858,11 +875,7 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
     } else {
         // The right run is shorter.
         ptr::copy_nonoverlapping(v_mid, buf, len - mid);
-        hole = MergeHole {
-            start: buf,
-            end: buf.add(len - mid),
-            dest: v_mid,
-        };
+        hole = MergeHole { start: buf, end: buf.add(len - mid), dest: v_mid };
 
         // Initially, these pointers point past the ends of their arrays.
         let left = &mut hole.dest;
@@ -905,7 +918,9 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
         fn drop(&mut self) {
             // `T` is not a zero-sized type, so it's okay to divide by its size.
             let len = (self.end as usize - self.start as usize) / mem::size_of::<T>();
-            unsafe { ptr::copy_nonoverlapping(self.start, self.dest, len); }
+            unsafe {
+                ptr::copy_nonoverlapping(self.start, self.dest, len);
+            }
         }
     }
 }
@@ -923,7 +938,8 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 ///
 /// The invariants ensure that the total running time is `O(n log n)` worst-case.
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
-    where F: FnMut(&T, &T) -> bool
+where
+    F: FnMut(&T, &T) -> bool,
 {
     // Slices of up to this length get sorted using insertion sort.
     const MAX_INSERTION: usize = 20;
@@ -940,7 +956,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
     // Short arrays get sorted in-place via insertion sort to avoid allocations.
     if len <= MAX_INSERTION {
         if len >= 2 {
-            for i in (0..len-1).rev() {
+            for i in (0..len - 1).rev() {
                 insert_head(&mut v[i..], &mut is_less);
             }
         }
@@ -966,14 +982,13 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
             start -= 1;
             unsafe {
                 if is_less(v.get_unchecked(start + 1), v.get_unchecked(start)) {
-                    while start > 0 && is_less(v.get_unchecked(start),
-                                               v.get_unchecked(start - 1)) {
+                    while start > 0 && is_less(v.get_unchecked(start), v.get_unchecked(start - 1)) {
                         start -= 1;
                     }
                     v[start..end].reverse();
                 } else {
-                    while start > 0 && !is_less(v.get_unchecked(start),
-                                                v.get_unchecked(start - 1)) {
+                    while start > 0 && !is_less(v.get_unchecked(start), v.get_unchecked(start - 1))
+                    {
                         start -= 1;
                     }
                 }
@@ -988,10 +1003,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
         }
 
         // Push this run onto the stack.
-        runs.push(Run {
-            start,
-            len: end - start,
-        });
+        runs.push(Run { start, len: end - start });
         end = start;
 
         // Merge some pairs of adjacent runs to satisfy the invariants.
@@ -999,13 +1011,14 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
             let left = runs[r + 1];
             let right = runs[r];
             unsafe {
-                merge(&mut v[left.start .. right.start + right.len], left.len, buf.as_mut_ptr(),
-                      &mut is_less);
+                merge(
+                    &mut v[left.start..right.start + right.len],
+                    left.len,
+                    buf.as_mut_ptr(),
+                    &mut is_less,
+                );
             }
-            runs[r] = Run {
-                start: left.start,
-                len: left.len + right.len,
-            };
+            runs[r] = Run { start: left.start, len: left.len + right.len };
             runs.remove(r + 1);
         }
     }
@@ -1030,15 +1043,13 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
     #[inline]
     fn collapse(runs: &[Run]) -> Option<usize> {
         let n = runs.len();
-        if n >= 2 && (runs[n - 1].start == 0 ||
-                      runs[n - 2].len <= runs[n - 1].len ||
-                      (n >= 3 && runs[n - 3].len <= runs[n - 2].len + runs[n - 1].len) ||
-                      (n >= 4 && runs[n - 4].len <= runs[n - 3].len + runs[n - 2].len)) {
-            if n >= 3 && runs[n - 3].len < runs[n - 1].len {
-                Some(n - 3)
-            } else {
-                Some(n - 2)
-            }
+        if n >= 2
+            && (runs[n - 1].start == 0
+                || runs[n - 2].len <= runs[n - 1].len
+                || (n >= 3 && runs[n - 3].len <= runs[n - 2].len + runs[n - 1].len)
+                || (n >= 4 && runs[n - 4].len <= runs[n - 3].len + runs[n - 2].len))
+        {
+            if n >= 3 && runs[n - 3].len < runs[n - 1].len { Some(n - 3) } else { Some(n - 2) }
         } else {
             None
         }

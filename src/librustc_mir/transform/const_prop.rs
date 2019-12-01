@@ -168,14 +168,14 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
         _unwind: Option<BasicBlock>
     ) -> InterpResult<'tcx> {
-        throw_unsup_format!("calling intrinsics isn't supported in ConstProp");
+        throw_unsup!(ConstPropUnsupported("calling intrinsics isn't supported in ConstProp"));
     }
 
     fn ptr_to_int(
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer,
     ) -> InterpResult<'tcx, u64> {
-        throw_unsup_format!("ptr-to-int casts aren't supported in ConstProp");
+        throw_unsup!(ConstPropUnsupported("ptr-to-int casts aren't supported in ConstProp"));
     }
 
     fn binary_ptr_op(
@@ -185,7 +185,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _right: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         // We can't do this because aliasing of memory can differ between const eval and llvm
-        throw_unsup_format!("pointer arithmetic or comparisons aren't supported in ConstProp");
+        throw_unsup!(ConstPropUnsupported("pointer arithmetic or comparisons aren't supported \
+            in ConstProp"));
     }
 
     fn find_foreign_static(
@@ -218,7 +219,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        throw_unsup_format!("can't const prop `box` keyword");
+        throw_unsup!(ConstPropUnsupported("can't const prop `box` keyword"));
     }
 
     fn access_local(
@@ -229,7 +230,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         let l = &frame.locals[local];
 
         if l.value == LocalValue::Uninitialized {
-            throw_unsup_format!("tried to access an uninitialized local");
+            throw_unsup!(ConstPropUnsupported("tried to access an uninitialized local"));
         }
 
         l.access()
@@ -241,7 +242,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         // if the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it
         if allocation.mutability == Mutability::Mutable || allocation.relocations().len() > 0 {
-            throw_unsup_format!("can't eval mutable statics in ConstProp");
+            throw_unsup!(ConstPropUnsupported("can't eval mutable statics in ConstProp"));
         }
 
         Ok(())
@@ -389,9 +390,26 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
-                use rustc::mir::interpret::InterpError::*;
+                use rustc::mir::interpret::{
+                    UnsupportedOpInfo,
+                    UndefinedBehaviorInfo,
+                    InterpError::*
+                };
                 match error.kind {
                     Exit(_) => bug!("the CTFE program cannot exit"),
+
+                    // Some error shouldn't come up because creating them causes
+                    // an allocation, which we should avoid. When that happens,
+                    // dedicated error variants should be introduced instead.
+                    // Only test this in debug builds though to avoid disruptions.
+                    Unsupported(UnsupportedOpInfo::Unsupported(_))
+                    | Unsupported(UnsupportedOpInfo::ValidationFailure(_))
+                    | UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+                    | UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_))
+                      if cfg!(debug_assertions) => {
+                        bug!("const-prop encountered allocating error: {:?}", error.kind);
+                    }
+
                     Unsupported(_)
                     | UndefinedBehavior(_)
                     | InvalidProgram(_)
