@@ -30,17 +30,17 @@ fi
 echo "$NEW_COMMIT" > rust-version
 
 # Check if we already are at that commit.
-CUR_COMMIT=$(rustc +miri --version -v | egrep "^commit-hash: " | cut -d " " -f 2)
+CUR_COMMIT=$(rustc +miri --version -v 2>/dev/null | egrep "^commit-hash: " | cut -d " " -f 2)
 if [[ "$CUR_COMMIT" == "$NEW_COMMIT" ]]; then
     echo "miri toolchain is already at commit $CUR_COMMIT."
     rustup override set miri
     exit 0
 fi
 
-# Cleanup.
-cargo +nightly clean # Use nightly cargo as miri toolchain might be broken.
-rustup toolchain uninstall miri
-
 # Install and setup new toolchain.
+rustup toolchain uninstall miri
 rustup-toolchain-install-master -n miri -c rust-src -c rustc-dev -- "$NEW_COMMIT"
 rustup override set miri
+
+# Cleanup.
+cargo clean
