@@ -149,8 +149,7 @@ static BUILTIN_SCOPE: Lazy<FxHashMap<Name, Resolution>> = Lazy::new(|| {
         .collect()
 });
 
-/// Shadow mode for builtin type
-/// Builtin type can be shadowed by same name mode
+/// Shadow mode for builtin type which can be shadowed by module.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum BuiltinShadowMode {
     // Prefer Module
