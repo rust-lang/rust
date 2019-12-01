@@ -1,9 +1,9 @@
 use std::any::Any;
-use std::rc::{Rc, Weak};
 use std::cell::RefCell;
 use std::cmp::PartialEq;
-use std::mem;
 use std::iter::TrustedLen;
+use std::mem;
+use std::rc::{Rc, Weak};
 
 #[test]
 fn uninhabited() {
@@ -12,7 +12,7 @@ fn uninhabited() {
     a = a.clone();
     assert!(a.upgrade().is_none());
 
-    let mut a: Weak<dyn Any> = a;  // Unsizing
+    let mut a: Weak<dyn Any> = a; // Unsizing
     a = a.clone();
     assert!(a.upgrade().is_none());
 }
@@ -20,8 +20,8 @@ fn uninhabited() {
 #[test]
 fn slice() {
     let a: Rc<[u32; 3]> = Rc::new([3, 2, 1]);
-    let a: Rc<[u32]> = a;  // Unsizing
-    let b: Rc<[u32]> = Rc::from(&[3, 2, 1][..]);  // Conversion
+    let a: Rc<[u32]> = a; // Unsizing
+    let b: Rc<[u32]> = Rc::from(&[3, 2, 1][..]); // Conversion
     assert_eq!(a, b);
 
     // Exercise is_dangling() with a DST
@@ -33,7 +33,7 @@ fn slice() {
 #[test]
 fn trait_object() {
     let a: Rc<u32> = Rc::new(4);
-    let a: Rc<dyn Any> = a;  // Unsizing
+    let a: Rc<dyn Any> = a; // Unsizing
 
     // Exercise is_dangling() with a DST
     let mut a = Rc::downgrade(&a);
@@ -43,7 +43,7 @@ fn trait_object() {
     let mut b = Weak::<u32>::new();
     b = b.clone();
     assert!(b.upgrade().is_none());
-    let mut b: Weak<dyn Any> = b;  // Unsizing
+    let mut b: Weak<dyn Any> = b; // Unsizing
     b = b.clone();
     assert!(b.upgrade().is_none());
 }
@@ -57,7 +57,7 @@ fn float_nan_ne() {
 
 #[test]
 fn partial_eq() {
-    struct TestPEq (RefCell<usize>);
+    struct TestPEq(RefCell<usize>);
     impl PartialEq for TestPEq {
         fn eq(&self, other: &TestPEq) -> bool {
             *self.0.borrow_mut() += 1;
@@ -74,7 +74,7 @@ fn partial_eq() {
 #[test]
 fn eq() {
     #[derive(Eq)]
-    struct TestEq (RefCell<usize>);
+    struct TestEq(RefCell<usize>);
     impl PartialEq for TestEq {
         fn eq(&self, other: &TestEq) -> bool {
             *self.0.borrow_mut() += 1;
@@ -156,13 +156,10 @@ fn shared_from_iter_trustedlen_normal() {
 fn shared_from_iter_trustedlen_panic() {
     // Exercise the `TrustedLen` implementation when `size_hint()` matches
     // `(_, Some(exact_len))` but where `.next()` drops before the last iteration.
-    let iter = (0..SHARED_ITER_MAX)
-        .map(|val| {
-            match val {
-                98 => panic!("I've almost got 99 problems."),
-                _ => Box::new(val),
-            }
-        });
+    let iter = (0..SHARED_ITER_MAX).map(|val| match val {
+        98 => panic!("I've almost got 99 problems."),
+        _ => Box::new(val),
+    });
     assert_trusted_len(&iter);
     let _ = iter.collect::<Rc<[_]>>();
 
@@ -189,16 +186,8 @@ fn shared_from_iter_trustedlen_no_fuse() {
         }
     }
 
-    let vec = vec![
-        Some(Box::new(42)),
-        Some(Box::new(24)),
-        None,
-        Some(Box::new(12)),
-    ];
+    let vec = vec![Some(Box::new(42)), Some(Box::new(24)), None, Some(Box::new(12))];
     let iter = Iter(vec.into_iter());
     assert_trusted_len(&iter);
-    assert_eq!(
-        &[Box::new(42), Box::new(24)],
-        &*iter.collect::<Rc<[_]>>()
-    );
+    assert_eq!(&[Box::new(42), Box::new(24)], &*iter.collect::<Rc<[_]>>());
 }

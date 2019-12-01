@@ -1,4 +1,4 @@
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 
 #[bench]
 fn char_iterator(b: &mut Bencher) {
@@ -12,7 +12,9 @@ fn char_iterator_for(b: &mut Bencher) {
     let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
     b.iter(|| {
-        for ch in s.chars() { black_box(ch); }
+        for ch in s.chars() {
+            black_box(ch);
+        }
     });
 }
 
@@ -40,7 +42,9 @@ fn char_iterator_rev_for(b: &mut Bencher) {
     let s = "ศไทย中华Việt Nam; Mary had a little lamb, Little lamb";
 
     b.iter(|| {
-        for ch in s.chars().rev() { black_box(ch); }
+        for ch in s.chars().rev() {
+            black_box(ch);
+        }
     });
 }
 
@@ -79,7 +83,9 @@ fn split_ascii(b: &mut Bencher) {
 fn split_extern_fn(b: &mut Bencher) {
     let s = "Mary had a little lamb, Little lamb, little-lamb.";
     let len = s.split(' ').count();
-    fn pred(c: char) -> bool { c == ' ' }
+    fn pred(c: char) -> bool {
+        c == ' '
+    }
 
     b.iter(|| assert_eq!(s.split(pred).count(), len));
 }
@@ -185,16 +191,19 @@ fn bench_contains_equal(b: &mut Bencher) {
     })
 }
 
-
 macro_rules! make_test_inner {
     ($s:ident, $code:expr, $name:ident, $str:expr, $iters:expr) => {
         #[bench]
         fn $name(bencher: &mut Bencher) {
             let mut $s = $str;
             black_box(&mut $s);
-            bencher.iter(|| for _ in 0..$iters { black_box($code); });
+            bencher.iter(|| {
+                for _ in 0..$iters {
+                    black_box($code);
+                }
+            });
         }
-    }
+    };
 }
 
 macro_rules! make_test {
@@ -261,15 +270,9 @@ make_test!(match_indices_a_str, s, s.match_indices("a").count());
 
 make_test!(split_a_str, s, s.split("a").count());
 
-make_test!(trim_ascii_char, s, {
-    s.trim_matches(|c: char| c.is_ascii())
-});
-make_test!(trim_start_ascii_char, s, {
-    s.trim_start_matches(|c: char| c.is_ascii())
-});
-make_test!(trim_end_ascii_char, s, {
-    s.trim_end_matches(|c: char| c.is_ascii())
-});
+make_test!(trim_ascii_char, s, { s.trim_matches(|c: char| c.is_ascii()) });
+make_test!(trim_start_ascii_char, s, { s.trim_start_matches(|c: char| c.is_ascii()) });
+make_test!(trim_end_ascii_char, s, { s.trim_end_matches(|c: char| c.is_ascii()) });
 
 make_test!(find_underscore_char, s, s.find('_'));
 make_test!(rfind_underscore_char, s, s.rfind('_'));
