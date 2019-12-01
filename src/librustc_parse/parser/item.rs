@@ -669,25 +669,6 @@ impl<'a> Parser<'a> {
         Ok((impl_items, attrs))
     }
 
-    /// Parses an impl item.
-    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
-        maybe_whole!(self, NtImplItem, |x| x);
-        let attrs = self.parse_outer_attributes()?;
-        let mut unclosed_delims = vec![];
-        let (mut item, tokens) = self.collect_tokens(|this| {
-            let item = this.parse_assoc_item(at_end, attrs, |_| true);
-            unclosed_delims.append(&mut this.unclosed_delims);
-            item
-        })?;
-        self.unclosed_delims.append(&mut unclosed_delims);
-
-        // See `parse_item` for why this clause is here.
-        if !item.attrs.iter().any(|attr| attr.style == AttrStyle::Inner) {
-            item.tokens = Some(tokens);
-        }
-        Ok(item)
-    }
-
     /// Parses defaultness (i.e., `default` or nothing).
     fn parse_defaultness(&mut self) -> Defaultness {
         // `pub` is included for better error messages
@@ -802,20 +783,30 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses the items in a trait declaration.
+    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
+        maybe_whole!(self, NtImplItem, |x| x);
+        self.parse_assoc_item(at_end, |_| true)
+    }
+
     pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, AssocItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
+        // This is somewhat dubious; We don't want to allow
+        // param names to be left off if there is a definition...
+        //
+        // We don't allow param names to be left off in edition 2018.
+        self.parse_assoc_item(at_end, |t| t.span.rust_2018())
+    }
+
+    /// Parses associated items.
+    fn parse_assoc_item(
+        &mut self,
+        at_end: &mut bool,
+        is_name_required: fn(&token::Token) -> bool,
+    ) -> PResult<'a, AssocItem> {
         let attrs = self.parse_outer_attributes()?;
         let mut unclosed_delims = vec![];
         let (mut item, tokens) = self.collect_tokens(|this| {
-            // This is somewhat dubious; We don't want to allow
-            // param names to be left off if there is a definition...
-            //
-            // We don't allow param names to be left off in edition 2018.
-            //
-            // FIXME(Centril): bake closure into param parsing.
-            // Also add semantic restrictions and add tests.
-            let item = this.parse_assoc_item(at_end, attrs, |t| t.span.rust_2018());
+            let item = this.parse_assoc_item_(at_end, attrs, is_name_required);
             unclosed_delims.append(&mut this.unclosed_delims);
             item
         })?;
@@ -827,7 +818,7 @@ impl<'a> Parser<'a> {
         Ok(item)
     }
 
-    fn parse_assoc_item(
+    fn parse_assoc_item_(
         &mut self,
         at_end: &mut bool,
         mut attrs: Vec<Attribute>,
