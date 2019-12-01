@@ -80,7 +80,6 @@ impl CrateDefMap {
         };
 
         let mut segments = path.segments.iter().enumerate();
-
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
                 if krate == self.krate {
@@ -112,7 +111,6 @@ impl CrateDefMap {
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
-
                 self.resolve_name_in_crate_root_or_extern_prelude(&segment.name, prefer_module(idx))
             }
             PathKind::Plain => {
