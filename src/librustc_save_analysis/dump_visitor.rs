@@ -1056,7 +1056,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     trait_item.span,
                 );
             }
-            ast::TraitItemKind::Type(ref bounds, ref default_ty) => {
+            ast::TraitItemKind::TyAlias(ref bounds, ref default_ty) => {
                 // FIXME do something with _bounds (for type refs)
                 let name = trait_item.ident.name.to_string();
                 let qualname = format!("::{}",

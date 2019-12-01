@@ -821,7 +821,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                             TraitItemKind::Method(_, _) => {
                                                 visit::walk_trait_item(this, trait_item)
                                             }
-                                            TraitItemKind::Type(..) => {
+                                            TraitItemKind::TyAlias(..) => {
                                                 visit::walk_trait_item(this, trait_item)
                                             }
                                             TraitItemKind::Macro(_) => {
@@ -995,7 +995,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
         let trait_assoc_types = replace(
             &mut self.diagnostic_metadata.current_trait_assoc_types,
             trait_items.iter().filter_map(|item| match &item.kind {
-                TraitItemKind::Type(bounds, _) if bounds.len() == 0 => Some(item.ident),
+                TraitItemKind::TyAlias(bounds, _) if bounds.len() == 0 => Some(item.ident),
                 _ => None,
             }).collect(),
         );

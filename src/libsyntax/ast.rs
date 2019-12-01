@@ -1613,7 +1613,7 @@ pub type TraitItem = ImplItem<TraitItemKind>;
 pub enum TraitItemKind {
     Const(P<Ty>, Option<P<Expr>>),
     Method(FnSig, Option<P<Block>>),
-    Type(GenericBounds, Option<P<Ty>>),
+    TyAlias(GenericBounds, Option<P<Ty>>),
     Macro(Mac),
 }
 

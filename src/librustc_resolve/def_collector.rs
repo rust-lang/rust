@@ -216,7 +216,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         let def_data = match ti.kind {
             TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.name),
-            TraitItemKind::Type(..) => {
+            TraitItemKind::TyAlias(..) => {
                 DefPathData::TypeNs(ti.ident.name)
             },
             TraitItemKind::Macro(..) => return self.visit_macro_invoc(ti.id),

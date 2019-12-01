@@ -848,7 +848,7 @@ impl LoweringContext<'_> {
                 );
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
-            TraitItemKind::Type(ref bounds, ref default) => {
+            TraitItemKind::TyAlias(ref bounds, ref default) => {
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let kind = hir::TraitItemKind::Type(
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
@@ -877,7 +877,7 @@ impl LoweringContext<'_> {
             TraitItemKind::Const(_, ref default) => {
                 (hir::AssocItemKind::Const, default.is_some())
             }
-            TraitItemKind::Type(_, ref default) => {
+            TraitItemKind::TyAlias(_, ref default) => {
                 (hir::AssocItemKind::Type, default.is_some())
             }
             TraitItemKind::Method(ref sig, ref default) => (

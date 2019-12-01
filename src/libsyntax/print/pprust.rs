@@ -1567,7 +1567,7 @@ impl<'a> State<'a> {
                     self.s.word(";");
                 }
             }
-            ast::TraitItemKind::Type(ref bounds, ref default) => {
+            ast::TraitItemKind::TyAlias(ref bounds, ref default) => {
                 self.print_associated_type(ti.ident, Some(bounds),
                                            default.as_ref().map(|ty| &**ty));
             }

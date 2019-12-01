@@ -599,7 +599,7 @@ pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a Trai
             visitor.visit_fn(FnKind::Method(trait_item.ident, sig, &trait_item.vis, body),
                              &sig.decl, trait_item.span, trait_item.id);
         }
-        TraitItemKind::Type(ref bounds, ref default) => {
+        TraitItemKind::TyAlias(ref bounds, ref default) => {
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, default);
         }

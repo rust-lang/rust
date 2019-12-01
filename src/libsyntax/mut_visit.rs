@@ -955,7 +955,7 @@ pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, visitor: &mu
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        TraitItemKind::Type(bounds, default) => {
+        TraitItemKind::TyAlias(bounds, default) => {
             visit_bounds(bounds, visitor);
             visit_opt(default, |default| visitor.visit_ty(default));
         }

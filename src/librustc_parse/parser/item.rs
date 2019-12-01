@@ -944,7 +944,7 @@ impl<'a> Parser<'a> {
         };
         self.expect_semi()?;
 
-        Ok((ident, TraitItemKind::Type(bounds, default), generics))
+        Ok((ident, TraitItemKind::TyAlias(bounds, default), generics))
     }
 
     /// Parses a `UseTree`.

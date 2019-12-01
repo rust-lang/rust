@@ -1182,7 +1182,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
                 }
                 (Res::Def(DefKind::Method, item_def_id), ValueNS)
             }
-            TraitItemKind::Type(..) => (Res::Def(DefKind::AssocTy, item_def_id), TypeNS),
+            TraitItemKind::TyAlias(..) => (Res::Def(DefKind::AssocTy, item_def_id), TypeNS),
             TraitItemKind::Macro(_) => bug!(),  // handled above
         };
 

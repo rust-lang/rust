@@ -585,7 +585,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }
             }
-            ast::TraitItemKind::Type(_, ref default) => {
+            ast::TraitItemKind::TyAlias(_, ref default) => {
                 if let Some(ty) = default {
                     self.check_impl_trait(ty);
                     gate_feature_post!(&self, associated_type_defaults, ti.span,
