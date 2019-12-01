@@ -278,17 +278,9 @@ impl MetaItem {
 
 impl AttrItem {
     pub fn meta(&self, span: Span) -> Option<MetaItem> {
-        let mut tokens = self.args.outer_tokens().trees().peekable();
         Some(MetaItem {
             path: self.path.clone(),
-            kind: if let Some(kind) = MetaItemKind::from_tokens(&mut tokens) {
-                if tokens.peek().is_some() {
-                    return None;
-                }
-                kind
-            } else {
-                return None;
-            },
+            kind: MetaItemKind::from_mac_args(&self.args)?,
             span,
         })
     }
@@ -567,26 +559,8 @@ impl MetaItemKind {
         }
     }
 
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItemKind>
-        where I: Iterator<Item = TokenTree>,
-    {
-        let delimited = match tokens.peek().cloned() {
-            Some(TokenTree::Token(token)) if token == token::Eq => {
-                tokens.next();
-                return if let Some(TokenTree::Token(token)) = tokens.next() {
-                    Lit::from_token(&token).ok().map(MetaItemKind::NameValue)
-                } else {
-                    None
-                };
-            }
-            Some(TokenTree::Delimited(_, delim, ref tts)) if delim == token::Paren => {
-                tokens.next();
-                tts.clone()
-            }
-            _ => return Some(MetaItemKind::Word),
-        };
-
-        let mut tokens = delimited.into_trees().peekable();
+    fn list_from_tokens(tokens: TokenStream) -> Option<MetaItemKind> {
+        let mut tokens = tokens.into_trees().peekable();
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
@@ -597,6 +571,47 @@ impl MetaItemKind {
             }
         }
         Some(MetaItemKind::List(result))
+    }
+
+    fn name_value_from_tokens(
+        tokens: &mut impl Iterator<Item = TokenTree>,
+    ) -> Option<MetaItemKind> {
+        match tokens.next() {
+            Some(TokenTree::Token(token)) =>
+                Lit::from_token(&token).ok().map(MetaItemKind::NameValue),
+            _ => None,
+        }
+    }
+
+    fn from_mac_args(args: &MacArgs) -> Option<MetaItemKind> {
+        match args {
+            MacArgs::Delimited(_, MacDelimiter::Parenthesis, tokens) =>
+                MetaItemKind::list_from_tokens(tokens.clone()),
+            MacArgs::Delimited(..) => None,
+            MacArgs::Eq(_, tokens) => {
+                assert!(tokens.len() == 1);
+                MetaItemKind::name_value_from_tokens(&mut tokens.trees())
+            }
+            MacArgs::Empty => Some(MetaItemKind::Word),
+        }
+    }
+
+    fn from_tokens(
+        tokens: &mut iter::Peekable<impl Iterator<Item = TokenTree>>,
+    ) -> Option<MetaItemKind> {
+        match tokens.peek() {
+            Some(TokenTree::Delimited(_, token::Paren, inner_tokens)) => {
+                let inner_tokens = inner_tokens.clone();
+                tokens.next();
+                MetaItemKind::list_from_tokens(inner_tokens)
+            }
+            Some(TokenTree::Delimited(..)) => None,
+            Some(TokenTree::Token(Token { kind: token::Eq, .. })) => {
+                tokens.next();
+                MetaItemKind::name_value_from_tokens(tokens)
+            }
+            _ => Some(MetaItemKind::Word),
+        }
     }
 }
 
