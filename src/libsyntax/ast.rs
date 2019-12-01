@@ -1474,15 +1474,9 @@ impl MacDelimiter {
 /// Represents a macro definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MacroDef {
-    pub tokens: TokenStream,
+    pub body: P<MacArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub legacy: bool,
-}
-
-impl MacroDef {
-    pub fn stream(&self) -> TokenStream {
-        self.tokens.clone().into()
-    }
 }
 
 // Clippy uses Hash and PartialEq

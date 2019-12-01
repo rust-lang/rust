@@ -586,8 +586,8 @@ pub fn noop_visit_mac<T: MutVisitor>(mac: &mut Mac, vis: &mut T) {
 }
 
 pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T) {
-    let MacroDef { tokens, legacy: _ } = macro_def;
-    vis.visit_tts(tokens);
+    let MacroDef { body, legacy: _ } = macro_def;
+    visit_mac_args(body, vis);
 }
 
 pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T) {
