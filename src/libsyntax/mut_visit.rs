@@ -103,12 +103,12 @@ pub trait MutVisitor: Sized {
         noop_visit_item_kind(i, self);
     }
 
-    fn flat_map_trait_item(&mut self, i: TraitItem) -> SmallVec<[TraitItem; 1]> {
-        noop_flat_map_trait_item(i, self)
+    fn flat_map_trait_item(&mut self, i: AssocItem) -> SmallVec<[AssocItem; 1]> {
+        noop_flat_map_assoc_item(i, self)
     }
 
-    fn flat_map_impl_item(&mut self, i: ImplItem) -> SmallVec<[ImplItem; 1]> {
-        noop_flat_map_impl_item(i, self)
+    fn flat_map_impl_item(&mut self, i: AssocItem) -> SmallVec<[AssocItem; 1]> {
+        noop_flat_map_assoc_item(i, self)
     }
 
     fn visit_fn_decl(&mut self, d: &mut P<FnDecl>) {
@@ -940,42 +940,10 @@ pub fn noop_visit_item_kind<T: MutVisitor>(kind: &mut ItemKind, vis: &mut T) {
     }
 }
 
-pub fn noop_flat_map_trait_item<T: MutVisitor>(mut item: TraitItem, visitor: &mut T)
-    -> SmallVec<[TraitItem; 1]>
+pub fn noop_flat_map_assoc_item<T: MutVisitor>(mut item: AssocItem, visitor: &mut T)
+    -> SmallVec<[AssocItem; 1]>
 {
-    let TraitItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
-        &mut item;
-    visitor.visit_id(id);
-    visitor.visit_ident(ident);
-    visitor.visit_vis(vis);
-    visit_attrs(attrs, visitor);
-    visitor.visit_generics(generics);
-    match kind {
-        TraitItemKind::Const(ty, default) => {
-            visitor.visit_ty(ty);
-            visit_opt(default, |default| visitor.visit_expr(default));
-        }
-        TraitItemKind::Method(sig, body) => {
-            visit_fn_sig(sig, visitor);
-            visit_opt(body, |body| visitor.visit_block(body));
-        }
-        TraitItemKind::TyAlias(bounds, default) => {
-            visit_bounds(bounds, visitor);
-            visit_opt(default, |default| visitor.visit_ty(default));
-        }
-        TraitItemKind::Macro(mac) => {
-            visitor.visit_mac(mac);
-        }
-    }
-    visitor.visit_span(span);
-
-    smallvec![item]
-}
-
-pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut T)
-                                              -> SmallVec<[ImplItem; 1]>
-{
-    let ImplItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
+    let AssocItem { id, ident, vis, defaultness: _, attrs, generics, kind, span, tokens: _ } =
         &mut item;
     visitor.visit_id(id);
     visitor.visit_ident(ident);
@@ -983,19 +951,19 @@ pub fn noop_flat_map_impl_item<T: MutVisitor>(mut item: ImplItem, visitor: &mut 
     visit_attrs(attrs, visitor);
     visitor.visit_generics(generics);
     match kind  {
-        ImplItemKind::Const(ty, expr) => {
+        AssocItemKind::Const(ty, expr) => {
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        ImplItemKind::Method(sig, body) => {
+        AssocItemKind::Method(sig, body) => {
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
-        ImplItemKind::TyAlias(bounds, ty) => {
+        AssocItemKind::TyAlias(bounds, ty) => {
             visit_bounds(bounds, visitor);
             visit_opt(ty, |ty| visitor.visit_ty(ty));
         }
-        ImplItemKind::Macro(mac) => visitor.visit_mac(mac),
+        AssocItemKind::Macro(mac) => visitor.visit_mac(mac),
     }
     visitor.visit_span(span);
 

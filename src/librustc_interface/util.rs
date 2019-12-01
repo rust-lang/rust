@@ -782,7 +782,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             ast::TraitItemKind::Method(ref sig, _) => Self::is_sig_const(sig),
             _ => false,
         };
-        self.run(is_const, |s| noop_flat_map_trait_item(i, s))
+        self.run(is_const, |s| noop_flat_map_assoc_item(i, s))
     }
 
     fn flat_map_impl_item(&mut self, i: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
@@ -791,7 +791,7 @@ impl<'a> MutVisitor for ReplaceBodyWithLoop<'a, '_> {
             ast::ImplItemKind::Method(ref sig, _) => Self::is_sig_const(sig),
             _ => false,
         };
-        self.run(is_const, |s| noop_flat_map_impl_item(i, s))
+        self.run(is_const, |s| noop_flat_map_assoc_item(i, s))
     }
 
     fn visit_anon_const(&mut self, c: &mut ast::AnonConst) {

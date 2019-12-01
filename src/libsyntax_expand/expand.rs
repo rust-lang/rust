@@ -1317,7 +1317,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
     }
 
-    fn flat_map_trait_item(&mut self, item: ast::TraitItem) -> SmallVec<[ast::TraitItem; 1]> {
+    fn flat_map_trait_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
         let mut item = configure!(self, item);
 
         let (attr, traits, after_derive) = self.classify_item(&mut item);
@@ -1327,16 +1327,16 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::TraitItemKind::Macro(mac) => {
-                let ast::TraitItem { attrs, span, .. } = item;
+            ast::AssocItemKind::Macro(mac) => {
+                let ast::AssocItem { attrs, span, .. } = item;
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::TraitItems).make_trait_items()
             }
-            _ => noop_flat_map_trait_item(item, self),
+            _ => noop_flat_map_assoc_item(item, self),
         }
     }
 
-    fn flat_map_impl_item(&mut self, item: ast::ImplItem) -> SmallVec<[ast::ImplItem; 1]> {
+    fn flat_map_impl_item(&mut self, item: ast::AssocItem) -> SmallVec<[ast::AssocItem; 1]> {
         let mut item = configure!(self, item);
 
         let (attr, traits, after_derive) = self.classify_item(&mut item);
@@ -1346,12 +1346,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         }
 
         match item.kind {
-            ast::ImplItemKind::Macro(mac) => {
-                let ast::ImplItem { attrs, span, .. } = item;
+            ast::AssocItemKind::Macro(mac) => {
+                let ast::AssocItem { attrs, span, .. } = item;
                 self.check_attributes(&attrs);
                 self.collect_bang(mac, span, AstFragmentKind::ImplItems).make_impl_items()
             }
-            _ => noop_flat_map_impl_item(item, self),
+            _ => noop_flat_map_assoc_item(item, self),
         }
     }
 
