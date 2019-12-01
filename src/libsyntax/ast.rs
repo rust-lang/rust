@@ -1637,7 +1637,7 @@ pub struct ImplItem<K = ImplItemKind> {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum ImplItemKind  {
     Const(P<Ty>, Option<P<Expr>>),
-    Method(FnSig, P<Block>),
+    Method(FnSig, Option<P<Block>>),
     TyAlias(P<Ty>),
     Macro(Mac),
 }

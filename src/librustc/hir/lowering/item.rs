@@ -250,7 +250,7 @@ impl LoweringContext<'_> {
             return None;
         }
 
-        let kind = self.lower_item_kind(i.id, &mut ident, &attrs, &mut vis, &i.kind);
+        let kind = self.lower_item_kind(i.span, i.id, &mut ident, &attrs, &mut vis, &i.kind);
 
         Some(hir::Item {
             hir_id: self.lower_node_id(i.id),
@@ -264,6 +264,7 @@ impl LoweringContext<'_> {
 
     fn lower_item_kind(
         &mut self,
+        span: Span,
         id: NodeId,
         ident: &mut Ident,
         attrs: &hir::HirVec<Attribute>,
@@ -292,7 +293,7 @@ impl LoweringContext<'_> {
                         }
                     ),
                     m,
-                    self.lower_const_body(e),
+                    self.lower_const_body(span, Some(e)),
                 )
             }
             ItemKind::Const(ref t, ref e) => {
@@ -305,7 +306,7 @@ impl LoweringContext<'_> {
                             ImplTraitContext::Disallowed(ImplTraitPosition::Binding)
                         }
                     ),
-                    self.lower_const_body(e)
+                    self.lower_const_body(span, Some(e))
                 )
             }
             ItemKind::Fn(FnSig { ref decl, header }, ref generics, ref body) => {
@@ -317,7 +318,12 @@ impl LoweringContext<'_> {
                     // `impl Future<Output = T>` here because lower_body
                     // only cares about the input argument patterns in the function
                     // declaration (decl), not the return types.
-                    let body_id = this.lower_maybe_async_body(&decl, header.asyncness.node, body);
+                    let body_id = this.lower_maybe_async_body(
+                        span,
+                        &decl,
+                        header.asyncness.node,
+                        Some(body),
+                    );
 
                     let (generics, decl) = this.add_in_band_defs(
                         generics,
@@ -817,7 +823,7 @@ impl LoweringContext<'_> {
                     self.lower_ty(ty, ImplTraitContext::disallowed()),
                     default
                         .as_ref()
-                        .map(|x| self.lower_const_body(x)),
+                        .map(|x| self.lower_const_body(i.span, Some(x))),
                 ),
             ),
             TraitItemKind::Method(ref sig, None) => {
@@ -832,7 +838,7 @@ impl LoweringContext<'_> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
             TraitItemKind::Method(ref sig, Some(ref body)) => {
-                let body_id = self.lower_fn_body_block(&sig.decl, body);
+                let body_id = self.lower_fn_body_block(i.span, &sig.decl, Some(body));
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
                     sig,
@@ -891,6 +897,11 @@ impl LoweringContext<'_> {
         }
     }
 
+    /// Construct `ExprKind::Err` for the given `span`.
+    fn expr_err(&mut self, span: Span) -> hir::Expr {
+        self.expr(span, hir::ExprKind::Err, ThinVec::new())
+    }
+
     fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
@@ -899,19 +910,16 @@ impl LoweringContext<'_> {
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::ImplItemKind::Const(
                     self.lower_ty(ty, ImplTraitContext::disallowed()),
-                    match expr {
-                        Some(expr) => self.lower_const_body(expr),
-                        None => self.lower_body(|this| (
-                            hir_vec![],
-                            this.expr(i.span, hir::ExprKind::Err, ThinVec::new()),
-                        )),
-                    }
+                    self.lower_const_body(i.span, expr.as_deref()),
                 ),
             ),
             ImplItemKind::Method(ref sig, ref body) => {
                 self.current_item = Some(i.span);
                 let body_id = self.lower_maybe_async_body(
-                    &sig.decl, sig.header.asyncness.node, body
+                    i.span,
+                    &sig.decl,
+                    sig.header.asyncness.node,
+                    body.as_deref(),
                 );
                 let impl_trait_return_allow = !self.is_in_trait_impl;
                 let (generics, sig) = self.lower_method_sig(
@@ -1069,23 +1077,39 @@ impl LoweringContext<'_> {
         ))
     }
 
-    fn lower_fn_body_block(&mut self, decl: &FnDecl, body: &Block) -> hir::BodyId {
-        self.lower_fn_body(decl, |this| this.lower_block_expr(body))
+    fn lower_fn_body_block(
+        &mut self,
+        span: Span,
+        decl: &FnDecl,
+        body: Option<&Block>,
+    ) -> hir::BodyId {
+        self.lower_fn_body(decl, |this| this.lower_block_expr_opt(span, body))
     }
 
-    pub(super) fn lower_const_body(&mut self, expr: &Expr) -> hir::BodyId {
-        self.lower_body(|this| (hir_vec![], this.lower_expr(expr)))
+    fn lower_block_expr_opt(&mut self, span: Span, block: Option<&Block>) -> hir::Expr {
+        match block {
+            Some(block) => self.lower_block_expr(block),
+            None => self.expr_err(span),
+        }
+    }
+
+    pub(super) fn lower_const_body(&mut self, span: Span, expr: Option<&Expr>) -> hir::BodyId {
+        self.lower_body(|this| (hir_vec![], match expr {
+            Some(expr) => this.lower_expr(expr),
+            None => this.expr_err(span),
+        }))
     }
 
     fn lower_maybe_async_body(
         &mut self,
+        span: Span,
         decl: &FnDecl,
         asyncness: IsAsync,
-        body: &Block,
+        body: Option<&Block>,
     ) -> hir::BodyId {
         let closure_id = match asyncness {
             IsAsync::Async { closure_id, .. } => closure_id,
-            IsAsync::NotAsync => return self.lower_fn_body_block(decl, body),
+            IsAsync::NotAsync => return self.lower_fn_body_block(span, decl, body),
         };
 
         self.lower_body(|this| {
@@ -1219,15 +1243,16 @@ impl LoweringContext<'_> {
                 parameters.push(new_parameter);
             }
 
+            let body_span = body.map_or(span, |b| b.span);
             let async_expr = this.make_async_expr(
                 CaptureBy::Value,
                 closure_id,
                 None,
-                body.span,
+                body_span,
                 hir::AsyncGeneratorKind::Fn,
                 |this| {
                     // Create a block from the user's function body:
-                    let user_body = this.lower_block_expr(body);
+                    let user_body = this.lower_block_expr_opt(body_span, body);
 
                     // Transform into `drop-temps { <user-body> }`, an expression:
                     let desugared_span = this.mark_span_with_reason(
@@ -1257,7 +1282,7 @@ impl LoweringContext<'_> {
                     );
                     this.expr_block(P(body), ThinVec::new())
                 });
-            (HirVec::from(parameters), this.expr(body.span, async_expr, ThinVec::new()))
+            (HirVec::from(parameters), this.expr(body_span, async_expr, ThinVec::new()))
         })
     }
 

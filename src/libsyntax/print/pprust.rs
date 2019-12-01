@@ -1553,23 +1553,13 @@ impl<'a> State<'a> {
         self.print_defaultness(ti.defaultness);
         match ti.kind {
             ast::TraitItemKind::Const(ref ty, ref default) => {
-                self.print_associated_const(
-                    ti.ident,
-                    ty,
-                    default.as_ref().map(|expr| &**expr),
-                    &source_map::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                );
+                self.print_associated_const(ti.ident, ty, default.as_deref(), &ti.vis);
             }
             ast::TraitItemKind::Method(ref sig, ref body) => {
                 if body.is_some() {
                     self.head("");
                 }
-                self.print_method_sig(
-                    ti.ident,
-                    &ti.generics,
-                    sig,
-                    &source_map::respan(ti.span.shrink_to_lo(), ast::VisibilityKind::Inherited),
-                );
+                self.print_method_sig(ti.ident, &ti.generics, sig, &ti.vis);
                 if let Some(ref body) = *body {
                     self.nbsp();
                     self.print_block_with_attrs(body, &ti.attrs);
@@ -1602,10 +1592,16 @@ impl<'a> State<'a> {
                 self.print_associated_const(ii.ident, ty, expr.as_deref(), &ii.vis);
             }
             ast::ImplItemKind::Method(ref sig, ref body) => {
-                self.head("");
+                if body.is_some() {
+                    self.head("");
+                }
                 self.print_method_sig(ii.ident, &ii.generics, sig, &ii.vis);
-                self.nbsp();
-                self.print_block_with_attrs(body, &ii.attrs);
+                if let Some(body) = body {
+                    self.nbsp();
+                    self.print_block_with_attrs(body, &ii.attrs);
+                } else {
+                    self.s.word(";");
+                }
             }
             ast::ImplItemKind::TyAlias(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty));

@@ -25,7 +25,7 @@ pub enum FnKind<'a> {
     ItemFn(Ident, &'a FnHeader, &'a Visibility, &'a Block),
 
     /// E.g., `fn foo(&self)`.
-    Method(Ident, &'a FnSig, Option<&'a Visibility>, &'a Block),
+    Method(Ident, &'a FnSig, &'a Visibility, &'a Block),
 
     /// E.g., `|x, y| body`.
     Closure(&'a Expr),
@@ -596,7 +596,7 @@ pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a Trai
             walk_fn_decl(visitor, &sig.decl);
         }
         TraitItemKind::Method(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FnKind::Method(trait_item.ident, sig, None, body),
+            visitor.visit_fn(FnKind::Method(trait_item.ident, sig, &trait_item.vis, body),
                              &sig.decl, trait_item.span, trait_item.id);
         }
         TraitItemKind::Type(ref bounds, ref default) => {
@@ -619,8 +619,12 @@ pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplIt
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        ImplItemKind::Method(ref sig, ref body) => {
-            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, Some(&impl_item.vis), body),
+        ImplItemKind::Method(ref sig, None) => {
+            visitor.visit_fn_header(&sig.header);
+            walk_fn_decl(visitor, &sig.decl);
+        }
+        ImplItemKind::Method(ref sig, Some(ref body)) => {
+            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, &impl_item.vis, body),
                              &sig.decl, impl_item.span, impl_item.id);
         }
         ImplItemKind::TyAlias(ref ty) => {

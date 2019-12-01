@@ -1211,7 +1211,7 @@ impl<'a> LoweringContext<'a> {
                             let ct = self.with_new_scopes(|this| {
                                 hir::AnonConst {
                                     hir_id: this.lower_node_id(node_id),
-                                    body: this.lower_const_body(&path_expr),
+                                    body: this.lower_const_body(path_expr.span, Some(&path_expr)),
                                 }
                             });
                             return GenericArg::Const(ConstArg {
@@ -3003,7 +3003,7 @@ impl<'a> LoweringContext<'a> {
         self.with_new_scopes(|this| {
             hir::AnonConst {
                 hir_id: this.lower_node_id(c.id),
-                body: this.lower_const_body(&c.value),
+                body: this.lower_const_body(c.value.span, Some(&c.value)),
             }
         })
     }

@@ -705,9 +705,7 @@ impl<'a> Parser<'a> {
             // FIXME: code copied from `parse_macro_use_or_failure` -- use abstraction!
             (Ident::invalid(), ast::ImplItemKind::Macro(mac), Generics::default())
         } else {
-            let (name, inner_attrs, generics, kind) = self.parse_impl_method(at_end)?;
-            attrs.extend(inner_attrs);
-            (name, kind, generics)
+            self.parse_impl_method(at_end, &mut attrs)?
         };
 
         Ok(ImplItem {
@@ -1842,11 +1840,11 @@ impl<'a> Parser<'a> {
     fn parse_impl_method(
         &mut self,
         at_end: &mut bool,
-    ) -> PResult<'a, (Ident, Vec<Attribute>, Generics, ImplItemKind)> {
+        attrs: &mut Vec<Attribute>,
+    ) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
         let (ident, sig, generics) = self.parse_method_sig(|_| true)?;
-        *at_end = true;
-        let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
-        Ok((ident, inner_attrs, generics, ast::ImplItemKind::Method(sig, body)))
+        let body = self.parse_trait_method_body(at_end, attrs)?;
+        Ok((ident, ast::ImplItemKind::Method(sig, body), generics))
     }
 
     fn parse_trait_item_method(

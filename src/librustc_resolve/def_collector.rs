@@ -50,7 +50,7 @@ impl<'a> DefCollector<'a> {
         header: &FnHeader,
         generics: &'a Generics,
         decl: &'a FnDecl,
-        body: &'a Block,
+        body: Option<&'a Block>,
     ) {
         let (closure_id, return_impl_trait_id) = match header.asyncness.node {
             IsAsync::Async {
@@ -74,7 +74,9 @@ impl<'a> DefCollector<'a> {
                 closure_id, DefPathData::ClosureExpr, span,
             );
             this.with_parent(closure_def, |this| {
-                visit::walk_block(this, body);
+                if let Some(body) = body {
+                    visit::walk_block(this, body);
+                }
             })
         })
     }
@@ -123,7 +125,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     &sig.header,
                     generics,
                     &sig.decl,
-                    body,
+                    Some(body),
                 )
             }
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
@@ -237,7 +239,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     header,
                     &ii.generics,
                     decl,
-                    body,
+                    body.as_deref(),
                 )
             }
             ImplItemKind::Method(..) |

@@ -1119,7 +1119,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
             ast::ImplItemKind::Method(ref sig, ref body) => {
                 self.process_method(
                     sig,
-                    Some(body),
+                    body.as_deref(),
                     impl_item.id,
                     impl_item.ident,
                     &impl_item.generics,

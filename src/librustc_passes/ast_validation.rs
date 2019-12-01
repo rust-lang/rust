@@ -279,6 +279,22 @@ impl<'a> AstValidator<'a> {
                 .emit();
         }
     }
+
+    fn check_impl_item_provided<T>(&self, sp: Span, body: &Option<T>, ctx: &str, sugg: &str) {
+        if body.is_some() {
+            return;
+        }
+
+        self.err_handler()
+            .struct_span_err(sp, &format!("associated {} in `impl` without body", ctx))
+            .span_suggestion(
+                self.session.source_map().end_point(sp),
+                &format!("provide a definition for the {}", ctx),
+                sugg.to_string(),
+                Applicability::HasPlaceholders,
+            )
+            .emit();
+    }
 }
 
 enum GenericPosition {
@@ -747,18 +763,11 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         match &ii.kind {
-            ImplItemKind::Const(ty, None) => {
-                self.err_handler()
-                    .struct_span_err(ii.span, "associated constant in `impl` without body")
-                    .span_suggestion(
-                        ii.span,
-                        "provide a definition for the constant",
-                        format!("const {}: {} = <expr>;", ii.ident, pprust::ty_to_string(ty)),
-                        Applicability::HasPlaceholders,
-                    )
-                    .emit();
+            ImplItemKind::Const(_, body) => {
+                self.check_impl_item_provided(ii.span, body, "constant", " = <expr>;");
             }
-            ImplItemKind::Method(sig, _) => {
+            ImplItemKind::Method(sig, body) => {
+                self.check_impl_item_provided(ii.span, body, "function", " { <body> }");
                 self.check_fn_decl(&sig.decl);
             }
             _ => {}
