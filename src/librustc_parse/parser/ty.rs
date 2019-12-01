@@ -42,11 +42,12 @@ impl<'a> Parser<'a> {
 
     /// Parses an optional return type `[ -> TY ]` in a function declaration.
     pub(super) fn parse_ret_ty(&mut self, allow_plus: bool) -> PResult<'a, FunctionRetTy> {
-        if self.eat(&token::RArrow) {
-            Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true, false)?))
+        Ok(if self.eat(&token::RArrow) {
+            // FIXME(Centril): Can we unconditionally `allow_plus`?
+            FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true, false)?)
         } else {
-            Ok(FunctionRetTy::Default(self.token.span.shrink_to_lo()))
-        }
+            FunctionRetTy::Default(self.token.span.shrink_to_lo())
+        })
     }
 
     pub(super) fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool,
