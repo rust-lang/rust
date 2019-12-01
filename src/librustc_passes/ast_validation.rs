@@ -674,10 +674,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             GenericArgs::Parenthesized(ref data) => {
                 walk_list!(self, visit_ty, &data.inputs);
-                if let Some(ref type_) = data.output {
+                if let FunctionRetTy::Ty(ty) = &data.output {
                     // `-> Foo` syntax is essentially an associated type binding,
                     // so it is also allowed to contain nested `impl Trait`.
-                    self.with_impl_trait(None, |this| this.visit_ty(type_));
+                    self.with_impl_trait(None, |this| this.visit_ty(ty));
                 }
             }
         }

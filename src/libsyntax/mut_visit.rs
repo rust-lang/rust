@@ -553,7 +553,7 @@ pub fn noop_visit_parenthesized_parameter_data<T: MutVisitor>(args: &mut Parenth
                                                               vis: &mut T) {
     let ParenthesizedArgs { inputs, output, span } = args;
     visit_vec(inputs, |input| vis.visit_ty(input));
-    visit_opt(output, |output| vis.visit_ty(output));
+    noop_visit_fn_ret_ty(output, vis);
     vis.visit_span(span);
 }
 
@@ -742,7 +742,11 @@ pub fn noop_visit_asyncness<T: MutVisitor>(asyncness: &mut IsAsync, vis: &mut T)
 pub fn noop_visit_fn_decl<T: MutVisitor>(decl: &mut P<FnDecl>, vis: &mut T) {
     let FnDecl { inputs, output } = decl.deref_mut();
     inputs.flat_map_in_place(|param| vis.flat_map_param(param));
-    match output {
+    noop_visit_fn_ret_ty(output, vis);
+}
+
+pub fn noop_visit_fn_ret_ty<T: MutVisitor>(fn_ret_ty: &mut FunctionRetTy, vis: &mut T) {
+    match fn_ret_ty {
         FunctionRetTy::Default(span) => vis.visit_span(span),
         FunctionRetTy::Ty(ty) => vis.visit_ty(ty),
     }

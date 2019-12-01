@@ -887,17 +887,9 @@ impl<'a> PrintState<'a> for State<'a> {
 
             ast::GenericArgs::Parenthesized(ref data) => {
                 self.s.word("(");
-                self.commasep(
-                    Inconsistent,
-                    &data.inputs,
-                    |s, ty| s.print_type(ty));
+                self.commasep(Inconsistent, &data.inputs, |s, ty| s.print_type(ty));
                 self.s.word(")");
-
-                if let Some(ref ty) = data.output {
-                    self.space_if_not_bol();
-                    self.word_space("->");
-                    self.print_type(ty);
-                }
+                self.print_fn_ret_ty(&data.output);
             }
         }
     }
@@ -1579,6 +1571,7 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::SubItem(ti.id))
     }
 
+    // FIXME(Centril): merge with function above.
     crate fn print_impl_item(&mut self, ii: &ast::ImplItem) {
         self.ann.pre(self, AnnNode::SubItem(ii.id));
         self.hardbreak_if_not_bol();
@@ -2104,7 +2097,7 @@ impl<'a> State<'a> {
                 self.print_asyncness(asyncness);
                 self.print_capture_clause(capture_clause);
 
-                self.print_fn_block_params(decl);
+                self.print_fn_params_and_ret(decl, true);
                 self.s.space();
                 self.print_expr(body);
                 self.end(); // need to close a box
@@ -2535,36 +2528,16 @@ impl<'a> State<'a> {
             self.print_ident(name);
         }
         self.print_generic_params(&generics.params);
-        self.print_fn_params_and_ret(decl);
+        self.print_fn_params_and_ret(decl, false);
         self.print_where_clause(&generics.where_clause)
     }
 
-    crate fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl) {
-        self.popen();
-        self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, false));
-        self.pclose();
-
-        self.print_fn_output(decl)
-    }
-
-    crate fn print_fn_block_params(&mut self, decl: &ast::FnDecl) {
-        self.s.word("|");
-        self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, true));
-        self.s.word("|");
-
-        if let ast::FunctionRetTy::Default(..) = decl.output {
-            return;
-        }
-
-        self.space_if_not_bol();
-        self.word_space("->");
-        match decl.output {
-            ast::FunctionRetTy::Ty(ref ty) => {
-                self.print_type(ty);
-                self.maybe_print_comment(ty.span.lo())
-            }
-            ast::FunctionRetTy::Default(..) => unreachable!(),
-        }
+    crate fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {
+        let (open, close) = if is_closure { ("|", "|") } else { ("(", ")") };
+        self.word(open);
+        self.commasep(Inconsistent, &decl.inputs, |s, param| s.print_param(param, is_closure));
+        self.word(close);
+        self.print_fn_ret_ty(&decl.output)
     }
 
     crate fn print_movability(&mut self, movability: ast::Movability) {
@@ -2786,24 +2759,14 @@ impl<'a> State<'a> {
         self.end();
     }
 
-    crate fn print_fn_output(&mut self, decl: &ast::FnDecl) {
-        if let ast::FunctionRetTy::Default(..) = decl.output {
-            return;
-        }
-
-        self.space_if_not_bol();
-        self.ibox(INDENT_UNIT);
-        self.word_space("->");
-        match decl.output {
-            ast::FunctionRetTy::Default(..) => unreachable!(),
-            ast::FunctionRetTy::Ty(ref ty) =>
-                self.print_type(ty),
-        }
-        self.end();
-
-        match decl.output {
-            ast::FunctionRetTy::Ty(ref output) => self.maybe_print_comment(output.span.lo()),
-            _ => {}
+    crate fn print_fn_ret_ty(&mut self, fn_ret_ty: &ast::FunctionRetTy) {
+        if let ast::FunctionRetTy::Ty(ty) = fn_ret_ty {
+            self.space_if_not_bol();
+            self.ibox(INDENT_UNIT);
+            self.word_space("->");
+            self.print_type(ty);
+            self.end();
+            self.maybe_print_comment(ty.span.lo());
         }
     }
 

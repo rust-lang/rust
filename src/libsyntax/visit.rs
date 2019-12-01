@@ -420,7 +420,7 @@ pub fn walk_generic_args<'a, V>(visitor: &mut V,
         }
         GenericArgs::Parenthesized(ref data) => {
             walk_list!(visitor, visit_ty, &data.inputs);
-            walk_list!(visitor, visit_ty, &data.output);
+            walk_fn_ret_ty(visitor, &data.output);
         }
     }
 }

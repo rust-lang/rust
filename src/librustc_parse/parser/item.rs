@@ -1900,7 +1900,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<FnDecl>> {
         Ok(P(FnDecl {
             inputs: self.parse_fn_params(cfg)?,
-            output: self.parse_ret_ty(ret_allow_plus)?,
+            output: self.parse_ret_ty(ret_allow_plus, true)?,
         }))
     }
 
@@ -2002,12 +2002,12 @@ impl<'a> Parser<'a> {
             }
 
             self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_common(true, true, cfg.allow_c_variadic)?)
+            (pat, self.parse_ty_for_param(cfg.allow_c_variadic)?)
         } else {
             debug!("parse_param_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_common(true, true, cfg.allow_c_variadic);
+            let mut ty = self.parse_ty_for_param(cfg.allow_c_variadic);
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,

@@ -254,7 +254,7 @@ pub struct ParenthesizedArgs {
     pub inputs: Vec<P<Ty>>,
 
     /// `C`
-    pub output: Option<P<Ty>>,
+    pub output: FunctionRetTy,
 }
 
 impl ParenthesizedArgs {
@@ -2185,7 +2185,7 @@ impl fmt::Debug for ImplPolarity {
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum FunctionRetTy {
+pub enum FunctionRetTy { // FIXME(Centril): Rename to `FnRetTy` and in HIR also.
     /// Returns type is not specified.
     ///
     /// Functions default to `()` and closures default to inference.

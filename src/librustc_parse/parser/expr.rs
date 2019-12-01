@@ -1381,7 +1381,7 @@ impl<'a> Parser<'a> {
                 args
             }
         };
-        let output = self.parse_ret_ty(true)?;
+        let output = self.parse_ret_ty(true, true)?;
 
         Ok(P(FnDecl {
             inputs: inputs_captures,

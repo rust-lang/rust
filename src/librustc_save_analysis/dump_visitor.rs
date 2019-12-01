@@ -811,9 +811,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                 match **generic_args {
                     ast::GenericArgs::AngleBracketed(ref data) => {
                         for arg in &data.args {
-                            match arg {
-                                ast::GenericArg::Type(ty) => self.visit_ty(ty),
-                                _ => {}
+                            if let ast::GenericArg::Type(ty) = arg {
+                                self.visit_ty(ty);
                             }
                         }
                     }
@@ -821,8 +820,8 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                         for t in &data.inputs {
                             self.visit_ty(t);
                         }
-                        if let Some(ref t) = data.output {
-                            self.visit_ty(t);
+                        if let ast::FunctionRetTy::Ty(ty) = &data.output {
+                            self.visit_ty(ty);
                         }
                     }
                 }

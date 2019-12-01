@@ -30,6 +30,13 @@ impl<'a> Parser<'a> {
         self.parse_ty_common(true, true, false)
     }
 
+    /// Parse a type suitable for a function or function pointer parameter.
+    /// The difference from `parse_ty` is that this version allows `...`
+    /// (`CVarArgs`) at the top level of the the type.
+    pub(super) fn parse_ty_for_param(&mut self, allow_c_variadic: bool) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(true, true, allow_c_variadic)
+    }
+
     /// Parses a type in restricted contexts where `+` is not permitted.
     ///
     /// Example 1: `&'a TYPE`
@@ -41,17 +48,26 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an optional return type `[ -> TY ]` in a function declaration.
-    pub(super) fn parse_ret_ty(&mut self, allow_plus: bool) -> PResult<'a, FunctionRetTy> {
+    pub(super) fn parse_ret_ty(
+        &mut self,
+        allow_plus: bool,
+        allow_qpath_recovery: bool,
+    ) -> PResult<'a, FunctionRetTy> {
         Ok(if self.eat(&token::RArrow) {
             // FIXME(Centril): Can we unconditionally `allow_plus`?
-            FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true, false)?)
+            FunctionRetTy::Ty(self.parse_ty_common(allow_plus, allow_qpath_recovery, false)?)
         } else {
             FunctionRetTy::Default(self.token.span.shrink_to_lo())
         })
     }
 
-    pub(super) fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool,
-                       allow_c_variadic: bool) -> PResult<'a, P<Ty>> {
+    fn parse_ty_common(
+        &mut self,
+        allow_plus: bool,
+        allow_qpath_recovery: bool,
+        // Is `...` (`CVarArgs`) legal in the immediate top level call?
+        allow_c_variadic: bool,
+    ) -> PResult<'a, P<Ty>> {
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
         maybe_whole!(self, NtTy, |x| x);
 
@@ -198,6 +214,8 @@ impl<'a> Parser<'a> {
                 self.eat(&token::DotDotDot);
                 TyKind::CVarArgs
             } else {
+                // FIXME(Centril): Should we just allow `...` syntactically
+                // anywhere in a type and use semantic restrictions instead?
                 return Err(struct_span_fatal!(
                     self.sess.span_diagnostic,
                     self.token.span,

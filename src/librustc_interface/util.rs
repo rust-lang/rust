@@ -712,8 +712,8 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
         ret
     }
 
-    fn should_ignore_fn(ret_ty: &ast::FnDecl) -> bool {
-        if let ast::FunctionRetTy::Ty(ref ty) = ret_ty.output {
+    fn should_ignore_fn(ret_ty: &ast::FunctionRetTy) -> bool {
+        if let ast::FunctionRetTy::Ty(ref ty) = ret_ty {
             fn involves_impl_trait(ty: &ast::Ty) -> bool {
                 match ty.kind {
                     ast::TyKind::ImplTrait(..) => true,
@@ -742,7 +742,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
                             },
                             Some(&ast::GenericArgs::Parenthesized(ref data)) => {
                                 any_involves_impl_trait(data.inputs.iter()) ||
-                                any_involves_impl_trait(data.output.iter())
+                                ReplaceBodyWithLoop::should_ignore_fn(&data.output)
                             }
                         }
                     }),
@@ -762,7 +762,7 @@ impl<'a, 'b> ReplaceBodyWithLoop<'a, 'b> {
 
     fn is_sig_const(sig: &ast::FnSig) -> bool {
         sig.header.constness.node == ast::Constness::Const ||
-            ReplaceBodyWithLoop::should_ignore_fn(&sig.decl)
+            ReplaceBodyWithLoop::should_ignore_fn(&sig.decl.output)
     }
 }
 

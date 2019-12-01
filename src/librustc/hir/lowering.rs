@@ -2092,29 +2092,19 @@ impl<'a> LoweringContext<'a> {
                     .iter()
                     .map(|ty| this.lower_ty_direct(ty, ImplTraitContext::disallowed()))
                     .collect();
+                let output_ty = match output {
+                    FunctionRetTy::Ty(ty) => this.lower_ty(&ty, ImplTraitContext::disallowed()),
+                    FunctionRetTy::Default(_) => P(this.ty_tup(span, hir::HirVec::new())),
+                };
+                let args = hir_vec![GenericArg::Type(this.ty_tup(span, inputs))];
+                let binding = hir::TypeBinding {
+                    hir_id: this.next_id(),
+                    ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
+                    span: output_ty.span,
+                    kind: hir::TypeBindingKind::Equality { ty: output_ty },
+                };
                 (
-                    hir::GenericArgs {
-                        args: hir_vec![GenericArg::Type(this.ty_tup(span, inputs))],
-                        bindings: hir_vec![
-                            hir::TypeBinding {
-                                hir_id: this.next_id(),
-                                ident: Ident::with_dummy_span(FN_OUTPUT_NAME),
-                                kind: hir::TypeBindingKind::Equality {
-                                    ty: output
-                                        .as_ref()
-                                        .map(|ty| this.lower_ty(
-                                            &ty,
-                                            ImplTraitContext::disallowed()
-                                        ))
-                                        .unwrap_or_else(||
-                                            P(this.ty_tup(span, hir::HirVec::new()))
-                                        ),
-                                },
-                                span: output.as_ref().map_or(span, |ty| ty.span),
-                            }
-                        ],
-                        parenthesized: true,
-                    },
+                    hir::GenericArgs { args, bindings: hir_vec![binding], parenthesized: true },
                     false,
                 )
             }
