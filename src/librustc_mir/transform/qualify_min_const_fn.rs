@@ -221,6 +221,8 @@ impl Visitor<'tcx, McfResult> for IsMinConstFn<'mir, 'tcx> {
         statement: &Statement<'tcx>,
         location: Location,
     ) -> McfResult {
+        // Setting `span` here is necessary because we don't call `super_statement` until later.
+        self.span = statement.source_info.span;
         let IsMinConstFn { tcx, span, .. } = *self;
 
         match &statement.kind {
@@ -323,6 +325,7 @@ impl Visitor<'tcx, McfResult> for IsMinConstFn<'mir, 'tcx> {
         location: Location,
     ) -> McfResult {
         let IsMinConstFn { tcx, span, body, .. } = *self;
+
         match kind {
             | TerminatorKind::FalseEdges { .. }
             | TerminatorKind::SwitchInt { .. }
