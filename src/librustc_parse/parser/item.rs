@@ -7,6 +7,7 @@ use rustc_errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 use rustc_error_codes::*;
 use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
 use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
+use syntax::ast::{AssocItemKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, Variant, VariantData, StructField};
@@ -699,7 +700,7 @@ impl<'a> Parser<'a> {
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_impl_assoc_ty()?
         } else if self.is_const_item() {
-            self.parse_impl_const()?
+            self.parse_assoc_const()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(&vis), at_end)? {
             // FIXME: code copied from `parse_macro_use_or_failure` -- use abstraction!
             (Ident::invalid(), ast::ImplItemKind::Macro(mac), Generics::default())
@@ -747,22 +748,6 @@ impl<'a> Parser<'a> {
     fn is_const_item(&self) -> bool {
         self.token.is_keyword(kw::Const) &&
             !self.is_keyword_ahead(1, &[kw::Fn, kw::Unsafe])
-    }
-
-    /// This parses the grammar:
-    ///     ImplItemConst = "const" Ident ":" Ty "=" Expr ";"
-    fn parse_impl_const(&mut self) -> PResult<'a, (Ident, ImplItemKind, Generics)> {
-        self.expect_keyword(kw::Const)?;
-        let ident = self.parse_ident()?;
-        self.expect(&token::Colon)?;
-        let ty = self.parse_ty()?;
-        let expr = if self.eat(&token::Eq) {
-            Some(self.parse_expr()?)
-        } else {
-            None
-        };
-        self.expect_semi()?;
-        Ok((ident, ImplItemKind::Const(ty, expr), Generics::default()))
     }
 
     /// Parses the following grammar:
@@ -911,7 +896,7 @@ impl<'a> Parser<'a> {
         let (name, kind, generics) = if self.eat_keyword(kw::Type) {
             self.parse_trait_item_assoc_ty()?
         } else if self.is_const_item() {
-            self.parse_trait_item_const()?
+            self.parse_assoc_const()?
         } else if let Some(mac) = self.parse_assoc_macro_invoc("trait", None, &mut false)? {
             // trait item macro.
             (Ident::invalid(), TraitItemKind::Macro(mac), Generics::default())
@@ -932,7 +917,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_trait_item_const(&mut self) -> PResult<'a, (Ident, TraitItemKind, Generics)> {
+    /// This parses the grammar:
+    ///
+    ///     AssocConst = "const" Ident ":" Ty "=" Expr ";"
+    fn parse_assoc_const(&mut self) -> PResult<'a, (Ident, AssocItemKind, Generics)> {
         self.expect_keyword(kw::Const)?;
         let ident = self.parse_ident()?;
         self.expect(&token::Colon)?;
@@ -943,7 +931,7 @@ impl<'a> Parser<'a> {
             None
         };
         self.expect_semi()?;
-        Ok((ident, TraitItemKind::Const(ty, expr), Generics::default()))
+        Ok((ident, AssocItemKind::Const(ty, expr), Generics::default()))
     }
 
     /// Parses the following grammar:
