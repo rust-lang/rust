@@ -335,8 +335,8 @@ pub fn nonterminal_to_string(nt: &Nonterminal) -> String {
         token::NtLifetime(e)        => e.to_string(),
         token::NtLiteral(ref e)     => expr_to_string(e),
         token::NtTT(ref tree)       => tt_to_string(tree.clone()),
-        token::NtImplItem(ref e)    => impl_item_to_string(e),
-        token::NtTraitItem(ref e)   => trait_item_to_string(e),
+        // FIXME(Centril): merge these variants.
+        token::NtImplItem(ref e) | token::NtTraitItem(ref e) => assoc_item_to_string(e),
         token::NtVis(ref e)         => vis_to_string(e),
         token::NtForeignItem(ref e) => foreign_item_to_string(e),
     }
@@ -374,12 +374,8 @@ pub fn item_to_string(i: &ast::Item) -> String {
     to_string(|s| s.print_item(i))
 }
 
-fn impl_item_to_string(i: &ast::ImplItem) -> String {
-    to_string(|s| s.print_impl_item(i))
-}
-
-fn trait_item_to_string(i: &ast::TraitItem) -> String {
-    to_string(|s| s.print_trait_item(i))
+fn assoc_item_to_string(i: &ast::AssocItem) -> String {
+    to_string(|s| s.print_assoc_item(i))
 }
 
 pub fn generic_params_to_string(generic_params: &[ast::GenericParam]) -> String {
@@ -1301,7 +1297,7 @@ impl<'a> State<'a> {
                 self.bopen();
                 self.print_inner_attributes(&item.attrs);
                 for impl_item in impl_items {
-                    self.print_impl_item(impl_item);
+                    self.print_assoc_item(impl_item);
                 }
                 self.bclose(item.span);
             }
@@ -1328,7 +1324,7 @@ impl<'a> State<'a> {
                 self.s.word(" ");
                 self.bopen();
                 for trait_item in trait_items {
-                    self.print_trait_item(trait_item);
+                    self.print_assoc_item(trait_item);
                 }
                 self.bclose(item.span);
             }
@@ -1522,89 +1518,39 @@ impl<'a> State<'a> {
         }
     }
 
-    crate fn print_method_sig(&mut self,
-                            ident: ast::Ident,
-                            generics: &ast::Generics,
-                            m: &ast::FnSig,
-                            vis: &ast::Visibility)
-                            {
-        self.print_fn(&m.decl,
-                      m.header,
-                      Some(ident),
-                      &generics,
-                      vis)
-    }
-
-    crate fn print_trait_item(&mut self, ti: &ast::TraitItem)
-                            {
-        self.ann.pre(self, AnnNode::SubItem(ti.id));
+    crate fn print_assoc_item(&mut self, item: &ast::AssocItem) {
+        self.ann.pre(self, AnnNode::SubItem(item.id));
         self.hardbreak_if_not_bol();
-        self.maybe_print_comment(ti.span.lo());
-        self.print_outer_attributes(&ti.attrs);
-        self.print_defaultness(ti.defaultness);
-        match ti.kind {
-            ast::TraitItemKind::Const(ref ty, ref default) => {
-                self.print_associated_const(ti.ident, ty, default.as_deref(), &ti.vis);
+        self.maybe_print_comment(item.span.lo());
+        self.print_outer_attributes(&item.attrs);
+        self.print_defaultness(item.defaultness);
+        match &item.kind {
+            ast::AssocItemKind::Const(ty, expr) => {
+                self.print_associated_const(item.ident, ty, expr.as_deref(), &item.vis);
             }
-            ast::TraitItemKind::Method(ref sig, ref body) => {
+            ast::AssocItemKind::Method(sig, body) => {
                 if body.is_some() {
                     self.head("");
                 }
-                self.print_method_sig(ti.ident, &ti.generics, sig, &ti.vis);
-                if let Some(ref body) = *body {
-                    self.nbsp();
-                    self.print_block_with_attrs(body, &ti.attrs);
-                } else {
-                    self.s.word(";");
-                }
-            }
-            ast::TraitItemKind::TyAlias(ref bounds, ref default) => {
-                self.print_associated_type(ti.ident, bounds, default.as_deref());
-            }
-            ast::TraitItemKind::Macro(ref mac) => {
-                self.print_mac(mac);
-                if mac.args.need_semicolon() {
-                    self.s.word(";");
-                }
-            }
-        }
-        self.ann.post(self, AnnNode::SubItem(ti.id))
-    }
-
-    // FIXME(Centril): merge with function above.
-    crate fn print_impl_item(&mut self, ii: &ast::ImplItem) {
-        self.ann.pre(self, AnnNode::SubItem(ii.id));
-        self.hardbreak_if_not_bol();
-        self.maybe_print_comment(ii.span.lo());
-        self.print_outer_attributes(&ii.attrs);
-        self.print_defaultness(ii.defaultness);
-        match ii.kind {
-            ast::ImplItemKind::Const(ref ty, ref expr) => {
-                self.print_associated_const(ii.ident, ty, expr.as_deref(), &ii.vis);
-            }
-            ast::ImplItemKind::Method(ref sig, ref body) => {
-                if body.is_some() {
-                    self.head("");
-                }
-                self.print_method_sig(ii.ident, &ii.generics, sig, &ii.vis);
+                self.print_fn(&sig.decl, sig.header, Some(item.ident), &item.generics, &item.vis);
                 if let Some(body) = body {
                     self.nbsp();
-                    self.print_block_with_attrs(body, &ii.attrs);
+                    self.print_block_with_attrs(body, &item.attrs);
                 } else {
                     self.s.word(";");
                 }
             }
-            ast::ImplItemKind::TyAlias(ref bounds, ref ty) => {
-                self.print_associated_type(ii.ident, bounds, ty.as_deref());
+            ast::AssocItemKind::TyAlias(bounds, ty) => {
+                self.print_associated_type(item.ident, bounds, ty.as_deref());
             }
-            ast::ImplItemKind::Macro(ref mac) => {
+            ast::AssocItemKind::Macro(mac) => {
                 self.print_mac(mac);
                 if mac.args.need_semicolon() {
                     self.s.word(";");
                 }
             }
         }
-        self.ann.post(self, AnnNode::SubItem(ii.id))
+        self.ann.post(self, AnnNode::SubItem(item.id))
     }
 
     crate fn print_stmt(&mut self, st: &ast::Stmt) {
