@@ -1579,7 +1579,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             output_lifetime_params: Vec<hir::GenericParam>,
         }
 
-        impl<'r, 'a, 'v, 'hir> hir::intravisit::Visitor<'v> for ImplTraitLifetimeCollector<'r, 'a, 'hir> {
+        impl<'r, 'a, 'v, 'hir> hir::intravisit::Visitor<'v>
+        for ImplTraitLifetimeCollector<'r, 'a, 'hir>
+        {
             fn nested_visit_map<'this>(
                 &'this mut self,
             ) -> hir::intravisit::NestedVisitorMap<'this, 'v> {

@@ -2435,7 +2435,12 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
 }
 
 #[allow(trivial_numeric_casts)]
-pub fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, sp: Span, vs: &'tcx [hir::Variant<'tcx>], id: hir::HirId) {
+pub fn check_enum<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sp: Span,
+    vs: &'tcx [hir::Variant<'tcx>],
+    id: hir::HirId,
+) {
     let def_id = tcx.hir().local_def_id(id);
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated

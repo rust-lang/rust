@@ -164,7 +164,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub(super) fn lower_mod(&mut self, m: &Mod) -> hir::Mod<'hir> {
         hir::Mod {
             inner: m.inner,
-            item_ids: self.arena.alloc_from_iter(m.items.iter().flat_map(|x| self.lower_item_id(x))),
+            item_ids: self.arena.alloc_from_iter(
+                m.items.iter().flat_map(|x| self.lower_item_id(x))
+            ),
         }
     }
 
@@ -560,7 +562,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     });
                 }
 
-                let path = self.arena.alloc(self.lower_path_extra(ret_res, &path, ParamMode::Explicit, None));
+                let path = self.lower_path_extra(ret_res, &path, ParamMode::Explicit, None);
+                let path = self.arena.alloc(path);
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
@@ -667,7 +670,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 let res = self.expect_full_res_from_use(id).next().unwrap_or(Res::Err);
                 let res = self.lower_res(res);
-                let path = self.arena.alloc(self.lower_path_extra(res, &prefix, ParamMode::Explicit, None));
+                let path = self.lower_path_extra(res, &prefix, ParamMode::Explicit, None);
+                let path = self.arena.alloc(path);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
@@ -733,8 +737,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
                 ForeignItemKind::Static(ref t, m) => {
-                    hir::ForeignItemKind::Static(
-                        self.arena.alloc(self.lower_ty(t, ImplTraitContext::disallowed()).into_inner()), m)
+                    let ty = self.lower_ty(t, ImplTraitContext::disallowed());
+                    hir::ForeignItemKind::Static(self.arena.alloc(ty.into_inner()), m)
                 }
                 ForeignItemKind::Ty => hir::ForeignItemKind::Type,
                 ForeignItemKind::Macro(_) => panic!("macro shouldn't exist here"),
@@ -771,7 +775,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_variant_data(&mut self, vdata: &VariantData) -> hir::VariantData<'hir> {
         match *vdata {
             VariantData::Struct(ref fields, recovered) => hir::VariantData::Struct(
-                self.arena.alloc_from_iter(fields.iter().enumerate().map(|f| self.lower_struct_field(f))),
+                self.arena.alloc_from_iter(
+                    fields.iter().enumerate().map(|f| self.lower_struct_field(f))
+                ),
                 recovered,
             ),
             VariantData::Tuple(ref fields, id) => {
@@ -823,15 +829,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
-            AssocItemKind::Const(ref ty, ref default) => (
-                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::TraitItemKind::Const(
-                    self.arena.alloc(self.lower_ty(ty, ImplTraitContext::disallowed()).into_inner()),
+            AssocItemKind::Const(ref ty, ref default) => {
+                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+                let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                let ty = self.arena.alloc(ty.into_inner());
+                (generics, hir::TraitItemKind::Const(
+                    ty,
                     default
                         .as_ref()
                         .map(|x| self.lower_const_body(i.span, Some(x))),
-                ),
-            ),
+                ))
+            },
             AssocItemKind::Fn(ref sig, None) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
@@ -913,13 +921,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
-            AssocItemKind::Const(ref ty, ref expr) => (
-                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::ImplItemKind::Const(
-                    self.arena.alloc(self.lower_ty(ty, ImplTraitContext::disallowed()).into_inner()),
+            AssocItemKind::Const(ref ty, ref expr) => {
+                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+                let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                let ty = self.arena.alloc(ty.into_inner());
+                (generics, hir::ImplItemKind::Const(
+                    ty,
                     self.lower_const_body(i.span, expr.as_deref()),
-                ),
-            ),
+                ))
+            },
             AssocItemKind::Fn(ref sig, ref body) => {
                 self.current_item = Some(i.span);
                 let body_id = self.lower_maybe_async_body(
@@ -1302,7 +1312,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     this.expr_block(P(body), AttrVec::new())
                 });
 
-            (this.arena.alloc_from_iter(parameters), this.expr(body_span, async_expr, AttrVec::new()))
+            (
+                this.arena.alloc_from_iter(parameters),
+                this.expr(body_span, async_expr, AttrVec::new()),
+            )
         })
     }
 
