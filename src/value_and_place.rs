@@ -195,12 +195,19 @@ impl<'tcx> CValue<'tcx> {
     }
 
     /// If `ty` is signed, `const_val` must already be sign extended.
-    pub fn const_val<'a>(
+    pub fn const_val(
         fx: &mut FunctionCx<'_, 'tcx, impl Backend>,
         layout: TyLayout<'tcx>,
         const_val: u128,
     ) -> CValue<'tcx> {
         let clif_ty = fx.clif_type(layout.ty).unwrap();
+
+        match layout.ty.kind {
+            ty::TyKind::Bool => {
+                assert!(const_val == 0 || const_val == 1, "Invalid bool 0x{:032X}", const_val);
+            }
+            _ => {}
+        }
 
         let val = match layout.ty.kind {
             ty::TyKind::Uint(UintTy::U128) | ty::TyKind::Int(IntTy::I128) => {
@@ -211,21 +218,25 @@ impl<'tcx> CValue<'tcx> {
                     .iconst(types::I64, (const_val >> 64) as u64 as i64);
                 fx.bcx.ins().iconcat(lsb, msb)
             }
-            ty::TyKind::Bool => {
-                assert!(
-                    const_val == 0 || const_val == 1,
-                    "Invalid bool 0x{:032X}",
-                    const_val
-                );
-                fx.bcx.ins().iconst(types::I8, const_val as i64)
+            ty::TyKind::Bool | ty::TyKind::Char | ty::TyKind::Uint(_) | ty::TyKind::Ref(..)
+            | ty::TyKind::RawPtr(..) => {
+                fx
+                    .bcx
+                    .ins()
+                    .iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64)
             }
-            ty::TyKind::Uint(_) | ty::TyKind::Ref(..) | ty::TyKind::RawPtr(..) => fx
-                .bcx
-                .ins()
-                .iconst(clif_ty, u64::try_from(const_val).expect("uint") as i64),
-            ty::TyKind::Int(_) => fx.bcx.ins().iconst(clif_ty, const_val as i128 as i64),
+            ty::TyKind::Int(_) => {
+                let const_val = rustc::mir::interpret::sign_extend(const_val, layout.size);
+                fx.bcx.ins().iconst(clif_ty, i64::try_from(const_val as i128).unwrap())
+            }
+            ty::TyKind::Float(FloatTy::F32) => {
+                fx.bcx.ins().f32const(Ieee32::with_bits(u32::try_from(const_val).unwrap()))
+            }
+            ty::TyKind::Float(FloatTy::F64) => {
+                fx.bcx.ins().f64const(Ieee64::with_bits(u64::try_from(const_val).unwrap()))
+            }
             _ => panic!(
-                "CValue::const_val for non bool/integer/pointer type {:?} is not allowed",
+                "CValue::const_val for non bool/char/float/integer/pointer type {:?} is not allowed",
                 layout.ty
             ),
         };
