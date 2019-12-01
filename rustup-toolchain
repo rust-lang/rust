@@ -13,6 +13,12 @@ set -e
 # 
 # ./rustup-toolchain $COMMIT: Update "miri" toolchain and `rust-version` file to match that commit.
 
+# Make sure rustup-toolchain-install-master is installed.
+if ! which rustup-toolchain-install-master >/dev/null; then
+    echo "Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'"
+    exit 1
+fi
+
 # Determine new commit.
 if [[ "$1" == "" ]]; then
     NEW_COMMIT=$(cat rust-version)
