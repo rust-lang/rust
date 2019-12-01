@@ -819,10 +819,10 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                 }
                                             }
                                             TraitItemKind::Method(_, _) => {
-                                                visit::walk_trait_item(this, trait_item)
+                                                visit::walk_assoc_item(this, trait_item)
                                             }
                                             TraitItemKind::TyAlias(..) => {
-                                                visit::walk_trait_item(this, trait_item)
+                                                visit::walk_assoc_item(this, trait_item)
                                             }
                                             TraitItemKind::Macro(_) => {
                                                 panic!("unexpanded macro in resolve!")
@@ -1106,7 +1106,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                 );
 
                                                 this.with_constant_rib(|this| {
-                                                    visit::walk_impl_item(this, impl_item)
+                                                    visit::walk_assoc_item(this, impl_item)
                                                 });
                                             }
                                             ImplItemKind::Method(..) => {
@@ -1117,7 +1117,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                                       impl_item.span,
                                                     |n, s| MethodNotMemberOfTrait(n, s));
 
-                                                visit::walk_impl_item(this, impl_item);
+                                                visit::walk_assoc_item(this, impl_item);
                                             }
                                             ImplItemKind::TyAlias(_, Some(ref ty)) => {
                                                 // If this is a trait impl, ensure the type

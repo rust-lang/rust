@@ -223,7 +223,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         };
 
         let def = self.create_def(ti.id, def_data, ti.span);
-        self.with_parent(def, |this| visit::walk_trait_item(this, ti));
+        self.with_parent(def, |this| visit::walk_assoc_item(this, ti));
     }
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
@@ -249,7 +249,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         };
 
         let def = self.create_def(ii.id, def_data, ii.span);
-        self.with_parent(def, |this| visit::walk_impl_item(this, ii));
+        self.with_parent(def, |this| visit::walk_assoc_item(this, ii));
     }
 
     fn visit_pat(&mut self, pat: &'a Pat) {

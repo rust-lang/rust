@@ -94,7 +94,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
             lctx.modules.get_mut(&lctx.current_module).unwrap().trait_items.insert(id);
         });
 
-        visit::walk_trait_item(self, item);
+        visit::walk_assoc_item(self, item);
     }
 
     fn visit_impl_item(&mut self, item: &'tcx ImplItem) {
@@ -104,7 +104,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
             lctx.impl_items.insert(id, hir_item);
             lctx.modules.get_mut(&lctx.current_module).unwrap().impl_items.insert(id);
         });
-        visit::walk_impl_item(self, item);
+        visit::walk_assoc_item(self, item);
     }
 }
 

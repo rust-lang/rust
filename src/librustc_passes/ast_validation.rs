@@ -772,28 +772,28 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
     }
 
-    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'a AssocItem) {
         match &ii.kind {
-            ImplItemKind::Const(_, body) => {
+            AssocItemKind::Const(_, body) => {
                 self.check_impl_item_provided(ii.span, body, "constant", " = <expr>;");
             }
-            ImplItemKind::Method(sig, body) => {
+            AssocItemKind::Method(sig, body) => {
                 self.check_impl_item_provided(ii.span, body, "function", " { <body> }");
                 self.check_fn_decl(&sig.decl);
             }
-            ImplItemKind::TyAlias(bounds, body) => {
+            AssocItemKind::TyAlias(bounds, body) => {
                 self.check_impl_item_provided(ii.span, body, "type", " = <type>;");
                 self.check_impl_assoc_type_no_bounds(bounds);
             }
             _ => {}
         }
-        visit::walk_impl_item(self, ii);
+        visit::walk_assoc_item(self, ii);
     }
 
-    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'a AssocItem) {
         self.invalid_visibility(&ti.vis, None);
         self.check_defaultness(ti.span, ti.defaultness);
-        visit::walk_trait_item(self, ti);
+        visit::walk_assoc_item(self, ti);
     }
 }
 

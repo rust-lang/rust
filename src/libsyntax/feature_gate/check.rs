@@ -595,7 +595,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             _ => {}
         }
-        visit::walk_trait_item(self, ti)
+        visit::walk_assoc_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'a ast::ImplItem) {
@@ -620,7 +620,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             _ => {}
         }
-        visit::walk_impl_item(self, ii)
+        visit::walk_assoc_item(self, ii)
     }
 
     fn visit_vis(&mut self, vis: &'a ast::Visibility) {

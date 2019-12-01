@@ -83,8 +83,8 @@ pub trait Visitor<'ast>: Sized {
     fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl, s: Span, _: NodeId) {
         walk_fn(self, fk, fd, s)
     }
-    fn visit_trait_item(&mut self, ti: &'ast TraitItem) { walk_trait_item(self, ti) }
-    fn visit_impl_item(&mut self, ii: &'ast ImplItem) { walk_impl_item(self, ii) }
+    fn visit_trait_item(&mut self, i: &'ast AssocItem) { walk_assoc_item(self, i) }
+    fn visit_impl_item(&mut self, i: &'ast AssocItem) { walk_assoc_item(self, i) }
     fn visit_trait_ref(&mut self, t: &'ast TraitRef) { walk_trait_ref(self, t) }
     fn visit_param_bound(&mut self, bounds: &'ast GenericBound) {
         walk_param_bound(self, bounds)
@@ -581,57 +581,29 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
     }
 }
 
-pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, trait_item: &'a TraitItem) {
-    visitor.visit_vis(&trait_item.vis);
-    visitor.visit_ident(trait_item.ident);
-    walk_list!(visitor, visit_attribute, &trait_item.attrs);
-    visitor.visit_generics(&trait_item.generics);
-    match trait_item.kind {
-        TraitItemKind::Const(ref ty, ref default) => {
-            visitor.visit_ty(ty);
-            walk_list!(visitor, visit_expr, default);
-        }
-        TraitItemKind::Method(ref sig, None) => {
-            visitor.visit_fn_header(&sig.header);
-            walk_fn_decl(visitor, &sig.decl);
-        }
-        TraitItemKind::Method(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FnKind::Method(trait_item.ident, sig, &trait_item.vis, body),
-                             &sig.decl, trait_item.span, trait_item.id);
-        }
-        TraitItemKind::TyAlias(ref bounds, ref default) => {
-            walk_list!(visitor, visit_param_bound, bounds);
-            walk_list!(visitor, visit_ty, default);
-        }
-        TraitItemKind::Macro(ref mac) => {
-            visitor.visit_mac(mac);
-        }
-    }
-}
-
-pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, impl_item: &'a ImplItem) {
-    visitor.visit_vis(&impl_item.vis);
-    visitor.visit_ident(impl_item.ident);
-    walk_list!(visitor, visit_attribute, &impl_item.attrs);
-    visitor.visit_generics(&impl_item.generics);
-    match impl_item.kind {
-        ImplItemKind::Const(ref ty, ref expr) => {
+pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem) {
+    visitor.visit_vis(&item.vis);
+    visitor.visit_ident(item.ident);
+    walk_list!(visitor, visit_attribute, &item.attrs);
+    visitor.visit_generics(&item.generics);
+    match item.kind {
+        AssocItemKind::Const(ref ty, ref expr) => {
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        ImplItemKind::Method(ref sig, None) => {
+        AssocItemKind::Method(ref sig, None) => {
             visitor.visit_fn_header(&sig.header);
             walk_fn_decl(visitor, &sig.decl);
         }
-        ImplItemKind::Method(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FnKind::Method(impl_item.ident, sig, &impl_item.vis, body),
-                             &sig.decl, impl_item.span, impl_item.id);
+        AssocItemKind::Method(ref sig, Some(ref body)) => {
+            visitor.visit_fn(FnKind::Method(item.ident, sig, &item.vis, body),
+                             &sig.decl, item.span, item.id);
         }
-        ImplItemKind::TyAlias(ref bounds, ref ty) => {
+        AssocItemKind::TyAlias(ref bounds, ref ty) => {
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_ty, ty);
         }
-        ImplItemKind::Macro(ref mac) => {
+        AssocItemKind::Macro(ref mac) => {
             visitor.visit_mac(mac);
         }
     }

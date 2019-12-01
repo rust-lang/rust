@@ -1190,7 +1190,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         let expansion = self.parent_scope.expansion;
         self.r.define(parent, item.ident, ns, (res, vis, item.span, expansion));
 
-        visit::walk_trait_item(self, item);
+        visit::walk_assoc_item(self, item);
     }
 
     fn visit_impl_item(&mut self, item: &'b ast::ImplItem) {
@@ -1198,7 +1198,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
             self.visit_invoc(item.id);
         } else {
             self.resolve_visibility(&item.vis);
-            visit::walk_impl_item(self, item);
+            visit::walk_assoc_item(self, item);
         }
     }
 

@@ -316,12 +316,12 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
 
     fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
         self.record("TraitItem", Id::None, ti);
-        ast_visit::walk_trait_item(self, ti)
+        ast_visit::walk_assoc_item(self, ti)
     }
 
     fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
         self.record("ImplItem", Id::None, ii);
-        ast_visit::walk_impl_item(self, ii)
+        ast_visit::walk_assoc_item(self, ii)
     }
 
     fn visit_param_bound(&mut self, bounds: &'v ast::GenericBound) {
