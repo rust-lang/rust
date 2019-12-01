@@ -14,7 +14,7 @@ use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
 use hir::GeneratorKind;
-use std::{fmt, env};
+use std::{fmt, env, any::Any};
 
 use rustc_error_codes::*;
 
@@ -44,14 +44,14 @@ CloneTypeFoldableImpls! {
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
     pub error: crate::mir::interpret::InterpError<'tcx>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct FrameInfo<'tcx> {
     /// This span is in the caller.
     pub call_site: Span,
@@ -138,6 +138,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         let must_error = match self.error {
+            InterpError::MachineStop(_) => bug!("CTFE does not stop"),
             err_inval!(Layout(LayoutError::Unknown(_))) |
             err_inval!(TooGeneric) =>
                 return Err(ErrorHandled::TooGeneric),
@@ -189,7 +190,7 @@ pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'
 /// Thsese should always be constructed by calling `.into()` on
 /// a `InterpError`. In `librustc_mir::interpret`, we have `throw_err_*`
 /// macros for this.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InterpErrorInfo<'tcx> {
     pub kind: InterpError<'tcx>,
     backtrace: Option<Box<Backtrace>>,
@@ -331,7 +332,6 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
 /// Error information for when the program we executed turned out not to actually be a valid
 /// program. This cannot happen in stand-alone Miri, but it can happen during CTFE/ConstProp
 /// where we work on generic code or execution does not have all information available.
-#[derive(Clone, HashStable)]
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
     TooGeneric,
@@ -361,7 +361,6 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
 }
 
 /// Error information for when the program caused Undefined Behavior.
-#[derive(Clone, HashStable)]
 pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
@@ -394,7 +393,6 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 ///
 /// Currently, we also use this as fall-back error kind for errors that have not been
 /// categorized yet.
-#[derive(Clone, HashStable)]
 pub enum UnsupportedOpInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
@@ -571,7 +569,6 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
 
 /// Error information for when the program exhausted the resources granted to it
 /// by the interpreter.
-#[derive(Clone, HashStable)]
 pub enum ResourceExhaustionInfo {
     /// The stack grew too big.
     StackFrameLimitReached,
@@ -592,7 +589,6 @@ impl fmt::Debug for ResourceExhaustionInfo {
     }
 }
 
-#[derive(Clone, HashStable)]
 pub enum InterpError<'tcx> {
     /// The program panicked.
     Panic(PanicInfo<u64>),
@@ -601,14 +597,14 @@ pub enum InterpError<'tcx> {
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo<'tcx>),
-    /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
+    /// The program was invalid (ill-typed, bad MIR, not sufficiently monomorphized, ...).
     InvalidProgram(InvalidProgramInfo<'tcx>),
     /// The program exhausted the interpreter's resources (stack/heap too big,
-    /// execution takes too long, ..).
+    /// execution takes too long, ...).
     ResourceExhaustion(ResourceExhaustionInfo),
-    /// Not actually an interpreter error -- used to signal that execution has exited
-    /// with the given status code.  Used by Miri, but not by CTFE.
-    Exit(i32),
+    /// Stop execution for a machine-controlled reason. This is never raised by
+    /// the core engine itself.
+    MachineStop(Box<dyn Any + Send>),
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
@@ -634,8 +630,8 @@ impl fmt::Debug for InterpError<'_> {
                 write!(f, "{:?}", msg),
             Panic(ref msg) =>
                 write!(f, "{:?}", msg),
-            Exit(code) =>
-                write!(f, "exited with status code {}", code),
+            MachineStop(_) =>
+                write!(f, "machine caused execution to stop"),
         }
     }
 }
