@@ -67,6 +67,10 @@ def test_cargo_miri_test():
 
 os.chdir(os.path.dirname(os.path.realpath(__file__)))
 
+if not 'MIRI_SYSROOT' in os.environ:
+    # Make sure we got a working sysroot.
+    # (If the sysroot gets built later when output is compared, that leads to test failures.)
+    subprocess.run(cargo_miri("setup"), check=True)
 test_cargo_miri_run()
 test_cargo_miri_test()
 
