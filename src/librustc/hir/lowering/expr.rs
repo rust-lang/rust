@@ -464,7 +464,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_arm(&mut self, arm: &Arm) -> hir::Arm<'hir> {
         hir::Arm {
             hir_id: self.next_id(),
-            attrs: self.lower_attrs_arena(&arm.attrs),
+            attrs: self.lower_attrs(&arm.attrs),
             pat: self.lower_pat(&arm.pat),
             guard: match arm.guard {
                 Some(ref x) => Some(hir::Guard::If(self.lower_expr(x))),

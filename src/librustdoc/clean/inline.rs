@@ -474,7 +474,7 @@ fn build_macro(cx: &DocContext<'_>, did: DefId, name: ast::Name) -> clean::ItemE
     let imported_from = cx.tcx.original_crate_name(did.krate);
     match cx.enter_resolver(|r| r.cstore().load_macro_untracked(did, cx.sess())) {
         LoadedMacro::MacroDef(def, _) => {
-            let matchers: hir::HirVec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
+            let matchers: Vec<Span> = if let ast::ItemKind::MacroDef(ref def) = def.kind {
                 let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
                 tts.chunks(4).map(|arm| arm[0].span()).collect()
             } else {

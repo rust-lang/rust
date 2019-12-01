@@ -226,7 +226,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item<'hir>> {
         let mut ident = i.ident;
         let mut vis = self.lower_visibility(&i.vis, None);
-        let attrs = self.lower_attrs_arena(&i.attrs);
+        let attrs = self.lower_attrs(&i.attrs);
 
         if let ItemKind::MacroDef(ref def) = i.kind {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {
@@ -660,7 +660,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ForeignItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
-            attrs: self.lower_attrs_arena(&i.attrs),
+            attrs: self.lower_attrs(&i.attrs),
             kind: match i.kind {
                 ForeignItemKind::Fn(ref fdec, ref generics) => {
                     let (generics, (fn_dec, fn_args)) = self.add_in_band_defs(
@@ -675,7 +675,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             )
                         },
                     );
-                    let fn_args = self.arena.alloc_from_iter(fn_args.into_iter());
 
                     hir::ForeignItemKind::Fn(fn_dec, fn_args, generics)
                 }
@@ -704,7 +703,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant<'hir> {
         hir::Variant {
-            attrs: self.lower_attrs_arena(&v.attrs),
+            attrs: self.lower_attrs(&v.attrs),
             data: self.lower_variant_data(&v.data),
             disr_expr: v.disr_expr.as_ref().map(|e| self.lower_anon_const(e)),
             id: self.lower_node_id(v.id),
@@ -752,7 +751,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             },
             vis: self.lower_visibility(&f.vis, None),
             ty,
-            attrs: self.lower_attrs_arena(&f.attrs),
+            attrs: self.lower_attrs(&f.attrs),
         }
     }
 
@@ -773,7 +772,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             AssocItemKind::Fn(ref sig, None) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
-                let names: &[Ident] = self.arena.alloc_from_iter(names.into_iter());
                 let (generics, sig) =
                     self.lower_method_sig(&i.generics, sig, trait_item_def_id, false, None);
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
@@ -800,7 +798,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::TraitItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
-            attrs: self.lower_attrs_arena(&i.attrs),
+            attrs: self.lower_attrs(&i.attrs),
             generics,
             kind,
             span: i.span,
@@ -887,7 +885,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::ImplItem {
             hir_id: self.lower_node_id(i.id),
             ident: i.ident,
-            attrs: self.lower_attrs_arena(&i.attrs),
+            attrs: self.lower_attrs(&i.attrs),
             generics,
             vis: self.lower_visibility(&i.vis, None),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
@@ -994,7 +992,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_param(&mut self, param: &Param) -> hir::Param<'hir> {
         hir::Param {
-            attrs: self.lower_attrs_arena(&param.attrs),
+            attrs: self.lower_attrs(&param.attrs),
             hir_id: self.lower_node_id(param.id),
             pat: self.lower_pat(&param.pat),
             span: param.span,

@@ -38,7 +38,6 @@ use crate::hir::def::{DefKind, Namespace, PartialRes, PerNS, Res};
 use crate::hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use crate::hir::map::{DefKey, DefPathData, Definitions};
 use crate::hir::ptr::P;
-use crate::hir::HirVec;
 use crate::hir::{self, ParamName};
 use crate::hir::{ConstArg, GenericArg};
 use crate::lint;
@@ -540,7 +539,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         visit::walk_crate(&mut item::ItemLowerer { lctx: &mut self }, c);
 
         let module = self.lower_mod(&c.module);
-        let attrs = self.arena.alloc_from_iter(self.lower_attrs(&c.attrs).into_iter());
+        let attrs = self.lower_attrs(&c.attrs);
         let body_ids = body_ids(&self.bodies);
 
         self.resolver.definitions().init_node_id_to_hir_id_mapping(self.node_id_to_hir_id);
@@ -958,12 +957,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
     }
 
-    fn lower_attrs_arena(&mut self, attrs: &[Attribute]) -> &'hir [Attribute] {
+    fn lower_attrs(&mut self, attrs: &[Attribute]) -> &'hir [Attribute] {
         self.arena.alloc_from_iter(attrs.iter().map(|a| self.lower_attr(a)))
-    }
-
-    fn lower_attrs(&mut self, attrs: &[Attribute]) -> hir::HirVec<Attribute> {
-        attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into()
     }
 
     fn lower_attr(&mut self, attr: &Attribute) -> Attribute {
@@ -1225,25 +1220,21 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 };
                 hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
             }
-            TyKind::BareFn(ref f) => {
-                self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
-                    this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
-                        hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
-                            generic_params: this.lower_generic_params(
-                                &f.generic_params,
-                                &NodeMap::default(),
-                                ImplTraitContext::disallowed(),
-                            ),
-                            unsafety: f.unsafety,
-                            abi: this.lower_extern(f.ext),
-                            decl: this.lower_fn_decl(&f.decl, None, false, None),
-                            param_names: this.arena.alloc_from_iter(
-                                this.lower_fn_params_to_names(&f.decl).into_iter(),
-                            ),
-                        }))
-                    })
+            TyKind::BareFn(ref f) => self.with_in_scope_lifetime_defs(&f.generic_params, |this| {
+                this.with_anonymous_lifetime_mode(AnonymousLifetimeMode::PassThrough, |this| {
+                    hir::TyKind::BareFn(this.arena.alloc(hir::BareFnTy {
+                        generic_params: this.lower_generic_params(
+                            &f.generic_params,
+                            &NodeMap::default(),
+                            ImplTraitContext::disallowed(),
+                        ),
+                        unsafety: f.unsafety,
+                        abi: this.lower_extern(f.ext),
+                        decl: this.lower_fn_decl(&f.decl, None, false, None),
+                        param_names: this.lower_fn_params_to_names(&f.decl),
+                    }))
                 })
-            }
+            }),
             TyKind::Never => hir::TyKind::Never,
             TyKind::Tup(ref tys) => {
                 hir::TyKind::Tup(self.arena.alloc_from_iter(
@@ -1412,7 +1403,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             opaque_ty_def_index,
             &hir_bounds,
         );
-        let lifetime_defs = self.arena.alloc_from_iter(lifetime_defs.into_iter());
 
         debug!("lower_opaque_impl_trait: lifetimes={:#?}", lifetimes,);
 
@@ -1473,7 +1463,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         opaque_ty_id: NodeId,
         parent_index: DefIndex,
         bounds: hir::GenericBounds<'hir>,
-    ) -> (&'hir [hir::GenericArg<'hir>], HirVec<hir::GenericParam<'hir>>) {
+    ) -> (&'hir [hir::GenericArg<'hir>], &'hir [hir::GenericParam<'hir>]) {
         debug!(
             "lifetimes_from_impl_trait_bounds(opaque_ty_id={:?}, \
              parent_index={:?}, \
@@ -1640,7 +1630,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let ImplTraitLifetimeCollector { output_lifetimes, output_lifetime_params, .. } =
             lifetime_collector;
 
-        (self.arena.alloc_from_iter(output_lifetimes), output_lifetime_params.into())
+        (
+            self.arena.alloc_from_iter(output_lifetimes),
+            self.arena.alloc_from_iter(output_lifetime_params),
+        )
     }
 
     fn lower_qpath(
@@ -2075,7 +2068,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         )
     }
 
-    fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> hir::HirVec<Ident> {
+    fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
         // Skip the `...` (`CVarArgs`) trailing arguments from the AST,
         // as they are not explicit in HIR/Ty function signatures.
         // (instead, the `c_variadic` flag is set to `true`)
@@ -2083,13 +2076,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         if decl.c_variadic() {
             inputs = &inputs[..inputs.len() - 1];
         }
-        inputs
-            .iter()
-            .map(|param| match param.pat.kind {
-                PatKind::Ident(_, ident, _) => ident,
-                _ => Ident::new(kw::Invalid, param.pat.span),
-            })
-            .collect()
+        self.arena.alloc_from_iter(inputs.iter().map(|param| match param.pat.kind {
+            PatKind::Ident(_, ident, _) => ident,
+            _ => Ident::new(kw::Invalid, param.pat.span),
+        }))
     }
 
     // Lowers a function declaration.
@@ -2571,7 +2561,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             name,
             span: param.ident.span,
             pure_wrt_drop: attr::contains_name(&param.attrs, sym::may_dangle),
-            attrs: self.lower_attrs_arena(&param.attrs),
+            attrs: self.lower_attrs(&param.attrs),
             bounds: self.arena.alloc_from_iter(bounds),
             kind,
         }

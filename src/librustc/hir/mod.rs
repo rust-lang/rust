@@ -10,7 +10,6 @@ pub use self::UnsafeSource::*;
 
 use crate::hir::def::{DefKind, Res};
 use crate::hir::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_INDEX};
-use crate::hir::ptr::P;
 use crate::mir::mono::Linkage;
 use crate::ty::query::Providers;
 use crate::ty::AdtKind;
@@ -34,12 +33,6 @@ use syntax::util::parser::ExprPrecedence;
 use syntax_pos::source_map::{SourceMap, Spanned};
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{MultiSpan, Span, DUMMY_SP};
-
-/// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
-/// It can be `Vec`, `P<[T]>` or potentially `Box<[T]>`, or some other container with similar
-/// behavior. Unlike AST, HIR is mostly a static structure, so we can use an owned slice instead
-/// of `Vec` to avoid keeping extra capacity.
-pub type HirVec<T> = P<[T]>;
 
 pub mod check_attr;
 pub mod def;
