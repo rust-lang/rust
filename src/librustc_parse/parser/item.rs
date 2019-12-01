@@ -432,8 +432,6 @@ impl<'a> Parser<'a> {
             let prev_span = self.prev_span;
             self.complain_if_pub_macro(&visibility.node, prev_span);
 
-            let mac_lo = self.token.span;
-
             // Item macro
             let path = self.parse_path(PathStyle::Mod)?;
             self.expect(&token::Not)?;
@@ -446,7 +444,6 @@ impl<'a> Parser<'a> {
             let mac = Mac {
                 path,
                 args,
-                span: mac_lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
             };
             let item =
@@ -499,7 +496,6 @@ impl<'a> Parser<'a> {
         if self.token.is_path_start() &&
                 !(self.is_async_fn() && self.token.span.rust_2015()) {
             let prev_span = self.prev_span;
-            let lo = self.token.span;
             let path = self.parse_path(PathStyle::Mod)?;
 
             if path.segments.len() == 1 {
@@ -525,7 +521,6 @@ impl<'a> Parser<'a> {
             Ok(Some(Mac {
                 path,
                 args,
-                span: lo.to(self.prev_span),
                 prior_type_ascription: self.last_type_ascription,
             }))
         } else {

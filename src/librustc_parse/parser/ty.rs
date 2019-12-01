@@ -181,7 +181,6 @@ impl<'a> Parser<'a> {
                 let mac = Mac {
                     path,
                     args,
-                    span: lo.to(self.prev_span),
                     prior_type_ascription: self.last_type_ascription,
                 };
                 TyKind::Mac(mac)

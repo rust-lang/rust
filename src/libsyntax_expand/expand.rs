@@ -597,13 +597,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     self.gate_proc_macro_expansion_kind(span, fragment_kind);
-                    let tok_result = expander.expand(self.cx, span, mac.stream());
+                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let prev = self.cx.current_expansion.prior_type_ascription;
                     self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
-                    let tok_result = expander.expand(self.cx, span, mac.stream());
+                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {

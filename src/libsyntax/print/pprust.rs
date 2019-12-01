@@ -1772,9 +1772,9 @@ impl<'a> State<'a> {
             true,
             None,
             m.args.delim(),
-            m.stream(),
+            m.args.inner_tokens(),
             true,
-            m.span,
+            m.span(),
         );
     }
 

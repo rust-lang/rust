@@ -39,7 +39,6 @@ pub fn expand_assert<'cx>(
     let panic_call = Mac {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
         args,
-        span: sp,
         prior_type_ascription: None,
     };
     let if_expr = cx.expr_if(

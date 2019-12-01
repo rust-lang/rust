@@ -1379,8 +1379,13 @@ pub enum Movability {
 pub struct Mac {
     pub path: Path,
     pub args: P<MacArgs>,
-    pub span: Span,
     pub prior_type_ascription: Option<(Span, bool)>,
+}
+
+impl Mac {
+    pub fn span(&self) -> Span {
+        self.path.span.to(self.args.span().unwrap_or(self.path.span))
+    }
 }
 
 /// Arguments passed to an attribute or a function-like macro.
@@ -1400,6 +1405,14 @@ impl MacArgs {
         match self {
             MacArgs::Delimited(_, delim, _) => delim.to_token(),
             MacArgs::Empty | MacArgs::Eq(..) => token::NoDelim,
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match *self {
+            MacArgs::Empty => None,
+            MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
+            MacArgs::Eq(eq_span, ref tokens) => Some(eq_span.to(tokens.span().unwrap_or(eq_span))),
         }
     }
 
@@ -1429,12 +1442,6 @@ impl MacArgs {
     /// when used as a standalone item or statement.
     pub fn need_semicolon(&self) -> bool {
         !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace ,_))
-    }
-}
-
-impl Mac {
-    pub fn stream(&self) -> TokenStream {
-        self.args.inner_tokens()
     }
 }
 

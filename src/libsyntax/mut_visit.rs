@@ -580,10 +580,9 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
 }
 
 pub fn noop_visit_mac<T: MutVisitor>(mac: &mut Mac, vis: &mut T) {
-    let Mac { path, args, span, prior_type_ascription: _ } = mac;
+    let Mac { path, args, prior_type_ascription: _ } = mac;
     vis.visit_path(path);
     visit_mac_args(args, vis);
-    vis.visit_span(span);
 }
 
 pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T) {

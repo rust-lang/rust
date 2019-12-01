@@ -17,7 +17,6 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
         ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
             args: P(ast::MacArgs::Empty),
-            span: DUMMY_SP,
             prior_type_ascription: None,
         }
     }

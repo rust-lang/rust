@@ -338,7 +338,7 @@ impl<'a> Parser<'a> {
                     (None, self.parse_path(PathStyle::Expr)?)
                 };
                 match self.token.kind {
-                    token::Not if qself.is_none() => self.parse_pat_mac_invoc(lo, path)?,
+                    token::Not if qself.is_none() => self.parse_pat_mac_invoc(path)?,
                     token::DotDotDot | token::DotDotEq | token::DotDot => {
                         self.parse_pat_range_starting_with_path(lo, qself, path)?
                     }
@@ -593,13 +593,12 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse macro invocation
-    fn parse_pat_mac_invoc(&mut self, lo: Span, path: Path) -> PResult<'a, PatKind> {
+    fn parse_pat_mac_invoc(&mut self, path: Path) -> PResult<'a, PatKind> {
         self.bump();
         let args = self.parse_mac_args()?;
         let mac = Mac {
             path,
             args,
-            span: lo.to(self.prev_span),
             prior_type_ascription: self.last_type_ascription,
         };
         Ok(PatKind::Mac(mac))

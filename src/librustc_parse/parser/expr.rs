@@ -927,7 +927,6 @@ impl<'a> Parser<'a> {
                         ex = ExprKind::Mac(Mac {
                             path,
                             args,
-                            span: lo.to(hi),
                             prior_type_ascription: self.last_type_ascription,
                         });
                     } else if self.check(&token::OpenDelim(token::Brace)) {

@@ -106,7 +106,6 @@ impl<'a> Parser<'a> {
             let mac = Mac {
                 path,
                 args,
-                span: lo.to(hi),
                 prior_type_ascription: self.last_type_ascription,
             };
             let kind = if delim == token::Brace ||
@@ -130,7 +129,7 @@ impl<'a> Parser<'a> {
                 self.warn_missing_semicolon();
                 StmtKind::Mac(P((mac, style, attrs.into())))
             } else {
-                let e = self.mk_expr(mac.span, ExprKind::Mac(mac), ThinVec::new());
+                let e = self.mk_expr(lo.to(hi), ExprKind::Mac(mac), ThinVec::new());
                 let e = self.maybe_recover_from_bad_qpath(e, true)?;
                 let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
                 let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;

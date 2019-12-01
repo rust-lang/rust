@@ -340,14 +340,12 @@ pub fn combine_substructure(f: CombineSubstructureFunc<'_>)
 fn find_type_parameters(
     ty: &ast::Ty,
     ty_param_names: &[ast::Name],
-    span: Span,
     cx: &ExtCtxt<'_>,
 ) -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
-        span: Span,
         ty_param_names: &'a [ast::Name],
         types: Vec<P<ast::Ty>>,
     }
@@ -366,18 +364,11 @@ fn find_type_parameters(
         }
 
         fn visit_mac(&mut self, mac: &ast::Mac) {
-            let span = mac.span.with_ctxt(self.span.ctxt());
-            self.cx.span_err(span, "`derive` cannot be used on items with type macros");
+            self.cx.span_err(mac.span(), "`derive` cannot be used on items with type macros");
         }
     }
 
-    let mut visitor = Visitor {
-        ty_param_names,
-        types: Vec::new(),
-        span,
-        cx,
-    };
-
+    let mut visitor = Visitor { cx, ty_param_names, types: Vec::new() };
     visit::Visitor::visit_ty(&mut visitor, ty);
 
     visitor.types
@@ -605,7 +596,7 @@ impl<'a> TraitDef<'a> {
                     .collect();
 
                 for field_ty in field_tys {
-                    let tys = find_type_parameters(&field_ty, &ty_param_names, self.span, cx);
+                    let tys = find_type_parameters(&field_ty, &ty_param_names, cx);
 
                     for ty in tys {
                         // if we have already handled this type, skip it
