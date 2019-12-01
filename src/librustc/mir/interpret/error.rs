@@ -44,14 +44,14 @@ CloneTypeFoldableImpls! {
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
     pub error: crate::mir::interpret::InterpError<'tcx>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug)]
 pub struct FrameInfo<'tcx> {
     /// This span is in the caller.
     pub call_site: Span,
@@ -331,7 +331,7 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
 /// Error information for when the program we executed turned out not to actually be a valid
 /// program. This cannot happen in stand-alone Miri, but it can happen during CTFE/ConstProp
 /// where we work on generic code or execution does not have all information available.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, HashStable)]
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
     TooGeneric,
@@ -361,7 +361,7 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
 }
 
 /// Error information for when the program caused Undefined Behavior.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, HashStable)]
 pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
@@ -394,10 +394,14 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 ///
 /// Currently, we also use this as fall-back error kind for errors that have not been
 /// categorized yet.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, HashStable)]
 pub enum UnsupportedOpInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
+
+    /// When const-prop encounters a situation it does not support, it raises this error.
+    /// This must not allocate for performance reasons.
+    ConstPropUnsupported(&'tcx str),
 
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
@@ -559,13 +563,15 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     not a power of two"),
             Unsupported(ref msg) =>
                 write!(f, "{}", msg),
+            ConstPropUnsupported(ref msg) =>
+                write!(f, "Constant propagation encountered an unsupported situation: {}", msg),
         }
     }
 }
 
 /// Error information for when the program exhausted the resources granted to it
 /// by the interpreter.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, HashStable)]
 pub enum ResourceExhaustionInfo {
     /// The stack grew too big.
     StackFrameLimitReached,
@@ -586,7 +592,7 @@ impl fmt::Debug for ResourceExhaustionInfo {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, HashStable)]
 pub enum InterpError<'tcx> {
     /// The program panicked.
     Panic(PanicInfo<u64>),
