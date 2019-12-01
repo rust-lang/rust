@@ -12,6 +12,22 @@ on the [Rust Zulip].
 
 [Rust Zulip]: https://rust-lang.zulipchat.com
 
+## Building Miri with a pre-built rustc
+
+Miri heavily relies on internal rustc interfaces to execute MIR.  Still, some
+things (like adding support for a new intrinsic or a shim for an external
+function being called) can be done by working just on the Miri side.
+
+The `rust-version` file contains the commit hash of rustc that Miri is currently
+tested against. Other versions will likely not work. After installing
+[`rustup-toolchain-install-master`], you can run the following command to
+install that exact version of rustc as a toolchain:
+```
+./rustup-toolchain
+```
+
+[`rustup-toolchain-install-master`]: https://github.com/kennytm/rustup-toolchain-install-master
+
 ### Fixing Miri when rustc changes
 
 Miri is heavily tied to rustc internals, so it is very common that rustc changes
@@ -20,36 +36,12 @@ Usually, Miri will require changes similar to the other consumers of the changed
 rustc API, so reading the rustc PR diff is a good way to get an idea for what is
 needed.
 
-When submitting a PR against Miri after fixing it for rustc changes, make sure
-you update the `rust-version` file.  That file always contains the exact rustc
-git commit with which Miri works, and it is the version that our CI tests Miri
-against.
-
-## Building Miri with a nightly rustc
-
-Miri heavily relies on internal rustc interfaces to execute MIR.  Still, some
-things (like adding support for a new intrinsic or a shim for an external
-function being called) can be done by working just on the Miri side.
-
-To prepare, make sure you are using a nightly Rust compiler.  You also need to
-have the `rust-src` and `rustc-dev` components installed, which you can add via
-`rustup component add rust-src rustc-dev`.  Then you should be able to just
-`cargo build` Miri.
-
-In case this fails, your nightly might be incompatible with Miri master.  The
-`rust-version` file contains the commit hash of rustc that Miri is currently
-tested against; you can use that to find a nightly that works or you might have
-to wait for the next nightly to get released. You can also use
-[`rustup-toolchain-install-master`](https://github.com/kennytm/rustup-toolchain-install-master)
-to install that exact version of rustc as a toolchain:
+To update the `rustc-version` file and install the latest rustc, you can run:
 ```
-rustup-toolchain-install-master $(cat rust-version) -c rust-src -c rustc-dev
+./rustup-toolchain HEAD
 ```
 
-Another common problem is outdated dependencies: Miri does not come with a
-lockfile (it cannot, due to how it gets embedded into the rustc build). So you
-have to run `cargo update` every now and then yourself to make sure you are
-using the latest versions of everything (which is what gets tested on CI).
+Now try `./miri test`, and submit a PR once that works again.
 
 ## Testing the Miri driver
 [testing-miri]: #testing-the-miri-driver
