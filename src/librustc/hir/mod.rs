@@ -364,22 +364,6 @@ impl<'hir> PathSegment<'hir> {
         PathSegment { ident, hir_id: None, res: None, infer_args: true, args: None }
     }
 
-    pub fn new(
-        ident: Ident,
-        hir_id: Option<HirId>,
-        res: Option<Res>,
-        args: GenericArgs<'_>,
-        infer_args: bool,
-    ) -> Self {
-        PathSegment {
-            ident,
-            hir_id,
-            res,
-            infer_args,
-            args: if args.is_empty() { None } else { Some(P(args)) },
-        }
-    }
-
     pub fn generic_args(&self) -> &GenericArgs<'hir> {
         if let Some(ref args) = self.args {
             args
