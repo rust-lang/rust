@@ -70,7 +70,16 @@ impl CrateDefMap {
         path: &Path,
         shadow: BuiltinShadowMode,
     ) -> ResolvePathResult {
-        let mut segments = path.segments.iter().enumerate().peekable();
+        // if it is not the last segment, we prefer the module to the builtin
+        let prefer_module = |index| {
+            if index == path.segments.len() - 1 {
+                shadow
+            } else {
+                BuiltinShadowMode::Module
+            }
+        };
+
+        let mut segments = path.segments.iter().enumerate();
 
         let mut curr_per_ns: PerNs = match path.kind {
             PathKind::DollarCrate(krate) => {
@@ -98,29 +107,21 @@ impl CrateDefMap {
                 if self.edition == Edition::Edition2015
                     && (path.kind == PathKind::Abs || mode == ResolveMode::Import) =>
             {
-                let segment = match segments.next() {
-                    Some((_, segment)) => segment,
+                let (idx, segment) = match segments.next() {
+                    Some((idx, segment)) => (idx, segment),
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in crate root (+ extern prelude)", segment);
 
-                self.resolve_name_in_crate_root_or_extern_prelude(
-                    &segment.name,
-                    prefer_module(&mut segments, shadow),
-                )
+                self.resolve_name_in_crate_root_or_extern_prelude(&segment.name, prefer_module(idx))
             }
             PathKind::Plain => {
-                let segment = match segments.next() {
-                    Some((_, segment)) => segment,
+                let (idx, segment) = match segments.next() {
+                    Some((idx, segment)) => (idx, segment),
                     None => return ResolvePathResult::empty(ReachedFixedPoint::Yes),
                 };
                 log::debug!("resolving {:?} in module", segment);
-                self.resolve_name_in_module(
-                    db,
-                    original_module,
-                    &segment.name,
-                    prefer_module(&mut segments, shadow),
-                )
+                self.resolve_name_in_module(db, original_module, &segment.name, prefer_module(idx))
             }
             PathKind::Super => {
                 if let Some(p) = self.modules[original_module].parent {
@@ -150,7 +151,7 @@ impl CrateDefMap {
             }
         };
 
-        while let Some((i, segment)) = segments.next() {
+        for (i, segment) in segments {
             let curr = match curr_per_ns.take_types() {
                 Some(r) => r,
                 None => {
@@ -180,10 +181,7 @@ impl CrateDefMap {
                     }
 
                     // Since it is a qualified path here, it should not contains legacy macros
-                    match self[module.local_id]
-                        .scope
-                        .get(&segment.name, prefer_module(&mut segments, shadow))
-                    {
+                    match self[module.local_id].scope.get(&segment.name, prefer_module(i)) {
                         Some(res) => res.def,
                         _ => {
                             log::debug!("path segment {:?} not found", segment.name);
@@ -226,22 +224,8 @@ impl CrateDefMap {
                 }
             };
         }
-        return ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None);
 
-        // if it is not the last segment, we prefer builtin as module
-        fn prefer_module<I>(
-            segments: &mut std::iter::Peekable<I>,
-            shadow: BuiltinShadowMode,
-        ) -> BuiltinShadowMode
-        where
-            I: Iterator,
-        {
-            if segments.peek().is_some() {
-                BuiltinShadowMode::Module
-            } else {
-                shadow
-            }
-        }
+        ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
     }
 
     fn resolve_name_in_module(
