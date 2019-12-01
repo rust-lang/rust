@@ -98,6 +98,8 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
     } else
       ty = whatType(PTy);
 
+    //llvm::errs() << "considering arg " << *res << " argnum " << truei << "\n";
+
     if (ty == DIFFE_TYPE::CONSTANT)
       constants.insert(truei);
 
@@ -153,6 +155,10 @@ void HandleAutoDiff(CallInst *CI, TargetLibraryInfo &TLI, AAResults &AA) {//, Lo
 
     truei++;
   }
+
+  //for(auto a : constants) {
+  //    llvm::errs() << "constant argnum: " << a << "\n";
+  //}
 
   bool differentialReturn = cast<Function>(fn)->getReturnType()->isFPOrFPVectorTy();
 

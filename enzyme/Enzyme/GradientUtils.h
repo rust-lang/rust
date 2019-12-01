@@ -231,6 +231,31 @@ public:
             assert(0 && "erasing something in invertedPointers map");
         }
     }
+    {
+        //std::vector<BasicBlock*> unwrap_cache_blocks;
+        std::vector<std::pair<Value*, BasicBlock*>> unwrap_cache_pairs;
+        for(auto& a : unwrap_cache) {
+            if (a.second == I) {
+                unwrap_cache_pairs.push_back(a.first);
+                /*
+
+                llvm::errs() << *oldFunc << "\n";
+                llvm::errs() << *newFunc << "\n";
+                
+                llvm::errs() << "cache block: " << *a.first.second << "\n";
+                llvm::errs() << "cache val: " << *a.first.first << "\n";
+                llvm::errs() << "stored: " << *I << "\n";
+                */
+            }
+            //assert(a.second != I);
+            if (a.first.first == I) {
+                unwrap_cache_pairs.push_back(a.first);
+            }
+        }
+        for(auto a : unwrap_cache_pairs) {
+            unwrap_cache.erase(a);
+        }
+    }
     if (!I->use_empty()) {
         llvm::errs() << *oldFunc << "\n";
         llvm::errs() << *newFunc << "\n";
@@ -323,7 +348,15 @@ public:
   unsigned getIndex(std::pair<Instruction*, std::string> idx, std::map<std::pair<Instruction*, std::string>, unsigned> &mapping) {
     if (tape) {
         if (mapping.find(idx) == mapping.end()) {
-            llvm::errs() << "idx: " << *idx.first << "," << idx.second << "\n";
+            llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
+            llvm::errs() << "newFunc: " <<*newFunc << "\n";
+            llvm::errs() << " <mapping>\n";
+            for(auto &p : mapping) {
+                llvm::errs() << "   idx: " << *p.first.first << ", " << p.first.second << " pos=" << p.second << "\n";
+            }
+
+            llvm::errs() << " </mapping>\n";
+            llvm::errs() << "idx: " << *idx.first << ", " << idx.second << "\n";
             assert(0 && "could not find index in mapping");
         }
         return mapping[idx];
@@ -331,10 +364,17 @@ public:
         if (mapping.find(idx) != mapping.end()) {
             return mapping[idx];
         }
+        //llvm::errs() << "adding to map: ";
+        //    llvm::errs() << "idx: " << *idx.first << ", " << idx.second << " pos= " << tapeidx << "\n";
         mapping[idx] = tapeidx;
         tapeidx++;
         return mapping[idx];
     }
+  }
+
+  Instruction* addMalloc(IRBuilder<> &BuilderQ, Instruction* malloc, unsigned idx) {
+      assert(malloc);
+      return cast<Instruction>(addMalloc(BuilderQ, (Value*)malloc, idx));
   }
 
   Value* addMalloc(IRBuilder<> &BuilderQ, Value* malloc, unsigned idx) {
@@ -349,7 +389,7 @@ public:
             llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
             llvm::errs() << "newFunc: " <<*newFunc << "\n";
             if (malloc)
-            llvm::errs() << "malloc: " <<*malloc << "\n";
+              llvm::errs() << "malloc: " <<*malloc << "\n";
             llvm::errs() << "tape: " <<*tape << "\n";
             llvm::errs() << "idx: " << idx << "\n";
         }
@@ -360,7 +400,7 @@ public:
             if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
                 ret->setMetadata("enzyme_activity_value", md);
             }
-            llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
+            //llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
             ret->setMetadata("enzyme_activity_inst", MDNode::get(ret->getContext(), {MDString::get(ret->getContext(), "const")}));
         }
 
@@ -532,7 +572,7 @@ public:
                         }
 
                         if (cast) erase(cast);
-                        llvm::errs() << "considering inner loop for malloc: " << *malloc << " allocinst " << *allocinst << "\n";
+                        //llvm::errs() << "considering inner loop for malloc: " << *malloc << " allocinst " << *allocinst << "\n";
                         erase(allocinst);
                     }
 
@@ -984,16 +1024,26 @@ public:
       }
   }
 
-  Value* unwrapM(Value* val, IRBuilder<>& BuilderM, const ValueToValueMapTy& available, bool lookupIfAble) {
+  std::map<std::pair<Value*, BasicBlock*>, Value*> unwrap_cache;
+  Value* unwrapM(Value* const val, IRBuilder<>& BuilderM, const ValueToValueMapTy& available, bool lookupIfAble) {
       assert(val);
 
-      static std::map<std::pair<Value*, BasicBlock*>, Value*> cache;
       auto cidx = std::make_pair(val, BuilderM.GetInsertBlock());
-      if (cache.find(cidx) != cache.end()) {
-        return cache[cidx];
+      if (unwrap_cache.find(cidx) != unwrap_cache.end()) {
+        if(unwrap_cache[cidx]->getType() != val->getType()) {
+            llvm::errs() << "val: " << *val << "\n";
+            llvm::errs() << "unwrap_cache[cidx]: " << *unwrap_cache[cidx]<< "\n";
+        }
+        assert(unwrap_cache[cidx]->getType() == val->getType());
+        return unwrap_cache[cidx];
       }
 
           if (available.count(val)) {
+            if(available.lookup(val)->getType() != val->getType()) {
+                    llvm::errs() << "val: " << *val << "\n";
+                    llvm::errs() << "available[val]: " << *available.lookup(val) << "\n";
+            }
+            assert(available.lookup(val)->getType() == val->getType());
             return available.lookup(val);
           }
           
@@ -1002,11 +1052,13 @@ public:
                 if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
                     if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
                         //llvm::errs() << "allowed " << *inst << "from domination\n";
+                        assert(inst->getType() == val->getType());
                         return inst;
                     }
                 } else {
                     if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
                         //llvm::errs() << "allowed " << *inst << "from block domination\n";
+                        assert(inst->getType() == val->getType());
                         return inst;
                     }
                 }
@@ -1014,26 +1066,28 @@ public:
           }
 
           if (isa<Argument>(val) || isa<Constant>(val)) {
-            cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
+            unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
             return val;
           } else if (isa<AllocaInst>(val)) {
-            cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
+            unwrap_cache[std::make_pair(val, BuilderM.GetInsertBlock())] = val;
             return val;
           } else if (auto op = dyn_cast<CastInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
             auto toreturn = BuilderM.CreateCast(op->getOpcode(), op0, op->getDestTy(), op->getName()+"_unwrap");
-            if (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) {
-                cache[cidx] = toreturn;
+            if (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
+                unwrap_cache[cidx] = toreturn;
             }
+            assert(val->getType() == toreturn->getType());
             return toreturn;
           } else if (auto op = dyn_cast<ExtractValueInst>(val)) {
             auto op0 = unwrapM(op->getAggregateOperand(), BuilderM, available, lookupIfAble);
             if (op0 == nullptr) goto endCheck;
             auto toreturn = BuilderM.CreateExtractValue(op0, op->getIndices(), op->getName()+"_unwrap");
-            if (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) {
-                cache[cidx] = toreturn;
+            if (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
+                unwrap_cache[cidx] = toreturn;
             }
+            assert(val->getType() == toreturn->getType());
             return toreturn;
           } else if (auto op = dyn_cast<BinaryOperator>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
@@ -1042,10 +1096,11 @@ public:
             if (op1 == nullptr) goto endCheck;
             auto toreturn = BuilderM.CreateBinOp(op->getOpcode(), op0, op1, op->getName()+"_unwrap");
             if (
-                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
-                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) ) {
-                cache[cidx] = toreturn;
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+                unwrap_cache[cidx] = toreturn;
             }
+            assert(val->getType() == toreturn->getType());
             return toreturn;
           } else if (auto op = dyn_cast<ICmpInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
@@ -1054,10 +1109,11 @@ public:
             if (op1 == nullptr) goto endCheck;
             auto toreturn = BuilderM.CreateICmp(op->getPredicate(), op0, op1);
             if (
-                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
-                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) ) {
-                cache[cidx] = toreturn;
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+                unwrap_cache[cidx] = toreturn;
             }
+            assert(val->getType() == toreturn->getType());
             return toreturn;
           } else if (auto op = dyn_cast<FCmpInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
@@ -1066,10 +1122,11 @@ public:
             if (op1 == nullptr) goto endCheck;
             auto toreturn = BuilderM.CreateFCmp(op->getPredicate(), op0, op1);
             if (
-                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
-                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) ) {
-                cache[cidx] = toreturn;
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+                unwrap_cache[cidx] = toreturn;
             }
+            assert(val->getType() == toreturn->getType());
             return toreturn;
           } else if (auto op = dyn_cast<SelectInst>(val)) {
             auto op0 = unwrapM(op->getOperand(0), BuilderM, available, lookupIfAble);
@@ -1080,35 +1137,45 @@ public:
             if (op2 == nullptr) goto endCheck;
             auto toreturn = BuilderM.CreateSelect(op0, op1, op2);
             if (
-                    (cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) &&
-                    (cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != cache.end()) &&
-                    (cache.find(std::make_pair((Value*)op->getOperand(2), BuilderM.GetInsertBlock())) != cache.end()) ) {
-                cache[cidx] = toreturn;
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(1), BuilderM.GetInsertBlock())) != unwrap_cache.end()) &&
+                    (unwrap_cache.find(std::make_pair((Value*)op->getOperand(2), BuilderM.GetInsertBlock())) != unwrap_cache.end()) ) {
+                unwrap_cache[cidx] = toreturn;
             }
+            assert(val->getType() == toreturn->getType());
             return toreturn;
           } else if (auto inst = dyn_cast<GetElementPtrInst>(val)) {
               auto ptr = unwrapM(inst->getPointerOperand(), BuilderM, available, lookupIfAble);
               if (ptr == nullptr) goto endCheck;
-              bool cached = cache.find(std::make_pair(inst->getPointerOperand(), BuilderM.GetInsertBlock())) != cache.end();
+              bool cached = unwrap_cache.find(std::make_pair(inst->getPointerOperand(), BuilderM.GetInsertBlock())) != unwrap_cache.end();
               SmallVector<Value*,4> ind;
               for(auto& a : inst->indices()) {
                 auto op = unwrapM(a, BuilderM,available, lookupIfAble);
                 if (op == nullptr) goto endCheck;
-                cached &= cache.find(std::make_pair((Value*)a, BuilderM.GetInsertBlock())) != cache.end();
+                cached &= unwrap_cache.find(std::make_pair((Value*)a, BuilderM.GetInsertBlock())) != unwrap_cache.end();
                 ind.push_back(op);
               }
               auto toreturn = BuilderM.CreateGEP(ptr, ind, inst->getName() + "_unwrap");
               if (cached) {
-                    cache[cidx] = toreturn;
+                    unwrap_cache[cidx] = toreturn;
               }
+              assert(val->getType() == toreturn->getType());
               return toreturn;
           } else if (auto load = dyn_cast<LoadInst>(val)) {
                 Value* idx = unwrapM(load->getOperand(0), BuilderM, available, lookupIfAble);
                 if (idx == nullptr) goto endCheck;
-                auto toreturn = BuilderM.CreateLoad(idx);
-                if (cache.find(std::make_pair((Value*)load->getOperand(0), BuilderM.GetInsertBlock())) != cache.end()) {
-                    cache[cidx] = toreturn;
+
+                if(idx->getType() != load->getOperand(0)->getType()) {
+                    llvm::errs() << "load: " << *load << "\n";
+                    llvm::errs() << "load->getOperand(0): " << *load->getOperand(0) << "\n";
+                    llvm::errs() << "idx: " << *idx << "\n";
                 }
+                assert(idx->getType() == load->getOperand(0)->getType());
+                auto toreturn = BuilderM.CreateLoad(idx);
+                if (unwrap_cache.find(std::make_pair((Value*)load->getOperand(0), BuilderM.GetInsertBlock())) != unwrap_cache.end()) {
+                    unwrap_cache[cidx] = toreturn;
+                }
+                assert(val->getType() == toreturn->getType());
                 return toreturn;
           } else if (auto op = dyn_cast<IntrinsicInst>(val)) {
             switch(op->getIntrinsicID()) {
@@ -1129,15 +1196,20 @@ public:
             }
           } else if (auto phi = dyn_cast<PHINode>(val)) {
             if (phi->getNumIncomingValues () == 1) {
-                return unwrapM(phi->getIncomingValue(0), BuilderM, available, lookupIfAble);
+                auto toreturn = unwrapM(phi->getIncomingValue(0), BuilderM, available, lookupIfAble);
+                assert(val->getType() == toreturn->getType());
+                return toreturn;
             }
           }
 
 
 endCheck:
             assert(val);
-            if (lookupIfAble)
-                return lookupM(val, BuilderM);
+            if (lookupIfAble) {
+                auto toreturn = lookupM(val, BuilderM);
+                assert(val->getType() == toreturn->getType());
+                return toreturn;
+            }
             
             //llvm::errs() << "cannot unwrap following " << *val << "\n";
 
@@ -1148,11 +1220,13 @@ endCheck:
                 if (BuilderM.GetInsertBlock()->size() && BuilderM.GetInsertPoint() != BuilderM.GetInsertBlock()->end()) {
                     if (DT.dominates(inst, &*BuilderM.GetInsertPoint())) {
                         //llvm::errs() << "allowed " << *inst << "from domination\n";
+                        assert(inst->getType() == val->getType());
                         return inst;
                     }
                 } else {
                     if (DT.dominates(inst, BuilderM.GetInsertBlock())) {
                         //llvm::errs() << "allowed " << *inst << "from block domination\n";
+                        assert(inst->getType() == val->getType());
                         return inst;
                     }
                 }
