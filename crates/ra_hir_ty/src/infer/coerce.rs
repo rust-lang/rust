@@ -10,7 +10,7 @@ use test_utils::tested_by;
 
 use crate::{autoderef, db::HirDatabase, Substs, Ty, TypeCtor, TypeWalk};
 
-use super::{InEnvironment, InferTy, InferenceContext, unify::TypeVarValue};
+use super::{unify::TypeVarValue, InEnvironment, InferTy, InferenceContext};
 
 impl<'a, D: HirDatabase> InferenceContext<'a, D> {
     /// Unify two types, but may coerce the first one to the second one

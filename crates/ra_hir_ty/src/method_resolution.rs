@@ -7,19 +7,20 @@ use std::sync::Arc;
 use arrayvec::ArrayVec;
 use hir_def::{
     lang_item::LangItemTarget, resolver::Resolver, type_ref::Mutability, AssocItemId, AstItemDef,
-    FunctionId, HasModule, ImplId, TraitId,
+    FunctionId, HasModule, ImplId, Lookup, TraitId,
 };
 use hir_expand::name::Name;
 use ra_db::CrateId;
 use ra_prof::profile;
 use rustc_hash::FxHashMap;
 
+use super::Substs;
 use crate::{
     autoderef,
     db::HirDatabase,
     primitive::{FloatBitness, Uncertain},
     utils::all_super_traits,
-    Canonical, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor,
+    Canonical, InEnvironment, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 /// This is used as a key for indexing impls.
@@ -231,21 +232,42 @@ fn iterate_method_candidates_autoref<T>(
     name: Option<&Name>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    if let Some(result) = iterate_method_candidates_by_receiver(&deref_chain[0], &deref_chain[1..], db, resolver, name, &mut callback) {
+    if let Some(result) = iterate_method_candidates_by_receiver(
+        &deref_chain[0],
+        &deref_chain[1..],
+        db,
+        resolver,
+        name,
+        &mut callback,
+    ) {
         return Some(result);
     }
     let refed = Canonical {
         num_vars: deref_chain[0].num_vars,
         value: Ty::apply_one(TypeCtor::Ref(Mutability::Shared), deref_chain[0].value.clone()),
     };
-    if let Some(result) = iterate_method_candidates_by_receiver(&refed, deref_chain, db, resolver, name, &mut callback) {
+    if let Some(result) = iterate_method_candidates_by_receiver(
+        &refed,
+        deref_chain,
+        db,
+        resolver,
+        name,
+        &mut callback,
+    ) {
         return Some(result);
     }
     let ref_muted = Canonical {
         num_vars: deref_chain[0].num_vars,
         value: Ty::apply_one(TypeCtor::Ref(Mutability::Mut), deref_chain[0].value.clone()),
     };
-    if let Some(result) = iterate_method_candidates_by_receiver(&ref_muted, deref_chain, db, resolver, name, &mut callback) {
+    if let Some(result) = iterate_method_candidates_by_receiver(
+        &ref_muted,
+        deref_chain,
+        db,
+        resolver,
+        name,
+        &mut callback,
+    ) {
         return Some(result);
     }
     None
@@ -264,7 +286,14 @@ fn iterate_method_candidates_by_receiver<T>(
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that.
     for self_ty in std::iter::once(receiver_ty).chain(deref_chain) {
-        if let Some(result) = iterate_method_candidates_inner(self_ty, db, resolver, name, Some(receiver_ty), &mut callback) {
+        if let Some(result) = iterate_method_candidates_inner(
+            self_ty,
+            db,
+            resolver,
+            name,
+            Some(receiver_ty),
+            &mut callback,
+        ) {
             return Some(result);
         }
     }
@@ -280,7 +309,9 @@ fn iterate_method_candidates_inner<T>(
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
-    if let Some(result) = iterate_inherent_methods(self_ty, db, name, receiver_ty, krate, &mut callback) {
+    if let Some(result) =
+        iterate_inherent_methods(self_ty, db, name, receiver_ty, krate, &mut callback)
+    {
         return Some(result);
     }
     if let Some(result) =
@@ -381,7 +412,31 @@ fn is_valid_candidate(
                 if !data.has_self_param {
                     return false;
                 }
-                // TODO compare receiver ty
+                let substs = match m.lookup(db).container {
+                    hir_def::ContainerId::TraitId(_) => Substs::build_for_def(db, item)
+                        .push(self_ty.value.clone())
+                        .fill_with_unknown()
+                        .build(),
+                    hir_def::ContainerId::ImplId(impl_id) => {
+                        let vars =
+                            Substs::build_for_def(db, impl_id).fill_with_bound_vars(0).build();
+                        let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
+                        let self_ty_with_vars =
+                            Canonical { num_vars: vars.len(), value: &self_ty_with_vars };
+                        if let Some(substs) = super::infer::unify(self_ty_with_vars, &self_ty.value)
+                        {
+                            substs
+                        } else {
+                            return false;
+                        }
+                    }
+                    hir_def::ContainerId::ModuleId(_) => unreachable!(),
+                };
+                let sig = db.callable_item_signature(m.into());
+                let receiver = sig.params()[0].clone().subst(&substs);
+                if receiver != receiver_ty.value {
+                    return false;
+                }
             }
             true
         }

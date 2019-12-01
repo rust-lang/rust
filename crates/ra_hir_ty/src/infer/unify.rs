@@ -167,13 +167,19 @@ impl<T> Canonicalized<T> {
     }
 }
 
-pub fn unify(ty1: Canonical<&Ty>, ty2: &Ty) -> Substs {
+pub fn unify(ty1: Canonical<&Ty>, ty2: &Ty) -> Option<Substs> {
     let mut table = InferenceTable::new();
-    let vars = Substs::builder(ty1.num_vars)
-        .fill(std::iter::repeat_with(|| table.new_type_var())).build();
+    let vars =
+        Substs::builder(ty1.num_vars).fill(std::iter::repeat_with(|| table.new_type_var())).build();
     let ty_with_vars = ty1.value.clone().subst_bound_vars(&vars);
-    table.unify(&ty_with_vars, ty2);
-    Substs::builder(ty1.num_vars).fill(vars.iter().map(|v| table.resolve_ty_completely(v.clone()))).build()
+    if !table.unify(&ty_with_vars, ty2) {
+        return None;
+    }
+    Some(
+        Substs::builder(ty1.num_vars)
+            .fill(vars.iter().map(|v| table.resolve_ty_completely(v.clone())))
+            .build(),
+    )
 }
 
 #[derive(Clone, Debug)]
@@ -183,9 +189,7 @@ pub(crate) struct InferenceTable {
 
 impl InferenceTable {
     pub fn new() -> Self {
-        InferenceTable {
-            var_unification_table: InPlaceUnificationTable::new(),
-        }
+        InferenceTable { var_unification_table: InPlaceUnificationTable::new() }
     }
 
     pub fn new_type_var(&mut self) -> Ty {

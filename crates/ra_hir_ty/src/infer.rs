@@ -36,10 +36,12 @@ use ra_prof::profile;
 use super::{
     primitive::{FloatTy, IntTy},
     traits::{Guidance, Obligation, ProjectionPredicate, Solution},
-    ApplicationTy, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty, TypeCtor,
-    TypeWalk, Uncertain,
+    ApplicationTy, InEnvironment, ProjectionTy, TraitEnvironment, TraitRef, Ty, TypeCtor, TypeWalk,
+    Uncertain,
 };
 use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
+
+pub use unify::unify;
 
 macro_rules! ty_app {
     ($ctor:pat, $param:pat) => {
