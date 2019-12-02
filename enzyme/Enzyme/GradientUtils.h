@@ -410,6 +410,14 @@ public:
         if (ret->getType()->isEmptyTy()) {
             
             if (auto inst = dyn_cast_or_null<Instruction>(malloc)) {
+                if (inst->getType() != ret->getType()) {
+                    llvm::errs() << "oldFunc: " <<*oldFunc << "\n";
+                    llvm::errs() << "newFunc: " <<*newFunc << "\n";
+                    llvm::errs() << "inst==malloc: " <<*inst << "\n";
+                    llvm::errs() << "ret: " <<*ret << "\n";
+
+                }
+                assert(inst->getType() == ret->getType());
                 inst->replaceAllUsesWith(UndefValue::get(ret->getType()));
                 erase(inst);
             }

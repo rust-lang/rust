@@ -703,13 +703,14 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
 
                 bool subretused = op->getNumUses() != 0;
                 bool subdifferentialreturn = (!gutils->isConstantValue(op)) && subretused;
+
                 
                 //! We only need to cache something if it is used in a non return setting (since the backard pass doesnt need to use it if just returned)
-                bool shouldCache = false;//outermostAugmentation;
+                bool hasNonReturnUse = false;//outermostAugmentation;
                 for(auto use : op->users()) {
                     if (!isa<Instruction>(use) || returnuses.find(cast<Instruction>(use)) == returnuses.end()) {
+                        hasNonReturnUse = true;
                         //llvm::errs() << "shouldCache for " << *op << " use " << *use << "\n";
-                        shouldCache = true;
                     }
                 }
 
@@ -750,7 +751,7 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
                   rv->setMetadata("enzyme_activity_value", MDNode::get(rv->getContext(), {MDString::get(rv->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
                   assert(op->getType() == rv->getType());
                   
-                  if (shouldCache) {
+                  if (hasNonReturnUse) {
                     gutils->addMalloc(BuilderZ, rv, getIndex(gutils->getOriginal(op), "self") );
                   }
 
@@ -766,7 +767,7 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
                       gutils->invertedPointers[rv] = antiptr;
                       placeholder->replaceAllUsesWith(antiptr);
 
-                      if (shouldCache) {
+                      if (op->getNumUses() != 0) {
                           gutils->addMalloc(BuilderZ, antiptr, getIndex(gutils->getOriginal(op), "shadow") );
                       }
                     }
@@ -1482,7 +1483,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   std::vector<Instruction*> postCreate;
   BuilderZ.setFastMathFlags(getFast());
 
-  if ( (op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && !gutils->isConstantValue(op)) {
+  if (!op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(op)) {
     //llvm::errs() << "augmented modified " << called->getName() << " modified via return" << "\n";
     modifyPrimal = true;
   }
@@ -1760,7 +1761,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
     sub_index_map = std::get<2>(fnandtapetype);
     
-    llvm::errs() << "seeing sub_index_map of " << sub_index_map->size() << " in ap " << cast<Function>(called)->getName() << "\n";
+    //llvm::errs() << "seeing sub_index_map of " << sub_index_map->size() << " in ap " << cast<Function>(called)->getName() << "\n";
     if (topLevel) {
       Function* newcalled = std::get<0>(fnandtapetype);
       augmentcall = BuilderZ.CreateCall(newcalled, pre_args);
@@ -1801,7 +1802,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         //llvm::errs() << " +  considering placeholder: " << *placeholder << "\n";
         if (I != E && placeholder == &*I) I++;
 
-        bool subcheck = subdifferentialreturn && !op->getType()->isFPOrFPVectorTy();
+        bool subcheck = subdifferentialreturn && !op->getType()->isFPOrFPVectorTy() && !gutils->isConstantValue(op);
             /*
              * topLevel ? 
             ( subdifferentialreturn && (op->getType()->isPointerTy() || (op->getType()->isIntegerTy() && isIntASecretFloat(op, IntType::Pointer) == IntType::Pointer ) ) )
@@ -2046,6 +2047,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   //Whether we shuold actually return the value
   bool returnValue = returnUsed && topLevel;
+  //llvm::errs() << " returnValue: " << returnValue <<  "toplevel: " << topLevel << " func: " << todiff->getName() << "\n";
 
   bool hasTape = false;
 
@@ -2204,7 +2206,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   llvm::AllocaInst* dretAlloca = nullptr;
   if (returnValue) {
     retAlloca = IRBuilder<>(&gutils->newFunc->getEntryBlock().front()).CreateAlloca(todiff->getReturnType(), nullptr, "toreturn");
-    if (dretPtr && (isa<PointerType>(todiff->getReturnType()) || isa<IntegerType>(todiff->getReturnType()))) {
+    if (dretPtr && !todiff->getReturnType()->isFPOrFPVectorTy() && !topLevel) {
         dretAlloca = IRBuilder<>(&gutils->newFunc->getEntryBlock().front()).CreateAlloca(todiff->getReturnType(), nullptr, "dtoreturn");
     }
 
@@ -2220,7 +2222,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         StoreInst* si = rb.CreateStore(retval, retAlloca);
         replacedReturns[cast<ReturnInst>(gutils->getOriginal(op))] = si;
         
-        if (dretAlloca) {
+        if (dretAlloca && !gutils->isConstantValue(retval)) {
             rb.CreateStore(gutils->invertPointerM(retval, rb), dretAlloca);
         }
       } else {
@@ -2237,20 +2239,15 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         */
       }
       
+      //returns nonvoid value
       if (retval != nullptr) {
 
           //differential float return
           if (differentialReturn && !gutils->isConstantValue(retval)) {
             IRBuilder <>reverseB(gutils->reverseBlocks[BB]);
             gutils->setDiffe(retval, differetval, reverseB);
-
-          //differential pointer return
-          } else if (!gutils->isConstantValue(retval) && (isa<PointerType>(retval->getType()) || isa<IntegerType>(retval->getType())) && returnValue) {
-          
-          //no differential return, should not have a returnallocation
-          } else {
-            assert (retAlloca == nullptr);
           }
+
       //returns void, should not have a return allocation
       } else {
         assert (retAlloca == nullptr);
