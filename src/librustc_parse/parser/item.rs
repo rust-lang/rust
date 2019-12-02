@@ -1885,58 +1885,23 @@ impl<'a> Parser<'a> {
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
     fn parse_fn_params(&mut self, mut cfg: ParamCfg) -> PResult<'a, Vec<Param>> {
-        let sp = self.token.span;
         let is_trait_item = cfg.is_self_allowed;
-        let mut c_variadic = false;
         // Parse the arguments, starting out with `self` being possibly allowed...
-        let (params, _) = self.parse_paren_comma_seq(|p| {
-            let param = p.parse_param_general(&cfg, is_trait_item);
+        let (mut params, _) = self.parse_paren_comma_seq(|p| {
+            let param = p.parse_param_general(&cfg, is_trait_item).or_else(|mut e| {
+                e.emit();
+                let lo = p.prev_span;
+                // Skip every token until next possible arg or end.
+                p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
+                // Create a placeholder argument for proper arg count (issue #34264).
+                Ok(dummy_arg(Ident::new(kw::Invalid, lo.to(p.prev_span))))
+            });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
             cfg.is_self_allowed = false;
-
-            match param {
-                Ok(param) => Ok(
-                    if let TyKind::CVarArgs = param.ty.kind {
-                        c_variadic = true;
-                        if p.token != token::CloseDelim(token::Paren) {
-                            p.span_err(
-                                p.token.span,
-                                "`...` must be the last argument of a C-variadic function",
-                            );
-                            // FIXME(eddyb) this should probably still push `CVarArgs`.
-                            // Maybe AST validation/HIR lowering should emit the above error?
-                            None
-                        } else {
-                            Some(param)
-                        }
-                    } else {
-                        Some(param)
-                    }
-                ),
-                Err(mut e) => {
-                    e.emit();
-                    let lo = p.prev_span;
-                    // Skip every token until next possible arg or end.
-                    p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
-                    // Create a placeholder argument for proper arg count (issue #34264).
-                    let span = lo.to(p.prev_span);
-                    Ok(Some(dummy_arg(Ident::new(kw::Invalid, span))))
-                }
-            }
+            param
         })?;
-
-        let mut params: Vec<_> = params.into_iter().filter_map(|x| x).collect();
-
         // Replace duplicated recovered params with `_` pattern to avoid unnecessary errors.
         self.deduplicate_recovered_params_names(&mut params);
-
-        if c_variadic && params.len() <= 1 {
-            self.span_err(
-                sp,
-                "C-variadic function must be declared with at least one named argument",
-            );
-        }
-
         Ok(params)
     }
 

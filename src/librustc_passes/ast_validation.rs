@@ -250,6 +250,26 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_fn_decl(&self, fn_decl: &FnDecl) {
+        match &*fn_decl.inputs {
+            [Param { ty, span, .. }] => if let TyKind::CVarArgs = ty.kind {
+                self.err_handler()
+                    .span_err(
+                        *span,
+                        "C-variadic function must be declared with at least one named argument",
+                    );
+            },
+            [ps @ .., _] => for Param { ty, span, .. } in ps {
+                if let TyKind::CVarArgs = ty.kind {
+                    self.err_handler()
+                        .span_err(
+                            *span,
+                            "`...` must be the last argument of a C-variadic function",
+                        );
+                }
+            }
+            _ => {}
+        }
+
         fn_decl
             .inputs
             .iter()
@@ -265,8 +285,7 @@ impl<'a> AstValidator<'a> {
                 )
                 .span_label(attr.span, "doc comments are not allowed here")
                 .emit();
-            }
-            else {
+            } else {
                 self.err_handler().span_err(attr.span, "allow, cfg, cfg_attr, deny, \
                 forbid, and warn are the only allowed built-in attributes in function parameters")
             });

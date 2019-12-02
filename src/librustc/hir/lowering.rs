@@ -1426,7 +1426,13 @@ impl<'a> LoweringContext<'a> {
                 }
             }
             TyKind::Mac(_) => bug!("`TyKind::Mac` should have been expanded by now"),
-            TyKind::CVarArgs => bug!("`TyKind::CVarArgs` should have been handled elsewhere"),
+            TyKind::CVarArgs => {
+                self.sess.delay_span_bug(
+                    t.span,
+                    "`TyKind::CVarArgs` should have been handled elsewhere",
+                );
+                hir::TyKind::Err
+            }
         };
 
         hir::Ty {
