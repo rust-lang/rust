@@ -182,7 +182,8 @@ fn install_client(ClientOpt::VsCode: ClientOpt) -> Result<()> {
         eprintln!("\nERROR: `npm --version` failed, `npm` is required to build the VS Code plugin")
     }
 
-    Cmd { unix: r"npm ci", windows: r"cmd.exe /c npm ci", work_dir: "./editors/code" }.run()?;
+    Cmd { unix: r"npm install", windows: r"cmd.exe /c npm install", work_dir: "./editors/code" }
+        .run()?;
     Cmd {
         unix: r"npm run package --scripts-prepend-node-path",
         windows: r"cmd.exe /c npm run package",
