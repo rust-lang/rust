@@ -5,7 +5,7 @@ use rustc::ty::{self, Ty};
 use rustc::hir::def_id::DefId;
 use syntax_pos::DUMMY_SP;
 
-use super::{ConstKind, Item as ConstCx};
+use super::Item as ConstCx;
 
 pub fn in_any_value_of_ty(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> ConstQualifs {
     ConstQualifs {
@@ -33,9 +33,10 @@ pub trait Qualif {
     /// of the type.
     fn in_any_value_of_ty(_cx: &ConstCx<'_, 'tcx>, _ty: Ty<'tcx>) -> bool;
 
-    fn in_static(_cx: &ConstCx<'_, 'tcx>, _def_id: DefId) -> bool {
-        // FIXME(eddyb) should we do anything here for value properties?
-        false
+    fn in_static(cx: &ConstCx<'_, 'tcx>, def_id: DefId) -> bool {
+        // `mir_const_qualif` does return the qualifs in the final value of a `static`, so we could
+        // use value-based qualification here, but we shouldn't do this without a good reason.
+        Self::in_any_value_of_ty(cx, cx.tcx.type_of(def_id))
     }
 
     fn in_projection_structurally(
@@ -217,34 +218,6 @@ impl Qualif for HasMutInterior {
         rvalue: &Rvalue<'tcx>,
     ) -> bool {
         match *rvalue {
-            // Returning `true` for `Rvalue::Ref` indicates the borrow isn't
-            // allowed in constants (and the `Checker` will error), and/or it
-            // won't be promoted, due to `&mut ...` or interior mutability.
-            Rvalue::Ref(_, kind, ref place) => {
-                let ty = place.ty(cx.body, cx.tcx).ty;
-
-                if let BorrowKind::Mut { .. } = kind {
-                    // In theory, any zero-sized value could be borrowed
-                    // mutably without consequences.
-                    match ty.kind {
-                        // Inside a `static mut`, &mut [...] is also allowed.
-                        | ty::Array(..)
-                        | ty::Slice(_)
-                        if cx.const_kind == Some(ConstKind::StaticMut)
-                        => {},
-
-                        // FIXME(eddyb): We only return false for `&mut []` outside a const
-                        // context which seems unnecessary given that this is merely a ZST.
-                        | ty::Array(_, len)
-                        if len.try_eval_usize(cx.tcx, cx.param_env) == Some(0)
-                            && cx.const_kind == None
-                        => {},
-
-                        _ => return true,
-                    }
-                }
-            }
-
             Rvalue::Aggregate(ref kind, _) => {
                 if let AggregateKind::Adt(def, ..) = **kind {
                     if Some(def.did) == cx.tcx.lang_items().unsafe_cell_type() {

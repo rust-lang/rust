@@ -643,7 +643,9 @@ class RustBuild(object):
         env["LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
             (os.pathsep + env["LIBRARY_PATH"]) \
             if "LIBRARY_PATH" in env else ""
-        env["RUSTFLAGS"] = "-Cdebuginfo=2 "
+        # preserve existing RUSTFLAGS
+        env.setdefault("RUSTFLAGS", "")
+        env["RUSTFLAGS"] += " -Cdebuginfo=2"
 
         build_section = "target.{}".format(self.build_triple())
         target_features = []
@@ -652,13 +654,13 @@ class RustBuild(object):
         elif self.get_toml("crt-static", build_section) == "false":
             target_features += ["-crt-static"]
         if target_features:
-            env["RUSTFLAGS"] += "-C target-feature=" + (",".join(target_features)) + " "
+            env["RUSTFLAGS"] += " -C target-feature=" + (",".join(target_features))
         target_linker = self.get_toml("linker", build_section)
         if target_linker is not None:
-            env["RUSTFLAGS"] += "-C linker=" + target_linker + " "
-        env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes "
+            env["RUSTFLAGS"] += " -C linker=" + target_linker
+        env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
         if self.get_toml("deny-warnings", "rust") != "false":
-            env["RUSTFLAGS"] += "-Dwarnings "
+            env["RUSTFLAGS"] += " -Dwarnings"
 
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
             os.pathsep + env["PATH"]
