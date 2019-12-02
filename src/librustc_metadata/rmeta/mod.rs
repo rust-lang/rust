@@ -214,6 +214,7 @@ crate struct CrateRoot<'tcx> {
     profiler_runtime: bool,
     sanitizer_runtime: bool,
     symbol_mangling_version: SymbolManglingVersion,
+    generator_mir_traits: bool
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

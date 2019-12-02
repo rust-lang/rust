@@ -544,6 +544,7 @@ impl<'tcx> EncodeContext<'tcx> {
             exported_symbols,
             interpret_alloc_index,
             per_def,
+            generator_mir_traits: tcx.features().generator_mir_traits
         });
 
         let total_bytes = self.position();

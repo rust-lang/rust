@@ -931,6 +931,10 @@ rustc_queries! {
         query all_traits(_: CrateNum) -> &'tcx [DefId] {
             desc { "fetching all foreign and local traits" }
         }
+
+        query uses_generator_mir_traits(_: CrateNum) -> bool {
+            desc { "determining whether crate uses generator MIR traits" }
+        }
     }
 
     Linking {

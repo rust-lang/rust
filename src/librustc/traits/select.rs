@@ -2753,6 +2753,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::GeneratorWitness(did, types) => {
+				let use_mir = if did.is_local() {
+                    self.tcx().features().generator_mir_traits
+                } else {
+                    self.tcx().uses_generator_mir_traits(did.krate)
+                };
+
+                if !use_mir {
+					// This is sound because no regions in the witness can refer to
+					// the binder outside the witness. So we'll effectivly reuse
+					// the implicit binder around the witness.
+					return types.skip_binder().to_vec()
+                }
                 // Note that we need to use optimized_mir here,
                 // in order to have the `StateTransform` pass run
                 /*let gen_mir = self.tcx().optimized_mir(did);

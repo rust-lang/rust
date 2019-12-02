@@ -334,6 +334,7 @@ symbols! {
         FxHashSet,
         FxHashMap,
         gen_future,
+        generator_mir_traits,
         generators,
         generic_associated_types,
         generic_param_attrs,

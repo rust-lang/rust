@@ -240,6 +240,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
 
         Arc::new(syms)
     }
+
+    uses_generator_mir_traits => {
+        cdata.root.generator_mir_traits
+    }
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
