@@ -849,8 +849,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 } else {
                     block.terminator().source_info
                 };
-                match body.source_scope_local_data {
-                    mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
+                match &body.source_scopes[source_info.scope].local_data {
+                    mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                     mir::ClearCrossCrate::Clear => None,
                 }
             });

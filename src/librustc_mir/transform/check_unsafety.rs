@@ -1,6 +1,4 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
@@ -24,7 +22,6 @@ pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     const_context: bool,
     min_const_fn: bool,
-    source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
     tcx: TyCtxt<'tcx>,
@@ -39,7 +36,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         const_context: bool,
         min_const_fn: bool,
         body: &'a Body<'tcx>,
-        source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -51,7 +47,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             body,
             const_context,
             min_const_fn,
-            source_scope_local_data,
             violations: vec![],
             source_info: SourceInfo {
                 span: body.span,
@@ -219,8 +214,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if context.is_borrow() {
                 if util::is_disaligned(self.tcx, self.body, self.param_env, place) {
                     let source_info = self.source_info;
-                    let lint_root =
-                        self.source_scope_local_data[source_info.scope].lint_root;
+                    let lint_root = self.body.source_scopes[source_info.scope]
+                        .local_data
+                        .as_ref()
+                        .assert_crate_local()
+                        .lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
                         description: Symbol::intern("borrow of packed field"),
@@ -346,7 +344,11 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(hir::HirId, bool)]) {
-        let safety = self.source_scope_local_data[self.source_info.scope].safety;
+        let safety = self.body.source_scopes[self.source_info.scope]
+            .local_data
+            .as_ref()
+            .assert_crate_local()
+            .safety;
         let within_unsafe = match safety {
             // `unsafe` blocks are required in safe code
             Safety::Safe => {
@@ -516,17 +518,6 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
     // `mir_built` force this.
     let body = &tcx.mir_built(def_id).borrow();
 
-    let source_scope_local_data = match body.source_scope_local_data {
-        ClearCrossCrate::Set(ref data) => data,
-        ClearCrossCrate::Clear => {
-            debug!("unsafety_violations: {:?} - remote, skipping", def_id);
-            return UnsafetyCheckResult {
-                violations: Lrc::new([]),
-                unsafe_blocks: Lrc::new([])
-            }
-        }
-    };
-
     let param_env = tcx.param_env(def_id);
 
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -536,9 +527,7 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
         hir::BodyOwnerKind::Const |
         hir::BodyOwnerKind::Static(_) => (true, false),
     };
-    let mut checker = UnsafetyChecker::new(
-        const_context, min_const_fn,
-        body, source_scope_local_data, tcx, param_env);
+    let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body, tcx, param_env);
     checker.visit_body(body);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);

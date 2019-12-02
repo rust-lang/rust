@@ -309,7 +309,6 @@ struct Builder<'a, 'tcx> {
     /// The vector of all scopes that we have created thus far;
     /// we track this for debuginfo later.
     source_scopes: IndexVec<SourceScope, SourceScopeData>,
-    source_scope_local_data: IndexVec<SourceScope, SourceScopeLocalData>,
     source_scope: SourceScope,
 
     /// The guard-context: each time we build the guard expression for
@@ -704,7 +703,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
-            source_scope_local_data: IndexVec::new(),
             guard_context: vec![],
             push_unsafe_count: 0,
             unpushed_unsafe: safety,
@@ -741,7 +739,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         Body::new(
             self.cfg.basic_blocks,
             self.source_scopes,
-            ClearCrossCrate::Set(self.source_scope_local_data),
             self.local_decls,
             self.canonical_user_type_annotations,
             self.arg_count,
@@ -942,7 +939,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             self.hir.root_lint_level
         );
         let parent_root = tcx.maybe_lint_level_root_bounded(
-            self.source_scope_local_data[original_source_scope].lint_root,
+            self.source_scopes[original_source_scope]
+                .local_data
+                .as_ref()
+                .assert_crate_local()
+                .lint_root,
             self.hir.root_lint_level,
         );
         if current_root != parent_root {

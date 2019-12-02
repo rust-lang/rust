@@ -198,9 +198,6 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
     let mut body = new_body(
         blocks,
-        IndexVec::from_elem_n(
-            SourceScopeData { span, parent_scope: None }, 1
-        ),
         local_decls_for_sig(&sig, span),
         sig.inputs().len(),
         span);
@@ -244,15 +241,16 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
 
 fn new_body<'tcx>(
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-    source_scopes: IndexVec<SourceScope, SourceScopeData>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     arg_count: usize,
     span: Span,
 ) -> Body<'tcx> {
     Body::new(
         basic_blocks,
-        source_scopes,
-        ClearCrossCrate::Clear,
+        IndexVec::from_elem_n(
+            SourceScopeData { span, parent_scope: None, local_data: ClearCrossCrate::Clear },
+            1,
+        ),
         local_decls,
         IndexVec::new(),
         arg_count,
@@ -380,9 +378,6 @@ impl CloneShimBuilder<'tcx> {
     fn into_mir(self) -> Body<'tcx> {
         new_body(
             self.blocks,
-            IndexVec::from_elem_n(
-                SourceScopeData { span: self.span, parent_scope: None }, 1
-            ),
             self.local_decls,
             self.sig.inputs().len(),
             self.span,
@@ -836,9 +831,6 @@ fn build_call_shim<'tcx>(
 
     let mut body = new_body(
         blocks,
-        IndexVec::from_elem_n(
-            SourceScopeData { span, parent_scope: None }, 1
-        ),
         local_decls,
         sig.inputs().len(),
         span,
@@ -919,9 +911,6 @@ pub fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> &Body<'_> {
 
     let body = new_body(
         IndexVec::from_elem_n(start_block, 1),
-        IndexVec::from_elem_n(
-            SourceScopeData { span, parent_scope: None }, 1
-        ),
         local_decls,
         sig.inputs().len(),
         span,
