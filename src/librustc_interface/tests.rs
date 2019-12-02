@@ -651,10 +651,6 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.extra_plugins = vec![String::from("plugin1"), String::from("plugin2")];
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
     opts.debugging_opts.force_overflow_checks = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 

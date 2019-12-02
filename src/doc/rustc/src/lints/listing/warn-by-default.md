@@ -307,18 +307,6 @@ warning: path statement with no effect
   |
 ```
 
-## plugin-as-library
-
-This lint detects when compiler plugins are used as ordinary library in
-non-plugin crate. Some example code that triggers this lint:
-
-```rust,ignore
-#![feature(plugin)]
-#![plugin(macro_crate_test)]
-
-extern crate macro_crate_test;
-```
-
 ## private-in-public
 
 This lint detects private items in public interfaces not caught by the old implementation. Some

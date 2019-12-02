@@ -365,20 +365,6 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
             add_sanitizer_passes(config, &mut extra_passes);
 
-            for pass_name in &cgcx.plugin_passes {
-                if let Some(pass) = find_pass(pass_name) {
-                    extra_passes.push(pass);
-                } else {
-                    diag_handler.err(&format!("a plugin asked for LLVM pass \
-                                               `{}` but LLVM does not \
-                                               recognize it", pass_name));
-                }
-
-                if pass_name == "name-anon-globals" {
-                    have_name_anon_globals_pass = true;
-                }
-            }
-
             // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
             // to make sure we run LLVM's NameAnonGlobals pass when emitting bitcode; otherwise
             // we'll get errors in LLVM.

@@ -9,7 +9,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::{
     AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local, UnOp,
     StatementKind, Statement, LocalKind, TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo,
-    BinOp, SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock, RETURN_PLACE,
+    BinOp, SourceScope, SourceScopeData, LocalDecl, BasicBlock, RETURN_PLACE,
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
@@ -74,17 +74,10 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         trace!("ConstProp starting for {:?}", source.def_id());
 
-        // Steal some data we need from `body`.
-        let source_scope_local_data = std::mem::replace(
-            &mut body.source_scope_local_data,
-            ClearCrossCrate::Clear
-        );
-
         let dummy_body =
             &Body::new(
                 body.basic_blocks().clone(),
-                Default::default(),
-                ClearCrossCrate::Clear,
+                body.source_scopes.clone(),
                 body.local_decls.clone(),
                 Default::default(),
                 body.arg_count,
@@ -101,18 +94,10 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         let mut optimization_finder = ConstPropagator::new(
             body,
             dummy_body,
-            source_scope_local_data,
             tcx,
             source
         );
         optimization_finder.visit_body(body);
-
-        // put back the data we stole from `mir`
-        let source_scope_local_data = optimization_finder.release_stolen_data();
-        std::mem::replace(
-            &mut body.source_scope_local_data,
-            source_scope_local_data
-        );
 
         trace!("ConstProp done for {:?}", source.def_id());
     }
@@ -267,7 +252,9 @@ struct ConstPropagator<'mir, 'tcx> {
     source: MirSource<'tcx>,
     can_const_prop: IndexVec<Local, bool>,
     param_env: ParamEnv<'tcx>,
-    source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
+    // FIXME(eddyb) avoid cloning these two fields more than once,
+    // by accessing them through `ecx` instead.
+    source_scopes: IndexVec<SourceScope, SourceScopeData>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     ret: Option<OpTy<'tcx, ()>>,
 }
@@ -299,7 +286,6 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(
         body: &Body<'tcx>,
         dummy_body: &'mir Body<'tcx>,
-        source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
         tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
@@ -337,15 +323,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             source,
             param_env,
             can_const_prop,
-            source_scope_local_data,
+            // FIXME(eddyb) avoid cloning these two fields more than once,
+            // by accessing them through `ecx` instead.
+            source_scopes: body.source_scopes.clone(),
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
             ret: ret.map(Into::into),
         }
-    }
-
-    fn release_stolen_data(self) -> ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>> {
-        self.source_scope_local_data
     }
 
     fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
@@ -377,14 +361,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         self.ecx.tcx.span = source_info.span;
-        let lint_root = match self.source_scope_local_data {
-            ClearCrossCrate::Set(ref ivs) => {
-                //FIXME(#51314): remove this check
-                if source_info.scope.index() >= ivs.len() {
-                    return None;
-                }
-                ivs[source_info.scope].lint_root
-            },
+        // FIXME(eddyb) move this to the `Panic(_)` error case, so that
+        // `f(self)` is always called, and that the only difference when the
+        // scope's `local_data` is missing, is that the lint isn't emitted.
+        let lint_root = match &self.source_scopes[source_info.scope].local_data {
+            ClearCrossCrate::Set(data) => data.lint_root,
             ClearCrossCrate::Clear => return None,
         };
         let r = match f(self) {
@@ -396,7 +377,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     InterpError::*
                 };
                 match error.kind {
-                    Exit(_) => bug!("the CTFE program cannot exit"),
+                    MachineStop(_) => bug!("ConstProp does not stop"),
 
                     // Some error shouldn't come up because creating them causes
                     // an allocation, which we should avoid. When that happens,
@@ -525,8 +506,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let right_size = r.layout.size;
                     let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
                     if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
-                        let source_scope_local_data = match self.source_scope_local_data {
-                            ClearCrossCrate::Set(ref data) => data,
+                        let lint_root = match &self.source_scopes[source_info.scope].local_data {
+                            ClearCrossCrate::Set(data) => data.lint_root,
                             ClearCrossCrate::Clear => return None,
                         };
                         let dir = if *op == BinOp::Shr {
@@ -534,10 +515,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         } else {
                             "left"
                         };
-                        let hir_id = source_scope_local_data[source_info.scope].lint_root;
                         self.tcx.lint_hir(
                             ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                            hir_id,
+                            lint_root,
                             span,
                             &format!("attempt to shift {} with overflow", dir));
                         return None;

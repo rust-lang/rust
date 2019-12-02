@@ -24,7 +24,7 @@
 use std::fmt::Write;
 
 use rustc::hir::def::{Res, DefKind};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, layout::VariantIdx};
 use rustc::{lint, util};
 use rustc::lint::FutureIncompatibleInfo;
@@ -801,45 +801,6 @@ impl EarlyLintPass for UnusedDocComment {
 }
 
 declare_lint! {
-    PLUGIN_AS_LIBRARY,
-    Warn,
-    "compiler plugin used as ordinary library in non-plugin crate"
-}
-
-declare_lint_pass!(PluginAsLibrary => [PLUGIN_AS_LIBRARY]);
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        if cx.tcx.plugin_registrar_fn(LOCAL_CRATE).is_some() {
-            // We're compiling a plugin; it's fine to link other plugins.
-            return;
-        }
-
-        match it.kind {
-            hir::ItemKind::ExternCrate(..) => (),
-            _ => return,
-        };
-
-        let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
-            Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
-            None => {
-                // Probably means we aren't linking the crate for some reason.
-                //
-                // Not sure if / when this could happen.
-                return;
-            }
-        };
-
-        if prfn.is_some() {
-            cx.span_lint(PLUGIN_AS_LIBRARY,
-                         it.span,
-                         "compiler plugin used as an ordinary library");
-        }
-    }
-}
-
-declare_lint! {
     NO_MANGLE_CONST_ITEMS,
     Deny,
     "const items will not have their symbols exported"
@@ -1268,7 +1229,6 @@ declare_lint_pass!(
         MISSING_DEBUG_IMPLEMENTATIONS,
         ANONYMOUS_PARAMETERS,
         UNUSED_DOC_COMMENTS,
-        PLUGIN_AS_LIBRARY,
         NO_MANGLE_CONST_ITEMS,
         NO_MANGLE_GENERIC_ITEMS,
         MUTABLE_TRANSMUTES,
