@@ -342,7 +342,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             | Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
             | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place)
             => {
-                let ty = place.ty(self.body, self.tcx).ty;
+                let ty = place.ty(&*self.body, self.tcx).ty;
                 let is_allowed = match ty.kind {
                     // Inside a `static mut`, `&mut [...]` is allowed.
                     ty::Array(..) | ty::Slice(_) if self.const_kind() == ConstKind::StaticMut
