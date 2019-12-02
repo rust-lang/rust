@@ -4,8 +4,7 @@ note: External requirements
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:11 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]::{{closure}}[0]) with closure substs [
-               T,
+   = note: defining type: generic::<T>::{{closure}}#0 with closure substs [
                i16,
                for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed('s)) T)),
            ]
@@ -21,9 +20,7 @@ LL | |     twice(cell, value, |a, b| invoke(a, b));
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:9 ~ ty_param_closure_approximate_lower_bound[317d]::generic[0]) with substs [
-               T,
-           ]
+   = note: defining type: generic::<T>
 
 note: External requirements
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:29:24
@@ -31,8 +28,7 @@ note: External requirements
 LL |     twice(cell, value, |a, b| invoke(a, b));
    |                        ^^^^^^^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:15 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]::{{closure}}[0]) with closure substs [
-               T,
+   = note: defining type: generic_fail::<T>::{{closure}}#0 with closure substs [
                i16,
                for<'r, 's> extern "rust-call" fn((std::option::Option<std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) ()>>, &ReLateBound(DebruijnIndex(0), BrNamed('s)) T)),
            ]
@@ -49,9 +45,7 @@ LL | |
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:12 ~ ty_param_closure_approximate_lower_bound[317d]::generic_fail[0]) with substs [
-               T,
-           ]
+   = note: defining type: generic_fail::<T>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-approximate-lower-bound.rs:29:24
