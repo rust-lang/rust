@@ -2,19 +2,20 @@
 
 use std::ffi::CString;
 
-use rustc::hir::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::session::Session;
 use rustc::session::config::{Sanitizer, OptLevel};
-use rustc::ty::{self, TyCtxt, PolyFnSig};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_target::abi::call::Conv;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
 
-use crate::abi::Abi;
+use crate::abi::FnAbi;
 use crate::attributes;
 use crate::llvm::{self, Attribute};
 use crate::llvm::AttributePlace::Function;
@@ -26,7 +27,7 @@ use crate::value::Value;
 
 /// Mark LLVM function to use provided inline heuristic.
 #[inline]
-pub fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
+fn inline(cx: &CodegenCx<'ll, '_>, val: &'ll Value, inline: InlineAttr) {
     use self::InlineAttr::*;
     match inline {
         Hint   => Attribute::InlineHint.apply_llfn(Function, val),
@@ -58,7 +59,7 @@ fn unwind(val: &'ll Value, can_unwind: bool) {
 
 /// Tell LLVM if this function should be 'naked', i.e., skip the epilogue and prologue.
 #[inline]
-pub fn naked(val: &'ll Value, is_naked: bool) {
+fn naked(val: &'ll Value, is_naked: bool) {
     Attribute::Naked.toggle_llfn(Function, val, is_naked);
 }
 
@@ -72,7 +73,7 @@ pub fn set_frame_pointer_elimination(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) 
 
 /// Tell LLVM what instrument function to insert.
 #[inline]
-pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     if cx.sess().instrument_mcount() {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
@@ -88,7 +89,7 @@ pub fn set_instrument_function(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     }
 }
 
-pub fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
+fn set_probestack(cx: &CodegenCx<'ll, '_>, llfn: &'ll Value) {
     // Only use stack probes if the target specification indicates that we
     // should be using stack probes
     if !cx.sess().target.target.options.stack_probes {
@@ -202,11 +203,10 @@ pub(crate) fn default_optimisation_attrs(sess: &Session, llfn: &'ll Value) {
 pub fn from_fn_attrs(
     cx: &CodegenCx<'ll, 'tcx>,
     llfn: &'ll Value,
-    id: Option<DefId>,
-    sig: PolyFnSig<'tcx>,
+    instance: ty::Instance<'tcx>,
+    fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) {
-    let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
-        .unwrap_or_else(|| CodegenFnAttrs::new());
+    let codegen_fn_attrs = cx.tcx.codegen_fn_attrs(instance.def_id());
 
     match codegen_fn_attrs.optimize {
         OptimizeAttr::None => {
@@ -222,6 +222,11 @@ pub fn from_fn_attrs(
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
             llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
         }
+    }
+
+    // FIXME(eddyb) consolidate these two `inline` calls (and avoid overwrites).
+    if instance.def.is_inline(cx.tcx) {
+        inline(cx, llfn, attributes::InlineAttr::Hint);
     }
 
     inline(cx, llfn, codegen_fn_attrs.inline);
@@ -276,8 +281,7 @@ pub fn from_fn_attrs(
         // Special attribute for allocator functions, which can't unwind.
         false
     } else {
-        let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        if sig.abi == Abi::Rust || sig.abi == Abi::RustCall {
+        if fn_abi.conv == Conv::Rust {
             // Any Rust method (or `extern "Rust" fn` or `extern
             // "rust-call" fn`) is explicitly allowed to unwind
             // (unless it has no-unwind attribute, handled above).
@@ -331,16 +335,14 @@ pub fn from_fn_attrs(
     // Note that currently the `wasm-import-module` doesn't do anything, but
     // eventually LLVM 7 should read this and ferry the appropriate import
     // module to the output file.
-    if let Some(id) = id {
-        if cx.tcx.sess.target.target.arch == "wasm32" {
-            if let Some(module) = wasm_import_module(cx.tcx, id) {
-                llvm::AddFunctionAttrStringValue(
-                    llfn,
-                    llvm::AttributePlace::Function,
-                    const_cstr!("wasm-import-module"),
-                    &module,
-                );
-            }
+    if cx.tcx.sess.target.target.arch == "wasm32" {
+        if let Some(module) = wasm_import_module(cx.tcx, instance.def_id()) {
+            llvm::AddFunctionAttrStringValue(
+                llfn,
+                llvm::AttributePlace::Function,
+                const_cstr!("wasm-import-module"),
+                &module,
+            );
         }
     }
 }
