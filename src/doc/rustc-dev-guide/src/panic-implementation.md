@@ -44,7 +44,7 @@ pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
 ```
 
 The special `panic_handler` attribute is resolved via `src/librustc/middle/lang_items`.
-The `extract` functions convers the `panic_handler` attribute to a `panic_impl` lang item.
+The `extract` function converts the `panic_handler` attribute to a `panic_impl` lang item.
 
 Now, we have a matching `panic_impl` lang item in the `libstd`. This function goes
 through the same process as the `extern { fn panic_impl }` definition in `libcore`, ending
@@ -59,7 +59,7 @@ to go through the same infratructure that other panics use (panic hooks, unwindi
 
 This is where the actual panic-related logic begins. In `src/libstd/pancking.rs`,
 control passes to `rust_panic_with_hook`. This method is responsible
-for checking for invoking the global panic hook, and checking for double panics. Finally,
+for invoking the global panic hook, and checking for double panics. Finally,
 we call ```__rust_start_panic```, which is provided by the panic runtime.
 
 The call to ```__rust_start_panic``` is very weird - it is passed a ```*mut &mut dyn BoxMeUp```,
@@ -101,5 +101,4 @@ with each frame (currently, running destructors), and transferring control
 to the `catch_unwind` frame.
 
 Note that all panics either abort the process or get caught by some call to `catch_unwind`:
-in `src/libstd/rt.rs`, the call to the user-provided `main` function is wrapped in `catch_unwind
-
+in `src/libstd/rt.rs`, the call to the user-provided `main` function is wrapped in `catch_unwind`.
