@@ -10,7 +10,7 @@ LL | |         },
    |
    = note: defining type: DefId(0:18 ~ propagate_approximated_fail_no_postdom[317d]::supply[0]::{{closure}}[0]) with closure substs [
                i16,
-               for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 'r)) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 's)) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 'r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed(crate0:DefIndex(0), 's)) u32>)),
+               for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) &'_#3r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) u32>)),
            ]
    = note: late-bound region is '_#4r
    = note: late-bound region is '_#5r

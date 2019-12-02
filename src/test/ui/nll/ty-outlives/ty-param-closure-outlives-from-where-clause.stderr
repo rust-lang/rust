@@ -49,7 +49,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:11 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(crate0:DefIndex(12), 'a))`...
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:11 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]), BrNamed(DefId(0:12 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]::'a[0]), 'a))`...
 
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:43:26
@@ -139,7 +139,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:19 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(crate0:DefIndex(20), 'a))`...
+   = help: consider adding an explicit lifetime bound `T: ReFree(DefId(0:19 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]), BrNamed(DefId(0:20 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]::'a[0]), 'a))`...
 
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:77:26
