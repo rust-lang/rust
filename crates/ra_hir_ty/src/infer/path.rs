@@ -206,7 +206,9 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     AssocItemId::TypeAliasId(_) => unreachable!(),
                 };
                 let substs = match container {
-                    ContainerId::ImplId(_) => self.find_self_types(&def, ty.clone()),
+                    ContainerId::ImplId(impl_id) => {
+                        method_resolution::inherent_impl_substs(self.db, impl_id, &ty)
+                    }
                     ContainerId::TraitId(trait_) => {
                         // we're picking this method
                         let trait_substs = Substs::build_for_def(self.db, trait_)
@@ -230,39 +232,5 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 Some((def, substs))
             },
         )
-    }
-
-    fn find_self_types(&self, def: &ValueNs, actual_def_ty: Ty) -> Option<Substs> {
-        if let ValueNs::FunctionId(func) = *def {
-            // We only do the infer if parent has generic params
-            let gen = self.db.generic_params(func.into());
-            if gen.count_parent_params() == 0 {
-                return None;
-            }
-
-            let impl_id = match func.lookup(self.db).container {
-                ContainerId::ImplId(it) => it,
-                _ => return None,
-            };
-            let self_ty = self.db.impl_self_ty(impl_id).clone();
-            let self_ty_substs = self_ty.substs()?;
-            let actual_substs = actual_def_ty.substs()?;
-
-            let mut new_substs = vec![Ty::Unknown; gen.count_parent_params()];
-
-            // The following code *link up* the function actual parma type
-            // and impl_block type param index
-            self_ty_substs.iter().zip(actual_substs.iter()).for_each(|(param, pty)| {
-                if let Ty::Param { idx, .. } = param {
-                    if let Some(s) = new_substs.get_mut(*idx as usize) {
-                        *s = pty.clone();
-                    }
-                }
-            });
-
-            Some(Substs(new_substs.into()))
-        } else {
-            None
-        }
     }
 }

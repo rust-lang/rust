@@ -191,13 +191,13 @@ pub fn iterate_method_candidates<T>(
             let ty = InEnvironment { value: ty.clone(), environment };
             let krate = resolver.krate()?;
 
-            // We have to be careful about the order of operations here.
-            // Consider the case where we're resolving `x.clone()` where `x:
-            // &Vec<_>`. This resolves to the clone method with self type
-            // `Vec<_>`, *not* `&_`. I.e. we need to consider methods where the
-            // receiver type exactly matches before cases where we have to do
-            // autoref. But in the autoderef steps, the `&_` self type comes up
-            // *before* the `Vec<_>` self type.
+            // We have to be careful about the order we're looking at candidates
+            // in here. Consider the case where we're resolving `x.clone()`
+            // where `x: &Vec<_>`. This resolves to the clone method with self
+            // type `Vec<_>`, *not* `&_`. I.e. we need to consider methods where
+            // the receiver type exactly matches before cases where we have to
+            // do autoref. But in the autoderef steps, the `&_` self type comes
+            // up *before* the `Vec<_>` self type.
             //
             // On the other hand, we don't want to just pick any by-value method
             // before any by-autoref method; it's just that we need to consider
@@ -206,7 +206,7 @@ pub fn iterate_method_candidates<T>(
 
             let deref_chain: Vec<_> = autoderef::autoderef(db, Some(krate), ty.clone()).collect();
             for i in 0..deref_chain.len() {
-                if let Some(result) = iterate_method_candidates_autoref(
+                if let Some(result) = iterate_method_candidates_with_autoref(
                     &deref_chain[i..],
                     db,
                     resolver,
@@ -220,12 +220,12 @@ pub fn iterate_method_candidates<T>(
         }
         LookupMode::Path => {
             // No autoderef for path lookups
-            iterate_method_candidates_inner(&ty, db, resolver, name, None, &mut callback)
+            iterate_method_candidates_for_self_ty(&ty, db, resolver, name, &mut callback)
         }
     }
 }
 
-fn iterate_method_candidates_autoref<T>(
+fn iterate_method_candidates_with_autoref<T>(
     deref_chain: &[Canonical<Ty>],
     db: &impl HirDatabase,
     resolver: &Resolver,
@@ -275,18 +275,25 @@ fn iterate_method_candidates_autoref<T>(
 
 fn iterate_method_candidates_by_receiver<T>(
     receiver_ty: &Canonical<Ty>,
-    deref_chain: &[Canonical<Ty>],
+    rest_of_deref_chain: &[Canonical<Ty>],
     db: &impl HirDatabase,
     resolver: &Resolver,
     name: Option<&Name>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
-    // TODO: do we need to do the whole loop for inherents before traits?
     // We're looking for methods with *receiver* type receiver_ty. These could
     // be found in any of the derefs of receiver_ty, so we have to go through
     // that.
-    for self_ty in std::iter::once(receiver_ty).chain(deref_chain) {
-        if let Some(result) = iterate_method_candidates_inner(
+    let krate = resolver.krate()?;
+    for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
+        if let Some(result) =
+            iterate_inherent_methods(self_ty, db, name, Some(receiver_ty), krate, &mut callback)
+        {
+            return Some(result);
+        }
+    }
+    for self_ty in std::iter::once(receiver_ty).chain(rest_of_deref_chain) {
+        if let Some(result) = iterate_trait_method_candidates(
             self_ty,
             db,
             resolver,
@@ -300,22 +307,19 @@ fn iterate_method_candidates_by_receiver<T>(
     None
 }
 
-fn iterate_method_candidates_inner<T>(
+fn iterate_method_candidates_for_self_ty<T>(
     self_ty: &Canonical<Ty>,
     db: &impl HirDatabase,
     resolver: &Resolver,
     name: Option<&Name>,
-    receiver_ty: Option<&Canonical<Ty>>,
     mut callback: impl FnMut(&Ty, AssocItemId) -> Option<T>,
 ) -> Option<T> {
     let krate = resolver.krate()?;
-    if let Some(result) =
-        iterate_inherent_methods(self_ty, db, name, receiver_ty, krate, &mut callback)
-    {
+    if let Some(result) = iterate_inherent_methods(self_ty, db, name, None, krate, &mut callback) {
         return Some(result);
     }
     if let Some(result) =
-        iterate_trait_method_candidates(self_ty, db, resolver, name, receiver_ty, &mut callback)
+        iterate_trait_method_candidates(self_ty, db, resolver, name, None, &mut callback)
     {
         return Some(result);
     }
@@ -412,29 +416,11 @@ fn is_valid_candidate(
                 if !data.has_self_param {
                     return false;
                 }
-                let substs = match m.lookup(db).container {
-                    hir_def::ContainerId::TraitId(_) => Substs::build_for_def(db, item)
-                        .push(self_ty.value.clone())
-                        .fill_with_unknown()
-                        .build(),
-                    hir_def::ContainerId::ImplId(impl_id) => {
-                        let vars =
-                            Substs::build_for_def(db, impl_id).fill_with_bound_vars(0).build();
-                        let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
-                        let self_ty_with_vars =
-                            Canonical { num_vars: vars.len(), value: &self_ty_with_vars };
-                        if let Some(substs) = super::infer::unify(self_ty_with_vars, &self_ty.value)
-                        {
-                            substs
-                        } else {
-                            return false;
-                        }
-                    }
-                    hir_def::ContainerId::ModuleId(_) => unreachable!(),
+                let transformed_receiver_ty = match transform_receiver_ty(db, m, self_ty) {
+                    Some(ty) => ty,
+                    None => return false,
                 };
-                let sig = db.callable_item_signature(m.into());
-                let receiver = sig.params()[0].clone().subst(&substs);
-                if receiver != receiver_ty.value {
+                if transformed_receiver_ty != receiver_ty.value {
                     return false;
                 }
             }
@@ -446,6 +432,34 @@ fn is_valid_candidate(
         }
         _ => false,
     }
+}
+
+pub(crate) fn inherent_impl_substs(
+    db: &impl HirDatabase,
+    impl_id: ImplId,
+    self_ty: &Ty,
+) -> Option<Substs> {
+    let vars = Substs::build_for_def(db, impl_id).fill_with_bound_vars(0).build();
+    let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
+    let self_ty_with_vars = Canonical { num_vars: vars.len(), value: &self_ty_with_vars };
+    super::infer::unify(self_ty_with_vars, self_ty)
+}
+
+fn transform_receiver_ty(
+    db: &impl HirDatabase,
+    function_id: FunctionId,
+    self_ty: &Canonical<Ty>,
+) -> Option<Ty> {
+    let substs = match function_id.lookup(db).container {
+        hir_def::ContainerId::TraitId(_) => Substs::build_for_def(db, function_id)
+            .push(self_ty.value.clone())
+            .fill_with_unknown()
+            .build(),
+        hir_def::ContainerId::ImplId(impl_id) => inherent_impl_substs(db, impl_id, &self_ty.value)?,
+        hir_def::ContainerId::ModuleId(_) => unreachable!(),
+    };
+    let sig = db.callable_item_signature(function_id.into());
+    Some(sig.params()[0].clone().subst(&substs))
 }
 
 pub fn implements_trait(

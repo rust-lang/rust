@@ -3494,6 +3494,21 @@ fn test() { S.foo()<|>; }
 }
 
 #[test]
+fn method_resolution_impl_ref_before_trait() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl S { fn foo(&self) -> i8 { 0 } }
+impl Trait for &S { fn foo(self) -> u128 { 0 } }
+fn test() { S.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "i8");
+}
+
+#[test]
 fn method_resolution_trait_autoderef() {
     let t = type_at(
         r#"
