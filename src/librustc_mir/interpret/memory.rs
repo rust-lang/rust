@@ -924,7 +924,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 }
 
-/// Undefined bytes
+/// Machine pointer introspection.
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     pub fn force_ptr(
         &self,
