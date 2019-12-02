@@ -76,7 +76,6 @@ pub struct Session {
     /// (sub)diagnostics that have been set once, but should not be set again,
     /// in order to avoid redundantly verbose output (Issue #24690, #44953).
     pub one_time_diagnostics: Lock<FxHashSet<(DiagnosticMessageId, Option<Span>, String)>>,
-    pub plugin_llvm_passes: OneThread<RefCell<Vec<String>>>,
     pub crate_types: Once<Vec<config::CrateType>>,
     /// The `crate_disambiguator` is constructed out of all the `-C metadata`
     /// arguments passed to the compiler. Its value together with the crate-name
@@ -1149,7 +1148,6 @@ fn build_session_(
         local_crate_source_file,
         working_dir,
         one_time_diagnostics: Default::default(),
-        plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         crate_types: Once::new(),
         crate_disambiguator: Once::new(),
         features: Once::new(),

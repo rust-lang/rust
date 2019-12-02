@@ -231,8 +231,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub total_cgus: usize,
     // Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
-    // LLVM passes added by plugins.
-    pub plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
     // Worker thread number
@@ -1028,7 +1026,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         time_passes: sess.time_extended(),
         prof: sess.prof.clone(),
         exported_symbols,
-        plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
         remark: sess.opts.cg.remark.clone(),
         worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),

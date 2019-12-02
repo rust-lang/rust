@@ -1,6 +1,7 @@
-// Test that `#![plugin(...)]` attribute is gated by `plugin` feature gate
+// aux-build:empty-plugin.rs
+// ignore-stage1
 
-#![plugin(foo)]
+#![plugin(empty_plugin)]
 //~^ ERROR compiler plugins are deprecated
 //~| WARN use of deprecated attribute `plugin`: compiler plugins are deprecated
 

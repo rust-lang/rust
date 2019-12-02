@@ -157,8 +157,6 @@ macro_rules! late_lint_mod_passes {
             // Depends on types used in type definitions
             MissingCopyImplementations: MissingCopyImplementations,
 
-            PluginAsLibrary: PluginAsLibrary,
-
             // Depends on referenced function signatures in expressions
             MutableTransmutes: MutableTransmutes,
 
@@ -350,6 +348,7 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/35896");
     store.register_removed("nested_impl_trait",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/59014");
+    store.register_removed("plugin_as_library", "plugins have been deprecated and retired");
 }
 
 fn register_internals(store: &mut lint::LintStore) {
