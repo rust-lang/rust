@@ -170,6 +170,7 @@ fn rewrite_closure_expr(
     fn allow_multi_line(expr: &ast::Expr) -> bool {
         match expr.kind {
             ast::ExprKind::Match(..)
+            | ast::ExprKind::Async(..)
             | ast::ExprKind::Block(..)
             | ast::ExprKind::TryBlock(..)
             | ast::ExprKind::Loop(..)

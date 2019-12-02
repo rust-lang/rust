@@ -15,4 +15,8 @@ fn main() {
         let x = 3;
         x
     };
+
+    let f = |x| async {
+        println!("hello, world");
+    };
 }
