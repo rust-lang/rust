@@ -306,6 +306,19 @@ impl<'a> AstValidator<'a> {
             .struct_span_err(span, "bounds on associated `type`s in `impl`s have no effect")
             .emit();
     }
+
+    fn check_c_varadic_type(&self, decl: &FnDecl) {
+        for Param { ty, span, .. } in &decl.inputs {
+            if let TyKind::CVarArgs = ty.kind {
+                self.err_handler()
+                    .struct_span_err(
+                        *span,
+                        "only foreign or `unsafe extern \"C\" functions may be C-variadic",
+                    )
+                    .emit();
+            }
+        }
+    }
 }
 
 enum GenericPosition {
@@ -554,6 +567,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         }
                     }
                 }
+                // Reject C-varadic type unless the function is `unsafe extern "C"` semantically.
+                match sig.header.ext {
+                    Extern::Explicit(StrLit { symbol_unescaped: sym::C, .. }) |
+                    Extern::Implicit if sig.header.unsafety == Unsafety::Unsafe => {}
+                    _ => self.check_c_varadic_type(&sig.decl),
+                }
             }
             ItemKind::ForeignMod(..) => {
                 self.invalid_visibility(
@@ -794,6 +813,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.invalid_visibility(&ti.vis, None);
         self.check_defaultness(ti.span, ti.defaultness);
         visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_assoc_item(&mut self, item: &'a AssocItem) {
+        if let AssocItemKind::Method(sig, _) = &item.kind {
+            self.check_c_varadic_type(&sig.decl);
+        }
+        visit::walk_assoc_item(self, item);
     }
 }
 

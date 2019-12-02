@@ -1727,8 +1727,6 @@ impl<'a> Parser<'a> {
 pub(super) struct ParamCfg {
     /// Is `self` is allowed as the first parameter?
     pub is_self_allowed: bool,
-    /// Is `...` allowed as the tail of the parameter list?
-    pub allow_c_variadic: bool,
     /// `is_name_required` decides if, per-parameter,
     /// the parameter must have a pattern or just a type.
     pub is_name_required: fn(&token::Token) -> bool,
@@ -1744,16 +1742,8 @@ impl<'a> Parser<'a> {
         attrs: Vec<Attribute>,
         header: FnHeader,
     ) -> PResult<'a, Option<P<Item>>> {
-        let is_c_abi = match header.ext {
-            ast::Extern::None => false,
-            ast::Extern::Implicit => true,
-            ast::Extern::Explicit(abi) => abi.symbol_unescaped == sym::C,
-        };
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,
-            // FIXME: Parsing should not depend on ABI or unsafety and
-            // the variadic parameter should always be parsed.
-            allow_c_variadic: is_c_abi && header.unsafety == Unsafety::Unsafe,
             is_name_required: |_| true,
         })?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1772,7 +1762,6 @@ impl<'a> Parser<'a> {
         self.expect_keyword(kw::Fn)?;
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: false,
-            allow_c_variadic: true,
             is_name_required: |_| true,
         })?;
         let span = lo.to(self.token.span);
@@ -1797,7 +1786,6 @@ impl<'a> Parser<'a> {
         let header = self.parse_fn_front_matter()?;
         let (ident, decl, generics) = self.parse_fn_sig(ParamCfg {
             is_self_allowed: true,
-            allow_c_variadic: false,
             is_name_required,
         })?;
         let sig = FnSig { header, decl };
@@ -1993,12 +1981,12 @@ impl<'a> Parser<'a> {
             }
 
             self.eat_incorrect_doc_comment_for_param_type();
-            (pat, self.parse_ty_for_param(cfg.allow_c_variadic)?)
+            (pat, self.parse_ty_for_param()?)
         } else {
             debug!("parse_param_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment_for_param_type();
-            let mut ty = self.parse_ty_for_param(cfg.allow_c_variadic);
+            let mut ty = self.parse_ty_for_param();
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,

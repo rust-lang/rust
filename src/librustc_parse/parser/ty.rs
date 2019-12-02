@@ -33,8 +33,8 @@ impl<'a> Parser<'a> {
     /// Parse a type suitable for a function or function pointer parameter.
     /// The difference from `parse_ty` is that this version allows `...`
     /// (`CVarArgs`) at the top level of the the type.
-    pub(super) fn parse_ty_for_param(&mut self, allow_c_variadic: bool) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(true, true, allow_c_variadic)
+    pub(super) fn parse_ty_for_param(&mut self) -> PResult<'a, P<Ty>> {
+        self.parse_ty_common(true, true, true)
     }
 
     /// Parses a type in restricted contexts where `+` is not permitted.
@@ -306,7 +306,6 @@ impl<'a> Parser<'a> {
         self.expect_keyword(kw::Fn)?;
         let cfg = ParamCfg {
             is_self_allowed: false,
-            allow_c_variadic: true,
             is_name_required: |_| false,
         };
         let decl = self.parse_fn_decl(cfg, false)?;

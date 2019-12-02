@@ -1,0 +1,38 @@
+error: only foreign or `unsafe extern "C" functions may be C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:5:17
+   |
+LL | fn f1(x: isize, ...) {}
+   |                 ^^^^
+
+error: only foreign or `unsafe extern "C" functions may be C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:8:28
+   |
+LL | extern "C" fn f2(x: isize, ...) {}
+   |                            ^^^^
+
+error: only foreign or `unsafe extern "C" functions may be C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:11:24
+   |
+LL | extern fn f3(x: isize, ...) {}
+   |                        ^^^^
+
+error: only foreign or `unsafe extern "C" functions may be C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:17:21
+   |
+LL |     fn f4(x: isize, ...) {}
+   |                     ^^^^
+
+error: only foreign or `unsafe extern "C" functions may be C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:22:21
+   |
+LL |     fn f5(x: isize, ...) {}
+   |                     ^^^^
+
+error: only foreign or `unsafe extern "C" functions may be C-variadic
+  --> $DIR/variadic-ffi-semantic-restrictions.rs:24:21
+   |
+LL |     fn f6(x: isize, ...);
+   |                     ^^^^
+
+error: aborting due to 6 previous errors
+
