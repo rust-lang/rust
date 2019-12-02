@@ -70,17 +70,13 @@ fn test(do_panic: impl FnOnce(usize) -> !) {
         do_panic_counter(do_panic)
     })).expect_err("do_panic() did not panic!");
 
-    // See if we can extract panic message.
-    match res.downcast::<String>() {
-        Ok(s) => {
-            eprintln!("Caught panic message (String): {}", s);
-        }
-        Err(res) =>
-            if let Ok(s) = res.downcast::<&str>() {
-                eprintln!("Caught panic message (&str): {}", s);
-            } else {
-                eprintln!("Failed get caught panic message.");
-            }
+    // See if we can extract the panic message.
+    if let Some(s) = res.downcast_ref::<String>() {
+        eprintln!("Caught panic message (String): {}", s);
+    } else if let Some(s) = res.downcast_ref::<&str>() {
+        eprintln!("Caught panic message (&str): {}", s);
+    } else {
+        eprintln!("Failed get caught panic message.");
     }
 
     // Test flags.
