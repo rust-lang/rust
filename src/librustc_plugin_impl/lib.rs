@@ -10,10 +10,16 @@
 
 #![feature(nll)]
 
-#![recursion_limit="256"]
+use rustc::lint::LintStore;
 
-pub use registry::Registry;
-
-pub mod registry;
-pub mod load;
 pub mod build;
+pub mod load;
+
+/// Structure used to register plugins.
+///
+/// A plugin registrar function takes an `&mut Registry` and should call
+/// methods to register its plugins.
+pub struct Registry<'a> {
+    /// The `LintStore` allows plugins to register new lints.
+    pub lint_store: &'a mut LintStore,
+}

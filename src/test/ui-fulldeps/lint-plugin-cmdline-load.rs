@@ -1,9 +1,9 @@
-// run-pass
+// check-pass
 // aux-build:lint-plugin-test.rs
 // ignore-stage1
-// compile-flags: -Z extra-plugins=lint_plugin_test
+// compile-flags: -Z crate-attr=plugin(lint_plugin_test)
 
-#![allow(dead_code)]
+#![feature(plugin)]
 
 fn lintme() { } //~ WARNING item is named 'lintme'
 

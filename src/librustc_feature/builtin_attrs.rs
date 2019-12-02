@@ -283,7 +283,7 @@ pub const BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         )
     ),
     (
-        sym::plugin, CrateLevel, template!(List: "name|name(args)"),
+        sym::plugin, CrateLevel, template!(List: "name"),
         Gated(
             Stability::Deprecated(
                 "https://github.com/rust-lang/rust/pull/64675",

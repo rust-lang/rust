@@ -142,9 +142,12 @@ impl SocketAddr {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.is_unnamed(), false);
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixListener::bind("/tmp/sock")?;
+    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     assert_eq!(addr.is_unnamed(), false);
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// An unnamed address:
@@ -152,9 +155,12 @@ impl SocketAddr {
     /// ```
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.is_unnamed(), true);
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixDatagram::unbound()?;
+    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     assert_eq!(addr.is_unnamed(), true);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn is_unnamed(&self) -> bool {
@@ -175,9 +181,12 @@ impl SocketAddr {
     /// use std::os::unix::net::UnixListener;
     /// use std::path::Path;
     ///
-    /// let socket = UnixListener::bind("/tmp/sock").unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixListener::bind("/tmp/sock")?;
+    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     assert_eq!(addr.as_pathname(), Some(Path::new("/tmp/sock")));
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// Without a pathname:
@@ -185,9 +194,12 @@ impl SocketAddr {
     /// ```
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
-    /// assert_eq!(addr.as_pathname(), None);
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixDatagram::unbound()?;
+    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     assert_eq!(addr.as_pathname(), None);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn as_pathname(&self) -> Option<&Path> {
@@ -247,11 +259,14 @@ impl<'a> fmt::Display for AsciiEscaped<'a> {
 /// use std::os::unix::net::UnixStream;
 /// use std::io::prelude::*;
 ///
-/// let mut stream = UnixStream::connect("/path/to/my/socket").unwrap();
-/// stream.write_all(b"hello world").unwrap();
-/// let mut response = String::new();
-/// stream.read_to_string(&mut response).unwrap();
-/// println!("{}", response);
+/// fn main() -> std::io::Result<()> {
+///     let mut stream = UnixStream::connect("/path/to/my/socket")?;
+///     stream.write_all(b"hello world")?;
+///     let mut response = String::new();
+///     stream.read_to_string(&mut response)?;
+///     println!("{}", response);
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixStream(Socket);
@@ -336,8 +351,11 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let sock_copy = socket.try_clone().expect("Couldn't clone socket");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     let sock_copy = socket.try_clone().expect("Couldn't clone socket");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixStream> {
@@ -351,8 +369,11 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let addr = socket.local_addr().expect("Couldn't get local address");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     let addr = socket.local_addr().expect("Couldn't get local address");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -366,8 +387,11 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let addr = socket.peer_addr().expect("Couldn't get peer address");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     let addr = socket.peer_addr().expect("Couldn't get peer address");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -391,8 +415,11 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
@@ -403,10 +430,13 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
-    /// let err = result.unwrap_err();
-    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
+    ///     let err = result.unwrap_err();
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
@@ -430,8 +460,12 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
+    ///         .expect("Couldn't set write timeout");
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
@@ -442,10 +476,13 @@ impl UnixStream {
     /// use std::net::UdpSocket;
     /// use std::time::Duration;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:34254").unwrap();
-    /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
-    /// let err = result.unwrap_err();
-    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UdpSocket::bind("127.0.0.1:34254")?;
+    ///     let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
+    ///     let err = result.unwrap_err();
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
@@ -460,9 +497,12 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
-    /// assert_eq!(socket.read_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.set_read_timeout(Some(Duration::new(1, 0))).expect("Couldn't set read timeout");
+    ///     assert_eq!(socket.read_timeout()?, Some(Duration::new(1, 0)));
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
@@ -477,9 +517,13 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_write_timeout(Some(Duration::new(1, 0))).expect("Couldn't set write timeout");
-    /// assert_eq!(socket.write_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.set_write_timeout(Some(Duration::new(1, 0)))
+    ///         .expect("Couldn't set write timeout");
+    ///     assert_eq!(socket.write_timeout()?, Some(Duration::new(1, 0)));
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
@@ -493,8 +537,11 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.set_nonblocking(true).expect("Couldn't set nonblocking");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.set_nonblocking(true).expect("Couldn't set nonblocking");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -508,9 +555,12 @@ impl UnixStream {
     /// ```no_run
     /// use std::os::unix::net::UnixStream;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// if let Ok(Some(err)) = socket.take_error() {
-    ///     println!("Got error: {:?}", err);
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     if let Ok(Some(err)) = socket.take_error() {
+    ///         println!("Got error: {:?}", err);
+    ///     }
+    ///     Ok(())
     /// }
     /// ```
     ///
@@ -535,8 +585,11 @@ impl UnixStream {
     /// use std::os::unix::net::UnixStream;
     /// use std::net::Shutdown;
     ///
-    /// let socket = UnixStream::connect("/tmp/sock").unwrap();
-    /// socket.shutdown(Shutdown::Both).expect("shutdown function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixStream::connect("/tmp/sock")?;
+    ///     socket.shutdown(Shutdown::Both).expect("shutdown function failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -697,20 +750,23 @@ impl IntoRawFd for net::UdpSocket {
 ///     // ...
 /// }
 ///
-/// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+/// fn main() -> std::io::Result<()> {
+///     let listener = UnixListener::bind("/path/to/the/socket")?;
 ///
-/// // accept connections and process them, spawning a new thread for each one
-/// for stream in listener.incoming() {
-///     match stream {
-///         Ok(stream) => {
-///             /* connection succeeded */
-///             thread::spawn(|| handle_client(stream));
-///         }
-///         Err(err) => {
-///             /* connection failed */
-///             break;
+///     // accept connections and process them, spawning a new thread for each one
+///     for stream in listener.incoming() {
+///         match stream {
+///             Ok(stream) => {
+///                 /* connection succeeded */
+///                 thread::spawn(|| handle_client(stream));
+///             }
+///             Err(err) => {
+///                 /* connection failed */
+///                 break;
+///             }
 ///         }
 ///     }
+///     Ok(())
 /// }
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -773,11 +829,14 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
     ///
-    /// match listener.accept() {
-    ///     Ok((socket, addr)) => println!("Got a client: {:?}", addr),
-    ///     Err(e) => println!("accept function failed: {:?}", e),
+    ///     match listener.accept() {
+    ///         Ok((socket, addr)) => println!("Got a client: {:?}", addr),
+    ///         Err(e) => println!("accept function failed: {:?}", e),
+    ///     }
+    ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -800,9 +859,11 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// let listener_copy = listener.try_clone().expect("try_clone failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
+    ///     let listener_copy = listener.try_clone().expect("try_clone failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixListener> {
@@ -816,9 +877,11 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// let addr = listener.local_addr().expect("Couldn't get local address");
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
+    ///     let addr = listener.local_addr().expect("Couldn't get local address");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -832,9 +895,11 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
-    ///
-    /// listener.set_nonblocking(true).expect("Couldn't set non blocking");
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
+    ///     listener.set_nonblocking(true).expect("Couldn't set non blocking");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -848,10 +913,13 @@ impl UnixListener {
     /// ```no_run
     /// use std::os::unix::net::UnixListener;
     ///
-    /// let listener = UnixListener::bind("/tmp/sock").unwrap();
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/tmp/sock")?;
     ///
-    /// if let Ok(Some(err)) = listener.take_error() {
-    ///     println!("Got error: {:?}", err);
+    ///     if let Ok(Some(err)) = listener.take_error() {
+    ///         println!("Got error: {:?}", err);
+    ///     }
+    ///     Ok(())
     /// }
     /// ```
     ///
@@ -880,17 +948,20 @@ impl UnixListener {
     ///     // ...
     /// }
     ///
-    /// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+    /// fn main() -> std::io::Result<()> {
+    ///     let listener = UnixListener::bind("/path/to/the/socket")?;
     ///
-    /// for stream in listener.incoming() {
-    ///     match stream {
-    ///         Ok(stream) => {
-    ///             thread::spawn(|| handle_client(stream));
-    ///         }
-    ///         Err(err) => {
-    ///             break;
+    ///     for stream in listener.incoming() {
+    ///         match stream {
+    ///             Ok(stream) => {
+    ///                 thread::spawn(|| handle_client(stream));
+    ///             }
+    ///             Err(err) => {
+    ///                 break;
+    ///             }
     ///         }
     ///     }
+    ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -947,17 +1018,20 @@ impl<'a> IntoIterator for &'a UnixListener {
 ///     // ...
 /// }
 ///
-/// let listener = UnixListener::bind("/path/to/the/socket").unwrap();
+/// fn main() -> std::io::Result<()> {
+///     let listener = UnixListener::bind("/path/to/the/socket")?;
 ///
-/// for stream in listener.incoming() {
-///     match stream {
-///         Ok(stream) => {
-///             thread::spawn(|| handle_client(stream));
-///         }
-///         Err(err) => {
-///             break;
+///     for stream in listener.incoming() {
+///         match stream {
+///             Ok(stream) => {
+///                 thread::spawn(|| handle_client(stream));
+///             }
+///             Err(err) => {
+///                 break;
+///             }
 ///         }
 ///     }
+///     Ok(())
 /// }
 /// ```
 #[derive(Debug)]
@@ -986,11 +1060,14 @@ impl<'a> Iterator for Incoming<'a> {
 /// ```no_run
 /// use std::os::unix::net::UnixDatagram;
 ///
-/// let socket = UnixDatagram::bind("/path/to/my/socket").unwrap();
-/// socket.send_to(b"hello world", "/path/to/other/socket").unwrap();
-/// let mut buf = [0; 100];
-/// let (count, address) = socket.recv_from(&mut buf).unwrap();
-/// println!("socket {:?} sent {:?}", address, &buf[..count]);
+/// fn main() -> std::io::Result<()> {
+///     let socket = UnixDatagram::bind("/path/to/my/socket")?;
+///     socket.send_to(b"hello world", "/path/to/other/socket")?;
+///     let mut buf = [0; 100];
+///     let (count, address) = socket.recv_from(&mut buf)?;
+///     println!("socket {:?} sent {:?}", address, &buf[..count]);
+///     Ok(())
+/// }
 /// ```
 #[stable(feature = "unix_socket", since = "1.10.0")]
 pub struct UnixDatagram(Socket);
@@ -1099,14 +1176,17 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// match sock.connect("/path/to/the/socket") {
-    ///     Ok(sock) => sock,
-    ///     Err(e) => {
-    ///         println!("Couldn't connect: {:?}", e);
-    ///         return
-    ///     }
-    /// };
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     match sock.connect("/path/to/the/socket") {
+    ///         Ok(sock) => sock,
+    ///         Err(e) => {
+    ///             println!("Couldn't connect: {:?}", e);
+    ///             return Err(e)
+    ///         }
+    ///     };
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn connect<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
@@ -1133,9 +1213,11 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::bind("/path/to/the/socket").unwrap();
-    ///
-    /// let sock_copy = sock.try_clone().expect("try_clone failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::bind("/path/to/the/socket")?;
+    ///     let sock_copy = sock.try_clone().expect("try_clone failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn try_clone(&self) -> io::Result<UnixDatagram> {
@@ -1149,9 +1231,11 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::bind("/path/to/the/socket").unwrap();
-    ///
-    /// let addr = sock.local_addr().expect("Couldn't get local address");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::bind("/path/to/the/socket")?;
+    ///     let addr = sock.local_addr().expect("Couldn't get local address");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
@@ -1169,10 +1253,13 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.connect("/path/to/the/socket").unwrap();
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.connect("/path/to/the/socket")?;
     ///
-    /// let addr = sock.peer_addr().expect("Couldn't get peer address");
+    ///     let addr = sock.peer_addr().expect("Couldn't get peer address");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
@@ -1189,11 +1276,12 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// let mut buf = vec![0; 10];
-    /// match sock.recv_from(buf.as_mut_slice()) {
-    ///     Ok((size, sender)) => println!("received {} bytes from {:?}", size, sender),
-    ///     Err(e) => println!("recv_from function failed: {:?}", e),
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     let mut buf = vec![0; 10];
+    ///     let (size, sender) = sock.recv_from(buf.as_mut_slice())?;
+    ///     println!("received {} bytes from {:?}", size, sender);
+    ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -1229,9 +1317,12 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::bind("/path/to/the/socket").unwrap();
-    /// let mut buf = vec![0; 10];
-    /// sock.recv(buf.as_mut_slice()).expect("recv function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::bind("/path/to/the/socket")?;
+    ///     let mut buf = vec![0; 10];
+    ///     sock.recv(buf.as_mut_slice()).expect("recv function failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -1247,8 +1338,11 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.send_to(b"omelette au fromage", "/some/sock").expect("send_to function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.send_to(b"omelette au fromage", "/some/sock").expect("send_to function failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send_to<P: AsRef<Path>>(&self, buf: &[u8], path: P) -> io::Result<usize> {
@@ -1280,9 +1374,12 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.connect("/some/sock").expect("Couldn't connect");
-    /// sock.send(b"omelette au fromage").expect("send_to function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.connect("/some/sock").expect("Couldn't connect");
+    ///     sock.send(b"omelette au fromage").expect("send_to function failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
@@ -1307,8 +1404,12 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.set_read_timeout(Some(Duration::new(1, 0))).expect("set_read_timeout function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
+    ///         .expect("set_read_timeout function failed");
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
@@ -1319,10 +1420,13 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
-    /// let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
-    /// let err = result.unwrap_err();
-    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixDatagram::unbound()?;
+    ///     let result = socket.set_read_timeout(Some(Duration::new(0, 0)));
+    ///     let err = result.unwrap_err();
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
@@ -1346,9 +1450,12 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.set_write_timeout(Some(Duration::new(1, 0)))
-    ///     .expect("set_write_timeout function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_write_timeout(Some(Duration::new(1, 0)))
+    ///         .expect("set_write_timeout function failed");
+    ///     Ok(())
+    /// }
     /// ```
     ///
     /// An [`Err`] is returned if the zero [`Duration`] is passed to this
@@ -1359,10 +1466,13 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let socket = UnixDatagram::unbound().unwrap();
-    /// let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
-    /// let err = result.unwrap_err();
-    /// assert_eq!(err.kind(), io::ErrorKind::InvalidInput)
+    /// fn main() -> std::io::Result<()> {
+    ///     let socket = UnixDatagram::unbound()?;
+    ///     let result = socket.set_write_timeout(Some(Duration::new(0, 0)));
+    ///     let err = result.unwrap_err();
+    ///     assert_eq!(err.kind(), io::ErrorKind::InvalidInput);
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_write_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
@@ -1377,9 +1487,13 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.set_read_timeout(Some(Duration::new(1, 0))).expect("set_read_timeout function failed");
-    /// assert_eq!(sock.read_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_read_timeout(Some(Duration::new(1, 0)))
+    ///         .expect("set_read_timeout function failed");
+    ///     assert_eq!(sock.read_timeout()?, Some(Duration::new(1, 0)));
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn read_timeout(&self) -> io::Result<Option<Duration>> {
@@ -1394,10 +1508,13 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::time::Duration;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.set_write_timeout(Some(Duration::new(1, 0)))
-    ///     .expect("set_write_timeout function failed");
-    /// assert_eq!(sock.write_timeout().unwrap(), Some(Duration::new(1, 0)));
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_write_timeout(Some(Duration::new(1, 0)))
+    ///         .expect("set_write_timeout function failed");
+    ///     assert_eq!(sock.write_timeout()?, Some(Duration::new(1, 0)));
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
@@ -1411,8 +1528,11 @@ impl UnixDatagram {
     /// ```
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.set_nonblocking(true).expect("set_nonblocking function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.set_nonblocking(true).expect("set_nonblocking function failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
@@ -1426,9 +1546,12 @@ impl UnixDatagram {
     /// ```no_run
     /// use std::os::unix::net::UnixDatagram;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// if let Ok(Some(err)) = sock.take_error() {
-    ///     println!("Got error: {:?}", err);
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     if let Ok(Some(err)) = sock.take_error() {
+    ///         println!("Got error: {:?}", err);
+    ///     }
+    ///     Ok(())
     /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
@@ -1448,8 +1571,11 @@ impl UnixDatagram {
     /// use std::os::unix::net::UnixDatagram;
     /// use std::net::Shutdown;
     ///
-    /// let sock = UnixDatagram::unbound().unwrap();
-    /// sock.shutdown(Shutdown::Both).expect("shutdown function failed");
+    /// fn main() -> std::io::Result<()> {
+    ///     let sock = UnixDatagram::unbound()?;
+    ///     sock.shutdown(Shutdown::Both).expect("shutdown function failed");
+    ///     Ok(())
+    /// }
     /// ```
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {

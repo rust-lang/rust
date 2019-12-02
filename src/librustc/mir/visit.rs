@@ -317,6 +317,7 @@ macro_rules! make_mir_visitor {
                 let SourceScopeData {
                     span,
                     parent_scope,
+                    local_data: _,
                 } = scope_data;
 
                 self.visit_span(span);

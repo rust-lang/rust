@@ -3,6 +3,7 @@
 //! hand, though we've recently added some macros and proc-macros to help with the tedium.
 
 use crate::hir::def::Namespace;
+use crate::hir::def_id::CRATE_DEF_INDEX;
 use crate::mir::ProjectionKind;
 use crate::mir::interpret;
 use crate::ty::{self, Lift, Ty, TyCtxt, InferConst};
@@ -95,8 +96,11 @@ impl fmt::Debug for ty::BoundRegion {
         match *self {
             ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
             ty::BrNamed(did, name) => {
-                write!(f, "BrNamed({:?}:{:?}, {})",
-                        did.krate, did.index, name)
+                if did.index == CRATE_DEF_INDEX {
+                    write!(f, "BrNamed({})", name)
+                } else {
+                    write!(f, "BrNamed({:?}, {})", did, name)
+                }
             }
             ty::BrEnv => write!(f, "BrEnv"),
         }

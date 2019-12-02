@@ -104,10 +104,6 @@ pub struct Body<'tcx> {
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
 
-    /// Crate-local information for each source scope, that can't (and
-    /// needn't) be tracked across crates.
-    pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
@@ -167,7 +163,6 @@ impl<'tcx> Body<'tcx> {
     pub fn new(
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
-        source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
@@ -188,7 +183,6 @@ impl<'tcx> Body<'tcx> {
             phase: MirPhase::Build,
             basic_blocks,
             source_scopes,
-            source_scope_local_data,
             yield_ty: None,
             generator_drop: None,
             generator_layout: None,
@@ -435,6 +429,13 @@ pub enum ClearCrossCrate<T> {
 }
 
 impl<T> ClearCrossCrate<T> {
+    pub fn as_ref(&'a self) -> ClearCrossCrate<&'a T> {
+        match self {
+            ClearCrossCrate::Clear => ClearCrossCrate::Clear,
+            ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
+        }
+    }
+
     pub fn assert_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
@@ -2027,6 +2028,10 @@ rustc_index::newtype_index! {
 pub struct SourceScopeData {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
+
+    /// Crate-local information for this source scope, that can't (and
+    /// needn't) be tracked across crates.
+    pub local_data: ClearCrossCrate<SourceScopeLocalData>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -2308,10 +2313,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
                         if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
-                                format!("[closure@{:?}]", hir_id)
+                                let substs = tcx.lift(&substs).unwrap();
+                                format!(
+                                    "[closure@{}]",
+                                    tcx.def_path_str_with_substs(def_id, substs),
+                                )
                             } else {
                                 format!("[closure@{:?}]", tcx.hir().span(hir_id))
                             };

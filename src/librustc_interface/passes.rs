@@ -30,7 +30,6 @@ use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_plugin_impl::registry::Registry;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
@@ -106,8 +105,7 @@ declare_box_region_type!(
     (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
 );
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing,
-/// loading compiler plugins (including those from `addl_plugins`),
+/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
@@ -209,32 +207,21 @@ pub fn register_plugins<'a>(
         middle::recursion_limit::update_limits(sess, &krate);
     });
 
-    let registrars = time(sess, "plugin loading", || {
-        plugin::load::load_plugins(
-            sess,
-            metadata_loader,
-            &krate,
-            Some(sess.opts.debugging_opts.extra_plugins.clone()),
-        )
-    });
-
     let mut lint_store = rustc_lint::new_lint_store(
         sess.opts.debugging_opts.no_interleave_lints,
         sess.unstable_options(),
     );
+    register_lints(&sess, &mut lint_store);
 
-    (register_lints)(&sess, &mut lint_store);
-
-    let mut registry = Registry::new(sess, &mut lint_store, krate.span);
-
+    let registrars = time(sess, "plugin loading", || {
+        plugin::load::load_plugins(sess, metadata_loader, &krate)
+    });
     time(sess, "plugin registration", || {
+        let mut registry = plugin::Registry { lint_store: &mut lint_store };
         for registrar in registrars {
-            registry.args_hidden = Some(registrar.args);
-            (registrar.fun)(&mut registry);
+            registrar(&mut registry);
         }
     });
-
-    *sess.plugin_llvm_passes.borrow_mut() = registry.llvm_passes;
 
     Ok((krate, Lrc::new(lint_store)))
 }
