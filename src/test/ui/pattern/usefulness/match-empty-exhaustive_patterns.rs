@@ -3,15 +3,15 @@
 #![deny(unreachable_patterns)]
 enum Foo {}
 
-struct NonEmptyStruct(bool);
-enum NonEmptyEnum1 {
-    Foo(bool),
+struct NonEmptyStruct(bool); //~ `NonEmptyStruct` defined here
+enum NonEmptyEnum1 { //~ `NonEmptyEnum1` defined here
+    Foo(bool), //~ variant not covered
 }
-enum NonEmptyEnum2 {
-    Foo(bool),
-    Bar,
+enum NonEmptyEnum2 { //~ `NonEmptyEnum2` defined here
+    Foo(bool), //~ variant not covered
+    Bar, //~ variant not covered
 }
-enum NonEmptyEnum5 {
+enum NonEmptyEnum5 { //~ `NonEmptyEnum5` defined here
     V1, V2, V3, V4, V5,
 }
 
@@ -35,11 +35,11 @@ fn main() {
     match 0u8 {}
     //~^ ERROR type `u8` is non-empty
     match NonEmptyStruct(true) {}
-    //~^ ERROR type `NonEmptyStruct` is non-empty
+    //~^ ERROR pattern `NonEmptyStruct` of type `NonEmptyStruct` is not handled
     match NonEmptyEnum1::Foo(true) {}
-    //~^ ERROR type `NonEmptyEnum1` is non-empty
+    //~^ ERROR pattern `Foo` of type `NonEmptyEnum1` is not handled
     match NonEmptyEnum2::Foo(true) {}
-    //~^ ERROR type `NonEmptyEnum2` is non-empty
+    //~^ ERROR multiple patterns of type `NonEmptyEnum2` are not handled
     match NonEmptyEnum5::V1 {}
-    //~^ ERROR type `NonEmptyEnum5` is non-empty
+    //~^ ERROR multiple patterns of type `NonEmptyEnum5` are not handled
 }

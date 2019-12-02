@@ -30,35 +30,60 @@ LL |     match 0u8 {}
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: type `NonEmptyStruct` is non-empty
+error[E0004]: non-exhaustive patterns: pattern `NonEmptyStruct` of type `NonEmptyStruct` is not handled
   --> $DIR/match-empty-exhaustive_patterns.rs:37:11
    |
+LL | struct NonEmptyStruct(bool);
+   | ----------------------------
+   | |      |
+   | |      variant not covered
+   | `NonEmptyStruct` defined here
+...
 LL |     match NonEmptyStruct(true) {}
    |           ^^^^^^^^^^^^^^^^^^^^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: type `NonEmptyEnum1` is non-empty
+error[E0004]: non-exhaustive patterns: pattern `Foo` of type `NonEmptyEnum1` is not handled
   --> $DIR/match-empty-exhaustive_patterns.rs:39:11
    |
-LL |     match NonEmptyEnum1::Foo(true) {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / enum NonEmptyEnum1 {
+LL | |     Foo(bool),
+   | |     --- variant not covered
+LL | | }
+   | |_- `NonEmptyEnum1` defined here
+...
+LL |       match NonEmptyEnum1::Foo(true) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: type `NonEmptyEnum2` is non-empty
+error[E0004]: non-exhaustive patterns: multiple patterns of type `NonEmptyEnum2` are not handled
   --> $DIR/match-empty-exhaustive_patterns.rs:41:11
    |
-LL |     match NonEmptyEnum2::Foo(true) {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | / enum NonEmptyEnum2 {
+LL | |     Foo(bool),
+   | |     --- variant not covered
+LL | |     Bar,
+   | |     --- variant not covered
+LL | | }
+   | |_- `NonEmptyEnum2` defined here
+...
+LL |       match NonEmptyEnum2::Foo(true) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: type `NonEmptyEnum5` is non-empty
+error[E0004]: non-exhaustive patterns: multiple patterns of type `NonEmptyEnum5` are not handled
   --> $DIR/match-empty-exhaustive_patterns.rs:43:11
    |
-LL |     match NonEmptyEnum5::V1 {}
-   |           ^^^^^^^^^^^^^^^^^
+LL | / enum NonEmptyEnum5 {
+LL | |     V1, V2, V3, V4, V5,
+LL | | }
+   | |_- `NonEmptyEnum5` defined here
+...
+LL |       match NonEmptyEnum5::V1 {}
+   |             ^^^^^^^^^^^^^^^^^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

@@ -169,20 +169,14 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
             let pat_ty = self.tables.node_type(scrut.hir_id);
-            let module = self.tcx.hir().get_module_parent(scrut.hir_id);
-            let mut def_span = None;
-            let mut missing_variants = vec![];
             if inlined_arms.is_empty() {
                 let scrutinee_is_visibly_uninhabited = if self.tcx.features().exhaustive_patterns {
+                    let module = self.tcx.hir().get_module_parent(scrut.hir_id);
                     self.tcx.is_ty_uninhabited_from(module, pat_ty)
                 } else {
                     match pat_ty.kind {
                         ty::Never => true,
                         ty::Adt(def, _) => {
-                            def_span = self.tcx.hir().span_if_local(def.did);
-                            missing_variants =
-                                def.variants.iter().map(|variant| variant.ident).collect();
-
                             def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(pat_ty)
                         }
                         _ => false,
@@ -190,6 +184,14 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 };
                 if !scrutinee_is_visibly_uninhabited {
                     // We know the type is inhabited, so this must be wrong
+                    let (def_span, missing_variants) = match pat_ty.kind {
+                        ty::Adt(def, _) => (
+                            self.tcx.hir().span_if_local(def.did),
+                            def.variants.iter().map(|variant| variant.ident).collect(),
+                        ),
+                        _ => (None, vec![]),
+                    };
+
                     let mut err = create_e0004(
                         self.tcx.sess,
                         scrut.span,
