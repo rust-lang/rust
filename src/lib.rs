@@ -47,7 +47,7 @@ pub use crate::machine::{
     PAGE_SIZE, STACK_ADDR, STACK_SIZE, NUM_CPUS,
     MemoryExtra, AllocExtra, MiriMemoryKind, Evaluator, MiriEvalContext, MiriEvalContextExt,
 };
-pub use crate::eval::{eval_main, create_ecx, MiriConfig};
+pub use crate::eval::{eval_main, create_ecx, MiriConfig, TerminationInfo};
 
 /// Insert rustc arguments at the beginning of the argument list that Miri wants to be
 /// set per default, for maximal validation power.
