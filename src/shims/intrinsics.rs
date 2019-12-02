@@ -34,9 +34,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Handle diverging intrinsics.
         let (dest, ret) = match intrinsic_name {
             "abort" => {
-                // FIXME: Add a better way of indicating 'abnormal' termination,
-                // since this is not really an 'unsupported' behavior
-                throw_unsup_format!("the evaluated program aborted!");
+                let ti = Box::new(TerminationInfo::Abort);
+                return Err(InterpError::MachineStop(ti).into());
             }
             "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
             _ => {

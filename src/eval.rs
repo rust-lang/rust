@@ -212,7 +212,7 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                     match info {
                         TerminationInfo::Exit(code) => return Some(*code),
                         TerminationInfo::Abort =>
-                            format!("The program aborted execution")
+                            format!("the evaluated program aborted execution")
                     }
                 }
                 err_unsup!(NoMirFor(..)) =>
