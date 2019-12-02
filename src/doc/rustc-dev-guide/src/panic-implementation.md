@@ -38,8 +38,8 @@ Actually resolving this goes through several layers of indirection:
 [cfg(not(test))]
 [panic_handler]
 [unwind(allowed)]
-pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
-    continue_panic_fmt(&info)
+pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
+    ...
 }
 ```
 
@@ -49,7 +49,7 @@ The `extract` function converts the `panic_handler` attribute to a `panic_impl` 
 Now, we have a matching `panic_handler` lang item in the `libstd`. This function goes
 through the same process as the `extern { fn panic_impl }` definition in `libcore`, ending
 up with a symbol name of `rust_begin_unwind`. At link time, the symbol refernce in `libcore`
-will be resolved to the definition of `libstd` (the function called `rust_begin_panic` in the
+will be resolved to the definition of `libstd` (the function called `begin_panic_handler` in the
 Rust source).
 
 Thus, control flow will pass from libcore to std at runtime. This allows panics from `libcore`
