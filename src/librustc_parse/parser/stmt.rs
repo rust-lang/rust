@@ -44,33 +44,27 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
 
         Ok(Some(if self.eat_keyword(kw::Let) {
-            Stmt {
-                id: DUMMY_NODE_ID,
-                kind: StmtKind::Local(self.parse_local(attrs.into())?),
-                span: lo.to(self.prev_span),
-            }
+            let stmt = self.parse_local(attrs.into())?;
+            self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(stmt))
         } else if let Some(macro_def) = self.eat_macro_def(
             &attrs,
             &respan(lo, VisibilityKind::Inherited),
             lo,
         )? {
-            Stmt {
-                id: DUMMY_NODE_ID,
-                kind: StmtKind::Item(macro_def),
-                span: lo.to(self.prev_span),
-            }
+            self.mk_stmt(lo.to(self.prev_span), StmtKind::Item(macro_def))
         // Starts like a simple path, being careful to avoid contextual keywords
         // such as a union items, item with `crate` visibility or auto trait items.
         // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
         // like a path (1 token), but it fact not a path.
         // `union::b::c` - path, `union U { ... }` - not a path.
         // `crate::b::c` - path, `crate struct S;` - not a path.
-        } else if self.token.is_path_start() &&
-                  !self.token.is_qpath_start() &&
-                  !self.is_union_item() &&
-                  !self.is_crate_vis() &&
-                  !self.is_auto_trait_item() &&
-                  !self.is_async_fn() {
+        } else if self.token.is_path_start()
+            && !self.token.is_qpath_start()
+            && !self.is_union_item()
+            && !self.is_crate_vis()
+            && !self.is_auto_trait_item()
+            && !self.is_async_fn()
+        {
             let path = self.parse_path(PathStyle::Expr)?;
 
             if !self.eat(&token::Not) {
@@ -85,12 +79,7 @@ impl<'a> Parser<'a> {
                     let expr = this.parse_dot_or_call_expr_with(expr, lo, attrs.into())?;
                     this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
                 })?;
-
-                return Ok(Some(Stmt {
-                    id: DUMMY_NODE_ID,
-                    kind: StmtKind::Expr(expr),
-                    span: lo.to(self.prev_span),
-                }));
+                return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Expr(expr))));
             }
 
             let args = self.parse_mac_args()?;
@@ -108,15 +97,19 @@ impl<'a> Parser<'a> {
                 args,
                 prior_type_ascription: self.last_type_ascription,
             };
-            let kind = if delim == token::Brace ||
-                          self.token == token::Semi || self.token == token::Eof {
+
+            let kind = if delim == token::Brace
+                || self.token == token::Semi
+                || self.token == token::Eof
+            {
                 StmtKind::Mac(P((mac, style, attrs.into())))
             }
             // We used to incorrectly stop parsing macro-expanded statements here.
             // If the next token will be an error anyway but could have parsed with the
             // earlier behavior, stop parsing here and emit a warning to avoid breakage.
-            else if macro_legacy_warnings && self.token.can_begin_expr() &&
-                match self.token.kind {
+            else if macro_legacy_warnings
+                && self.token.can_begin_expr()
+                && match self.token.kind {
                     // These can continue an expression, so we can't stop parsing and warn.
                     token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
                     token::BinOp(token::Minus) | token::BinOp(token::Star) |
@@ -135,11 +128,7 @@ impl<'a> Parser<'a> {
                 let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
                 StmtKind::Expr(e)
             };
-            Stmt {
-                id: DUMMY_NODE_ID,
-                span: lo.to(hi),
-                kind,
-            }
+            self.mk_stmt(lo.to(hi), kind)
         } else {
             // FIXME: Bad copy of attrs
             let old_directory_ownership =
@@ -148,11 +137,7 @@ impl<'a> Parser<'a> {
             self.directory.ownership = old_directory_ownership;
 
             match item {
-                Some(i) => Stmt {
-                    id: DUMMY_NODE_ID,
-                    span: lo.to(i.span),
-                    kind: StmtKind::Item(i),
-                },
+                Some(i) => self.mk_stmt(lo.to(i.span), StmtKind::Item(i)),
                 None => {
                     let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
                         if !attrs.is_empty() {
@@ -178,14 +163,12 @@ impl<'a> Parser<'a> {
                         // We are encoding a string of semicolons as an
                         // an empty tuple that spans the excess semicolons
                         // to preserve this info until the lint stage
-                        return Ok(Some(Stmt {
-                            id: DUMMY_NODE_ID,
-                            span: lo.to(last_semi),
-                            kind: StmtKind::Semi(self.mk_expr(lo.to(last_semi),
-                                ExprKind::Tup(Vec::new()),
-                                ThinVec::new()
-                            )),
-                        }));
+                        let kind = StmtKind::Semi(self.mk_expr(
+                            lo.to(last_semi),
+                            ExprKind::Tup(Vec::new()),
+                            ThinVec::new()
+                        ));
+                        return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
                     }
 
                     if self.token == token::CloseDelim(token::Brace) {
@@ -194,13 +177,8 @@ impl<'a> Parser<'a> {
                     }
 
                     // Remainder are line-expr stmts.
-                    let e = self.parse_expr_res(
-                        Restrictions::STMT_EXPR, Some(attrs.into()))?;
-                    Stmt {
-                        id: DUMMY_NODE_ID,
-                        span: lo.to(e.span),
-                        kind: StmtKind::Expr(e),
-                    }
+                    let e = self.parse_expr_res( Restrictions::STMT_EXPR, Some(attrs.into()))?;
+                    self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
                 }
             }
         }))
@@ -402,11 +380,10 @@ impl<'a> Parser<'a> {
                     self.maybe_annotate_with_ascription(&mut err, false);
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
-                    Some(Stmt {
-                        id: DUMMY_NODE_ID,
-                        kind: StmtKind::Expr(self.mk_expr_err(self.token.span)),
-                        span: self.token.span,
-                    })
+                    Some(self.mk_stmt(
+                        self.token.span,
+                        StmtKind::Expr(self.mk_expr_err(self.token.span)),
+                    ))
                 }
                 Ok(stmt) => stmt,
             };
@@ -477,5 +454,9 @@ impl<'a> Parser<'a> {
         }).note({
             "this was erroneously allowed and will become a hard error in a future release"
         }).emit();
+    }
+
+    fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
+        Stmt { id: DUMMY_NODE_ID, kind, span }
     }
 }
