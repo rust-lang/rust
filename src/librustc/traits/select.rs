@@ -1572,14 +1572,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// Do note that if the type itself is not in the
     /// global tcx, the local caches will be used.
     fn can_use_global_caches(&self, param_env: ty::ParamEnv<'tcx>) -> bool {
-        // If there are any where-clauses in scope, then we always use
-        // a cache local to this particular scope. Otherwise, we
-        // switch to a global cache. We used to try and draw
-        // finer-grained distinctions, but that led to a serious of
-        // annoying and weird bugs like #22019 and #18290. This simple
-        // rule seems to be pretty clearly safe and also still retains
-        // a very high hit rate (~95% when compiling rustc).
-        if !param_env.caller_bounds.is_empty() {
+        // If there are any e.g. inference variables in the `ParamEnv`, then we
+        // always use a cache local to this particular scope. Otherwise, we
+        // switch to a global cache.
+        if param_env.has_local_value() {
             return false;
         }
 
