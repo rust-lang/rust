@@ -1133,6 +1133,7 @@ mod impls {
                 -1 => Less,
                 0 => Equal,
                 1 => Greater,
+                // SAFETY: Unreachable code
                 _ => unsafe { unreachable_unchecked() },
             }
         }
