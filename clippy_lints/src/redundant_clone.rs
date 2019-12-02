@@ -81,6 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
     ) {
         let def_id = cx.tcx.hir().body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
+        let mir_read_only = mir.unwrap_read_only();
 
         let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
         let maybe_storage_live_result = do_dataflow(
@@ -94,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         );
         let mut possible_borrower = {
             let mut vis = PossibleBorrowerVisitor::new(cx, mir);
-            vis.visit_body(mir);
+            vis.visit_body(mir_read_only);
             vis.into_map(cx, maybe_storage_live_result)
         };
 
@@ -146,7 +147,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 // `arg` is a reference as it is `.deref()`ed in the previous block.
                 // Look into the predecessor block and find out the source of deref.
 
-                let ps = mir.predecessors_for(bb);
+                let ps = mir_read_only.predecessors_for(bb);
                 if ps.len() != 1 {
                     continue;
                 }
