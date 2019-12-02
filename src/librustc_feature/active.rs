@@ -526,7 +526,7 @@ declare_features! (
     /// Allows using `&mut` in constant functions.
     (active, const_mut_refs, "1.41.0", Some(57349), None),
 
-    (active, generator_mir_traits, "1.41.0", None, None),
+    (active, generator_mir_traits, "1.41.0", Some(0), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
