@@ -773,6 +773,7 @@ macro_rules! make_mir_visitor {
                     is_block_tail: _,
                 } = local_decl;
 
+                yrt!(self.visit_source_info(source_info));
                 yrt!(self.visit_ty(ty, TyContext::LocalDecl {
                     local,
                     source_info: *source_info,
@@ -780,7 +781,8 @@ macro_rules! make_mir_visitor {
                 for (user_ty, _) in & $($mutability)? user_ty.contents {
                     yrt!(self.visit_user_type_projection(user_ty));
                 }
-                self.visit_source_info(source_info)
+
+                R::from_ok(())
             }
 
             fn super_var_debug_info(&mut self,
