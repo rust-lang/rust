@@ -181,12 +181,25 @@ pub fn spawn_thread_pool<F: FnOnce() -> R + Send, R: Send>(
 
     let gcx_ptr = &Lock::new(0);
 
-    let mut config = ThreadPoolBuilder::new()
-        .thread_name(|_| "rustc".to_string())
-        .acquire_thread_handler(jobserver::acquire_thread)
-        .release_thread_handler(jobserver::release_thread)
-        .num_threads(threads)
-        .deadlock_handler(|| unsafe { ty::query::handle_deadlock() });
+    let mut config = ThreadPoolBuilder::spawn_handler(|thread| {
+        let mut b = thread::Builder::new();
+        if let Some(name) = thread.name() {
+            b = b.name(name.to_owned());
+        }
+        if let Some(stack_size) = thread.stack_size() {
+            b = b.stack_size(stack_size);
+        }
+
+        jobserver::acquire_thread();
+        b.spawn(|| {
+            let result = thread.run();
+            jobserver::release_thread();
+            result
+        })?;
+        Ok(())
+    }).thread_name(|_| "rustc".to_string())
+    .num_threads(threads)
+    .deadlock_handler(|| unsafe { ty::query::handle_deadlock() });
 
     if let Some(size) = get_stack_size() {
         config = config.stack_size(size);
