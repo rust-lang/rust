@@ -24,7 +24,7 @@ use syntax_pos::Span;
 use super::lints;
 
 /// Construct the MIR for a given `DefId`.
-pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
+pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> BodyCache<'_> {
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
 
     // Figure out what primary body this item has.
@@ -196,6 +196,8 @@ pub fn mir_build(tcx: TyCtxt<'_>, def_id: DefId) -> Body<'_> {
 
         lints::check(tcx, &body, def_id);
 
+        let mut body = BodyCache::new(body);
+        body.ensure_predecessors();
         body
     })
 }

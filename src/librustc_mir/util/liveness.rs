@@ -57,7 +57,7 @@ pub struct LivenessResult {
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
 pub fn liveness_of_locals(
-    body: &Body<'_>,
+    body: ReadOnlyBodyCache<'_, '_>,
 ) -> LivenessResult {
     let num_live_vars = body.local_decls.len();
 
@@ -83,8 +83,9 @@ pub fn liveness_of_locals(
     // FIXME(ecstaticmorse): Reverse post-order on the reverse CFG may generate a better iteration
     // order when cycles are present, but the overhead of computing the reverse CFG may outweigh
     // any benefits. Benchmark this and find out.
-    let mut dirty_queue: WorkQueue<BasicBlock> = WorkQueue::with_none(body.basic_blocks().len());
-    for (bb, _) in traversal::postorder(body) {
+    let mut dirty_queue: WorkQueue<BasicBlock>
+        = WorkQueue::with_none(body.basic_blocks().len());
+    for (bb, _) in traversal::postorder(&body) {
         dirty_queue.insert(bb);
     }
 

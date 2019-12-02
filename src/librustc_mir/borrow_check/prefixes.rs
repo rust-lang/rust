@@ -11,7 +11,7 @@ use super::MirBorrowckCtxt;
 
 use rustc::hir;
 use rustc::ty::{self, TyCtxt};
-use rustc::mir::{Body, Place, PlaceBase, PlaceRef, ProjectionElem};
+use rustc::mir::{Place, PlaceBase, PlaceRef, ProjectionElem, ReadOnlyBodyCache};
 
 pub trait IsPrefixOf<'cx, 'tcx> {
     fn is_prefix_of(&self, other: PlaceRef<'cx, 'tcx>) -> bool;
@@ -26,7 +26,7 @@ impl<'cx, 'tcx> IsPrefixOf<'cx, 'tcx> for PlaceRef<'cx, 'tcx> {
 }
 
 pub(super) struct Prefixes<'cx, 'tcx> {
-    body: &'cx Body<'tcx>,
+    body: ReadOnlyBodyCache<'cx, 'tcx>,
     tcx: TyCtxt<'tcx>,
     kind: PrefixSet,
     next: Option<PlaceRef<'cx, 'tcx>>,
@@ -143,7 +143,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                     // derefs, except we stop at the deref of a shared
                     // reference.
 
-                    let ty = Place::ty_from(cursor.base, proj_base, self.body, self.tcx).ty;
+                    let ty = Place::ty_from(cursor.base, proj_base, &*self.body, self.tcx).ty;
                     match ty.kind {
                         ty::RawPtr(_) |
                         ty::Ref(

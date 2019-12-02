@@ -18,12 +18,11 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc::dep_graph::{self, DepNodeIndex};
 use rustc::middle::lang_items;
-use rustc::mir::{self, interpret};
+use rustc::mir::{self, BodyCache, interpret, Promoted};
 use rustc::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
-use rustc::mir::{Body, Promoted};
 use rustc::util::common::record_time;
 use rustc::util::captures::Captures;
 
@@ -1080,26 +1079,32 @@ impl<'a, 'tcx> CrateMetadata {
             self.root.per_def.mir.get(self, id).is_some()
     }
 
-    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
-        self.root.per_def.mir.get(self, id)
+    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> BodyCache<'tcx> {
+        let mut cache = self.root.per_def.mir.get(self, id)
             .filter(|_| !self.is_proc_macro(id))
             .unwrap_or_else(|| {
                 bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx))
+            .decode((self, tcx));
+        cache.ensure_predecessors();
+        cache
     }
 
     fn get_promoted_mir(
         &self,
         tcx: TyCtxt<'tcx>,
         id: DefIndex,
-    ) -> IndexVec<Promoted, Body<'tcx>> {
-        self.root.per_def.promoted_mir.get(self, id)
+    ) -> IndexVec<Promoted, BodyCache<'tcx>> {
+        let mut cache = self.root.per_def.promoted_mir.get(self, id)
             .filter(|_| !self.is_proc_macro(id))
             .unwrap_or_else(|| {
                 bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx))
+            .decode((self, tcx));
+        for body in cache.iter_mut() {
+            body.ensure_predecessors();
+        }
+        cache
     }
 
     fn mir_const_qualif(&self, id: DefIndex) -> mir::ConstQualifs {

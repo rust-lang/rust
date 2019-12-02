@@ -41,11 +41,11 @@ use crate::transform::check_consts::{qualifs, Item, ConstKind, is_lang_panic_fn}
 /// newly created `StaticKind::Promoted`.
 #[derive(Default)]
 pub struct PromoteTemps<'tcx> {
-    pub promoted_fragments: Cell<IndexVec<Promoted, Body<'tcx>>>,
+    pub promoted_fragments: Cell<IndexVec<Promoted, BodyCache<'tcx>>>,
 }
 
 impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         // There's not really any point in promoting errorful MIR.
         //
         // This does not include MIR that failed const-checking, which we still try to promote.
@@ -63,7 +63,8 @@ impl<'tcx> MirPass<'tcx> for PromoteTemps<'tcx> {
         let mut rpo = traversal::reverse_postorder(body);
         let (temps, all_candidates) = collect_temps_and_candidates(tcx, body, &mut rpo);
 
-        let promotable_candidates = validate_candidates(tcx, body, def_id, &temps, &all_candidates);
+        let promotable_candidates
+            = validate_candidates(tcx, read_only!(body), def_id, &temps, &all_candidates);
 
         let promoted = promote_candidates(def_id, body, tcx, temps, promotable_candidates);
         self.promoted_fragments.set(promoted);
@@ -346,10 +347,14 @@ impl<'tcx> Validator<'_, 'tcx> {
                             while let [proj_base @ .., elem] = place_projection {
                                 // FIXME(eddyb) this is probably excessive, with
                                 // the exception of `union` member accesses.
-                                let ty =
-                                    Place::ty_from(&place.base, proj_base, self.body, self.tcx)
-                                        .projection_ty(self.tcx, elem)
-                                        .ty;
+                                let ty = Place::ty_from(
+                                        &place.base,
+                                        proj_base,
+                                        &*self.body,
+                                        self.tcx
+                                    )
+                                    .projection_ty(self.tcx, elem)
+                                    .ty;
                                 if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
                                     has_mut_interior = false;
                                     break;
@@ -368,7 +373,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         }
 
                         if let BorrowKind::Mut { .. } = kind {
-                            let ty = place.ty(self.body, self.tcx).ty;
+                            let ty = place.ty(&*self.body, self.tcx).ty;
 
                             // In theory, any zero-sized value could be borrowed
                             // mutably without consequences. However, only &mut []
@@ -517,7 +522,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::Field(..) => {
                         if self.const_kind.is_none() {
                             let base_ty =
-                                Place::ty_from(place.base, proj_base, self.body, self.tcx).ty;
+                                Place::ty_from(place.base, proj_base, &*self.body, self.tcx).ty;
                             if let Some(def) = base_ty.ty_adt_def() {
                                 // No promotion of union field accesses.
                                 if def.is_union() {
@@ -566,7 +571,7 @@ impl<'tcx> Validator<'_, 'tcx> {
     fn validate_rvalue(&self, rvalue: &Rvalue<'tcx>) -> Result<(), Unpromotable> {
         match *rvalue {
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) if self.const_kind.is_none() => {
-                let operand_ty = operand.ty(self.body, self.tcx);
+                let operand_ty = operand.ty(&*self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
                 match (cast_in, cast_out) {
@@ -580,7 +585,7 @@ impl<'tcx> Validator<'_, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) if self.const_kind.is_none() => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(self.body, self.tcx).kind {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(&*self.body, self.tcx).kind {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -615,7 +620,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 
             Rvalue::Ref(_, kind, place) => {
                 if let BorrowKind::Mut { .. } = kind {
-                    let ty = place.ty(self.body, self.tcx).ty;
+                    let ty = place.ty(&*self.body, self.tcx).ty;
 
                     // In theory, any zero-sized value could be borrowed
                     // mutably without consequences. However, only &mut []
@@ -642,7 +647,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                 let mut place = place.as_ref();
                 if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
                     let base_ty =
-                        Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
+                        Place::ty_from(&place.base, proj_base, &*self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
                         place = PlaceRef {
                             base: &place.base,
@@ -668,7 +673,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     while let [proj_base @ .., elem] = place_projection {
                         // FIXME(eddyb) this is probably excessive, with
                         // the exception of `union` member accesses.
-                        let ty = Place::ty_from(place.base, proj_base, self.body, self.tcx)
+                        let ty = Place::ty_from(place.base, proj_base, &*self.body, self.tcx)
                             .projection_ty(self.tcx, elem)
                             .ty;
                         if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
@@ -701,7 +706,7 @@ impl<'tcx> Validator<'_, 'tcx> {
         callee: &Operand<'tcx>,
         args: &[Operand<'tcx>],
     ) -> Result<(), Unpromotable> {
-        let fn_ty = callee.ty(self.body, self.tcx);
+        let fn_ty = callee.ty(&*self.body, self.tcx);
 
         if !self.explicit && self.const_kind.is_none() {
             if let ty::FnDef(def_id, _) = fn_ty.kind {
@@ -737,7 +742,7 @@ impl<'tcx> Validator<'_, 'tcx> {
 // FIXME(eddyb) remove the differences for promotability in `static`, `const`, `const fn`.
 pub fn validate_candidates(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
     def_id: DefId,
     temps: &IndexVec<Local, TempState>,
     candidates: &[Candidate],
@@ -770,8 +775,8 @@ pub fn validate_candidates(
 
 struct Promoter<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    source: &'a mut Body<'tcx>,
-    promoted: Body<'tcx>,
+    source: &'a mut BodyCache<'tcx>,
+    promoted: BodyCache<'tcx>,
     temps: &'a mut IndexVec<Local, TempState>,
 
     /// If true, all nested temps are also kept in the
@@ -919,7 +924,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         def_id: DefId,
         candidate: Candidate,
         next_promoted_id: usize,
-    ) -> Option<Body<'tcx>> {
+    ) -> Option<BodyCache<'tcx>> {
         let mut operand = {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
@@ -1040,11 +1045,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Promoter<'a, 'tcx> {
 
 pub fn promote_candidates<'tcx>(
     def_id: DefId,
-    body: &mut Body<'tcx>,
+    body: &mut BodyCache<'tcx>,
     tcx: TyCtxt<'tcx>,
     mut temps: IndexVec<Local, TempState>,
     candidates: Vec<Candidate>,
-) -> IndexVec<Promoted, Body<'tcx>> {
+) -> IndexVec<Promoted, BodyCache<'tcx>> {
     // Visit candidates in reverse, in case they're nested.
     debug!("promote_candidates({:?})", candidates);
 
@@ -1076,7 +1081,7 @@ pub fn promote_candidates<'tcx>(
         ).collect();
 
         let promoter = Promoter {
-            promoted: Body::new(
+            promoted: BodyCache::new(Body::new(
                 IndexVec::new(),
                 // FIXME: maybe try to filter this to avoid blowing up
                 // memory usage?
@@ -1088,7 +1093,7 @@ pub fn promote_candidates<'tcx>(
                 body.span,
                 vec![],
                 body.generator_kind,
-            ),
+            )),
             tcx,
             source: body,
             temps: &mut temps,
@@ -1145,11 +1150,11 @@ pub fn promote_candidates<'tcx>(
 crate fn should_suggest_const_in_array_repeat_expressions_attribute<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_def_id: DefId,
-    body: &Body<'tcx>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> bool {
-    let mut rpo = traversal::reverse_postorder(body);
-    let (temps, _) = collect_temps_and_candidates(tcx, body, &mut rpo);
+    let mut rpo = traversal::reverse_postorder(&body);
+    let (temps, _) = collect_temps_and_candidates(tcx, &body, &mut rpo);
     let validator = Validator {
         item: Item::new(tcx, mir_def_id, body),
         temps: &temps,

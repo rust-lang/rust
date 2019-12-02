@@ -513,7 +513,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST
                 // aggregate rvalues are allowed to be operands.
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
+                let ty = rvalue.ty(&*self.mir, self.cx.tcx());
                 let operand = OperandRef::new_zst(
                     &mut bx,
                     self.cx.layout_of(self.monomorphize(&ty)),
@@ -710,7 +710,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 true,
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
+                let ty = rvalue.ty(&*self.mir, self.cx.tcx());
                 let ty = self.monomorphize(&ty);
                 self.cx.spanned_layout_of(ty, span).is_zst()
             }

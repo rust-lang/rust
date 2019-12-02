@@ -37,12 +37,14 @@ use crate::util::patch::MirPatch;
 pub struct UniformArrayMoveOut;
 
 impl<'tcx> MirPass<'tcx> for UniformArrayMoveOut {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         let mut patch = MirPatch::new(body);
         let param_env = tcx.param_env(src.def_id());
         {
-            let mut visitor = UniformArrayMoveOutVisitor{body, patch: &mut patch, tcx, param_env};
-            visitor.visit_body(body);
+            let read_only_cache = read_only!(body);
+            let mut visitor
+                = UniformArrayMoveOutVisitor{ body, patch: &mut patch, tcx, param_env};
+            visitor.visit_body(read_only_cache);
         }
         patch.apply(body);
     }
@@ -184,15 +186,16 @@ pub struct RestoreSubsliceArrayMoveOut<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         let mut patch = MirPatch::new(body);
         let param_env = tcx.param_env(src.def_id());
         {
+            let read_only_cache = read_only!(body);
             let mut visitor = RestoreDataCollector {
                 locals_use: IndexVec::from_elem(LocalUse::new(), &body.local_decls),
                 candidates: vec![],
             };
-            visitor.visit_body(body);
+            visitor.visit_body(read_only_cache);
 
             for candidate in &visitor.candidates {
                 let statement = &body[candidate.block].statements[candidate.statement_index];
@@ -217,8 +220,12 @@ impl<'tcx> MirPass<'tcx> for RestoreSubsliceArrayMoveOut<'tcx> {
 
                         let opt_src_place = items.first().and_then(|x| *x).map(|x| x.2);
                         let opt_size = opt_src_place.and_then(|src_place| {
-                            let src_ty =
-                                Place::ty_from(src_place.base, src_place.projection, body, tcx).ty;
+                            let src_ty = Place::ty_from(
+                                src_place.base,
+                                src_place.projection,
+                                &**body,
+                                tcx
+                            ).ty;
                             if let ty::Array(_, ref size_o) = src_ty.kind {
                                 size_o.try_eval_usize(tcx, param_env)
                             } else {

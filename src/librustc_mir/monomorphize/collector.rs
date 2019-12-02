@@ -1255,7 +1255,7 @@ fn collect_neighbours<'tcx>(
         body: &body,
         output,
         param_substs: instance.substs,
-    }.visit_body(&body);
+    }.visit_body(body);
 }
 
 fn def_id_to_string(tcx: TyCtxt<'_>, def_id: DefId) -> String {

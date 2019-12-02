@@ -1,7 +1,7 @@
 use crate::{build, shim};
 use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{Body, MirPhase, Promoted, ConstQualifs};
+use rustc::mir::{BodyCache, MirPhase, Promoted, ConstQualifs};
 use rustc::ty::{TyCtxt, InstanceDef, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -97,7 +97,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
     tcx.arena.alloc(set)
 }
 
-fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
+fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
     let mir = build::mir_build(tcx, def_id);
     tcx.alloc_steal_mir(mir)
 }
@@ -144,12 +144,12 @@ pub trait MirPass<'tcx> {
         default_name::<Self>()
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyCache<'tcx>);
 }
 
 pub fn run_passes(
     tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &mut BodyCache<'tcx>,
     instance: InstanceDef<'tcx>,
     promoted: Option<Promoted>,
     mir_phase: MirPhase,
@@ -205,7 +205,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     }
 
     let item = check_consts::Item {
-        body,
+        body: body.unwrap_read_only(),
         tcx,
         def_id,
         const_kind,
@@ -220,7 +220,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     validator.qualifs_in_return_place().into()
 }
 
-fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
+fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
@@ -231,13 +231,14 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<Body<'_>> {
         &rustc_peek::SanityCheck,
         &uniform_array_move_out::UniformArrayMoveOut,
     ]);
+    body.ensure_predecessors();
     tcx.alloc_steal_mir(body)
 }
 
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
+) -> (&'tcx Steal<BodyCache<'tcx>>, &'tcx Steal<IndexVec<Promoted, BodyCache<'tcx>>>) {
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     let _ = tcx.mir_const_qualif(def_id);
@@ -249,13 +250,14 @@ fn mir_validated(
         &promote_pass,
         &simplify::SimplifyCfg::new("qualify-consts"),
     ]);
+
     let promoted = promote_pass.promoted_fragments.into_inner();
     (tcx.alloc_steal_mir(body), tcx.alloc_steal_promoted(promoted))
 }
 
 fn run_optimization_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &mut BodyCache<'tcx>,
     def_id: DefId,
     promoted: Option<Promoted>,
 ) {
@@ -317,7 +319,7 @@ fn run_optimization_passes<'tcx>(
     ]);
 }
 
-fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
+fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyCache<'_> {
     if tcx.is_constructor(def_id) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
@@ -333,10 +335,11 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     let (body, _) = tcx.mir_validated(def_id);
     let mut body = body.steal();
     run_optimization_passes(tcx, &mut body, def_id, None);
+    body.ensure_predecessors();
     tcx.arena.alloc(body)
 }
 
-fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
+fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyCache<'_>> {
     if tcx.is_constructor(def_id) {
         return tcx.intern_promoted(IndexVec::new());
     }
@@ -347,6 +350,7 @@ fn promoted_mir<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx IndexVec<Promot
 
     for (p, mut body) in promoted.iter_enumerated_mut() {
         run_optimization_passes(tcx, &mut body, def_id, Some(p));
+        body.ensure_predecessors();
     }
 
     tcx.intern_promoted(promoted)

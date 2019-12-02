@@ -98,7 +98,7 @@ fn precompute_borrows_out_of_scope<'tcx>(
             // Add successor BBs to the work list, if necessary.
             let bb_data = &body[bb];
             assert!(hi == bb_data.statements.len());
-            for &succ_bb in bb_data.terminator.as_ref().unwrap().successors() {
+            for &succ_bb in bb_data.terminator().successors() {
                 visited.entry(succ_bb)
                     .and_modify(|lo| {
                         // `succ_bb` has been seen before. If it wasn't
@@ -153,8 +153,8 @@ impl<'a, 'tcx> Borrows<'a, 'tcx> {
         }
 
         Borrows {
-            tcx: tcx,
-            body: body,
+            tcx,
+            body,
             param_env,
             borrow_set: borrow_set.clone(),
             borrows_out_of_scope_at_location,

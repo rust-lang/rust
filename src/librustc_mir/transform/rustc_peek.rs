@@ -5,7 +5,7 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
-use rustc::mir::{self, Body, Location, Local};
+use rustc::mir::{self, Body, BodyCache, Location, Local};
 use rustc_index::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 
@@ -26,7 +26,7 @@ use crate::dataflow::has_rustc_mir_with;
 pub struct SanityCheck;
 
 impl<'tcx> MirPass<'tcx> for SanityCheck {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
@@ -64,10 +64,20 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
             sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_uninits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_definite_init).is_some() {
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_def_inits);
+            sanity_check_via_rustc_peek(
+                tcx,
+                body,
+                def_id,
+                &attributes,
+                &flow_def_inits);
         }
         if has_rustc_mir_with(&attributes, sym::rustc_peek_indirectly_mutable).is_some() {
-            sanity_check_via_rustc_peek(tcx, body, def_id, &attributes, &flow_indirectly_mut);
+            sanity_check_via_rustc_peek(
+                tcx,
+                body,
+                def_id,
+                &attributes,
+                &flow_indirectly_mut);
         }
         if has_rustc_mir_with(&attributes, sym::stop_after_dataflow).is_some() {
             tcx.sess.fatal("stop_after_dataflow ended compilation");

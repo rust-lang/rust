@@ -9,8 +9,8 @@ use rustc::lint::builtin::UNUSED_MUT;
 use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{
-    ClearCrossCrate, Local, Location, Body, Mutability, Operand, Place, PlaceBase, PlaceElem,
-    PlaceRef, Static, StaticKind
+    ClearCrossCrate, Local, Location, Body, BodyCache, Mutability, Operand, Place, PlaceBase,
+    PlaceElem, PlaceRef, ReadOnlyBodyCache, Static, StaticKind, read_only
 };
 use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
 use rustc::mir::{Terminator, TerminatorKind};
@@ -102,7 +102,7 @@ fn mir_borrowck(tcx: TyCtxt<'_>, def_id: DefId) -> BorrowCheckResult<'_> {
 fn do_mir_borrowck<'a, 'tcx>(
     infcx: &InferCtxt<'a, 'tcx>,
     input_body: &Body<'tcx>,
-    input_promoted: &IndexVec<Promoted, Body<'tcx>>,
+    input_promoted: &IndexVec<Promoted, BodyCache<'tcx>>,
     def_id: DefId,
 ) -> BorrowCheckResult<'tcx> {
     debug!("do_mir_borrowck(def_id = {:?})", def_id);
@@ -162,16 +162,22 @@ fn do_mir_borrowck<'a, 'tcx>(
     // requires first making our own copy of the MIR. This copy will
     // be modified (in place) to contain non-lexical lifetimes. It
     // will have a lifetime tied to the inference context.
-    let mut body: Body<'tcx> = input_body.clone();
-    let mut promoted: IndexVec<Promoted, Body<'tcx>> = input_promoted.clone();
+    let body_clone: Body<'tcx> = input_body.clone();
+    let mut promoted = input_promoted.clone();
+    let mut body = BodyCache::new(body_clone);
     let free_regions =
         nll::replace_regions_in_mir(infcx, def_id, param_env, &mut body, &mut promoted);
-    let body = &body; // no further changes
-    let location_table = &LocationTable::new(body);
+    let body = read_only!(body); // no further changes
+    let promoted: IndexVec<_, _> = promoted
+        .iter_mut()
+        .map(|body| read_only!(body))
+        .collect();
+
+    let location_table = &LocationTable::new(&body);
 
     let mut errors_buffer = Vec::new();
     let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<(Place<'tcx>, MoveError<'tcx>)>>) =
-        match MoveData::gather_moves(body, tcx) {
+        match MoveData::gather_moves(&body, tcx) {
             Ok(move_data) => (move_data, None),
             Err((move_data, move_errors)) => (move_data, Some(move_errors)),
         };
@@ -184,17 +190,17 @@ fn do_mir_borrowck<'a, 'tcx>(
     let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
     let mut flow_inits = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        &body,
         def_id,
         &attributes,
         &dead_unwinds,
-        MaybeInitializedPlaces::new(tcx, body, &mdpe),
+        MaybeInitializedPlaces::new(tcx, &body, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
 
     let locals_are_invalidated_at_exit = tcx.hir().body_owner_kind(id).is_fn_or_closure();
     let borrow_set = Rc::new(BorrowSet::build(
-            tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
+        tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
     // If we are in non-lexical mode, compute the non-lexical lifetimes.
     let (regioncx, polonius_output, opt_closure_req) = nll::compute_regions(
@@ -222,29 +228,29 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let flow_borrows = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        &body,
         def_id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, body, param_env, regioncx.clone(), &borrow_set),
+        Borrows::new(tcx, &body, param_env, regioncx.clone(), &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
     let flow_uninits = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        &body,
         def_id,
         &attributes,
         &dead_unwinds,
-        MaybeUninitializedPlaces::new(tcx, body, &mdpe),
+        MaybeUninitializedPlaces::new(tcx, &body, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().move_paths[i]),
     ));
     let flow_ever_inits = FlowAtLocation::new(do_dataflow(
         tcx,
-        body,
+        &body,
         def_id,
         &attributes,
         &dead_unwinds,
-        EverInitializedPlaces::new(tcx, body, &mdpe),
+        EverInitializedPlaces::new(tcx, &body, &mdpe),
         |bd, i| DebugFormatted::new(&bd.move_data().inits[i]),
     ));
 
@@ -336,7 +342,8 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
     let used_mut = mbcx.used_mut;
-    for local in mbcx.body.mut_vars_and_args_iter().filter(|local| !used_mut.contains(local)) {
+    for local in mbcx.body.mut_vars_and_args_iter().filter(|local| !used_mut.contains(local))
+    {
         let local_decl = &mbcx.body.local_decls[local];
         let lint_root = match &mbcx.body.source_scopes[local_decl.source_info.scope].local_data {
             ClearCrossCrate::Set(data) => data.lint_root,
@@ -398,7 +405,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
 crate struct MirBorrowckCtxt<'cx, 'tcx> {
     crate infcx: &'cx InferCtxt<'cx, 'tcx>,
-    body: &'cx Body<'tcx>,
+    body: ReadOnlyBodyCache<'cx, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
     move_data: &'cx MoveData<'tcx>,
@@ -489,7 +496,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
     type FlowState = Flows<'cx, 'tcx>;
 
     fn body(&self) -> &'cx Body<'tcx> {
-        self.body
+        self.body.body()
     }
 
     fn visit_block_entry(&mut self, bb: BasicBlock, flow_state: &Self::FlowState) {
@@ -639,7 +646,7 @@ impl<'cx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx, 'tcx
                 let tcx = self.infcx.tcx;
 
                 // Compute the type with accurate region information.
-                let drop_place_ty = drop_place.ty(self.body, self.infcx.tcx);
+                let drop_place_ty = drop_place.ty(&*self.body, self.infcx.tcx);
 
                 // Erase the regions.
                 let drop_place_ty = self.infcx.tcx.erase_regions(&drop_place_ty).ty;
@@ -984,6 +991,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let mut error_reported = false;
         let tcx = self.infcx.tcx;
         let body = self.body;
+        let body: &Body<'_> = &body;
         let param_env = self.param_env;
         let location_table = self.location_table.start_index(location);
         let borrow_set = self.borrow_set.clone();
@@ -1334,7 +1342,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             _ => bug!("temporary initialized in arguments"),
                         };
 
-                        let bbd = &self.body[loc.block];
+                        let body = self.body;
+                        let bbd = &body[loc.block];
                         let stmt = &bbd.statements[loc.statement_index];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
@@ -1453,7 +1462,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if places_conflict::borrow_conflicts_with_place(
             self.infcx.tcx,
             self.param_env,
-            self.body,
+            &self.body,
             place,
             borrow.kind,
             root_place,
@@ -1744,7 +1753,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     // assigning to `P.f` requires `P` itself
                     // be already initialized
                     let tcx = self.infcx.tcx;
-                    let base_ty = Place::ty_from(&place.base, proj_base, self.body, tcx).ty;
+                    let base_ty = Place::ty_from(&place.base, proj_base, self.body(), tcx).ty;
                     match base_ty.kind {
                         ty::Adt(def, _) if def.has_dtor(tcx) => {
                             self.check_if_path_or_subpath_is_moved(
@@ -1851,7 +1860,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if let ty::Adt(def, _) =
-                    Place::ty_from(base.base, base.projection, this.body, tcx).ty.kind
+                    Place::ty_from(base.base, base.projection, this.body(), tcx).ty.kind
                 {
                     if def.is_union() {
                         if this.move_data.path_map[mpi].iter().any(|moi| {
@@ -2121,7 +2130,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 match elem {
                     ProjectionElem::Deref => {
                         let base_ty =
-                            Place::ty_from(place.base, proj_base, self.body, self.infcx.tcx).ty;
+                            Place::ty_from(place.base, proj_base, self.body(), self.infcx.tcx).ty;
 
                         // Check the kind of deref to decide
                         match base_ty.kind {
@@ -2261,7 +2270,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         match place_projection {
             [base @ .., ProjectionElem::Field(field, _ty)] => {
                 let tcx = self.infcx.tcx;
-                let base_ty = Place::ty_from(place_ref.base, base, self.body, tcx).ty;
+                let base_ty = Place::ty_from(place_ref.base, base, self.body(), tcx).ty;
 
                 if (base_ty.is_closure() || base_ty.is_generator()) &&
                     (!by_ref || self.upvars[field.index()].by_ref) {

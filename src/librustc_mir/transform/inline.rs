@@ -38,7 +38,9 @@ struct CallSite<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for Inline {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+    ) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(body);
         }
@@ -51,7 +53,7 @@ struct Inliner<'tcx> {
 }
 
 impl Inliner<'tcx> {
-    fn run_pass(&self, caller_body: &mut Body<'tcx>) {
+    fn run_pass(&self, caller_body: &mut BodyCache<'tcx>) {
         // Keep a queue of callsites to try inlining on. We take
         // advantage of the fact that queries detect cycles here to
         // allow us to try and fetch the fully optimized MIR of a
@@ -75,9 +77,9 @@ impl Inliner<'tcx> {
         {
             for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated() {
                 if let Some(callsite) = self.get_valid_function_call(bb,
-                                                                    bb_data,
-                                                                    caller_body,
-                                                                    param_env) {
+                                                                     bb_data,
+                                                                     caller_body,
+                                                                     param_env) {
                     callsites.push_back(callsite);
                 }
             }
@@ -136,7 +138,8 @@ impl Inliner<'tcx> {
                 debug!("attempting to inline callsite {:?} - success", callsite);
 
                 // Add callsites from inlined function
-                for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated().skip(start) {
+                for (bb, bb_data) in caller_body.basic_blocks().iter_enumerated().skip(start)
+                {
                     if let Some(new_callsite) = self.get_valid_function_call(bb,
                                                                              bb_data,
                                                                              caller_body,
@@ -377,8 +380,8 @@ impl Inliner<'tcx> {
 
     fn inline_call(&self,
                    callsite: CallSite<'tcx>,
-                   caller_body: &mut Body<'tcx>,
-                   mut callee_body: Body<'tcx>) -> bool {
+                   caller_body: &mut BodyCache<'tcx>,
+                   mut callee_body: BodyCache<'tcx>) -> bool {
         let terminator = caller_body[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
@@ -445,7 +448,7 @@ impl Inliner<'tcx> {
                         BorrowKind::Mut { allow_two_phase_borrow: false },
                         destination.0);
 
-                    let ty = dest.ty(caller_body, self.tcx);
+                    let ty = dest.ty(&**caller_body, self.tcx);
 
                     let temp = LocalDecl::new_temp(ty, callsite.location.span);
 
@@ -514,7 +517,7 @@ impl Inliner<'tcx> {
         &self,
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
-        caller_body: &mut Body<'tcx>,
+        caller_body: &mut BodyCache<'tcx>,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -543,12 +546,14 @@ impl Inliner<'tcx> {
         // and the vector is `[closure_ref, tmp0, tmp1, tmp2]`.
         if tcx.is_closure(callsite.callee) {
             let mut args = args.into_iter();
-            let self_ = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
-            let tuple = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
+            let self_
+                = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
+            let tuple
+                = self.create_temp_if_necessary(args.next().unwrap(), callsite, caller_body);
             assert!(args.next().is_none());
 
             let tuple = Place::from(tuple);
-            let tuple_tys = if let ty::Tuple(s) = tuple.ty(caller_body, tcx).ty.kind {
+            let tuple_tys = if let ty::Tuple(s) = tuple.ty(&**caller_body, tcx).ty.kind {
                 s
             } else {
                 bug!("Closure arguments are not passed as a tuple");
@@ -585,7 +590,7 @@ impl Inliner<'tcx> {
         &self,
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
-        caller_body: &mut Body<'tcx>,
+        caller_body: &mut BodyCache<'tcx>,
     ) -> Local {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.
@@ -603,7 +608,7 @@ impl Inliner<'tcx> {
         // Otherwise, create a temporary for the arg
         let arg = Rvalue::Use(arg);
 
-        let ty = arg.ty(caller_body, self.tcx);
+        let ty = arg.ty(&**caller_body, self.tcx);
 
         let arg_tmp = LocalDecl::new_temp(ty, callsite.location.span);
         let arg_tmp = caller_body.local_decls.push(arg_tmp);

@@ -106,44 +106,54 @@ rustc_queries! {
 
         /// Fetch the MIR for a given `DefId` right after it's built - this includes
         /// unreachable code.
-        query mir_built(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {}
+        query mir_built(_: DefId) -> &'tcx Steal<mir::BodyCache<'tcx>> {}
 
         /// Fetch the MIR for a given `DefId` up till the point where it is
         /// ready for const evaluation.
         ///
         /// See the README for the `mir` module for details.
-        query mir_const(_: DefId) -> &'tcx Steal<mir::Body<'tcx>> {
+        query mir_const(_: DefId) -> &'tcx Steal<mir::BodyCache<'tcx>> {
             no_hash
         }
 
         query mir_validated(_: DefId) ->
             (
-                &'tcx Steal<mir::Body<'tcx>>,
-                &'tcx Steal<IndexVec<mir::Promoted, mir::Body<'tcx>>>
+                &'tcx Steal<mir::BodyCache<'tcx>>,
+                &'tcx Steal<IndexVec<mir::Promoted, mir::BodyCache<'tcx>>>
             ) {
             no_hash
         }
 
         /// MIR after our optimization passes have run. This is MIR that is ready
         /// for codegen. This is also the only query that can fetch non-local MIR, at present.
-        query optimized_mir(key: DefId) -> &'tcx mir::Body<'tcx> {
+        query optimized_mir(key: DefId) -> &'tcx mir::BodyCache<'tcx> {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
-                let mir: Option<crate::mir::Body<'tcx>> = tcx.queries.on_disk_cache
-                                                            .try_load_query_result(tcx, id);
-                mir.map(|x| &*tcx.arena.alloc(x))
+                let mir: Option<crate::mir::BodyCache<'tcx>>
+                    = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
+                mir.map(|x| {
+                    let cache = tcx.arena.alloc(x);
+                    cache.ensure_predecessors();
+                    &*cache
+                })
             }
         }
 
-        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::Body<'tcx>> {
+        query promoted_mir(key: DefId) -> &'tcx IndexVec<mir::Promoted, mir::BodyCache<'tcx>> {
             cache_on_disk_if { key.is_local() }
             load_cached(tcx, id) {
                 let promoted: Option<
                     rustc_index::vec::IndexVec<
                         crate::mir::Promoted,
-                        crate::mir::Body<'tcx>
+                        crate::mir::BodyCache<'tcx>
                     >> = tcx.queries.on_disk_cache.try_load_query_result(tcx, id);
-                promoted.map(|p| &*tcx.arena.alloc(p))
+                promoted.map(|p| {
+                    let cache = tcx.arena.alloc(p);
+                    for body in cache.iter_mut() {
+                        body.ensure_predecessors();
+                    }
+                    &*cache
+                })
             }
         }
     }
@@ -502,7 +512,7 @@ rustc_queries! {
         /// in the case of closures, this will be redirected to the enclosing function.
         query region_scope_tree(_: DefId) -> &'tcx region::ScopeTree {}
 
-        query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::Body<'tcx> {
+        query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::BodyCache<'tcx> {
             no_force
             desc { |tcx| "generating MIR shim for `{}`", tcx.def_path_str(key.def_id()) }
         }

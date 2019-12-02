@@ -1,6 +1,6 @@
 //! Def-use analysis.
 
-use rustc::mir::{Body, Local, Location, PlaceElem, VarDebugInfo};
+use rustc::mir::{Body, BodyCache, Local, Location, PlaceElem, ReadOnlyBodyCache, VarDebugInfo};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
@@ -30,7 +30,7 @@ impl DefUseAnalysis {
         }
     }
 
-    pub fn analyze(&mut self, body: &Body<'_>) {
+    pub fn analyze(&mut self, body: ReadOnlyBodyCache<'_, '_>) {
         self.clear();
 
         let mut finder = DefUseFinder {
@@ -55,11 +55,11 @@ impl DefUseAnalysis {
     fn mutate_defs_and_uses(
         &self,
         local: Local,
-        body: &mut Body<'tcx>,
+        body: &mut BodyCache<'tcx>,
         new_local: Local,
         tcx: TyCtxt<'tcx>,
     ) {
-        let mut visitor = MutateUseVisitor::new(local, new_local, body, tcx);
+        let mut visitor = MutateUseVisitor::new(local, new_local, tcx);
         let info = &self.info[local];
         for place_use in &info.defs_and_uses {
             visitor.visit_location(body, place_use.location)
@@ -73,7 +73,7 @@ impl DefUseAnalysis {
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          body: &mut Body<'tcx>,
+                                          body: &mut BodyCache<'tcx>,
                                           new_local: Local,
                                           tcx: TyCtxt<'tcx>) {
         self.mutate_defs_and_uses(local, body, new_local, tcx)
@@ -156,7 +156,6 @@ impl MutateUseVisitor<'tcx> {
     fn new(
         query: Local,
         new_local: Local,
-        _: &Body<'tcx>,
         tcx: TyCtxt<'tcx>,
     ) -> MutateUseVisitor<'tcx> {
         MutateUseVisitor { query, new_local, tcx }

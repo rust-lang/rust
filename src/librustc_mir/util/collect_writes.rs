@@ -1,5 +1,5 @@
 use rustc::mir::{Local, Location};
-use rustc::mir::Body;
+use rustc::mir::ReadOnlyBodyCache;
 use rustc::mir::visit::PlaceContext;
 use rustc::mir::visit::Visitor;
 
@@ -9,10 +9,10 @@ crate trait FindAssignments {
     fn find_assignments(&self, local: Local) -> Vec<Location>;
 }
 
-impl<'tcx> FindAssignments for Body<'tcx>{
+impl<'a, 'tcx> FindAssignments for ReadOnlyBodyCache<'a, 'tcx>{
     fn find_assignments(&self, local: Local) -> Vec<Location>{
             let mut visitor = FindLocalAssignmentVisitor{ needle: local, locations: vec![]};
-            visitor.visit_body(self);
+            visitor.visit_body(*self);
             visitor.locations
     }
 }

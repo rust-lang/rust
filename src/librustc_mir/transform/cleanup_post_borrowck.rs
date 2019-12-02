@@ -16,7 +16,7 @@
 //! [`FakeRead`]: rustc::mir::StatementKind::FakeRead
 //! [`Nop`]: rustc::mir::StatementKind::Nop
 
-use rustc::mir::{BorrowKind, Rvalue, Location, Body};
+use rustc::mir::{BodyCache, BorrowKind, Rvalue, Location};
 use rustc::mir::{Statement, StatementKind};
 use rustc::mir::visit::MutVisitor;
 use rustc::ty::TyCtxt;
@@ -29,7 +29,9 @@ pub struct DeleteNonCodegenStatements<'tcx> {
 }
 
 impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+    ) {
         let mut delete = DeleteNonCodegenStatements { tcx };
         delete.visit_body(body);
     }

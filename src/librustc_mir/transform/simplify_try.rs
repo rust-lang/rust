@@ -33,7 +33,7 @@ use itertools::Itertools as _;
 pub struct SimplifyArmIdentity;
 
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
-    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         for bb in basic_blocks {
             // Need 3 statements:
@@ -151,7 +151,7 @@ fn match_variant_field_place<'tcx>(place: &Place<'tcx>) -> Option<(Local, VarFie
 pub struct SimplifyBranchSame;
 
 impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
-    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
         let mut did_remove_blocks = false;
         let bbs = body.basic_blocks_mut();
         for bb_idx in bbs.indices() {

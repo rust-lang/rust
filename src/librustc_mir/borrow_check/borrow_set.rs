@@ -5,7 +5,7 @@ use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor, NonUseContext, MutatingUseContext};
-use rustc::mir::{self, Location, Body, Local};
+use rustc::mir::{self, Location, Body, Local, ReadOnlyBodyCache};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
@@ -90,7 +90,7 @@ crate enum LocalsStateAtExit {
 impl LocalsStateAtExit {
     fn build(
         locals_are_invalidated_at_exit: bool,
-        body: &Body<'tcx>,
+        body: ReadOnlyBodyCache<'_, 'tcx>,
         move_data: &MoveData<'tcx>
     ) -> Self {
         struct HasStorageDead(BitSet<Local>);
@@ -106,7 +106,8 @@ impl LocalsStateAtExit {
         if locals_are_invalidated_at_exit {
             LocalsStateAtExit::AllAreInvalidated
         } else {
-            let mut has_storage_dead = HasStorageDead(BitSet::new_empty(body.local_decls.len()));
+            let mut has_storage_dead
+                = HasStorageDead(BitSet::new_empty(body.local_decls.len()));
             has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
             for move_out in &move_data.moves {
@@ -123,13 +124,13 @@ impl LocalsStateAtExit {
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
         tcx: TyCtxt<'tcx>,
-        body: &Body<'tcx>,
+        body: ReadOnlyBodyCache<'_, 'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>,
     ) -> Self {
         let mut visitor = GatherBorrows {
             tcx,
-            body,
+            body: &body,
             idx_vec: IndexVec::new(),
             location_map: Default::default(),
             activation_map: Default::default(),
@@ -139,7 +140,7 @@ impl<'tcx> BorrowSet<'tcx> {
                 LocalsStateAtExit::build(locals_are_invalidated_at_exit, body, move_data),
         };
 
-        for (block, block_data) in traversal::preorder(body) {
+        for (block, block_data) in traversal::preorder(&body) {
             visitor.visit_basic_block_data(block, block_data);
         }
 

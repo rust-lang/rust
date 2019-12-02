@@ -7,7 +7,7 @@ use crate::borrow_check::nll::ToRegionVid;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
-use rustc::mir::{Body, Local};
+use rustc::mir::{Body, Local, ReadOnlyBodyCache};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::rc::Rc;
@@ -28,7 +28,7 @@ mod trace;
 /// performed before
 pub(super) fn generate<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: &Body<'tcx>,
+    body: ReadOnlyBodyCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -41,9 +41,8 @@ pub(super) fn generate<'tcx>(
         &typeck.borrowck_context.universal_regions,
         &typeck.borrowck_context.constraints.outlives_constraints,
     );
-    let live_locals = compute_live_locals(typeck.tcx(), &free_regions, body);
+    let live_locals = compute_live_locals(typeck.tcx(), &free_regions, &body);
     let facts_enabled = AllFacts::enabled(typeck.tcx());
-
 
     let polonius_drop_used = if facts_enabled {
         let mut drop_used = Vec::new();

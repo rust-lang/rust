@@ -6,7 +6,9 @@ use crate::util::expand_aggregate;
 pub struct Deaggregator;
 
 impl<'tcx> MirPass<'tcx> for Deaggregator {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+    ) {
         let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
         let local_decls = &*local_decls;
         for bb in basic_blocks {
