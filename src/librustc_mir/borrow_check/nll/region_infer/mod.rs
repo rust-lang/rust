@@ -1426,7 +1426,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         region_naming: &mut RegionErrorNamingCtx,
         polonius_output: Rc<PoloniusOutput>,
     ) {
-        debug!("check_polonius_subset_errors: {} subset_errors", polonius_output.subset_errors.len());
+        debug!(
+            "check_polonius_subset_errors: {} subset_errors",
+            polonius_output.subset_errors.len()
+        );
 
         let mut outlives_suggestion = OutlivesSuggestionBuilder::new(mir_def_id, local_names);
 
@@ -1647,10 +1650,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // Grow `shorter_fr` until we find some non-local regions. (We
                 // always will.)  We'll call them `shorter_fr+` -- they're ever
                 // so slightly larger than `shorter_fr`.
-                let shorter_fr_plus =
-                    self.universal_region_relations.non_local_upper_bounds(&shorter_fr);
+                let shorter_fr_plus = self
+                    .universal_region_relations
+                    .non_local_upper_bounds(&shorter_fr);
                 debug!(
-                    "report_or_propagate_universal_region_error: shorter_fr_plus={:?}", shorter_fr_plus
+                    "report_or_propagate_universal_region_error: shorter_fr_plus={:?}",
+                    shorter_fr_plus
                 );
                 for &&fr in &shorter_fr_plus {
                     // Push the constraint `fr-: shorter_fr+`

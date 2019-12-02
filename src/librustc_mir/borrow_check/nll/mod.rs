@@ -235,7 +235,10 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         //  `known_subset` facts.
         for (fr1, fr2) in universal_region_relations.known_outlives() {
             if fr1 != fr2 {
-                debug!("compute_regions: emitting polonius `known_subset` fr1={:?}, fr2={:?}", fr1, fr2);
+                debug!(
+                    "compute_regions: emitting polonius `known_subset` fr1={:?}, fr2={:?}",
+                    fr1, fr2
+                );
                 all_facts.known_subset.push((*fr1, *fr2));
             }
         }
@@ -314,8 +317,15 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     });
 
     // Solve the region constraints.
-    let closure_region_requirements =
-        regioncx.solve(infcx, &body, local_names, upvars, def_id, errors_buffer, polonius_output.clone());
+    let closure_region_requirements = regioncx.solve(
+        infcx,
+        &body,
+        local_names,
+        upvars,
+        def_id,
+        errors_buffer,
+        polonius_output.clone(),
+    );
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
