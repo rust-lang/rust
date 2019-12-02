@@ -46,7 +46,7 @@ pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
 The special `panic_handler` attribute is resolved via `src/librustc/middle/lang_items`.
 The `extract` function converts the `panic_handler` attribute to a `panic_impl` lang item.
 
-Now, we have a matching `panic_impl` lang item in the `libstd`. This function goes
+Now, we have a matching `panic_handler` lang item in the `libstd`. This function goes
 through the same process as the `extern { fn panic_impl }` definition in `libcore`, ending
 up with a symbol name of `rust_begin_unwind`. At link time, the symbol refernce in `libcore`
 will be resolved to the definition of `libstd` (the function called `rust_begin_panic` in the
