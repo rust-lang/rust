@@ -277,6 +277,8 @@ pub fn parse_in_attr<'a, T>(
 ) -> PResult<'a, T> {
     let mut parser = Parser::new(
         sess,
+        // FIXME(#66940, Centril | petrochenkov): refactor this function so it doesn't
+        // require reconstructing and immediately re-parsing delimiters.
         attr.get_normal_item().args.outer_tokens(),
         None,
         false,

@@ -1396,8 +1396,12 @@ pub enum MacArgs {
     /// Delimited arguments - `#[attr()/[]/{}]` or `mac!()/[]/{}`.
     Delimited(DelimSpan, MacDelimiter, TokenStream),
     /// Arguments of a key-value attribute - `#[attr = "value"]`.
-    /// Span belongs to the `=` token, token stream is the "value".
-    Eq(Span, TokenStream),
+    Eq(
+        /// Span of the `=` token.
+        Span,
+        /// Token stream of the "value".
+        TokenStream,
+    ),
 }
 
 impl MacArgs {
@@ -1421,13 +1425,13 @@ impl MacArgs {
     pub fn inner_tokens(&self) -> TokenStream {
         match self {
             MacArgs::Empty => TokenStream::default(),
-            MacArgs::Delimited(.., tokens) => tokens.clone(),
+            MacArgs::Delimited(.., tokens) |
             MacArgs::Eq(.., tokens) => tokens.clone(),
         }
     }
 
     /// Tokens together with the delimiters or `=`.
-    /// Use of this functions generally means that something suboptimal or hacky is happening.
+    /// Use of this method generally means that something suboptimal or hacky is happening.
     pub fn outer_tokens(&self) -> TokenStream {
         match *self {
             MacArgs::Empty => TokenStream::default(),
@@ -1461,12 +1465,12 @@ impl MacDelimiter {
         }
     }
 
-    pub fn from_token(delim: DelimToken) -> MacDelimiter {
+    pub fn from_token(delim: DelimToken) -> Option<MacDelimiter> {
         match delim {
-            token::Paren => MacDelimiter::Parenthesis,
-            token::Bracket => MacDelimiter::Bracket,
-            token::Brace => MacDelimiter::Brace,
-            token::NoDelim => panic!("expected a delimiter"),
+            token::Paren => Some(MacDelimiter::Parenthesis),
+            token::Bracket => Some(MacDelimiter::Bracket),
+            token::Brace => Some(MacDelimiter::Brace),
+            token::NoDelim => None,
         }
     }
 }

@@ -1024,7 +1024,8 @@ impl<'a> Parser<'a> {
                        self.check(&token::OpenDelim(DelimToken::Brace)) {
             match self.parse_token_tree() {
                 TokenTree::Delimited(dspan, delim, tokens) =>
-                    MacArgs::Delimited(dspan, MacDelimiter::from_token(delim), tokens),
+                    // We've confirmed above that there is a delimiter so unwrapping is OK.
+                    MacArgs::Delimited(dspan, MacDelimiter::from_token(delim).unwrap(), tokens),
                 _ => unreachable!(),
             }
         } else if !delimited_only {
