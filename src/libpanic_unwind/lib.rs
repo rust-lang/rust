@@ -36,10 +36,7 @@ use core::raw;
 use core::panic::BoxMeUp;
 
 cfg_if::cfg_if! {
-    if #[cfg(miri)] {
-        #[path = "miri.rs"]
-        mod imp;
-    } else if #[cfg(target_os = "emscripten")] {
+    if #[cfg(target_os = "emscripten")] {
         #[path = "emcc.rs"]
         mod imp;
     } else if #[cfg(target_arch = "wasm32")] {
@@ -94,5 +91,14 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
 #[unwind(allowed)]
 pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
     let payload = payload as *mut &mut dyn BoxMeUp;
-    imp::panic(Box::from_raw((*payload).take_box()))
+    let payload = (*payload).take_box();
+
+    // Miri panic support: cfg'd out of normal builds just to be sure.
+    // When going through normal codegen, `miri_start_panic` is a NOP, so the
+    // Miri-enabled sysroot still supports normal unwinding. But when executed in
+    // Miri, this line initiates unwinding.
+    #[cfg(miri)]
+    core::intrinsics::miri_start_panic(payload);
+
+    imp::panic(Box::from_raw(payload))
 }
