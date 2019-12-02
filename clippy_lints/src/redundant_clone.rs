@@ -208,11 +208,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 
             if !used_later {
                 let span = terminator.source_info.span;
-                let node = if let mir::ClearCrossCrate::Set(scope_local_data) = &mir.source_scope_local_data {
-                    scope_local_data[terminator.source_info.scope].lint_root
-                } else {
-                    unreachable!()
-                };
+                let scope = terminator.source_info.scope;
+                let node = mir.source_scopes[scope]
+                    .local_data
+                    .as_ref()
+                    .assert_crate_local()
+                    .lint_root;
 
                 if_chain! {
                     if let Some(snip) = snippet_opt(cx, span);
