@@ -43,9 +43,9 @@ pub enum MiriMemoryKind {
     C,
     /// Windows `HeapAlloc` memory.
     WinHeap,
-    /// Part of env var emulation.
+    /// Memory for env vars and args, errno and other parts of the machine-managed environment.
     Env,
-    /// Statics.
+    /// Rust statics.
     Static,
 }
 
@@ -216,6 +216,16 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
+        msg: &AssertMessage<'tcx>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        ecx.assert_panic(span, msg, unwind)
+    }
+
+    #[inline(always)]
     fn binary_ptr_op(
         ecx: &rustc_mir::interpret::InterpCx<'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
@@ -243,7 +253,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         let malloc = ty::Instance::mono(ecx.tcx.tcx, malloc);
         ecx.call_function(
             malloc,
-            &[size, align],
+            &[size.into(), align.into()],
             Some(dest),
             // Don't do anything when we are done. The `statement()` function will increment
             // the old stack frame's stmt counter to the next statement, which means that when
@@ -281,20 +291,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn tag_allocation<'b>(
+    fn init_allocation_extra<'b>(
         memory_extra: &MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
-    ) -> (
-        Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>,
-        Self::PointerTag,
-    ) {
+    ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag) {
         let kind = kind.expect("we set our STATIC_KIND so this cannot be None");
         let alloc = alloc.into_owned();
-        let (stacks, base_tag) = if !memory_extra.validate {
-            (None, Tag::Untagged)
-        } else {
+        let (stacks, base_tag) = if memory_extra.validate {
             let (stacks, base_tag) = Stacks::new_allocation(
                 id,
                 alloc.size,
@@ -302,6 +307,9 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for Evaluator<'tcx> {
                 kind,
             );
             (Some(stacks), base_tag)
+        } else {
+            // No stacks, no tag.
+            (None, Tag::Untagged)
         };
         let mut stacked_borrows = memory_extra.stacked_borrows.borrow_mut();
         let alloc: Allocation<Tag, Self::AllocExtra> = alloc.with_tags_and_extra(

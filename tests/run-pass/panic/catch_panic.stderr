@@ -1,0 +1,19 @@
+thread 'main' panicked at 'Hello from panic: std', $DIR/catch_panic.rs:50:21
+Caught panic message (&str): Hello from panic: std
+thread 'main' panicked at 'Hello from panic: 1', $DIR/catch_panic.rs:51:20
+Caught panic message (String): Hello from panic: 1
+thread 'main' panicked at 'Hello from panic: 2', $DIR/catch_panic.rs:52:20
+Caught panic message (String): Hello from panic: 2
+thread 'main' panicked at 'Box<Any>', $DIR/catch_panic.rs:53:21
+Failed get caught panic message.
+thread 'main' panicked at 'Hello from panic: core', $DIR/catch_panic.rs:56:21
+Caught panic message (String): Hello from panic: core
+thread 'main' panicked at 'Hello from panic: 5', $DIR/catch_panic.rs:57:20
+Caught panic message (String): Hello from panic: 5
+thread 'main' panicked at 'Hello from panic: 6', $DIR/catch_panic.rs:58:20
+Caught panic message (String): Hello from panic: 6
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 4', $DIR/catch_panic.rs:61:34
+Caught panic message (String): index out of bounds: the len is 3 but the index is 4
+thread 'main' panicked at 'attempt to divide by zero', $DIR/catch_panic.rs:62:34
+Caught panic message (String): attempt to divide by zero
+Success!

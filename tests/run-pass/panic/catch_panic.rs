@@ -1,4 +1,6 @@
 // ignore-windows: Unwind panicking does not currently work on Windows
+#![allow(const_err)]
+
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::cell::Cell;
 
@@ -44,14 +46,20 @@ fn main() {
         prev(panic_info)
     }));
 
+    // Std panics
     test(|_old_val| std::panic!("Hello from panic: std"));
     test(|old_val| std::panic!(format!("Hello from panic: {:?}", old_val)));
     test(|old_val| std::panic!("Hello from panic: {:?}", old_val));
     test(|_old_val| std::panic!(1337));
 
+    // Core panics
     test(|_old_val| core::panic!("Hello from panic: core"));
     test(|old_val| core::panic!(&format!("Hello from panic: {:?}", old_val)));
     test(|old_val| core::panic!("Hello from panic: {:?}", old_val));
+
+    // Built-in panics
+    test(|_old_val| { let _val = [0, 1, 2][4]; loop {} });
+    test(|_old_val| { let _val = 1/0; loop {} });
 
     // Cleanup: reset to default hook.
     drop(std::panic::take_hook());

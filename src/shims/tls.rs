@@ -150,7 +150,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let ret_place = MPlaceTy::dangling(this.layout_of(this.tcx.mk_unit())?, this).into();
             this.call_function(
                 instance,
-                &[ptr],
+                &[ptr.into()],
                 Some(ret_place),
                 StackPopCleanup::None { cleanup: true },
             )?;

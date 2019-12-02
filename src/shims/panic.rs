@@ -11,11 +11,12 @@
 //!   gets popped *during unwinding*, we take the panic payload and store it according to the extra
 //!   metadata we remembered when pushing said frame.
 
+use syntax::source_map::Span;
 use rustc::mir;
-use crate::*;
-use super::machine::FrameData;
+use rustc::ty::{self, layout::LayoutOf};
 use rustc_target::spec::PanicStrategy;
-use crate::rustc_target::abi::LayoutOf;
+
+use crate::*;
 
 /// Holds all of the relevant data for a call to
 /// `__rust_maybe_catch_panic`.
@@ -85,7 +86,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             MPlaceTy::dangling(this.layout_of(tcx.mk_unit())?, this).into();
         this.call_function(
             f_instance,
-            &[f_arg],
+            &[f_arg.into()],
             Some(ret_place),
             // Directly return to caller.
             StackPopCleanup::Goto { ret: Some(ret), unwind: None },
@@ -149,5 +150,59 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         };
         this.memory.extra.stacked_borrows.borrow_mut().end_call(extra.call_id);
         Ok(res)
+    }
+
+    fn assert_panic(
+        &mut self,
+        span: Span,
+        msg: &AssertMessage<'tcx>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        use rustc::mir::interpret::PanicInfo::*;
+        let this = self.eval_context_mut();
+
+        match msg {
+            BoundsCheck { ref index, ref len } => {
+                // Forward to `panic_bounds_check` lang item.
+
+                // First arg: Caller location.
+                let location = this.alloc_caller_location_for_span(span);
+                // Second arg: index.
+                let index = this.read_scalar(this.eval_operand(index, None)?)?;
+                // Third arg: len.
+                let len = this.read_scalar(this.eval_operand(len, None)?)?;
+
+                // Call the lang item.
+                let panic_bounds_check = this.tcx.lang_items().panic_bounds_check_fn().unwrap();
+                let panic_bounds_check = ty::Instance::mono(this.tcx.tcx, panic_bounds_check);
+                this.call_function(
+                    panic_bounds_check,
+                    &[location.ptr.into(), index.into(), len.into()],
+                    None,
+                    StackPopCleanup::Goto { ret: None, unwind },
+                )?;
+            }
+            _ => {
+                // Forward everything else to `panic` lang item.
+
+                // First arg: Message.
+                let msg = msg.description();
+                let msg = this.allocate_str(msg, MiriMemoryKind::Env.into());
+
+                // Second arg: Caller location.
+                let location = this.alloc_caller_location_for_span(span);
+
+                // Call the lang item.
+                let panic = this.tcx.lang_items().panic_fn().unwrap();
+                let panic = ty::Instance::mono(this.tcx.tcx, panic);
+                this.call_function(
+                    panic,
+                    &[msg.to_ref(), location.ptr.into()],
+                    None,
+                    StackPopCleanup::Goto { ret: None, unwind },
+                )?;
+            }
+        }
+        Ok(())
     }
 }

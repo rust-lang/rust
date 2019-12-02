@@ -205,7 +205,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::C.into(),
                     );
-                    this.write_scalar(Scalar::Ptr(ptr), ret.into())?;
+                    this.write_scalar(ptr, ret.into())?;
                 }
                 this.write_null(dest)?;
             }
@@ -234,7 +234,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     Align::from_bytes(align).unwrap(),
                     MiriMemoryKind::Rust.into(),
                 );
-                this.write_scalar(Scalar::Ptr(ptr), dest)?;
+                this.write_scalar(ptr, dest)?;
             }
             "__rust_alloc_zeroed" => {
                 let size = this.read_scalar(args[0])?.to_machine_usize(this)?;
@@ -254,7 +254,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                 this.memory
                     .write_bytes(ptr.into(), iter::repeat(0u8).take(size as usize))
                     .unwrap();
-                this.write_scalar(Scalar::Ptr(ptr), dest)?;
+                this.write_scalar(ptr, dest)?;
             }
             "__rust_dealloc" => {
                 let ptr = this.read_scalar(args[0])?.not_undef()?;
@@ -295,7 +295,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     align,
                     MiriMemoryKind::Rust.into(),
                 )?;
-                this.write_scalar(Scalar::Ptr(new_ptr), dest)?;
+                this.write_scalar(new_ptr, dest)?;
             }
 
             "syscall" => {

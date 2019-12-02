@@ -472,12 +472,17 @@ impl Stacks {
                 // and in particular, *all* raw pointers.
                 (Tag::Tagged(extra.borrow_mut().new_ptr()), Permission::Unique),
             MemoryKind::Machine(MiriMemoryKind::Static) =>
+                // Static memory can be referenced by "global" pointers from `tcx`.
+                // Thus we call `static_base_ptr` such that the global pointers get the same tag
+                // as what we use here.
+                // The base pointer is not unique, so the base permission is `SharedReadWrite`.
                 (extra.borrow_mut().static_base_ptr(id), Permission::SharedReadWrite),
             _ =>
+                // Everything else we handle entirely untagged for now.
+                // FIXME: experiment with more precise tracking.
                 (Tag::Untagged, Permission::SharedReadWrite),
         };
-        let stack = Stacks::new(size, perm, tag, extra);
-        (stack, tag)
+        (Stacks::new(size, perm, tag, extra), tag)
     }
 
     #[inline(always)]
@@ -591,7 +596,12 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Compute new borrow.
         let new_tag = match kind {
+            // Give up tracking for raw pointers.
+            // FIXME: Experiment with more precise tracking. Blocked on `&raw`
+            // because `Rc::into_raw` currently creates intermediate references,
+            // breaking `Rc::from_raw`.
             RefKind::Raw { .. } => Tag::Untagged,
+            // All other pointesr are properly tracked.
             _ => Tag::Tagged(this.memory.extra.stacked_borrows.borrow_mut().new_ptr()),
         };
 

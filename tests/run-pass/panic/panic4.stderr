@@ -1,0 +1,1 @@
+thread 'main' panicked at '42-panicking from libcore', $DIR/panic4.rs:3:5

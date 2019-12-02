@@ -93,7 +93,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             arg.push(0);
             argvs.push(
                 ecx.memory
-                    .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Static.into()),
+                    .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Env.into()),
             );
         }
         // Make an array with all these pointers, in the Miri memory.
@@ -103,7 +103,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         let argvs_place = ecx.allocate(argvs_layout, MiriMemoryKind::Env.into());
         for (idx, arg) in argvs.into_iter().enumerate() {
             let place = ecx.mplace_field(argvs_place, idx as u64)?;
-            ecx.write_scalar(Scalar::Ptr(arg), place.into())?;
+            ecx.write_scalar(arg, place.into())?;
         }
         ecx.memory
             .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
@@ -144,19 +144,19 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     // Return place (in static memory so that it does not count as leak).
     let ret_place = ecx.allocate(
         ecx.layout_of(tcx.types.isize)?,
-        MiriMemoryKind::Static.into(),
+        MiriMemoryKind::Env.into(),
     );
     // Call start function.
     ecx.call_function(
         start_instance,
-        &[main_ptr.into(), argc, argv],
+        &[main_ptr.into(), argc.into(), argv.into()],
         Some(ret_place.into()),
         StackPopCleanup::None { cleanup: true },
     )?;
 
     // Set the last_error to 0
     let errno_layout = ecx.layout_of(tcx.types.u32)?;
-    let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Static.into());
+    let errno_place = ecx.allocate(errno_layout, MiriMemoryKind::Env.into());
     ecx.write_scalar(Scalar::from_u32(0), errno_place.into())?;
     ecx.machine.last_error = Some(errno_place);
 
@@ -217,16 +217,13 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                 }
                 err_unsup!(NoMirFor(..)) =>
                     format!("{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.", e),
+                InterpError::InvalidProgram(_) =>
+                    bug!("This error should be impossible in Miri: {}", e),
                 _ => e.to_string()
             };
             e.print_backtrace();
             if let Some(frame) = ecx.stack().last() {
-                let block = &frame.body.basic_blocks()[frame.block.unwrap()];
-                let span = if frame.stmt < block.statements.len() {
-                    block.statements[frame.stmt].source_info.span
-                } else {
-                    block.terminator().source_info.span
-                };
+                let span = frame.current_source_info().unwrap().span;
 
                 let msg = format!("Miri evaluation error: {}", msg);
                 let mut err = ecx.tcx.sess.struct_span_err(span, msg.as_str());

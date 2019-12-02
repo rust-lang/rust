@@ -124,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     fn call_function(
         &mut self,
         f: ty::Instance<'tcx>,
-        args: &[Scalar<Tag>],
+        args: &[Immediate<Tag>],
         dest: Option<PlaceTy<'tcx, Tag>>,
         stack_pop: StackPopCleanup,
     ) -> InterpResult<'tcx> {
@@ -132,9 +132,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         // Push frame.
         let mir = this.load_mir(f.def, None)?;
+        let span = this.stack().last()
+            .and_then(Frame::current_source_info)
+            .map(|si| si.span)
+            .unwrap_or(DUMMY_SP);
         this.push_stack_frame(
             f,
-            DUMMY_SP, // There is no call site.
+            span,
             mir,
             dest,
             stack_pop,
@@ -146,7 +150,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             let callee_arg = this.local_place(
                 callee_args.next().expect("callee has fewer arguments than expected")
             )?;
-            this.write_scalar(*arg, callee_arg)?;
+            this.write_immediate(*arg, callee_arg)?;
         }
         callee_args.next().expect_none("callee has more arguments than expected");
 
