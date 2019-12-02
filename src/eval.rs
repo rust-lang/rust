@@ -24,6 +24,12 @@ pub struct MiriConfig {
     pub seed: Option<u64>,
 }
 
+/// Details of premature program termination.
+pub enum TerminationInfo {
+    Exit(i64),
+    Abort,
+}
+
 /// Returns a freshly created `InterpCx`, along with an `MPlaceTy` representing
 /// the location where the return value of the `start` lang item will be
 /// written to.
@@ -200,7 +206,15 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
         Err(mut e) => {
             // Special treatment for some error kinds
             let msg = match e.kind {
-                InterpError::Exit(code) => return Some(code.into()),
+                InterpError::MachineStop(ref info) => {
+                    let info = info.downcast_ref::<TerminationInfo>()
+                        .expect("invalid MachineStop payload");
+                    match info {
+                        TerminationInfo::Exit(code) => return Some(*code),
+                        TerminationInfo::Abort =>
+                            format!("The program aborted execution")
+                    }
+                }
                 err_unsup!(NoMirFor(..)) =>
                     format!("{}. Did you set `MIRI_SYSROOT` to a Miri-enabled sysroot? You can prepare one with `cargo miri setup`.", e),
                 _ => e.to_string()
