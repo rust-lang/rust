@@ -154,8 +154,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             "exit" | "ExitProcess" => {
                 // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                 let code = this.read_scalar(args[0])?.to_i32()?;
-                let ti = Box::new(TerminationInfo::Exit(code.into()));
-                return Err(InterpError::MachineStop(ti).into());
+                throw_machine_stop!(TerminationInfo::Exit(code.into()));
             }
             _ => {
                 if let Some(p) = ret {
