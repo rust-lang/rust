@@ -24,12 +24,13 @@ mod var_name;
 mod region_name;
 mod outlives_suggestion;
 
-crate mod conflict_errors;
-crate mod move_errors;
-crate mod mutability_errors;
-crate mod region_errors;
-crate mod explain_borrow;
+mod conflict_errors;
+mod move_errors;
+mod mutability_errors;
+mod region_errors;
+mod explain_borrow;
 
+crate use mutability_errors::AccessKind;
 crate use region_name::{RegionName, RegionNameSource, RegionErrorNamingCtx};
 crate use region_errors::{ErrorReportingCtx, ErrorConstraintInfo};
 crate use outlives_suggestion::OutlivesSuggestionBuilder;

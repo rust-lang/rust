@@ -46,7 +46,7 @@ use self::flows::Flows;
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
-use self::diagnostics::mutability_errors::AccessKind;
+use self::diagnostics::AccessKind;
 
 use self::path_utils::*;
 
