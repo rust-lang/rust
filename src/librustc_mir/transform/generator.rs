@@ -757,10 +757,11 @@ fn compute_layout<'tcx>(
     GeneratorLayout<'tcx>,
     FxHashMap<BasicBlock, liveness::LiveVarSet>,
 ) {
+
     // Use a liveness analysis to compute locals which are live across a suspension point
-    let LivenessInfo {
+    let (LivenessInfo {
         live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness
-    } = locals_live_across_suspend_points(tcx, read_only!(body), source, movable);
+    }, tys) = compute_field_tys(tcx, source, movable, read_only!(body));
 
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
@@ -789,10 +790,8 @@ fn compute_layout<'tcx>(
 
     // Gather live local types and their indices.
     let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
-    let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
     for (idx, local) in live_locals.iter().enumerate() {
         locals.push(local);
-        tys.push(body.local_decls[local].ty);
         debug!("generator saved local {:?} => {:?}", GeneratorSavedLocal::from(idx), local);
     }
 
@@ -1166,6 +1165,40 @@ where
             (point.state, block)
         })
     }).collect()
+}
+
+pub(super) fn generator_interior_tys<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    body: &BodyCache<'tcx>
+) -> Vec<Ty<'tcx>> {
+    // The first argument is the generator type passed by value
+    //let gen_ty = body.local_decls.raw[1].tyi;
+    let gen_ty = tcx.type_of(def_id);
+    let movable = match gen_ty.kind {
+        ty::Generator(_, _, movability) => {
+            movability == hir::Movability::Movable
+        },
+        _ => bug!("Unexpected type {:?}", gen_ty)
+    };
+
+    compute_field_tys(tcx, MirSource::item(def_id), movable, body.unwrap_read_only()).1.raw
+}
+
+fn compute_field_tys(
+    tcx: TyCtxt<'tcx>,
+    source: MirSource<'tcx>,
+    movable: bool,
+    body: ReadOnlyBodyCache<'_, 'tcx>
+) -> (LivenessInfo, IndexVec<GeneratorSavedLocal, Ty<'tcx>>) {
+    let liveness_info = locals_live_across_suspend_points(
+        tcx, body, source, movable
+    );
+    let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
+    for local in liveness_info.live_locals.iter() {
+        tys.push(body.local_decls[local].ty);
+    }
+    (liveness_info, tys)
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {

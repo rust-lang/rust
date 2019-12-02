@@ -2755,9 +2755,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::GeneratorWitness(did, types) => {
                 // Note that we need to use optimized_mir here,
                 // in order to have the `StateTransform` pass run
-                let gen_mir = self.tcx().optimized_mir(did);
+                /*let gen_mir = self.tcx().optimized_mir(did);
                 let gen_layout = gen_mir.generator_layout.as_ref()
-                    .expect("Missing generator layout!");
+                    .expect("Missing generator layout!");*/
 
                 // We need to compare the types from the GeneratoWitness
                 // to the types from the MIR. Since the generator MIR (specifically
@@ -2806,7 +2806,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let mut used_types = Vec::new();
 
-                for ty in &gen_layout.field_tys {
+                // Note - while we use `optimized_mir`, the .generator_interior_tys
+                // field is only set during construction of the original MIR,
+                // and is unaffected by optimizations
+                let interior_tys = self.tcx().optimized_mir(did).generator_interior_tys
+                    .as_ref().expect("Missing generator interior types!");
+
+                //for ty in &gen_layout.field_tys {
+                for ty in interior_tys {
                     if let Some(witness_ty) = erased_types.get(&self.tcx().erase_regions(ty)) {
                         used_types.push(**witness_ty);
                     }

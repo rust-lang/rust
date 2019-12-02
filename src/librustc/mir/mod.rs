@@ -38,7 +38,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
-pub use crate::mir::cache::{BodyCache, ReadOnlyBodyCache};
+pub use crate::mir::cache::{Cache, BodyCache, ReadOnlyBodyCache};
 pub use crate::read_only;
 
 mod cache;
@@ -117,6 +117,8 @@ pub struct Body<'tcx> {
     /// to be created.
     pub generator_kind: Option<GeneratorKind>,
 
+    pub generator_interior_tys: Option<Vec<Ty<'tcx>>>,
+
     /// Declarations of locals.
     ///
     /// The first local is the return value pointer, followed by `arg_count`
@@ -184,6 +186,7 @@ impl<'tcx> Body<'tcx> {
             generator_drop: None,
             generator_layout: None,
             generator_kind,
+            generator_interior_tys: None,
             local_decls,
             user_type_annotations,
             arg_count,

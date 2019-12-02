@@ -2,7 +2,7 @@ use crate::{build, shim};
 use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::mir::{BodyCache, MirPhase, Promoted, ConstQualifs};
-use rustc::ty::{TyCtxt, InstanceDef, TypeFoldable};
+use rustc::ty::{self, TyCtxt, InstanceDef, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
 use rustc::hir;
@@ -98,7 +98,12 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
 }
 
 fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
-    let mir = build::mir_build(tcx, def_id);
+    let mut mir = build::mir_build(tcx, def_id);
+    if let ty::Generator(..) = tcx.type_of(def_id).kind {
+        let interior_types = generator::generator_interior_tys(tcx, def_id, &mir);
+        mir.generator_interior_tys = Some(interior_types);
+    }
+
     tcx.alloc_steal_mir(mir)
 }
 
