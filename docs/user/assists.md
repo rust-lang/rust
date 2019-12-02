@@ -3,6 +3,24 @@
 Cursor position or selection is signified by `┃` character.
 
 
+## `add_custom_impl`
+
+Adds impl block for derived trait.
+
+```rust
+// BEFORE
+#[derive(Deb┃ug, Display)]
+struct S;
+
+// AFTER
+#[derive(Display)]
+struct S;
+
+impl Debug for S {
+
+}
+```
+
 ## `add_derive`
 
 Adds a new `#[derive()]` clause to a struct or enum.
