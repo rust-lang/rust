@@ -125,7 +125,7 @@ impl<Tag> MemPlace<Tag> {
         Self::from_scalar_ptr(ptr.into(), align)
     }
 
-    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
+    /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
     /// This is the inverse of `ref_to_mplace`.
     #[inline(always)]
     pub fn to_ref(self) -> Immediate<Tag> {
@@ -278,7 +278,7 @@ where
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<Tag>,
 {
-    /// Take a value, which represents a (thin or fat) reference, and make it a place.
+    /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
     ///
     /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
@@ -694,6 +694,7 @@ where
     }
 
     /// Write a scalar to a place
+    #[inline(always)]
     pub fn write_scalar(
         &mut self,
         val: impl Into<ScalarMaybeUndef<M::PointerTag>>,
@@ -1039,6 +1040,24 @@ where
     ) -> MPlaceTy<'tcx, M::PointerTag> {
         let ptr = self.memory.allocate(layout.size, layout.align.abi, kind);
         MPlaceTy::from_aligned_ptr(ptr, layout)
+    }
+
+    /// Returns a wide MPlace.
+    pub fn allocate_str(
+        &mut self,
+        str: &str,
+        kind: MemoryKind<M::MemoryKinds>,
+    ) -> MPlaceTy<'tcx, M::PointerTag> {
+        let ptr = self.memory.allocate_static_bytes(str.as_bytes(), kind);
+        let meta = Scalar::from_uint(str.len() as u128, self.pointer_size());
+        let mplace = MemPlace {
+            ptr: ptr.into(),
+            align: Align::from_bytes(1).unwrap(),
+            meta: Some(meta),
+        };
+
+        let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
+        MPlaceTy { mplace, layout }
     }
 
     pub fn write_discriminant_index(

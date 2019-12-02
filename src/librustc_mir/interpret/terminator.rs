@@ -7,8 +7,8 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    GlobalId, InterpResult, PointerArithmetic,
-    InterpCx, Machine, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
+    GlobalId, InterpResult, InterpCx, Machine,
+    OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
@@ -115,40 +115,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 expected,
                 ref msg,
                 target,
-                ..
+                cleanup,
             } => {
                 let cond_val = self.read_immediate(self.eval_operand(cond, None)?)?
                     .to_scalar()?.to_bool()?;
                 if expected == cond_val {
                     self.go_to_block(target);
                 } else {
-                    // Compute error message
-                    use rustc::mir::interpret::PanicInfo::*;
-                    return Err(match msg {
-                        BoundsCheck { ref len, ref index } => {
-                            let len = self
-                                .read_immediate(self.eval_operand(len, None)?)
-                                .expect("can't eval len")
-                                .to_scalar()?
-                                .to_bits(self.memory.pointer_size())? as u64;
-                            let index = self
-                                .read_immediate(self.eval_operand(index, None)?)
-                                .expect("can't eval index")
-                                .to_scalar()?
-                                .to_bits(self.memory.pointer_size())? as u64;
-                            err_panic!(BoundsCheck { len, index })
-                        }
-                        Overflow(op) => err_panic!(Overflow(*op)),
-                        OverflowNeg => err_panic!(OverflowNeg),
-                        DivisionByZero => err_panic!(DivisionByZero),
-                        RemainderByZero => err_panic!(RemainderByZero),
-                        ResumedAfterReturn(generator_kind)
-                            => err_panic!(ResumedAfterReturn(*generator_kind)),
-                        ResumedAfterPanic(generator_kind)
-                            => err_panic!(ResumedAfterPanic(*generator_kind)),
-                        Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
-                    }
-                    .into());
+                    M::assert_panic(self, terminator.source_info.span, msg, cleanup)?;
                 }
             }
 
@@ -164,15 +138,21 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 return Ok(())
             },
 
+            // It is UB to ever encounter this.
+            Unreachable => throw_ub!(Unreachable),
+
+            // These should never occur for MIR we actually run.
+            DropAndReplace { .. } |
+            FalseEdges { .. } |
+            FalseUnwind { .. } =>
+                bug!("{:#?} should have been eliminated by MIR pass", terminator.kind),
+
+            // These are not (yet) supported. It is unclear if they even can occur in
+            // MIR that we actually run.
             Yield { .. } |
             GeneratorDrop |
-            DropAndReplace { .. } |
-            Abort => unimplemented!("{:#?}", terminator.kind),
-            FalseEdges { .. } => bug!("should have been eliminated by\
-                                      `simplify_branches` mir pass"),
-            FalseUnwind { .. } => bug!("should have been eliminated by\
-                                       `simplify_branches` mir pass"),
-            Unreachable => throw_ub!(Unreachable),
+            Abort =>
+                throw_unsup_format!("Unsupported terminator kind: {:#?}", terminator.kind),
         }
 
         Ok(())

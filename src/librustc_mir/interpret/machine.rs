@@ -11,7 +11,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax_pos::Span;
 
 use super::{
-    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
+    Allocation, AllocId, InterpResult, Scalar, AllocationExtra, AssertMessage,
     InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
     Frame, Operand,
 };
@@ -175,6 +175,14 @@ pub trait Machine<'mir, 'tcx>: Sized {
         unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
+    /// Called to evaluate `Assert` MIR terminators that trigger a panic.
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
+        msg: &AssertMessage<'tcx>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
+
     /// Called for read access to a foreign static item.
     ///
     /// This will only be called once per static and machine; the result is cached in
@@ -233,20 +241,19 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     ///
-    /// For static allocations, the tag returned must be the same as the one returned by
-    /// `tag_static_base_pointer`.
-    fn tag_allocation<'b>(
+    /// Also return the "base" tag to use for this allocation: the one that is used for direct
+    /// accesses to this allocation. If `kind == STATIC_KIND`, this tag must be consistent
+    /// with `tag_static_base_pointer`.
+    fn init_allocation_extra<'b>(
         memory_extra: &Self::MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
-    /// Return the "base" tag for the given static allocation: the one that is used for direct
-    /// accesses to this static/const/fn allocation.
-    ///
-    /// Be aware that requesting the `Allocation` for that `id` will lead to cycles
-    /// for cyclic statics!
+    /// Return the "base" tag for the given *static* allocation: the one that is used for direct
+    /// accesses to this static/const/fn allocation. If `id` is not a static allocation,
+    /// this will return an unusable tag (i.e., accesses will be UB)!
     fn tag_static_base_pointer(
         memory_extra: &Self::MemoryExtra,
         id: AllocId,

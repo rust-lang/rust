@@ -110,13 +110,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         match intrinsic_name {
             "caller_location" => {
-                let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-                let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
-                let location = self.alloc_caller_location(
-                    Symbol::intern(&caller.file.name.to_string()),
-                    caller.line as u32,
-                    caller.col_display as u32 + 1,
-                )?;
+                let location = self.alloc_caller_location_for_span(span);
                 self.write_scalar(location.ptr, dest)?;
             }
 

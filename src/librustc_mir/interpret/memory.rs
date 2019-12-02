@@ -143,6 +143,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
+    /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
+    /// the *canonical* machine pointer to the allocation.  Must never be used
+    /// for any other pointers!
+    ///
+    /// This represents a *direct* access to that memory, as opposed to access
+    /// through a pointer that was created by the program.
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
         ptr.with_tag(M::tag_static_base_pointer(&self.extra, ptr.alloc_id))
@@ -191,7 +197,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
         let id = self.tcx.alloc_map.lock().reserve();
-        let (alloc, tag) = M::tag_allocation(&self.extra, id, Cow::Owned(alloc), Some(kind));
+        debug_assert_ne!(Some(kind), M::STATIC_KIND.map(MemoryKind::Machine),
+            "dynamically allocating static memory");
+        let (alloc, tag) = M::init_allocation_extra(&self.extra, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
         Pointer::from(id).with_tag(tag)
     }
@@ -350,7 +358,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             sptr
         } else {
             // A "real" access, we must get a pointer.
-            Scalar::Ptr(self.force_ptr(sptr)?)
+            Scalar::from(self.force_ptr(sptr)?)
         };
         Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
             Ok(bits) => {
@@ -473,14 +481,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 }
             }
         };
-        // We got tcx memory. Let the machine figure out whether and how to
-        // turn that into memory with the right pointer tag.
-        Ok(M::tag_allocation(
+        // We got tcx memory. Let the machine initialize its "extra" stuff.
+        let (alloc, tag) = M::init_allocation_extra(
             memory_extra,
             id, // always use the ID we got as input, not the "hidden" one.
             alloc,
             M::STATIC_KIND.map(MemoryKind::Machine),
-        ).0)
+        );
+        debug_assert_eq!(tag, M::tag_static_base_pointer(memory_extra, id));
+        Ok(alloc)
     }
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.

@@ -471,6 +471,13 @@ impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
     }
 }
 
+impl<Tag> From<Pointer<Tag>> for ScalarMaybeUndef<Tag> {
+    #[inline(always)]
+    fn from(s: Pointer<Tag>) -> Self {
+        ScalarMaybeUndef::Scalar(s.into())
+    }
+}
+
 impl<Tag: fmt::Debug, Id: fmt::Debug> fmt::Debug for ScalarMaybeUndef<Tag, Id> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
