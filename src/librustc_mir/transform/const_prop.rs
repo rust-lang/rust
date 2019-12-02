@@ -377,7 +377,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     InterpError::*
                 };
                 match error.kind {
-                    Exit(_) => bug!("the CTFE program cannot exit"),
+                    MachineStop(_) => bug!("ConstProp does not stop"),
 
                     // Some error shouldn't come up because creating them causes
                     // an allocation, which we should avoid. When that happens,
