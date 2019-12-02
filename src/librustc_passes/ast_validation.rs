@@ -608,26 +608,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     }
                 }
                 self.no_questions_in_bounds(bounds, "supertraits", true);
-                for trait_item in trait_items {
-                    if let TraitItemKind::Method(ref sig, ref block) = trait_item.kind {
-                        self.check_fn_decl(&sig.decl);
-                        self.check_trait_fn_not_async(trait_item.span, sig.header.asyncness.node);
-                        self.check_trait_fn_not_const(sig.header.constness);
-                        if block.is_none() {
-                            Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
-                                if mut_ident {
-                                    self.lint_buffer.buffer_lint(
-                                        lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
-                                        trait_item.id, span,
-                                        "patterns aren't allowed in methods without bodies");
-                                } else {
-                                    struct_span_err!(self.session, span, E0642,
-                                        "patterns aren't allowed in methods without bodies").emit();
-                                }
-                            });
-                        }
-                    }
-                }
             }
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (cf. issue #35584).
@@ -812,6 +792,29 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     fn visit_trait_item(&mut self, ti: &'a AssocItem) {
         self.invalid_visibility(&ti.vis, None);
         self.check_defaultness(ti.span, ti.defaultness);
+
+        if let AssocItemKind::Method(sig, block) = &ti.kind {
+            self.check_fn_decl(&sig.decl);
+            self.check_trait_fn_not_async(ti.span, sig.header.asyncness.node);
+            self.check_trait_fn_not_const(sig.header.constness);
+            if block.is_none() {
+                Self::check_decl_no_pat(&sig.decl, |span, mut_ident| {
+                    if mut_ident {
+                        self.lint_buffer.buffer_lint(
+                            lint::builtin::PATTERNS_IN_FNS_WITHOUT_BODY,
+                            ti.id, span,
+                            "patterns aren't allowed in methods without bodies"
+                        );
+                    } else {
+                        struct_span_err!(
+                            self.session, span, E0642,
+                            "patterns aren't allowed in methods without bodies"
+                        ).emit();
+                    }
+                });
+            }
+        }
+
         visit::walk_trait_item(self, ti);
     }
 
