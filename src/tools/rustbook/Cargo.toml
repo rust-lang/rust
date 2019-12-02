@@ -6,12 +6,11 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [features]
-linkcheck = ["mdbook-linkcheck"]
+linkcheck = []
 
 [dependencies]
 clap = "2.25.0"
 failure = "0.1"
-mdbook-linkcheck = { version = "0.3.0", optional = true }
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
@@ -19,6 +18,6 @@ mdbook-linkcheck = { version = "0.3.0", optional = true }
 rustc-workspace-hack = "1.0.0"
 
 [dependencies.mdbook]
-version = "0.3.0"
+version = "0.3.5"
 default-features = false
 features = ["search"]
