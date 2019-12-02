@@ -16,7 +16,7 @@ use rustc::hir::CodegenFnAttrFlags;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::ty::subst::{SubstsRef, GenericArgKind};
 
-use crate::abi::Abi;
+use crate::abi::FnAbi;
 use crate::common::CodegenCx;
 use crate::builder::Builder;
 use crate::value::Value;
@@ -280,7 +280,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_function_debug_context(
         &self,
         instance: Instance<'tcx>,
-        sig: ty::FnSig<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         llfn: &'ll Value,
         mir: &mir::Body<'_>,
     ) -> Option<FunctionDebugContext<&'ll DIScope>> {
@@ -308,7 +308,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         let file_metadata = file_metadata(self, &loc.file.name, def_id.krate);
 
         let function_type_metadata = unsafe {
-            let fn_signature = get_function_signature(self, sig);
+            let fn_signature = get_function_signature(self, fn_abi);
             llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(self), file_metadata, fn_signature)
         };
 
@@ -338,7 +338,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let mut flags = DIFlags::FlagPrototyped;
 
-        if self.layout_of(sig.output()).abi.is_uninhabited() {
+        if fn_abi.ret.layout.abi.is_uninhabited() {
             flags |= DIFlags::FlagNoReturn;
         }
 
@@ -392,25 +392,20 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         fn get_function_signature<'ll, 'tcx>(
             cx: &CodegenCx<'ll, 'tcx>,
-            sig: ty::FnSig<'tcx>,
+            fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         ) -> &'ll DIArray {
             if cx.sess().opts.debuginfo == DebugInfo::Limited {
                 return create_DIArray(DIB(cx), &[]);
             }
 
-            let mut signature = Vec::with_capacity(sig.inputs().len() + 1);
+            let mut signature = Vec::with_capacity(fn_abi.args.len() + 1);
 
             // Return type -- llvm::DIBuilder wants this at index 0
-            signature.push(match sig.output().kind {
-                ty::Tuple(ref tys) if tys.is_empty() => None,
-                _ => Some(type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP))
-            });
-
-            let inputs = if sig.abi == Abi::RustCall {
-                &sig.inputs()[..sig.inputs().len() - 1]
+            signature.push(if fn_abi.ret.is_ignore() {
+                None
             } else {
-                sig.inputs()
-            };
+                Some(type_metadata(cx, fn_abi.ret.layout.ty, syntax_pos::DUMMY_SP))
+            });
 
             // Arguments types
             if cx.sess().target.target.options.is_like_msvc {
@@ -424,7 +419,8 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 // and a function `fn bar(x: [(); 7])` as `fn bar(x: *const ())`.
                 // This transformed type is wrong, but these function types are
                 // already inaccurate due to ABI adjustments (see #42800).
-                signature.extend(inputs.iter().map(|&t| {
+                signature.extend(fn_abi.args.iter().map(|arg| {
+                    let t = arg.layout.ty;
                     let t = match t.kind {
                         ty::Array(ct, _)
                             if (ct == cx.tcx.types.u8) || cx.layout_of(ct).is_zst() => {
@@ -435,19 +431,9 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                     Some(type_metadata(cx, t, syntax_pos::DUMMY_SP))
                 }));
             } else {
-                signature.extend(inputs.iter().map(|t| {
-                    Some(type_metadata(cx, t, syntax_pos::DUMMY_SP))
+                signature.extend(fn_abi.args.iter().map(|arg| {
+                    Some(type_metadata(cx, arg.layout.ty, syntax_pos::DUMMY_SP))
                 }));
-            }
-
-            if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
-                if let ty::Tuple(args) = sig.inputs()[sig.inputs().len() - 1].kind {
-                    signature.extend(
-                        args.iter().map(|argument_type| {
-                            Some(type_metadata(cx, argument_type.expect_ty(), syntax_pos::DUMMY_SP))
-                        })
-                    );
-                }
             }
 
             create_DIArray(DIB(cx), &signature[..])
