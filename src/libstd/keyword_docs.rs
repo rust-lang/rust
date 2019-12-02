@@ -814,7 +814,7 @@ mod loop_keyword { }
 ///
 /// `match` can be used to run code conditionally. Every pattern must
 /// be handled exhaustively either explicitly or by using wildcards like
-/// `_` in the `match`. Since `match` is an expression values can also be
+/// `_` in the `match`. Since `match` is an expression, values can also be
 /// returned.
 ///
 /// ```rust
@@ -874,7 +874,7 @@ mod mod_keyword { }
 ///
 /// `move` converts any variables captured by reference or mutable reference
 /// to owned by value variables. The three [`Fn` trait]'s mirror the ways to capture
-/// variables, when `move` is used the closures is represented by the `FnOnce` trait.
+/// variables, when `move` is used, the closures is represented by the `FnOnce` trait.
 ///
 /// ```rust
 /// let capture = "hello";
