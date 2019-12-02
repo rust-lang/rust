@@ -3,7 +3,7 @@
 #### Step 1: Invocation of the `panic!` macro.
 
 There are actually two panic macros - one defined in `libcore`, and one defined in `libstd`.
-This is due to the fact that code in `libcore` can panic. `libcore` is built before `libsd`,
+This is due to the fact that code in `libcore` can panic. `libcore` is built before `libstd`,
 but we want panics to use the same machinery at runtime, whether they originate in `libcore` or `libstd`.
 
 ##### libcore definition of panic!
