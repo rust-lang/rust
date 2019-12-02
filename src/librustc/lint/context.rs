@@ -1252,7 +1252,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     fn visit_trait_item(&mut self, trait_item: &'a ast::TraitItem) {
         self.with_lint_attrs(trait_item.id, &trait_item.attrs, |cx| {
             run_early_pass!(cx, check_trait_item, trait_item);
-            ast_visit::walk_assoc_item(cx, trait_item);
+            ast_visit::walk_trait_item(cx, trait_item);
             run_early_pass!(cx, check_trait_item_post, trait_item);
         });
     }
@@ -1260,7 +1260,7 @@ impl<'a, T: EarlyLintPass> ast_visit::Visitor<'a> for EarlyContextAndPass<'a, T>
     fn visit_impl_item(&mut self, impl_item: &'a ast::ImplItem) {
         self.with_lint_attrs(impl_item.id, &impl_item.attrs, |cx| {
             run_early_pass!(cx, check_impl_item, impl_item);
-            ast_visit::walk_assoc_item(cx, impl_item);
+            ast_visit::walk_impl_item(cx, impl_item);
             run_early_pass!(cx, check_impl_item_post, impl_item);
         });
     }

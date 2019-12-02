@@ -787,13 +787,13 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             _ => {}
         }
-        visit::walk_assoc_item(self, ii);
+        visit::walk_impl_item(self, ii);
     }
 
     fn visit_trait_item(&mut self, ti: &'a AssocItem) {
         self.invalid_visibility(&ti.vis, None);
         self.check_defaultness(ti.span, ti.defaultness);
-        visit::walk_assoc_item(self, ti);
+        visit::walk_trait_item(self, ti);
     }
 }
 

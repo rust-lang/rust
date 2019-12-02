@@ -83,8 +83,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl, s: Span, _: NodeId) {
         walk_fn(self, fk, fd, s)
     }
-    fn visit_trait_item(&mut self, i: &'ast AssocItem) { walk_assoc_item(self, i) }
-    fn visit_impl_item(&mut self, i: &'ast AssocItem) { walk_assoc_item(self, i) }
+    fn visit_trait_item(&mut self, i: &'ast AssocItem) { walk_trait_item(self, i) }
+    fn visit_impl_item(&mut self, i: &'ast AssocItem) { walk_impl_item(self, i) }
+    fn visit_assoc_item(&mut self, i: &'ast AssocItem) { walk_assoc_item(self, i) }
     fn visit_trait_ref(&mut self, t: &'ast TraitRef) { walk_trait_ref(self, t) }
     fn visit_param_bound(&mut self, bounds: &'ast GenericBound) {
         walk_param_bound(self, bounds)
@@ -579,6 +580,14 @@ pub fn walk_fn<'a, V>(visitor: &mut V, kind: FnKind<'a>, declaration: &'a FnDecl
             visitor.visit_expr(body);
         }
     }
+}
+
+pub fn walk_impl_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem) {
+    visitor.visit_assoc_item(item);
+}
+
+pub fn walk_trait_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem) {
+    visitor.visit_assoc_item(item);
 }
 
 pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem) {

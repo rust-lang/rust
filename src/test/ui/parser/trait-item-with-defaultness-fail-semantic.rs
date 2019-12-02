@@ -1,3 +1,5 @@
+#![feature(specialization)]
+
 fn main() {}
 
 trait X {

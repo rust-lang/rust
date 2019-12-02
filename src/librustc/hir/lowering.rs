@@ -484,11 +484,11 @@ impl<'a> LoweringContext<'a> {
                     TraitItemKind::Method(_, None) => {
                         // Ignore patterns in trait methods without bodies
                         self.with_hir_id_owner(None, |this| {
-                            visit::walk_assoc_item(this, item)
+                            visit::walk_trait_item(this, item)
                         });
                     }
                     _ => self.with_hir_id_owner(Some(item.id), |this| {
-                        visit::walk_assoc_item(this, item);
+                        visit::walk_trait_item(this, item);
                     })
                 }
             }
@@ -496,7 +496,7 @@ impl<'a> LoweringContext<'a> {
             fn visit_impl_item(&mut self, item: &'tcx ImplItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
                 self.with_hir_id_owner(Some(item.id), |this| {
-                    visit::walk_assoc_item(this, item);
+                    visit::walk_impl_item(this, item);
                 });
             }
 

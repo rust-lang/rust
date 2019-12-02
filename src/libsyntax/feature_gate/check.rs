@@ -577,42 +577,38 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 if block.is_none() {
                     self.check_extern(sig.header.ext);
                 }
-                if sig.decl.c_variadic() {
-                    gate_feature_post!(&self, c_variadic, ti.span,
-                                       "C-variadic functions are unstable");
-                }
                 if sig.header.constness.node == ast::Constness::Const {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }
             }
             ast::TraitItemKind::TyAlias(_, ref default) => {
-                if let Some(ty) = default {
-                    self.check_impl_trait(ty);
-                    gate_feature_post!(&self, associated_type_defaults, ti.span,
-                                       "associated type defaults are unstable");
+                if let Some(_) = default {
+                    gate_feature_post!(
+                        &self, associated_type_defaults, ti.span,
+                        "associated type defaults are unstable"
+                    );
                 }
-                self.check_gat(&ti.generics, ti.span);
             }
             _ => {}
         }
-        visit::walk_assoc_item(self, ti)
+        visit::walk_trait_item(self, ti)
     }
 
-    fn visit_impl_item(&mut self, ii: &'a ast::ImplItem) {
+    fn visit_assoc_item(&mut self, ii: &'a ast::AssocItem) {
         if ii.defaultness == ast::Defaultness::Default {
-            gate_feature_post!(&self, specialization,
-                              ii.span,
-                              "specialization is unstable");
+            gate_feature_post!(&self, specialization, ii.span, "specialization is unstable");
         }
 
         match ii.kind {
-            ast::ImplItemKind::Method(ref sig, _) => {
+            ast::AssocItemKind::Method(ref sig, _) => {
                 if sig.decl.c_variadic() {
-                    gate_feature_post!(&self, c_variadic, ii.span,
-                                       "C-variadic functions are unstable");
+                    gate_feature_post!(
+                        &self, c_variadic, ii.span,
+                        "C-variadic functions are unstable"
+                    );
                 }
             }
-            ast::ImplItemKind::TyAlias(_, ref ty) => {
+            ast::AssocItemKind::TyAlias(_, ref ty) => {
                 if let Some(ty) = ty {
                     self.check_impl_trait(ty);
                 }
