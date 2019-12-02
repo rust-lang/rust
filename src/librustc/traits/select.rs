@@ -2177,11 +2177,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
                 }
-                ty::Generator(..)
-                    if self.tcx().lang_items().freeze_trait() == Some(def_id) =>
-                {
-                    // For now, always consider generators to be !Freeze
-                }
 
                 _ => candidates.vec.push(AutoImplCandidate(def_id.clone())),
             }
