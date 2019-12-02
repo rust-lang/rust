@@ -2,6 +2,8 @@
 // edition:2018
 // compile-flags: --crate-type lib
 
+#![feature(generator_mir_traits)]
+
 use std::{
     cell::RefCell,
     fmt::Debug,

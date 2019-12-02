@@ -1,5 +1,5 @@
 error[E0277]: `std::rc::Rc<()>` cannot be sent between threads safely
-  --> $DIR/async-fn-nonsend.rs:50:5
+  --> $DIR/async-fn-nonsend.rs:52:5
    |
 LL | fn assert_send(_: impl Send) {}
    |    -----------         ---- required by this bound in `assert_send`
@@ -11,8 +11,8 @@ LL |     assert_send(non_send_temporary_in_match());
    = note: required because it appears within the type `impl std::fmt::Debug`
    = note: required because it appears within the type `std::option::Option<impl std::fmt::Debug>`
    = note: required because it appears within the type `[witness@DefId(0:25 ~ async_fn_nonsend[8787]::non_send_temporary_in_match[0]::{{closure}}[0]){impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]`
-   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 [witness@DefId(0:25 ~ async_fn_nonsend[8787]::non_send_temporary_in_match[0]::{{closure}}[0]){impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]]`
-   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:28:40: 37:2 [witness@DefId(0:25 ~ async_fn_nonsend[8787]::non_send_temporary_in_match[0]::{{closure}}[0]){impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]]>`
+   = note: required because it appears within the type `[static generator@$DIR/async-fn-nonsend.rs:30:40: 39:2 [witness@DefId(0:25 ~ async_fn_nonsend[8787]::non_send_temporary_in_match[0]::{{closure}}[0]){impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]]`
+   = note: required because it appears within the type `std::future::GenFuture<[static generator@$DIR/async-fn-nonsend.rs:30:40: 39:2 [witness@DefId(0:25 ~ async_fn_nonsend[8787]::non_send_temporary_in_match[0]::{{closure}}[0]){impl std::fmt::Debug, std::option::Option<impl std::fmt::Debug>, impl std::future::Future, impl std::future::Future, ()}]]>`
    = note: required because it appears within the type `impl std::future::Future`
    = note: required because it appears within the type `impl std::future::Future`
 

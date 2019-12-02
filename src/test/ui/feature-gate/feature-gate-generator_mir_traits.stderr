@@ -1,0 +1,23 @@
+error[E0277]: `*const ()` cannot be sent between threads safely
+  --> $DIR/feature-gate-generator_mir_traits.rs:14:5
+   |
+LL | fn is_send<T: Send>(val: T) {}
+   |    -------    ---- required by this bound in `is_send`
+...
+LL |     is_send(not_send());
+   |     ^^^^^^^ `*const ()` cannot be sent between threads safely
+   |
+   = help: within `impl std::future::Future`, the trait `std::marker::Send` is not implemented for `*const ()`
+note: future does not implement `std::marker::Send` as this value is used across an await
+  --> $DIR/feature-gate-generator_mir_traits.rs:10:5
+   |
+LL |     let val: *const ();
+   |         --- has type `*const ()`
+LL |     dummy().await;
+   |     ^^^^^^^^^^^^^ await occurs here, with `val` maybe used later
+LL | }
+   | - `val` is later dropped here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
