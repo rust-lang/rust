@@ -47,6 +47,17 @@ pub enum Sanitizer {
     Thread,
 }
 
+impl fmt::Display for Sanitizer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            Sanitizer::Address => "address".fmt(f),
+            Sanitizer::Leak => "leak".fmt(f),
+            Sanitizer::Memory => "memory".fmt(f),
+            Sanitizer::Thread => "thread".fmt(f),
+        }
+    }
+}
+
 impl FromStr for Sanitizer {
     type Err = ();
     fn from_str(s: &str) -> Result<Sanitizer, ()> {
@@ -1579,6 +1590,10 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
               insert_atomic("ptr");
             }
         }
+    }
+    if let Some(s) = &sess.opts.debugging_opts.sanitizer {
+        let symbol = Symbol::intern(&s.to_string());
+        ret.insert((sym::sanitize, Some(symbol)));
     }
     if sess.opts.debug_assertions {
         ret.insert((Symbol::intern("debug_assertions"), None));
