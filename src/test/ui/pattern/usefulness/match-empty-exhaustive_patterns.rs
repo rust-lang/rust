@@ -23,7 +23,6 @@ fn foo(x: Foo) {
 }
 
 fn main() {
-    // `exhaustive_patterns` is not on, so uninhabited branches are not detected as unreachable.
     match None::<!> {
         None => {}
         Some(_) => {} //~ ERROR unreachable pattern
