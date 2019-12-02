@@ -3434,6 +3434,20 @@ pub fn baz() -> usize { 31usize }
 }
 
 #[test]
+fn method_resolution_unify_impl_self_type() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct S<T>;
+impl S<u32> { fn foo(&self) -> u8 {} }
+impl S<i32> { fn foo(&self) -> i8 {} }
+fn test() { (S::<u32>.foo(), S::<i32>.foo())<|>; }
+"#,
+    );
+    assert_eq!(t, "(u8, i8)");
+}
+
+#[test]
 fn method_resolution_trait_before_autoref() {
     let t = type_at(
         r#"
