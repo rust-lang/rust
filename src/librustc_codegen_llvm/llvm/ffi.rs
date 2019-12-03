@@ -1702,7 +1702,8 @@ extern "C" {
                                        TrapUnreachable: bool,
                                        Singlethread: bool,
                                        AsmComments: bool,
-                                       EmitStackSizeSection: bool)
+                                       EmitStackSizeSection: bool,
+                                       RelaxELFRelocations: bool)
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: &'a PassManagerBuilder,

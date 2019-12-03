@@ -803,6 +803,9 @@ pub struct TargetOptions {
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: String,
+
+    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    pub relax_elf_relocations: bool,
 }
 
 impl Default for TargetOptions {
@@ -890,6 +893,7 @@ impl Default for TargetOptions {
             merge_functions: MergeFunctions::Aliases,
             target_mcount: "mcount".to_string(),
             llvm_abiname: "".to_string(),
+            relax_elf_relocations: false,
         }
     }
 }
@@ -1207,6 +1211,7 @@ impl Target {
         key!(merge_functions, MergeFunctions)?;
         key!(target_mcount);
         key!(llvm_abiname);
+        key!(relax_elf_relocations, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1426,6 +1431,7 @@ impl ToJson for Target {
         target_option_val!(merge_functions);
         target_option_val!(target_mcount);
         target_option_val!(llvm_abiname);
+        target_option_val!(relax_elf_relocations);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
