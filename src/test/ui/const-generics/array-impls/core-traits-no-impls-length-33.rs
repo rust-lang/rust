@@ -6,6 +6,7 @@ pub fn no_debug() {
 pub fn no_hash() {
     use std::collections::HashSet;
     let mut set = HashSet::new();
+    //~^ ERROR arrays only have std trait implementations for lengths 0..=32
     set.insert([0_usize; 33]);
     //~^ ERROR arrays only have std trait implementations for lengths 0..=32
 }
