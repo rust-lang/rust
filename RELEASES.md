@@ -89,7 +89,7 @@ Compatibility Notes
 - [The `include!` macro will now warn if it failed to include the
   entire file.][64284] The `include!` macro unintentionally only includes the
   first _expression_ in a file, and this can be unintuitive. This will become
-  a hard error in a future release.
+  either a hard error in a future release, or the behavior may be fixed to include all expressions as expected.
 - [Using `#[inline]` on function prototypes and consts now emits a warning under
   `unused_attribute` lint.][65294] Using `#[inline]` anywhere else inside traits
   or `extern` blocks now correctly emits a hard error.
