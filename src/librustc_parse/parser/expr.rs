@@ -845,12 +845,12 @@ impl<'a> Parser<'a> {
             // could be removed without changing functionality, but it's faster
             // to have it here, especially for programs with large constants.
             token::Literal(_) => parse_lit!(),
-            token::OpenDelim(token::Paren) => return self.parse_tuple_parens_expr(),
+            token::OpenDelim(token::Paren) => return self.parse_tuple_parens_expr(attrs),
             token::OpenDelim(token::Brace) => {
                 return self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs);
             }
             token::BinOp(token::Or) | token::OrOr => return self.parse_closure_expr(attrs),
-            token::OpenDelim(token::Bracket) => return self.parse_array_or_repeat_expr(),
+            token::OpenDelim(token::Bracket) => return self.parse_array_or_repeat_expr(attrs),
             _ => {
                 if self.eat_lt() {
                     let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
@@ -858,7 +858,7 @@ impl<'a> Parser<'a> {
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
                 if self.token.is_path_start() {
-                    return self.parse_path_start_expr();
+                    return self.parse_path_start_expr(attrs);
                 }
                 if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
                     return self.parse_closure_expr(attrs);
@@ -979,14 +979,13 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_tuple_parens_expr(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_tuple_parens_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         let mut first = true;
-        let mut attrs = ThinVec::new();
         let parse_leading_attr_expr = |p: &mut Self| {
             if first {
                 // `(#![foo] a, b, ...)` is OK...
-                attrs = p.parse_inner_attributes()?.into();
+                attrs.extend(p.parse_inner_attributes()?);
                 // ...but not `(a, #![foo] b, ...)`.
                 first = false;
             }
@@ -1007,11 +1006,14 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_array_or_repeat_expr(&mut self) -> PResult<'a, P<Expr>> {
+    fn parse_array_or_repeat_expr(
+        &mut self,
+        mut attrs: ThinVec<Attribute>,
+    ) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         self.bump(); // `[`
 
-        let attrs = self.parse_inner_attributes()?.into();
+        attrs.extend(self.parse_inner_attributes()?);
 
         let kind = if self.eat(&token::CloseDelim(token::Bracket)) {
             // Empty vector
@@ -1047,8 +1049,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_path_start_expr(&mut self) -> PResult<'a, P<Expr>> {
-        let attrs = ThinVec::new();
+    fn parse_path_start_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         let path = self.parse_path(PathStyle::Expr)?;
 
