@@ -1,11 +1,12 @@
 use crate::utils::{get_item_name, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use rustc::declare_lint_pass;
 use rustc::hir::def_id::DefId;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use syntax::ast::{LitKind, Name};
 use syntax::source_map::{Span, Spanned};
 

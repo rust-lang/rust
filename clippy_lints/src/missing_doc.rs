@@ -8,9 +8,10 @@
 use crate::utils::span_lint;
 use if_chain::if_chain;
 use rustc::hir;
+use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_tool_lint, impl_lint_pass};
+use rustc_session::declare_tool_lint;
 use syntax::ast::{self, MetaItem, MetaItemKind};
 use syntax::attr;
 use syntax::source_map::Span;

@@ -2,9 +2,10 @@
 
 use crate::utils::{in_macro, span_lint_and_then};
 use rustc::hir::*;
+use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_session::declare_tool_lint;
 use syntax_pos::Span;
 
 declare_clippy_lint! {

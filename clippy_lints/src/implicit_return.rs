@@ -5,11 +5,12 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use rustc::{
-    declare_lint_pass, declare_tool_lint,
+    declare_lint_pass,
     hir::{intravisit::FnKind, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, StmtKind},
     lint::{LateContext, LateLintPass, LintArray, LintPass},
 };
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use syntax::source_map::Span;
 
 declare_clippy_lint! {

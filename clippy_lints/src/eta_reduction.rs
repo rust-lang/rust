@@ -1,10 +1,11 @@
 use if_chain::if_chain;
 use matches::matches;
+use rustc::declare_lint_pass;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 
 use crate::utils::{
     implements_trait, is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then, type_is_unsafe_function,

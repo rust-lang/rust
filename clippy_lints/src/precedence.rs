@@ -1,7 +1,8 @@
 use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
+use rustc::declare_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use syntax::ast::*;
 use syntax::source_map::Spanned;
 

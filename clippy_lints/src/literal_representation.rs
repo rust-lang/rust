@@ -4,8 +4,9 @@
 use crate::utils::{in_macro, snippet_opt, span_lint_and_sugg};
 use if_chain::if_chain;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
+use rustc::{declare_lint_pass, impl_lint_pass};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use syntax::ast::*;
 use syntax_pos;
 

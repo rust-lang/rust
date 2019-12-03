@@ -1,4 +1,5 @@
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::intravisit::{walk_item, walk_path, walk_ty, NestedVisitorMap, Visitor};
@@ -6,8 +7,8 @@ use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
 use rustc::ty::{DefIdTree, Ty};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use syntax_pos::symbol::kw;
 
 use crate::utils::{differing_macro_contexts, span_lint_and_sugg};

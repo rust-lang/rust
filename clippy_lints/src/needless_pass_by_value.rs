@@ -5,14 +5,15 @@ use crate::utils::{
 };
 use if_chain::if_chain;
 use matches::matches;
+use rustc::declare_lint_pass;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::traits;
 use rustc::ty::{self, RegionKind, TypeFoldable};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use rustc_target::spec::abi::Abi;
 use rustc_typeck::expr_use_visitor as euv;
 use std::borrow::Cow;

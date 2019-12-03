@@ -5,6 +5,8 @@
 
 #[macro_use]
 extern crate rustc;
+#[macro_use]
+extern crate rustc_session;
 use rustc::hir::Expr;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 

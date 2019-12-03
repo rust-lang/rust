@@ -2,8 +2,9 @@
 
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::*;
+use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_tool_lint, impl_lint_pass};
+use rustc_session::declare_tool_lint;
 use syntax::ast::Attribute;
 use syntax::source_map::Span;
 

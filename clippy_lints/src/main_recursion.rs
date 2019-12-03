@@ -1,6 +1,7 @@
 use rustc::hir::{Crate, Expr, ExprKind, QPath};
+use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, impl_lint_pass};
+use rustc_session::declare_tool_lint;
 use syntax::ast::AttrKind;
 use syntax::symbol::sym;
 

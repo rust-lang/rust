@@ -1,11 +1,12 @@
 use crate::utils::span_lint_and_sugg;
 use crate::utils::sugg::format_numeric_literal;
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use std::f32;
 use std::f64;
 use std::fmt;

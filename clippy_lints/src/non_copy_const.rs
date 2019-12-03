@@ -4,12 +4,13 @@
 
 use std::ptr;
 
+use rustc::declare_lint_pass;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use rustc::ty::adjustment::Adjust;
 use rustc::ty::{Ty, TypeFlags};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 use rustc_typeck::hir_ty_to_ty;
 use syntax_pos::{InnerSpan, Span, DUMMY_SP};
 

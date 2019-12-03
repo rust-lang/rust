@@ -1,9 +1,10 @@
 use super::utils::{get_arg_name, match_var, remove_blocks, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for matches being used to destructure a single-variant enum

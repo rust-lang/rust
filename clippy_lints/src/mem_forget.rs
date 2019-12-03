@@ -1,7 +1,8 @@
 use crate::utils::{match_def_path, paths, qpath_res, span_lint};
+use rustc::declare_lint_pass;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for usage of `std::mem::forget(t)` where `t` is

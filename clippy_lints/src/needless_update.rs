@@ -1,8 +1,9 @@
 use crate::utils::span_lint;
+use rustc::declare_lint_pass;
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for needlessly including a base struct on update
