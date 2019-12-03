@@ -7,6 +7,7 @@
 //! purely for "IDE needs".
 use std::sync::Arc;
 
+use either::Either;
 use hir_def::{
     body::{
         scope::{ExprScopes, ScopeId},
@@ -33,8 +34,8 @@ use crate::{
         method_resolution::{self, implements_trait},
         InEnvironment, TraitEnvironment, Ty,
     },
-    Adt, AssocItem, Const, DefWithBody, Either, Enum, EnumVariant, FromSource, Function,
-    GenericParam, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
+    Adt, AssocItem, Const, DefWithBody, Enum, EnumVariant, FromSource, Function, GenericParam,
+    Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> Option<Resolver> {
@@ -349,7 +350,7 @@ impl SourceAnalyzer {
     // should switch to general reference search infra there.
     pub fn find_all_refs(&self, pat: &ast::BindPat) -> Vec<ReferenceDescriptor> {
         let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
-        let ptr = Either::A(AstPtr::new(&ast::Pat::from(pat.clone())));
+        let ptr = Either::Left(AstPtr::new(&ast::Pat::from(pat.clone())));
         fn_def
             .syntax()
             .descendants()

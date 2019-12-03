@@ -1,10 +1,8 @@
 //! Transforms `ast::Expr` into an equivalent `hir_def::expr::Expr`
 //! representation.
 
-use hir_expand::{
-    either::Either,
-    name::{self, AsName, Name},
-};
+use either::Either;
+use hir_expand::name::{self, AsName, Name};
 use ra_arena::Arena;
 use ra_syntax::{
     ast::{
@@ -74,7 +72,7 @@ where
                         mode: BindingAnnotation::Unannotated,
                         subpat: None,
                     },
-                    Either::B(ptr),
+                    Either::Right(ptr),
                 );
                 self.body.params.push(param_pat);
             }
@@ -94,7 +92,7 @@ where
     }
 
     fn alloc_expr(&mut self, expr: Expr, ptr: AstPtr<ast::Expr>) -> ExprId {
-        let ptr = Either::A(ptr);
+        let ptr = Either::Left(ptr);
         let id = self.body.exprs.alloc(expr);
         let src = self.expander.to_source(ptr);
         self.source_map.expr_map.insert(src, id);
@@ -107,7 +105,7 @@ where
         self.body.exprs.alloc(expr)
     }
     fn alloc_expr_field_shorthand(&mut self, expr: Expr, ptr: AstPtr<ast::RecordField>) -> ExprId {
-        let ptr = Either::B(ptr);
+        let ptr = Either::Right(ptr);
         let id = self.body.exprs.alloc(expr);
         let src = self.expander.to_source(ptr);
         self.source_map.expr_map.insert(src, id);
@@ -277,7 +275,7 @@ where
             ast::Expr::ParenExpr(e) => {
                 let inner = self.collect_expr_opt(e.expr());
                 // make the paren expr point to the inner expression as well
-                let src = self.expander.to_source(Either::A(syntax_ptr));
+                let src = self.expander.to_source(Either::Left(syntax_ptr));
                 self.source_map.expr_map.insert(src, inner);
                 inner
             }
@@ -550,7 +548,7 @@ where
             ast::Pat::SlicePat(_) | ast::Pat::RangePat(_) => Pat::Missing,
         };
         let ptr = AstPtr::new(&pat);
-        self.alloc_pat(pattern, Either::A(ptr))
+        self.alloc_pat(pattern, Either::Left(ptr))
     }
 
     fn collect_pat_opt(&mut self, pat: Option<ast::Pat>) -> PatId {

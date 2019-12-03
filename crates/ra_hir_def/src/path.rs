@@ -2,8 +2,8 @@
 
 use std::{iter, sync::Arc};
 
+use either::Either;
 use hir_expand::{
-    either::Either,
     hygiene::Hygiene,
     name::{self, AsName, Name},
 };
@@ -111,7 +111,7 @@ impl Path {
                 ast::PathSegmentKind::Name(name_ref) => {
                     // FIXME: this should just return name
                     match hygiene.name_ref_to_name(name_ref) {
-                        Either::A(name) => {
+                        Either::Left(name) => {
                             let args = segment
                                 .type_arg_list()
                                 .and_then(GenericArgs::from_ast)
@@ -125,7 +125,7 @@ impl Path {
                             let segment = PathSegment { name, args_and_bindings: args };
                             segments.push(segment);
                         }
-                        Either::B(crate_id) => {
+                        Either::Right(crate_id) => {
                             kind = PathKind::DollarCrate(crate_id);
                             break;
                         }
@@ -347,7 +347,7 @@ fn convert_path(prefix: Option<Path>, path: ast::Path, hygiene: &Hygiene) -> Opt
     let res = match segment.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             match hygiene.name_ref_to_name(name_ref) {
-                Either::A(name) => {
+                Either::Left(name) => {
                     // no type args in use
                     let mut res = prefix.unwrap_or_else(|| Path {
                         kind: PathKind::Plain,
@@ -359,7 +359,7 @@ fn convert_path(prefix: Option<Path>, path: ast::Path, hygiene: &Hygiene) -> Opt
                     });
                     res
                 }
-                Either::B(crate_id) => {
+                Either::Right(crate_id) => {
                     return Some(Path::from_simple_segments(
                         PathKind::DollarCrate(crate_id),
                         iter::empty(),

@@ -2,7 +2,8 @@
 
 use std::{ops, sync::Arc};
 
-use hir_expand::{either::Either, hygiene::Hygiene, AstId, InFile};
+use either::Either;
+use hir_expand::{hygiene::Hygiene, AstId, InFile};
 use mbe::ast_to_token_tree;
 use ra_syntax::{
     ast::{self, AstNode, AttrsOwner},
@@ -45,8 +46,8 @@ impl Attrs {
             AttrDefId::StructFieldId(it) => {
                 let src = it.parent.child_source(db);
                 match &src.value[it.local_id] {
-                    Either::A(_tuple) => Attrs::default(),
-                    Either::B(record) => Attrs::from_attrs_owner(db, src.with_value(record)),
+                    Either::Left(_tuple) => Attrs::default(),
+                    Either::Right(record) => Attrs::from_attrs_owner(db, src.with_value(record)),
                 }
             }
             AttrDefId::EnumVariantId(var_id) => {

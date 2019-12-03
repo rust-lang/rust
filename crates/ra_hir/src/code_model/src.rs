@@ -1,10 +1,10 @@
 //! FIXME: write short doc here
 
+use either::Either;
 use hir_def::{
     src::{HasChildSource, HasSource as _},
     AstItemDef, Lookup, VariantId,
 };
-use hir_expand::either::Either;
 use ra_syntax::ast;
 
 use crate::{
@@ -27,8 +27,8 @@ impl Module {
         let def_map = db.crate_def_map(self.id.krate);
         let src = def_map[self.id.local_id].definition_source(db);
         src.map(|it| match it {
-            Either::A(it) => ModuleSource::SourceFile(it),
-            Either::B(it) => ModuleSource::Module(it),
+            Either::Left(it) => ModuleSource::SourceFile(it),
+            Either::Right(it) => ModuleSource::Module(it),
         })
     }
 
@@ -46,8 +46,8 @@ impl HasSource for StructField {
         let var = VariantId::from(self.parent);
         let src = var.child_source(db);
         src.map(|it| match it[self.id].clone() {
-            Either::A(it) => FieldSource::Pos(it),
-            Either::B(it) => FieldSource::Named(it),
+            Either::Left(it) => FieldSource::Pos(it),
+            Either::Right(it) => FieldSource::Named(it),
         })
     }
 }
@@ -126,6 +126,6 @@ impl HasSource for Import {
         let (_, source_map) = db.raw_items_with_source_map(src.file_id);
         let root = db.parse_or_expand(src.file_id).unwrap();
         let ptr = source_map.get(self.id);
-        src.with_value(ptr.map(|it| it.to_node(&root), |it| it.to_node(&root)))
+        src.with_value(ptr.map_left(|it| it.to_node(&root)).map_right(|it| it.to_node(&root)))
     }
 }

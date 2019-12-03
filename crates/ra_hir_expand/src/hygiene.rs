@@ -2,12 +2,12 @@
 //!
 //! Specifically, `ast` + `Hygiene` allows you to create a `Name`. Note that, at
 //! this moment, this is horribly incomplete and handles only `$crate`.
+use either::Either;
 use ra_db::CrateId;
 use ra_syntax::ast;
 
 use crate::{
     db::AstDatabase,
-    either::Either,
     name::{AsName, Name},
     HirFileId, HirFileIdRepr, MacroDefKind,
 };
@@ -41,9 +41,9 @@ impl Hygiene {
     pub fn name_ref_to_name(&self, name_ref: ast::NameRef) -> Either<Name, CrateId> {
         if let Some(def_crate) = self.def_crate {
             if name_ref.text() == "$crate" {
-                return Either::B(def_crate);
+                return Either::Right(def_crate);
             }
         }
-        Either::A(name_ref.as_name())
+        Either::Left(name_ref.as_name())
     }
 }

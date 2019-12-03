@@ -10,6 +10,7 @@ doctest = false
 [dependencies]
 log = "0.4.5"
 rustc-hash = "1.0"
+either = "1.5"
 
 ra_syntax = { path = "../ra_syntax" }
 ra_db = { path = "../ra_db" }

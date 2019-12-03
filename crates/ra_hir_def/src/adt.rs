@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
+use either::Either;
 use hir_expand::{
-    either::Either,
     name::{AsName, Name},
     InFile,
 };
@@ -184,7 +184,7 @@ fn lower_struct(
         ast::StructKind::Tuple(fl) => {
             for (i, fd) in fl.fields().enumerate() {
                 trace.alloc(
-                    || Either::A(fd.clone()),
+                    || Either::Left(fd.clone()),
                     || StructFieldData {
                         name: Name::new_tuple_field(i),
                         type_ref: TypeRef::from_ast_opt(fd.type_ref()),
@@ -196,7 +196,7 @@ fn lower_struct(
         ast::StructKind::Record(fl) => {
             for fd in fl.fields() {
                 trace.alloc(
-                    || Either::B(fd.clone()),
+                    || Either::Right(fd.clone()),
                     || StructFieldData {
                         name: fd.name().map(|n| n.as_name()).unwrap_or_else(Name::missing),
                         type_ref: TypeRef::from_ast_opt(fd.ascribed_type()),
