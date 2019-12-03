@@ -2411,6 +2411,10 @@ pub enum AttrKind {
     DocComment(Symbol),
 }
 
+// Receive notifications about the doc comment size changes.
+#[cfg(target_arch = "x86_64")]
+rustc_data_structures::static_assert_size!(AttrKind, 72);
+
 /// `TraitRef`s appear in impls.
 ///
 /// Resolution maps each `TraitRef`'s `ref_id` to its defining trait; that's all
