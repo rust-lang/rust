@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
-use crate::session::{early_error, config};
-use crate::session::filesearch::make_target_lib_path;
+use crate::{early_error, config};
+use crate::filesearch::make_target_lib_path;
 
 #[derive(Clone, Debug)]
 pub struct SearchPath {
@@ -9,7 +9,7 @@ pub struct SearchPath {
     pub files: Vec<PathBuf>,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug, HashStable)]
+#[derive(PartialEq, Clone, Copy, Debug, Hash, Eq)]
 pub enum PathKind {
     Native,
     Crate,
@@ -18,6 +18,8 @@ pub enum PathKind {
     ExternFlag,
     All,
 }
+
+rustc_data_structures::impl_stable_hash_via_hash!(PathKind);
 
 impl PathKind {
     pub fn matches(&self, kind: PathKind) -> bool {

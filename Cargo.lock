@@ -3205,6 +3205,7 @@ dependencies = [
  "rustc_fs_util",
  "rustc_index",
  "rustc_macros",
+ "rustc_session",
  "rustc_target",
  "scoped-tls",
  "serialize",
@@ -3518,6 +3519,7 @@ dependencies = [
  "rustc_fs_util",
  "rustc_incremental",
  "rustc_index",
+ "rustc_session",
  "rustc_target",
  "serialize",
  "syntax",
@@ -3634,6 +3636,7 @@ dependencies = [
  "rustc",
  "rustc_data_structures",
  "rustc_fs_util",
+ "rustc_session",
  "serialize",
  "syntax",
  "syntax_pos",
@@ -3697,6 +3700,7 @@ dependencies = [
  "rustc_error_codes",
  "rustc_feature",
  "rustc_index",
+ "rustc_session",
  "rustc_target",
  "syntax",
  "syntax_pos",
@@ -3881,6 +3885,22 @@ dependencies = [
  "rustc_parse",
  "serde_json",
  "syntax",
+ "syntax_pos",
+]
+
+[[package]]
+name = "rustc_session"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "num_cpus",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_fs_util",
+ "rustc_index",
+ "rustc_target",
+ "serialize",
  "syntax_pos",
 ]
 
@@ -4463,6 +4483,7 @@ dependencies = [
  "rustc_index",
  "rustc_lexer",
  "rustc_macros",
+ "rustc_session",
  "scoped-tls",
  "serialize",
  "smallvec 1.0.0",

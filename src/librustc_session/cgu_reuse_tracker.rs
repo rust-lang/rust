@@ -2,10 +2,10 @@
 //! compilation. This is used for incremental compilation tests and debug
 //! output.
 
-use crate::session::Session;
 use rustc_data_structures::fx::FxHashMap;
 use std::sync::{Arc, Mutex};
 use syntax_pos::Span;
+use log::debug;
 
 #[derive(Copy, Clone, Debug, PartialEq, PartialOrd)]
 pub enum CguReuse {
@@ -94,7 +94,7 @@ impl CguReuseTracker {
         }
     }
 
-    pub fn check_expected_reuse(&self, sess: &Session) {
+    pub fn check_expected_reuse(&self, diag: &rustc_errors::Handler) {
         if let Some(ref data) = self.data {
             let data = data.lock().unwrap();
 
@@ -120,14 +120,14 @@ impl CguReuseTracker {
                                           actual_reuse,
                                           at_least,
                                           expected_reuse);
-                        sess.span_err(error_span.0, &msg);
+                        diag.span_err(error_span.0, &msg);
                     }
                 } else {
                     let msg = format!("CGU-reuse for `{}` (mangled: `{}`) was \
                                        not recorded",
                                        cgu_user_name,
                                        cgu_name);
-                    sess.span_fatal(error_span.0, &msg);
+                    diag.span_fatal(error_span.0, &msg).raise();
                 }
             }
         }

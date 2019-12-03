@@ -8,7 +8,7 @@ use crate::lint::{self, Lint, LintId, Level, LintSource};
 use crate::session::Session;
 use crate::util::nodemap::FxHashMap;
 use errors::{Applicability, DiagnosticBuilder};
-use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use syntax::ast;
 use syntax::attr;
 use syntax::feature_gate;
@@ -93,7 +93,7 @@ impl LintLevelSets {
 
         // If `level` is none then we actually assume the default level for this
         // lint.
-        let mut level = level.unwrap_or_else(|| lint.default_level(sess));
+        let mut level = level.unwrap_or_else(|| lint.default_level(sess.edition()));
 
         // If we're about to issue a warning, check at the last minute for any
         // directives against the warnings "lint". If, for example, there's an
@@ -564,21 +564,5 @@ impl<'a> HashStable<StableHashingContext<'a>> for LintLevelMap {
                 }
             }
         })
-    }
-}
-
-impl<HCX> HashStable<HCX> for LintId {
-    #[inline]
-    fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        self.lint_name_raw().hash_stable(hcx, hasher);
-    }
-}
-
-impl<HCX> ToStableHashKey<HCX> for LintId {
-    type KeyType = &'static str;
-
-    #[inline]
-    fn to_stable_hash_key(&self, _: &HCX) -> &'static str {
-        self.lint_name_raw()
     }
 }
