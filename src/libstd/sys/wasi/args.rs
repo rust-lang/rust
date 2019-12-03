@@ -1,15 +1,11 @@
-use crate::ffi::OsString;
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::marker::PhantomData;
-use crate::os::wasi::ffi::OsStringExt;
+use crate::os::wasi::ffi::OsStrExt;
 use crate::vec;
 
-use ::wasi::wasi_unstable as wasi;
+pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
 
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
-}
-
-pub unsafe fn cleanup() {
-}
+pub unsafe fn cleanup() {}
 
 pub struct Args {
     iter: vec::IntoIter<OsString>,
@@ -18,17 +14,24 @@ pub struct Args {
 
 /// Returns the command line arguments
 pub fn args() -> Args {
-    let buf = wasi::args_sizes_get().and_then(|args_sizes| {
-        let mut buf = Vec::with_capacity(args_sizes.get_count());
-        wasi::args_get(args_sizes, |arg| {
-            let arg = OsString::from_vec(arg.to_vec());
-            buf.push(arg);
-        })?;
-        Ok(buf)
-    }).unwrap_or(vec![]);
     Args {
-        iter: buf.into_iter(),
-        _dont_send_or_sync_me: PhantomData
+        iter: maybe_args().unwrap_or(Vec::new()).into_iter(),
+        _dont_send_or_sync_me: PhantomData,
+    }
+}
+
+fn maybe_args() -> Option<Vec<OsString>> {
+    unsafe {
+        let (argc, buf_size) = wasi::args_sizes_get().ok()?;
+        let mut argv = Vec::with_capacity(argc);
+        let mut buf = Vec::with_capacity(buf_size);
+        wasi::args_get(argv.as_mut_ptr(), buf.as_mut_ptr()).ok()?;
+        let mut ret = Vec::with_capacity(argc);
+        for ptr in argv {
+            let s = CStr::from_ptr(ptr.cast());
+            ret.push(OsStr::from_bytes(s.to_bytes()).to_owned());
+        }
+        Some(ret)
     }
 }
 

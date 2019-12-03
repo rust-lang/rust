@@ -4,11 +4,9 @@
 
 use crate::fs::{self, File, Metadata, OpenOptions};
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::os::wasi::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
+use crate::sys::fs::osstr2str;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner};
-
-use ::wasi::wasi_unstable as wasi;
 
 /// WASI-specific extensions to [`File`].
 ///
@@ -49,62 +47,62 @@ pub trait FileExt {
 
     /// Returns the current position within the file.
     ///
-    /// This corresponds to the `__wasi_fd_tell` syscall and is similar to
+    /// This corresponds to the `fd_tell` syscall and is similar to
     /// `seek` where you offset 0 bytes from the current position.
     fn tell(&self) -> io::Result<u64>;
 
     /// Adjust the flags associated with this file.
     ///
-    /// This corresponds to the `__wasi_fd_fdstat_set_flags` syscall.
+    /// This corresponds to the `fd_fdstat_set_flags` syscall.
     fn fdstat_set_flags(&self, flags: u16) -> io::Result<()>;
 
     /// Adjust the rights associated with this file.
     ///
-    /// This corresponds to the `__wasi_fd_fdstat_set_rights` syscall.
+    /// This corresponds to the `fd_fdstat_set_rights` syscall.
     fn fdstat_set_rights(&self, rights: u64, inheriting: u64) -> io::Result<()>;
 
     /// Provide file advisory information on a file descriptor.
     ///
-    /// This corresponds to the `__wasi_fd_advise` syscall.
+    /// This corresponds to the `fd_advise` syscall.
     fn advise(&self, offset: u64, len: u64, advice: u8) -> io::Result<()>;
 
     /// Force the allocation of space in a file.
     ///
-    /// This corresponds to the `__wasi_fd_allocate` syscall.
+    /// This corresponds to the `fd_allocate` syscall.
     fn allocate(&self, offset: u64, len: u64) -> io::Result<()>;
 
     /// Create a directory.
     ///
-    /// This corresponds to the `__wasi_path_create_directory` syscall.
+    /// This corresponds to the `path_create_directory` syscall.
     fn create_directory<P: AsRef<Path>>(&self, dir: P) -> io::Result<()>;
 
     /// Read the contents of a symbolic link.
     ///
-    /// This corresponds to the `__wasi_path_readlink` syscall.
+    /// This corresponds to the `path_readlink` syscall.
     fn read_link<P: AsRef<Path>>(&self, path: P) -> io::Result<PathBuf>;
 
     /// Return the attributes of a file or directory.
     ///
-    /// This corresponds to the `__wasi_path_filestat_get` syscall.
+    /// This corresponds to the `path_filestat_get` syscall.
     fn metadata_at<P: AsRef<Path>>(&self, lookup_flags: u32, path: P) -> io::Result<Metadata>;
 
     /// Unlink a file.
     ///
-    /// This corresponds to the `__wasi_path_unlink_file` syscall.
+    /// This corresponds to the `path_unlink_file` syscall.
     fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()>;
 
     /// Remove a directory.
     ///
-    /// This corresponds to the `__wasi_path_remove_directory` syscall.
+    /// This corresponds to the `path_remove_directory` syscall.
     fn remove_directory<P: AsRef<Path>>(&self, path: P) -> io::Result<()>;
 }
 
-// FIXME: bind __wasi_fd_fdstat_get - need to define a custom return type
-// FIXME: bind __wasi_fd_readdir - can't return `ReadDir` since we only have entry name
-// FIXME: bind __wasi_fd_filestat_set_times maybe? - on crates.io for unix
-// FIXME: bind __wasi_path_filestat_set_times maybe? - on crates.io for unix
-// FIXME: bind __wasi_poll_oneoff maybe? - probably should wait for I/O to settle
-// FIXME: bind __wasi_random_get maybe? - on crates.io for unix
+// FIXME: bind fd_fdstat_get - need to define a custom return type
+// FIXME: bind fd_readdir - can't return `ReadDir` since we only have entry name
+// FIXME: bind fd_filestat_set_times maybe? - on crates.io for unix
+// FIXME: bind path_filestat_set_times maybe? - on crates.io for unix
+// FIXME: bind poll_oneoff maybe? - probably should wait for I/O to settle
+// FIXME: bind random_get maybe? - on crates.io for unix
 
 impl FileExt for fs::File {
     fn read_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
@@ -136,9 +134,7 @@ impl FileExt for fs::File {
     }
 
     fn create_directory<P: AsRef<Path>>(&self, dir: P) -> io::Result<()> {
-        self.as_inner()
-            .fd()
-            .create_directory(dir.as_ref().as_os_str().as_bytes())
+        self.as_inner().fd().create_directory(osstr2str(dir.as_ref().as_ref())?)
     }
 
     fn read_link<P: AsRef<Path>>(&self, path: P) -> io::Result<PathBuf> {
@@ -151,15 +147,11 @@ impl FileExt for fs::File {
     }
 
     fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        self.as_inner()
-            .fd()
-            .unlink_file(path.as_ref().as_os_str().as_bytes())
+        self.as_inner().fd().unlink_file(osstr2str(path.as_ref().as_ref())?)
     }
 
     fn remove_directory<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
-        self.as_inner()
-            .fd()
-            .remove_directory(path.as_ref().as_os_str().as_bytes())
+        self.as_inner().fd().remove_directory(osstr2str(path.as_ref().as_ref())?)
     }
 }
 
@@ -167,10 +159,10 @@ impl FileExt for fs::File {
 ///
 /// [`fs::OpenOptions`]: ../../../../std/fs/struct.OpenOptions.html
 pub trait OpenOptionsExt {
-    /// Pass custom `dirflags` argument to `__wasi_path_open`.
+    /// Pass custom `dirflags` argument to `path_open`.
     ///
     /// This option configures the `dirflags` argument to the
-    /// `__wasi_path_open` syscall which `OpenOptions` will eventually call. The
+    /// `path_open` syscall which `OpenOptions` will eventually call. The
     /// `dirflags` argument configures how the file is looked up, currently
     /// primarily affecting whether symlinks are followed or not.
     ///
@@ -188,31 +180,31 @@ pub trait OpenOptionsExt {
     fn directory(&mut self, dir: bool) -> &mut Self;
 
     /// Indicates whether `__WASI_FDFLAG_DSYNC` is passed in the `fs_flags`
-    /// field of `__wasi_path_open`.
+    /// field of `path_open`.
     ///
     /// This option is by default `false`
     fn dsync(&mut self, dsync: bool) -> &mut Self;
 
     /// Indicates whether `__WASI_FDFLAG_NONBLOCK` is passed in the `fs_flags`
-    /// field of `__wasi_path_open`.
+    /// field of `path_open`.
     ///
     /// This option is by default `false`
     fn nonblock(&mut self, nonblock: bool) -> &mut Self;
 
     /// Indicates whether `__WASI_FDFLAG_RSYNC` is passed in the `fs_flags`
-    /// field of `__wasi_path_open`.
+    /// field of `path_open`.
     ///
     /// This option is by default `false`
     fn rsync(&mut self, rsync: bool) -> &mut Self;
 
     /// Indicates whether `__WASI_FDFLAG_SYNC` is passed in the `fs_flags`
-    /// field of `__wasi_path_open`.
+    /// field of `path_open`.
     ///
     /// This option is by default `false`
     fn sync(&mut self, sync: bool) -> &mut Self;
 
     /// Indicates the value that should be passed in for the `fs_rights_base`
-    /// parameter of `__wasi_path_open`.
+    /// parameter of `path_open`.
     ///
     /// This option defaults based on the `read` and `write` configuration of
     /// this `OpenOptions` builder. If this method is called, however, the
@@ -220,7 +212,7 @@ pub trait OpenOptionsExt {
     fn fs_rights_base(&mut self, rights: u64) -> &mut Self;
 
     /// Indicates the value that should be passed in for the
-    /// `fs_rights_inheriting` parameter of `__wasi_path_open`.
+    /// `fs_rights_inheriting` parameter of `path_open`.
     ///
     /// The default for this option is the same value as what will be passed
     /// for the `fs_rights_base` parameter but if this method is called then
@@ -229,7 +221,7 @@ pub trait OpenOptionsExt {
 
     /// Open a file or directory.
     ///
-    /// This corresponds to the `__wasi_path_open` syscall.
+    /// This corresponds to the `path_open` syscall.
     fn open_at<P: AsRef<Path>>(&self, file: &File, path: P) -> io::Result<File>;
 }
 
@@ -284,38 +276,38 @@ impl OpenOptionsExt for OpenOptions {
 ///
 /// [`fs::Metadata`]: ../../../../std/fs/struct.Metadata.html
 pub trait MetadataExt {
-    /// Returns the `st_dev` field of the internal `__wasi_filestat_t`
+    /// Returns the `st_dev` field of the internal `filestat_t`
     fn dev(&self) -> u64;
-    /// Returns the `st_ino` field of the internal `__wasi_filestat_t`
+    /// Returns the `st_ino` field of the internal `filestat_t`
     fn ino(&self) -> u64;
-    /// Returns the `st_nlink` field of the internal `__wasi_filestat_t`
-    fn nlink(&self) -> u32;
-    /// Returns the `st_atim` field of the internal `__wasi_filestat_t`
+    /// Returns the `st_nlink` field of the internal `filestat_t`
+    fn nlink(&self) -> u64;
+    /// Returns the `st_atim` field of the internal `filestat_t`
     fn atim(&self) -> u64;
-    /// Returns the `st_mtim` field of the internal `__wasi_filestat_t`
+    /// Returns the `st_mtim` field of the internal `filestat_t`
     fn mtim(&self) -> u64;
-    /// Returns the `st_ctim` field of the internal `__wasi_filestat_t`
+    /// Returns the `st_ctim` field of the internal `filestat_t`
     fn ctim(&self) -> u64;
 }
 
 impl MetadataExt for fs::Metadata {
     fn dev(&self) -> u64 {
-        self.as_inner().as_wasi().st_dev
+        self.as_inner().as_wasi().dev
     }
     fn ino(&self) -> u64 {
-        self.as_inner().as_wasi().st_ino
+        self.as_inner().as_wasi().ino
     }
-    fn nlink(&self) -> u32 {
-        self.as_inner().as_wasi().st_nlink
+    fn nlink(&self) -> u64 {
+        self.as_inner().as_wasi().nlink
     }
     fn atim(&self) -> u64 {
-        self.as_inner().as_wasi().st_atim
+        self.as_inner().as_wasi().atim
     }
     fn mtim(&self) -> u64 {
-        self.as_inner().as_wasi().st_mtim
+        self.as_inner().as_wasi().mtim
     }
     fn ctim(&self) -> u64 {
-        self.as_inner().as_wasi().st_ctim
+        self.as_inner().as_wasi().ctim
     }
 }
 
@@ -355,7 +347,7 @@ impl FileTypeExt for fs::FileType {
 ///
 /// [`fs::DirEntry`]: ../../../../std/fs/struct.DirEntry.html
 pub trait DirEntryExt {
-    /// Returns the underlying `d_ino` field of the `__wasi_dirent_t`
+    /// Returns the underlying `d_ino` field of the `dirent_t`
     fn ino(&self) -> u64;
 }
 
@@ -367,7 +359,7 @@ impl DirEntryExt for fs::DirEntry {
 
 /// Create a hard link.
 ///
-/// This corresponds to the `__wasi_path_link` syscall.
+/// This corresponds to the `path_link` syscall.
 pub fn link<P: AsRef<Path>, U: AsRef<Path>>(
     old_fd: &File,
     old_flags: u32,
@@ -377,15 +369,15 @@ pub fn link<P: AsRef<Path>, U: AsRef<Path>>(
 ) -> io::Result<()> {
     old_fd.as_inner().fd().link(
         old_flags,
-        old_path.as_ref().as_os_str().as_bytes(),
+        osstr2str(old_path.as_ref().as_ref())?,
         new_fd.as_inner().fd(),
-        new_path.as_ref().as_os_str().as_bytes(),
+        osstr2str(new_path.as_ref().as_ref())?,
     )
 }
 
 /// Rename a file or directory.
 ///
-/// This corresponds to the `__wasi_path_rename` syscall.
+/// This corresponds to the `path_rename` syscall.
 pub fn rename<P: AsRef<Path>, U: AsRef<Path>>(
     old_fd: &File,
     old_path: P,
@@ -393,22 +385,21 @@ pub fn rename<P: AsRef<Path>, U: AsRef<Path>>(
     new_path: U,
 ) -> io::Result<()> {
     old_fd.as_inner().fd().rename(
-        old_path.as_ref().as_os_str().as_bytes(),
+        osstr2str(old_path.as_ref().as_ref())?,
         new_fd.as_inner().fd(),
-        new_path.as_ref().as_os_str().as_bytes(),
+        osstr2str(new_path.as_ref().as_ref())?,
     )
 }
 
 /// Create a symbolic link.
 ///
-/// This corresponds to the `__wasi_path_symlink` syscall.
+/// This corresponds to the `path_symlink` syscall.
 pub fn symlink<P: AsRef<Path>, U: AsRef<Path>>(
     old_path: P,
     fd: &File,
     new_path: U,
 ) -> io::Result<()> {
-    fd.as_inner().fd().symlink(
-        old_path.as_ref().as_os_str().as_bytes(),
-        new_path.as_ref().as_os_str().as_bytes(),
-    )
+    fd.as_inner()
+        .fd()
+        .symlink(osstr2str(old_path.as_ref().as_ref())?, osstr2str(new_path.as_ref().as_ref())?)
 }
