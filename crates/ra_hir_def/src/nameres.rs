@@ -356,6 +356,7 @@ impl ModuleData {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
@@ -363,25 +364,6 @@ pub enum ModuleSource {
 }
 
 impl ModuleSource {
-    pub fn new(
-        db: &impl DefDatabase,
-        file_id: Option<FileId>,
-        decl_id: Option<AstId<ast::Module>>,
-    ) -> ModuleSource {
-        match (file_id, decl_id) {
-            (Some(file_id), _) => {
-                let source_file = db.parse(file_id).tree();
-                ModuleSource::SourceFile(source_file)
-            }
-            (None, Some(item_id)) => {
-                let module = item_id.to_node(db);
-                assert!(module.item_list().is_some(), "expected inline module");
-                ModuleSource::Module(module)
-            }
-            (None, None) => panic!(),
-        }
-    }
-
     // FIXME: this methods do not belong here
     pub fn from_position(db: &impl DefDatabase, position: FilePosition) -> ModuleSource {
         let parse = db.parse(position.file_id);

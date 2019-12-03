@@ -238,7 +238,7 @@ impl Module {
             _ => {
                 let src_parent = InFile {
                     file_id: src.file_id,
-                    value: ModuleSource::new(db, Some(src.file_id.original_file(db)), None),
+                    value: ModuleSource::from_file_id(db, src.file_id.original_file(db)),
                 };
                 Module::from_definition(db, src_parent)
             }
