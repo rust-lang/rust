@@ -1,6 +1,5 @@
 // run-pass
 // ignore-emscripten
-// min-llvm-version 7.0
 
 // Test that the simd_f{min,max} intrinsics produce the correct results.
 

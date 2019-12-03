@@ -442,32 +442,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 let is_left = name == "rotate_left";
                                 let val = args[0].immediate();
                                 let raw_shift = args[1].immediate();
-                                if llvm_util::get_major_version() >= 7 {
-                                    // rotate = funnel shift with first two args the same
-                                    let llvm_name = &format!("llvm.fsh{}.i{}",
-                                                            if is_left { 'l' } else { 'r' }, width);
-                                    let llfn = self.get_intrinsic(llvm_name);
-                                    self.call(llfn, &[val, val, raw_shift], None)
-                                } else {
-                                    // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
-                                    // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                                    let width = self.const_uint(
-                                        self.type_ix(width),
-                                        width,
-                                    );
-                                    let shift = self.urem(raw_shift, width);
-                                    let width_minus_raw_shift = self.sub(width, raw_shift);
-                                    let inv_shift = self.urem(width_minus_raw_shift, width);
-                                    let shift1 = self.shl(
-                                        val,
-                                        if is_left { shift } else { inv_shift },
-                                    );
-                                    let shift2 = self.lshr(
-                                        val,
-                                        if !is_left { shift } else { inv_shift },
-                                    );
-                                    self.or(shift1, shift2)
-                                }
+                                // rotate = funnel shift with first two args the same
+                                let llvm_name = &format!("llvm.fsh{}.i{}",
+                                                        if is_left { 'l' } else { 'r' }, width);
+                                let llfn = self.get_intrinsic(llvm_name);
+                                self.call(llfn, &[val, val, raw_shift], None)
                             },
                             "saturating_add" | "saturating_sub" => {
                                 let is_add = name == "saturating_add";

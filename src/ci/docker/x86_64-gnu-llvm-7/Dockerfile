@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   cmake \
   sudo \
   gdb \
-  llvm-6.0-tools \
+  llvm-7-tools \
   libedit-dev \
   libssl-dev \
   pkg-config \
@@ -24,7 +24,7 @@ RUN sh /scripts/sccache.sh
 # using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
-      --llvm-root=/usr/lib/llvm-6.0 \
+      --llvm-root=/usr/lib/llvm-7 \
       --enable-llvm-link-shared
 ENV SCRIPT python2.7 ../x.py test src/tools/tidy && python2.7 ../x.py test
 
