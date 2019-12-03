@@ -141,14 +141,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
                     .expect("No panic runtime found!");
                 let panic_runtime = tcx.crate_name(*panic_runtime);
                 let start_panic_instance = this.resolve_path(&[&*panic_runtime.as_str(), "__rust_start_panic"])?;
-                return Ok(Some(this.load_mir(start_panic_instance.def, None)?));
+                return Ok(Some(this.load_mir(start_panic_instance.def, None)?.body()));
             }
             // Similarly, we forward calls to the `panic_impl` foreign item to its implementation.
             // The implementation is provided by the function with the `#[panic_handler]` attribute.
             "panic_impl" => {
                 let panic_impl_id = this.tcx.lang_items().panic_impl().unwrap();
                 let panic_impl_instance = ty::Instance::mono(*this.tcx, panic_impl_id);
-                return Ok(Some(this.load_mir(panic_impl_instance.def, None)?));
+                return Ok(Some(this.load_mir(panic_impl_instance.def, None)?.body()));
             }
 
             "exit" | "ExitProcess" => {
