@@ -77,7 +77,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 BinOpKind::Shr => (cx.tcx.lang_items().shr_trait(), false),
                 BinOpKind::Ne | BinOpKind::Eq => (cx.tcx.lang_items().eq_trait(), true),
                 BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => {
-                    (cx.tcx.lang_items().ord_trait(), true)
+                    (cx.tcx.lang_items().partial_ord_trait(), true)
                 },
             };
             if let Some(trait_id) = trait_id {
@@ -155,7 +155,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     left.span,
                                     "use the left value directly",
                                     lsnip,
-                                    Applicability::MachineApplicable, // snippet
+                                    Applicability::MaybeIncorrect, // FIXME #2597
                                 );
                             })
                         }
@@ -173,7 +173,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     right.span,
                                     "use the right value directly",
                                     rsnip,
-                                    Applicability::MachineApplicable, // snippet
+                                    Applicability::MaybeIncorrect, // FIXME #2597
                                 );
                             })
                         }

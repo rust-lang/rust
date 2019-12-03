@@ -11,14 +11,6 @@ LL |     let foo = 5 - 6;
    |               ^   ^
 
 error: taken reference of right operand
-  --> $DIR/op_ref.rs:20:8
-   |
-LL |     if b < &a {
-   |        ^^^^--
-   |            |
-   |            help: use the right value directly: `a`
-
-error: taken reference of right operand
   --> $DIR/op_ref.rs:57:13
    |
 LL |     let z = x & &y;
@@ -26,5 +18,5 @@ LL |     let z = x & &y;
    |                 |
    |                 help: use the right value directly: `y`
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
