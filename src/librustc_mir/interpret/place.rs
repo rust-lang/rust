@@ -1065,13 +1065,16 @@ where
         variant_index: VariantIdx,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let variant_scalar = Scalar::from_u32(variant_index.as_u32()).into();
+
+        // Layout computation excludes uninhabited variants from consideration
+        // therefore there's no way to represent those variants in the given layout.
+        if dest.layout.for_variant(self, variant_index).abi.is_uninhabited() {
+            throw_ub!(Unreachable);
+        }
 
         match dest.layout.variants {
             layout::Variants::Single { index } => {
-                if index != variant_index {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                assert_eq!(index, variant_index);
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
@@ -1079,9 +1082,9 @@ where
                 discr_index,
                 ..
             } => {
-                if !dest.layout.ty.variant_range(*self.tcx).unwrap().contains(&variant_index) {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                // No need to validate that the discriminant here because the
+                // `TyLayout::for_variant()` call earlier already checks the variant is valid.
+
                 let discr_val =
                     dest.layout.ty.discriminant_for_variant(*self.tcx, variant_index).unwrap().val;
 
@@ -1104,9 +1107,9 @@ where
                 discr_index,
                 ..
             } => {
-                if !variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len() {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                // No need to validate that the discriminant here because the
+                // `TyLayout::for_variant()` call earlier already checks the variant is valid.
+
                 if variant_index != dataful_variant {
                     let variants_start = niche_variants.start().as_u32();
                     let variant_index_relative = variant_index.as_u32()
