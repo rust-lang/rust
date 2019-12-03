@@ -15,6 +15,7 @@ use super::{Canonical, GenericPredicate, HirDisplay, ProjectionTy, TraitRef, Ty,
 use self::chalk::{from_chalk, ToChalk};
 
 pub(crate) mod chalk;
+mod builtin;
 
 #[derive(Debug, Clone)]
 pub struct TraitSolver {

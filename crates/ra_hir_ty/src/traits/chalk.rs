@@ -8,17 +8,16 @@ use chalk_ir::{
     TypeName, UniverseIndex,
 };
 use chalk_rust_ir::{AssociatedTyDatum, AssociatedTyValue, ImplDatum, StructDatum, TraitDatum};
-use ra_db::CrateId;
 
 use hir_def::{
-    expr::Expr, lang_item::LangItemTarget, AssocItemId, AstItemDef, ContainerId, GenericDefId,
-    ImplId, Lookup, TraitId, TypeAliasId,
+    AssocItemId, AstItemDef, ContainerId, GenericDefId, ImplId, Lookup, TraitId, TypeAliasId,
 };
-use hir_expand::name;
+use ra_db::{
+    salsa::{InternId, InternKey},
+    CrateId,
+};
 
-use ra_db::salsa::{InternId, InternKey};
-
-use super::{AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
+use super::{builtin, AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
     db::HirDatabase, display::HirDisplay, ApplicationTy, GenericPredicate, ProjectionTy, Substs,
     TraitRef, Ty, TypeCtor, TypeWalk,
@@ -395,6 +394,51 @@ where
     }
 }
 
+impl ToChalk for builtin::BuiltinImplData {
+    type Chalk = chalk_rust_ir::ImplDatum<ChalkIr>;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_rust_ir::ImplDatum<ChalkIr> {
+        let impl_type = chalk_rust_ir::ImplType::External;
+        let where_clauses = self.where_clauses.into_iter().map(|w| w.to_chalk(db)).collect();
+
+        let impl_datum_bound =
+            chalk_rust_ir::ImplDatumBound { trait_ref: self.trait_ref.to_chalk(db), where_clauses };
+        let associated_ty_value_ids =
+            self.assoc_ty_values.into_iter().map(|v| v.to_chalk(db)).collect();
+        chalk_rust_ir::ImplDatum {
+            binders: make_binders(impl_datum_bound, self.num_vars),
+            impl_type,
+            polarity: chalk_rust_ir::Polarity::Positive,
+            associated_ty_value_ids,
+        }
+    }
+
+    fn from_chalk(_db: &impl HirDatabase, _data: chalk_rust_ir::ImplDatum<ChalkIr>) -> Self {
+        unimplemented!()
+    }
+}
+
+impl ToChalk for builtin::BuiltinImplAssocTyValueData {
+    type Chalk = chalk_rust_ir::AssociatedTyValue<ChalkIr>;
+
+    fn to_chalk(self, db: &impl HirDatabase) -> chalk_rust_ir::AssociatedTyValue<ChalkIr> {
+        let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: self.value.to_chalk(db) };
+
+        chalk_rust_ir::AssociatedTyValue {
+            associated_ty_id: self.assoc_ty_id.to_chalk(db),
+            impl_id: self.impl_.to_chalk(db),
+            value: make_binders(value_bound, self.num_vars),
+        }
+    }
+
+    fn from_chalk(
+        _db: &impl HirDatabase,
+        _data: chalk_rust_ir::AssociatedTyValue<ChalkIr>,
+    ) -> builtin::BuiltinImplAssocTyValueData {
+        unimplemented!()
+    }
+}
+
 fn make_binders<T>(value: T, num_vars: usize) -> chalk_ir::Binders<T> {
     chalk_ir::Binders {
         value,
@@ -456,18 +500,10 @@ where
             .collect();
 
         let ty: Ty = from_chalk(self.db, parameters[0].assert_ty_ref().clone());
-        if let Ty::Apply(ApplicationTy { ctor: TypeCtor::Closure { def, expr }, .. }) = ty {
-            for &fn_trait in
-                [super::FnTrait::FnOnce, super::FnTrait::FnMut, super::FnTrait::Fn].iter()
-            {
-                if let Some(actual_trait) = get_fn_trait(self.db, self.krate, fn_trait) {
-                    if trait_ == actual_trait {
-                        let impl_ = super::ClosureFnTraitImplData { def, expr, fn_trait };
-                        result.push(Impl::ClosureFnTraitImpl(impl_).to_chalk(self.db));
-                    }
-                }
-            }
-        }
+
+        builtin::get_builtin_impls(self.db, self.krate, &ty, trait_, |i| {
+            result.push(i.to_chalk(self.db))
+        });
 
         debug!("impls_for_trait returned {} impls", result.len());
         result
@@ -619,7 +655,7 @@ pub(crate) fn impl_datum_query(
     let impl_: Impl = from_chalk(db, impl_id);
     match impl_ {
         Impl::ImplBlock(impl_block) => impl_block_datum(db, krate, impl_id, impl_block),
-        Impl::ClosureFnTraitImpl(data) => closure_fn_trait_impl_datum(db, krate, data),
+        _ => builtin::impl_datum(db, krate, impl_).map(|d| Arc::new(d.to_chalk(db))),
     }
     .unwrap_or_else(invalid_impl_datum)
 }
@@ -700,63 +736,6 @@ fn invalid_impl_datum() -> Arc<ImplDatum<ChalkIr>> {
     Arc::new(impl_datum)
 }
 
-fn closure_fn_trait_impl_datum(
-    db: &impl HirDatabase,
-    krate: CrateId,
-    data: super::ClosureFnTraitImplData,
-) -> Option<Arc<ImplDatum<ChalkIr>>> {
-    // for some closure |X, Y| -> Z:
-    // impl<T, U, V> Fn<(T, U)> for closure<fn(T, U) -> V> { Output = V }
-
-    let trait_ = get_fn_trait(db, krate, data.fn_trait)?; // get corresponding fn trait
-
-    // validate FnOnce trait, since we need it in the assoc ty value definition
-    // and don't want to return a valid value only to find out later that FnOnce
-    // is broken
-    let fn_once_trait = get_fn_trait(db, krate, super::FnTrait::FnOnce)?;
-    let _output = db.trait_data(fn_once_trait).associated_type_by_name(&name::OUTPUT_TYPE)?;
-
-    let num_args: u16 = match &db.body(data.def.into())[data.expr] {
-        Expr::Lambda { args, .. } => args.len() as u16,
-        _ => {
-            log::warn!("closure for closure type {:?} not found", data);
-            0
-        }
-    };
-
-    let arg_ty = Ty::apply(
-        TypeCtor::Tuple { cardinality: num_args },
-        Substs::builder(num_args as usize).fill_with_bound_vars(0).build(),
-    );
-    let sig_ty = Ty::apply(
-        TypeCtor::FnPtr { num_args },
-        Substs::builder(num_args as usize + 1).fill_with_bound_vars(0).build(),
-    );
-
-    let self_ty = Ty::apply_one(TypeCtor::Closure { def: data.def, expr: data.expr }, sig_ty);
-
-    let trait_ref = TraitRef {
-        trait_: trait_.into(),
-        substs: Substs::build_for_def(db, trait_).push(self_ty).push(arg_ty).build(),
-    };
-
-    let output_ty_id = AssocTyValue::ClosureFnTraitImplOutput(data.clone()).to_chalk(db);
-
-    let impl_type = chalk_rust_ir::ImplType::External;
-
-    let impl_datum_bound = chalk_rust_ir::ImplDatumBound {
-        trait_ref: trait_ref.to_chalk(db),
-        where_clauses: Vec::new(),
-    };
-    let impl_datum = ImplDatum {
-        binders: make_binders(impl_datum_bound, num_args as usize + 1),
-        impl_type,
-        polarity: chalk_rust_ir::Polarity::Positive,
-        associated_ty_value_ids: vec![output_ty_id],
-    };
-    Some(Arc::new(impl_datum))
-}
-
 pub(crate) fn associated_ty_value_query(
     db: &impl HirDatabase,
     krate: CrateId,
@@ -767,9 +746,7 @@ pub(crate) fn associated_ty_value_query(
         AssocTyValue::TypeAlias(type_alias) => {
             type_alias_associated_ty_value(db, krate, type_alias)
         }
-        AssocTyValue::ClosureFnTraitImplOutput(data) => {
-            closure_fn_trait_output_assoc_ty_value(db, krate, data)
-        }
+        _ => Arc::new(builtin::associated_ty_value(db, krate, data).to_chalk(db)),
     }
 }
 
@@ -800,53 +777,6 @@ fn type_alias_associated_ty_value(
         value: make_binders(value_bound, bound_vars.len()),
     };
     Arc::new(value)
-}
-
-fn closure_fn_trait_output_assoc_ty_value(
-    db: &impl HirDatabase,
-    krate: CrateId,
-    data: super::ClosureFnTraitImplData,
-) -> Arc<AssociatedTyValue<ChalkIr>> {
-    let impl_id = Impl::ClosureFnTraitImpl(data.clone()).to_chalk(db);
-
-    let num_args: u16 = match &db.body(data.def.into())[data.expr] {
-        Expr::Lambda { args, .. } => args.len() as u16,
-        _ => {
-            log::warn!("closure for closure type {:?} not found", data);
-            0
-        }
-    };
-
-    let output_ty = Ty::Bound(num_args.into());
-
-    let fn_once_trait =
-        get_fn_trait(db, krate, super::FnTrait::FnOnce).expect("assoc ty value should not exist");
-
-    let output_ty_id = db
-        .trait_data(fn_once_trait)
-        .associated_type_by_name(&name::OUTPUT_TYPE)
-        .expect("assoc ty value should not exist");
-
-    let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: output_ty.to_chalk(db) };
-
-    let value = chalk_rust_ir::AssociatedTyValue {
-        associated_ty_id: output_ty_id.to_chalk(db),
-        impl_id,
-        value: make_binders(value_bound, num_args as usize + 1),
-    };
-    Arc::new(value)
-}
-
-fn get_fn_trait(
-    db: &impl HirDatabase,
-    krate: CrateId,
-    fn_trait: super::FnTrait,
-) -> Option<TraitId> {
-    let target = db.lang_item(krate, fn_trait.lang_item_name().into())?;
-    match target {
-        LangItemTarget::TraitId(t) => Some(t),
-        _ => None,
-    }
 }
 
 fn id_from_chalk<T: InternKey>(chalk_id: chalk_ir::RawId) -> T {
