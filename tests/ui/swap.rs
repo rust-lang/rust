@@ -46,6 +46,15 @@ fn slice() {
     foo.swap(0, 1);
 }
 
+fn unswappable_slice() {
+    let foo = &mut [vec![1, 2], vec![3, 4]];
+    let temp = foo[0][1];
+    foo[0][1] = foo[1][0];
+    foo[1][0] = temp;
+
+    // swap(foo[0][1], foo[1][0]) would fail
+}
+
 fn vec() {
     let mut foo = vec![1, 2];
     let temp = foo[0];
