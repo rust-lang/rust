@@ -459,11 +459,9 @@ fn check_exhaustive<'p, 'tcx>(
             return;
         } else {
             // We know the type is inhabited, so this must be wrong
-            let (def_span, non_empty_enum) = match scrut_ty.kind {
-                ty::Adt(def, _) if def.is_enum() => {
-                    (cx.tcx.hir().span_if_local(def.did), !def.variants.is_empty())
-                }
-                _ => (None, false),
+            let non_empty_enum = match scrut_ty.kind {
+                ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
+                _ => false,
             };
 
             if non_empty_enum {
@@ -478,9 +476,7 @@ fn check_exhaustive<'p, 'tcx>(
                     "ensure that all possible cases are being handled, \
                      possibly by adding wildcards or more match arms",
                 );
-                if let Some(sp) = def_span {
-                    err.span_label(sp, format!("`{}` defined here", scrut_ty));
-                }
+                adt_defined_here(cx, &mut err, scrut_ty, &[]);
                 err.emit();
                 return;
             }
