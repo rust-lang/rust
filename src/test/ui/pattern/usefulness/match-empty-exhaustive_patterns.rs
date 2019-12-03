@@ -13,15 +13,15 @@ union NonEmptyUnion2 { //~ `NonEmptyUnion2` defined here
 }
 enum NonEmptyEnum1 { //~ `NonEmptyEnum1` defined here
     Foo(bool),
-    //~^ variant not covered
+    //~^ not covered
     //~| not covered
 }
 enum NonEmptyEnum2 { //~ `NonEmptyEnum2` defined here
     Foo(bool),
-    //~^ variant not covered
+    //~^ not covered
     //~| not covered
     Bar,
-    //~^ variant not covered
+    //~^ not covered
     //~| not covered
 }
 enum NonEmptyEnum5 { //~ `NonEmptyEnum5` defined here
@@ -70,11 +70,11 @@ fn main() {
     match_empty!((NonEmptyUnion2 { foo: () }));
     //~^ ERROR type `NonEmptyUnion2` is non-empty
     match_empty!(NonEmptyEnum1::Foo(true));
-    //~^ ERROR pattern `Foo` of type `NonEmptyEnum1` is not handled
+    //~^ ERROR `Foo(_)` not covered
     match_empty!(NonEmptyEnum2::Foo(true));
-    //~^ ERROR multiple patterns of type `NonEmptyEnum2` are not handled
+    //~^ ERROR `Foo(_)` and `Bar` not covered
     match_empty!(NonEmptyEnum5::V1);
-    //~^ ERROR multiple patterns of type `NonEmptyEnum5` are not handled
+    //~^ ERROR `V1`, `V2`, `V3` and 2 more not covered
 
     match_false!(0u8);
     //~^ ERROR `0u8..=std::u8::MAX` not covered

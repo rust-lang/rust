@@ -192,41 +192,28 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                         _ => (None, vec![]),
                     };
 
-                    let mut err = create_e0004(
-                        self.tcx.sess,
-                        scrut.span,
-                        format!(
-                            "non-exhaustive patterns: {}",
-                            match missing_variants.len() {
-                                0 => format!("type `{}` is non-empty", pat_ty),
-                                1 => format!(
-                                    "pattern `{}` of type `{}` is not handled",
-                                    missing_variants[0].name, pat_ty,
-                                ),
-                                _ => format!(
-                                    "multiple patterns of type `{}` are not handled",
-                                    pat_ty
-                                ),
-                            }
-                        ),
-                    );
-                    err.help(
-                        "ensure that all possible cases are being handled, \
-                         possibly by adding wildcards or more match arms",
-                    );
-                    if let Some(sp) = def_span {
-                        err.span_label(sp, format!("`{}` defined here", pat_ty));
-                    }
-                    // point at the definition of non-covered enum variants
-                    if missing_variants.len() < 4 {
-                        for variant in &missing_variants {
-                            err.span_label(variant.span, "variant not covered");
+                    if missing_variants.is_empty() {
+                        let mut err = create_e0004(
+                            self.tcx.sess,
+                            scrut.span,
+                            format!("non-exhaustive patterns: type `{}` is non-empty", pat_ty),
+                        );
+                        err.help(
+                            "ensure that all possible cases are being handled, \
+                             possibly by adding wildcards or more match arms",
+                        );
+                        if let Some(sp) = def_span {
+                            err.span_label(sp, format!("`{}` defined here", pat_ty));
                         }
+                        err.emit();
+                        return;
+                    } else {
+                        // Continue to the normal code path
                     }
-                    err.emit();
+                } else {
+                    // If the type *is* uninhabited, it's vacuously exhaustive
+                    return;
                 }
-                // If the type *is* uninhabited, it's vacuously exhaustive
-                return;
             }
 
             let scrut_ty = self.tables.node_type(scrut.hir_id);
