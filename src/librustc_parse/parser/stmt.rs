@@ -39,20 +39,21 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
-        Ok(Some(if self.eat_keyword(kw::Let) {
+        if self.eat_keyword(kw::Let) {
             let local = self.parse_local(attrs.into())?;
-            self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(local))
-        } else if let Some(macro_def) = self.eat_macro_def(
-            &attrs,
-            &respan(lo, VisibilityKind::Inherited),
-            lo,
-        )? {
-            self.mk_stmt(lo.to(self.prev_span), StmtKind::Item(macro_def))
+            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(local))));
+        }
+
+        let mac_vis = respan(lo, VisibilityKind::Inherited);
+        if let Some(macro_def) = self.eat_macro_def(&attrs, &mac_vis, lo)? {
+            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Item(macro_def))));
+        }
+
         // Starts like a simple path, being careful to avoid contextual keywords
         // such as a union items, item with `crate` visibility or auto trait items.
         // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
         // like a path (1 token), but it fact not a path.
-        } else if self.token.is_path_start()
+        if self.token.is_path_start()
             && !self.token.is_qpath_start()
             && !self.is_union_item() // `union::b::c` - path, `union U { ... }` - not a path.
             && !self.is_crate_vis() // `crate::b::c` - path, `crate struct S;` - not a path.
@@ -77,58 +78,57 @@ impl<'a> Parser<'a> {
                 this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
             })?;
             return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Expr(expr))));
-        } else {
-            // FIXME: Bad copy of attrs
-            let old_directory_ownership =
-                mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
-            let item = self.parse_item_(attrs.clone(), false, true)?;
-            self.directory.ownership = old_directory_ownership;
+        }
 
-            if let Some(item) = item {
-                return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(item))));
-            }
+        // FIXME: Bad copy of attrs
+        let old_directory_ownership =
+            mem::replace(&mut self.directory.ownership, DirectoryOwnership::UnownedViaBlock);
+        let item = self.parse_item_(attrs.clone(), false, true)?;
+        self.directory.ownership = old_directory_ownership;
 
-            let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
-                if !attrs.is_empty() {
-                    if s.prev_token_kind == PrevTokenKind::DocComment {
-                        s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
-                    } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                        s.span_err(
-                            s.token.span, "expected statement after outer attribute"
-                        );
-                    }
+        if let Some(item) = item {
+            return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(item))));
+        }
+
+        let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
+            if !attrs.is_empty() {
+                if s.prev_token_kind == PrevTokenKind::DocComment {
+                    s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
+                } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
+                    s.span_err(
+                        s.token.span, "expected statement after outer attribute"
+                    );
                 }
-            };
+            }
+        };
 
-            // Do not attempt to parse an expression if we're done here.
-            if self.token == token::Semi {
-                unused_attrs(&attrs, self);
+        // Do not attempt to parse an expression if we're done here.
+        if self.token == token::Semi {
+            unused_attrs(&attrs, self);
+            self.bump();
+            let mut last_semi = lo;
+            while self.token == token::Semi {
+                last_semi = self.token.span;
                 self.bump();
-                let mut last_semi = lo;
-                while self.token == token::Semi {
-                    last_semi = self.token.span;
-                    self.bump();
-                }
-                // We are encoding a string of semicolons as an
-                // an empty tuple that spans the excess semicolons
-                // to preserve this info until the lint stage
-                let kind = StmtKind::Semi(self.mk_expr(
-                    lo.to(last_semi),
-                    ExprKind::Tup(Vec::new()),
-                    ThinVec::new()
-                ));
-                return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
             }
+            // We are encoding a string of semicolons as an an empty tuple that spans
+            // the excess semicolons to preserve this info until the lint stage.
+            let kind = StmtKind::Semi(self.mk_expr(
+                lo.to(last_semi),
+                ExprKind::Tup(Vec::new()),
+                ThinVec::new()
+            ));
+            return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
+        }
 
-            if self.token == token::CloseDelim(token::Brace) {
-                unused_attrs(&attrs, self);
-                return Ok(None);
-            }
+        if self.token == token::CloseDelim(token::Brace) {
+            unused_attrs(&attrs, self);
+            return Ok(None);
+        }
 
-            // Remainder are line-expr stmts.
-            let e = self.parse_expr_res( Restrictions::STMT_EXPR, Some(attrs.into()))?;
-            self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
-        }))
+        // Remainder are line-expr stmts.
+        let e = self.parse_expr_res(Restrictions::STMT_EXPR, Some(attrs.into()))?;
+        Ok(Some(self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))))
     }
 
     /// Parses a statement macro `mac!(args)` provided a `path` representing `mac`.
