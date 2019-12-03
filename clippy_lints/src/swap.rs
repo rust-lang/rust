@@ -97,29 +97,6 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
             if SpanlessEq::new(cx).ignore_fn().eq_expr(tmp_init, lhs1);
             if SpanlessEq::new(cx).ignore_fn().eq_expr(rhs1, lhs2);
             then {
-                fn check_for_slice<'a>(
-                    cx: &LateContext<'_, '_>,
-                    lhs1: &'a Expr,
-                    lhs2: &'a Expr,
-                ) -> Option<(&'a Expr, &'a Expr, &'a Expr)> {
-                    if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.kind {
-                        if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.kind {
-                            if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
-                                let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
-
-                                if matches!(ty.kind, ty::Slice(_)) ||
-                                    matches!(ty.kind, ty::Array(_, _)) ||
-                                    is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type")) ||
-                                    match_type(cx, ty, &paths::VEC_DEQUE) {
-                                        return Some((lhs1, idx1, idx2));
-                                }
-                            }
-                        }
-                    }
-
-                    None
-                }
-
                 if let ExprKind::Field(ref lhs1, _) = lhs1.kind {
                     if let ExprKind::Field(ref lhs2, _) = lhs2.kind {
                         if lhs1.hir_id.owner_def_id() == lhs2.hir_id.owner_def_id() {
@@ -128,7 +105,11 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                     }
                 }
 
-                let (replace, what, sugg) = if let Some((slice, idx1, idx2)) = check_for_slice(cx, lhs1, lhs2) {
+                let slice = check_for_slice(cx, lhs1, lhs2);
+
+                let (replace, what, sugg) = if let Slice::NotSwappable = slice {
+                    return;
+                } else if let Slice::Swappable(slice, idx1, idx2) = slice {
                     if let Some(slice) = Sugg::hir_opt(cx, slice) {
                         (false,
                          format!(" elements of `{}`", slice),
@@ -169,6 +150,56 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
             }
         }
     }
+}
+
+enum Slice<'a> {
+    /// `slice.swap(idx1, idx2)` can be used
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// let t = a[1];
+    /// a[1] = a[0];
+    /// a[0] = t;
+    /// // can be written as
+    /// a.swap(0, 1);
+    /// ```
+    Swappable(&'a Expr, &'a Expr, &'a Expr),
+    /// The `swap` function cannot be used.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// let t = a[0][1];
+    /// a[0][1] = a[1][0];
+    /// a[1][0] = t;
+    /// ```
+    NotSwappable,
+    /// Not a slice
+    None,
+}
+
+/// Checks if both expressions are index operations into "slice-like" types.
+fn check_for_slice<'a>(cx: &LateContext<'_, '_>, lhs1: &'a Expr, lhs2: &'a Expr) -> Slice<'a> {
+    if let ExprKind::Index(ref lhs1, ref idx1) = lhs1.kind {
+        if let ExprKind::Index(ref lhs2, ref idx2) = lhs2.kind {
+            if SpanlessEq::new(cx).ignore_fn().eq_expr(lhs1, lhs2) {
+                let ty = walk_ptrs_ty(cx.tables.expr_ty(lhs1));
+
+                if matches!(ty.kind, ty::Slice(_))
+                    || matches!(ty.kind, ty::Array(_, _))
+                    || is_type_diagnostic_item(cx, ty, Symbol::intern("vec_type"))
+                    || match_type(cx, ty, &paths::VEC_DEQUE)
+                {
+                    return Slice::Swappable(lhs1, idx1, idx2);
+                }
+            } else {
+                return Slice::NotSwappable;
+            }
+        }
+    }
+
+    Slice::None
 }
 
 /// Implementation of the `ALMOST_SWAPPED` lint.
