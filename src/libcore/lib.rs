@@ -128,6 +128,7 @@
 #![feature(maybe_uninit_slice)]
 #![feature(external_doc)]
 #![feature(associated_type_bounds)]
+#![cfg_attr(not(bootstrap), feature(const_if_match))]
 
 #[prelude_import]
 #[allow(unused)]
