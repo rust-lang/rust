@@ -69,7 +69,7 @@ pub struct FulfillmentContext<'tcx> {
     // not available when `FnCxtxt` is run.
     has_delayed_generator_witness: bool,
     // The delayed generator witness predicates. This is only
-    // used when `has_delayed_generator_witness:` is `true`
+    // used when `has_delayed_generator_witness:` is `true`.
     delayed_generator_witness: DelayedGenerators<'tcx>,
 }
 
@@ -91,7 +91,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             register_region_obligations: true,
             usable_in_snapshot: false,
             delayed_generator_witness: None,
-            has_delayed_generator_witness: false
+            has_delayed_generator_witness: false,
         }
     }
 
@@ -101,7 +101,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             register_region_obligations: true,
             usable_in_snapshot: false,
             delayed_generator_witness: Some(Vec::new()),
-            has_delayed_generator_witness: true
+            has_delayed_generator_witness: true,
         }
     }
 
@@ -111,7 +111,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             register_region_obligations: true,
             usable_in_snapshot: true,
             delayed_generator_witness: None,
-            has_delayed_generator_witness: false
+            has_delayed_generator_witness: false,
         }
     }
 
@@ -121,7 +121,7 @@ impl<'a, 'tcx> FulfillmentContext<'tcx> {
             register_region_obligations: false,
             usable_in_snapshot: false,
             delayed_generator_witness: None,
-            has_delayed_generator_witness: false
+            has_delayed_generator_witness: false,
         }
     }
 
