@@ -108,6 +108,11 @@ rustc_queries! {
         /// unreachable code.
         query mir_built(_: DefId) -> &'tcx Steal<mir::BodyCache<'tcx>> {}
 
+        /// Compute the generator interior types for a given `DefId`
+        /// (if it corresponds to a generator), for use in determining
+        /// generator auto trait implementation
+        query mir_generator_interior(_: DefId) -> &'tcx Steal<mir::BodyCache<'tcx>> {}
+
         /// Fetch the MIR for a given `DefId` up till the point where it is
         /// ready for const evaluation.
         ///

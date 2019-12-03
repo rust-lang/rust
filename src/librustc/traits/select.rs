@@ -2807,10 +2807,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 let mut used_types = Vec::new();
 
-                // Note - while we use `optimized_mir`, the .generator_interior_tys
-                // field is only set during construction of the original MIR,
-                // and is unaffected by optimizations
-                let interior_tys = self.tcx().optimized_mir(did).generator_interior_tys
+                // We use `mir_validated` since earlier queries (e.g. `mir_const`)
+                // may be been stolen by the time this code runs. However, `generator_interior_tys`
+                // is computed early on and never modified, so it's fine to use
+                // a later query.
+                let mir = self.tcx().mir_validated(did).0.borrow();
+                let interior_tys = mir.generator_interior_tys
                     .as_ref().expect("Missing generator interior types!");
 
                 for ty in interior_tys {

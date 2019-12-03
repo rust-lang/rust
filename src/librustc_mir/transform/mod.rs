@@ -46,6 +46,7 @@ pub(crate) fn provide(providers: &mut Providers<'_>) {
         mir_const,
         mir_const_qualif,
         mir_validated,
+        mir_generator_interior,
         optimized_mir,
         is_mir_available,
         promoted_mir,
@@ -98,7 +99,12 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
 }
 
 fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
-    let mut mir = build::mir_build(tcx, def_id);
+    let mir = build::mir_build(tcx, def_id);
+    tcx.alloc_steal_mir(mir)
+}
+
+fn mir_generator_interior(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
+    let mut mir = tcx.mir_const(def_id).steal();
     if let ty::Generator(..) = tcx.type_of(def_id).kind {
         let interior_types = generator::generator_interior_tys(tcx, def_id, &mir);
         mir.generator_interior_tys = Some(interior_types);
@@ -248,7 +254,7 @@ fn mir_validated(
     // this point, before we steal the mir-const result.
     let _ = tcx.mir_const_qualif(def_id);
 
-    let mut body = tcx.mir_const(def_id).steal();
+    let mut body = tcx.mir_generator_interior(def_id).steal();
     let promote_pass = promote_consts::PromoteTemps::default();
     run_passes(tcx, &mut body, InstanceDef::Item(def_id), None, MirPhase::Validated, &[
         // What we need to run borrowck etc.
