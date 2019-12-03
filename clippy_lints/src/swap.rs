@@ -111,42 +111,51 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                     return;
                 } else if let Slice::Swappable(slice, idx1, idx2) = slice {
                     if let Some(slice) = Sugg::hir_opt(cx, slice) {
-                        (false,
-                         format!(" elements of `{}`", slice),
-                         format!("{}.swap({}, {})",
-                                 slice.maybe_par(),
-                                 snippet(cx, idx1.span, ".."),
-                                 snippet(cx, idx2.span, "..")))
+                        (
+                            false,
+                            format!(" elements of `{}`", slice),
+                            format!(
+                                "{}.swap({}, {})",
+                                slice.maybe_par(),
+                                snippet(cx, idx1.span, ".."),
+                                snippet(cx, idx2.span, ".."),
+                            ),
+                        )
                     } else {
                         (false, String::new(), String::new())
                     }
                 } else if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
-                    (true, format!(" `{}` and `{}`", first, second),
-                        format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()))
+                    (
+                        true,
+                        format!(" `{}` and `{}`", first, second),
+                        format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()),
+                    )
                 } else {
                     (true, String::new(), String::new())
                 };
 
                 let span = w[0].span.to(second.span);
 
-                span_lint_and_then(cx,
-                                   MANUAL_SWAP,
-                                   span,
-                                   &format!("this looks like you are swapping{} manually", what),
-                                   |db| {
-                                       if !sugg.is_empty() {
-                                           db.span_suggestion(
-                                               span,
-                                               "try",
-                                               sugg,
-                                               Applicability::Unspecified,
-                                           );
+                span_lint_and_then(
+                    cx,
+                    MANUAL_SWAP,
+                    span,
+                    &format!("this looks like you are swapping{} manually", what),
+                    |db| {
+                        if !sugg.is_empty() {
+                            db.span_suggestion(
+                                span,
+                                "try",
+                                sugg,
+                                Applicability::Unspecified,
+                            );
 
-                                           if replace {
-                                               db.note("or maybe you should use `std::mem::replace`?");
-                                           }
-                                       }
-                                   });
+                            if replace {
+                                db.note("or maybe you should use `std::mem::replace`?");
+                            }
+                        }
+                    }
+                );
             }
         }
     }
