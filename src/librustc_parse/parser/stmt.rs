@@ -14,7 +14,7 @@ use syntax::ast::{AttrVec, Attribute, AttrStyle, VisibilityKind, MacStmtStyle, M
 use syntax::util::classify;
 use syntax::token;
 use syntax_pos::source_map::{respan, Span};
-use syntax_pos::symbol::kw;
+use syntax_pos::symbol::{kw, sym, Symbol};
 
 use std::mem;
 
@@ -39,8 +39,20 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
 
         if self.eat_keyword(kw::Let) {
-            let local = self.parse_local(attrs.into())?;
-            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(local))));
+            return self.parse_local_mk(lo, attrs.into()).map(Some)
+        }
+        if self.is_kw_followed_by_ident(kw::Mut) {
+            return self.recover_stmt_local(lo, attrs.into(), "missing `let`", "let mut");
+        }
+        if self.is_kw_followed_by_ident(kw::Auto) {
+            self.bump(); // `auto`
+            let msg = "to introduce a variable, write `let` instead of `auto`";
+            return self.recover_stmt_local(lo, attrs.into(), msg, "let");
+        }
+        if self.is_kw_followed_by_ident(sym::var) {
+            self.bump(); // `var`
+            let msg = "to introduce a variable, write `let` instead of `var`";
+            return self.recover_stmt_local(lo, attrs.into(), msg, "let");
         }
 
         let mac_vis = respan(lo, VisibilityKind::Inherited);
@@ -187,6 +199,30 @@ impl<'a> Parser<'a> {
                 self.span_err(self.token.span, "expected statement after outer attribute");
             }
         }
+    }
+
+    fn is_kw_followed_by_ident(&self, kw: Symbol) -> bool {
+        self.token.is_keyword(kw)
+            && self.look_ahead(1, |t| t.is_ident() && !t.is_reserved_ident())
+    }
+
+    fn recover_stmt_local(
+        &mut self,
+        span: Span,
+        attrs: AttrVec,
+        msg: &str,
+        sugg: &str,
+    ) -> PResult<'a, Option<Stmt>> {
+        let stmt = self.parse_local_mk(span, attrs)?;
+        self.struct_span_err(stmt.span, "invalid variable declaration")
+            .span_suggestion_short(span, msg, sugg.to_string(), Applicability::MachineApplicable)
+            .emit();
+        Ok(Some(stmt))
+    }
+
+    fn parse_local_mk(&mut self, lo: Span, attrs: AttrVec) -> PResult<'a, Stmt> {
+        let local = self.parse_local(attrs.into())?;
+        Ok(self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(local)))
     }
 
     /// Parses a local variable declaration.
