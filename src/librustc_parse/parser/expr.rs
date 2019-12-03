@@ -820,7 +820,7 @@ impl<'a> Parser<'a> {
         //
         // Therefore, prevent sub-parser from parsing
         // attributes by giving them a empty "already-parsed" list.
-        let mut attrs = ThinVec::new();
+        let attrs = ThinVec::new();
 
         let lo = self.token.span;
         let mut hi = self.token.span;
@@ -849,46 +849,8 @@ impl<'a> Parser<'a> {
             token::OpenDelim(token::Brace) => {
                 return self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs);
             }
-            token::BinOp(token::Or) | token::OrOr => {
-                return self.parse_closure_expr(attrs);
-            }
-            token::OpenDelim(token::Bracket) => {
-                self.bump();
-
-                attrs.extend(self.parse_inner_attributes()?);
-
-                if self.eat(&token::CloseDelim(token::Bracket)) {
-                    // Empty vector
-                    ex = ExprKind::Array(Vec::new());
-                } else {
-                    // Non-empty vector
-                    let first_expr = self.parse_expr()?;
-                    if self.eat(&token::Semi) {
-                        // Repeating array syntax: `[ 0; 512 ]`
-                        let count = AnonConst {
-                            id: DUMMY_NODE_ID,
-                            value: self.parse_expr()?,
-                        };
-                        self.expect(&token::CloseDelim(token::Bracket))?;
-                        ex = ExprKind::Repeat(first_expr, count);
-                    } else if self.eat(&token::Comma) {
-                        // Vector with two or more elements
-                        let remaining_exprs = self.parse_seq_to_end(
-                            &token::CloseDelim(token::Bracket),
-                            SeqSep::trailing_allowed(token::Comma),
-                            |p| Ok(p.parse_expr()?)
-                        )?;
-                        let mut exprs = vec![first_expr];
-                        exprs.extend(remaining_exprs);
-                        ex = ExprKind::Array(exprs);
-                    } else {
-                        // Vector with one element
-                        self.expect(&token::CloseDelim(token::Bracket))?;
-                        ex = ExprKind::Array(vec![first_expr]);
-                    }
-                }
-                hi = self.prev_span;
-            }
+            token::BinOp(token::Or) | token::OrOr => return self.parse_closure_expr(attrs),
+            token::OpenDelim(token::Bracket) => return self.parse_array_or_repeat_expr(),
             _ => {
                 if self.eat_lt() {
                     let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
@@ -1087,6 +1049,46 @@ impl<'a> Parser<'a> {
         } else {
             // `(e,)` is a tuple with only one field, `e`.
             ExprKind::Tup(es)
+        };
+        let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn parse_array_or_repeat_expr(&mut self) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+        self.bump(); // `[`
+
+        let attrs = self.parse_inner_attributes()?.into();
+
+        let kind = if self.eat(&token::CloseDelim(token::Bracket)) {
+            // Empty vector
+            ExprKind::Array(Vec::new())
+        } else {
+            // Non-empty vector
+            let first_expr = self.parse_expr()?;
+            if self.eat(&token::Semi) {
+                // Repeating array syntax: `[ 0; 512 ]`
+                let count = AnonConst {
+                    id: DUMMY_NODE_ID,
+                    value: self.parse_expr()?,
+                };
+                self.expect(&token::CloseDelim(token::Bracket))?;
+                ExprKind::Repeat(first_expr, count)
+            } else if self.eat(&token::Comma) {
+                // Vector with two or more elements.
+                let remaining_exprs = self.parse_seq_to_end(
+                    &token::CloseDelim(token::Bracket),
+                    SeqSep::trailing_allowed(token::Comma),
+                    |p| Ok(p.parse_expr()?)
+                )?;
+                let mut exprs = vec![first_expr];
+                exprs.extend(remaining_exprs);
+                ExprKind::Array(exprs)
+            } else {
+                // Vector with one element
+                self.expect(&token::CloseDelim(token::Bracket))?;
+                ExprKind::Array(vec![first_expr])
+            }
         };
         let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
