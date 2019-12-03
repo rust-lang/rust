@@ -2,6 +2,7 @@ use super::{Parser, TokenType};
 use crate::maybe_whole;
 use syntax::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
 use syntax::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
+use syntax::ast::MacArgs;
 use syntax::ThinVec;
 use syntax::token::{self, Token};
 use syntax::source_map::{Span, BytePos};
@@ -114,9 +115,9 @@ impl<'a> Parser<'a> {
     fn parse_path_allowing_meta(&mut self, style: PathStyle) -> PResult<'a, Path> {
         let meta_ident = match self.token.kind {
             token::Interpolated(ref nt) => match **nt {
-                token::NtMeta(ref item) => match item.tokens.is_empty() {
-                    true => Some(item.path.clone()),
-                    false => None,
+                token::NtMeta(ref item) => match item.args {
+                    MacArgs::Empty => Some(item.path.clone()),
+                    _ => None,
                 },
                 _ => None,
             },

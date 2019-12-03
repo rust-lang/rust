@@ -1003,7 +1003,7 @@ impl<'a> LoweringContext<'a> {
             AttrKind::Normal(ref item) => {
                 AttrKind::Normal(AttrItem {
                     path: item.path.clone(),
-                    tokens: self.lower_token_stream(item.tokens.clone()),
+                    args: self.lower_mac_args(&item.args),
                 })
             }
             AttrKind::DocComment(comment) => AttrKind::DocComment(comment)
@@ -1014,6 +1014,16 @@ impl<'a> LoweringContext<'a> {
             id: attr.id,
             style: attr.style,
             span: attr.span,
+        }
+    }
+
+    fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {
+        match *args {
+            MacArgs::Empty => MacArgs::Empty,
+            MacArgs::Delimited(dspan, delim, ref tokens) =>
+                MacArgs::Delimited(dspan, delim, self.lower_token_stream(tokens.clone())),
+            MacArgs::Eq(eq_span, ref tokens) =>
+                MacArgs::Eq(eq_span, self.lower_token_stream(tokens.clone())),
         }
     }
 

@@ -2,11 +2,9 @@
 
 use errors::{PResult, Applicability};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
-use syntax::ast::{self, Attribute, AttrKind, Ident, MetaItem, MetaItemKind};
+use syntax::ast::{self, Attribute, AttrKind, Ident, MacArgs, MetaItem, MetaItemKind};
 use syntax::attr::mk_name_value_item_str;
 use syntax::early_buffered_lints::BufferedEarlyLintId;
-use syntax::token;
-use syntax::tokenstream::TokenTree;
 use syntax::sess::ParseSess;
 use syntax_pos::{Symbol, sym};
 
@@ -19,11 +17,9 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some((name, _, template, _)) if name != sym::rustc_dummy =>
             check_builtin_attribute(sess, attr, name, template),
-        _ => if let Some(TokenTree::Token(token)) = attr.get_normal_item().tokens.trees().next() {
-            if token == token::Eq {
-                // All key-value attributes are restricted to meta-item syntax.
-                parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
-            }
+        _ => if let MacArgs::Eq(..) = attr.get_normal_item().args {
+            // All key-value attributes are restricted to meta-item syntax.
+            parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
         }
     }
 }

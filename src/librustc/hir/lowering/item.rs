@@ -233,7 +233,7 @@ impl LoweringContext<'_> {
 
         if let ItemKind::MacroDef(ref def) = i.kind {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {
-                let body = self.lower_token_stream(def.stream());
+                let body = self.lower_token_stream(def.body.inner_tokens());
                 let hir_id = self.lower_node_id(i.id);
                 self.exported_macros.push(hir::MacroDef {
                     name: ident.name,

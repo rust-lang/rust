@@ -225,6 +225,14 @@ impl TokenStream {
         self.0.len()
     }
 
+    pub fn span(&self) -> Option<Span> {
+        match &**self.0 {
+            [] => None,
+            [(tt, _)] => Some(tt.span()),
+            [(tt_start, _), .., (tt_end, _)] => Some(tt_start.span().to(tt_end.span())),
+        }
+    }
+
     pub fn from_streams(mut streams: SmallVec<[TokenStream; 2]>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::default(),

@@ -318,8 +318,8 @@ pub fn compile_declarative_macro(
     let tt_spec = ast::Ident::new(sym::tt, def.span);
 
     // Parse the macro_rules! invocation
-    let body = match def.kind {
-        ast::ItemKind::MacroDef(ref body) => body,
+    let (is_legacy, body) = match &def.kind {
+        ast::ItemKind::MacroDef(macro_def) => (macro_def.legacy, macro_def.body.inner_tokens()),
         _ => unreachable!(),
     };
 
@@ -338,7 +338,7 @@ pub fn compile_declarative_macro(
                     mbe::TokenTree::MetaVarDecl(def.span, rhs_nm, tt_spec),
                 ],
                 separator: Some(Token::new(
-                    if body.legacy { token::Semi } else { token::Comma },
+                    if is_legacy { token::Semi } else { token::Comma },
                     def.span,
                 )),
                 kleene: mbe::KleeneToken::new(mbe::KleeneOp::OneOrMore, def.span),
@@ -350,7 +350,7 @@ pub fn compile_declarative_macro(
             DelimSpan::dummy(),
             Lrc::new(mbe::SequenceRepetition {
                 tts: vec![mbe::TokenTree::token(
-                    if body.legacy { token::Semi } else { token::Comma },
+                    if is_legacy { token::Semi } else { token::Comma },
                     def.span,
                 )],
                 separator: None,
@@ -360,7 +360,7 @@ pub fn compile_declarative_macro(
         ),
     ];
 
-    let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
+    let argument_map = match parse(sess, body, &argument_gram, None, true) {
         Success(m) => m,
         Failure(token, msg) => {
             let s = parse_failure_msg(&token);
@@ -435,7 +435,7 @@ pub fn compile_declarative_macro(
     // that is not lint-checked and trigger the "failed to process buffered lint here" bug.
     valid &= macro_check::check_meta_variables(sess, ast::CRATE_NODE_ID, def.span, &lhses, &rhses);
 
-    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, body.legacy);
+    let (transparency, transparency_error) = attr::find_transparency(&def.attrs, is_legacy);
     match transparency_error {
         Some(TransparencyError::UnknownTransparency(value, span)) =>
             diag.span_err(span, &format!("unknown macro transparency: `{}`", value)),
