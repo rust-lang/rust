@@ -19,4 +19,5 @@ LL |     (&|_|()) as &dyn for<'x> Fn(<u32 as T<'x>>::V);
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0271`.
+Some errors have detailed explanations: E0271, E0631.
+For more information about an error, try `rustc --explain E0271`.
