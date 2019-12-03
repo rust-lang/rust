@@ -2,20 +2,26 @@
 #![deny(unreachable_patterns)]
 enum Foo {}
 
-struct NonEmptyStruct(bool);
-union NonEmptyUnion1 {
+struct NonEmptyStruct(bool); //~ `NonEmptyStruct` defined here
+union NonEmptyUnion1 { //~ `NonEmptyUnion1` defined here
     foo: (),
 }
-union NonEmptyUnion2 {
+union NonEmptyUnion2 { //~ `NonEmptyUnion2` defined here
     foo: (),
     bar: (),
 }
 enum NonEmptyEnum1 { //~ `NonEmptyEnum1` defined here
-    Foo(bool), //~ variant not covered
+    Foo(bool),
+    //~^ variant not covered
+    //~| not covered
 }
 enum NonEmptyEnum2 { //~ `NonEmptyEnum2` defined here
-    Foo(bool), //~ variant not covered
-    Bar, //~ variant not covered
+    Foo(bool),
+    //~^ variant not covered
+    //~| not covered
+    Bar,
+    //~^ variant not covered
+    //~| not covered
 }
 enum NonEmptyEnum5 { //~ `NonEmptyEnum5` defined here
     V1, V2, V3, V4, V5,
@@ -70,17 +76,17 @@ fn main() {
     //~^ ERROR multiple patterns of type `NonEmptyEnum5` are not handled
 
     match_false!(0u8);
-    //~^ ERROR `_` not covered
+    //~^ ERROR `0u8..=std::u8::MAX` not covered
     match_false!(NonEmptyStruct(true));
-    //~^ ERROR `_` not covered
+    //~^ ERROR `NonEmptyStruct(_)` not covered
     match_false!((NonEmptyUnion1 { foo: () }));
-    //~^ ERROR `_` not covered
+    //~^ ERROR `NonEmptyUnion1 { .. }` not covered
     match_false!((NonEmptyUnion2 { foo: () }));
-    //~^ ERROR `_` not covered
+    //~^ ERROR `NonEmptyUnion2 { .. }` not covered
     match_false!(NonEmptyEnum1::Foo(true));
-    //~^ ERROR `_` not covered
+    //~^ ERROR `Foo(_)` not covered
     match_false!(NonEmptyEnum2::Foo(true));
-    //~^ ERROR `_` not covered
+    //~^ ERROR `Foo(_)` and `Bar` not covered
     match_false!(NonEmptyEnum5::V1);
-    //~^ ERROR `_` not covered
+    //~^ ERROR `V1`, `V2`, `V3` and 2 more not covered
 }

@@ -388,7 +388,7 @@ fn check_arms<'p, 'tcx>(
     for (arm_index, (pat, hir_pat, has_guard)) in arms.iter().enumerate() {
         let v = PatStack::from_pattern(pat);
 
-        match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id) {
+        match is_useful(cx, &seen, &v, LeaveOutWitness, hir_pat.hir_id, true) {
             NotUseful => {
                 match source {
                     hir::MatchSource::IfDesugar { .. } | hir::MatchSource::WhileDesugar => bug!(),
@@ -476,7 +476,8 @@ fn check_not_useful<'p, 'tcx>(
     hir_id: HirId,
 ) -> Result<(), Vec<super::Pat<'tcx>>> {
     let wild_pattern = cx.pattern_arena.alloc(super::Pat::wildcard_from_ty(ty));
-    match is_useful(cx, matrix, &PatStack::from_pattern(wild_pattern), ConstructWitness, hir_id) {
+    let v = PatStack::from_pattern(wild_pattern);
+    match is_useful(cx, matrix, &v, ConstructWitness, hir_id, true) {
         NotUseful => Ok(()), // This is good, wildcard pattern isn't reachable.
         UsefulWithWitness(pats) => Err(if pats.is_empty() {
             bug!("Exhaustiveness check returned no witnesses")

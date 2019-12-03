@@ -770,6 +770,10 @@ impl<'tcx> Constructor<'tcx> {
     // Returns the set of constructors covered by `self` but not by
     // anything in `other_ctors`.
     fn subtract_ctors(&self, other_ctors: &Vec<Constructor<'tcx>>) -> Vec<Constructor<'tcx>> {
+        if other_ctors.is_empty() {
+            return vec![self.clone()];
+        }
+
         match self {
             // Those constructors can only match themselves.
             Single | Variant(_) | ConstantValue(..) | FloatRange(..) => {
@@ -1614,6 +1618,7 @@ pub fn is_useful<'p, 'tcx>(
     v: &PatStack<'p, 'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
+    is_top_level: bool,
 ) -> Usefulness<'tcx, 'p> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
@@ -1641,7 +1646,7 @@ pub fn is_useful<'p, 'tcx>(
         let mut unreachable_pats = Vec::new();
         let mut any_is_useful = false;
         for v in vs {
-            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id, false);
             match res {
                 Useful(pats) => {
                     any_is_useful = true;
@@ -1741,7 +1746,7 @@ pub fn is_useful<'p, 'tcx>(
         } else {
             let matrix = matrix.specialize_wildcard();
             let v = v.to_tail();
-            let usefulness = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+            let usefulness = is_useful(cx, &matrix, &v, witness_preference, hir_id, false);
 
             // In this case, there's at least one "free"
             // constructor that is only matched against by
@@ -1770,7 +1775,9 @@ pub fn is_useful<'p, 'tcx>(
             // `(<direction-1>, <direction-2>, true)` - we are
             // satisfied with `(_, _, true)`. In this case,
             // `used_ctors` is empty.
-            if missing_ctors.all_ctors_are_missing() {
+            // The exception is: if we are at the top-level, for example in an empty match, we
+            // prefer reporting the list of constructors instead of just `_`.
+            if missing_ctors.all_ctors_are_missing() && !is_top_level {
                 // All constructors are unused. Add a wild pattern
                 // rather than each individual constructor.
                 usefulness.apply_wildcard(pcx.ty)
@@ -1802,7 +1809,7 @@ fn is_useful_specialized<'p, 'tcx>(
         cx.pattern_arena.alloc_from_iter(ctor.wildcard_subpatterns(cx, lty));
     let matrix = matrix.specialize_constructor(cx, &ctor, ctor_wild_subpatterns);
     v.specialize_constructor(cx, &ctor, ctor_wild_subpatterns)
-        .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id))
+        .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id, false))
         .map(|u| u.apply_constructor(cx, &ctor, lty))
         .unwrap_or(NotUseful)
 }

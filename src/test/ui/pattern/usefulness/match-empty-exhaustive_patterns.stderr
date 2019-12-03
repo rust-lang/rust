@@ -103,26 +103,26 @@ LL |       match_empty!(NonEmptyEnum5::V1);
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: non-exhaustive patterns: `0u8..=std::u8::MAX` not covered
   --> $DIR/match-empty-exhaustive_patterns.rs:73:18
    |
 LL |     match_false!(0u8);
-   |                  ^^^ pattern `_` not covered
+   |                  ^^^ pattern `0u8..=std::u8::MAX` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: non-exhaustive patterns: `NonEmptyStruct(_)` not covered
   --> $DIR/match-empty-exhaustive_patterns.rs:75:18
    |
 LL | struct NonEmptyStruct(bool);
    | ---------------------------- `NonEmptyStruct` defined here
 ...
 LL |     match_false!(NonEmptyStruct(true));
-   |                  ^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |                  ^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyStruct(_)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: non-exhaustive patterns: `NonEmptyUnion1 { .. }` not covered
   --> $DIR/match-empty-exhaustive_patterns.rs:77:18
    |
 LL | / union NonEmptyUnion1 {
@@ -131,11 +131,11 @@ LL | | }
    | |_- `NonEmptyUnion1` defined here
 ...
 LL |       match_false!((NonEmptyUnion1 { foo: () }));
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyUnion1 { .. }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: non-exhaustive patterns: `NonEmptyUnion2 { .. }` not covered
   --> $DIR/match-empty-exhaustive_patterns.rs:79:18
    |
 LL | / union NonEmptyUnion2 {
@@ -145,38 +145,41 @@ LL | | }
    | |_- `NonEmptyUnion2` defined here
 ...
 LL |       match_false!((NonEmptyUnion2 { foo: () }));
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pattern `NonEmptyUnion2 { .. }` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: non-exhaustive patterns: `Foo(_)` not covered
   --> $DIR/match-empty-exhaustive_patterns.rs:81:18
    |
 LL | / enum NonEmptyEnum1 {
 LL | |     Foo(bool),
+   | |     --- not covered
 LL | | }
    | |_- `NonEmptyEnum1` defined here
 ...
 LL |       match_false!(NonEmptyEnum1::Foo(true));
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `Foo(_)` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: non-exhaustive patterns: `Foo(_)` and `Bar` not covered
   --> $DIR/match-empty-exhaustive_patterns.rs:83:18
    |
 LL | / enum NonEmptyEnum2 {
 LL | |     Foo(bool),
+   | |     --- not covered
 LL | |     Bar,
+   | |     --- not covered
 LL | | }
    | |_- `NonEmptyEnum2` defined here
 ...
 LL |       match_false!(NonEmptyEnum2::Foo(true));
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^ patterns `Foo(_)` and `Bar` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: `_` not covered
+error[E0004]: non-exhaustive patterns: `V1`, `V2`, `V3` and 2 more not covered
   --> $DIR/match-empty-exhaustive_patterns.rs:85:18
    |
 LL | / enum NonEmptyEnum5 {
@@ -185,7 +188,7 @@ LL | | }
    | |_- `NonEmptyEnum5` defined here
 ...
 LL |       match_false!(NonEmptyEnum5::V1);
-   |                    ^^^^^^^^^^^^^^^^^ pattern `_` not covered
+   |                    ^^^^^^^^^^^^^^^^^ patterns `V1`, `V2`, `V3` and 2 more not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
