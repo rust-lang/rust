@@ -876,14 +876,11 @@ impl<'a> Parser<'a> {
                     return self.parse_labeled_expr(label, attrs);
                 }
                 if self.eat_keyword(kw::Loop) {
-                    let lo = self.prev_span;
-                    return self.parse_loop_expr(None, lo, attrs);
+                    return self.parse_loop_expr(None, self.prev_span, attrs);
                 }
                 if self.eat_keyword(kw::Continue) {
-                    let label = self.eat_label();
-                    let ex = ExprKind::Continue(label);
-                    let hi = self.prev_span;
-                    return Ok(self.mk_expr(lo.to(hi), ex, attrs));
+                    let kind = ExprKind::Continue(self.eat_label());
+                    return Ok(self.mk_expr(lo.to(self.prev_span), kind, attrs));
                 }
                 if self.eat_keyword(kw::Match) {
                     let match_sp = self.prev_span;
@@ -893,20 +890,14 @@ impl<'a> Parser<'a> {
                     });
                 }
                 if self.eat_keyword(kw::Unsafe) {
-                    return self.parse_block_expr(
-                        None,
-                        lo,
-                        BlockCheckMode::Unsafe(ast::UserProvided),
-                        attrs);
+                    let mode = BlockCheckMode::Unsafe(ast::UserProvided);
+                    return self.parse_block_expr(None, lo, mode, attrs);
                 }
                 if self.is_do_catch_block() {
-                    let mut db = self.fatal("found removed `do catch` syntax");
-                    db.help("following RFC #2388, the new non-placeholder syntax is `try`");
-                    return Err(db);
+                    return self.recover_do_catch(attrs);
                 }
                 if self.is_try_block() {
-                    let lo = self.token.span;
-                    assert!(self.eat_keyword(kw::Try));
+                    self.expect_keyword(kw::Try)?;
                     return self.parse_try_block(lo, attrs);
                 }
 
@@ -1102,6 +1093,27 @@ impl<'a> Parser<'a> {
             .emit();
         // Continue as an expression in an effort to recover on `'label: non_block_expr`.
         self.parse_expr()
+    }
+
+    /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
+    fn recover_do_catch(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+
+        self.bump(); // `do`
+        self.bump(); // `catch`
+
+        let span_dc = lo.to(self.prev_span);
+        self.struct_span_err(span_dc, "found removed `do catch` syntax")
+            .span_suggestion(
+                span_dc,
+                "replace with the new syntax",
+                "try".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .note("following RFC #2388, the new non-placeholder syntax is `try`")
+            .emit();
+
+        self.parse_try_block(lo, attrs)
     }
 
     /// Returns a string literal if the next token is a string literal.
