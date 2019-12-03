@@ -44,8 +44,8 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
 
         Ok(Some(if self.eat_keyword(kw::Let) {
-            let stmt = self.parse_local(attrs.into())?;
-            self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(stmt))
+            let local = self.parse_local(attrs.into())?;
+            self.mk_stmt(lo.to(self.prev_span), StmtKind::Local(local))
         } else if let Some(macro_def) = self.eat_macro_def(
             &attrs,
             &respan(lo, VisibilityKind::Inherited),
@@ -56,79 +56,31 @@ impl<'a> Parser<'a> {
         // such as a union items, item with `crate` visibility or auto trait items.
         // Our goal here is to parse an arbitrary path `a::b::c` but not something that starts
         // like a path (1 token), but it fact not a path.
-        // `union::b::c` - path, `union U { ... }` - not a path.
-        // `crate::b::c` - path, `crate struct S;` - not a path.
         } else if self.token.is_path_start()
             && !self.token.is_qpath_start()
-            && !self.is_union_item()
-            && !self.is_crate_vis()
+            && !self.is_union_item() // `union::b::c` - path, `union U { ... }` - not a path.
+            && !self.is_crate_vis() // `crate::b::c` - path, `crate struct S;` - not a path.
             && !self.is_auto_trait_item()
             && !self.is_async_fn()
         {
             let path = self.parse_path(PathStyle::Expr)?;
 
-            if !self.eat(&token::Not) {
-                let expr = if self.check(&token::OpenDelim(token::Brace)) {
-                    self.parse_struct_expr(lo, path, ThinVec::new())?
-                } else {
-                    let hi = self.prev_span;
-                    self.mk_expr(lo.to(hi), ExprKind::Path(None, path), ThinVec::new())
-                };
-
-                let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
-                    let expr = this.parse_dot_or_call_expr_with(expr, lo, attrs.into())?;
-                    this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
-                })?;
-                return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Expr(expr))));
+            if self.eat(&token::Not) {
+                return self.parse_stmt_mac(lo, attrs.into(), path, macro_legacy_warnings);
             }
 
-            let args = self.parse_mac_args()?;
-            let delim = args.delim();
-            let hi = self.prev_span;
-
-            let style = if delim == token::Brace {
-                MacStmtStyle::Braces
+            let expr = if self.check(&token::OpenDelim(token::Brace)) {
+                self.parse_struct_expr(lo, path, ThinVec::new())?
             } else {
-                MacStmtStyle::NoBraces
+                let hi = self.prev_span;
+                self.mk_expr(lo.to(hi), ExprKind::Path(None, path), ThinVec::new())
             };
 
-            let mac = Mac {
-                path,
-                args,
-                prior_type_ascription: self.last_type_ascription,
-            };
-
-            let kind = if delim == token::Brace
-                || self.token == token::Semi
-                || self.token == token::Eof
-            {
-                StmtKind::Mac(P((mac, style, attrs.into())))
-            }
-            // We used to incorrectly stop parsing macro-expanded statements here.
-            // If the next token will be an error anyway but could have parsed with the
-            // earlier behavior, stop parsing here and emit a warning to avoid breakage.
-            else if macro_legacy_warnings
-                && self.token.can_begin_expr()
-                && match self.token.kind {
-                    // These can continue an expression, so we can't stop parsing and warn.
-                    token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
-                    token::BinOp(token::Minus) | token::BinOp(token::Star) |
-                    token::BinOp(token::And) | token::BinOp(token::Or) |
-                    token::AndAnd | token::OrOr |
-                    token::DotDot | token::DotDotDot | token::DotDotEq => false,
-                    _ => true,
-                }
-            {
-                self.warn_missing_semicolon();
-                StmtKind::Mac(P((mac, style, attrs.into())))
-            } else {
-                let e = self.mk_expr(lo.to(hi), ExprKind::Mac(mac), ThinVec::new());
-                let e = self.maybe_recover_from_bad_qpath(e, true)?;
-                let e = self.parse_dot_or_call_expr_with(e, lo, attrs.into())?;
-                let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
-                StmtKind::Expr(e)
-            };
-            self.mk_stmt(lo.to(hi), kind)
+            let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
+                let expr = this.parse_dot_or_call_expr_with(expr, lo, attrs.into())?;
+                this.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(expr))
+            })?;
+            return Ok(Some(self.mk_stmt(lo.to(self.prev_span), StmtKind::Expr(expr))));
         } else {
             // FIXME: Bad copy of attrs
             let old_directory_ownership =
@@ -182,6 +134,64 @@ impl<'a> Parser<'a> {
                 }
             }
         }))
+    }
+
+    /// Parses a statement macro `mac!(args)` provided a `path` representing `mac`.
+    /// At this point, the `!` token after the path has already been eaten.
+    fn parse_stmt_mac(
+        &mut self,
+        lo: Span,
+        attrs: ThinVec<Attribute>,
+        path: ast::Path,
+        legacy_warnings: bool,
+    ) -> PResult<'a, Option<Stmt>> {
+        let args = self.parse_mac_args()?;
+        let delim = args.delim();
+        let hi = self.prev_span;
+
+        let style = if delim == token::Brace {
+            MacStmtStyle::Braces
+        } else {
+            MacStmtStyle::NoBraces
+        };
+
+        let mac = Mac {
+            path,
+            args,
+            prior_type_ascription: self.last_type_ascription,
+        };
+
+        let kind = if delim == token::Brace
+            || self.token == token::Semi
+            || self.token == token::Eof
+        {
+            StmtKind::Mac(P((mac, style, attrs.into())))
+        }
+        // We used to incorrectly stop parsing macro-expanded statements here.
+        // If the next token will be an error anyway but could have parsed with the
+        // earlier behavior, stop parsing here and emit a warning to avoid breakage.
+        else if legacy_warnings
+            && self.token.can_begin_expr()
+            && match self.token.kind {
+                // These can continue an expression, so we can't stop parsing and warn.
+                token::OpenDelim(token::Paren) | token::OpenDelim(token::Bracket) |
+                token::BinOp(token::Minus) | token::BinOp(token::Star) |
+                token::BinOp(token::And) | token::BinOp(token::Or) |
+                token::AndAnd | token::OrOr |
+                token::DotDot | token::DotDotDot | token::DotDotEq => false,
+                _ => true,
+            }
+        {
+            self.warn_missing_semicolon();
+            StmtKind::Mac(P((mac, style, attrs)))
+        } else {
+            let e = self.mk_expr(lo.to(hi), ExprKind::Mac(mac), ThinVec::new());
+            let e = self.maybe_recover_from_bad_qpath(e, true)?;
+            let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
+            let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
+            StmtKind::Expr(e)
+        };
+        Ok(Some(self.mk_stmt(lo.to(hi), kind)))
     }
 
     /// Parses a local variable declaration.
