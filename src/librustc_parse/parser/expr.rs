@@ -824,90 +824,88 @@ impl<'a> Parser<'a> {
 
         // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
         let lo = self.token.span;
-        match self.token.kind {
+        if let token::Literal(_) = self.token.kind {
             // This match arm is a special-case of the `_` match arm below and
             // could be removed without changing functionality, but it's faster
             // to have it here, especially for programs with large constants.
-            token::Literal(_) => self.parse_lit_expr(attrs),
-            token::OpenDelim(token::Paren) => self.parse_tuple_parens_expr(attrs),
-            token::OpenDelim(token::Brace) => {
-                self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs)
-            }
-            token::BinOp(token::Or) | token::OrOr => self.parse_closure_expr(attrs),
-            token::OpenDelim(token::Bracket) => self.parse_array_or_repeat_expr(attrs),
-            _ => {
-                if self.eat_lt() {
-                    let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                    Ok(self.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
-                } else if self.token.is_path_start() {
-                    self.parse_path_start_expr(attrs)
-                } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
-                    self.parse_closure_expr(attrs)
-                } else if self.eat_keyword(kw::If) {
-                    self.parse_if_expr(attrs)
-                } else if self.eat_keyword(kw::For) {
-                    self.parse_for_expr(None, self.prev_span, attrs)
-                } else if self.eat_keyword(kw::While) {
-                    self.parse_while_expr(None, self.prev_span, attrs)
-                } else if let Some(label) = self.eat_label() {
-                    self.parse_labeled_expr(label, attrs)
-                } else if self.eat_keyword(kw::Loop) {
-                    self.parse_loop_expr(None, self.prev_span, attrs)
-                } else if self.eat_keyword(kw::Continue) {
-                    let kind = ExprKind::Continue(self.eat_label());
-                    Ok(self.mk_expr(lo.to(self.prev_span), kind, attrs))
-                } else if self.eat_keyword(kw::Match) {
-                    let match_sp = self.prev_span;
-                    self.parse_match_expr(attrs).map_err(|mut err| {
-                        err.span_label(match_sp, "while parsing this match expression");
-                        err
-                    })
-                } else if self.eat_keyword(kw::Unsafe) {
-                    let mode = BlockCheckMode::Unsafe(ast::UserProvided);
-                    self.parse_block_expr(None, lo, mode, attrs)
-                } else if self.is_do_catch_block() {
-                    self.recover_do_catch(attrs)
-                } else if self.is_try_block() {
-                    self.expect_keyword(kw::Try)?;
-                    self.parse_try_block(lo, attrs)
-                } else if self.eat_keyword(kw::Return) {
-                    self.parse_return_expr(attrs)
-                } else if self.eat_keyword(kw::Break) {
-                    self.parse_break_expr(attrs)
-                } else if self.eat_keyword(kw::Yield) {
-                    self.parse_yield_expr(attrs)
-                } else if self.eat_keyword(kw::Let) {
-                    self.parse_let_expr(attrs)
-                } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
-                    // Don't complain about bare semicolons after unclosed braces
-                    // recovery in order to keep the error count down. Fixing the
-                    // delimiters will possibly also fix the bare semicolon found in
-                    // expression context. For example, silence the following error:
-                    //
-                    //     error: expected expression, found `;`
-                    //      --> file.rs:2:13
-                    //       |
-                    //     2 |     foo(bar(;
-                    //       |             ^ expected expression
-                    self.bump();
-                    Ok(self.mk_expr_err(self.token.span))
-                } else if self.token.span.rust_2018() {
-                    // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
-                    if self.check_keyword(kw::Async) {
-                        if self.is_async_block() { // Check for `async {` and `async move {`.
-                            self.parse_async_block(attrs)
-                        } else {
-                            self.parse_closure_expr(attrs)
-                        }
-                    } else if self.eat_keyword(kw::Await) {
-                        self.recover_incorrect_await_syntax(lo, self.prev_span, attrs)
-                    } else {
-                        self.parse_lit_expr(attrs)
-                    }
+            self.parse_lit_expr(attrs)
+        } else if self.check(&token::OpenDelim(token::Paren)) {
+            self.parse_tuple_parens_expr(attrs)
+        } else if self.check(&token::OpenDelim(token::Brace)) {
+            self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs)
+        } else if self.check(&token::BinOp(token::Or)) || self.check(&token::OrOr) {
+            self.parse_closure_expr(attrs)
+        } else if self.check(&token::OpenDelim(token::Bracket)) {
+            self.parse_array_or_repeat_expr(attrs)
+        } else if self.eat_lt() {
+            let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+            Ok(self.mk_expr(lo.to(path.span), ExprKind::Path(Some(qself), path), attrs))
+        } else if self.token.is_path_start() {
+            self.parse_path_start_expr(attrs)
+        } else if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
+            self.parse_closure_expr(attrs)
+        } else if self.eat_keyword(kw::If) {
+            self.parse_if_expr(attrs)
+        } else if self.eat_keyword(kw::For) {
+            self.parse_for_expr(None, self.prev_span, attrs)
+        } else if self.eat_keyword(kw::While) {
+            self.parse_while_expr(None, self.prev_span, attrs)
+        } else if let Some(label) = self.eat_label() {
+            self.parse_labeled_expr(label, attrs)
+        } else if self.eat_keyword(kw::Loop) {
+            self.parse_loop_expr(None, self.prev_span, attrs)
+        } else if self.eat_keyword(kw::Continue) {
+            let kind = ExprKind::Continue(self.eat_label());
+            Ok(self.mk_expr(lo.to(self.prev_span), kind, attrs))
+        } else if self.eat_keyword(kw::Match) {
+            let match_sp = self.prev_span;
+            self.parse_match_expr(attrs).map_err(|mut err| {
+                err.span_label(match_sp, "while parsing this match expression");
+                err
+            })
+        } else if self.eat_keyword(kw::Unsafe) {
+            self.parse_block_expr(None, lo, BlockCheckMode::Unsafe(ast::UserProvided), attrs)
+        } else if self.is_do_catch_block() {
+            self.recover_do_catch(attrs)
+        } else if self.is_try_block() {
+            self.expect_keyword(kw::Try)?;
+            self.parse_try_block(lo, attrs)
+        } else if self.eat_keyword(kw::Return) {
+            self.parse_return_expr(attrs)
+        } else if self.eat_keyword(kw::Break) {
+            self.parse_break_expr(attrs)
+        } else if self.eat_keyword(kw::Yield) {
+            self.parse_yield_expr(attrs)
+        } else if self.eat_keyword(kw::Let) {
+            self.parse_let_expr(attrs)
+        } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
+            // Don't complain about bare semicolons after unclosed braces
+            // recovery in order to keep the error count down. Fixing the
+            // delimiters will possibly also fix the bare semicolon found in
+            // expression context. For example, silence the following error:
+            //
+            //     error: expected expression, found `;`
+            //      --> file.rs:2:13
+            //       |
+            //     2 |     foo(bar(;
+            //       |             ^ expected expression
+            self.bump();
+            Ok(self.mk_expr_err(self.token.span))
+        } else if self.token.span.rust_2018() {
+            // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
+            if self.check_keyword(kw::Async) {
+                if self.is_async_block() { // Check for `async {` and `async move {`.
+                    self.parse_async_block(attrs)
                 } else {
-                    self.parse_lit_expr(attrs)
+                    self.parse_closure_expr(attrs)
                 }
+            } else if self.eat_keyword(kw::Await) {
+                self.recover_incorrect_await_syntax(lo, self.prev_span, attrs)
+            } else {
+                self.parse_lit_expr(attrs)
             }
+        } else {
+            self.parse_lit_expr(attrs)
         }
     }
 
