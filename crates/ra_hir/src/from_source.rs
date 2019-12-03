@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::{AstItemDef, LocationCtx, ModuleId};
+use hir_def::{nameres::ModuleSource, AstItemDef, LocationCtx, ModuleId};
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
@@ -10,8 +10,8 @@ use ra_syntax::{
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     AssocItem, Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock,
-    InFile, Local, MacroDef, Module, ModuleDef, ModuleSource, Static, Struct, StructField, Trait,
-    TypeAlias, Union, VariantDef,
+    InFile, Local, MacroDef, Module, ModuleDef, Static, Struct, StructField, Trait, TypeAlias,
+    Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -257,7 +257,7 @@ impl Module {
                     InFile { file_id: src.file_id, value: module.clone() },
                 );
             }
-            ModuleSource::SourceFile(_) => (),
+            ModuleSource::SourceFile(_) | ModuleSource::Block(_) => (),
         };
 
         let original_file = src.file_id.original_file(db);

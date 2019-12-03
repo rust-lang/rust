@@ -63,9 +63,12 @@ use hir_expand::{
 };
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
-use ra_db::{CrateId, Edition, FileId};
+use ra_db::{CrateId, Edition, FileId, FilePosition};
 use ra_prof::profile;
-use ra_syntax::ast;
+use ra_syntax::{
+    ast::{self, AstNode},
+    SyntaxNode,
+};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -358,6 +361,67 @@ impl ModuleData {
         let decl = self.origin.declaration()?;
         let value = decl.to_node(db);
         Some(InFile { file_id: decl.file_id, value })
+    }
+}
+
+pub enum ModuleSource {
+    SourceFile(ast::SourceFile),
+    Module(ast::Module),
+    Block(ast::Block),
+}
+
+impl ModuleSource {
+    pub fn new(
+        db: &impl DefDatabase,
+        file_id: Option<FileId>,
+        decl_id: Option<AstId<ast::Module>>,
+    ) -> ModuleSource {
+        match (file_id, decl_id) {
+            (Some(file_id), _) => {
+                let source_file = db.parse(file_id).tree();
+                ModuleSource::SourceFile(source_file)
+            }
+            (None, Some(item_id)) => {
+                let module = item_id.to_node(db);
+                assert!(module.item_list().is_some(), "expected inline module");
+                ModuleSource::Module(module)
+            }
+            (None, None) => panic!(),
+        }
+    }
+
+    // FIXME: this methods do not belong here
+    pub fn from_position(db: &impl DefDatabase, position: FilePosition) -> ModuleSource {
+        let parse = db.parse(position.file_id);
+        match &ra_syntax::algo::find_node_at_offset::<ast::Module>(
+            parse.tree().syntax(),
+            position.offset,
+        ) {
+            Some(m) if !m.has_semi() => ModuleSource::Module(m.clone()),
+            _ => {
+                let source_file = parse.tree();
+                ModuleSource::SourceFile(source_file)
+            }
+        }
+    }
+
+    pub fn from_child_node(db: &impl DefDatabase, child: InFile<&SyntaxNode>) -> ModuleSource {
+        if let Some(m) =
+            child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
+        {
+            ModuleSource::Module(m)
+        } else if let Some(b) = child.value.ancestors().filter_map(ast::Block::cast).next() {
+            ModuleSource::Block(b)
+        } else {
+            let file_id = child.file_id.original_file(db);
+            let source_file = db.parse(file_id).tree();
+            ModuleSource::SourceFile(source_file)
+        }
+    }
+
+    pub fn from_file_id(db: &impl DefDatabase, file_id: FileId) -> ModuleSource {
+        let source_file = db.parse(file_id).tree();
+        ModuleSource::SourceFile(source_file)
     }
 }
 

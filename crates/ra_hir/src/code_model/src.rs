@@ -2,6 +2,7 @@
 
 use either::Either;
 use hir_def::{
+    nameres::ModuleSource,
     src::{HasChildSource, HasSource as _},
     AstItemDef, Lookup, VariantId,
 };
@@ -9,7 +10,7 @@ use ra_syntax::ast;
 
 use crate::{
     db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplBlock, Import, MacroDef,
-    Module, ModuleSource, Static, Struct, StructField, Trait, TypeAlias, Union,
+    Module, Static, Struct, StructField, Trait, TypeAlias, Union,
 };
 
 pub use hir_expand::InFile;

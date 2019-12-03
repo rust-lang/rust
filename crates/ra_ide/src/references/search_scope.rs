@@ -96,6 +96,10 @@ impl NameDefinition {
                         let range = Some(m.syntax().text_range());
                         res.insert(file_id, range);
                     }
+                    ModuleSource::Block(b) => {
+                        let range = Some(b.syntax().text_range());
+                        res.insert(file_id, range);
+                    }
                     ModuleSource::SourceFile(_) => {
                         res.insert(file_id, None);
                         res.extend(parent_module.children(db).map(|m| {
@@ -137,6 +141,7 @@ impl NameDefinition {
         let mut res = FxHashMap::default();
         let range = match module_src.value {
             ModuleSource::Module(m) => Some(m.syntax().text_range()),
+            ModuleSource::Block(b) => Some(b.syntax().text_range()),
             ModuleSource::SourceFile(_) => None,
         };
         res.insert(file_id, range);

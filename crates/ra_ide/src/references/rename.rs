@@ -88,7 +88,7 @@ fn rename_mod(
                     file_system_edits.push(move_file);
                 }
             }
-            ModuleSource::Module(..) => {}
+            ModuleSource::Module(..) | ModuleSource::Block(..) => {}
         }
     }
 
