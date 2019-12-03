@@ -354,10 +354,12 @@ public:
             for(auto &p : mapping) {
                 llvm::errs() << "   idx: " << *p.first.first << ", " << p.first.second << " pos=" << p.second << "\n";
             }
-
             llvm::errs() << " </mapping>\n";
-            llvm::errs() << "idx: " << *idx.first << ", " << idx.second << "\n";
-            assert(0 && "could not find index in mapping");
+        
+            if (mapping.find(idx) == mapping.end()) {
+                llvm::errs() << "idx: " << *idx.first << ", " << idx.second << "\n";
+                assert(0 && "could not find index in mapping");
+            }
         }
         return mapping[idx];
     } else {
@@ -514,6 +516,10 @@ public:
                             li->replaceAllUsesWith(unwrapM(ret, lb, empty, /*lookupifable*/false));
                             erase(li);
                         } else {
+                            llvm::errs() << "newFunc: " << *newFunc << "\n";
+                            llvm::errs() << "malloc: " << *malloc << "\n";
+                            llvm::errs() << "scopeMap[malloc]: " << *scopeMap[malloc] << "\n";
+                            llvm::errs() << "u: " << *u << "\n";
                             assert(0 && "illegal use for out of loop scopeMap");
                         }
                     }
@@ -565,13 +571,14 @@ public:
                                 }
                             }
                         }
+                        /*
                         if (!store) {
                             allocinst->getParent()->getParent()->dump();
                             allocinst->dump();
                         }
                         assert(store);
-
                         erase(store);
+                        */
 
                         Instruction* storedinto = cast ? (Instruction*)cast : (Instruction*)allocinst; 
                         for(auto use : storedinto->users()) {
@@ -617,6 +624,10 @@ public:
                             li->replaceAllUsesWith(replacewith);
                             erase(li);
                         } else {
+                            llvm::errs() << "newFunc: " << *newFunc << "\n";
+                            llvm::errs() << "malloc: " << *malloc << "\n";
+                            llvm::errs() << "scopeMap[malloc]: " << *scopeMap[malloc] << "\n";
+                            llvm::errs() << "u: " << *u << "\n";
                             assert(0 && "illegal use for out of loop scopeMap");
                         }
                     }
@@ -630,69 +641,6 @@ public:
                     erase(preerase);
 
 
-
-                    /*
-
-                    for( auto u : users) {
-                        if (auto li = dyn_cast<LoadInst>(u)) {
-                            for( auto u0 : li->users()) {
-                                Instruction* u2 = dyn_cast<Instruction>(u0);
-                                if (u2 == nullptr) continue;
-                                if (auto ci = dyn_cast<CastInst>(u2)) {
-                                    if (ci->hasOneUse())
-                                        u2 = cast<Instruction>(*ci->user_begin());
-                                }
-                                llvm::errs() << " found use in " << *u2 << "\n";
-                                if (auto cali = dyn_cast<CallInst>(u2)) {
-                                    auto called = cali->getCalledFunction();
-                                    if (called == nullptr) continue;
-                                    if (!(called->getName() == "realloc")) continue;
-                                    if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == cali)
-                                        lastScopeAlloc.erase(malloc);
-                                    erase(cali);
-                                }
-                                if (u0->getNumUses() == 0 && u2 != u0) erase(cast<Instruction>(u0));
-                            }
-
-                            li->setOperand(0, scopeMap[ret]);
-                            if (li->getNumUses() == 0) erase(li);
-                        } else if (auto si = dyn_cast<StoreInst>(u)) {
-                            Instruction* u2 = cast<Instruction>(si->getValueOperand());
-                            erase(si);
-
-                            u2->replaceAllUsesWith(origret);
-
-                            if (auto ci = dyn_cast<CastInst>(u2)) {
-                                u2 = cast<Instruction>(ci->getOperand(0));
-                                if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && (lastScopeAlloc[malloc] == ci || lastScopeAlloc[malloc] == origret))
-                                    lastScopeAlloc.erase(malloc);
-                                erase(ci);
-                            }
-
-                            auto cali = cast<CallInst>(u2);
-                            auto called = cali->getCalledFunction();
-                            assert(called);
-                            assert(called->getName() == "malloc" || called->getName() == "realloc");
-
-                            if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && (lastScopeAlloc[malloc] == cali))
-                                lastScopeAlloc.erase(malloc);
-                            erase(cali);
-                            continue;
-                        } else {
-                            assert(0 && "illegal use for scopeMap");
-                        }
-                        //TODO consider realloc/free
-                    }
-
-                    {
-                    }
-
-                    if (op0) {
-                        if (lastScopeAlloc.find(malloc) != lastScopeAlloc.end() && lastScopeAlloc[malloc] == op0)
-                            lastScopeAlloc.erase(malloc);
-                        erase(op0);
-                    }
-                    */
                 }
             }
             cast<Instruction>(malloc)->replaceAllUsesWith(ret);
@@ -705,6 +653,8 @@ public:
       assert(malloc);
       //assert(!isa<PHINode>(malloc));
 
+      assert(idx == addedMallocs.size());
+          
       if (isa<UndefValue>(malloc)) {
         addedMallocs.push_back(malloc);
         return malloc;
@@ -1385,7 +1335,8 @@ endCheck:
                     //cast<Instruction>(firstallocation)->moveBefore(allocationBuilder.GetInsertBlock()->getTerminator());
                     //mallocs.push_back(firstallocation);
                 } else {
-                    allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
+                    auto zerostore = allocationBuilder.CreateStore(ConstantPointerNull::get(PointerType::getUnqual(myType)), storeInto);
+                    scopeStores[alloc].push_back(zerostore);
 
                     /*
                     if (containedloops.back().first.incvar != containedloops.back().first.header->getFirstNonPHI()) {
@@ -1421,6 +1372,7 @@ endCheck:
                 if ((bsize & (bsize - 1)) == 0) {
                     storealloc->setAlignment(bsize);
                 }
+                scopeStores[alloc].push_back(storealloc);
 
             }
 

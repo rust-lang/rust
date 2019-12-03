@@ -1754,6 +1754,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   CallInst* augmentcall = nullptr;
   Instruction* cachereplace = nullptr;
 
+  bool constval = gutils->isConstantValue(op);
+
   //TODO consider what to do if called == nullptr for augmentation
   llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> sub_index_map;
   if (modifyPrimal && called) {
@@ -1772,10 +1774,10 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       gutils->nonconstant.insert(augmentcall);
       augmentcall->setMetadata("enzyme_activity_inst", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), "active")}));
 
-      if (!gutils->isConstantValue(op)) {
+      if (!constval) {
         gutils->nonconstant_values.insert(augmentcall);
       }
-      augmentcall->setMetadata("enzyme_activity_value", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), gutils->isConstantValue(op) ? "const" : "active")}));
+      augmentcall->setMetadata("enzyme_activity_value", MDNode::get(augmentcall->getContext(), {MDString::get(augmentcall->getContext(), constval ? "const" : "active")}));
 
       augmentcall->setName(op->getName()+"_augmented");
       tape = BuilderZ.CreateExtractValue(augmentcall, {0});
@@ -1789,7 +1791,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
       if (!topLevel && subretused) {
         cachereplace = BuilderZ.CreatePHI(op->getType(), 1);
-        bool constval = gutils->isConstantValue(op);
         cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(gutils->getOriginal(op), "self") );
         cachereplace->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
       }
@@ -1860,7 +1861,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     if (!topLevel && subretused && !op->doesNotAccessMemory()) {
       assert(!replaceFunction);
       cachereplace = IRBuilder<>(op).CreatePHI(op->getType(), 1);
-      bool constval = gutils->isConstantValue(op);
       cachereplace = gutils->addMalloc(BuilderZ, cachereplace, getIndex(gutils->getOriginal(op), "self") );
       cachereplace->setMetadata("enzyme_activity_value", MDNode::get(cachereplace->getContext(), {MDString::get(cachereplace->getContext(), constval ? "const" : "active")}));
     }
@@ -1874,7 +1874,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && replaceFunction;
   //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
-    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/subretused, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args, sub_index_map);//, LI, DT);
+    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/augmentedsubretused, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args, sub_index_map);//, LI, DT);
   } else {
     newcalled = gutils->invertPointerM(op->getCalledValue(), Builder2);
     auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
@@ -1994,6 +1994,9 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       Value* dcall = nullptr;
       if (augmentcall) {
         dcall = BuilderZ.CreateExtractValue(augmentcall, {1});
+        if (auto dinst = dyn_cast<Instruction>(dcall)) {
+          dinst->setMetadata("enzyme_activity_value", MDNode::get(dcall->getContext(), {MDString::get(dcall->getContext(), constval ? "const" : "active")}));
+        }
       }
       if (cachereplace) {
         assert(dcall == nullptr);
