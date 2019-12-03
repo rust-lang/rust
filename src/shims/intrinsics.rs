@@ -34,8 +34,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         // Handle diverging intrinsics.
         let (dest, ret) = match intrinsic_name {
             "abort" => {
-                let ti = Box::new(TerminationInfo::Abort);
-                return Err(InterpError::MachineStop(ti).into());
+                throw_machine_stop!(TerminationInfo::Abort);
             }
             "miri_start_panic" => return this.handle_miri_start_panic(args, unwind),
             _ => {
