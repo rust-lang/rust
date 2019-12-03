@@ -84,51 +84,50 @@ impl<'a> Parser<'a> {
             let item = self.parse_item_(attrs.clone(), false, true)?;
             self.directory.ownership = old_directory_ownership;
 
-            match item {
-                Some(i) => self.mk_stmt(lo.to(i.span), StmtKind::Item(i)),
-                None => {
-                    let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
-                        if !attrs.is_empty() {
-                            if s.prev_token_kind == PrevTokenKind::DocComment {
-                                s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
-                            } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                                s.span_err(
-                                    s.token.span, "expected statement after outer attribute"
-                                );
-                            }
-                        }
-                    };
-
-                    // Do not attempt to parse an expression if we're done here.
-                    if self.token == token::Semi {
-                        unused_attrs(&attrs, self);
-                        self.bump();
-                        let mut last_semi = lo;
-                        while self.token == token::Semi {
-                            last_semi = self.token.span;
-                            self.bump();
-                        }
-                        // We are encoding a string of semicolons as an
-                        // an empty tuple that spans the excess semicolons
-                        // to preserve this info until the lint stage
-                        let kind = StmtKind::Semi(self.mk_expr(
-                            lo.to(last_semi),
-                            ExprKind::Tup(Vec::new()),
-                            ThinVec::new()
-                        ));
-                        return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
-                    }
-
-                    if self.token == token::CloseDelim(token::Brace) {
-                        unused_attrs(&attrs, self);
-                        return Ok(None);
-                    }
-
-                    // Remainder are line-expr stmts.
-                    let e = self.parse_expr_res( Restrictions::STMT_EXPR, Some(attrs.into()))?;
-                    self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
-                }
+            if let Some(item) = item {
+                return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(item))));
             }
+
+            let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
+                if !attrs.is_empty() {
+                    if s.prev_token_kind == PrevTokenKind::DocComment {
+                        s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
+                    } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
+                        s.span_err(
+                            s.token.span, "expected statement after outer attribute"
+                        );
+                    }
+                }
+            };
+
+            // Do not attempt to parse an expression if we're done here.
+            if self.token == token::Semi {
+                unused_attrs(&attrs, self);
+                self.bump();
+                let mut last_semi = lo;
+                while self.token == token::Semi {
+                    last_semi = self.token.span;
+                    self.bump();
+                }
+                // We are encoding a string of semicolons as an
+                // an empty tuple that spans the excess semicolons
+                // to preserve this info until the lint stage
+                let kind = StmtKind::Semi(self.mk_expr(
+                    lo.to(last_semi),
+                    ExprKind::Tup(Vec::new()),
+                    ThinVec::new()
+                ));
+                return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
+            }
+
+            if self.token == token::CloseDelim(token::Brace) {
+                unused_attrs(&attrs, self);
+                return Ok(None);
+            }
+
+            // Remainder are line-expr stmts.
+            let e = self.parse_expr_res( Restrictions::STMT_EXPR, Some(attrs.into()))?;
+            self.mk_stmt(lo.to(e.span), StmtKind::Expr(e))
         }))
     }
 
