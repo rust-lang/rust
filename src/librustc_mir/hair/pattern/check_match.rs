@@ -148,8 +148,8 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                         self.tables,
                     );
                     patcx.include_lint_checks();
-                    let pattern: &_ =
-                        cx.pattern_arena.alloc(expand_pattern(cx, patcx.lower_pattern(&arm.pat)));
+                    let pattern = patcx.lower_pattern(&arm.pat);
+                    let pattern: &_ = cx.pattern_arena.alloc(expand_pattern(cx, pattern));
                     if !patcx.errors.is_empty() {
                         patcx.report_inlining_errors(arm.pat.span);
                         have_errors = true;
@@ -168,55 +168,57 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
 
             // Then, if the match has no arms, check whether the scrutinee
             // is uninhabited.
-            let pat_ty = self.tables.node_type(scrut.hir_id);
+            let scrut_ty = self.tables.node_type(scrut.hir_id);
             if inlined_arms.is_empty() {
                 let scrutinee_is_visibly_uninhabited = if self.tcx.features().exhaustive_patterns {
                     let module = self.tcx.hir().get_module_parent(scrut.hir_id);
-                    self.tcx.is_ty_uninhabited_from(module, pat_ty)
+                    self.tcx.is_ty_uninhabited_from(module, scrut_ty)
                 } else {
-                    match pat_ty.kind {
+                    match scrut_ty.kind {
                         ty::Never => true,
                         ty::Adt(def, _) if def.is_enum() => {
-                            def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(pat_ty)
+                            def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(scrut_ty)
                         }
                         _ => false,
                     }
                 };
-                if !scrutinee_is_visibly_uninhabited {
+                if scrutinee_is_visibly_uninhabited {
+                    // If the type *is* uninhabited, it's vacuously exhaustive.
+                    // This early return is only needed here because in the absence of the
+                    // `exhaustive_patterns` feature, empty matches are not detected by `is_useful`
+                    // to exhaustively match uninhabited types.
+                    return;
+                } else {
                     // We know the type is inhabited, so this must be wrong
-                    let (def_span, missing_variants) = match pat_ty.kind {
-                        ty::Adt(def, _) if def.is_enum() => (
-                            self.tcx.hir().span_if_local(def.did),
-                            def.variants.iter().map(|variant| variant.ident).collect(),
-                        ),
-                        _ => (None, vec![]),
+                    let (def_span, non_empty_enum) = match scrut_ty.kind {
+                        ty::Adt(def, _) if def.is_enum() => {
+                            (self.tcx.hir().span_if_local(def.did), !def.variants.is_empty())
+                        }
+                        _ => (None, false),
                     };
 
-                    if missing_variants.is_empty() {
+                    if non_empty_enum {
+                        // Continue to the normal code path to display missing variants.
+                    } else {
                         let mut err = create_e0004(
                             self.tcx.sess,
                             scrut.span,
-                            format!("non-exhaustive patterns: type `{}` is non-empty", pat_ty),
+                            format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
                         );
                         err.help(
                             "ensure that all possible cases are being handled, \
                              possibly by adding wildcards or more match arms",
                         );
                         if let Some(sp) = def_span {
-                            err.span_label(sp, format!("`{}` defined here", pat_ty));
+                            err.span_label(sp, format!("`{}` defined here", scrut_ty));
                         }
                         err.emit();
                         return;
-                    } else {
-                        // Continue to the normal code path
                     }
-                } else {
-                    // If the type *is* uninhabited, it's vacuously exhaustive
-                    return;
                 }
             }
 
-            let scrut_ty = self.tables.node_type(scrut.hir_id);
+            // Fifth, check if the match is exhaustive.
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id);
         })
     }
