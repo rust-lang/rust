@@ -780,7 +780,7 @@ impl<T: ?Sized> Arc<T> {
         // reference (see #54908).
         let layout = Layout::new::<ArcInner<()>>()
             .extend(value_layout).unwrap().0
-            .pad_to_align().unwrap();
+            .pad_to_align();
 
         let mem = Global.alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
