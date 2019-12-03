@@ -1325,7 +1325,7 @@ impl<'a> Parser<'a> {
 
         let (variants, _) = self.parse_delim_comma_seq(
             token::Brace,
-            |p| p.parse_enum_item(),
+            |p| p.parse_enum_variant(),
         ).map_err(|e| {
             self.recover_stmt();
             e
@@ -1337,7 +1337,7 @@ impl<'a> Parser<'a> {
         Ok((id, ItemKind::Enum(enum_definition, generics), None))
     }
 
-    fn parse_enum_item(&mut self) -> PResult<'a, Option<Variant>> {
+    fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
         let variant_attrs = self.parse_outer_attributes()?;
         let vlo = self.token.span;
 
