@@ -12,7 +12,7 @@ doctest = false
 [dependencies]
 flate2 = "1.0"
 log = "0.4"
-memmap = "0.6"
+memmap = "0.7"
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 rustc = { path = "../librustc" }
 rustc_data_structures = { path = "../librustc_data_structures" }
