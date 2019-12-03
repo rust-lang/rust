@@ -168,6 +168,7 @@ enum Slice<'a> {
     /// ## Example
     ///
     /// ```rust
+    /// # let mut a = vec![0, 1];
     /// let t = a[1];
     /// a[1] = a[0];
     /// a[0] = t;
@@ -180,6 +181,7 @@ enum Slice<'a> {
     /// ## Example
     ///
     /// ```rust
+    /// # let mut a = [vec![1, 2], vec![3, 4]];
     /// let t = a[0][1];
     /// a[0][1] = a[1][0];
     /// a[1][0] = t;
