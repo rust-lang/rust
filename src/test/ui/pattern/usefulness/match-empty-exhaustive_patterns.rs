@@ -4,6 +4,13 @@
 enum Foo {}
 
 struct NonEmptyStruct(bool); //~ `NonEmptyStruct` defined here
+union NonEmptyUnion1 {
+    foo: (),
+}
+union NonEmptyUnion2 {
+    foo: (),
+    bar: (),
+}
 enum NonEmptyEnum1 { //~ `NonEmptyEnum1` defined here
     Foo(bool), //~ variant not covered
 }
@@ -36,6 +43,10 @@ fn main() {
     //~^ ERROR type `u8` is non-empty
     match NonEmptyStruct(true) {}
     //~^ ERROR pattern `NonEmptyStruct` of type `NonEmptyStruct` is not handled
+    match (NonEmptyUnion1 { foo: () }) {}
+    //~^ ERROR pattern `NonEmptyUnion1` of type `NonEmptyUnion1` is not handled
+    match (NonEmptyUnion2 { foo: () }) {}
+    //~^ ERROR pattern `NonEmptyUnion2` of type `NonEmptyUnion2` is not handled
     match NonEmptyEnum1::Foo(true) {}
     //~^ ERROR pattern `Foo` of type `NonEmptyEnum1` is not handled
     match NonEmptyEnum2::Foo(true) {}

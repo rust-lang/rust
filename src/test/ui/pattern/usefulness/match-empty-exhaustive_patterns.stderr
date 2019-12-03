@@ -1,5 +1,5 @@
 error: unreachable pattern
-  --> $DIR/match-empty-exhaustive_patterns.rs:21:9
+  --> $DIR/match-empty-exhaustive_patterns.rs:28:9
    |
 LL |         _ => {},
    |         ^
@@ -11,19 +11,19 @@ LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-empty-exhaustive_patterns.rs:28:9
+  --> $DIR/match-empty-exhaustive_patterns.rs:35:9
    |
 LL |         Some(_) => {}
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/match-empty-exhaustive_patterns.rs:32:9
+  --> $DIR/match-empty-exhaustive_patterns.rs:39:9
    |
 LL |         Some(_) => {}
    |         ^^^^^^^
 
 error[E0004]: non-exhaustive patterns: type `u8` is non-empty
-  --> $DIR/match-empty-exhaustive_patterns.rs:35:11
+  --> $DIR/match-empty-exhaustive_patterns.rs:42:11
    |
 LL |     match 0u8 {}
    |           ^^^
@@ -31,7 +31,7 @@ LL |     match 0u8 {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: pattern `NonEmptyStruct` of type `NonEmptyStruct` is not handled
-  --> $DIR/match-empty-exhaustive_patterns.rs:37:11
+  --> $DIR/match-empty-exhaustive_patterns.rs:44:11
    |
 LL | struct NonEmptyStruct(bool);
    | ----------------------------
@@ -44,8 +44,41 @@ LL |     match NonEmptyStruct(true) {}
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
+error[E0004]: non-exhaustive patterns: pattern `NonEmptyUnion1` of type `NonEmptyUnion1` is not handled
+  --> $DIR/match-empty-exhaustive_patterns.rs:46:11
+   |
+LL |   union NonEmptyUnion1 {
+   |   -     -------------- variant not covered
+   |  _|
+   | |
+LL | |     foo: (),
+LL | | }
+   | |_- `NonEmptyUnion1` defined here
+...
+LL |       match (NonEmptyUnion1 { foo: () }) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
+error[E0004]: non-exhaustive patterns: pattern `NonEmptyUnion2` of type `NonEmptyUnion2` is not handled
+  --> $DIR/match-empty-exhaustive_patterns.rs:48:11
+   |
+LL |   union NonEmptyUnion2 {
+   |   -     -------------- variant not covered
+   |  _|
+   | |
+LL | |     foo: (),
+LL | |     bar: (),
+LL | | }
+   | |_- `NonEmptyUnion2` defined here
+...
+LL |       match (NonEmptyUnion2 { foo: () }) {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
+
 error[E0004]: non-exhaustive patterns: pattern `Foo` of type `NonEmptyEnum1` is not handled
-  --> $DIR/match-empty-exhaustive_patterns.rs:39:11
+  --> $DIR/match-empty-exhaustive_patterns.rs:50:11
    |
 LL | / enum NonEmptyEnum1 {
 LL | |     Foo(bool),
@@ -59,7 +92,7 @@ LL |       match NonEmptyEnum1::Foo(true) {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: multiple patterns of type `NonEmptyEnum2` are not handled
-  --> $DIR/match-empty-exhaustive_patterns.rs:41:11
+  --> $DIR/match-empty-exhaustive_patterns.rs:52:11
    |
 LL | / enum NonEmptyEnum2 {
 LL | |     Foo(bool),
@@ -75,7 +108,7 @@ LL |       match NonEmptyEnum2::Foo(true) {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: multiple patterns of type `NonEmptyEnum5` are not handled
-  --> $DIR/match-empty-exhaustive_patterns.rs:43:11
+  --> $DIR/match-empty-exhaustive_patterns.rs:54:11
    |
 LL | / enum NonEmptyEnum5 {
 LL | |     V1, V2, V3, V4, V5,
@@ -87,6 +120,6 @@ LL |       match NonEmptyEnum5::V1 {}
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
 For more information about this error, try `rustc --explain E0004`.
