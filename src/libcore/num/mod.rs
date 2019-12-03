@@ -2232,7 +2232,7 @@ assert_eq!((-a).div_euclid(-b), 2); // -7 >= -4 * 2
         /// No docs for bootstrap.
         #[stable(feature = "euclidean_division", since = "1.38.0")]
         #[must_use = "this returns the result of the operation, \
-                        without modifying the original"]
+                      without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
         #[cfg(bootstrap)]
@@ -4414,9 +4414,22 @@ assert_eq!(7", stringify!($SelfT), ".rem_euclid(4), 3); // or any other integer 
                           without modifying the original"]
             #[inline]
             #[rustc_inherit_overflow_checks]
-            pub fn rem_euclid(self, rhs: Self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_euclidean")]
+            #[cfg(not(bootstrap))]
+            pub const fn rem_euclid(self, rhs: Self) -> Self {
                 self % rhs
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "euclidean_division", since = "1.38.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[rustc_inherit_overflow_checks]
+        #[cfg(bootstrap)]
+        pub fn rem_euclid(self, rhs: Self) -> Self {
+            self % rhs
         }
 
         doc_comment! {
