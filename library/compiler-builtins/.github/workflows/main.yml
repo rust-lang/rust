@@ -102,7 +102,7 @@ jobs:
           os: windows-latest
           rust: nightly-x86_64-gnu
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v1
       with:
         submodules: true
     - name: Install Rust (rustup)
@@ -139,7 +139,7 @@ jobs:
     name: Rustfmt
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v1
       with:
         submodules: true
     - name: Install Rust
