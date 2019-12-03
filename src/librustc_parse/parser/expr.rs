@@ -890,7 +890,7 @@ impl<'a> Parser<'a> {
                     //     2 |     foo(bar(;
                     //       |             ^ expected expression
                     self.bump();
-                    Ok(self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()))
+                    Ok(self.mk_expr_err(self.token.span))
                 } else if self.token.span.rust_2018() {
                     // `Span::rust_2018()` is somewhat expensive; don't get it repeatedly.
                     if self.check_keyword(kw::Async) {
