@@ -15,20 +15,18 @@ use crate::sys_common::FromInner;
 pub use crate::sys_common::fs::copy;
 pub use crate::sys_common::fs::remove_dir_all;
 
-use ::wasi::wasi_unstable as wasi;
-
 pub struct File {
     fd: WasiFd,
 }
 
 #[derive(Clone)]
 pub struct FileAttr {
-    meta: wasi::FileStat,
+    meta: wasi::Filestat,
 }
 
 pub struct ReadDir {
     inner: Arc<ReadDirInner>,
-    cookie: Option<wasi::DirCookie>,
+    cookie: Option<wasi::Dircookie>,
     buf: Vec<u8>,
     offset: usize,
     cap: usize,
@@ -49,9 +47,9 @@ pub struct DirEntry {
 pub struct OpenOptions {
     read: bool,
     write: bool,
-    dirflags: wasi::LookupFlags,
-    fdflags: wasi::FdFlags,
-    oflags: wasi::OFlags,
+    dirflags: wasi::Lookupflags,
+    fdflags: wasi::Fdflags,
+    oflags: wasi::Oflags,
     rights_base: Option<wasi::Rights>,
     rights_inheriting: Option<wasi::Rights>,
 }
@@ -63,7 +61,7 @@ pub struct FilePermissions {
 
 #[derive(PartialEq, Eq, Hash, Debug, Copy, Clone)]
 pub struct FileType {
-    bits: wasi::FileType,
+    bits: wasi::Filetype,
 }
 
 #[derive(Debug)]
@@ -71,7 +69,7 @@ pub struct DirBuilder {}
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
-        self.meta.st_size
+        self.meta.size
     }
 
     pub fn perm(&self) -> FilePermissions {
@@ -80,24 +78,22 @@ impl FileAttr {
     }
 
     pub fn file_type(&self) -> FileType {
-        FileType {
-            bits: self.meta.st_filetype,
-        }
+        FileType { bits: self.meta.filetype }
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from_wasi_timestamp(self.meta.st_mtim))
+        Ok(SystemTime::from_wasi_timestamp(self.meta.mtim))
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from_wasi_timestamp(self.meta.st_atim))
+        Ok(SystemTime::from_wasi_timestamp(self.meta.atim))
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        Ok(SystemTime::from_wasi_timestamp(self.meta.st_ctim))
+        Ok(SystemTime::from_wasi_timestamp(self.meta.ctim))
     }
 
-    pub fn as_wasi(&self) -> &wasi::FileStat {
+    pub fn as_wasi(&self) -> &wasi::Filestat {
         &self.meta
     }
 }
@@ -125,7 +121,7 @@ impl FileType {
         self.bits == wasi::FILETYPE_SYMBOLIC_LINK
     }
 
-    pub fn bits(&self) -> wasi::FileType {
+    pub fn bits(&self) -> wasi::Filetype {
         self.bits
     }
 }
@@ -177,8 +173,7 @@ impl Iterator for ReadDir {
                 continue;
             }
             let (dirent, data) = data.split_at(dirent_size);
-            let dirent =
-                unsafe { ptr::read_unaligned(dirent.as_ptr() as *const wasi::Dirent) };
+            let dirent = unsafe { ptr::read_unaligned(dirent.as_ptr() as *const wasi::Dirent) };
 
             // If the file name was truncated, then we need to reinvoke
             // `readdir` so we truncate our buffer to start over and reread this
@@ -224,17 +219,11 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        metadata_at(
-            &self.inner.dir.fd,
-            0,
-            OsStr::from_bytes(&self.name).as_ref(),
-        )
+        metadata_at(&self.inner.dir.fd, 0, OsStr::from_bytes(&self.name).as_ref())
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
-        Ok(FileType {
-            bits: self.meta.d_type,
-        })
+        Ok(FileType { bits: self.meta.d_type })
     }
 
     pub fn ino(&self) -> wasi::Inode {
@@ -245,7 +234,7 @@ impl DirEntry {
 impl OpenOptions {
     pub fn new() -> OpenOptions {
         let mut base = OpenOptions::default();
-        base.dirflags = wasi::LOOKUP_SYMLINK_FOLLOW;
+        base.dirflags = wasi::LOOKUPFLAGS_SYMLINK_FOLLOW;
         return base;
     }
 
@@ -258,23 +247,23 @@ impl OpenOptions {
     }
 
     pub fn truncate(&mut self, truncate: bool) {
-        self.oflag(wasi::O_TRUNC, truncate);
+        self.oflag(wasi::OFLAGS_TRUNC, truncate);
     }
 
     pub fn create(&mut self, create: bool) {
-        self.oflag(wasi::O_CREAT, create);
+        self.oflag(wasi::OFLAGS_CREAT, create);
     }
 
     pub fn create_new(&mut self, create_new: bool) {
-        self.oflag(wasi::O_EXCL, create_new);
-        self.oflag(wasi::O_CREAT, create_new);
+        self.oflag(wasi::OFLAGS_EXCL, create_new);
+        self.oflag(wasi::OFLAGS_CREAT, create_new);
     }
 
     pub fn directory(&mut self, directory: bool) {
-        self.oflag(wasi::O_DIRECTORY, directory);
+        self.oflag(wasi::OFLAGS_DIRECTORY, directory);
     }
 
-    fn oflag(&mut self, bit: wasi::OFlags, set: bool) {
+    fn oflag(&mut self, bit: wasi::Oflags, set: bool) {
         if set {
             self.oflags |= bit;
         } else {
@@ -283,26 +272,26 @@ impl OpenOptions {
     }
 
     pub fn append(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAG_APPEND, set);
+        self.fdflag(wasi::FDFLAGS_APPEND, set);
     }
 
     pub fn dsync(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAG_DSYNC, set);
+        self.fdflag(wasi::FDFLAGS_DSYNC, set);
     }
 
     pub fn nonblock(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAG_NONBLOCK, set);
+        self.fdflag(wasi::FDFLAGS_NONBLOCK, set);
     }
 
     pub fn rsync(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAG_RSYNC, set);
+        self.fdflag(wasi::FDFLAGS_RSYNC, set);
     }
 
     pub fn sync(&mut self, set: bool) {
-        self.fdflag(wasi::FDFLAG_SYNC, set);
+        self.fdflag(wasi::FDFLAGS_SYNC, set);
     }
 
-    fn fdflag(&mut self, bit: wasi::FdFlags, set: bool) {
+    fn fdflag(&mut self, bit: wasi::Fdflags, set: bool) {
         if set {
             self.fdflags |= bit;
         } else {
@@ -330,36 +319,36 @@ impl OpenOptions {
         // based on that.
         let mut base = 0;
         if self.read {
-            base |= wasi::RIGHT_FD_READ;
-            base |= wasi::RIGHT_FD_READDIR;
+            base |= wasi::RIGHTS_FD_READ;
+            base |= wasi::RIGHTS_FD_READDIR;
         }
         if self.write {
-            base |= wasi::RIGHT_FD_WRITE;
-            base |= wasi::RIGHT_FD_DATASYNC;
-            base |= wasi::RIGHT_FD_ALLOCATE;
-            base |= wasi::RIGHT_FD_FILESTAT_SET_SIZE;
+            base |= wasi::RIGHTS_FD_WRITE;
+            base |= wasi::RIGHTS_FD_DATASYNC;
+            base |= wasi::RIGHTS_FD_ALLOCATE;
+            base |= wasi::RIGHTS_FD_FILESTAT_SET_SIZE;
         }
 
         // FIXME: some of these should probably be read-only or write-only...
-        base |= wasi::RIGHT_FD_ADVISE;
-        base |= wasi::RIGHT_FD_FDSTAT_SET_FLAGS;
-        base |= wasi::RIGHT_FD_FILESTAT_SET_TIMES;
-        base |= wasi::RIGHT_FD_SEEK;
-        base |= wasi::RIGHT_FD_SYNC;
-        base |= wasi::RIGHT_FD_TELL;
-        base |= wasi::RIGHT_PATH_CREATE_DIRECTORY;
-        base |= wasi::RIGHT_PATH_CREATE_FILE;
-        base |= wasi::RIGHT_PATH_FILESTAT_GET;
-        base |= wasi::RIGHT_PATH_LINK_SOURCE;
-        base |= wasi::RIGHT_PATH_LINK_TARGET;
-        base |= wasi::RIGHT_PATH_OPEN;
-        base |= wasi::RIGHT_PATH_READLINK;
-        base |= wasi::RIGHT_PATH_REMOVE_DIRECTORY;
-        base |= wasi::RIGHT_PATH_RENAME_SOURCE;
-        base |= wasi::RIGHT_PATH_RENAME_TARGET;
-        base |= wasi::RIGHT_PATH_SYMLINK;
-        base |= wasi::RIGHT_PATH_UNLINK_FILE;
-        base |= wasi::RIGHT_POLL_FD_READWRITE;
+        base |= wasi::RIGHTS_FD_ADVISE;
+        base |= wasi::RIGHTS_FD_FDSTAT_SET_FLAGS;
+        base |= wasi::RIGHTS_FD_FILESTAT_SET_TIMES;
+        base |= wasi::RIGHTS_FD_SEEK;
+        base |= wasi::RIGHTS_FD_SYNC;
+        base |= wasi::RIGHTS_FD_TELL;
+        base |= wasi::RIGHTS_PATH_CREATE_DIRECTORY;
+        base |= wasi::RIGHTS_PATH_CREATE_FILE;
+        base |= wasi::RIGHTS_PATH_FILESTAT_GET;
+        base |= wasi::RIGHTS_PATH_LINK_SOURCE;
+        base |= wasi::RIGHTS_PATH_LINK_TARGET;
+        base |= wasi::RIGHTS_PATH_OPEN;
+        base |= wasi::RIGHTS_PATH_READLINK;
+        base |= wasi::RIGHTS_PATH_REMOVE_DIRECTORY;
+        base |= wasi::RIGHTS_PATH_RENAME_SOURCE;
+        base |= wasi::RIGHTS_PATH_RENAME_TARGET;
+        base |= wasi::RIGHTS_PATH_SYMLINK;
+        base |= wasi::RIGHTS_PATH_UNLINK_FILE;
+        base |= wasi::RIGHTS_POLL_FD_READWRITE;
 
         return base;
     }
@@ -368,14 +357,14 @@ impl OpenOptions {
         self.rights_inheriting.unwrap_or_else(|| self.rights_base())
     }
 
-    pub fn lookup_flags(&mut self, flags: wasi::LookupFlags) {
+    pub fn lookup_flags(&mut self, flags: wasi::Lookupflags) {
         self.dirflags = flags;
     }
 }
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
-        let (dir, file) = open_parent(path, wasi::RIGHT_PATH_OPEN)?;
+        let (dir, file) = open_parent(path, wasi::RIGHTS_PATH_OPEN)?;
         open_at(&dir, &file, opts)
     }
 
@@ -387,11 +376,7 @@ impl File {
         self.fd.filestat_get().map(|meta| FileAttr { meta })
     }
 
-    pub fn metadata_at(
-        &self,
-        flags: wasi::LookupFlags,
-        path: &Path,
-    ) -> io::Result<FileAttr> {
+    pub fn metadata_at(&self, flags: wasi::Lookupflags, path: &Path) -> io::Result<FileAttr> {
         metadata_at(&self.fd, flags, path)
     }
 
@@ -457,11 +442,7 @@ impl File {
 
 impl FromInner<u32> for File {
     fn from_inner(fd: u32) -> File {
-        unsafe {
-            File {
-                fd: WasiFd::from_raw(fd),
-            }
-        }
+        unsafe { File { fd: WasiFd::from_raw(fd) } }
     }
 }
 
@@ -471,16 +452,14 @@ impl DirBuilder {
     }
 
     pub fn mkdir(&self, p: &Path) -> io::Result<()> {
-        let (dir, file) = open_parent(p, wasi::RIGHT_PATH_CREATE_DIRECTORY)?;
-        dir.create_directory(file.as_os_str().as_bytes())
+        let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_CREATE_DIRECTORY)?;
+        dir.create_directory(osstr2str(file.as_ref())?)
     }
 }
 
 impl fmt::Debug for File {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("File")
-            .field("fd", &self.fd.as_raw())
-            .finish()
+        f.debug_struct("File").field("fd", &self.fd.as_raw()).finish()
     }
 }
 
@@ -494,26 +473,19 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
         buf: vec![0; 128],
         offset: 0,
         cap: 0,
-        inner: Arc::new(ReadDirInner {
-            dir,
-            root: p.to_path_buf(),
-        }),
+        inner: Arc::new(ReadDirInner { dir, root: p.to_path_buf() }),
     })
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_UNLINK_FILE)?;
-    dir.unlink_file(file.as_os_str().as_bytes())
+    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_UNLINK_FILE)?;
+    dir.unlink_file(osstr2str(file.as_ref())?)
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let (old, old_file) = open_parent(old, wasi::RIGHT_PATH_RENAME_SOURCE)?;
-    let (new, new_file) = open_parent(new, wasi::RIGHT_PATH_RENAME_TARGET)?;
-    old.rename(
-        old_file.as_os_str().as_bytes(),
-        &new,
-        new_file.as_os_str().as_bytes(),
-    )
+    let (old, old_file) = open_parent(old, wasi::RIGHTS_PATH_RENAME_SOURCE)?;
+    let (new, new_file) = open_parent(new, wasi::RIGHTS_PATH_RENAME_TARGET)?;
+    old.rename(osstr2str(old_file.as_ref())?, &new, osstr2str(new_file.as_ref())?)
 }
 
 pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
@@ -523,12 +495,12 @@ pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_REMOVE_DIRECTORY)?;
-    dir.remove_directory(file.as_os_str().as_bytes())
+    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_REMOVE_DIRECTORY)?;
+    dir.remove_directory(osstr2str(file.as_ref())?)
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_READLINK)?;
+    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_READLINK)?;
     read_link(&dir, &file)
 }
 
@@ -549,7 +521,7 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
     // Now that we have an initial guess of how big to make our buffer, call
     // `readlink` in a loop until it fails or reports it filled fewer bytes than
     // we asked for, indicating we got everything.
-    let file = file.as_os_str().as_bytes();
+    let file = osstr2str(file.as_ref())?;
     let mut destination = vec![0u8; initial_size];
     loop {
         let len = fd.readlink(file, &mut destination)?;
@@ -564,38 +536,34 @@ fn read_link(fd: &WasiFd, file: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let (dst, dst_file) = open_parent(dst, wasi::RIGHT_PATH_SYMLINK)?;
-    dst.symlink(src.as_os_str().as_bytes(), dst_file.as_os_str().as_bytes())
+    let (dst, dst_file) = open_parent(dst, wasi::RIGHTS_PATH_SYMLINK)?;
+    dst.symlink(osstr2str(src.as_ref())?, osstr2str(dst_file.as_ref())?)
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let (src, src_file) = open_parent(src, wasi::RIGHT_PATH_LINK_SOURCE)?;
-    let (dst, dst_file) = open_parent(dst, wasi::RIGHT_PATH_LINK_TARGET)?;
+    let (src, src_file) = open_parent(src, wasi::RIGHTS_PATH_LINK_SOURCE)?;
+    let (dst, dst_file) = open_parent(dst, wasi::RIGHTS_PATH_LINK_TARGET)?;
     src.link(
-        wasi::LOOKUP_SYMLINK_FOLLOW,
-        src_file.as_os_str().as_bytes(),
+        wasi::LOOKUPFLAGS_SYMLINK_FOLLOW,
+        osstr2str(src_file.as_ref())?,
         &dst,
-        dst_file.as_os_str().as_bytes(),
+        osstr2str(dst_file.as_ref())?,
     )
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_FILESTAT_GET)?;
-    metadata_at(&dir, wasi::LOOKUP_SYMLINK_FOLLOW, &file)
+    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_FILESTAT_GET)?;
+    metadata_at(&dir, wasi::LOOKUPFLAGS_SYMLINK_FOLLOW, &file)
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let (dir, file) = open_parent(p, wasi::RIGHT_PATH_FILESTAT_GET)?;
+    let (dir, file) = open_parent(p, wasi::RIGHTS_PATH_FILESTAT_GET)?;
     metadata_at(&dir, 0, &file)
 }
 
-fn metadata_at(
-    fd: &WasiFd,
-    flags: wasi::LookupFlags,
-    path: &Path,
-) -> io::Result<FileAttr> {
-    fd.path_filestat_get(flags, path.as_os_str().as_bytes())
-        .map(|meta| FileAttr { meta })
+fn metadata_at(fd: &WasiFd, flags: wasi::Lookupflags, path: &Path) -> io::Result<FileAttr> {
+    let meta = fd.path_filestat_get(flags, osstr2str(path.as_ref())?)?;
+    Ok(FileAttr { meta })
 }
 
 pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
@@ -607,7 +575,7 @@ pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
 fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
     let fd = fd.open(
         opts.dirflags,
-        path.as_os_str().as_bytes(),
+        osstr2str(path.as_ref())?,
         opts.oflags,
         opts.rights_base(),
         opts.rights_inheriting(),
@@ -643,10 +611,7 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 ///
 /// Note that this can fail if `p` doesn't look like it can be opened relative
 /// to any preopened file descriptor.
-fn open_parent(
-    p: &Path,
-    rights: wasi::Rights,
-) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
+fn open_parent(p: &Path, rights: wasi::Rights) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
     let p = CString::new(p.as_os_str().as_bytes())?;
     unsafe {
         let mut ret = ptr::null();
@@ -670,4 +635,8 @@ fn open_parent(
 
         return Ok((ManuallyDrop::new(WasiFd::from_raw(fd as u32)), path));
     }
+}
+
+pub fn osstr2str(f: &OsStr) -> io::Result<&str> {
+    f.to_str().ok_or_else(|| io::Error::new(io::ErrorKind::Other, "input must be utf-8"))
 }
