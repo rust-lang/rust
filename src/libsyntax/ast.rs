@@ -2382,7 +2382,7 @@ impl rustc_serialize::Decodable for AttrId {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,
-    pub args: MacArgs,
+    pub args: P<MacArgs>,
 }
 
 /// Metadata associated with an item.
@@ -2413,7 +2413,7 @@ pub enum AttrKind {
 
 // Receive notifications about the doc comment size changes.
 #[cfg(target_arch = "x86_64")]
-rustc_data_structures::static_assert_size!(AttrKind, 72);
+rustc_data_structures::static_assert_size!(AttrKind, 48);
 
 /// `TraitRef`s appear in impls.
 ///

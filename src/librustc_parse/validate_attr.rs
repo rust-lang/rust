@@ -17,7 +17,7 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some((name, _, template, _)) if name != sym::rustc_dummy =>
             check_builtin_attribute(sess, attr, name, template),
-        _ => if let MacArgs::Eq(..) = attr.get_normal_item().args {
+        _ => if let MacArgs::Eq(..) = *attr.get_normal_item().args {
             // All key-value attributes are restricted to meta-item syntax.
             parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
         }

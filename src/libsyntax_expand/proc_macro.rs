@@ -183,7 +183,7 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
         }
 
         let parse_derive_paths = |attr: &ast::Attribute| {
-            if let MacArgs::Empty = attr.get_normal_item().args {
+            if let MacArgs::Empty = *attr.get_normal_item().args {
                 return Ok(Vec::new());
             }
             rustc_parse::parse_in_attr(cx.parse_sess, attr, |p| p.parse_derive_paths())

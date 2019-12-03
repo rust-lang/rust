@@ -1017,14 +1017,14 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_mac_args(&mut self, args: &MacArgs) -> MacArgs {
-        match *args {
+    fn lower_mac_args(&mut self, args: &MacArgs) -> AstP<MacArgs> {
+        AstP(match *args {
             MacArgs::Empty => MacArgs::Empty,
             MacArgs::Delimited(dspan, delim, ref tokens) =>
                 MacArgs::Delimited(dspan, delim, self.lower_token_stream(tokens.clone())),
             MacArgs::Eq(eq_span, ref tokens) =>
                 MacArgs::Eq(eq_span, self.lower_token_stream(tokens.clone())),
-        }
+        })
     }
 
     fn lower_token_stream(&mut self, tokens: TokenStream) -> TokenStream {

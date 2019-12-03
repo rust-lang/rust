@@ -101,7 +101,7 @@ impl<'a> StripUnconfigured<'a> {
         if !attr.has_name(sym::cfg_attr) {
             return vec![attr];
         }
-        if let ast::MacArgs::Empty = attr.get_normal_item().args {
+        if let ast::MacArgs::Empty = *attr.get_normal_item().args {
             self.sess.span_diagnostic
                 .struct_span_err(
                     attr.span,

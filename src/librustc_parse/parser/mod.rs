@@ -1011,15 +1011,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_mac_args(&mut self) -> PResult<'a, P<MacArgs>> {
-        self.parse_mac_args_common(true).map(P)
+        self.parse_mac_args_common(true)
     }
 
-    fn parse_attr_args(&mut self) -> PResult<'a, MacArgs> {
+    fn parse_attr_args(&mut self) -> PResult<'a, P<MacArgs>> {
         self.parse_mac_args_common(false)
     }
 
-    fn parse_mac_args_common(&mut self, delimited_only: bool) -> PResult<'a, MacArgs> {
-        Ok(if self.check(&token::OpenDelim(DelimToken::Paren)) ||
+    fn parse_mac_args_common(&mut self, delimited_only: bool) -> PResult<'a, P<MacArgs>> {
+        Ok(P(if self.check(&token::OpenDelim(DelimToken::Paren)) ||
                        self.check(&token::OpenDelim(DelimToken::Bracket)) ||
                        self.check(&token::OpenDelim(DelimToken::Brace)) {
             match self.parse_token_tree() {
@@ -1052,7 +1052,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             return self.unexpected();
-        })
+        }))
     }
 
     fn parse_or_use_outer_attributes(

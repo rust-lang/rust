@@ -642,7 +642,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             => panic!("unexpected annotatable"),
                     })), DUMMY_SP).into();
                     let item = attr.unwrap_normal_item();
-                    if let MacArgs::Eq(..) = item.args {
+                    if let MacArgs::Eq(..) = *item.args {
                         self.cx.span_err(span, "key-value macro attributes are not supported");
                     }
                     let tok_result =

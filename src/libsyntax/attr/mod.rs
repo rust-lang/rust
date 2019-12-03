@@ -198,7 +198,7 @@ impl Attribute {
 
     pub fn is_word(&self) -> bool {
         if let AttrKind::Normal(item) = &self.kind {
-            matches!(item.args, MacArgs::Empty)
+            matches!(*item.args, MacArgs::Empty)
         } else {
             false
         }
@@ -354,7 +354,7 @@ crate fn mk_attr_id() -> AttrId {
     AttrId(id)
 }
 
-pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attribute {
+pub fn mk_attr(style: AttrStyle, path: Path, args: P<MacArgs>, span: Span) -> Attribute {
     mk_attr_from_item(style, AttrItem { path, args }, span)
 }
 
@@ -512,8 +512,8 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
-    pub fn mac_args(&self, span: Span) -> MacArgs {
-        match self {
+    pub fn mac_args(&self, span: Span) -> P<MacArgs> {
+        P(match self {
             MetaItemKind::Word => MacArgs::Empty,
             MetaItemKind::NameValue(lit) => MacArgs::Eq(span, lit.token_tree().into()),
             MetaItemKind::List(list) => {
@@ -528,7 +528,7 @@ impl MetaItemKind {
                     DelimSpan::from_single(span), MacDelimiter::Parenthesis, TokenStream::new(tts)
                 )
             }
-        }
+        })
     }
 
     fn token_trees_and_joints(&self, span: Span) -> Vec<TreeAndJoint> {
