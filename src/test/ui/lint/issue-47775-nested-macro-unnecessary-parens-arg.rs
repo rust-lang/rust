@@ -17,10 +17,7 @@ macro_rules! the_worship_the_heart_lifts_above {
 
 macro_rules! and_the_heavens_reject_not {
     () => {
-        // ↓ But let's test that we still lint for unused parens around
-        // function args inside of simple, one-deep macros.
         #[allow(dead_code)] fn the_night_for_the_morrow() -> Option<isize> { Some((2)) }
-        //~^ WARN unnecessary parentheses around function argument
     }
 }
 
