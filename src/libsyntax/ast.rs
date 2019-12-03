@@ -27,7 +27,7 @@ pub use syntax_pos::symbol::{Ident, Symbol as Name};
 use crate::ptr::P;
 use crate::source_map::{dummy_spanned, respan, Spanned};
 use crate::token::{self, DelimToken};
-use crate::tokenstream::TokenStream;
+use crate::tokenstream::{TokenStream, TokenTree, DelimSpan};
 
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, DUMMY_SP, ExpnId};
@@ -40,6 +40,7 @@ use rustc_index::vec::Idx;
 use rustc_serialize::{self, Decoder, Encoder};
 use rustc_macros::HashStable_Generic;
 
+use std::iter;
 use std::fmt;
 
 #[cfg(test)]
@@ -1372,32 +1373,87 @@ pub enum Movability {
     Movable,
 }
 
-/// Represents a macro invocation. The `Path` indicates which macro
-/// is being invoked, and the vector of token-trees contains the source
-/// of the macro invocation.
-///
-/// N.B., the additional ident for a `macro_rules`-style macro is actually
-/// stored in the enclosing item.
+/// Represents a macro invocation. The `path` indicates which macro
+/// is being invoked, and the `args` are arguments passed to it.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mac {
     pub path: Path,
-    pub delim: MacDelimiter,
-    pub tts: TokenStream,
-    pub span: Span,
+    pub args: P<MacArgs>,
     pub prior_type_ascription: Option<(Span, bool)>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug)]
+impl Mac {
+    pub fn span(&self) -> Span {
+        self.path.span.to(self.args.span().unwrap_or(self.path.span))
+    }
+}
+
+/// Arguments passed to an attribute or a function-like macro.
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
+pub enum MacArgs {
+    /// No arguments - `#[attr]`.
+    Empty,
+    /// Delimited arguments - `#[attr()/[]/{}]` or `mac!()/[]/{}`.
+    Delimited(DelimSpan, MacDelimiter, TokenStream),
+    /// Arguments of a key-value attribute - `#[attr = "value"]`.
+    Eq(
+        /// Span of the `=` token.
+        Span,
+        /// Token stream of the "value".
+        TokenStream,
+    ),
+}
+
+impl MacArgs {
+    pub fn delim(&self) -> DelimToken {
+        match self {
+            MacArgs::Delimited(_, delim, _) => delim.to_token(),
+            MacArgs::Empty | MacArgs::Eq(..) => token::NoDelim,
+        }
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match *self {
+            MacArgs::Empty => None,
+            MacArgs::Delimited(dspan, ..) => Some(dspan.entire()),
+            MacArgs::Eq(eq_span, ref tokens) => Some(eq_span.to(tokens.span().unwrap_or(eq_span))),
+        }
+    }
+
+    /// Tokens inside the delimiters or after `=`.
+    /// Proc macros see these tokens, for example.
+    pub fn inner_tokens(&self) -> TokenStream {
+        match self {
+            MacArgs::Empty => TokenStream::default(),
+            MacArgs::Delimited(.., tokens) |
+            MacArgs::Eq(.., tokens) => tokens.clone(),
+        }
+    }
+
+    /// Tokens together with the delimiters or `=`.
+    /// Use of this method generally means that something suboptimal or hacky is happening.
+    pub fn outer_tokens(&self) -> TokenStream {
+        match *self {
+            MacArgs::Empty => TokenStream::default(),
+            MacArgs::Delimited(dspan, delim, ref tokens) =>
+                TokenTree::Delimited(dspan, delim.to_token(), tokens.clone()).into(),
+            MacArgs::Eq(eq_span, ref tokens) => iter::once(TokenTree::token(token::Eq, eq_span))
+                                                .chain(tokens.trees()).collect(),
+        }
+    }
+
+    /// Whether a macro with these arguments needs a semicolon
+    /// when used as a standalone item or statement.
+    pub fn need_semicolon(&self) -> bool {
+        !matches!(self, MacArgs::Delimited(_, MacDelimiter::Brace ,_))
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub enum MacDelimiter {
     Parenthesis,
     Bracket,
     Brace,
-}
-
-impl Mac {
-    pub fn stream(&self) -> TokenStream {
-        self.tts.clone()
-    }
 }
 
 impl MacDelimiter {
@@ -1408,20 +1464,23 @@ impl MacDelimiter {
             MacDelimiter::Brace => DelimToken::Brace,
         }
     }
+
+    pub fn from_token(delim: DelimToken) -> Option<MacDelimiter> {
+        match delim {
+            token::Paren => Some(MacDelimiter::Parenthesis),
+            token::Bracket => Some(MacDelimiter::Bracket),
+            token::Brace => Some(MacDelimiter::Brace),
+            token::NoDelim => None,
+        }
+    }
 }
 
 /// Represents a macro definition.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct MacroDef {
-    pub tokens: TokenStream,
+    pub body: P<MacArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub legacy: bool,
-}
-
-impl MacroDef {
-    pub fn stream(&self) -> TokenStream {
-        self.tokens.clone().into()
-    }
 }
 
 // Clippy uses Hash and PartialEq
@@ -2323,7 +2382,7 @@ impl rustc_serialize::Decodable for AttrId {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable_Generic)]
 pub struct AttrItem {
     pub path: Path,
-    pub tokens: TokenStream,
+    pub args: MacArgs,
 }
 
 /// Metadata associated with an item.

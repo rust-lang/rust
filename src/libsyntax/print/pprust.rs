@@ -1,6 +1,6 @@
 use crate::ast::{self, BlockCheckMode, PatKind, RangeEnd, RangeSyntax};
 use crate::ast::{SelfKind, GenericBound, TraitBoundModifier};
-use crate::ast::{Attribute, MacDelimiter, GenericArg};
+use crate::ast::{Attribute, GenericArg, MacArgs};
 use crate::util::parser::{self, AssocOp, Fixity};
 use crate::util::comments;
 use crate::attr;
@@ -639,17 +639,22 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
 
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
         self.ibox(0);
-        match item.tokens.trees().next() {
-            Some(TokenTree::Delimited(_, delim, tts)) => {
-                self.print_mac_common(
-                    Some(MacHeader::Path(&item.path)), false, None, delim, tts, true, span
-                );
-            }
-            tree => {
+        match &item.args {
+            MacArgs::Delimited(_, delim, tokens) => self.print_mac_common(
+                Some(MacHeader::Path(&item.path)),
+                false,
+                None,
+                delim.to_token(),
+                tokens.clone(),
+                true,
+                span,
+            ),
+            MacArgs::Empty | MacArgs::Eq(..) => {
                 self.print_path(&item.path, false, 0);
-                if tree.is_some() {
+                if let MacArgs::Eq(_, tokens) = &item.args {
                     self.space();
-                    self.print_tts(item.tokens.clone(), true);
+                    self.word_space("=");
+                    self.print_tts(tokens.clone(), true);
                 }
             }
         }
@@ -1097,9 +1102,8 @@ impl<'a> State<'a> {
             }
             ast::ForeignItemKind::Macro(ref m) => {
                 self.print_mac(m);
-                match m.delim {
-                    MacDelimiter::Brace => {},
-                    _ => self.s.word(";")
+                if m.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1361,9 +1365,8 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Mac(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
             ast::ItemKind::MacroDef(ref macro_def) => {
@@ -1377,8 +1380,8 @@ impl<'a> State<'a> {
                     Some(MacHeader::Keyword(kw)),
                     has_bang,
                     Some(item.ident),
-                    DelimToken::Brace,
-                    macro_def.stream(),
+                    macro_def.body.delim(),
+                    macro_def.body.inner_tokens(),
                     true,
                     item.span,
                 );
@@ -1578,9 +1581,8 @@ impl<'a> State<'a> {
             }
             ast::TraitItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1608,9 +1610,8 @@ impl<'a> State<'a> {
             }
             ast::ImplItemKind::Macro(ref mac) => {
                 self.print_mac(mac);
-                match mac.delim {
-                    MacDelimiter::Brace => {}
-                    _ => self.s.word(";"),
+                if mac.args.need_semicolon() {
+                    self.s.word(";");
                 }
             }
         }
@@ -1775,10 +1776,10 @@ impl<'a> State<'a> {
             Some(MacHeader::Path(&m.path)),
             true,
             None,
-            m.delim.to_token(),
-            m.stream(),
+            m.args.delim(),
+            m.args.inner_tokens(),
             true,
-            m.span,
+            m.span(),
         );
     }
 

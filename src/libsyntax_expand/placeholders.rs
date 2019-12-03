@@ -3,7 +3,6 @@ use crate::expand::{AstFragment, AstFragmentKind};
 
 use syntax::ast;
 use syntax::source_map::{DUMMY_SP, dummy_spanned};
-use syntax::tokenstream::TokenStream;
 use syntax::mut_visit::*;
 use syntax::ptr::P;
 use syntax::ThinVec;
@@ -17,9 +16,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
     fn mac_placeholder() -> ast::Mac {
         ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
-            tts: TokenStream::default().into(),
-            delim: ast::MacDelimiter::Brace,
-            span: DUMMY_SP,
+            args: P(ast::MacArgs::Empty),
             prior_type_ascription: None,
         }
     }

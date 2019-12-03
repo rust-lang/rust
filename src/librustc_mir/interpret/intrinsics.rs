@@ -424,13 +424,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if self.binary_op(BinOp::Rem, a, b)?.to_bits()? != 0 {
             // Then, check if `b` is -1, which is the "min_value / -1" case.
             let minus1 = Scalar::from_int(-1, dest.layout.size);
-            let b = b.to_scalar().unwrap();
-            if b == minus1 {
+            let b_scalar = b.to_scalar().unwrap();
+            if b_scalar == minus1 {
                 throw_ub_format!("exact_div: result of dividing MIN by -1 cannot be represented")
             } else {
                 throw_ub_format!(
                     "exact_div: {} cannot be divided by {} without remainder",
-                    a.to_scalar().unwrap(),
+                    a,
                     b,
                 )
             }

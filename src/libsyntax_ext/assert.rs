@@ -6,7 +6,7 @@ use syntax::token::{self, TokenKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::symbol::{sym, Symbol};
-use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax::tokenstream::{DelimSpan, TokenStream, TokenTree};
 use syntax_expand::base::*;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -26,19 +26,19 @@ pub fn expand_assert<'cx>(
     // `core::panic` and `std::panic` are different macros, so we use call-site
     // context to pick up whichever is currently in scope.
     let sp = cx.with_call_site_ctxt(sp);
+    let tokens = custom_message.unwrap_or_else(|| {
+        TokenStream::from(TokenTree::token(
+            TokenKind::lit(token::Str, Symbol::intern(&format!(
+                "assertion failed: {}",
+                pprust::expr_to_string(&cond_expr).escape_debug()
+            )), None),
+            DUMMY_SP,
+        ))
+    });
+    let args = P(MacArgs::Delimited(DelimSpan::from_single(sp), MacDelimiter::Parenthesis, tokens));
     let panic_call = Mac {
         path: Path::from_ident(Ident::new(sym::panic, sp)),
-        tts: custom_message.unwrap_or_else(|| {
-            TokenStream::from(TokenTree::token(
-                TokenKind::lit(token::Str, Symbol::intern(&format!(
-                    "assertion failed: {}",
-                    pprust::expr_to_string(&cond_expr).escape_debug()
-                )), None),
-                DUMMY_SP,
-            ))
-        }).into(),
-        delim: MacDelimiter::Parenthesis,
-        span: sp,
+        args,
         prior_type_ascription: None,
     };
     let if_expr = cx.expr_if(

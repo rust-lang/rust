@@ -16,7 +16,7 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
         );
 
         let start_span = parser.token.span;
-        let AttrItem { path, tokens } = panictry!(parser.parse_attr_item());
+        let AttrItem { path, args } = panictry!(parser.parse_attr_item());
         let end_span = parser.token.span;
         if parser.token != token::Eof {
             parse_sess.span_diagnostic
@@ -24,7 +24,7 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
             continue;
         }
 
-        krate.attrs.push(mk_attr(AttrStyle::Inner, path, tokens, start_span.to(end_span)));
+        krate.attrs.push(mk_attr(AttrStyle::Inner, path, args, start_span.to(end_span)));
     }
 
     krate

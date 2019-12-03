@@ -812,9 +812,50 @@ mod loop_keyword { }
 //
 /// Control flow based on pattern matching.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `match` can be used to run code conditionally. Every pattern must
+/// be handled exhaustively either explicitly or by using wildcards like
+/// `_` in the `match`. Since `match` is an expression, values can also be
+/// returned.
 ///
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// ```rust
+/// let opt = Option::None::<usize>;
+/// let x = match opt {
+///     Some(int) => int,
+///     None => 10,
+/// };
+/// assert_eq!(x, 10);
+///
+/// let a_number = Option::Some(10);
+/// match a_number {
+///     Some(x) if x <= 5 => println!("0 to 5 num = {}", x),
+///     Some(x @ 6..=10) => println!("6 to 10 num = {}", x),
+///     None => panic!(),
+///     // all other numbers
+///     _ => panic!(),
+/// }
+/// ```
+///
+/// `match` can be used to gain access to the inner members of an enum
+/// and use them directly.
+///
+/// ```rust
+/// enum Outer {
+///     Double(Option<u8>, Option<String>),
+///     Single(Option<u8>),
+///     Empty
+/// }
+///
+/// let get_inner = Outer::Double(None, Some(String::new()));
+/// match get_inner {
+///     Outer::Double(None, Some(st)) => println!("{}", st),
+///     Outer::Single(opt) => println!("{:?}", opt),
+///     _ => panic!(),
+/// }
+/// ```
+///
+/// For more information on `match` and matching in general, see the [Reference].
+///
+/// [Reference]: ../reference/expressions/match-expr.html
 mod match_keyword { }
 
 #[doc(keyword = "mod")]
@@ -831,10 +872,35 @@ mod mod_keyword { }
 //
 /// Capture a [closure]'s environment by value.
 ///
-/// The documentation for this keyword is [not yet complete]. Pull requests welcome!
+/// `move` converts any variables captured by reference or mutable reference
+/// to owned by value variables. The three [`Fn` trait]'s mirror the ways to capture
+/// variables, when `move` is used, the closures is represented by the `FnOnce` trait.
 ///
-/// [closure]: ../book/second-edition/ch13-01-closures.html
-/// [not yet complete]: https://github.com/rust-lang/rust/issues/34601
+/// ```rust
+/// let capture = "hello";
+/// let closure = move || {
+///     println!("rust says {}", capture);
+/// };
+/// ```
+///
+/// `move` is often used when [threads] are involved.
+///
+/// ```rust
+/// let x = 5;
+///
+/// std::thread::spawn(move || {
+///     println!("captured {} by value", x)
+/// }).join().unwrap();
+///
+/// // x is no longer available
+/// ```
+///
+/// For more information on the `move` keyword, see the [closure]'s section
+/// of the Rust book or the [threads] section
+///
+/// [`Fn` trait]: ../std/ops/trait.Fn.html
+/// [closure]: ../book/ch13-01-closures.html
+/// [threads]: ../book/ch16-01-threads.html#using-move-closures-with-threads
 mod move_keyword { }
 
 #[doc(keyword = "mut")]

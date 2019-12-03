@@ -841,8 +841,16 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
 
 pub fn walk_attribute<'a, V: Visitor<'a>>(visitor: &mut V, attr: &'a Attribute) {
     match attr.kind {
-        AttrKind::Normal(ref item) => visitor.visit_tts(item.tokens.clone()),
+        AttrKind::Normal(ref item) => walk_mac_args(visitor, &item.args),
         AttrKind::DocComment(_) => {}
+    }
+}
+
+pub fn walk_mac_args<'a, V: Visitor<'a>>(visitor: &mut V, args: &'a MacArgs) {
+    match args {
+        MacArgs::Empty => {}
+        MacArgs::Delimited(_dspan, _delim, tokens) => visitor.visit_tts(tokens.clone()),
+        MacArgs::Eq(_eq_span, tokens) => visitor.visit_tts(tokens.clone()),
     }
 }
 

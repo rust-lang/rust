@@ -48,4 +48,32 @@ fn main() {
         ((1..=4,),) => {}, //~ ERROR unreachable pattern
         _ => {},
     }
+
+    match (0,) {
+        (1
+         | 1,) => {} //~ ERROR unreachable
+        _ => {}
+    }
+    match [0; 2] {
+        [0
+            | 0 //~ ERROR unreachable
+        , 0
+            | 0] => {} //~ ERROR unreachable
+        _ => {}
+    }
+    match &[][..] {
+        [0] => {}
+        [0, _] => {}
+        [0, _, _] => {}
+        [1, ..] => {}
+        [1 //~ ERROR unreachable
+            | 2, ..] => {}
+        _ => {}
+    }
+    match Some(0) {
+        Some(0) => {}
+        Some(0 //~ ERROR unreachable
+             | 1) => {}
+        _ => {}
+    }
 }

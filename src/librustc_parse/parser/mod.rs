@@ -16,7 +16,7 @@ use crate::lexer::UnmatchedBrace;
 
 use syntax::ast::{
     self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident, StrLit,
-    IsAsync, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety,
+    IsAsync, MacArgs, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety,
 };
 
 use syntax::print::pprust;
@@ -1010,27 +1010,49 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, TokenStream)> {
-        let delim = match self.token.kind {
-            token::OpenDelim(delim) => delim,
-            _ => {
-                let msg = "expected open delimiter";
-                let mut err = self.fatal(msg);
-                err.span_label(self.token.span, msg);
-                return Err(err)
+    fn parse_mac_args(&mut self) -> PResult<'a, P<MacArgs>> {
+        self.parse_mac_args_common(true).map(P)
+    }
+
+    fn parse_attr_args(&mut self) -> PResult<'a, MacArgs> {
+        self.parse_mac_args_common(false)
+    }
+
+    fn parse_mac_args_common(&mut self, delimited_only: bool) -> PResult<'a, MacArgs> {
+        Ok(if self.check(&token::OpenDelim(DelimToken::Paren)) ||
+                       self.check(&token::OpenDelim(DelimToken::Bracket)) ||
+                       self.check(&token::OpenDelim(DelimToken::Brace)) {
+            match self.parse_token_tree() {
+                TokenTree::Delimited(dspan, delim, tokens) =>
+                    // We've confirmed above that there is a delimiter so unwrapping is OK.
+                    MacArgs::Delimited(dspan, MacDelimiter::from_token(delim).unwrap(), tokens),
+                _ => unreachable!(),
             }
-        };
-        let tts = match self.parse_token_tree() {
-            TokenTree::Delimited(_, _, tts) => tts,
-            _ => unreachable!(),
-        };
-        let delim = match delim {
-            token::Paren => MacDelimiter::Parenthesis,
-            token::Bracket => MacDelimiter::Bracket,
-            token::Brace => MacDelimiter::Brace,
-            token::NoDelim => self.bug("unexpected no delimiter"),
-        };
-        Ok((delim, tts.into()))
+        } else if !delimited_only {
+            if self.eat(&token::Eq) {
+                let eq_span = self.prev_span;
+                let mut is_interpolated_expr = false;
+                if let token::Interpolated(nt) = &self.token.kind {
+                    if let token::NtExpr(..) = **nt {
+                        is_interpolated_expr = true;
+                    }
+                }
+                let token_tree = if is_interpolated_expr {
+                    // We need to accept arbitrary interpolated expressions to continue
+                    // supporting things like `doc = $expr` that work on stable.
+                    // Non-literal interpolated expressions are rejected after expansion.
+                    self.parse_token_tree()
+                } else {
+                    self.parse_unsuffixed_lit()?.token_tree()
+                };
+
+                MacArgs::Eq(eq_span, token_tree.into())
+            } else {
+                MacArgs::Empty
+            }
+        } else {
+            return self.unexpected();
+        })
     }
 
     fn parse_or_use_outer_attributes(

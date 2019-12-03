@@ -359,6 +359,26 @@ pub fn visit_fn_sig<T: MutVisitor>(FnSig { header, decl }: &mut FnSig, vis: &mut
     vis.visit_fn_decl(decl);
 }
 
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+pub fn visit_mac_args<T: MutVisitor>(args: &mut MacArgs, vis: &mut T) {
+    match args {
+        MacArgs::Empty => {}
+        MacArgs::Delimited(dspan, _delim, tokens) => {
+            visit_delim_span(dspan, vis);
+            vis.visit_tts(tokens);
+        }
+        MacArgs::Eq(eq_span, tokens) => {
+            vis.visit_span(eq_span);
+            vis.visit_tts(tokens);
+        }
+    }
+}
+
+pub fn visit_delim_span<T: MutVisitor>(dspan: &mut DelimSpan, vis: &mut T) {
+    vis.visit_span(&mut dspan.open);
+    vis.visit_span(&mut dspan.close);
+}
+
 pub fn noop_flat_map_field_pattern<T: MutVisitor>(
     mut fp: FieldPat,
     vis: &mut T,
@@ -550,9 +570,9 @@ pub fn noop_visit_local<T: MutVisitor>(local: &mut P<Local>, vis: &mut T) {
 pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
     let Attribute { kind, id: _, style: _, span } = attr;
     match kind {
-        AttrKind::Normal(AttrItem { path, tokens }) => {
+        AttrKind::Normal(AttrItem { path, args }) => {
             vis.visit_path(path);
-            vis.visit_tts(tokens);
+            visit_mac_args(args, vis);
         }
         AttrKind::DocComment(_) => {}
     }
@@ -560,15 +580,14 @@ pub fn noop_visit_attribute<T: MutVisitor>(attr: &mut Attribute, vis: &mut T) {
 }
 
 pub fn noop_visit_mac<T: MutVisitor>(mac: &mut Mac, vis: &mut T) {
-    let Mac { path, delim: _, tts, span, prior_type_ascription: _ } = mac;
+    let Mac { path, args, prior_type_ascription: _ } = mac;
     vis.visit_path(path);
-    vis.visit_tts(tts);
-    vis.visit_span(span);
+    visit_mac_args(args, vis);
 }
 
 pub fn noop_visit_macro_def<T: MutVisitor>(macro_def: &mut MacroDef, vis: &mut T) {
-    let MacroDef { tokens, legacy: _ } = macro_def;
-    vis.visit_tts(tokens);
+    let MacroDef { body, legacy: _ } = macro_def;
+    visit_mac_args(body, vis);
 }
 
 pub fn noop_visit_meta_list_item<T: MutVisitor>(li: &mut NestedMetaItem, vis: &mut T) {
@@ -682,9 +701,9 @@ pub fn noop_visit_interpolated<T: MutVisitor>(nt: &mut token::Nonterminal, vis: 
         token::NtIdent(ident, _is_raw) => vis.visit_ident(ident),
         token::NtLifetime(ident) => vis.visit_ident(ident),
         token::NtLiteral(expr) => vis.visit_expr(expr),
-        token::NtMeta(AttrItem { path, tokens }) => {
+        token::NtMeta(AttrItem { path, args }) => {
             vis.visit_path(path);
-            vis.visit_tts(tokens);
+            visit_mac_args(args, vis);
         }
         token::NtPath(path) => vis.visit_path(path),
         token::NtTT(tt) => vis.visit_tt(tt),
