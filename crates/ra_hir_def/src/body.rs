@@ -5,9 +5,8 @@ pub mod scope;
 
 use std::{ops::Index, sync::Arc};
 
-use hir_expand::{
-    either::Either, hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId, MacroFileKind,
-};
+use either::Either;
+use hir_expand::{hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId, MacroFileKind};
 use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
@@ -210,7 +209,7 @@ impl BodySourceMap {
     }
 
     pub fn node_expr(&self, node: InFile<&ast::Expr>) -> Option<ExprId> {
-        let src = node.map(|it| Either::A(AstPtr::new(it)));
+        let src = node.map(|it| Either::Left(AstPtr::new(it)));
         self.expr_map.get(&src).cloned()
     }
 
@@ -219,7 +218,7 @@ impl BodySourceMap {
     }
 
     pub fn node_pat(&self, node: InFile<&ast::Pat>) -> Option<PatId> {
-        let src = node.map(|it| Either::A(AstPtr::new(it)));
+        let src = node.map(|it| Either::Left(AstPtr::new(it)));
         self.pat_map.get(&src).cloned()
     }
 

@@ -1,6 +1,7 @@
 //! FIXME: write short doc here
 
-use hir::{Adt, Either, HasSource, PathResolution};
+use either::Either;
+use hir::{Adt, HasSource, PathResolution};
 use ra_syntax::AstNode;
 use test_utils::tested_by;
 
@@ -27,7 +28,7 @@ pub(super) fn complete_path(acc: &mut Completions, ctx: &CompletionContext) {
                 }
                 if Some(module) == ctx.module {
                     if let Some(import) = import {
-                        if let Either::A(use_tree) = import.source(ctx.db).value {
+                        if let Either::Left(use_tree) = import.source(ctx.db).value {
                             if use_tree.syntax().text_range().contains_inclusive(ctx.offset) {
                                 // for `use self::foo<|>`, don't suggest `foo` as a completion
                                 tested_by!(dont_complete_current_use);

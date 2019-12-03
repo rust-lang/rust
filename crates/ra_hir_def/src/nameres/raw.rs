@@ -7,10 +7,10 @@
 
 use std::{ops::Index, sync::Arc};
 
+use either::Either;
 use hir_expand::{
     ast_id_map::AstIdMap,
     db::AstDatabase,
-    either::Either,
     hygiene::Hygiene,
     name::{AsName, Name},
 };
@@ -324,7 +324,7 @@ impl RawItemsCollector {
                     is_extern_crate: false,
                     is_macro_use: false,
                 };
-                buf.push((import_data, Either::A(AstPtr::new(use_tree))));
+                buf.push((import_data, Either::Left(AstPtr::new(use_tree))));
             },
         );
         for (import_data, ptr) in buf {
@@ -355,7 +355,7 @@ impl RawItemsCollector {
                 current_module,
                 attrs,
                 import_data,
-                Either::B(AstPtr::new(&extern_crate)),
+                Either::Right(AstPtr::new(&extern_crate)),
             );
         }
     }

@@ -57,9 +57,9 @@ mod tests;
 
 use std::sync::Arc;
 
+use either::Either;
 use hir_expand::{
-    ast_id_map::FileAstId, diagnostics::DiagnosticSink, either::Either, name::Name, InFile,
-    MacroDefId,
+    ast_id_map::FileAstId, diagnostics::DiagnosticSink, name::Name, InFile, MacroDefId,
 };
 use once_cell::sync::Lazy;
 use ra_arena::Arena;
@@ -287,10 +287,10 @@ impl ModuleData {
     ) -> InFile<Either<ast::SourceFile, ast::Module>> {
         if let Some(file_id) = self.definition {
             let sf = db.parse(file_id).tree();
-            return InFile::new(file_id.into(), Either::A(sf));
+            return InFile::new(file_id.into(), Either::Left(sf));
         }
         let decl = self.declaration.unwrap();
-        InFile::new(decl.file_id, Either::B(decl.to_node(db)))
+        InFile::new(decl.file_id, Either::Right(decl.to_node(db)))
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.

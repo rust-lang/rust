@@ -5,7 +5,7 @@
 
 use std::sync::Arc;
 
-use hir_expand::either::Either;
+use either::Either;
 use ra_syntax::ast;
 
 use crate::{
@@ -46,8 +46,8 @@ impl Documentation {
             AttrDefId::StructFieldId(it) => {
                 let src = it.parent.child_source(db);
                 match &src.value[it.local_id] {
-                    Either::A(_tuple) => None,
-                    Either::B(record) => docs_from_ast(record),
+                    Either::Left(_tuple) => None,
+                    Either::Right(record) => docs_from_ast(record),
                 }
             }
             AttrDefId::AdtId(it) => match it {
