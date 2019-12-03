@@ -291,70 +291,76 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
 
         if !self.eat(&token::OpenDelim(token::Brace)) {
-            let sp = self.token.span;
-            let tok = self.this_token_descr();
-            let mut e = self.span_fatal(sp, &format!("expected `{{`, found {}", tok));
-            let do_not_suggest_help =
-                self.token.is_keyword(kw::In) || self.token == token::Colon;
-
-            if self.token.is_ident_named(sym::and) {
-                e.span_suggestion_short(
-                    self.token.span,
-                    "use `&&` instead of `and` for the boolean operator",
-                    "&&".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-            if self.token.is_ident_named(sym::or) {
-                e.span_suggestion_short(
-                    self.token.span,
-                    "use `||` instead of `or` for the boolean operator",
-                    "||".to_string(),
-                    Applicability::MaybeIncorrect,
-                );
-            }
-
-            // Check to see if the user has written something like
-            //
-            //    if (cond)
-            //      bar;
-            //
-            // which is valid in other languages, but not Rust.
-            match self.parse_stmt_without_recovery(false) {
-                Ok(Some(stmt)) => {
-                    if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
-                        || do_not_suggest_help {
-                        // If the next token is an open brace (e.g., `if a b {`), the place-
-                        // inside-a-block suggestion would be more likely wrong than right.
-                        e.span_label(sp, "expected `{`");
-                        return Err(e);
-                    }
-                    let mut stmt_span = stmt.span;
-                    // Expand the span to include the semicolon, if it exists.
-                    if self.eat(&token::Semi) {
-                        stmt_span = stmt_span.with_hi(self.prev_span.hi());
-                    }
-                    if let Ok(snippet) = self.span_to_snippet(stmt_span) {
-                        e.span_suggestion(
-                            stmt_span,
-                            "try placing this code inside a block",
-                            format!("{{ {} }}", snippet),
-                            // Speculative; has been misleading in the past (#46836).
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                }
-                Err(mut e) => {
-                    self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
-                    e.cancel();
-                }
-                _ => ()
-            }
-            e.span_label(sp, "expected `{`");
-            return Err(e);
+            return self.error_block_no_opening_brace();
         }
 
         self.parse_block_tail(lo, BlockCheckMode::Default)
+    }
+
+    fn error_block_no_opening_brace<T>(&mut self) -> PResult<'a, T> {
+        let sp = self.token.span;
+        let tok = self.this_token_descr();
+        let mut e = self.span_fatal(sp, &format!("expected `{{`, found {}", tok));
+        let do_not_suggest_help =
+            self.token.is_keyword(kw::In) || self.token == token::Colon;
+
+        if self.token.is_ident_named(sym::and) {
+            e.span_suggestion_short(
+                self.token.span,
+                "use `&&` instead of `and` for the boolean operator",
+                "&&".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+        if self.token.is_ident_named(sym::or) {
+            e.span_suggestion_short(
+                self.token.span,
+                "use `||` instead of `or` for the boolean operator",
+                "||".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+        }
+
+        // Check to see if the user has written something like
+        //
+        //    if (cond)
+        //      bar;
+        //
+        // which is valid in other languages, but not Rust.
+        match self.parse_stmt_without_recovery(false) {
+            Ok(Some(stmt)) => {
+                if self.look_ahead(1, |t| t == &token::OpenDelim(token::Brace))
+                    || do_not_suggest_help
+                {
+                    // If the next token is an open brace (e.g., `if a b {`), the place-
+                    // inside-a-block suggestion would be more likely wrong than right.
+                    e.span_label(sp, "expected `{`");
+                    return Err(e);
+                }
+                let stmt_span = if self.eat(&token::Semi) {
+                    // Expand the span to include the semicolon.
+                    stmt.span.with_hi(self.prev_span.hi())
+                } else {
+                    stmt.span
+                };
+                if let Ok(snippet) = self.span_to_snippet(stmt_span) {
+                    e.span_suggestion(
+                        stmt_span,
+                        "try placing this code inside a block",
+                        format!("{{ {} }}", snippet),
+                        // Speculative; has been misleading in the past (#46836).
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+            }
+            Err(mut e) => {
+                self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
+                e.cancel();
+            }
+            _ => {}
+        }
+        e.span_label(sp, "expected `{`");
+        return Err(e);
     }
 
     /// Parses a block. Inner attributes are allowed.
