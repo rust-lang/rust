@@ -425,16 +425,12 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize_constructor<'a, 'q>(
+    fn specialize_constructor(
         &self,
-        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &[&'q Pat<'tcx>],
-    ) -> Option<PatStack<'q, 'tcx>>
-    where
-        'a: 'q,
-        'p: 'q,
-    {
+        ctor_wild_subpatterns: &'p [Pat<'tcx>],
+    ) -> Option<PatStack<'p, 'tcx>> {
         let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
         new_heads.map(|mut new_head| {
             new_head.0.extend_from_slice(&self.0[1..]);
@@ -459,6 +455,7 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
 }
 
 /// A 2D matrix.
+#[derive(Clone)]
 pub struct Matrix<'p, 'tcx>(Vec<PatStack<'p, 'tcx>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -486,16 +483,12 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize_constructor<'a, 'q>(
+    fn specialize_constructor(
         &self,
-        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &[&'q Pat<'tcx>],
-    ) -> Matrix<'q, 'tcx>
-    where
-        'a: 'q,
-        'p: 'q,
-    {
+        ctor_wild_subpatterns: &'p [Pat<'tcx>],
+    ) -> Matrix<'p, 'tcx> {
         self.0
             .iter()
             .filter_map(|r| r.specialize_constructor(cx, constructor, ctor_wild_subpatterns))
@@ -1033,17 +1026,19 @@ impl<'tcx> Constructor<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub enum Usefulness<'tcx> {
-    Useful,
+pub enum Usefulness<'tcx, 'p> {
+    /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
+    Useful(Vec<&'p Pat<'tcx>>),
+    /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
 }
 
-impl<'tcx> Usefulness<'tcx> {
+impl<'tcx, 'p> Usefulness<'tcx, 'p> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
             ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-            LeaveOutWitness => Useful,
+            LeaveOutWitness => Useful(vec![]),
         }
     }
 
@@ -1604,13 +1599,13 @@ impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
-pub fn is_useful<'p, 'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+pub fn is_useful<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &PatStack<'_, 'tcx>,
+    v: &PatStack<'p, 'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
-) -> Usefulness<'tcx> {
+) -> Usefulness<'tcx, 'p> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1631,11 +1626,26 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
     // If the first pattern is an or-pattern, expand it.
     if let Some(vs) = v.expand_or_pat() {
-        return vs
-            .into_iter()
-            .map(|v| is_useful(cx, matrix, &v, witness_preference, hir_id))
-            .find(|result| result.is_useful())
-            .unwrap_or(NotUseful);
+        // We need to push the already-seen patterns into the matrix in order to detect redundant
+        // branches like `Some(_) | Some(0)`. We also keep track of the unreachable subpatterns.
+        let mut matrix = matrix.clone();
+        let mut unreachable_pats = Vec::new();
+        let mut any_is_useful = false;
+        for v in vs {
+            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+            match res {
+                Useful(pats) => {
+                    any_is_useful = true;
+                    unreachable_pats.extend(pats);
+                }
+                NotUseful => unreachable_pats.push(v.head()),
+                UsefulWithWitness(_) => {
+                    bug!("Encountered or-pat in `v` during exhaustiveness checking")
+                }
+            }
+            matrix.push(v);
+        }
+        return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
     }
 
     let (ty, span) = matrix
@@ -1768,21 +1778,21 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
-fn is_useful_specialized<'p, 'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+fn is_useful_specialized<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &PatStack<'_, 'tcx>,
+    v: &PatStack<'p, 'tcx>,
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
-) -> Usefulness<'tcx> {
+) -> Usefulness<'tcx, 'p> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
-    let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty);
-    let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
-    let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
-    v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns)
+    let ctor_wild_subpatterns =
+        cx.pattern_arena.alloc_from_iter(ctor.wildcard_subpatterns(cx, lty));
+    let matrix = matrix.specialize_constructor(cx, &ctor, ctor_wild_subpatterns);
+    v.specialize_constructor(cx, &ctor, ctor_wild_subpatterns)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id))
         .map(|u| u.apply_constructor(cx, &ctor, lty))
         .unwrap_or(NotUseful)
@@ -2250,13 +2260,13 @@ fn constructor_covered_by_range<'tcx>(
     if intersects { Some(()) } else { None }
 }
 
-fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+fn patterns_for_variant<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     subpatterns: &'p [FieldPat<'tcx>],
-    ctor_wild_subpatterns: &[&'p Pat<'tcx>],
+    ctor_wild_subpatterns: &'p [Pat<'tcx>],
     is_non_exhaustive: bool,
 ) -> PatStack<'p, 'tcx> {
-    let mut result = SmallVec::from_slice(ctor_wild_subpatterns);
+    let mut result: SmallVec<_> = ctor_wild_subpatterns.iter().collect();
 
     for subpat in subpatterns {
         if !is_non_exhaustive || !cx.is_uninhabited(subpat.pattern.ty) {
@@ -2280,11 +2290,11 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    pat: &'q Pat<'tcx>,
+fn specialize_one_pattern<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
-    ctor_wild_subpatterns: &[&'p Pat<'tcx>],
+    ctor_wild_subpatterns: &'p [Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
@@ -2294,9 +2304,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
     let result = match *pat.kind {
         PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
 
-        PatKind::Binding { .. } | PatKind::Wild => {
-            Some(PatStack::from_slice(ctor_wild_subpatterns))
-        }
+        PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.iter().collect()),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
@@ -2406,7 +2414,6 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                                 .chain(
                                     ctor_wild_subpatterns
                                         .iter()
-                                        .map(|p| *p)
                                         .skip(prefix.len())
                                         .take(slice_count)
                                         .chain(suffix.iter()),

@@ -70,11 +70,41 @@ error: unreachable pattern
 LL |         ((1..=4,),) => {},
    |         ^^^^^^^^^^^
 
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:54:12
+   |
+LL |          | 1,) => {}
+   |            ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:61:15
+   |
+LL |             | 0] => {}
+   |               ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:59:15
+   |
+LL |             | 0
+   |               ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:69:10
+   |
+LL |         [1
+   |          ^
+
+error: unreachable pattern
+  --> $DIR/exhaustiveness-unreachable-pattern.rs:75:14
+   |
+LL |         Some(0
+   |              ^
+
 error: or-patterns are not fully implemented yet
   --> $DIR/exhaustiveness-unreachable-pattern.rs:10:10
    |
 LL |         (0 | _,) => {}
    |          ^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 17 previous errors
 
