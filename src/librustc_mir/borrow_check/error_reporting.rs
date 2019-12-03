@@ -372,7 +372,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let base_ty = Place::ty_from(
                         place.base,
                         place.projection,
-                        &*self.body,
+                        *self.body,
                         self.infcx.tcx).ty;
                     self.describe_field_from_ty(&base_ty, field, Some(*variant_index))
                 }
@@ -502,7 +502,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ..
                     }) = bbd.terminator {
                         if let Some(source) = BorrowedContentSource::from_call(
-                            func.ty(&*self.body, tcx),
+                            func.ty(*self.body, tcx),
                             tcx
                         ) {
                             return source;
@@ -519,7 +519,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let base_ty = Place::ty_from(
             deref_base.base,
             deref_base.projection,
-            &*self.body,
+            *self.body,
             tcx
         ).ty;
         if base_ty.is_unsafe_ptr() {

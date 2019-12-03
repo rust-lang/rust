@@ -279,18 +279,10 @@ impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for ReadOnlyBodyCache<'a, 'tcx> {
 
 
 impl Deref for ReadOnlyBodyCache<'a, 'tcx> {
-    type Target = Body<'tcx>;
+    type Target = &'a Body<'tcx>;
 
     fn deref(&self) -> &Self::Target {
-        self.body
-    }
-}
-
-impl Index<BasicBlock> for ReadOnlyBodyCache<'a, 'tcx> {
-    type Output = BasicBlockData<'tcx>;
-
-    fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
-        &self.body[index]
+        &self.body
     }
 }
 

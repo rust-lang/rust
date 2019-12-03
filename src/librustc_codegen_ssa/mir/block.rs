@@ -324,7 +324,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
     ) {
-        let ty = location.ty(&*self.mir, bx.tcx()).ty;
+        let ty = location.ty(*self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(&ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
@@ -510,7 +510,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let extra_args = &args[sig.inputs().len()..];
         let extra_args = extra_args.iter().map(|op_arg| {
-            let op_ty = op_arg.ty(&*self.mir, bx.tcx());
+            let op_ty = op_arg.ty(*self.mir, bx.tcx());
             self.monomorphize(&op_ty)
         }).collect::<Vec<_>>();
 

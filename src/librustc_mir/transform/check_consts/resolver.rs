@@ -77,7 +77,7 @@ where
         args: &[mir::Operand<'tcx>],
         return_place: &mir::Place<'tcx>,
     ) {
-        let return_ty = return_place.ty(&*self.item.body, self.item.tcx).ty;
+        let return_ty = return_place.ty(*self.item.body, self.item.tcx).ty;
         let qualif = Q::in_call(
             self.item,
             &|l| self.qualifs_per_local.contains(l),

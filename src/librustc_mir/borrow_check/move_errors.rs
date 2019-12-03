@@ -300,7 +300,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // Inspect the type of the content behind the
         // borrow to provide feedback about why this
         // was a move rather than a copy.
-        let ty = deref_target_place.ty(&*self.body, self.infcx.tcx).ty;
+        let ty = deref_target_place.ty(*self.body, self.infcx.tcx).ty;
         let upvar_field = self.prefixes(move_place.as_ref(), PrefixSet::All)
             .find_map(|p| self.is_upvar_field_projection(p));
 
@@ -411,7 +411,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         let move_ty = format!(
             "{:?}",
-            move_place.ty(&*self.body, self.infcx.tcx).ty,
+            move_place.ty(*self.body, self.infcx.tcx).ty,
         );
         if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
             let is_option = move_ty.starts_with("std::option::Option");
@@ -454,7 +454,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
 
                 if binds_to.is_empty() {
-                    let place_ty = move_from.ty(&*self.body, self.infcx.tcx).ty;
+                    let place_ty = move_from.ty(*self.body, self.infcx.tcx).ty;
                     let place_desc = match self.describe_place(move_from.as_ref()) {
                         Some(desc) => format!("`{}`", desc),
                         None => format!("value"),
@@ -482,7 +482,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // No binding. Nothing to suggest.
             GroupedMoveError::OtherIllegalMove { ref original_path, use_spans, .. } => {
                 let span = use_spans.var_or_use();
-                let place_ty = original_path.ty(&*self.body, self.infcx.tcx).ty;
+                let place_ty = original_path.ty(*self.body, self.infcx.tcx).ty;
                 let place_desc = match self.describe_place(original_path.as_ref()) {
                     Some(desc) => format!("`{}`", desc),
                     None => format!("value"),

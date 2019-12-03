@@ -304,7 +304,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         // Special-case reborrows to be more like a copy of a reference.
         if let Rvalue::Ref(_, kind, ref place) = *rvalue {
-            if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, &*self.body, place) {
+            if let Some(reborrowed_proj) = place_as_reborrow(self.tcx, *self.body, place) {
                 let ctx = match kind {
                     BorrowKind::Shared => PlaceContext::NonMutatingUse(
                         NonMutatingUseContext::SharedBorrow,
@@ -342,7 +342,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             | Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
             | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place)
             => {
-                let ty = place.ty(&*self.body, self.tcx).ty;
+                let ty = place.ty(*self.body, self.tcx).ty;
                 let is_allowed = match ty.kind {
                     // Inside a `static mut`, `&mut [...]` is allowed.
                     ty::Array(..) | ty::Slice(_) if self.const_kind() == ConstKind::StaticMut
@@ -390,7 +390,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
 
             Rvalue::Cast(CastKind::Misc, ref operand, cast_ty) => {
-                let operand_ty = operand.ty(&*self.body, self.tcx);
+                let operand_ty = operand.ty(*self.body, self.tcx);
                 let cast_in = CastTy::from_ty(operand_ty).expect("bad input type for cast");
                 let cast_out = CastTy::from_ty(cast_ty).expect("bad output type for cast");
 
@@ -401,7 +401,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             }
 
             Rvalue::BinaryOp(op, ref lhs, _) => {
-                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(&*self.body, self.tcx).kind {
+                if let ty::RawPtr(_) | ty::FnPtr(..) = lhs.ty(*self.body, self.tcx).kind {
                     assert!(op == BinOp::Eq || op == BinOp::Ne ||
                             op == BinOp::Le || op == BinOp::Lt ||
                             op == BinOp::Ge || op == BinOp::Gt ||
@@ -475,7 +475,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match elem {
             ProjectionElem::Deref => {
-                let base_ty = Place::ty_from(place_base, proj_base, &*self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_base, proj_base, *self.body, self.tcx).ty;
                 if let ty::RawPtr(_) = base_ty.kind {
                     if proj_base.is_empty() {
                         if let (PlaceBase::Local(local), []) = (place_base, proj_base) {
@@ -499,7 +499,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
             ProjectionElem::Subslice {..} |
             ProjectionElem::Field(..) |
             ProjectionElem::Index(_) => {
-                let base_ty = Place::ty_from(place_base, proj_base, &*self.body, self.tcx).ty;
+                let base_ty = Place::ty_from(place_base, proj_base, *self.body, self.tcx).ty;
                 match base_ty.ty_adt_def() {
                     Some(def) if def.is_union() => {
                         self.check_op(ops::UnionAccess);
@@ -548,7 +548,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 
         match kind {
             TerminatorKind::Call { func, .. } => {
-                let fn_ty = func.ty(&*self.body, self.tcx);
+                let fn_ty = func.ty(*self.body, self.tcx);
 
                 let def_id = match fn_ty.kind {
                     ty::FnDef(def_id, _) => def_id,
@@ -609,7 +609,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
                 // Check to see if the type of this place can ever have a drop impl. If not, this
                 // `Drop` terminator is frivolous.
                 let ty_needs_drop = dropped_place
-                    .ty(&*self.body, self.tcx)
+                    .ty(*self.body, self.tcx)
                     .ty
                     .needs_drop(self.tcx, self.param_env);
 

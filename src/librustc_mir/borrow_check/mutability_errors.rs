@@ -64,7 +64,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Place::ty_from(
                         &the_place_err.base,
                         proj_base,
-                        &*self.body,
+                        *self.body,
                         self.infcx.tcx
                     ).ty));
 
@@ -115,7 +115,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         Place::ty_from(
                             the_place_err.base,
                             the_place_err.projection,
-                            &*self.body,
+                            *self.body,
                             self.infcx.tcx
                         )
                         .ty
@@ -229,7 +229,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 if let Some((span, message)) = annotate_struct_field(
                     self.infcx.tcx,
-                    Place::ty_from(base, proj_base, &*self.body, self.infcx.tcx).ty,
+                    Place::ty_from(base, proj_base, *self.body, self.infcx.tcx).ty,
                     field,
                 ) {
                     err.span_suggestion(
@@ -304,7 +304,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 projection: [proj_base @ .., ProjectionElem::Field(upvar_index, _)],
             } => {
                 debug_assert!(is_closure_or_generator(
-                    Place::ty_from(base, proj_base, &*self.body, self.infcx.tcx).ty
+                    Place::ty_from(base, proj_base, *self.body, self.infcx.tcx).ty
                 ));
 
                 err.span_label(span, format!("cannot {ACT}", ACT = act));

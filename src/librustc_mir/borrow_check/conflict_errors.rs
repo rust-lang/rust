@@ -208,7 +208,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = Place::ty_from(
                 used_place.base,
                 used_place.projection,
-                &*self.body,
+                *self.body,
                 self.infcx.tcx
             ).ty;
             let needs_note = match ty.kind {
@@ -225,7 +225,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let mpi = self.move_data.moves[move_out_indices[0]].path;
                 let place = &self.move_data.move_paths[mpi].place;
 
-                let ty = place.ty(&*self.body, self.infcx.tcx).ty;
+                let ty = place.ty(*self.body, self.infcx.tcx).ty;
                 let opt_name =
                     self.describe_place_with_options(place.as_ref(), IncludingDowncast(true));
                 let note_msg = match opt_name {
@@ -625,7 +625,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             let ty = Place::ty_from(
                 place_base,
                 place_projection,
-                &*self.body,
+                *self.body,
                 self.infcx.tcx
             ).ty;
             ty.ty_adt_def().filter(|adt| adt.is_union()).map(|_| ty)
@@ -1635,7 +1635,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 Place::ty_from(
                                     &place.base,
                                     proj_base,
-                                    &*self.body,
+                                    *self.body,
                                     tcx
                                 ).ty.is_box(),
                                 "Drop of value behind a reference or raw pointer"
@@ -1648,7 +1648,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         let base_ty = Place::ty_from(
                             &place.base,
                             proj_base,
-                            &*self.body,
+                            *self.body,
                             tcx
                         ).ty;
                         match base_ty.kind {
