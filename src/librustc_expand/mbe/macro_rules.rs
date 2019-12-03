@@ -87,7 +87,7 @@ fn suggest_slice_pat(e: &mut DiagnosticBuilder<'_>, site_span: Span, parser: &Pa
 impl<'a> ParserAnyMacro<'a> {
     crate fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
-        let fragment = panictry!(parse_ast_fragment(parser, kind, true).map_err(|mut e| {
+        let fragment = panictry!(parse_ast_fragment(parser, kind).map_err(|mut e| {
             if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
                 if !e.span.is_dummy() {
                     // early end of macro arm (#52866)
