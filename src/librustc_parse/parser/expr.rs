@@ -823,24 +823,18 @@ impl<'a> Parser<'a> {
         let attrs = ThinVec::new();
 
         let lo = self.token.span;
-        let mut hi = self.token.span;
-
-        let ex: ExprKind;
 
         macro_rules! parse_lit {
             () => {
                 match self.parse_opt_lit() {
-                    Some(literal) => {
-                        hi = self.prev_span;
-                        ex = ExprKind::Lit(literal);
-                    }
+                    Some(literal) => (self.prev_span, ExprKind::Lit(literal)),
                     None => return Err(self.expected_expression_found()),
                 }
             }
         }
 
         // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
-        match self.token.kind {
+        let (hi, ex) = match self.token.kind {
             // This match arm is a special-case of the `_` match arm below and
             // could be removed without changing functionality, but it's faster
             // to have it here, especially for programs with large constants.
@@ -911,13 +905,7 @@ impl<'a> Parser<'a> {
                     };
                 }
                 if self.eat_keyword(kw::Return) {
-                    if self.token.can_begin_expr() {
-                        let e = self.parse_expr()?;
-                        hi = e.span;
-                        ex = ExprKind::Ret(Some(e));
-                    } else {
-                        ex = ExprKind::Ret(None);
-                    }
+                    return self.parse_return_expr(attrs);
                 } else if self.eat_keyword(kw::Break) {
                     let label = self.eat_label();
                     let e = if self.token.can_begin_expr()
@@ -928,25 +916,13 @@ impl<'a> Parser<'a> {
                     } else {
                         None
                     };
-                    ex = ExprKind::Break(label, e);
-                    hi = self.prev_span;
+                    (self.prev_span, ExprKind::Break(label, e))
                 } else if self.eat_keyword(kw::Yield) {
-                    if self.token.can_begin_expr() {
-                        let e = self.parse_expr()?;
-                        hi = e.span;
-                        ex = ExprKind::Yield(Some(e));
-                    } else {
-                        ex = ExprKind::Yield(None);
-                    }
-
-                    let span = lo.to(hi);
-                    self.sess.gated_spans.gate(sym::generators, span);
+                    return self.parse_yield_expr(attrs);
                 } else if self.eat_keyword(kw::Let) {
                     return self.parse_let_expr(attrs);
                 } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
-                    let (await_hi, e_kind) = self.parse_incorrect_await_syntax(lo, self.prev_span)?;
-                    hi = await_hi;
-                    ex = e_kind;
+                    self.parse_incorrect_await_syntax(lo, self.prev_span)?
                 } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
                     // Don't complain about bare semicolons after unclosed braces
                     // recovery in order to keep the error count down. Fixing the
@@ -964,7 +940,7 @@ impl<'a> Parser<'a> {
                     parse_lit!()
                 }
             }
-        }
+        };
 
         let expr = self.mk_expr(lo.to(hi), ex, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
@@ -1114,6 +1090,33 @@ impl<'a> Parser<'a> {
             .emit();
 
         self.parse_try_block(lo, attrs)
+    }
+
+    /// Parse an expression if the token can begin one.
+    fn parse_expr_opt(&mut self) -> PResult<'a, Option<P<Expr>>> {
+        Ok(if self.token.can_begin_expr() {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        })
+    }
+
+    /// Parse `"return" expr?`.
+    fn parse_return_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+        let lo = self.prev_span;
+        let kind = ExprKind::Ret(self.parse_expr_opt()?);
+        let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    /// Parse `"yield" expr?`.
+    fn parse_yield_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+        let lo = self.prev_span;
+        let kind = ExprKind::Yield(self.parse_expr_opt()?);
+        let span = lo.to(self.prev_span);
+        self.sess.gated_spans.gate(sym::generators, span);
+        let expr = self.mk_expr(span, kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
     }
 
     /// Returns a string literal if the next token is a string literal.
