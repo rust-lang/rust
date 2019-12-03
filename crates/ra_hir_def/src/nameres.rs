@@ -57,7 +57,6 @@ mod tests;
 
 use std::sync::Arc;
 
-use either::Either;
 use hir_expand::{
     ast_id_map::FileAstId, diagnostics::DiagnosticSink, name::Name, InFile, MacroDefId,
 };
@@ -154,20 +153,16 @@ impl ModuleOrigin {
 
     /// Returns a node which defines this module.
     /// That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(
-        &self,
-        db: &impl DefDatabase,
-    ) -> InFile<Either<ast::SourceFile, ast::Module>> {
+    pub fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
         match self {
             ModuleOrigin::File(_, file_id) | ModuleOrigin::Root(Some(file_id)) => {
                 let file_id = *file_id;
                 let sf = db.parse(file_id).tree();
-                return InFile::new(file_id.into(), Either::Left(sf));
+                return InFile::new(file_id.into(), ModuleSource::SourceFile(sf));
             }
             ModuleOrigin::Root(None) => unreachable!(),
-            ModuleOrigin::Inline(m) => InFile::new(m.file_id, Either::Right(m.to_node(db))),
-            // FIXME: right now it's never constructed, so it's fine to omit
-            ModuleOrigin::Block(_b) => unimplemented!(),
+            ModuleOrigin::Inline(m) => InFile::new(m.file_id, ModuleSource::Module(m.to_node(db))),
+            ModuleOrigin::Block(b) => InFile::new(b.file_id, ModuleSource::Block(b.to_node(db))),
         }
     }
 }
@@ -348,10 +343,7 @@ impl CrateDefMap {
 
 impl ModuleData {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(
-        &self,
-        db: &impl DefDatabase,
-    ) -> InFile<Either<ast::SourceFile, ast::Module>> {
+    pub fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
         self.origin.definition_source(db)
     }
 

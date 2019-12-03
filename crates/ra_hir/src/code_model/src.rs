@@ -26,11 +26,7 @@ impl Module {
     /// Returns a node which defines this module. That is, a file or a `mod foo {}` with items.
     pub fn definition_source(self, db: &impl DefDatabase) -> InFile<ModuleSource> {
         let def_map = db.crate_def_map(self.id.krate);
-        let src = def_map[self.id.local_id].definition_source(db);
-        src.map(|it| match it {
-            Either::Left(it) => ModuleSource::SourceFile(it),
-            Either::Right(it) => ModuleSource::Module(it),
-        })
+        def_map[self.id.local_id].definition_source(db)
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
