@@ -534,7 +534,6 @@ impl<T: Ord> Ord for Reverse<T> {
 ///     }
 /// }
 /// ```
-#[lang = "ord"]
 #[doc(alias = "<")]
 #[doc(alias = ">")]
 #[doc(alias = "<=")]
