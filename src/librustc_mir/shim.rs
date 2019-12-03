@@ -322,7 +322,11 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
 }
 
 /// Builds a `Clone::clone` shim for `self_ty`. Here, `def_id` is `Clone::clone`.
-fn build_clone_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, self_ty: Ty<'tcx>) -> BodyAndCache<'tcx> {
+fn build_clone_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    self_ty: Ty<'tcx>,
+) -> BodyAndCache<'tcx> {
     debug!("build_clone_shim(def_id={:?})", def_id);
 
     let param_env = tcx.param_env(def_id);

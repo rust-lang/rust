@@ -1,6 +1,8 @@
 //! Def-use analysis.
 
-use rustc::mir::{Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo};
+use rustc::mir::{
+    Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo,
+};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
