@@ -748,7 +748,7 @@ impl GenericBound {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
-pub struct Lifetime(String);
+pub struct Lifetime(pub String);
 
 impl Lifetime {
     pub fn get_ref<'a>(&'a self) -> &'a str {
