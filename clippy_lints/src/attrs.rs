@@ -424,7 +424,7 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
         };
 
         if attr.style == AttrStyle::Outer {
-            if attr_item.tokens.is_empty() || !is_present_in_source(cx, attr.span) {
+            if attr_item.args.inner_tokens().is_empty() || !is_present_in_source(cx, attr.span) {
                 return;
             }
 
