@@ -907,16 +907,7 @@ impl<'a> Parser<'a> {
                 if self.eat_keyword(kw::Return) {
                     return self.parse_return_expr(attrs);
                 } else if self.eat_keyword(kw::Break) {
-                    let label = self.eat_label();
-                    let e = if self.token.can_begin_expr()
-                               && !(self.token == token::OpenDelim(token::Brace)
-                                    && self.restrictions.contains(
-                                           Restrictions::NO_STRUCT_LITERAL)) {
-                        Some(self.parse_expr()?)
-                    } else {
-                        None
-                    };
-                    (self.prev_span, ExprKind::Break(label, e))
+                    return self.parse_break_expr(attrs);
                 } else if self.eat_keyword(kw::Yield) {
                     return self.parse_yield_expr(attrs);
                 } else if self.eat_keyword(kw::Let) {
@@ -1106,6 +1097,21 @@ impl<'a> Parser<'a> {
         let lo = self.prev_span;
         let kind = ExprKind::Ret(self.parse_expr_opt()?);
         let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    /// Parse `"('label ":")? break expr?`.
+    fn parse_break_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+        let lo = self.prev_span;
+        let label = self.eat_label();
+        let kind = if self.token != token::OpenDelim(token::Brace)
+            || !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
+        {
+            self.parse_expr_opt()?
+        } else {
+            None
+        };
+        let expr = self.mk_expr(lo.to(self.prev_span), ExprKind::Break(label, kind), attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
