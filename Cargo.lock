@@ -468,12 +468,14 @@ dependencies = [
  "clippy_lints",
  "compiletest_rs",
  "derive-new",
+ "git2",
  "lazy_static 1.3.0",
  "regex",
  "rustc-workspace-hack",
  "rustc_tools_util 0.2.0",
  "semver",
  "serde",
+ "tempfile",
  "tester",
 ]
 
