@@ -431,7 +431,7 @@ pub struct Attributes {
 
 impl Attributes {
     /// Extracts the content from an attribute `#[doc(cfg(content))]`.
-    fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
+    pub fn extract_cfg(mi: &ast::MetaItem) -> Option<&ast::MetaItem> {
         use syntax::ast::NestedMetaItem::MetaItem;
 
         if let ast::MetaItemKind::List(ref nmis) = mi.kind {
@@ -456,7 +456,7 @@ impl Attributes {
     /// Reads a `MetaItem` from within an attribute, looks for whether it is a
     /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
     /// its expansion.
-    fn extract_include(mi: &ast::MetaItem)
+    pub fn extract_include(mi: &ast::MetaItem)
         -> Option<(String, String)>
     {
         mi.meta_item_list().and_then(|list| {
@@ -710,7 +710,7 @@ pub enum GenericBound {
 }
 
 impl GenericBound {
-    fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
+    pub fn maybe_sized(cx: &DocContext<'_>) -> GenericBound {
         let did = cx.tcx.require_lang_item(lang_items::SizedTraitLangItem, None);
         let empty = cx.tcx.intern_substs(&[]);
         let path = external_path(cx, cx.tcx.item_name(did),
@@ -727,7 +727,7 @@ impl GenericBound {
         }, hir::TraitBoundModifier::Maybe)
     }
 
-    fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
+    pub fn is_sized_bound(&self, cx: &DocContext<'_>) -> bool {
         use rustc::hir::TraitBoundModifier as TBM;
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
             if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
@@ -737,14 +737,14 @@ impl GenericBound {
         false
     }
 
-    fn get_poly_trait(&self) -> Option<PolyTrait> {
+    pub fn get_poly_trait(&self) -> Option<PolyTrait> {
         if let GenericBound::TraitBound(ref p, _) = *self {
             return Some(p.clone())
         }
         None
     }
 
-    fn get_trait_type(&self) -> Option<Type> {
+    pub fn get_trait_type(&self) -> Option<Type> {
         if let GenericBound::TraitBound(PolyTrait { ref trait_, .. }, _) = *self {
             Some(trait_.clone())
         } else {
@@ -1205,7 +1205,7 @@ impl GetDefId for Type {
 }
 
 impl PrimitiveType {
-    fn from_str(s: &str) -> Option<PrimitiveType> {
+    pub fn from_str(s: &str) -> Option<PrimitiveType> {
         match s {
             "isize" => Some(PrimitiveType::Isize),
             "i8" => Some(PrimitiveType::I8),
