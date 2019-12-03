@@ -160,10 +160,10 @@ The other option is to step through the code using lldb or gdb.
     2. `r`  // Run the program until it hits the breakpoint
 
 Let's start with [`upvar.rs`][upvar]. This file has something called
-the [`euv::ExprUseVisitor`][euv] which walks the source of the closure and
+the [`euv::ExprUseVisitor`] which walks the source of the closure and
 invokes a callbackfor each upvar that is borrowed, mutated, or moved.
 
-[euv]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/middle/expr_use_visitor/struct.ExprUseVisitor.html
+[`euv::ExprUseVisitor`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/expr_use_visitor/struct.ExprUseVisitor.html
 
 ```rust
 fn main() {
@@ -178,7 +178,7 @@ fn main() {
 In the above example, our visitor will be called twice, for the lines marked 1 and 2, once for a
 shared borrow and another one for a mutable borrow. It will also tell us what was borrowed.
 
-The callbacks are defined by implementing the [`Delegate`][delegate] trait. The
+The callbacks are defined by implementing the [`Delegate`] trait. The
 [`InferBorrowKind`][ibk] type implements `Delegate` and keeps a map that
 records for each upvar which mode of borrow was required. The modes of borrow
 can be `ByValue` (moved) or `ByRef` (borrowed). For `ByRef` borrows, it can be
@@ -208,6 +208,6 @@ self.tables
     .extend(delegate.adjust_upvar_captures);
 ```
 
-[delegate]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/middle/expr_use_visitor/trait.Delegate.html
+[`Delegate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/expr_use_visitor/trait.Delegate.html
 [ibk]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/check/upvar/struct.InferBorrowKind.html
-[cmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/middle/mem_categorization/index.html
+[cmt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_typeck/mem_categorization/index.html
