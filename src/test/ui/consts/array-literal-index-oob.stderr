@@ -12,7 +12,7 @@ error: reaching this expression at runtime will panic or abort
 LL |     &{[1, 2, 3][4]};
    |     --^^^^^^^^^^^^-
    |       |
-   |       index out of bounds: the len is 3 but the index is 4
+   |       indexing out of bounds: the len is 3 but the index is 4
 
 error: aborting due to 2 previous errors
 

@@ -384,10 +384,8 @@ where
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len(self)?;
                 if field >= len {
-                    // This can be violated because the index (field) can be a runtime value
-                    // provided by the user.
-                    debug!("tried to access element {} of array/slice with length {}", field, len);
-                    throw_panic!(BoundsCheck { len, index: field });
+                    // This can only be reached in ConstProp and non-rustc-MIR.
+                    throw_ub!(BoundsCheckFailed { len, index: field });
                 }
                 stride * field
             }
