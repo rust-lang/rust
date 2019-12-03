@@ -100,19 +100,83 @@ impl std::ops::Index<LocalModuleId> for CrateDefMap {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+pub enum ModuleOrigin {
+    /// It should not be `None` after collecting definitions.
+    Root(Option<FileId>),
+    /// Note that non-inline modules, by definition, live inside non-macro file.
+    File(AstId<ast::Module>, FileId),
+    Inline(AstId<ast::Module>),
+    Block(AstId<ast::Block>),
+}
+
+impl Default for ModuleOrigin {
+    fn default() -> Self {
+        ModuleOrigin::Root(None)
+    }
+}
+
+impl ModuleOrigin {
+    pub fn root(file_id: FileId) -> Self {
+        ModuleOrigin::Root(Some(file_id))
+    }
+
+    pub fn not_sure_file(file: Option<FileId>, module: AstId<ast::Module>) -> Self {
+        match file {
+            None => ModuleOrigin::Inline(module),
+            Some(file) => ModuleOrigin::File(module, file),
+        }
+    }
+
+    pub fn not_sure_mod(file: FileId, module: Option<AstId<ast::Module>>) -> Self {
+        match module {
+            None => ModuleOrigin::root(file),
+            Some(module) => ModuleOrigin::File(module, file),
+        }
+    }
+
+    pub fn declaration(&self) -> Option<AstId<ast::Module>> {
+        match self {
+            ModuleOrigin::File(m, _) | ModuleOrigin::Inline(m) => Some(*m),
+            ModuleOrigin::Root(_) | ModuleOrigin::Block(_) => None,
+        }
+    }
+
+    pub fn file_id(&self) -> Option<FileId> {
+        match self {
+            ModuleOrigin::File(_, file_id) | ModuleOrigin::Root(Some(file_id)) => Some(*file_id),
+            _ => None,
+        }
+    }
+
+    /// Returns a node which defines this module.
+    /// That is, a file or a `mod foo {}` with items.
+    pub fn definition_source(
+        &self,
+        db: &impl DefDatabase,
+    ) -> InFile<Either<ast::SourceFile, ast::Module>> {
+        match self {
+            ModuleOrigin::File(_, file_id) | ModuleOrigin::Root(Some(file_id)) => {
+                let file_id = *file_id;
+                let sf = db.parse(file_id).tree();
+                return InFile::new(file_id.into(), Either::Left(sf));
+            }
+            ModuleOrigin::Root(None) => unreachable!(),
+            ModuleOrigin::Inline(m) => InFile::new(m.file_id, Either::Right(m.to_node(db))),
+            // FIXME: right now it's never constructed, so it's fine to omit
+            ModuleOrigin::Block(b) => unimplemented!(),
+        }
+    }
+}
+
 #[derive(Default, Debug, PartialEq, Eq)]
 pub struct ModuleData {
     pub parent: Option<LocalModuleId>,
     pub children: FxHashMap<Name, LocalModuleId>,
     pub scope: ModuleScope,
 
-    //  FIXME: these can't be both null, we need a three-state enum here.
-    /// None for root
-    pub declaration: Option<AstId<ast::Module>>,
-    /// None for inline modules.
-    ///
-    /// Note that non-inline modules, by definition, live inside non-macro file.
-    pub definition: Option<FileId>,
+    /// Where does this module come from?
+    pub origin: ModuleOrigin,
 
     pub impls: Vec<ImplId>,
 }
@@ -262,7 +326,7 @@ impl CrateDefMap {
     pub fn modules_for_file(&self, file_id: FileId) -> impl Iterator<Item = LocalModuleId> + '_ {
         self.modules
             .iter()
-            .filter(move |(_id, data)| data.definition == Some(file_id))
+            .filter(move |(_id, data)| data.origin.file_id() == Some(file_id))
             .map(|(id, _data)| id)
     }
 
@@ -285,18 +349,13 @@ impl ModuleData {
         &self,
         db: &impl DefDatabase,
     ) -> InFile<Either<ast::SourceFile, ast::Module>> {
-        if let Some(file_id) = self.definition {
-            let sf = db.parse(file_id).tree();
-            return InFile::new(file_id.into(), Either::Left(sf));
-        }
-        let decl = self.declaration.unwrap();
-        InFile::new(decl.file_id, Either::Right(decl.to_node(db)))
+        self.origin.definition_source(db)
     }
 
     /// Returns a node which declares this module, either a `mod foo;` or a `mod foo {}`.
-    /// `None` for the crate root.
+    /// `None` for the crate root or block.
     pub fn declaration_source(&self, db: &impl DefDatabase) -> Option<InFile<ast::Module>> {
-        let decl = self.declaration?;
+        let decl = self.origin.declaration()?;
         let value = decl.to_node(db);
         Some(InFile { file_id: decl.file_id, value })
     }

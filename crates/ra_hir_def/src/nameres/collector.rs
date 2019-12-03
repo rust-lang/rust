@@ -19,7 +19,7 @@ use crate::{
     db::DefDatabase,
     nameres::{
         diagnostics::DefDiagnostic, mod_resolution::ModDir, path_resolution::ReachedFixedPoint,
-        raw, BuiltinShadowMode, CrateDefMap, ModuleData, Resolution, ResolveMode,
+        raw, BuiltinShadowMode, CrateDefMap, ModuleData, ModuleOrigin, Resolution, ResolveMode,
     },
     path::{Path, PathKind},
     per_ns::PerNs,
@@ -131,7 +131,7 @@ where
         let file_id = crate_graph.crate_root(self.def_map.krate);
         let raw_items = self.db.raw_items(file_id.into());
         let module_id = self.def_map.root;
-        self.def_map.modules[module_id].definition = Some(file_id);
+        self.def_map.modules[module_id].origin = ModuleOrigin::root(file_id);
         ModCollector {
             def_collector: &mut *self,
             module_id,
@@ -669,8 +669,7 @@ where
         let modules = &mut self.def_collector.def_map.modules;
         let res = modules.alloc(ModuleData::default());
         modules[res].parent = Some(self.module_id);
-        modules[res].declaration = Some(declaration);
-        modules[res].definition = definition;
+        modules[res].origin = ModuleOrigin::not_sure_file(definition, declaration);
         modules[res].scope.legacy_macros = modules[self.module_id].scope.legacy_macros.clone();
         modules[self.module_id].children.insert(name.clone(), res);
         let resolution = Resolution {
