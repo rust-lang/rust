@@ -803,7 +803,7 @@ public:
 
           if (originalInstructions.find(inst) == originalInstructions.end()) continue;
 
-          if (!(isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && this->isConstantInstruction(inst)) {
+          if (!(isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && this->isConstantInstruction(inst)) {
             if (inst->getNumUses() == 0) {
                 erase(inst);
 			    continue;

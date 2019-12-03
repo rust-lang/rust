@@ -38,7 +38,7 @@ extern "C" {
 
 __attribute__((noinline))
 static double matvec(const Matrix<double, IN, OUT>* __restrict W, const Matrix<double, IN, OUT>* __restrict M) {
-  MatrixXd diff = *W-*M;
+  Matrix<double, IN, OUT> diff = *W-*M;
   return (diff*diff).sum();
 }
 

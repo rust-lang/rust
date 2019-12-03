@@ -494,7 +494,6 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
       auto term = BB->getTerminator();
       assert(term);
       if (isa<ReturnInst>(term) || isa<BranchInst>(term) || isa<SwitchInst>(term)) {
-
       } else if (isa<UnreachableInst>(term)) {
 
       } else {
@@ -2874,6 +2873,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   if (!topLevel)
     gutils->eraseStructuralStoresAndCalls();
+          
 
   while(gutils->inversionAllocs->size() > 0) {
     gutils->inversionAllocs->back().moveBefore(gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
