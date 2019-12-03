@@ -9,6 +9,7 @@ use std::{cmp, fmt, iter, str};
 use rustc_span::{self, SourceFile};
 use serde::{ser, Deserialize, Deserializer, Serialize, Serializer};
 use serde_json as json;
+use thiserror::Error;
 
 /// A range of lines in a file, inclusive of both ends.
 pub struct LineRange {
@@ -287,12 +288,20 @@ fn canonicalize_path_string(file: &FileName) -> Option<FileName> {
     }
 }
 
+#[derive(Error, Debug)]
+pub enum FileLinesError {
+    #[error("{0}")]
+    Json(json::Error),
+    #[error("Can't canonicalize {0}")]
+    CannotCanonicalize(FileName),
+}
+
 // This impl is needed for `Config::override_value` to work for use in tests.
 impl str::FromStr for FileLines {
-    type Err = String;
+    type Err = FileLinesError;
 
-    fn from_str(s: &str) -> Result<FileLines, String> {
-        let v: Vec<JsonSpan> = json::from_str(s).map_err(|e| e.to_string())?;
+    fn from_str(s: &str) -> Result<FileLines, Self::Err> {
+        let v: Vec<JsonSpan> = json::from_str(s).map_err(FileLinesError::Json)?;
         let mut m = HashMap::new();
         for js in v {
             let (s, r) = JsonSpan::into_tuple(js)?;
@@ -310,10 +319,10 @@ pub struct JsonSpan {
 }
 
 impl JsonSpan {
-    fn into_tuple(self) -> Result<(FileName, Range), String> {
+    fn into_tuple(self) -> Result<(FileName, Range), FileLinesError> {
         let (lo, hi) = self.range;
         let canonical = canonicalize_path_string(&self.file)
-            .ok_or_else(|| format!("Can't canonicalize {}", &self.file))?;
+            .ok_or_else(|| FileLinesError::CannotCanonicalize(self.file))?;
         Ok((canonical, Range::new(lo, hi)))
     }
 }
