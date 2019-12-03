@@ -1096,9 +1096,11 @@ impl<'a> Parser<'a> {
         }
 
         let msg = "expected `while`, `for`, `loop` or `{` after a label";
-        let mut err = self.fatal(msg);
-        err.span_label(self.token.span, msg);
-        return Err(err);
+        self.struct_span_err(self.token.span, msg)
+            .span_label(self.token.span, msg)
+            .emit();
+        // Continue as an expression in an effort to recover on `'label: non_block_expr`.
+        self.parse_expr()
     }
 
     /// Returns a string literal if the next token is a string literal.

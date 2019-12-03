@@ -1,0 +1,17 @@
+error: expected `while`, `for`, `loop` or `{` after a label
+  --> $DIR/recover-labeled-non-block-expr.rs:2:13
+   |
+LL |     'label: 1 + 1;
+   |             ^ expected `while`, `for`, `loop` or `{` after a label
+
+error[E0308]: mismatched types
+  --> $DIR/recover-labeled-non-block-expr.rs:4:33
+   |
+LL |     let _recovery_witness: () = 0;
+   |                            --   ^ expected `()`, found integer
+   |                            |
+   |                            expected due to this
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
