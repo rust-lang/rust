@@ -1,4 +1,5 @@
 // run-pass
+#![feature(const_int_wrapping)]
 
 const ADD_A: u32 = 200u32.wrapping_add(55);
 const ADD_B: u32 = 200u32.wrapping_add(u32::max_value());
@@ -22,6 +23,18 @@ const ABS_POS: i32 = 10i32.wrapping_abs();
 const ABS_NEG: i32 = (-10i32).wrapping_abs();
 const ABS_MIN: i32 = i32::min_value().wrapping_abs();
 
+const DIV_A: i8 = 8i8.wrapping_div(2);
+const DIV_B: i8 = 8i8.wrapping_div(3);
+const DIV_C: i8 = i8::min_value().wrapping_div(-1i8);
+const DIV_D: u8 = 8u8.wrapping_div(2);
+const DIV_E: u8 = 8u8.wrapping_div(3);
+
+const REM_A: i8 = 8i8.wrapping_rem(2);
+const REM_B: i8 = 8i8.wrapping_rem(3);
+const REM_C: i8 = i8::min_value().wrapping_rem(-1i8);
+const REM_D: u8 = 8u8.wrapping_rem(2);
+const REM_E: u8 = 8u8.wrapping_rem(3);
+
 fn main() {
     assert_eq!(ADD_A, 255);
     assert_eq!(ADD_B, 199);
@@ -44,4 +57,16 @@ fn main() {
     assert_eq!(ABS_POS, 10);
     assert_eq!(ABS_NEG, 10);
     assert_eq!(ABS_MIN, i32::min_value());
+
+    assert_eq!(DIV_A, 4i8);
+    assert_eq!(DIV_B, 2i8);
+    assert_eq!(DIV_C, i8::min_value());
+    assert_eq!(DIV_D, 4u8);
+    assert_eq!(DIV_E, 2u8);
+
+    assert_eq!(REM_A, 0i8);
+    assert_eq!(REM_B, 2i8);
+    assert_eq!(REM_C, 0i8);
+    assert_eq!(REM_D, 0u8);
+    assert_eq!(REM_E, 2u8);
 }

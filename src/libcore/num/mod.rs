@@ -1338,9 +1338,21 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div(self, rhs: Self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg(not(bootstrap))]
+            pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self.overflowing_div(rhs).0
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn wrapping_div(self, rhs: Self) -> Self {
+            self.overflowing_div(rhs).0
         }
 
         doc_comment! {
@@ -1397,9 +1409,21 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem(self, rhs: Self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg(not(bootstrap))]
+            pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self.overflowing_rem(rhs).0
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn wrapping_rem(self, rhs: Self) -> Self {
+            self.overflowing_rem(rhs).0
         }
 
         doc_comment! {
@@ -3422,7 +3446,7 @@ $EndFeature, "
         #[stable(feature = "rust1", since = "1.0.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
-                          without modifying the original"]
+                      without modifying the original"]
         #[inline]
         pub const fn wrapping_mul(self, rhs: Self) -> Self {
             intrinsics::wrapping_mul(self, rhs)
@@ -3446,9 +3470,21 @@ Basic usage:
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_div(self, rhs: Self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg(not(bootstrap))]
+            pub const fn wrapping_div(self, rhs: Self) -> Self {
                 self / rhs
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn wrapping_div(self, rhs: Self) -> Self {
+            self / rhs
         }
 
         doc_comment! {
@@ -3496,9 +3532,21 @@ Basic usage:
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn wrapping_rem(self, rhs: Self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_wrapping")]
+            #[cfg(not(bootstrap))]
+            pub const fn wrapping_rem(self, rhs: Self) -> Self {
                 self % rhs
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn wrapping_rem(self, rhs: Self) -> Self {
+            self % rhs
         }
 
         doc_comment! {
