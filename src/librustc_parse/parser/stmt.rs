@@ -15,7 +15,7 @@ use syntax::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac};
 use syntax::util::classify;
 use syntax::token;
 use syntax_pos::source_map::{respan, Span};
-use syntax_pos::symbol::{kw, sym};
+use syntax_pos::symbol::kw;
 
 use std::mem;
 
@@ -301,25 +301,7 @@ impl<'a> Parser<'a> {
         let sp = self.token.span;
         let tok = self.this_token_descr();
         let mut e = self.span_fatal(sp, &format!("expected `{{`, found {}", tok));
-        let do_not_suggest_help =
-            self.token.is_keyword(kw::In) || self.token == token::Colon;
-
-        if self.token.is_ident_named(sym::and) {
-            e.span_suggestion_short(
-                self.token.span,
-                "use `&&` instead of `and` for the boolean operator",
-                "&&".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        }
-        if self.token.is_ident_named(sym::or) {
-            e.span_suggestion_short(
-                self.token.span,
-                "use `||` instead of `or` for the boolean operator",
-                "||".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        }
+        let do_not_suggest_help = self.token.is_keyword(kw::In) || self.token == token::Colon;
 
         // Check to see if the user has written something like
         //

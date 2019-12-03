@@ -11,7 +11,7 @@ use syntax::ptr::P;
 use syntax::ThinVec;
 use syntax::util::parser::AssocOp;
 use syntax::struct_span_err;
-use syntax_pos::symbol::{kw, sym};
+use syntax_pos::symbol::kw;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
 
 use log::{debug, trace};
@@ -312,22 +312,6 @@ impl<'a> Parser<'a> {
         };
         self.last_unexpected_token_span = Some(self.token.span);
         let mut err = self.fatal(&msg_exp);
-        if self.token.is_ident_named(sym::and) {
-            err.span_suggestion_short(
-                self.token.span,
-                "use `&&` instead of `and` for the boolean operator",
-                "&&".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        }
-        if self.token.is_ident_named(sym::or) {
-            err.span_suggestion_short(
-                self.token.span,
-                "use `||` instead of `or` for the boolean operator",
-                "||".to_string(),
-                Applicability::MaybeIncorrect,
-            );
-        }
         let sp = if self.token == token::Eof {
             // This is EOF; don't want to point at the following char, but rather the last token.
             self.prev_span

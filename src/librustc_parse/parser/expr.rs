@@ -345,7 +345,31 @@ impl<'a> Parser<'a> {
     ///
     /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
     fn check_assoc_op(&self) -> Option<AssocOp> {
-        AssocOp::from_token(&self.token)
+        match (AssocOp::from_token(&self.token), &self.token.kind) {
+            (op @ Some(_), _) => op,
+            (None, token::Ident(sym::and, false)) => {
+                self.error_bad_logical_op("and", "&&", "conjunction");
+                Some(AssocOp::LAnd)
+            }
+            (None, token::Ident(sym::or, false)) => {
+                self.error_bad_logical_op("or", "||", "disjunction");
+                Some(AssocOp::LOr)
+            }
+            _ => None,
+        }
+    }
+
+    /// Error on `and` and `or` suggesting `&&` and `||` respectively.
+    fn error_bad_logical_op(&self, bad: &str, good: &str, english: &str) {
+        self.struct_span_err(self.token.span, &format!("`{}` is not a logical operator", bad))
+            .span_suggestion(
+                self.token.span,
+                &format!("instead of `{}`, use `{}` to perform logical {}", bad, good, english),
+                good.to_string(),
+                Applicability::MachineApplicable,
+            )
+            .note("unlike in e.g., python and PHP, `&&` and `||` are used for logical operators")
+            .emit();
     }
 
     /// Checks if this expression is a successfully parsed statement.
