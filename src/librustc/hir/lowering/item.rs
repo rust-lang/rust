@@ -797,8 +797,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
             AssocItemKind::TyAlias(ref bounds, ref default) => {
-                let ty = default.as_ref().map(|x| -> &'hir hir::Ty {
-                    self.arena.alloc(self.lower_ty(x, ImplTraitContext::disallowed()).into_inner())
+                let ty = default.as_ref().map(|x| {
+                    &*self
+                        .arena
+                        .alloc(self.lower_ty(x, ImplTraitContext::disallowed()).into_inner())
                 });
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let kind = hir::TraitItemKind::Type(

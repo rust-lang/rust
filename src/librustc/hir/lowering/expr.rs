@@ -157,21 +157,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ExprKind::Path(qpath)
             }
             ExprKind::Break(opt_label, ref opt_expr) => {
-                let opt_expr =
-                    opt_expr.as_ref().map(|x| -> &'hir hir::Expr<'hir> { self.lower_expr(x) });
+                let opt_expr = opt_expr.as_ref().map(|x| self.lower_expr(x));
                 hir::ExprKind::Break(self.lower_jump_destination(e.id, opt_label), opt_expr)
             }
             ExprKind::Continue(opt_label) => {
                 hir::ExprKind::Continue(self.lower_jump_destination(e.id, opt_label))
             }
             ExprKind::Ret(ref e) => {
-                let e = e.as_ref().map(|x| -> &'hir hir::Expr<'hir> { self.lower_expr(x) });
+                let e = e.as_ref().map(|x| self.lower_expr(x));
                 hir::ExprKind::Ret(e)
             }
             ExprKind::InlineAsm(ref asm) => self.lower_expr_asm(asm),
             ExprKind::Struct(ref path, ref fields, ref maybe_expr) => {
-                let maybe_expr =
-                    maybe_expr.as_ref().map(|x| -> &'hir hir::Expr<'hir> { self.lower_expr(x) });
+                let maybe_expr = maybe_expr.as_ref().map(|x| self.lower_expr(x));
                 hir::ExprKind::Struct(
                     self.arena.alloc(self.lower_qpath(
                         e.id,
@@ -431,12 +429,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             );
 
             // Final expression of the block (if present) or `()` with span at the end of block
-            let tail_expr = block.expr.take().map_or_else(
-                || -> &'hir hir::Expr<'hir> {
-                    this.expr_unit(this.sess.source_map().end_point(try_span))
-                },
-                |x: &'hir hir::Expr<'hir>| x,
-            );
+            let tail_expr = block
+                .expr
+                .take()
+                .unwrap_or_else(|| this.expr_unit(this.sess.source_map().end_point(try_span)));
 
             let ok_wrapped_span =
                 this.mark_span_with_reason(DesugaringKind::TryBlock, tail_expr.span, None);

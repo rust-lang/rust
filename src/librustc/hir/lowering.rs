@@ -2041,8 +2041,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 },
             )
         });
-        let ty = ty.map(|ty| -> &'hir hir::Ty { self.arena.alloc(ty.into_inner()) });
-        let init = l.init.as_ref().map(|e| -> &'hir hir::Expr<'hir> { self.lower_expr(e) });
+        let ty = ty.map(|ty| &*self.arena.alloc(ty.into_inner()));
+        let init = l.init.as_ref().map(|e| self.lower_expr(e));
         (
             hir::Local {
                 hir_id: self.lower_node_id(l.id),
