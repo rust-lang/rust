@@ -312,6 +312,7 @@ impl AstNode for Block {
     }
 }
 impl ast::AttrsOwner for Block {}
+impl ast::ModuleItemOwner for Block {}
 impl Block {
     pub fn statements(&self) -> AstChildren<Stmt> {
         AstChildren::new(&self.syntax)
