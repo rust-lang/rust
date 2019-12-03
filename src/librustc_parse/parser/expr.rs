@@ -867,35 +867,13 @@ impl<'a> Parser<'a> {
                     return self.parse_if_expr(attrs);
                 }
                 if self.eat_keyword(kw::For) {
-                    let lo = self.prev_span;
-                    return self.parse_for_expr(None, lo, attrs);
+                    return self.parse_for_expr(None, self.prev_span, attrs);
                 }
                 if self.eat_keyword(kw::While) {
-                    let lo = self.prev_span;
-                    return self.parse_while_expr(None, lo, attrs);
+                    return self.parse_while_expr(None, self.prev_span, attrs);
                 }
                 if let Some(label) = self.eat_label() {
-                    let lo = label.ident.span;
-                    self.expect(&token::Colon)?;
-                    if self.eat_keyword(kw::While) {
-                        return self.parse_while_expr(Some(label), lo, attrs)
-                    }
-                    if self.eat_keyword(kw::For) {
-                        return self.parse_for_expr(Some(label), lo, attrs)
-                    }
-                    if self.eat_keyword(kw::Loop) {
-                        return self.parse_loop_expr(Some(label), lo, attrs)
-                    }
-                    if self.token == token::OpenDelim(token::Brace) {
-                        return self.parse_block_expr(Some(label),
-                                                     lo,
-                                                     BlockCheckMode::Default,
-                                                     attrs);
-                    }
-                    let msg = "expected `while`, `for`, `loop` or `{` after a label";
-                    let mut err = self.fatal(msg);
-                    err.span_label(self.token.span, msg);
-                    return Err(err);
+                    return self.parse_labeled_expr(label, attrs);
                 }
                 if self.eat_keyword(kw::Loop) {
                     let lo = self.prev_span;
@@ -1095,6 +1073,32 @@ impl<'a> Parser<'a> {
 
         let expr = self.mk_expr(lo.to(hi), kind, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn parse_labeled_expr(
+        &mut self,
+        label: Label,
+        attrs: ThinVec<Attribute>,
+    ) -> PResult<'a, P<Expr>> {
+        let lo = label.ident.span;
+        self.expect(&token::Colon)?;
+        if self.eat_keyword(kw::While) {
+            return self.parse_while_expr(Some(label), lo, attrs)
+        }
+        if self.eat_keyword(kw::For) {
+            return self.parse_for_expr(Some(label), lo, attrs)
+        }
+        if self.eat_keyword(kw::Loop) {
+            return self.parse_loop_expr(Some(label), lo, attrs)
+        }
+        if self.token == token::OpenDelim(token::Brace) {
+            return self.parse_block_expr(Some(label), lo, BlockCheckMode::Default, attrs);
+        }
+
+        let msg = "expected `while`, `for`, `loop` or `{` after a label";
+        let mut err = self.fatal(msg);
+        err.span_label(self.token.span, msg);
+        return Err(err);
     }
 
     /// Returns a string literal if the next token is a string literal.
