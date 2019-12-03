@@ -209,6 +209,9 @@ impl ops::Not for Cfg {
 
 impl ops::BitAndAssign for Cfg {
     fn bitand_assign(&mut self, other: Cfg) {
+        if *self == other {
+            return;
+        }
         match (self, other) {
             (&mut Cfg::False, _) | (_, Cfg::True) => {},
             (s, Cfg::False) => *s = Cfg::False,
@@ -238,6 +241,9 @@ impl ops::BitAnd for Cfg {
 
 impl ops::BitOrAssign for Cfg {
     fn bitor_assign(&mut self, other: Cfg) {
+        if *self == other {
+            return;
+        }
         match (self, other) {
             (&mut Cfg::True, _) | (_, Cfg::False) => {},
             (s, Cfg::True) => *s = Cfg::True,
