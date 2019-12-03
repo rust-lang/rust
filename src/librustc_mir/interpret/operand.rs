@@ -19,6 +19,7 @@ use super::{
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc_macros::HashStable;
+use syntax::ast;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
@@ -98,6 +99,42 @@ impl<'tcx, Tag> Immediate<Tag> {
 pub struct ImmTy<'tcx, Tag=()> {
     pub(crate) imm: Immediate<Tag>,
     pub layout: TyLayout<'tcx>,
+}
+
+// `Tag: Copy` because some methods on `Scalar` consume them by value
+impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.imm {
+            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) => match s.to_bits(self.layout.size) {
+                Ok(s) => {
+                    match self.layout.ty.kind {
+                        ty::Int(_) => return write!(
+                            fmt, "{}",
+                            super::sign_extend(s, self.layout.size) as i128,
+                        ),
+                        ty::Uint(_) => return write!(fmt, "{}", s),
+                        ty::Bool if s == 0 => return fmt.write_str("false"),
+                        ty::Bool if s == 1 => return fmt.write_str("true"),
+                        ty::Char => if let Some(c) =
+                            u32::try_from(s).ok().and_then(std::char::from_u32) {
+                            return write!(fmt, "{}", c);
+                        },
+                        ty::Float(ast::FloatTy::F32) => if let Ok(u) = u32::try_from(s) {
+                            return write!(fmt, "{}", f32::from_bits(u));
+                        },
+                        ty::Float(ast::FloatTy::F64) => if let Ok(u) = u64::try_from(s) {
+                            return write!(fmt, "{}", f64::from_bits(u));
+                        },
+                        _ => {},
+                    }
+                    write!(fmt, "{:x}", s)
+                },
+                Err(_) => fmt.write_str("{pointer}"),
+            },
+            Immediate::Scalar(ScalarMaybeUndef::Undef) => fmt.write_str("{undef}"),
+            Immediate::ScalarPair(..) => fmt.write_str("{wide pointer or tuple}"),
+        }
+    }
 }
 
 impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
