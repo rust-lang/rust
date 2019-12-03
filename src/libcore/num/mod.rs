@@ -1595,12 +1595,28 @@ $EndFeature, "
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg(not(bootstrap))]
+            pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (self, true)
                 } else {
                     (self / rhs, false)
                 }
+            }
+        }
+
+        /// No docs for bootstrap.
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg(bootstrap)]
+        pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            if self == Self::min_value() && rhs == -1 {
+                (self, true)
+            } else {
+                (self / rhs, false)
             }
         }
 
@@ -1663,7 +1679,9 @@ $EndFeature, "
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg(not(bootstrap))]
+            pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 if self == Self::min_value() && rhs == -1 {
                     (0, true)
                 } else {
@@ -1672,6 +1690,19 @@ $EndFeature, "
             }
         }
 
+        /// No docs for bootstrap.
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg(bootstrap)]
+        pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            if self == Self::min_value() && rhs == -1 {
+                (0, true)
+            } else {
+                (self % rhs, false)
+            }
+        }
 
         doc_comment! {
             concat!("Overflowing Euclidean remainder. Calculates `self.rem_euclid(rhs)`.
@@ -3517,9 +3548,21 @@ Basic usage
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg(not(bootstrap))]
+            pub const fn overflowing_div(self, rhs: Self) -> (Self, bool) {
                 (self / rhs, false)
             }
+        }
+
+        /// No docs for bootstrap.
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg(bootstrap)]
+        pub fn overflowing_div(self, rhs: Self) -> (Self, bool) {
+            (self / rhs, false)
         }
 
         doc_comment! {
@@ -3576,9 +3619,21 @@ Basic usage
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
-            pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            #[rustc_const_unstable(feature = "const_int_overflowing")]
+            #[cfg(not(bootstrap))]
+            pub const fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
                 (self % rhs, false)
             }
+        }
+
+        /// No docs for bootstrap.
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[cfg(bootstrap)]
+        pub fn overflowing_rem(self, rhs: Self) -> (Self, bool) {
+            (self % rhs, false)
         }
 
         doc_comment! {
