@@ -2760,21 +2760,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // the implicit binder around the witness.
                     return types.skip_binder().to_vec()
                 }
-                // Note that we need to use optimized_mir here,
-                // in order to have the `StateTransform` pass run
-                /*let gen_mir = self.tcx().optimized_mir(did);
-                let gen_layout = gen_mir.generator_layout.as_ref()
-                    .expect("Missing generator layout!");*/
-
-                // We need to compare the types from the GeneratoWitness
-                // to the types from the MIR. Since the generator MIR (specifically
-                // the StateTransform pass) runs after lifetimes are erased, we must
-                // erase lifetime from our witness types in order to perform the comparsion
+                // We ignore all regions when comparing the computed interior
+                // MIR types to the witness types.
                 //
-                // First, we erase all of late-bound regions bound by
-                // the witness type.
-                let unbound_tys = self.tcx().erase_late_bound_regions(&types);
-
+                // We use `erase_late_bound_regions` to remove the outermost
+                // layer of late-bound regions from the witness types.
+                //
                 // However, we may still have other regions within the inner
                 // witness type (eg.. 'static'). Thus, we need to call
                 // 'erase_regions' on each of the inner witness types.
@@ -2806,8 +2797,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Note that we need map erased types back to the orignal type.
                 // This allows to return the original type from the GeneratorWitness
                 //  in our Vec of consiitutent types - preservering the internal regions
-                let erased_types: FxHashMap<_, _> = self.tcx().erase_regions(&unbound_tys)
-                    .into_iter()
+                let erased_witness_types = self.tcx().erase_regions(
+                    &self.tcx().erase_late_bound_regions(&types)
+                );
+
+                let erased_types: FxHashMap<_, _> = erased_witness_types.into_iter()
                     .zip(types.skip_binder().into_iter())
                     .collect();
 
@@ -2819,11 +2813,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let interior_tys = self.tcx().optimized_mir(did).generator_interior_tys
                     .as_ref().expect("Missing generator interior types!");
 
-                //for ty in &gen_layout.field_tys {
                 for ty in interior_tys {
-                    if let Some(witness_ty) = erased_types.get(&self.tcx().erase_regions(ty)) {
-                        used_types.push(**witness_ty);
-                    }
+                    let witness_ty = erased_types.get(&self.tcx().erase_regions(ty))
+                        .unwrap_or_else(|| panic!("Interior type {:?} not in {:?}",
+                                                  ty, erased_types));
+
+                    used_types.push(**witness_ty);
                 }
 
                 debug!("Used witness types for witness {:?} are: '{:?}'", t, used_types);
