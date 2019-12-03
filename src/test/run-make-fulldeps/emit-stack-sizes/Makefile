@@ -2,7 +2,6 @@
 
 # ignore-windows
 # ignore-macos
-# min-llvm-version 6.0
 #
 # This feature only works when the output object format is ELF so we ignore
 # macOS and Windows

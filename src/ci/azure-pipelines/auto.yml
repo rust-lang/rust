@@ -18,7 +18,7 @@ jobs:
   - template: steps/run.yml
   strategy:
     matrix:
-      x86_64-gnu-llvm-6.0:
+      x86_64-gnu-llvm-7:
         RUST_BACKTRACE: 1
       dist-x86_64-linux: {}
       dist-x86_64-linux-alt:
