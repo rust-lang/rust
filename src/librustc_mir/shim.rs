@@ -35,7 +35,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         ty::InstanceDef::VtableShim(def_id) => {
             build_call_shim(
                 tcx,
-                def_id,
+                instance,
                 Adjustment::DerefMove,
                 CallKind::Direct(def_id),
                 None,
@@ -60,7 +60,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
 
             build_call_shim(
                 tcx,
-                def_id,
+                instance,
                 adjustment,
                 CallKind::Indirect,
                 Some(arg_tys)
@@ -74,13 +74,13 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
         ty::InstanceDef::ReifyShim(def_id) => {
             build_call_shim(
                 tcx,
-                def_id,
+                instance,
                 Adjustment::Identity,
                 CallKind::Direct(def_id),
                 None
             )
         }
-        ty::InstanceDef::ClosureOnceShim { call_once } => {
+        ty::InstanceDef::ClosureOnceShim { call_once: _ } => {
             let fn_mut = tcx.lang_items().fn_mut_trait().unwrap();
             let call_mut = tcx
                 .associated_items(fn_mut)
@@ -89,7 +89,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: ty::InstanceDef<'tcx>) -> &'tcx 
 
             build_call_shim(
                 tcx,
-                call_once,
+                instance,
                 Adjustment::RefMut,
                 CallKind::Direct(call_mut),
                 None
@@ -697,7 +697,7 @@ impl CloneShimBuilder<'tcx> {
     }
 }
 
-/// Builds a "call" shim for `def_id`. The shim calls the
+/// Builds a "call" shim for `instance`. The shim calls the
 /// function specified by `call_kind`, first adjusting its first
 /// argument according to `rcvr_adjustment`.
 ///
@@ -705,17 +705,30 @@ impl CloneShimBuilder<'tcx> {
 /// function will be untupled as these types.
 fn build_call_shim<'tcx>(
     tcx: TyCtxt<'tcx>,
-    def_id: DefId,
+    instance: ty::InstanceDef<'tcx>,
     rcvr_adjustment: Adjustment,
     call_kind: CallKind,
     untuple_args: Option<&[Ty<'tcx>]>,
 ) -> BodyCache<'tcx> {
-    debug!("build_call_shim(def_id={:?}, rcvr_adjustment={:?}, \
+    debug!("build_call_shim(instance={:?}, rcvr_adjustment={:?}, \
             call_kind={:?}, untuple_args={:?})",
-           def_id, rcvr_adjustment, call_kind, untuple_args);
+           instance, rcvr_adjustment, call_kind, untuple_args);
 
+    let def_id = instance.def_id();
     let sig = tcx.fn_sig(def_id);
-    let sig = tcx.erase_late_bound_regions(&sig);
+    let mut sig = tcx.erase_late_bound_regions(&sig);
+
+    // FIXME(eddyb) avoid having this snippet both here and in
+    // `Instance::fn_sig` (introduce `InstanceDef::fn_sig`?).
+    if let ty::InstanceDef::VtableShim(..) = instance {
+        // Modify fn(self, ...) to fn(self: *mut Self, ...)
+        let mut inputs_and_output = sig.inputs_and_output.to_vec();
+        let self_arg = &mut inputs_and_output[0];
+        debug_assert!(tcx.generics_of(def_id).has_self && *self_arg == tcx.types.self_param);
+        *self_arg = tcx.mk_mut_ptr(*self_arg);
+        sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+    }
+
     let span = tcx.def_span(def_id);
 
     debug!("build_call_shim: sig={:?}", sig);
@@ -730,14 +743,7 @@ fn build_call_shim<'tcx>(
     let rcvr = match rcvr_adjustment {
         Adjustment::Identity => Operand::Move(rcvr_l),
         Adjustment::Deref => Operand::Copy(tcx.mk_place_deref(rcvr_l)),
-        Adjustment::DerefMove => {
-            // fn(Self, ...) -> fn(*mut Self, ...)
-            let arg_ty = local_decls[rcvr_arg].ty;
-            debug_assert!(tcx.generics_of(def_id).has_self && arg_ty == tcx.types.self_param);
-            local_decls[rcvr_arg].ty = tcx.mk_mut_ptr(arg_ty);
-
-            Operand::Move(tcx.mk_place_deref(rcvr_l))
-        }
+        Adjustment::DerefMove => Operand::Move(tcx.mk_place_deref(rcvr_l)),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let ref_rcvr = local_decls.push(temp_decl(
