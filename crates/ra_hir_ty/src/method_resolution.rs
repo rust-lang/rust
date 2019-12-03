@@ -437,12 +437,12 @@ fn is_valid_candidate(
 pub(crate) fn inherent_impl_substs(
     db: &impl HirDatabase,
     impl_id: ImplId,
-    self_ty: &Ty,
+    self_ty: &Canonical<Ty>,
 ) -> Option<Substs> {
     let vars = Substs::build_for_def(db, impl_id).fill_with_bound_vars(0).build();
     let self_ty_with_vars = db.impl_self_ty(impl_id).subst(&vars);
-    let self_ty_with_vars = Canonical { num_vars: vars.len(), value: &self_ty_with_vars };
-    super::infer::unify(self_ty_with_vars, self_ty)
+    let self_ty_with_vars = Canonical { num_vars: vars.len(), value: self_ty_with_vars };
+    super::infer::unify(&self_ty_with_vars, self_ty)
 }
 
 fn transform_receiver_ty(
@@ -455,7 +455,7 @@ fn transform_receiver_ty(
             .push(self_ty.value.clone())
             .fill_with_unknown()
             .build(),
-        hir_def::ContainerId::ImplId(impl_id) => inherent_impl_substs(db, impl_id, &self_ty.value)?,
+        hir_def::ContainerId::ImplId(impl_id) => inherent_impl_substs(db, impl_id, &self_ty)?,
         hir_def::ContainerId::ModuleId(_) => unreachable!(),
     };
     let sig = db.callable_item_signature(function_id.into());

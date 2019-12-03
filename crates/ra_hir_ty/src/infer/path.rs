@@ -1,5 +1,7 @@
 //! Path expression resolution.
 
+use std::iter;
+
 use hir_def::{
     path::{Path, PathKind, PathSegment},
     resolver::{ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -207,7 +209,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 };
                 let substs = match container {
                     ContainerId::ImplId(impl_id) => {
-                        method_resolution::inherent_impl_substs(self.db, impl_id, &ty)
+                        let impl_substs = Substs::build_for_def(self.db, impl_id)
+                            .fill(iter::repeat_with(|| self.table.new_type_var()))
+                            .build();
+                        let impl_self_ty = self.db.impl_self_ty(impl_id).subst(&impl_substs);
+                        let substs = Substs::build_for_def(self.db, item)
+                            .use_parent_substs(&impl_substs)
+                            .fill_with_params()
+                            .build();
+                        self.unify(&impl_self_ty, &ty);
+                        Some(substs)
                     }
                     ContainerId::TraitId(trait_) => {
                         // we're picking this method
