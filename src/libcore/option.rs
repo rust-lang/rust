@@ -1396,6 +1396,20 @@ impl<T, E> Option<Result<T, E>> {
     /// ```
     #[inline]
     #[stable(feature = "transpose_result", since = "1.33.0")]
+    #[rustc_const_unstable(feature = "const_option_match")]
+    #[cfg(not(bootstrap))]
+    pub const fn transpose(self) -> Result<Option<T>, E> {
+        match self {
+            Some(Ok(x)) => Ok(Some(x)),
+            Some(Err(e)) => Err(e),
+            None => Ok(None),
+        }
+    }
+
+    /// No docs for bootstrap.
+    #[inline]
+    #[stable(feature = "transpose_result", since = "1.33.0")]
+    #[cfg(bootstrap)]
     pub fn transpose(self) -> Result<Option<T>, E> {
         match self {
             Some(Ok(x)) => Ok(Some(x)),
@@ -1834,6 +1848,16 @@ impl<T> Option<Option<T>> {
     /// ```
     #[inline]
     #[stable(feature = "option_flattening", since = "1.40.0")]
+    #[rustc_const_unstable(feature = "const_option_match")]
+    #[cfg(not(bootstrap))]
+    pub const fn flatten(self) -> Option<T> {
+        self.and_then(convert::identity)
+    }
+
+    /// No docs for bootstrap.
+    #[inline]
+    #[stable(feature = "option_flattening", since = "1.40.0")]
+    #[cfg(bootstrap)]
     pub fn flatten(self) -> Option<T> {
         self.and_then(convert::identity)
     }
