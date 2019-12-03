@@ -2,24 +2,24 @@
 //! command-line options.
 
 use crate::lint;
-use crate::middle::cstore;
-use crate::session::{early_error, early_warn, Session};
-use crate::session::search_paths::SearchPath;
+use crate::utils::NativeLibraryKind;
+use crate::{early_error, early_warn, Session};
+use crate::search_paths::SearchPath;
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_feature::UnstableFeatures;
+use rustc_data_structures::impl_stable_hash_via_hash;
 
 use rustc_target::spec::{LinkerFlavor, MergeFunctions, PanicStrategy, RelroLevel};
 use rustc_target::spec::{Target, TargetTriple};
 
-use syntax;
-use syntax::ast;
-use syntax::source_map::{FileName, FilePathMapping};
-use syntax::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
-use syntax::symbol::{sym, Symbol};
+use syntax_pos::source_map::{FileName, FilePathMapping};
+use syntax_pos::edition::{Edition, EDITION_NAME_LIST, DEFAULT_EDITION};
+use syntax_pos::symbol::{sym, Symbol};
+use rustc_feature::UnstableFeatures;
+use crate::parse::CrateConfig;
 
-use errors::emitter::HumanReadableErrorType;
-use errors::{ColorConfig, FatalError, Handler};
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
 
@@ -348,7 +348,7 @@ macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [TRACKED]) => ({
         if $sub_hashes.insert(stringify!($opt_name),
                               $opt_expr as &dyn dep_tracking::DepTrackingHash).is_some() {
-            bug!("duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
+            panic!("duplicate key in CLI DepTrackingHash: {}", stringify!($opt_name))
         }
     });
 }
@@ -415,7 +415,7 @@ top_level_options!(
         describe_lints: bool [UNTRACKED],
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
-        libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
+        libs: Vec<(String, Option<String>, Option<NativeLibraryKind>)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [UNTRACKED],
 
         target_triple: TargetTriple [TRACKED],
@@ -701,7 +701,7 @@ pub enum EntryFnType {
 
 impl_stable_hash_via_hash!(EntryFnType);
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug, HashStable)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
 pub enum CrateType {
     Executable,
     Dylib,
@@ -710,6 +710,8 @@ pub enum CrateType {
     Cdylib,
     ProcMacro,
 }
+
+impl_stable_hash_via_hash!(CrateType);
 
 #[derive(Clone, Hash)]
 pub enum Passes {
@@ -781,7 +783,7 @@ macro_rules! options {
                                                                value, $outputname,
                                                                key, type_desc))
                         }
-                        (None, None) => bug!()
+                        (None, None) => panic!()
                     }
                 }
                 found = true;
@@ -1535,7 +1537,7 @@ pub const fn default_lib_output() -> CrateType {
     CrateType::Rlib
 }
 
-pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
+pub fn default_configuration(sess: &Session) -> CrateConfig {
     let end = &sess.target.target.target_endian;
     let arch = &sess.target.target.arch;
     let wordsz = &sess.target.target.target_pointer_width;
@@ -1607,13 +1609,13 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
 /// Converts the crate `cfg!` configuration from `String` to `Symbol`.
 /// `rustc_interface::interface::Config` accepts this in the compiler configuration,
 /// but the symbol interner is not yet set up then, so we must convert it later.
-pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> ast::CrateConfig {
+pub fn to_crate_config(cfg: FxHashSet<(String, Option<String>)>) -> CrateConfig {
     cfg.into_iter()
        .map(|(a, b)| (Symbol::intern(&a), b.map(|b| Symbol::intern(&b))))
        .collect()
 }
 
-pub fn build_configuration(sess: &Session, mut user_cfg: ast::CrateConfig) -> ast::CrateConfig {
+pub fn build_configuration(sess: &Session, mut user_cfg: CrateConfig) -> CrateConfig {
     // Combine the configuration requested by the session (command line) with
     // some default and generated configuration items.
     let default_cfg = default_configuration(sess);
@@ -2379,7 +2381,7 @@ fn select_debuginfo(
 fn parse_libs(
     matches: &getopts::Matches,
     error_format: ErrorOutputType,
-) -> Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> {
+) -> Vec<(String, Option<String>, Option<NativeLibraryKind>)> {
     matches
         .opt_strs("l")
         .into_iter()
@@ -2390,10 +2392,12 @@ fn parse_libs(
             let kind = parts.next().unwrap();
             let (name, kind) = match (parts.next(), kind) {
                 (None, name) => (name, None),
-                (Some(name), "dylib") => (name, Some(cstore::NativeUnknown)),
-                (Some(name), "framework") => (name, Some(cstore::NativeFramework)),
-                (Some(name), "static") => (name, Some(cstore::NativeStatic)),
-                (Some(name), "static-nobundle") => (name, Some(cstore::NativeStaticNobundle)),
+                (Some(name), "dylib") => (name, Some(NativeLibraryKind::NativeUnknown)),
+                (Some(name), "framework") => (name, Some(NativeLibraryKind::NativeFramework)),
+                (Some(name), "static") => (name, Some(NativeLibraryKind::NativeStatic)),
+                (Some(name), "static-nobundle") => {
+                    (name, Some(NativeLibraryKind::NativeStaticNobundle))
+                }
                 (_, s) => {
                     early_error(
                         error_format,
@@ -2405,7 +2409,8 @@ fn parse_libs(
                     );
                 }
             };
-            if kind == Some(cstore::NativeStaticNobundle) && !nightly_options::is_nightly_build() {
+            if kind == Some(NativeLibraryKind::NativeStaticNobundle) &&
+                !nightly_options::is_nightly_build() {
                 early_error(
                     error_format,
                     &format!(
@@ -2716,7 +2721,7 @@ pub mod nightly_options {
     use getopts;
     use rustc_feature::UnstableFeatures;
     use super::{ErrorOutputType, OptionStability, RustcOptGroup};
-    use crate::session::early_error;
+    use crate::early_error;
 
     pub fn is_unstable_enabled(matches: &getopts::Matches) -> bool {
         is_nightly_build()
@@ -2855,7 +2860,7 @@ impl PpMode {
 /// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
     use crate::lint;
-    use crate::middle::cstore;
+    use crate::utils::NativeLibraryKind;
     use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
@@ -2863,9 +2868,9 @@ mod dep_tracking {
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
                 Passes, Sanitizer, LtoCli, LinkerPluginLto, SwitchWithOptPath,
                 SymbolManglingVersion};
-    use rustc_feature::UnstableFeatures;
     use rustc_target::spec::{MergeFunctions, PanicStrategy, RelroLevel, TargetTriple};
-    use syntax::edition::Edition;
+    use syntax_pos::edition::Edition;
+    use rustc_feature::UnstableFeatures;
 
     pub trait DepTrackingHash {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType);
@@ -2913,7 +2918,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<RelroLevel>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
-    impl_dep_tracking_hash_via_hash!(Option<cstore::NativeLibraryKind>);
+    impl_dep_tracking_hash_via_hash!(Option<NativeLibraryKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
     impl_dep_tracking_hash_via_hash!(MergeFunctions);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
@@ -2924,7 +2929,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(DebugInfo);
     impl_dep_tracking_hash_via_hash!(UnstableFeatures);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
-    impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
+    impl_dep_tracking_hash_via_hash!(NativeLibraryKind);
     impl_dep_tracking_hash_via_hash!(Sanitizer);
     impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
     impl_dep_tracking_hash_via_hash!(TargetTriple);
@@ -2940,7 +2945,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((
         String,
         Option<String>,
-        Option<cstore::NativeLibraryKind>
+        Option<NativeLibraryKind>
     ));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
     impl_dep_tracking_hash_for_sortable_vec_of!(Sanitizer);

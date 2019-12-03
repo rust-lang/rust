@@ -1,36 +1,38 @@
-pub use self::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
-use self::code_stats::CodeStats;
+pub use crate::code_stats::{DataTypeKind, SizeKind, FieldInfo, VariantInfo};
+use crate::code_stats::CodeStats;
 
-use crate::dep_graph::cgu_reuse_tracker::CguReuseTracker;
+use crate::cgu_reuse_tracker::CguReuseTracker;
 use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use crate::lint;
-use crate::session::config::{OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
-use crate::session::search_paths::{PathKind, SearchPath};
-use crate::util::nodemap::{FxHashMap, FxHashSet};
-use crate::util::common::{duration_to_secs_str, ErrorReported};
+use crate::filesearch;
+use crate::config::{self, OutputType, PrintRequest, Sanitizer, SwitchWithOptPath};
+use crate::search_paths::{PathKind, SearchPath};
+use crate::utils::duration_to_secs_str;
+use rustc_errors::ErrorReported;
 
 use rustc_data_structures::base_n;
 use rustc_data_structures::sync::{
     self, Lrc, Lock, OneThread, Once, AtomicU64, AtomicUsize, Ordering,
     Ordering::SeqCst,
 };
+use rustc_data_structures::impl_stable_hash_via_hash;
 
-use errors::{DiagnosticBuilder, DiagnosticId, Applicability};
-use errors::emitter::{Emitter, EmitterWriter};
-use errors::emitter::HumanReadableErrorType;
-use errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
-use syntax::edition::Edition;
-use errors::json::JsonEmitter;
-use syntax::source_map;
-use syntax::sess::ParseSess;
+use rustc_errors::{DiagnosticBuilder, DiagnosticId, Applicability};
+use rustc_errors::emitter::{Emitter, EmitterWriter};
+use rustc_errors::emitter::HumanReadableErrorType;
+use rustc_errors::annotate_snippet_emitter_writer::{AnnotateSnippetEmitterWriter};
+use syntax_pos::edition::Edition;
+use rustc_errors::json::JsonEmitter;
+use syntax_pos::source_map;
+use crate::parse::ParseSess;
 use syntax_pos::{MultiSpan, Span};
 
 use rustc_target::spec::{PanicStrategy, RelroLevel, Target, TargetTriple};
 use rustc_data_structures::flock;
-use rustc_data_structures::jobserver;
+use rustc_data_structures::jobserver::{self, Client};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
-use ::jobserver::Client;
 
 use std;
 use std::cell::{self, RefCell};
@@ -41,11 +43,6 @@ use std::num::NonZeroU32;
 use std::path::PathBuf;
 use std::time::Duration;
 use std::sync::Arc;
-
-mod code_stats;
-pub mod config;
-pub mod filesearch;
-pub mod search_paths;
 
 pub struct OptimizationFuel {
     /// If `-zfuel=crate=n` is specified, initially set to `n`, otherwise `0`.
@@ -335,7 +332,7 @@ impl Session {
         self.diagnostic().span_note_without_error(sp, msg)
     }
 
-    pub fn diagnostic(&self) -> &errors::Handler {
+    pub fn diagnostic(&self) -> &rustc_errors::Handler {
         &self.parse_sess.span_diagnostic
     }
 
@@ -680,7 +677,7 @@ impl Session {
 
         if let IncrCompSession::NotInitialized = *incr_comp_session {
         } else {
-            bug!(
+            panic!(
                 "Trying to initialize IncrCompSession `{:?}`",
                 *incr_comp_session
             )
@@ -698,7 +695,7 @@ impl Session {
 
         if let IncrCompSession::Active { .. } = *incr_comp_session {
         } else {
-            bug!(
+            panic!(
                 "trying to finalize `IncrCompSession` `{:?}`",
                 *incr_comp_session
             );
@@ -719,7 +716,7 @@ impl Session {
                 ..
             } => session_directory.clone(),
             IncrCompSession::InvalidBecauseOfErrors { .. } => return,
-            _ => bug!(
+            _ => panic!(
                 "trying to invalidate `IncrCompSession` `{:?}`",
                 *incr_comp_session
             ),
@@ -736,7 +733,7 @@ impl Session {
         cell::Ref::map(
             incr_comp_session,
             |incr_comp_session| match *incr_comp_session {
-                IncrCompSession::NotInitialized => bug!(
+                IncrCompSession::NotInitialized => panic!(
                     "trying to get session directory from `IncrCompSession`: {:?}",
                     *incr_comp_session,
                 ),
@@ -916,7 +913,7 @@ impl Session {
 pub fn build_session(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
-    registry: errors::registry::Registry,
+    registry: rustc_errors::registry::Registry,
 ) -> Session {
     let file_path_mapping = sopts.file_path_mapping();
 
@@ -932,7 +929,7 @@ pub fn build_session(
 
 fn default_emitter(
     sopts: &config::Options,
-    registry: errors::registry::Registry,
+    registry: rustc_errors::registry::Registry,
     source_map: &Lrc<source_map::SourceMap>,
     emitter_dest: Option<Box<dyn Write + Send>>,
 ) -> Box<dyn Emitter + sync::Send> {
@@ -1001,7 +998,7 @@ pub enum DiagnosticOutput {
 pub fn build_session_with_source_map(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
-    registry: errors::registry::Registry,
+    registry: rustc_errors::registry::Registry,
     source_map: Lrc<source_map::SourceMap>,
     diagnostics_output: DiagnosticOutput,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -1032,9 +1029,9 @@ pub fn build_session_with_source_map(
     };
     let emitter = default_emitter(&sopts, registry, &source_map, write_dest);
 
-    let diagnostic_handler = errors::Handler::with_emitter_and_flags(
+    let diagnostic_handler = rustc_errors::Handler::with_emitter_and_flags(
         emitter,
-        errors::HandlerFlags {
+        rustc_errors::HandlerFlags {
             can_emit_warnings,
             treat_err_as_bug,
             report_delayed_bugs,
@@ -1056,7 +1053,7 @@ pub fn build_session_with_source_map(
 fn build_session_(
     sopts: config::Options,
     local_crate_source_file: Option<PathBuf>,
-    span_diagnostic: errors::Handler,
+    span_diagnostic: rustc_errors::Handler,
     source_map: Lrc<source_map::SourceMap>,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
 ) -> Session {
@@ -1281,9 +1278,9 @@ pub fn early_error(output: config::ErrorOutputType, msg: &str) -> ! {
         config::ErrorOutputType::Json { pretty, json_rendered } =>
             Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
     };
-    let handler = errors::Handler::with_emitter(true, None, emitter);
+    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_fatal(msg).emit();
-    errors::FatalError.raise();
+    rustc_errors::FatalError.raise();
 }
 
 pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
@@ -1295,7 +1292,7 @@ pub fn early_warn(output: config::ErrorOutputType, msg: &str) {
         config::ErrorOutputType::Json { pretty, json_rendered } =>
             Box::new(JsonEmitter::basic(pretty, json_rendered, false)),
     };
-    let handler = errors::Handler::with_emitter(true, None, emitter);
+    let handler = rustc_errors::Handler::with_emitter(true, None, emitter);
     handler.struct_warn(msg).emit();
 }
 

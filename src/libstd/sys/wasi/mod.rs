@@ -17,7 +17,6 @@
 use crate::io as std_io;
 use crate::mem;
 use crate::os::raw::c_char;
-use ::wasi::wasi_unstable as wasi;
 
 pub mod alloc;
 pub mod args;
@@ -72,25 +71,21 @@ pub fn decode_error_kind(errno: i32) -> std_io::ErrorKind {
     if errno > u16::max_value() as i32 || errno < 0 {
         return Other;
     }
-    let code = match wasi::Error::new(errno as u16) {
-        Some(code) => code,
-        None => return Other,
-    };
-    match code {
-        wasi::ECONNREFUSED => ConnectionRefused,
-        wasi::ECONNRESET => ConnectionReset,
-        wasi::EPERM | wasi::EACCES => PermissionDenied,
-        wasi::EPIPE => BrokenPipe,
-        wasi::ENOTCONN => NotConnected,
-        wasi::ECONNABORTED => ConnectionAborted,
-        wasi::EADDRNOTAVAIL => AddrNotAvailable,
-        wasi::EADDRINUSE => AddrInUse,
-        wasi::ENOENT => NotFound,
-        wasi::EINTR => Interrupted,
-        wasi::EINVAL => InvalidInput,
-        wasi::ETIMEDOUT => TimedOut,
-        wasi::EEXIST => AlreadyExists,
-        wasi::EAGAIN => WouldBlock,
+    match errno as u16 {
+        wasi::ERRNO_CONNREFUSED => ConnectionRefused,
+        wasi::ERRNO_CONNRESET => ConnectionReset,
+        wasi::ERRNO_PERM | wasi::ERRNO_ACCES => PermissionDenied,
+        wasi::ERRNO_PIPE => BrokenPipe,
+        wasi::ERRNO_NOTCONN => NotConnected,
+        wasi::ERRNO_CONNABORTED => ConnectionAborted,
+        wasi::ERRNO_ADDRNOTAVAIL => AddrNotAvailable,
+        wasi::ERRNO_ADDRINUSE => AddrInUse,
+        wasi::ERRNO_NOENT => NotFound,
+        wasi::ERRNO_INTR => Interrupted,
+        wasi::ERRNO_INVAL => InvalidInput,
+        wasi::ERRNO_TIMEDOUT => TimedOut,
+        wasi::ERRNO_EXIST => AlreadyExists,
+        wasi::ERRNO_AGAIN => WouldBlock,
         _ => Other,
     }
 }
@@ -116,16 +111,13 @@ pub unsafe fn abort_internal() -> ! {
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut ret = (0u64, 0u64);
     unsafe {
-        let base = &mut ret as *mut (u64, u64) as *mut core::ffi::c_void;
+        let base = &mut ret as *mut (u64, u64) as *mut u8;
         let len = mem::size_of_val(&ret);
-        let ret = wasi::raw::__wasi_random_get(base, len);
-        if ret != 0 {
-            panic!("__wasi_random_get failure")
-        }
+        wasi::random_get(base, len).expect("random_get failure");
     }
     return ret
 }
 
 fn err2io(err: wasi::Error) -> std_io::Error {
-    std_io::Error::from_raw_os_error(err.get() as i32)
+    std_io::Error::from_raw_os_error(err.raw_error().into())
 }

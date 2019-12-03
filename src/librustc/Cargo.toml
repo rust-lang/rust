@@ -39,3 +39,4 @@ rustc_fs_util = { path = "../librustc_fs_util" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 measureme = "0.4"
 rustc_error_codes = { path = "../librustc_error_codes" }
+rustc_session = { path = "../librustc_session" }

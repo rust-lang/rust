@@ -167,7 +167,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
-
+    let relax_elf_relocations = sess.target.target.options.relax_elf_relocations;
     Arc::new(move || {
         let tm = unsafe {
             llvm::LLVMRustCreateTargetMachine(
@@ -183,6 +183,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
                 singlethread,
                 asm_comments,
                 emit_stack_size_section,
+                relax_elf_relocations,
             )
         };
 

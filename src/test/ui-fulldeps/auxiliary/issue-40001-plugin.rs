@@ -1,8 +1,8 @@
 #![feature(box_syntax, plugin, plugin_registrar, rustc_private)]
 #![crate_type = "dylib"]
 
-#[macro_use]
-extern crate rustc;
+#[macro_use] extern crate rustc;
+#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
 extern crate syntax;
 

@@ -828,7 +828,7 @@ Available lint options:
 
     fn sort_lints(sess: &Session, mut lints: Vec<&'static Lint>) -> Vec<&'static Lint> {
         // The sort doesn't case-fold but it's doubtful we care.
-        lints.sort_by_cached_key(|x: &&Lint| (x.default_level(sess), x.name));
+        lints.sort_by_cached_key(|x: &&Lint| (x.default_level(sess.edition()), x.name));
         lints
     }
 

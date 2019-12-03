@@ -21,6 +21,8 @@
 
 #[macro_use]
 extern crate rustc;
+#[macro_use]
+extern crate rustc_session;
 
 mod array_into_iter;
 mod nonstandard_style;

@@ -10,7 +10,7 @@ use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinShare
 use rustc_codegen_ssa::traits::*;
 use errors::{FatalError, Handler};
 use rustc::dep_graph::WorkProduct;
-use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
+use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};

@@ -18,3 +18,4 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_feature = { path = "../librustc_feature" }
 rustc_index = { path = "../librustc_index" }
 rustc_error_codes = { path = "../librustc_error_codes" }
+rustc_session = { path = "../librustc_session" }
