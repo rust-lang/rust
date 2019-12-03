@@ -834,9 +834,7 @@ impl<'a> Parser<'a> {
                         hi = self.prev_span;
                         ex = ExprKind::Lit(literal);
                     }
-                    None => {
-                        return Err(self.expected_expression_found());
-                    }
+                    None => return Err(self.expected_expression_found()),
                 }
             }
         }
@@ -846,37 +844,8 @@ impl<'a> Parser<'a> {
             // This match arm is a special-case of the `_` match arm below and
             // could be removed without changing functionality, but it's faster
             // to have it here, especially for programs with large constants.
-            token::Literal(_) => {
-                parse_lit!()
-            }
-            token::OpenDelim(token::Paren) => {
-                let mut first = true;
-                let parse_leading_attr_expr = |this: &mut Parser<'a>| {
-                    if first {
-                        attrs.extend(this.parse_inner_attributes()?);
-                        first = false;
-                    }
-                    this.parse_expr_catch_underscore()
-                };
-
-                // (e) is parenthesized e
-                // (e,) is a tuple with only one field, e
-                let (es, trailing_comma) =
-                    match self.parse_paren_comma_seq(parse_leading_attr_expr)
-                {
-                    Ok(x) => x,
-                    Err(err) => return Ok(
-                        self.recover_seq_parse_error(token::Paren, lo, Err(err)),
-                    ),
-                };
-
-                hi = self.prev_span;
-                ex = if es.len() == 1 && !trailing_comma {
-                    ExprKind::Paren(es.into_iter().nth(0).unwrap())
-                } else {
-                    ExprKind::Tup(es)
-                };
-            }
+            token::Literal(_) => parse_lit!(),
+            token::OpenDelim(token::Paren) => return self.parse_tuple_parens_expr(),
             token::OpenDelim(token::Brace) => {
                 return self.parse_block_expr(None, lo, BlockCheckMode::Default, attrs);
             }
@@ -1092,6 +1061,34 @@ impl<'a> Parser<'a> {
         }
 
         let expr = self.mk_expr(lo.to(hi), ex, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn parse_tuple_parens_expr(&mut self) -> PResult<'a, P<Expr>> {
+        let lo = self.token.span;
+        let mut first = true;
+        let mut attrs = ThinVec::new();
+        let parse_leading_attr_expr = |p: &mut Self| {
+            if first {
+                // `(#![foo] a, b, ...)` is OK...
+                attrs = p.parse_inner_attributes()?.into();
+                // ...but not `(a, #![foo] b, ...)`.
+                first = false;
+            }
+            p.parse_expr_catch_underscore()
+        };
+        let (es, trailing_comma) = match self.parse_paren_comma_seq(parse_leading_attr_expr) {
+            Ok(x) => x,
+            Err(err) => return Ok(self.recover_seq_parse_error(token::Paren, lo, Err(err))),
+        };
+        let kind = if es.len() == 1 && !trailing_comma {
+            // `(e)` is parenthesized `e`.
+            ExprKind::Paren(es.into_iter().nth(0).unwrap())
+        } else {
+            // `(e,)` is a tuple with only one field, `e`.
+            ExprKind::Tup(es)
+        };
+        let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
