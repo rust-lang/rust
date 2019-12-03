@@ -854,36 +854,11 @@ impl<'a> Parser<'a> {
             _ => {
                 if self.eat_lt() {
                     let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
-                    hi = path.span;
+                    let hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
                 if self.token.is_path_start() {
-                    let path = self.parse_path(PathStyle::Expr)?;
-
-                    // `!`, as an operator, is prefix, so we know this isn't that.
-                    if self.eat(&token::Not) {
-                        // MACRO INVOCATION expression
-                        let args = self.parse_mac_args()?;
-                        hi = self.prev_span;
-                        ex = ExprKind::Mac(Mac {
-                            path,
-                            args,
-                            prior_type_ascription: self.last_type_ascription,
-                        });
-                    } else if self.check(&token::OpenDelim(token::Brace)) {
-                        if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
-                            return expr;
-                        } else {
-                            hi = path.span;
-                            ex = ExprKind::Path(None, path);
-                        }
-                    } else {
-                        hi = path.span;
-                        ex = ExprKind::Path(None, path);
-                    }
-
-                    let expr = self.mk_expr(lo.to(hi), ex, attrs);
-                    return self.maybe_recover_from_bad_qpath(expr, true);
+                    return self.parse_path_start_expr();
                 }
                 if self.check_keyword(kw::Move) || self.check_keyword(kw::Static) {
                     return self.parse_closure_expr(attrs);
@@ -1091,6 +1066,34 @@ impl<'a> Parser<'a> {
             }
         };
         let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
+
+    fn parse_path_start_expr(&mut self) -> PResult<'a, P<Expr>> {
+        let attrs = ThinVec::new();
+        let lo = self.token.span;
+        let path = self.parse_path(PathStyle::Expr)?;
+
+        // `!`, as an operator, is prefix, so we know this isn't that.
+        let (hi, kind) = if self.eat(&token::Not) {
+            // MACRO INVOCATION expression
+            let mac = Mac {
+                path,
+                args: self.parse_mac_args()?,
+                prior_type_ascription: self.last_type_ascription,
+            };
+            (self.prev_span, ExprKind::Mac(mac))
+        } else if self.check(&token::OpenDelim(token::Brace)) {
+            if let Some(expr) = self.maybe_parse_struct_expr(lo, &path, &attrs) {
+                return expr;
+            } else {
+                (path.span, ExprKind::Path(None, path))
+            }
+        } else {
+            (path.span, ExprKind::Path(None, path))
+        };
+
+        let expr = self.mk_expr(lo.to(hi), kind, attrs);
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
