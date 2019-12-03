@@ -41,7 +41,7 @@ use super::{
 };
 use crate::{db::HirDatabase, infer::diagnostics::InferenceDiagnostic};
 
-pub use unify::unify;
+pub(crate) use unify::unify;
 
 macro_rules! ty_app {
     ($ctor:pat, $param:pat) => {
