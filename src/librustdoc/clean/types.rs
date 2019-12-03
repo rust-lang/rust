@@ -1,5 +1,3 @@
-// ignore-tidy-filelength
-
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
@@ -88,7 +86,6 @@ pub struct Item {
 
 impl fmt::Debug for Item {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-
         let fake = MAX_DEF_ID.with(|m| m.borrow().get(&self.def_id.krate)
                                    .map(|id| self.def_id >= *id).unwrap_or(false));
         let def_id: &dyn fmt::Debug = if fake { &"**FAKE**" } else { &self.def_id };
@@ -112,6 +109,7 @@ impl Item {
     pub fn doc_value(&self) -> Option<&str> {
         self.attrs.doc_value()
     }
+
     /// Finds all `doc` attributes as NameValues and returns their corresponding values, joined
     /// with newlines.
     pub fn collapsed_doc_value(&self) -> Option<String> {
@@ -174,7 +172,6 @@ impl Item {
     pub fn is_keyword(&self) -> bool {
         self.type_() == ItemType::Keyword
     }
-
     pub fn is_stripped(&self) -> bool {
         match self.inner { StrippedItem(..) => true, _ => false }
     }
@@ -456,9 +453,7 @@ impl Attributes {
     /// Reads a `MetaItem` from within an attribute, looks for whether it is a
     /// `#[doc(include="file")]`, and returns the filename and contents of the file as loaded from
     /// its expansion.
-    pub fn extract_include(mi: &ast::MetaItem)
-        -> Option<(String, String)>
-    {
+    pub fn extract_include(mi: &ast::MetaItem) -> Option<(String, String)> {
         mi.meta_item_list().and_then(|list| {
             for meta in list {
                 if meta.check_name(sym::include) {
@@ -508,8 +503,7 @@ impl Attributes {
         false
     }
 
-    pub fn from_ast(diagnostic: &::errors::Handler,
-                    attrs: &[ast::Attribute]) -> Attributes {
+    pub fn from_ast(diagnostic: &::errors::Handler, attrs: &[ast::Attribute]) -> Attributes {
         let mut doc_strings = vec![];
         let mut sp = None;
         let mut cfg = Cfg::True;
@@ -520,7 +514,7 @@ impl Attributes {
         /// returns `attr` unchanged.
         pub fn with_doc_comment_markers_stripped<T>(
             attr: &Attribute,
-            f: impl FnOnce(&Attribute) -> T
+            f: impl FnOnce(&Attribute) -> T,
         ) -> T {
             match attr.kind {
                 AttrKind::Normal(_) => {
@@ -823,7 +817,6 @@ impl GenericParamDefKind {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct GenericParamDef {
     pub name: String,
-
     pub kind: GenericParamDefKind,
 }
 
