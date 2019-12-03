@@ -21,11 +21,23 @@ enum NonEmptyEnum5 { //~ `NonEmptyEnum5` defined here
     V1, V2, V3, V4, V5,
 }
 
-fn foo1(x: Foo) {
-    match x {} // ok
+macro_rules! match_empty {
+    ($e:expr) => {
+        match $e {}
+    };
+}
+macro_rules! match_false {
+    ($e:expr) => {
+        match $e {
+            _ if false => {}
+        }
+    };
 }
 
-fn foo2(x: Foo) {
+fn foo(x: Foo) {
+    match_empty!(x); // ok
+    match_false!(x); // Not detected as unreachable nor exhaustive.
+    //~^ ERROR non-exhaustive patterns: `_` not covered
     match x {
         _ => {}, // Not detected as unreachable, see #55123.
     }
@@ -42,18 +54,33 @@ fn main() {
         Some(_) => {}
     }
 
-    match 0u8 {}
+    match_empty!(0u8);
     //~^ ERROR type `u8` is non-empty
-    match NonEmptyStruct(true) {}
+    match_empty!(NonEmptyStruct(true));
     //~^ ERROR type `NonEmptyStruct` is non-empty
-    match (NonEmptyUnion1 { foo: () }) {}
+    match_empty!((NonEmptyUnion1 { foo: () }));
     //~^ ERROR type `NonEmptyUnion1` is non-empty
-    match (NonEmptyUnion2 { foo: () }) {}
+    match_empty!((NonEmptyUnion2 { foo: () }));
     //~^ ERROR type `NonEmptyUnion2` is non-empty
-    match NonEmptyEnum1::Foo(true) {}
+    match_empty!(NonEmptyEnum1::Foo(true));
     //~^ ERROR pattern `Foo` of type `NonEmptyEnum1` is not handled
-    match NonEmptyEnum2::Foo(true) {}
+    match_empty!(NonEmptyEnum2::Foo(true));
     //~^ ERROR multiple patterns of type `NonEmptyEnum2` are not handled
-    match NonEmptyEnum5::V1 {}
+    match_empty!(NonEmptyEnum5::V1);
     //~^ ERROR multiple patterns of type `NonEmptyEnum5` are not handled
+
+    match_false!(0u8);
+    //~^ ERROR `_` not covered
+    match_false!(NonEmptyStruct(true));
+    //~^ ERROR `_` not covered
+    match_false!((NonEmptyUnion1 { foo: () }));
+    //~^ ERROR `_` not covered
+    match_false!((NonEmptyUnion2 { foo: () }));
+    //~^ ERROR `_` not covered
+    match_false!(NonEmptyEnum1::Foo(true));
+    //~^ ERROR `_` not covered
+    match_false!(NonEmptyEnum2::Foo(true));
+    //~^ ERROR `_` not covered
+    match_false!(NonEmptyEnum5::V1);
+    //~^ ERROR `_` not covered
 }
