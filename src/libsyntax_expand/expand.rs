@@ -11,7 +11,7 @@ use rustc_parse::DirectoryOwnership;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
-use syntax::ast::{MacStmtStyle, StmtKind, ItemKind};
+use syntax::ast::{MacArgs, MacStmtStyle, StmtKind, ItemKind};
 use syntax::attr::{self, HasAttrs, is_builtin_attr};
 use syntax::source_map::respan;
 use syntax::feature_gate::{self, feature_err};
@@ -597,13 +597,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     self.gate_proc_macro_expansion_kind(span, fragment_kind);
-                    let tok_result = expander.expand(self.cx, span, mac.stream());
+                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let prev = self.cx.current_expansion.prior_type_ascription;
                     self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
-                    let tok_result = expander.expand(self.cx, span, mac.stream());
+                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
@@ -642,8 +642,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             => panic!("unexpected annotatable"),
                     })), DUMMY_SP).into();
                     let item = attr.unwrap_normal_item();
-                    let input = self.extract_proc_macro_attr_input(item.tokens, span);
-                    let tok_result = expander.expand(self.cx, span, input, item_tok);
+                    if let MacArgs::Eq(..) = item.args {
+                        self.cx.span_err(span, "key-value macro attributes are not supported");
+                    }
+                    let tok_result =
+                        expander.expand(self.cx, span, item.args.inner_tokens(), item_tok);
                     self.parse_ast_fragment(tok_result, fragment_kind, &item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
@@ -685,23 +688,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
             InvocationKind::DeriveContainer { .. } => unreachable!()
         }
-    }
-
-    fn extract_proc_macro_attr_input(&self, tokens: TokenStream, span: Span) -> TokenStream {
-        let mut trees = tokens.trees();
-        match trees.next() {
-            Some(TokenTree::Delimited(_, _, tts)) => {
-                if trees.next().is_none() {
-                    return tts.into()
-                }
-            }
-            Some(TokenTree::Token(..)) => {}
-            None => return TokenStream::default(),
-        }
-        self.cx.span_err(span, "custom attribute invocations must be \
-            of the form `#[foo]` or `#[foo(..)]`, the macro name must only be \
-            followed by a delimiter token");
-        TokenStream::default()
     }
 
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
@@ -1560,7 +1546,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = attr::Attribute {
                 kind: ast::AttrKind::Normal(
-                    AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
+                    AttrItem { path: meta.path, args: meta.kind.mac_args(meta.span) },
                 ),
                 span: at.span,
                 id: at.id,

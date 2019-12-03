@@ -2,8 +2,7 @@ use super::{SeqSep, Parser, TokenType, PathStyle};
 use syntax::attr;
 use syntax::ast;
 use syntax::util::comments;
-use syntax::token::{self, Nonterminal, DelimToken};
-use syntax::tokenstream::{TokenStream, TokenTree};
+use syntax::token::{self, Nonterminal};
 use syntax_pos::{Span, Symbol};
 use errors::PResult;
 
@@ -181,31 +180,8 @@ impl<'a> Parser<'a> {
             item
         } else {
             let path = self.parse_path(PathStyle::Mod)?;
-            let tokens = if self.check(&token::OpenDelim(DelimToken::Paren)) ||
-               self.check(&token::OpenDelim(DelimToken::Bracket)) ||
-               self.check(&token::OpenDelim(DelimToken::Brace)) {
-                   self.parse_token_tree().into()
-            } else if self.eat(&token::Eq) {
-                let eq = TokenTree::token(token::Eq, self.prev_span);
-                let mut is_interpolated_expr = false;
-                if let token::Interpolated(nt) = &self.token.kind {
-                    if let token::NtExpr(..) = **nt {
-                        is_interpolated_expr = true;
-                    }
-                }
-                let token_tree = if is_interpolated_expr {
-                    // We need to accept arbitrary interpolated expressions to continue
-                    // supporting things like `doc = $expr` that work on stable.
-                    // Non-literal interpolated expressions are rejected after expansion.
-                    self.parse_token_tree()
-                } else {
-                    self.parse_unsuffixed_lit()?.token_tree()
-                };
-                TokenStream::new(vec![eq.into(), token_tree.into()])
-            } else {
-                TokenStream::default()
-            };
-            ast::AttrItem { path, tokens }
+            let args = self.parse_attr_args()?;
+            ast::AttrItem { path, args }
         })
     }
 
@@ -244,7 +220,7 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
+    pub(super) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 
