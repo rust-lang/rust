@@ -1172,8 +1172,11 @@ $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
-            pub fn saturating_abs(self) -> Self {
+            pub const fn saturating_abs(self) -> Self {
                 if self.is_negative() {
                     self.saturating_neg()
                 } else {
@@ -1202,14 +1205,38 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_mul(self, rhs: Self) -> Self {
-                self.checked_mul(rhs).unwrap_or_else(|| {
+            #[rustc_const_unstable(feature = "const_int_saturating")]
+            #[cfg(not(bootstrap))]
+            pub const fn saturating_mul(self, rhs: Self) -> Self {
+                match self.checked_mul(rhs) {
+                    Some(r) => r,
+                    None => {
+                        if (self < 0) == (rhs < 0) {
+                            Self::max_value()
+                        } else {
+                            Self::min_value()
+                        }
+                    },
+                }
+            }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn saturating_mul(self, rhs: Self) -> Self {
+            match self.checked_mul(rhs) {
+                Some(r) => r,
+                None => {
                     if (self < 0) == (rhs < 0) {
                         Self::max_value()
                     } else {
                         Self::min_value()
                     }
-                })
+                },
             }
         }
 
@@ -3351,9 +3378,21 @@ assert_eq!((", stringify!($SelfT), "::MAX).saturating_mul(10), ", stringify!($Se
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn saturating_mul(self, rhs: Self) -> Self {
+            #[rustc_const_unstable(feature = "const_int_saturating")]
+            #[cfg(not(bootstrap))]
+            pub const fn saturating_mul(self, rhs: Self) -> Self {
                 self.checked_mul(rhs).unwrap_or(Self::max_value())
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn saturating_mul(self, rhs: Self) -> Self {
+            self.checked_mul(rhs).unwrap_or(Self::max_value())
         }
 
         doc_comment! {
