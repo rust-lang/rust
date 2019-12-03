@@ -176,7 +176,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 } else {
                     match pat_ty.kind {
                         ty::Never => true,
-                        ty::Adt(def, _) => {
+                        ty::Adt(def, _) if def.is_enum() => {
                             def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(pat_ty)
                         }
                         _ => false,
@@ -185,7 +185,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
                 if !scrutinee_is_visibly_uninhabited {
                     // We know the type is inhabited, so this must be wrong
                     let (def_span, missing_variants) = match pat_ty.kind {
-                        ty::Adt(def, _) => (
+                        ty::Adt(def, _) if def.is_enum() => (
                             self.tcx.hir().span_if_local(def.did),
                             def.variants.iter().map(|variant| variant.ident).collect(),
                         ),

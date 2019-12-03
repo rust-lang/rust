@@ -25,7 +25,7 @@ fn match_on_uninhab() {
     }
 
     match uninhab_union() {
-        //~^ ERROR non-exhaustive patterns: pattern `Foo` of type `Foo` is not handled
+        //~^ ERROR non-exhaustive patterns: type `Foo` is non-empty
     }
 }
 

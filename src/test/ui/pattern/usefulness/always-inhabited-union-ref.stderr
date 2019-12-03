@@ -6,19 +6,11 @@ LL |     match uninhab_ref() {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: pattern `Foo` of type `Foo` is not handled
+error[E0004]: non-exhaustive patterns: type `Foo` is non-empty
   --> $DIR/always-inhabited-union-ref.rs:27:11
    |
-LL |   pub union Foo {
-   |   -         --- variant not covered
-   |  _|
-   | |
-LL | |     foo: !,
-LL | | }
-   | |_- `Foo` defined here
-...
-LL |       match uninhab_union() {
-   |             ^^^^^^^^^^^^^^^
+LL |     match uninhab_union() {
+   |           ^^^^^^^^^^^^^^^
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 

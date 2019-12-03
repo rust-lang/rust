@@ -3,7 +3,7 @@
 #![deny(unreachable_patterns)]
 enum Foo {}
 
-struct NonEmptyStruct(bool); //~ `NonEmptyStruct` defined here
+struct NonEmptyStruct(bool);
 union NonEmptyUnion1 {
     foo: (),
 }
@@ -42,11 +42,11 @@ fn main() {
     match 0u8 {}
     //~^ ERROR type `u8` is non-empty
     match NonEmptyStruct(true) {}
-    //~^ ERROR pattern `NonEmptyStruct` of type `NonEmptyStruct` is not handled
+    //~^ ERROR type `NonEmptyStruct` is non-empty
     match (NonEmptyUnion1 { foo: () }) {}
-    //~^ ERROR pattern `NonEmptyUnion1` of type `NonEmptyUnion1` is not handled
+    //~^ ERROR type `NonEmptyUnion1` is non-empty
     match (NonEmptyUnion2 { foo: () }) {}
-    //~^ ERROR pattern `NonEmptyUnion2` of type `NonEmptyUnion2` is not handled
+    //~^ ERROR type `NonEmptyUnion2` is non-empty
     match NonEmptyEnum1::Foo(true) {}
     //~^ ERROR pattern `Foo` of type `NonEmptyEnum1` is not handled
     match NonEmptyEnum2::Foo(true) {}
