@@ -23,15 +23,11 @@ impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.
     /// e.g., a `StmtKind::Semi` parses to a `StmtKind::Expr`, leaving the trailing `;` unconsumed.
     pub fn parse_stmt(&mut self) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_(true))
-    }
-
-    fn parse_stmt_(&mut self, macro_legacy_warnings: bool) -> Option<Stmt> {
-        self.parse_stmt_without_recovery(macro_legacy_warnings).unwrap_or_else(|mut e| {
+        Ok(self.parse_stmt_without_recovery(true).unwrap_or_else(|mut e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
-        })
+        }))
     }
 
     fn parse_stmt_without_recovery(
