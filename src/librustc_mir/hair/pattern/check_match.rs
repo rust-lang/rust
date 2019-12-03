@@ -166,60 +166,10 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             // Fourth, check for unreachable arms.
             let matrix = check_arms(cx, &inlined_arms, source);
 
-            // Then, if the match has no arms, check whether the scrutinee
-            // is uninhabited.
-            let scrut_ty = self.tables.node_type(scrut.hir_id);
-            if inlined_arms.is_empty() {
-                let scrutinee_is_visibly_uninhabited = if self.tcx.features().exhaustive_patterns {
-                    let module = self.tcx.hir().get_module_parent(scrut.hir_id);
-                    self.tcx.is_ty_uninhabited_from(module, scrut_ty)
-                } else {
-                    match scrut_ty.kind {
-                        ty::Never => true,
-                        ty::Adt(def, _) if def.is_enum() => {
-                            def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(scrut_ty)
-                        }
-                        _ => false,
-                    }
-                };
-                if scrutinee_is_visibly_uninhabited {
-                    // If the type *is* uninhabited, it's vacuously exhaustive.
-                    // This early return is only needed here because in the absence of the
-                    // `exhaustive_patterns` feature, empty matches are not detected by `is_useful`
-                    // to exhaustively match uninhabited types.
-                    return;
-                } else {
-                    // We know the type is inhabited, so this must be wrong
-                    let (def_span, non_empty_enum) = match scrut_ty.kind {
-                        ty::Adt(def, _) if def.is_enum() => {
-                            (self.tcx.hir().span_if_local(def.did), !def.variants.is_empty())
-                        }
-                        _ => (None, false),
-                    };
-
-                    if non_empty_enum {
-                        // Continue to the normal code path to display missing variants.
-                    } else {
-                        let mut err = create_e0004(
-                            self.tcx.sess,
-                            scrut.span,
-                            format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
-                        );
-                        err.help(
-                            "ensure that all possible cases are being handled, \
-                             possibly by adding wildcards or more match arms",
-                        );
-                        if let Some(sp) = def_span {
-                            err.span_label(sp, format!("`{}` defined here", scrut_ty));
-                        }
-                        err.emit();
-                        return;
-                    }
-                }
-            }
-
             // Fifth, check if the match is exhaustive.
-            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id);
+            let scrut_ty = self.tables.node_type(scrut.hir_id);
+            let is_empty_match = inlined_arms.is_empty();
+            check_exhaustive(cx, scrut_ty, scrut.span, &matrix, scrut.hir_id, is_empty_match);
         })
     }
 
@@ -483,7 +433,60 @@ fn check_exhaustive<'p, 'tcx>(
     sp: Span,
     matrix: &Matrix<'p, 'tcx>,
     hir_id: HirId,
+    is_empty_match: bool,
 ) {
+    // If the match has no arms, check whether the scrutinee is uninhabited.
+    // Note: An empty match isn't the same as an empty matrix for diagnostics purposes, since an
+    // empty matrix can occur when there are arms, if those arms all have guards.
+    if is_empty_match {
+        let scrutinee_is_visibly_uninhabited = if cx.tcx.features().exhaustive_patterns {
+            let module = cx.tcx.hir().get_module_parent(hir_id);
+            cx.tcx.is_ty_uninhabited_from(module, scrut_ty)
+        } else {
+            match scrut_ty.kind {
+                ty::Never => true,
+                ty::Adt(def, _) if def.is_enum() => {
+                    def.variants.is_empty() && !cx.is_foreign_non_exhaustive_enum(scrut_ty)
+                }
+                _ => false,
+            }
+        };
+        if scrutinee_is_visibly_uninhabited {
+            // If the type *is* uninhabited, it's vacuously exhaustive.
+            // This early return is only needed here because in the absence of the
+            // `exhaustive_patterns` feature, empty matches are not detected by `is_useful`
+            // to exhaustively match uninhabited types.
+            return;
+        } else {
+            // We know the type is inhabited, so this must be wrong
+            let (def_span, non_empty_enum) = match scrut_ty.kind {
+                ty::Adt(def, _) if def.is_enum() => {
+                    (cx.tcx.hir().span_if_local(def.did), !def.variants.is_empty())
+                }
+                _ => (None, false),
+            };
+
+            if non_empty_enum {
+                // Continue to the normal code path to display missing variants.
+            } else {
+                let mut err = create_e0004(
+                    cx.tcx.sess,
+                    sp,
+                    format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
+                );
+                err.help(
+                    "ensure that all possible cases are being handled, \
+                     possibly by adding wildcards or more match arms",
+                );
+                if let Some(sp) = def_span {
+                    err.span_label(sp, format!("`{}` defined here", scrut_ty));
+                }
+                err.emit();
+                return;
+            }
+        }
+    }
+
     let witnesses = match check_not_useful(cx, scrut_ty, matrix, hir_id) {
         Ok(_) => return,
         Err(err) => err,
