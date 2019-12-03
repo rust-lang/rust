@@ -105,7 +105,7 @@ impl dyn TraitEngine<'tcx> {
     /// Creates a `TraitEngine` in a special 'delay generator witness' mode.
     /// This imposes additional requirements for the caller in order to avoid
     /// accepting unsound code, and should only be used by `FnCtxt`. All other
-    /// users of `TraitEngine` should use `TraitEngine::new`
+    /// users of `TraitEngine` should use `TraitEngine::new`.
     ///
     /// A `TraitEngine` returned by this constructor will not attempt
     /// to resolve any `GeneratorWitness` predicates involving auto traits,
