@@ -313,6 +313,8 @@ std::string to_string(const std::set<unsigned>& us) {
 bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLevel, std::map<Value*, bool> seen = {}) {
   if (seen.find(inst) != seen.end()) return seen[inst];
 
+  //return seen[inst] = true;
+
   //Inductively claim we aren't needed (and try to find contradiction)
   seen[inst] = false;
 
@@ -336,7 +338,26 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
 
     //The following are types we know we don't need to compute adjoints
   
-    if (inst->getType()->isPointerTy()) return false;
+    // A pointer is only needed in the reverse pass if its non-store uses are needed in the reverse pass
+    //   Moreover, when considering a load of, the value a need for loaded by the pointer means this value must be cessary for the reverse pass if the load itself is not necessary for the reverse
+    //      (in order to perform that load again)
+    if (inst->getType()->isPointerTy()) {
+        //continue;
+        bool unknown = true;
+        for (auto zu : inst->users()) {
+            if (isa<LoadInst>(zu) && is_value_needed_in_reverse(gutils, inst, topLevel, seen)) {
+                return seen[inst] = true;
+            }
+            if (auto si = dyn_cast<StoreInst>(zu)) {
+                if (si->getPointerOperand() == inst)
+                    continue;
+            }
+            unknown = true;
+        }
+        if (!unknown)
+          continue;
+          //return seen[inst] = false;
+    }
 
     if (gutils->isConstantInstruction(user)) continue;
 
@@ -346,7 +367,8 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
       }
     }
     if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<CastInst>(use) || isa<PHINode>(use) || isa<ReturnInst>(use) || isa<FPExtInst>(use) ||
-        isa<LoadInst>(use) || (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst)
+        (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst)
+        //isa<LoadInst>(use) || (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst) //TODO remove load?
         //|| isa<SwitchInst>(use) || isa<ExtractElement>(use) || isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
         //isa<ExtractValueInst>(use) || isa<AllocaInst>(use)
         /*|| isa<StoreInst>(use)*/){
@@ -420,6 +442,7 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
 
 
   if (todiff->empty()) {
+    llvm::errs() << "mod: " << *todiff->getParent() << "\n";
     llvm::errs() << *todiff << "\n";
   }
   assert(!todiff->empty());
@@ -512,8 +535,10 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
         I++;
         if (gutils->originalInstructions.find(inst) == gutils->originalInstructions.end()) continue;
     
-        if(auto op = dyn_cast_or_null<IntrinsicInst>(inst)) {
-          switch(op->getIntrinsicID()) {
+        if(auto op = dyn_cast_or_null<CallInst>(inst)) {
+          switch(auto IID = getIntrinsicForCallSite(op, &TLI)) {
+            case Intrinsic::not_intrinsic:
+                goto realcall;
             case Intrinsic::memcpy:
             case Intrinsic::memmove: {
                 if (gutils->isConstantInstruction(inst)) continue;
@@ -527,7 +552,7 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
                     args.push_back(op->getOperand(3));
 
                     Type *tys[] = {args[0]->getType(), args[1]->getType(), args[2]->getType()};
-                    auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), op->getIntrinsicID(), tys), args);
+                    auto cal = BuilderZ.CreateCall(Intrinsic::getDeclaration(gutils->newFunc->getParent(), IID, tys), args);
                     cal->setAttributes(op->getAttributes());
                     cal->setCallingConv(op->getCallingConv());
                     cal->setTailCallKind(op->getTailCallKind());
@@ -602,7 +627,9 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
               report_fatal_error("(augmented) unknown intrinsic");
           }
 
-        } else if(auto op = dyn_cast_or_null<CallInst>(inst)) {
+          continue;
+
+          realcall:
 
             Function *called = op->getCalledFunction();
 
@@ -2370,10 +2397,12 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif0 || dif1) setDiffe(inst, Constant::getNullValue(inst->getType()));
       if (dif0) addToDiffe(op->getOperand(0), dif0);
       if (dif1) addToDiffe(op->getOperand(1), dif1);
-    } else if(auto op = dyn_cast_or_null<IntrinsicInst>(inst)) {
+    } else if(auto op = dyn_cast<CallInst>(inst)) {
       Value* dif0 = nullptr;
       Value* dif1 = nullptr;
-      switch(op->getIntrinsicID()) {
+      switch(getIntrinsicForCallSite(op, &TLI)) {
+        case Intrinsic::not_intrinsic:
+            goto realcall;
         case Intrinsic::memcpy: {
             if (gutils->isConstantInstruction(inst)) continue;
                 if (Type* secretty = isIntPointerASecretFloat(op->getOperand(0)) ) {
@@ -2629,7 +2658,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif0 || dif1) setDiffe(inst, Constant::getNullValue(inst->getType()));
       if (dif0) addToDiffe(op->getOperand(0), dif0);
       if (dif1) addToDiffe(op->getOperand(1), dif1);
-    } else if(auto op = dyn_cast_or_null<CallInst>(inst)) {
+      continue;
+realcall:
       handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, global_AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map[op], getIndex, returnUsed);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
