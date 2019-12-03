@@ -1,5 +1,5 @@
 error: this looks like you are swapping elements of `foo` manually
-  --> $DIR/swap.rs:33:5
+  --> $DIR/swap.rs:35:5
    |
 LL | /     let temp = foo[0];
 LL | |     foo[0] = foo[1];
@@ -9,7 +9,7 @@ LL | |     foo[1] = temp;
    = note: `-D clippy::manual-swap` implied by `-D warnings`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> $DIR/swap.rs:42:5
+  --> $DIR/swap.rs:44:5
    |
 LL | /     let temp = foo[0];
 LL | |     foo[0] = foo[1];
@@ -17,7 +17,7 @@ LL | |     foo[1] = temp;
    | |_________________^ help: try: `foo.swap(0, 1)`
 
 error: this looks like you are swapping elements of `foo` manually
-  --> $DIR/swap.rs:51:5
+  --> $DIR/swap.rs:62:5
    |
 LL | /     let temp = foo[0];
 LL | |     foo[0] = foo[1];
@@ -25,7 +25,7 @@ LL | |     foo[1] = temp;
    | |_________________^ help: try: `foo.swap(0, 1)`
 
 error: this looks like you are swapping `a` and `b` manually
-  --> $DIR/swap.rs:71:7
+  --> $DIR/swap.rs:83:7
    |
 LL |       ; let t = a;
    |  _______^
@@ -36,7 +36,7 @@ LL | |     b = t;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are swapping `c.0` and `a` manually
-  --> $DIR/swap.rs:80:7
+  --> $DIR/swap.rs:92:7
    |
 LL |       ; let t = c.0;
    |  _______^
@@ -47,7 +47,7 @@ LL | |     a = t;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `a` and `b`
-  --> $DIR/swap.rs:68:5
+  --> $DIR/swap.rs:80:5
    |
 LL | /     a = b;
 LL | |     b = a;
@@ -57,7 +57,7 @@ LL | |     b = a;
    = note: or maybe you should use `std::mem::replace`?
 
 error: this looks like you are trying to swap `c.0` and `a`
-  --> $DIR/swap.rs:77:5
+  --> $DIR/swap.rs:89:5
    |
 LL | /     c.0 = a;
 LL | |     a = c.0;
