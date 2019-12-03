@@ -41,8 +41,6 @@ use self::FunctionRetTy::*;
 
 thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());
 
-const FN_OUTPUT_NAME: &'static str = "Output";
-
 #[derive(Clone, Debug)]
 pub struct Crate {
     pub name: String,
