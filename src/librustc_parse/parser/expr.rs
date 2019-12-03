@@ -922,7 +922,7 @@ impl<'a> Parser<'a> {
                 } else if self.eat_keyword(kw::Let) {
                     return self.parse_let_expr(attrs);
                 } else if is_span_rust_2018 && self.eat_keyword(kw::Await) {
-                    self.parse_incorrect_await_syntax(lo, self.prev_span)?
+                    return self.recover_incorrect_await_syntax(lo, self.prev_span, attrs);
                 } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
                     // Don't complain about bare semicolons after unclosed braces
                     // recovery in order to keep the error count down. Fixing the

@@ -4,7 +4,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{self, PResult, Applicability, DiagnosticBuilder, Handler, pluralize};
 use rustc_error_codes::*;
 use syntax::ast::{self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item};
-use syntax::ast::{ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
+use syntax::ast::{ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, Attribute};
 use syntax::token::{self, TokenKind, token_can_begin_expr};
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -970,21 +970,32 @@ impl<'a> Parser<'a> {
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
     /// `await? <expr>`, `await(<expr>)`, and `await { <expr> }`.
-    pub(super) fn parse_incorrect_await_syntax(
+    pub(super) fn recover_incorrect_await_syntax(
         &mut self,
         lo: Span,
         await_sp: Span,
-    ) -> PResult<'a, (Span, ExprKind)> {
-        if self.token == token::Not {
+        attrs: ThinVec<Attribute>,
+    ) -> PResult<'a, P<Expr>> {
+        let (hi, expr, is_question) = if self.token == token::Not {
             // Handle `await!(<expr>)`.
-            self.expect(&token::Not)?;
-            self.expect(&token::OpenDelim(token::Paren))?;
-            let expr = self.parse_expr()?;
-            self.expect(&token::CloseDelim(token::Paren))?;
-            let sp = self.error_on_incorrect_await(lo, self.prev_span, &expr, false);
-            return Ok((sp, ExprKind::Await(expr)))
-        }
+            self.recover_await_macro()?
+        } else {
+            self.recover_await_prefix(await_sp)?
+        };
+        let sp = self.error_on_incorrect_await(lo, hi, &expr, is_question);
+        let expr = self.mk_expr(lo.to(sp), ExprKind::Await(expr), attrs);
+        self.maybe_recover_from_bad_qpath(expr, true)
+    }
 
+    fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
+        self.expect(&token::Not)?;
+        self.expect(&token::OpenDelim(token::Paren))?;
+        let expr = self.parse_expr()?;
+        self.expect(&token::CloseDelim(token::Paren))?;
+        Ok((self.prev_span, expr, false))
+    }
+
+    fn recover_await_prefix(&mut self, await_sp: Span) -> PResult<'a, (Span, P<Expr>, bool)> {
         let is_question = self.eat(&token::Question); // Handle `await? <expr>`.
         let expr = if self.token == token::OpenDelim(token::Brace) {
             // Handle `await { <expr> }`.
@@ -1002,8 +1013,7 @@ impl<'a> Parser<'a> {
             err.span_label(await_sp, "while parsing this incorrect await expression");
             err
         })?;
-        let sp = self.error_on_incorrect_await(lo, expr.span, &expr, is_question);
-        Ok((sp, ExprKind::Await(expr)))
+        Ok((expr.span, expr, is_question))
     }
 
     fn error_on_incorrect_await(&self, lo: Span, hi: Span, expr: &Expr, is_question: bool) -> Span {
