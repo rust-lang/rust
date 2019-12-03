@@ -90,21 +90,9 @@ impl<'a> Parser<'a> {
             return Ok(Some(self.mk_stmt(lo.to(item.span), StmtKind::Item(item))));
         }
 
-        let unused_attrs = |attrs: &[Attribute], s: &mut Self| {
-            if !attrs.is_empty() {
-                if s.prev_token_kind == PrevTokenKind::DocComment {
-                    s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
-                } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
-                    s.span_err(
-                        s.token.span, "expected statement after outer attribute"
-                    );
-                }
-            }
-        };
-
         // Do not attempt to parse an expression if we're done here.
         if self.token == token::Semi {
-            unused_attrs(&attrs, self);
+            self.error_outer_attrs(&attrs);
             self.bump();
             let mut last_semi = lo;
             while self.token == token::Semi {
@@ -122,7 +110,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.token == token::CloseDelim(token::Brace) {
-            unused_attrs(&attrs, self);
+            self.error_outer_attrs(&attrs);
             return Ok(None);
         }
 
@@ -188,6 +176,18 @@ impl<'a> Parser<'a> {
             StmtKind::Expr(e)
         };
         Ok(Some(self.mk_stmt(lo.to(hi), kind)))
+    }
+
+    /// Error on outer attributes in this context.
+    /// Also error if the previous token was a doc comment.
+    fn error_outer_attrs(&self, attrs: &[Attribute]) {
+        if !attrs.is_empty() {
+            if self.prev_token_kind == PrevTokenKind::DocComment {
+                self.span_fatal_err(self.prev_span, Error::UselessDocComment).emit();
+            } else if attrs.iter().any(|a| a.style == AttrStyle::Outer) {
+                self.span_err(self.token.span, "expected statement after outer attribute");
+            }
+        }
     }
 
     /// Parses a local variable declaration.
