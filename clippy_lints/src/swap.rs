@@ -1,7 +1,7 @@
 use crate::utils::sugg::Sugg;
 use crate::utils::{
-    differing_macro_contexts, is_type_diagnostic_item, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty,
-    SpanlessEq,
+    differing_macro_contexts, is_type_diagnostic_item, match_type, paths, snippet_with_applicability,
+    span_lint_and_then, walk_ptrs_ty, SpanlessEq,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -105,8 +105,9 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                     }
                 }
 
-                let slice = check_for_slice(cx, lhs1, lhs2);
+                let mut applicability = Applicability::MachineApplicable;
 
+                let slice = check_for_slice(cx, lhs1, lhs2);
                 let (replace, what, sugg) = if let Slice::NotSwappable = slice {
                     return;
                 } else if let Slice::Swappable(slice, idx1, idx2) = slice {
@@ -117,8 +118,8 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                             format!(
                                 "{}.swap({}, {})",
                                 slice.maybe_par(),
-                                snippet(cx, idx1.span, ".."),
-                                snippet(cx, idx2.span, ".."),
+                                snippet_with_applicability(cx, idx1.span, "..", &mut applicability),
+                                snippet_with_applicability(cx, idx2.span, "..", &mut applicability),
                             ),
                         )
                     } else {
@@ -147,7 +148,7 @@ fn check_manual_swap(cx: &LateContext<'_, '_>, block: &Block) {
                                 span,
                                 "try",
                                 sugg,
-                                Applicability::Unspecified,
+                                applicability,
                             );
 
                             if replace {
