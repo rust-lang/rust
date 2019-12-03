@@ -167,12 +167,12 @@ impl<T> Canonicalized<T> {
     }
 }
 
-pub fn unify(ty1: Canonical<&Ty>, ty2: &Ty) -> Option<Substs> {
+pub fn unify(ty1: &Canonical<Ty>, ty2: &Canonical<Ty>) -> Option<Substs> {
     let mut table = InferenceTable::new();
     let vars =
         Substs::builder(ty1.num_vars).fill(std::iter::repeat_with(|| table.new_type_var())).build();
     let ty_with_vars = ty1.value.clone().subst_bound_vars(&vars);
-    if !table.unify(&ty_with_vars, ty2) {
+    if !table.unify(&ty_with_vars, &ty2.value) {
         return None;
     }
     Some(

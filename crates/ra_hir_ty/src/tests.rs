@@ -4820,6 +4820,53 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
     assert_eq!(t, "{unknown}");
 }
 
+#[test]
+fn bug_2467() {
+    assert_snapshot!(
+        infer(r#"
+struct S<T>(T);
+impl<T> S<T> {
+    fn foo(self) -> T;
+}
+fn test() {
+    // needs to nest multiple times for variable indices to get high enough
+    let a = S::foo(S(1));
+    let b = S::foo(S(a));
+    let c = S::foo(S(b));
+    let d: u32 = S::foo(S(c));
+}
+"#),
+        @r###"
+    [43; 47) 'self': S<T>
+    [67; 255) '{     ...c)); }': ()
+    [153; 154) 'a': u32
+    [157; 163) 'S::foo': fn foo<u32>(S<T>) -> T
+    [157; 169) 'S::foo(S(1))': u32
+    [164; 165) 'S': S<u32>(T) -> S<T>
+    [164; 168) 'S(1)': S<u32>
+    [166; 167) '1': u32
+    [179; 180) 'b': u32
+    [183; 189) 'S::foo': fn foo<u32>(S<T>) -> T
+    [183; 195) 'S::foo(S(a))': u32
+    [190; 191) 'S': S<u32>(T) -> S<T>
+    [190; 194) 'S(a)': S<u32>
+    [192; 193) 'a': u32
+    [205; 206) 'c': u32
+    [209; 215) 'S::foo': fn foo<u32>(S<T>) -> T
+    [209; 221) 'S::foo(S(b))': u32
+    [216; 217) 'S': S<u32>(T) -> S<T>
+    [216; 220) 'S(b)': S<u32>
+    [218; 219) 'b': u32
+    [231; 232) 'd': u32
+    [240; 246) 'S::foo': fn foo<u32>(S<T>) -> T
+    [240; 252) 'S::foo(S(c))': u32
+    [247; 248) 'S': S<u32>(T) -> S<T>
+    [247; 251) 'S(c)': S<u32>
+    [249; 250) 'c': u32
+    "###
+    );
+}
+
 fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
