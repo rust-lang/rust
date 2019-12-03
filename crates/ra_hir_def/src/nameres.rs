@@ -164,7 +164,7 @@ impl ModuleOrigin {
             ModuleOrigin::Root(None) => unreachable!(),
             ModuleOrigin::Inline(m) => InFile::new(m.file_id, Either::Right(m.to_node(db))),
             // FIXME: right now it's never constructed, so it's fine to omit
-            ModuleOrigin::Block(b) => unimplemented!(),
+            ModuleOrigin::Block(_b) => unimplemented!(),
         }
     }
 }
