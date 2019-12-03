@@ -1,67 +1,45 @@
 // ignore-tidy-filelength
 
-//! This module contains the "cleaned" pieces of the AST, and the functions
-//! that clean them.
-
-pub mod inline;
-pub mod cfg;
-mod simplify;
-mod auto_trait;
-mod blanket_impl;
-
-use rustc_index::vec::{IndexVec, Idx};
-use rustc_target::spec::abi::Abi;
-use rustc_typeck::hir_ty_to_ty;
-use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
-use rustc::middle::resolve_lifetime as rl;
-use rustc::middle::lang_items;
-use rustc::middle::stability;
-use rustc::mir::interpret::GlobalId;
-use rustc::hir;
-use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::hir::ptr::P;
-use rustc::ty::subst::{InternalSubsts, SubstsRef, GenericArgKind};
-use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
-use rustc::ty::fold::TypeFolder;
-use rustc::ty::layout::VariantIdx;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use syntax::ast::{self, Attribute, AttrStyle, AttrKind, Ident};
-use syntax::attr;
-use syntax::util::comments;
-use syntax::source_map::DUMMY_SP;
-use syntax_pos::symbol::{Symbol, kw, sym};
-use syntax_pos::hygiene::MacroKind;
-use syntax_pos::{self, Pos, FileName};
-
-use std::collections::hash_map::Entry;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
-use std::{mem, slice, vec};
+use std::{slice, vec};
 use std::num::NonZeroU32;
 use std::iter::FromIterator;
 use std::rc::Rc;
 use std::cell::RefCell;
 use std::sync::Arc;
-use std::u32;
 
-use crate::core::{self, DocContext, ImplTraitParam};
+use rustc::middle::lang_items;
+use rustc::middle::stability;
+use rustc::hir;
+use rustc::hir::def::Res;
+use rustc::hir::def_id::{CrateNum, DefId};
+use rustc::ty::layout::VariantIdx;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc_index::vec::IndexVec;
+use rustc_target::spec::abi::Abi;
+use syntax::ast::{self, Attribute, AttrStyle, AttrKind, Ident};
+use syntax::attr;
+use syntax::util::comments;
+use syntax::source_map::DUMMY_SP;
+use syntax_pos::hygiene::MacroKind;
+use syntax_pos::symbol::{Symbol, sym};
+use syntax_pos::{self, FileName};
+
+use crate::core::DocContext;
+use crate::clean::cfg::Cfg;
+use crate::clean::inline;
+use crate::clean::external_path;
+use crate::clean::types::Type::{QPath, ResolvedPath};
 use crate::doctree;
-use crate::html::render::{cache, ExternalLocation};
 use crate::html::item_type::ItemType;
+use crate::html::render::{cache, ExternalLocation};
 
-
-use self::cfg::Cfg;
-use self::auto_trait::AutoTraitFinder;
-use self::blanket_impl::BlanketImplFinder;
-
-pub use self::Type::*;
-pub use self::Mutability::*;
-pub use self::ItemEnum::*;
-pub use self::SelfTy::*;
-pub use self::FunctionRetTy::*;
-pub use self::Visibility::{Public, Inherited};
+use self::Type::*;
+use self::ItemEnum::*;
+use self::SelfTy::*;
+use self::FunctionRetTy::*;
 
 thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());
 
