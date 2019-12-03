@@ -832,7 +832,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         span: Span,
     ) -> AstFragment {
         let mut parser = self.cx.new_parser_from_tts(toks);
-        match parse_ast_fragment(&mut parser, kind, false) {
+        match parse_ast_fragment(&mut parser, kind) {
             Ok(fragment) => {
                 ensure_complete_parse(&mut parser, path, kind.name(), span);
                 fragment
@@ -851,7 +851,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 pub fn parse_ast_fragment<'a>(
     this: &mut Parser<'a>,
     kind: AstFragmentKind,
-    macro_legacy_warnings: bool,
 ) -> PResult<'a, AstFragment> {
     Ok(match kind {
         AstFragmentKind::Items => {
@@ -884,11 +883,9 @@ pub fn parse_ast_fragment<'a>(
         }
         AstFragmentKind::Stmts => {
             let mut stmts = SmallVec::new();
-            while this.token != token::Eof &&
-                    // won't make progress on a `}`
-                    this.token != token::CloseDelim(token::Brace)
-            {
-                if let Some(stmt) = this.parse_full_stmt(macro_legacy_warnings)? {
+            // Won't make progress on a `}`.
+            while this.token != token::Eof && this.token != token::CloseDelim(token::Brace) {
+                if let Some(stmt) = this.parse_full_stmt()? {
                     stmts.push(stmt);
                 }
             }
