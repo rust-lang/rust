@@ -217,6 +217,39 @@ mod tests {
     }
 
     #[test]
+    fn test_method_completion_only_fitting_impls() {
+        assert_debug_snapshot!(
+            do_ref_completion(
+                r"
+            struct A<T> {}
+            impl A<u32> {
+                fn the_method(&self) {}
+            }
+            impl A<i32> {
+                fn the_other_method(&self) {}
+            }
+            fn foo(a: A<u32>) {
+               a.<|>
+            }
+            ",
+            ),
+            @r###"
+        [
+            CompletionItem {
+                label: "the_method()",
+                source_range: [243; 243),
+                delete: [243; 243),
+                insert: "the_method()$0",
+                kind: Method,
+                lookup: "the_method",
+                detail: "fn the_method(&self)",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn test_trait_method_completion() {
         assert_debug_snapshot!(
             do_ref_completion(

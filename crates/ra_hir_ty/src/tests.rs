@@ -3433,7 +3433,20 @@ pub fn baz() -> usize { 31usize }
     assert_eq!("(i32, usize)", type_at_pos(&db, pos));
 }
 
-#[ignore]
+#[test]
+fn method_resolution_unify_impl_self_type() {
+    let t = type_at(
+        r#"
+//- /main.rs
+struct S<T>;
+impl S<u32> { fn foo(&self) -> u8 {} }
+impl S<i32> { fn foo(&self) -> i8 {} }
+fn test() { (S::<u32>.foo(), S::<i32>.foo())<|>; }
+"#,
+    );
+    assert_eq!(t, "(u8, i8)");
+}
+
 #[test]
 fn method_resolution_trait_before_autoref() {
     let t = type_at(
@@ -3449,7 +3462,6 @@ fn test() { S.foo()<|>; }
     assert_eq!(t, "u128");
 }
 
-#[ignore]
 #[test]
 fn method_resolution_by_value_before_autoref() {
     let t = type_at(
@@ -3489,6 +3501,21 @@ trait Trait { fn foo(self) -> u128; }
 struct S;
 impl S { fn foo(self) -> i8 { 0 } }
 impl Trait for S { fn foo(self) -> u128 { 0 } }
+fn test() { S.foo()<|>; }
+"#,
+    );
+    assert_eq!(t, "i8");
+}
+
+#[test]
+fn method_resolution_impl_ref_before_trait() {
+    let t = type_at(
+        r#"
+//- /main.rs
+trait Trait { fn foo(self) -> u128; }
+struct S;
+impl S { fn foo(&self) -> i8 { 0 } }
+impl Trait for &S { fn foo(self) -> u128 { 0 } }
 fn test() { S.foo()<|>; }
 "#,
     );
