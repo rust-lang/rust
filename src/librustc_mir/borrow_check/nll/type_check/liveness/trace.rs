@@ -7,7 +7,7 @@ use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
 use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyCache};
+use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
@@ -32,7 +32,7 @@ use std::rc::Rc;
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -71,7 +71,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     elements: &'me RegionValueElements,
 
     /// MIR we are analyzing.
-    body: ReadOnlyBodyCache<'me, 'tcx>,
+    body: ReadOnlyBodyAndCache<'me, 'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'me MoveData<'tcx>,

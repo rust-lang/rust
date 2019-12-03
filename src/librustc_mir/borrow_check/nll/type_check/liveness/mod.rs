@@ -7,7 +7,7 @@ use crate::borrow_check::nll::ToRegionVid;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
-use rustc::mir::{Body, Local, ReadOnlyBodyCache};
+use rustc::mir::{Body, Local, ReadOnlyBodyAndCache};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use std::rc::Rc;
@@ -28,7 +28,7 @@ mod trace;
 /// performed before
 pub(super) fn generate<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,

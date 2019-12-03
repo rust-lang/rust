@@ -312,7 +312,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
-    ) -> InterpResult<'tcx, mir::ReadOnlyBodyCache<'tcx, 'tcx>> {
+    ) -> InterpResult<'tcx, mir::ReadOnlyBodyAndCache<'tcx, 'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
         if did.is_local()

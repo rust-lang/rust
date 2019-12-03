@@ -1,7 +1,7 @@
 use crate::{build, shim};
 use rustc_index::vec::IndexVec;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{BodyCache, MirPhase, Promoted, ConstQualifs};
+use rustc::mir::{BodyAndCache, MirPhase, Promoted, ConstQualifs};
 use rustc::ty::{TyCtxt, InstanceDef, TypeFoldable};
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -97,7 +97,7 @@ fn mir_keys(tcx: TyCtxt<'_>, krate: CrateNum) -> &DefIdSet {
     tcx.arena.alloc(set)
 }
 
-fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
+fn mir_built(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
     let mir = build::mir_build(tcx, def_id);
     tcx.alloc_steal_mir(mir)
 }
@@ -144,12 +144,12 @@ pub trait MirPass<'tcx> {
         default_name::<Self>()
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyCache<'tcx>);
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>);
 }
 
 pub fn run_passes(
     tcx: TyCtxt<'tcx>,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     instance: InstanceDef<'tcx>,
     promoted: Option<Promoted>,
     mir_phase: MirPhase,
@@ -220,7 +220,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def_id: DefId) -> ConstQualifs {
     validator.qualifs_in_return_place().into()
 }
 
-fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
+fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyAndCache<'_>> {
     // Unsafety check uses the raw mir, so make sure it is run
     let _ = tcx.unsafety_check_result(def_id);
 
@@ -238,7 +238,7 @@ fn mir_const(tcx: TyCtxt<'_>, def_id: DefId) -> &Steal<BodyCache<'_>> {
 fn mir_validated(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-) -> (&'tcx Steal<BodyCache<'tcx>>, &'tcx Steal<IndexVec<Promoted, BodyCache<'tcx>>>) {
+) -> (&'tcx Steal<BodyAndCache<'tcx>>, &'tcx Steal<IndexVec<Promoted, BodyAndCache<'tcx>>>) {
     // Ensure that we compute the `mir_const_qualif` for constants at
     // this point, before we steal the mir-const result.
     let _ = tcx.mir_const_qualif(def_id);
@@ -257,7 +257,7 @@ fn mir_validated(
 
 fn run_optimization_passes<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     def_id: DefId,
     promoted: Option<Promoted>,
 ) {
@@ -319,7 +319,7 @@ fn run_optimization_passes<'tcx>(
     ]);
 }
 
-fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyCache<'_> {
+fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyAndCache<'_> {
     if tcx.is_constructor(def_id) {
         // There's no reason to run all of the MIR passes on constructors when
         // we can just output the MIR we want directly. This also saves const
@@ -339,7 +339,7 @@ fn optimized_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &BodyCache<'_> {
     tcx.arena.alloc(body)
 }
 
-fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyCache<'_>> {
+fn promoted_mir(tcx: TyCtxt<'_>, def_id: DefId) -> &IndexVec<Promoted, BodyAndCache<'_>> {
     if tcx.is_constructor(def_id) {
         return tcx.intern_promoted(IndexVec::new());
     }

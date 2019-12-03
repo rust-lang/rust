@@ -21,7 +21,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: mir::ReadOnlyBodyCache<'tcx, 'tcx>,
+    mir: mir::ReadOnlyBodyAndCache<'tcx, 'tcx>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
