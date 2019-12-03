@@ -1093,21 +1093,20 @@ impl<'a> Parser<'a> {
                     let (await_hi, e_kind) = self.parse_incorrect_await_syntax(lo, self.prev_span)?;
                     hi = await_hi;
                     ex = e_kind;
+                } else if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
+                    // Don't complain about bare semicolons after unclosed braces
+                    // recovery in order to keep the error count down. Fixing the
+                    // delimiters will possibly also fix the bare semicolon found in
+                    // expression context. For example, silence the following error:
+                    //
+                    //     error: expected expression, found `;`
+                    //      --> file.rs:2:13
+                    //       |
+                    //     2 |     foo(bar(;
+                    //       |             ^ expected expression
+                    self.bump();
+                    return Ok(self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()));
                 } else {
-                    if !self.unclosed_delims.is_empty() && self.check(&token::Semi) {
-                        // Don't complain about bare semicolons after unclosed braces
-                        // recovery in order to keep the error count down. Fixing the
-                        // delimiters will possibly also fix the bare semicolon found in
-                        // expression context. For example, silence the following error:
-                        //
-                        //     error: expected expression, found `;`
-                        //      --> file.rs:2:13
-                        //       |
-                        //     2 |     foo(bar(;
-                        //       |             ^ expected expression
-                        self.bump();
-                        return Ok(self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()));
-                    }
                     parse_lit!()
                 }
             }
