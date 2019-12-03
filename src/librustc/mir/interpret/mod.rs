@@ -90,6 +90,13 @@ macro_rules! throw_exhaust {
     ($($tt:tt)*) => { return Err(err_exhaust!($($tt)*).into()) };
 }
 
+#[macro_export]
+macro_rules! throw_machine_stop {
+    ($($tt:tt)*) => {
+        return Err($crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*)).into())
+    };
+}
+
 mod error;
 mod value;
 mod allocation;
