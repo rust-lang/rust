@@ -155,53 +155,13 @@ impl<'a> Parser<'a> {
         };
         let last_type_ascription_set = self.last_type_ascription.is_some();
 
-        match (self.expr_is_complete(&lhs), AssocOp::from_token(&self.token)) {
-            (true, None) => {
-                self.last_type_ascription = None;
-                // Semi-statement forms are odd. See https://github.com/rust-lang/rust/issues/29071
-                return Ok(lhs);
-            }
-            (false, _) => {} // continue parsing the expression
-            // An exhaustive check is done in the following block, but these are checked first
-            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
-            // want to keep their span info to improve diagnostics in these cases in a later stage.
-            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
-            (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475)
-            (true, Some(AssocOp::Add)) // `{ 42 } + 42
-            // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
-            // `if x { a } else { b } && if y { c } else { d }`
-            if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
-                self.last_type_ascription = None;
-                // These cases are ambiguous and can't be identified in the parser alone
-                let sp = self.sess.source_map().start_point(self.token.span);
-                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
-                return Ok(lhs);
-            }
-            (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => {
-                self.last_type_ascription = None;
-                return Ok(lhs);
-            }
-            (true, Some(_)) => {
-                // We've found an expression that would be parsed as a statement, but the next
-                // token implies this should be parsed as an expression.
-                // For example: `if let Some(x) = x { x } else { 0 } / 2`
-                let mut err = self.struct_span_err(self.token.span, &format!(
-                    "expected expression, found `{}`",
-                    pprust::token_to_string(&self.token),
-                ));
-                err.span_label(self.token.span, "expected expression");
-                self.sess.expr_parentheses_needed(
-                    &mut err,
-                    lhs.span,
-                    Some(pprust::expr_to_string(&lhs),
-                ));
-                err.emit();
-            }
+        if !self.should_continue_as_assoc_expr(&lhs) {
+            self.last_type_ascription = None;
+            return Ok(lhs);
         }
-        self.expected_tokens.push(TokenType::Operator);
-        while let Some(op) = AssocOp::from_token(&self.token) {
 
+        self.expected_tokens.push(TokenType::Operator);
+        while let Some(op) = self.check_assoc_op() {
             // Adjust the span for interpolated LHS to point to the `$lhs` token and not to what
             // it refers to. Interpolated identifiers are unwrapped early and never show up here
             // as `PrevTokenKind::Interpolated` so if LHS is a single identifier we always process
@@ -336,6 +296,56 @@ impl<'a> Parser<'a> {
             self.last_type_ascription = None;
         }
         Ok(lhs)
+    }
+
+    fn should_continue_as_assoc_expr(&mut self, lhs: &Expr) -> bool {
+        match (self.expr_is_complete(lhs), self.check_assoc_op()) {
+            // Semi-statement forms are odd:
+            // See https://github.com/rust-lang/rust/issues/29071
+            (true, None) => false,
+            (false, _) => true, // Continue parsing the expression.
+            // An exhaustive check is done in the following block, but these are checked first
+            // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
+            // want to keep their span info to improve diagnostics in these cases in a later stage.
+            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
+            (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
+            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475)
+            (true, Some(AssocOp::Add)) // `{ 42 } + 42
+            // If the next token is a keyword, then the tokens above *are* unambiguously incorrect:
+            // `if x { a } else { b } && if y { c } else { d }`
+            if !self.look_ahead(1, |t| t.is_reserved_ident()) => {
+                // These cases are ambiguous and can't be identified in the parser alone.
+                let sp = self.sess.source_map().start_point(self.token.span);
+                self.sess.ambiguous_block_expr_parse.borrow_mut().insert(sp, lhs.span);
+                false
+            }
+            (true, Some(ref op)) if !op.can_continue_expr_unambiguously() => false,
+            (true, Some(_)) => {
+                self.error_found_expr_would_be_stmt(lhs);
+                true
+            }
+        }
+    }
+
+    /// We've found an expression that would be parsed as a statement,
+    /// but the next token implies this should be parsed as an expression.
+    /// For example: `if let Some(x) = x { x } else { 0 } / 2`.
+    fn error_found_expr_would_be_stmt(&self, lhs: &Expr) {
+        let mut err = self.struct_span_err(self.token.span, &format!(
+            "expected expression, found `{}`",
+            pprust::token_to_string(&self.token),
+        ));
+        err.span_label(self.token.span, "expected expression");
+        self.sess.expr_parentheses_needed(&mut err, lhs.span, Some(pprust::expr_to_string(&lhs)));
+        err.emit();
+    }
+
+    /// Possibly translate the current token to an associative operator.
+    /// The method does not advance the current token.
+    ///
+    /// Also performs recovery for `and` / `or` which are mistaken for `&&` and `||` respectively.
+    fn check_assoc_op(&self) -> Option<AssocOp> {
+        AssocOp::from_token(&self.token)
     }
 
     /// Checks if this expression is a successfully parsed statement.
