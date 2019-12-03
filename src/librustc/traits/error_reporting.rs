@@ -521,7 +521,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ) {
             command.evaluate(self.tcx, trait_ref, &flags[..])
         } else {
-            OnUnimplementedNote::empty()
+            OnUnimplementedNote::default()
         }
     }
 
@@ -697,6 +697,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         fallback_has_occurred: bool,
         points_at_arg: bool,
     ) {
+        let tcx = self.tcx;
         let span = obligation.cause.span;
 
         let mut err = match *error {
@@ -732,6 +733,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             message,
                             label,
                             note,
+                            enclosing_scope,
                         } = self.on_unimplemented_note(trait_ref, obligation);
                         let have_alt_message = message.is_some() || label.is_some();
                         let is_try = self.tcx.sess.source_map().span_to_snippet(span)
@@ -797,6 +799,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         if let Some(ref s) = note {
                             // If it has a custom `#[rustc_on_unimplemented]` note, let's display it
                             err.note(s.as_str());
+                        }
+                        if let Some(ref s) = enclosing_scope {
+                            let enclosing_scope_span = tcx.def_span(
+                                tcx.hir()
+                                    .opt_local_def_id(obligation.cause.body_id)
+                                    .unwrap_or_else(|| {
+                                        tcx.hir().body_owner_def_id(hir::BodyId {
+                                            hir_id: obligation.cause.body_id,
+                                        })
+                                    }),
+                            );
+
+                            err.span_label(enclosing_scope_span, s.as_str());
                         }
 
                         self.suggest_borrow_on_unsized_slice(&obligation.cause.code, &mut err);

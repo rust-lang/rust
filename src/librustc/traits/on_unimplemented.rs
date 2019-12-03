@@ -22,18 +22,15 @@ pub struct OnUnimplementedDirective {
     pub message: Option<OnUnimplementedFormatString>,
     pub label: Option<OnUnimplementedFormatString>,
     pub note: Option<OnUnimplementedFormatString>,
+    pub enclosing_scope: Option<OnUnimplementedFormatString>,
 }
 
+#[derive(Default)]
 pub struct OnUnimplementedNote {
     pub message: Option<String>,
     pub label: Option<String>,
     pub note: Option<String>,
-}
-
-impl OnUnimplementedNote {
-    pub fn empty() -> Self {
-        OnUnimplementedNote { message: None, label: None, note: None }
-    }
+    pub enclosing_scope: Option<String>,
 }
 
 fn parse_error(
@@ -85,24 +82,33 @@ impl<'tcx> OnUnimplementedDirective {
         let mut message = None;
         let mut label = None;
         let mut note = None;
+        let mut enclosing_scope = None;
         let mut subcommands = vec![];
+
+        let parse_value = |value_str| {
+                OnUnimplementedFormatString::try_parse(tcx, trait_def_id, value_str, span)
+                    .map(Some)
+            };
+
         for item in item_iter {
             if item.check_name(sym::message) && message.is_none() {
                 if let Some(message_) = item.value_str() {
-                    message = Some(OnUnimplementedFormatString::try_parse(
-                        tcx, trait_def_id, message_, span)?);
+                    message = parse_value(message_)?;
                     continue;
                 }
             } else if item.check_name(sym::label) && label.is_none() {
                 if let Some(label_) = item.value_str() {
-                    label = Some(OnUnimplementedFormatString::try_parse(
-                        tcx, trait_def_id, label_, span)?);
+                    label = parse_value(label_)?;
                     continue;
                 }
             } else if item.check_name(sym::note) && note.is_none() {
                 if let Some(note_) = item.value_str() {
-                    note = Some(OnUnimplementedFormatString::try_parse(
-                        tcx, trait_def_id, note_, span)?);
+                    note = parse_value(note_)?;
+                    continue;
+                }
+            } else if item.check_name(sym::enclosing_scope) && enclosing_scope.is_none() {
+                if let Some(enclosing_scope_) = item.value_str() {
+                    enclosing_scope = parse_value(enclosing_scope_)?;
                     continue;
                 }
             } else if item.check_name(sym::on) && is_root &&
@@ -130,7 +136,14 @@ impl<'tcx> OnUnimplementedDirective {
         if errored {
             Err(ErrorReported)
         } else {
-            Ok(OnUnimplementedDirective { condition, message, label, subcommands, note })
+            Ok(OnUnimplementedDirective {
+                condition,
+                subcommands,
+                message,
+                label,
+                note,
+                enclosing_scope
+            })
         }
     }
 
@@ -157,6 +170,7 @@ impl<'tcx> OnUnimplementedDirective {
                 label: Some(OnUnimplementedFormatString::try_parse(
                     tcx, trait_def_id, value, attr.span)?),
                 note: None,
+                enclosing_scope: None,
             }))
         } else {
             return Err(ErrorReported);
@@ -174,6 +188,7 @@ impl<'tcx> OnUnimplementedDirective {
         let mut message = None;
         let mut label = None;
         let mut note = None;
+        let mut enclosing_scope = None;
         info!("evaluate({:?}, trait_ref={:?}, options={:?})", self, trait_ref, options);
 
         for command in self.subcommands.iter().chain(Some(self)).rev() {
@@ -202,6 +217,10 @@ impl<'tcx> OnUnimplementedDirective {
             if let Some(ref note_) = command.note {
                 note = Some(note_.clone());
             }
+
+            if let Some(ref enclosing_scope_) = command.enclosing_scope {
+                enclosing_scope = Some(enclosing_scope_.clone());
+            }
         }
 
         let options: FxHashMap<Symbol, String> = options.into_iter()
@@ -211,6 +230,7 @@ impl<'tcx> OnUnimplementedDirective {
             label: label.map(|l| l.format(tcx, trait_ref, &options)),
             message: message.map(|m| m.format(tcx, trait_ref, &options)),
             note: note.map(|n| n.format(tcx, trait_ref, &options)),
+            enclosing_scope: enclosing_scope.map(|e_s| e_s.format(tcx, trait_ref, &options)),
         }
     }
 }

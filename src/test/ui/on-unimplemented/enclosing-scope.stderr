@@ -1,0 +1,66 @@
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/enclosing-scope.rs:14:11
+   |
+LL |   fn f<T: Trait>(x: T) {}
+   |      -    ----- required by this bound in `f`
+...
+LL |       let x = || {
+   |  _____________-
+LL | |         f(Foo{});
+   | |           ^^^^^ the trait `Trait` is not implemented for `Foo`
+LL | |         let y = || {
+LL | |             f(Foo{});
+LL | |         };
+LL | |     };
+   | |_____- in this scope
+
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/enclosing-scope.rs:16:15
+   |
+LL |   fn f<T: Trait>(x: T) {}
+   |      -    ----- required by this bound in `f`
+...
+LL |           let y = || {
+   |  _________________-
+LL | |             f(Foo{});
+   | |               ^^^^^ the trait `Trait` is not implemented for `Foo`
+LL | |         };
+   | |_________- in this scope
+
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/enclosing-scope.rs:22:15
+   |
+LL |   fn f<T: Trait>(x: T) {}
+   |      -    ----- required by this bound in `f`
+LL | 
+LL | / fn main() {
+LL | |     let x = || {
+LL | |         f(Foo{});
+LL | |         let y = || {
+...  |
+LL | |             f(Foo{});
+   | |               ^^^^^ the trait `Trait` is not implemented for `Foo`
+...  |
+LL | |     f(Foo{});
+LL | | }
+   | |_- in this scope
+
+error[E0277]: the trait bound `Foo: Trait` is not satisfied
+  --> $DIR/enclosing-scope.rs:26:7
+   |
+LL |   fn f<T: Trait>(x: T) {}
+   |      -    ----- required by this bound in `f`
+LL | 
+LL | / fn main() {
+LL | |     let x = || {
+LL | |         f(Foo{});
+LL | |         let y = || {
+...  |
+LL | |     f(Foo{});
+   | |       ^^^^^ the trait `Trait` is not implemented for `Foo`
+LL | | }
+   | |_- in this scope
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

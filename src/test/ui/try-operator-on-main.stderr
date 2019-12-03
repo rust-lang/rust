@@ -1,8 +1,15 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/try-operator-on-main.rs:9:5
    |
-LL |     std::fs::File::open("foo")?;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+LL | / fn main() {
+LL | |     // error for a `Try` type on a non-`Try` fn
+LL | |     std::fs::File::open("foo")?;
+   | |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+LL | |
+...  |
+LL | |     try_trait_generic::<()>();
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::from_error`

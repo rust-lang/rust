@@ -10,8 +10,13 @@ LL |     x?;
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/try-on-option.rs:13:5
    |
-LL |     x?;
-   |     ^^ cannot use the `?` operator in a function that returns `u32`
+LL | / fn bar() -> u32 {
+LL | |     let x: Option<u32> = None;
+LL | |     x?;
+   | |     ^^ cannot use the `?` operator in a function that returns `u32`
+LL | |     22
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `u32`
    = note: required by `std::ops::Try::from_error`
