@@ -659,10 +659,23 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_add(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -683,10 +696,23 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_sub(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -707,10 +733,23 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_mul(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -732,13 +771,30 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 || (self == Self::min_value() && rhs == -1) {
                     None
                 } else {
                     // SAFETY: div by zero and by INT_MIN have been checked above
                     Some(unsafe { intrinsics::unchecked_div(self, rhs) })
                 }
+            }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            if rhs == 0 || (self == Self::min_value() && rhs == -1) {
+                None
+            } else {
+                // SAFETY: div by zero and by INT_MIN have been checked above
+                Some(unsafe { intrinsics::unchecked_div(self, rhs) })
             }
         }
 
@@ -843,10 +899,21 @@ $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
-            pub fn checked_neg(self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_neg(self) -> Option<Self> {
+            let (a, b) = self.overflowing_neg();
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -866,10 +933,24 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            let (a, b) = self.overflowing_shl(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -889,10 +970,23 @@ $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            let (a, b) = self.overflowing_shr(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -912,12 +1006,26 @@ $EndFeature, "
 ```"),
             #[stable(feature = "no_panic_abs", since = "1.13.0")]
             #[inline]
-            pub fn checked_abs(self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_abs(self) -> Option<Self> {
                 if self.is_negative() {
                     self.checked_neg()
                 } else {
                     Some(self)
                 }
+            }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "no_panic_abs", since = "1.13.0")]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_abs(self) -> Option<Self> {
+            if self.is_negative() {
+                self.checked_neg()
+            } else {
+                Some(self)
             }
         }
 
@@ -1035,8 +1143,11 @@ $EndFeature, "
 ```"),
 
             #[unstable(feature = "saturating_neg", issue = "59983")]
+            #[rustc_const_unstable(feature = "const_saturating_int_methods")]
+            #[must_use = "this returns the result of the operation, \
+                          without modifying the original"]
             #[inline]
-            pub fn saturating_neg(self) -> Self {
+            pub const fn saturating_neg(self) -> Self {
                 intrinsics::saturating_sub(0, self)
             }
         }
@@ -2782,10 +2893,23 @@ assert_eq!((", stringify!($SelfT), "::max_value() - 2).checked_add(3), None);", 
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_add(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_add(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_add(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_add(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -2804,10 +2928,23 @@ assert_eq!(0", stringify!($SelfT), ".checked_sub(1), None);", $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_sub(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_sub(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_sub(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -2826,10 +2963,23 @@ assert_eq!(", stringify!($SelfT), "::max_value().checked_mul(2), None);", $EndFe
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
                 let (a, b) = self.overflowing_mul(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_mul(self, rhs: Self) -> Option<Self> {
+            let (a, b) = self.overflowing_mul(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -2848,13 +2998,30 @@ assert_eq!(1", stringify!($SelfT), ".checked_div(0), None);", $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_div(self, rhs: Self) -> Option<Self> {
                 match rhs {
                     0 => None,
                     // SAFETY: div by zero has been checked above and unsigned types have no other
                     // failure modes for division
                     rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
                 }
+            }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_div(self, rhs: Self) -> Option<Self> {
+            match rhs {
+                0 => None,
+                // SAFETY: div by zero has been checked above and unsigned types have no other
+                // failure modes for division
+                rhs => Some(unsafe { intrinsics::unchecked_div(self, rhs) }),
             }
         }
 
@@ -2900,7 +3067,9 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_rem(self, rhs: Self) -> Option<Self> {
                 if rhs == 0 {
                     None
                 } else {
@@ -2908,6 +3077,22 @@ assert_eq!(5", stringify!($SelfT), ".checked_rem(0), None);", $EndFeature, "
                     // failure modes for division
                     Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
                 }
+            }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_rem(self, rhs: Self) -> Option<Self> {
+            if rhs == 0 {
+                None
+            } else {
+                // SAFETY: div by zero has been checked above and unsigned types have no other
+                // failure modes for division
+                Some(unsafe { intrinsics::unchecked_rem(self, rhs) })
             }
         }
 
@@ -2952,10 +3137,21 @@ assert_eq!(1", stringify!($SelfT), ".checked_neg(), None);", $EndFeature, "
 ```"),
             #[stable(feature = "wrapping", since = "1.7.0")]
             #[inline]
-            pub fn checked_neg(self) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_neg(self) -> Option<Self> {
                 let (a, b) = self.overflowing_neg();
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_neg(self) -> Option<Self> {
+            let (a, b) = self.overflowing_neg();
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -2974,10 +3170,23 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shl(129), None);", $EndFeature, 
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_shl(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shl(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_shl(self, rhs: u32) -> Option<Self> {
+            let (a, b) = self.overflowing_shl(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -2996,10 +3205,23 @@ assert_eq!(0x10", stringify!($SelfT), ".checked_shr(129), None);", $EndFeature, 
             #[must_use = "this returns the result of the operation, \
                           without modifying the original"]
             #[inline]
-            pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            #[rustc_const_unstable(feature = "const_int_checked")]
+            #[cfg(not(bootstrap))]
+            pub const fn checked_shr(self, rhs: u32) -> Option<Self> {
                 let (a, b) = self.overflowing_shr(rhs);
                 if b {None} else {Some(a)}
             }
+        }
+
+        /// No docs for bootstrap.
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline]
+        #[cfg(bootstrap)]
+        pub fn checked_shr(self, rhs: u32) -> Option<Self> {
+            let (a, b) = self.overflowing_shr(rhs);
+            if b {None} else {Some(a)}
         }
 
         doc_comment! {
@@ -3518,7 +3740,7 @@ $EndFeature, "
         #[stable(feature = "wrapping", since = "1.7.0")]
         #[rustc_const_stable(feature = "const_wrapping_math", since = "1.32.0")]
         #[must_use = "this returns the result of the operation, \
-                          without modifying the original"]
+                      without modifying the original"]
         #[inline]
         pub const fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
             let (a, b) = intrinsics::mul_with_overflow(self as $ActualT, rhs as $ActualT);
@@ -3808,7 +4030,7 @@ Basic usage:
 ```"),
         #[stable(feature = "rust1", since = "1.0.0")]
         #[must_use = "this returns the result of the operation, \
-                          without modifying the original"]
+                      without modifying the original"]
         #[inline]
         #[rustc_inherit_overflow_checks]
         pub fn pow(self, mut exp: u32) -> Self {
