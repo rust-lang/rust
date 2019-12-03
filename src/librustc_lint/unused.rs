@@ -357,8 +357,7 @@ impl UnusedParens {
                 if !Self::is_expr_parens_necessary(inner, followed_by_block) &&
                     value.attrs.is_empty() &&
                     !MultiSpan::from(value.span).primary_span()
-                        .map(|span| span.from_expansion())
-                        .unwrap_or(false)
+                        .map_or(false, |span| span.from_expansion())
                 {
                     let expr_text = if let Ok(snippet) = cx.sess().source_map()
                         .span_to_snippet(value.span) {
