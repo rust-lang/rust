@@ -1,11 +1,10 @@
 use crate::base::ExtCtxt;
 
-use syntax::ast::{self, Ident, Expr, BlockCheckMode, UnOp, PatKind};
+use syntax::ast::{self, AttrVec, Ident, Expr, BlockCheckMode, UnOp, PatKind};
 use syntax::attr;
 use syntax::source_map::{respan, Spanned};
 use syntax::ptr::P;
 use syntax::symbol::{kw, sym, Symbol};
-use syntax::ThinVec;
 
 use syntax_pos::{Pos, Span};
 
@@ -81,7 +80,7 @@ impl<'a> ExtCtxt<'a> {
                 id: ast::DUMMY_NODE_ID,
                 kind,
                 span,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
             })
         }
     }
@@ -190,7 +189,7 @@ impl<'a> ExtCtxt<'a> {
             init: Some(ex),
             id: ast::DUMMY_NODE_ID,
             span: sp,
-            attrs: ThinVec::new(),
+            attrs: AttrVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -207,7 +206,7 @@ impl<'a> ExtCtxt<'a> {
             init: None,
             id: ast::DUMMY_NODE_ID,
             span,
-            attrs: ThinVec::new(),
+            attrs: AttrVec::new(),
         });
         ast::Stmt {
             id: ast::DUMMY_NODE_ID,
@@ -245,7 +244,7 @@ impl<'a> ExtCtxt<'a> {
             id: ast::DUMMY_NODE_ID,
             kind,
             span,
-            attrs: ThinVec::new(),
+            attrs: AttrVec::new(),
         })
     }
 
@@ -304,7 +303,7 @@ impl<'a> ExtCtxt<'a> {
             expr: e,
             span,
             is_shorthand: false,
-            attrs: ThinVec::new(),
+            attrs: AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
             is_placeholder: false,
         }
@@ -549,7 +548,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn param(&self, span: Span, ident: ast::Ident, ty: P<ast::Ty>) -> ast::Param {
         let arg_pat = self.pat_ident(span, ident);
         ast::Param {
-            attrs: ThinVec::default(),
+            attrs: AttrVec::default(),
             id: ast::DUMMY_NODE_ID,
             pat: arg_pat,
             span,

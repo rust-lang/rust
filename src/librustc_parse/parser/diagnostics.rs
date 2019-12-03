@@ -4,11 +4,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{self, PResult, Applicability, DiagnosticBuilder, Handler, pluralize};
 use rustc_error_codes::*;
 use syntax::ast::{self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item};
-use syntax::ast::{ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, Attribute};
+use syntax::ast::{ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind, AttrVec};
 use syntax::token::{self, TokenKind, token_can_begin_expr};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::ThinVec;
 use syntax::util::parser::AssocOp;
 use syntax::struct_span_err;
 use syntax_pos::symbol::kw;
@@ -32,7 +31,7 @@ pub(super) fn dummy_arg(ident: Ident) -> Param {
         id: ast::DUMMY_NODE_ID
     };
     Param {
-        attrs: ThinVec::default(),
+        attrs: AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
         pat,
         span: ident.span,
@@ -164,7 +163,7 @@ impl RecoverQPath for Expr {
         Self {
             span: path.span,
             kind: ExprKind::Path(qself, path),
-            attrs: ThinVec::new(),
+            attrs: AttrVec::new(),
             id: ast::DUMMY_NODE_ID,
         }
     }
@@ -551,7 +550,7 @@ impl<'a> Parser<'a> {
         );
 
         let mk_err_expr = |this: &Self, span| {
-            Ok(Some(this.mk_expr(span, ExprKind::Err, ThinVec::new())))
+            Ok(Some(this.mk_expr(span, ExprKind::Err, AttrVec::new())))
         };
 
         match lhs.kind {
@@ -974,7 +973,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         await_sp: Span,
-        attrs: ThinVec<Attribute>,
+        attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         let (hi, expr, is_question) = if self.token == token::Not {
             // Handle `await!(<expr>)`.
@@ -1005,7 +1004,7 @@ impl<'a> Parser<'a> {
                 None,
                 self.token.span,
                 BlockCheckMode::Default,
-                ThinVec::new(),
+                AttrVec::new(),
             )
         } else {
             self.parse_expr()
@@ -1126,7 +1125,7 @@ impl<'a> Parser<'a> {
                 err.emit();
                 // Recover from parse error, callers expect the closing delim to be consumed.
                 self.consume_block(delim, ConsumeClosingDelim::Yes);
-                self.mk_expr(lo.to(self.prev_span), ExprKind::Err, ThinVec::new())
+                self.mk_expr(lo.to(self.prev_span), ExprKind::Err, AttrVec::new())
             }
         }
     }

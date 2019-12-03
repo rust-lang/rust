@@ -2,8 +2,6 @@ use crate::deriving::path_std;
 use crate::deriving::generic::*;
 use crate::deriving::generic::ty::*;
 
-use rustc_data_structures::thin_vec::ThinVec;
-
 use syntax::ast::{self, Ident};
 use syntax::ast::{Expr, MetaItem};
 use syntax_expand::base::{Annotatable, ExtCtxt};
@@ -127,7 +125,7 @@ fn stmt_let_undescore(cx: &mut ExtCtxt<'_>, sp: Span, expr: P<ast::Expr>) -> ast
         init: Some(expr),
         id: ast::DUMMY_NODE_ID,
         span: sp,
-        attrs: ThinVec::new(),
+        attrs: ast::AttrVec::new(),
     });
     ast::Stmt {
         id: ast::DUMMY_NODE_ID,

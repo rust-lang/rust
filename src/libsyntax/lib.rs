@@ -24,7 +24,6 @@
 pub use errors;
 use rustc_data_structures::sync::Lock;
 use rustc_index::bit_set::GrowableBitSet;
-pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
 

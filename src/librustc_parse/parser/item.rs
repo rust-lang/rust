@@ -5,15 +5,14 @@ use crate::maybe_whole;
 
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 use rustc_error_codes::*;
-use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
-use syntax::ast::{AssocItem, AssocItemKind, ItemKind, UseTree, UseTreeKind};
+use syntax::ast::{self, DUMMY_NODE_ID, Ident, AttrVec, Attribute, AttrKind, AttrStyle, AnonConst};
+use syntax::ast::{AssocItem, AssocItemKind, Item, ItemKind, UseTree, UseTreeKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
 use syntax::ast::{Visibility, VisibilityKind, Mutability, FnHeader, ForeignItem, ForeignItemKind};
 use syntax::ast::{Ty, TyKind, Generics, TraitRef, EnumDef, Variant, VariantData, StructField};
 use syntax::ast::{Mac, MacArgs, MacDelimiter, Block, BindingMode, FnDecl, FnSig, SelfKind, Param};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::ThinVec;
 use syntax::token;
 use syntax::tokenstream::{DelimSpan, TokenTree, TokenStream};
 use syntax::struct_span_err;
@@ -2095,7 +2094,7 @@ impl<'a> Parser<'a> {
         };
 
         let eself = source_map::respan(eself_lo.to(eself_hi), eself);
-        Ok(Some(Param::from_self(ThinVec::default(), eself, eself_ident)))
+        Ok(Some(Param::from_self(AttrVec::default(), eself, eself_ident)))
     }
 
     fn is_named_param(&self) -> bool {

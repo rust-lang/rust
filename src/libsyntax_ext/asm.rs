@@ -3,7 +3,6 @@
 use State::*;
 
 use errors::{DiagnosticBuilder, PResult};
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_parse::parser::Parser;
 use syntax_expand::base::*;
 use syntax_pos::Span;
@@ -63,7 +62,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt<'_>,
         id: ast::DUMMY_NODE_ID,
         kind: ast::ExprKind::InlineAsm(P(inline_asm)),
         span: cx.with_def_site_ctxt(sp),
-        attrs: ThinVec::new(),
+        attrs: ast::AttrVec::new(),
     }))
 }
 

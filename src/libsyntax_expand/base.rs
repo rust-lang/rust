@@ -9,7 +9,6 @@ use syntax::mut_visit::{self, MutVisitor};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Ident, Symbol};
-use syntax::ThinVec;
 use syntax::token;
 use syntax::tokenstream::{self, TokenStream};
 use syntax::visit::Visitor;
@@ -552,7 +551,7 @@ impl DummyResult {
             id: ast::DUMMY_NODE_ID,
             kind: if is_error { ast::ExprKind::Err } else { ast::ExprKind::Tup(Vec::new()) },
             span: sp,
-            attrs: ThinVec::new(),
+            attrs: ast::AttrVec::new(),
         })
     }
 

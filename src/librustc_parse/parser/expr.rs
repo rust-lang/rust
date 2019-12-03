@@ -4,11 +4,10 @@ use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_errors::{PResult, Applicability};
-use syntax::ast::{self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode};
-use syntax::ast::{Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind};
-use syntax::ast::{FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit};
+use syntax::ast::{self, DUMMY_NODE_ID, AttrVec, AttrStyle, Ident, CaptureBy, Field, Lit};
+use syntax::ast::{BlockCheckMode, Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm};
+use syntax::ast::{Ty, TyKind, FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst};
 use syntax::token::{self, Token, TokenKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -37,14 +36,14 @@ macro_rules! maybe_whole_expr {
                     let path = path.clone();
                     $p.bump();
                     return Ok($p.mk_expr(
-                        $p.token.span, ExprKind::Path(None, path), ThinVec::new()
+                        $p.token.span, ExprKind::Path(None, path), AttrVec::new()
                     ));
                 }
                 token::NtBlock(block) => {
                     let block = block.clone();
                     $p.bump();
                     return Ok($p.mk_expr(
-                        $p.token.span, ExprKind::Block(block, None), ThinVec::new()
+                        $p.token.span, ExprKind::Block(block, None), AttrVec::new()
                     ));
                 }
                 // N.B., `NtIdent(ident)` is normalized to `Ident` in `fn bump`.
@@ -57,16 +56,16 @@ macro_rules! maybe_whole_expr {
 #[derive(Debug)]
 pub(super) enum LhsExpr {
     NotYetParsed,
-    AttributesParsed(ThinVec<Attribute>),
+    AttributesParsed(AttrVec),
     AlreadyParsed(P<Expr>),
 }
 
-impl From<Option<ThinVec<Attribute>>> for LhsExpr {
+impl From<Option<AttrVec>> for LhsExpr {
     /// Converts `Some(attrs)` into `LhsExpr::AttributesParsed(attrs)`
     /// and `None` into `LhsExpr::NotYetParsed`.
     ///
     /// This conversion does not allocate.
-    fn from(o: Option<ThinVec<Attribute>>) -> Self {
+    fn from(o: Option<AttrVec>) -> Self {
         if let Some(attrs) = o {
             LhsExpr::AttributesParsed(attrs)
         } else {
@@ -103,7 +102,7 @@ impl<'a> Parser<'a> {
                     err.emit();
                     let sp = self.token.span;
                     self.bump();
-                    Ok(self.mk_expr(sp, ExprKind::Err, ThinVec::new()))
+                    Ok(self.mk_expr(sp, ExprKind::Err, AttrVec::new()))
                 }
                 _ => Err(err),
             },
@@ -122,7 +121,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_expr_res(
         &mut self,
         r: Restrictions,
-        already_parsed_attrs: Option<ThinVec<Attribute>>
+        already_parsed_attrs: Option<AttrVec>
     ) -> PResult<'a, P<Expr>> {
         self.with_res(r, |this| this.parse_assoc_expr(already_parsed_attrs))
     }
@@ -134,7 +133,7 @@ impl<'a> Parser<'a> {
     #[inline]
     fn parse_assoc_expr(
         &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>,
+        already_parsed_attrs: Option<AttrVec>,
     ) -> PResult<'a, P<Expr>> {
         self.parse_assoc_expr_with(0, already_parsed_attrs.into())
     }
@@ -237,7 +236,7 @@ impl<'a> Parser<'a> {
                 };
 
                 let r = self.mk_range(Some(lhs), rhs, limits)?;
-                lhs = self.mk_expr(lhs_span.to(rhs_span), r, ThinVec::new());
+                lhs = self.mk_expr(lhs_span.to(rhs_span), r, AttrVec::new());
                 break
             }
 
@@ -271,9 +270,9 @@ impl<'a> Parser<'a> {
                 AssocOp::Greater | AssocOp::GreaterEqual => {
                     let ast_op = op.to_ast_binop().unwrap();
                     let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
-                    self.mk_expr(span, binary, ThinVec::new())
+                    self.mk_expr(span, binary, AttrVec::new())
                 }
-                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs), ThinVec::new()),
+                AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs), AttrVec::new()),
                 AssocOp::AssignOp(k) => {
                     let aop = match k {
                         token::Plus =>    BinOpKind::Add,
@@ -288,7 +287,7 @@ impl<'a> Parser<'a> {
                         token::Shr =>     BinOpKind::Shr,
                     };
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
-                    self.mk_expr(span, aopexpr, ThinVec::new())
+                    self.mk_expr(span, aopexpr, AttrVec::new())
                 }
                 AssocOp::As | AssocOp::Colon | AssocOp::DotDot | AssocOp::DotDotEq => {
                     self.bug("AssocOp should have been handled by special case")
@@ -398,7 +397,7 @@ impl<'a> Parser<'a> {
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
     fn parse_prefix_range_expr(
         &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>
+        already_parsed_attrs: Option<AttrVec>
     ) -> PResult<'a, P<Expr>> {
         // Check for deprecated `...` syntax.
         if self.token == token::DotDotDot {
@@ -435,10 +434,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a prefix-unary-operator expr.
-    fn parse_prefix_expr(
-        &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>
-    ) -> PResult<'a, P<Expr>> {
+    fn parse_prefix_expr(&mut self, already_parsed_attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
         let lo = self.token.span;
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
@@ -549,7 +545,7 @@ impl<'a> Parser<'a> {
                            expr_kind: fn(P<Expr>, P<Ty>) -> ExprKind)
                            -> PResult<'a, P<Expr>> {
         let mk_expr = |this: &mut Self, rhs: P<Ty>| {
-            this.mk_expr(lhs_span.to(rhs.span), expr_kind(lhs, rhs), ThinVec::new())
+            this.mk_expr(lhs_span.to(rhs.span), expr_kind(lhs, rhs), AttrVec::new())
         };
 
         // Save the state of the parser before parsing type normally, in case there is a
@@ -650,7 +646,7 @@ impl<'a> Parser<'a> {
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
     fn parse_dot_or_call_expr(
         &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>,
+        already_parsed_attrs: Option<AttrVec>,
     ) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
 
@@ -663,7 +659,7 @@ impl<'a> Parser<'a> {
         &mut self,
         e0: P<Expr>,
         lo: Span,
-        mut attrs: ThinVec<Attribute>,
+        mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         // Stitch the list of outer attributes onto the return value.
         // A little bit ugly, but the best way given the current code
@@ -692,7 +688,7 @@ impl<'a> Parser<'a> {
             // expr?
             while self.eat(&token::Question) {
                 let hi = self.prev_span;
-                e = self.mk_expr(lo.to(hi), ExprKind::Try(e), ThinVec::new());
+                e = self.mk_expr(lo.to(hi), ExprKind::Try(e), AttrVec::new());
             }
 
             // expr.f
@@ -705,7 +701,7 @@ impl<'a> Parser<'a> {
                         let span = self.token.span;
                         self.bump();
                         let field = ExprKind::Field(e, Ident::new(symbol, span));
-                        e = self.mk_expr(lo.to(span), field, ThinVec::new());
+                        e = self.mk_expr(lo.to(span), field, AttrVec::new());
 
                         self.expect_no_suffix(span, "a tuple index", suffix);
                     }
@@ -754,7 +750,7 @@ impl<'a> Parser<'a> {
                     let seq = self.parse_paren_expr_seq().map(|es| {
                         let nd = self.mk_call(e, es);
                         let hi = self.prev_span;
-                        self.mk_expr(lo.to(hi), nd, ThinVec::new())
+                        self.mk_expr(lo.to(hi), nd, AttrVec::new())
                     });
                     e = self.recover_seq_parse_error(token::Paren, lo, seq);
                 }
@@ -767,7 +763,7 @@ impl<'a> Parser<'a> {
                     hi = self.token.span;
                     self.expect(&token::CloseDelim(token::Bracket))?;
                     let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo.to(hi), index, ThinVec::new())
+                    e = self.mk_expr(lo.to(hi), index, AttrVec::new())
                 }
                 _ => return Ok(e)
             }
@@ -791,7 +787,7 @@ impl<'a> Parser<'a> {
                 args.insert(0, self_arg);
 
                 let span = lo.to(self.prev_span);
-                self.mk_expr(span, ExprKind::MethodCall(segment, args), ThinVec::new())
+                self.mk_expr(span, ExprKind::MethodCall(segment, args), AttrVec::new())
             }
             _ => {
                 // Field access `expr.f`
@@ -801,7 +797,7 @@ impl<'a> Parser<'a> {
                 }
 
                 let span = lo.to(self.prev_span);
-                self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), ThinVec::new())
+                self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), AttrVec::new())
             }
         })
     }
@@ -820,7 +816,7 @@ impl<'a> Parser<'a> {
         //
         // Therefore, prevent sub-parser from parsing
         // attributes by giving them a empty "already-parsed" list.
-        let attrs = ThinVec::new();
+        let attrs = AttrVec::new();
 
         // Note: when adding new syntax here, don't forget to adjust `TokenKind::can_begin_expr()`.
         let lo = self.token.span;
@@ -909,7 +905,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_lit_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_lit_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         match self.parse_opt_lit() {
             Some(literal) => {
@@ -920,7 +916,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_tuple_parens_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_tuple_parens_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         let mut first = true;
         let parse_leading_attr_expr = |p: &mut Self| {
@@ -947,10 +943,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_array_or_repeat_expr(
-        &mut self,
-        mut attrs: ThinVec<Attribute>,
-    ) -> PResult<'a, P<Expr>> {
+    fn parse_array_or_repeat_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         self.bump(); // `[`
 
@@ -990,7 +983,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_path_start_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_path_start_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
         let path = self.parse_path(PathStyle::Expr)?;
 
@@ -1017,11 +1010,7 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_qpath(expr, true)
     }
 
-    fn parse_labeled_expr(
-        &mut self,
-        label: Label,
-        attrs: ThinVec<Attribute>,
-    ) -> PResult<'a, P<Expr>> {
+    fn parse_labeled_expr(&mut self, label: Label, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = label.ident.span;
         self.expect(&token::Colon)?;
         if self.eat_keyword(kw::While) {
@@ -1046,7 +1035,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
-    fn recover_do_catch(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn recover_do_catch(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
 
         self.bump(); // `do`
@@ -1076,7 +1065,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `"return" expr?`.
-    fn parse_return_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_return_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let kind = ExprKind::Ret(self.parse_expr_opt()?);
         let expr = self.mk_expr(lo.to(self.prev_span), kind, attrs);
@@ -1084,7 +1073,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `"('label ":")? break expr?`.
-    fn parse_break_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_break_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let label = self.eat_label();
         let kind = if self.token != token::OpenDelim(token::Brace)
@@ -1099,7 +1088,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `"yield" expr?`.
-    fn parse_yield_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_yield_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let kind = ExprKind::Yield(self.parse_expr_opt()?);
         let span = lo.to(self.prev_span);
@@ -1307,12 +1296,12 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let literal = self.parse_lit()?;
         let hi = self.prev_span;
-        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), ThinVec::new());
+        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), AttrVec::new());
 
         if minus_present {
             let minus_hi = self.prev_span;
             let unary = self.mk_unary(UnOp::Neg, expr);
-            Ok(self.mk_expr(minus_lo.to(minus_hi), unary, ThinVec::new()))
+            Ok(self.mk_expr(minus_lo.to(minus_hi), unary, AttrVec::new()))
         } else {
             Ok(expr)
         }
@@ -1324,7 +1313,7 @@ impl<'a> Parser<'a> {
         opt_label: Option<Label>,
         lo: Span,
         blk_mode: BlockCheckMode,
-        outer_attrs: ThinVec<Attribute>,
+        outer_attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         if let Some(label) = opt_label {
             self.sess.gated_spans.gate(sym::label_break_value, label.ident.span);
@@ -1340,7 +1329,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a closure expression (e.g., `move |args| expr`).
-    fn parse_closure_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_closure_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
 
         let movability = if self.eat_keyword(kw::Static) {
@@ -1370,7 +1359,7 @@ impl<'a> Parser<'a> {
             _ => {
                 // If an explicit return type is given, require a block to appear (RFC 968).
                 let body_lo = self.token.span;
-                self.parse_block_expr(None, body_lo, BlockCheckMode::Default, ThinVec::new())?
+                self.parse_block_expr(None, body_lo, BlockCheckMode::Default, AttrVec::new())?
             }
         };
 
@@ -1440,7 +1429,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `if` expression (`if` token already eaten).
-    fn parse_if_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_if_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let cond = self.parse_cond_expr()?;
 
@@ -1486,7 +1475,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `let $pat = $expr` pseudo-expression.
     /// The `let` token has already been eaten.
-    fn parse_let_expr(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_let_expr(&mut self, attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.prev_span;
         let pat = self.parse_top_pat(GateOr::No)?;
         self.expect(&token::Eq)?;
@@ -1502,10 +1491,10 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         if self.eat_keyword(kw::If) {
-            return self.parse_if_expr(ThinVec::new());
+            return self.parse_if_expr(AttrVec::new());
         } else {
             let blk = self.parse_block()?;
-            return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), ThinVec::new()));
+            return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()));
         }
     }
 
@@ -1514,7 +1503,7 @@ impl<'a> Parser<'a> {
         &mut self,
         opt_label: Option<Label>,
         span_lo: Span,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
 
@@ -1556,7 +1545,7 @@ impl<'a> Parser<'a> {
         &mut self,
         opt_label: Option<Label>,
         span_lo: Span,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         let cond = self.parse_cond_expr()?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
@@ -1570,7 +1559,7 @@ impl<'a> Parser<'a> {
         &mut self,
         opt_label: Option<Label>,
         span_lo: Span,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
@@ -1589,7 +1578,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
-    fn parse_match_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_match_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_span;
         let lo = self.prev_span;
         let discriminant = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
@@ -1701,11 +1690,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a `try {...}` expression (`try` token already eaten).
-    fn parse_try_block(
-        &mut self,
-        span_lo: Span,
-        mut attrs: ThinVec<Attribute>
-    ) -> PResult<'a, P<Expr>> {
+    fn parse_try_block(&mut self, span_lo: Span, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
         if self.eat_keyword(kw::Catch) {
@@ -1737,7 +1722,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `async move? {...}` expression.
-    fn parse_async_block(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
+    fn parse_async_block(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let span_lo = self.token.span;
         self.expect_keyword(kw::Async)?;
         let capture_clause = self.parse_capture_clause();
@@ -1764,7 +1749,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         path: &ast::Path,
-        attrs: &ThinVec<Attribute>,
+        attrs: &AttrVec,
     ) -> Option<PResult<'a, P<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
         let certainly_not_a_block = || self.look_ahead(1, |t| t.is_ident()) && (
@@ -1805,7 +1790,7 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         pth: ast::Path,
-        mut attrs: ThinVec<Attribute>
+        mut attrs: AttrVec
     ) -> PResult<'a, P<Expr>> {
         let struct_sp = lo.to(self.prev_span);
         self.bump();
@@ -1851,9 +1836,9 @@ impl<'a> Parser<'a> {
                     recovery_field = Some(ast::Field {
                         ident: Ident::new(name, self.token.span),
                         span: self.token.span,
-                        expr: self.mk_expr(self.token.span, ExprKind::Err, ThinVec::new()),
+                        expr: self.mk_expr(self.token.span, ExprKind::Err, AttrVec::new()),
                         is_shorthand: false,
-                        attrs: ThinVec::new(),
+                        attrs: AttrVec::new(),
                         id: DUMMY_NODE_ID,
                         is_placeholder: false,
                     });
@@ -1932,7 +1917,7 @@ impl<'a> Parser<'a> {
 
             // Mimic `x: x` for the `x` field shorthand.
             let path = ast::Path::from_ident(fieldname);
-            let expr = self.mk_expr(fieldname.span, ExprKind::Path(None, path), ThinVec::new());
+            let expr = self.mk_expr(fieldname.span, ExprKind::Path(None, path), AttrVec::new());
             (fieldname, expr, true)
         };
         Ok(ast::Field {
@@ -2009,16 +1994,16 @@ impl<'a> Parser<'a> {
 
     fn mk_await_expr(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         let span = lo.to(self.prev_span);
-        let await_expr = self.mk_expr(span, ExprKind::Await(self_arg), ThinVec::new());
+        let await_expr = self.mk_expr(span, ExprKind::Await(self_arg), AttrVec::new());
         self.recover_from_await_method_call();
         Ok(await_expr)
     }
 
-    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: ThinVec<Attribute>) -> P<Expr> {
+    crate fn mk_expr(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID })
     }
 
     pub(super) fn mk_expr_err(&self, span: Span) -> P<Expr> {
-        self.mk_expr(span, ExprKind::Err, ThinVec::new())
+        self.mk_expr(span, ExprKind::Err, AttrVec::new())
     }
 }

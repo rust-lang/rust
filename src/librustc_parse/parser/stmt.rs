@@ -7,11 +7,10 @@ use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
 use rustc_errors::{PResult, Applicability};
-use syntax::ThinVec;
 use syntax::ptr::P;
 use syntax::ast;
 use syntax::ast::{DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, Expr, ExprKind};
-use syntax::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac};
+use syntax::ast::{AttrVec, Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac};
 use syntax::util::classify;
 use syntax::token;
 use syntax_pos::source_map::{respan, Span};
@@ -67,10 +66,10 @@ impl<'a> Parser<'a> {
             }
 
             let expr = if self.check(&token::OpenDelim(token::Brace)) {
-                self.parse_struct_expr(lo, path, ThinVec::new())?
+                self.parse_struct_expr(lo, path, AttrVec::new())?
             } else {
                 let hi = self.prev_span;
-                self.mk_expr(lo.to(hi), ExprKind::Path(None, path), ThinVec::new())
+                self.mk_expr(lo.to(hi), ExprKind::Path(None, path), AttrVec::new())
             };
 
             let expr = self.with_res(Restrictions::STMT_EXPR, |this| {
@@ -104,7 +103,7 @@ impl<'a> Parser<'a> {
             let kind = StmtKind::Semi(self.mk_expr(
                 lo.to(last_semi),
                 ExprKind::Tup(Vec::new()),
-                ThinVec::new()
+                AttrVec::new()
             ));
             return Ok(Some(self.mk_stmt(lo.to(last_semi), kind)));
         }
@@ -124,7 +123,7 @@ impl<'a> Parser<'a> {
     fn parse_stmt_mac(
         &mut self,
         lo: Span,
-        attrs: ThinVec<Attribute>,
+        attrs: AttrVec,
         path: ast::Path,
         legacy_warnings: bool,
     ) -> PResult<'a, Option<Stmt>> {
@@ -169,7 +168,7 @@ impl<'a> Parser<'a> {
             StmtKind::Mac(P((mac, style, attrs)))
         } else {
             // Since none of the above applied, this is an expression statement macro.
-            let e = self.mk_expr(lo.to(hi), ExprKind::Mac(mac), ThinVec::new());
+            let e = self.mk_expr(lo.to(hi), ExprKind::Mac(mac), AttrVec::new());
             let e = self.maybe_recover_from_bad_qpath(e, true)?;
             let e = self.parse_dot_or_call_expr_with(e, lo, attrs)?;
             let e = self.parse_assoc_expr_with(0, LhsExpr::AlreadyParsed(e))?;
@@ -191,7 +190,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a local variable declaration.
-    fn parse_local(&mut self, attrs: ThinVec<Attribute>) -> PResult<'a, P<Local>> {
+    fn parse_local(&mut self, attrs: AttrVec) -> PResult<'a, P<Local>> {
         let lo = self.prev_span;
         let pat = self.parse_top_pat(GateOr::Yes)?;
 

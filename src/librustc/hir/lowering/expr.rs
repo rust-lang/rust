@@ -1318,8 +1318,7 @@ impl LoweringContext<'_> {
         &mut self,
         span: Span,
         expr: P<hir::Expr>,
-        attrs: ThinVec<Attribute>
-    ) -> hir::Expr {
+        attrs: AttrVec) -> hir::Expr {
         self.expr(span, hir::ExprKind::DropTemps(expr), attrs)
     }
 
@@ -1333,7 +1332,7 @@ impl LoweringContext<'_> {
         self.expr(span, hir::ExprKind::Match(arg, arms, source), ThinVec::new())
     }
 
-    fn expr_break(&mut self, span: Span, attrs: ThinVec<Attribute>) -> P<hir::Expr> {
+    fn expr_break(&mut self, span: Span, attrs: AttrVec) -> P<hir::Expr> {
         let expr_break = hir::ExprKind::Break(self.lower_loop_destination(None), None);
         P(self.expr(span, expr_break, attrs))
     }
@@ -1404,7 +1403,7 @@ impl LoweringContext<'_> {
         span: Span,
         components: &[Symbol],
         params: Option<P<hir::GenericArgs>>,
-        attrs: ThinVec<Attribute>,
+        attrs: AttrVec,
     ) -> hir::Expr {
         let path = self.std_path(span, components, params, true);
         self.expr(
@@ -1423,7 +1422,7 @@ impl LoweringContext<'_> {
         span: Span,
         ident: Ident,
         binding: hir::HirId,
-        attrs: ThinVec<Attribute>,
+        attrs: AttrVec,
     ) -> hir::Expr {
         let expr_path = hir::ExprKind::Path(hir::QPath::Resolved(
             None,
@@ -1459,16 +1458,11 @@ impl LoweringContext<'_> {
         self.expr_block(P(blk), ThinVec::new())
     }
 
-    pub(super) fn expr_block(&mut self, b: P<hir::Block>, attrs: ThinVec<Attribute>) -> hir::Expr {
+    pub(super) fn expr_block(&mut self, b: P<hir::Block>, attrs: AttrVec) -> hir::Expr {
         self.expr(b.span, hir::ExprKind::Block(b, None), attrs)
     }
 
-    pub(super) fn expr(
-        &mut self,
-        span: Span,
-        kind: hir::ExprKind,
-        attrs: ThinVec<Attribute>
-    ) -> hir::Expr {
+    pub(super) fn expr(&mut self, span: Span, kind: hir::ExprKind, attrs: AttrVec) -> hir::Expr {
         hir::Expr { hir_id: self.next_id(), kind, span, attrs }
     }
 

@@ -1,5 +1,3 @@
-use rustc_data_structures::thin_vec::ThinVec;
-
 use syntax::ast;
 use syntax_expand::base::{self, *};
 use syntax::token::{self, Token};
@@ -49,7 +47,7 @@ pub fn expand_concat_idents<'cx>(cx: &'cx mut ExtCtxt<'_>,
                 id: ast::DUMMY_NODE_ID,
                 kind: ast::ExprKind::Path(None, ast::Path::from_ident(self.ident)),
                 span: self.ident.span,
-                attrs: ThinVec::new(),
+                attrs: ast::AttrVec::new(),
             }))
         }
 

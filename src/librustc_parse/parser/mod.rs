@@ -15,9 +15,8 @@ use crate::{Directory, DirectoryOwnership};
 use crate::lexer::UnmatchedBrace;
 
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder, FatalError};
-use rustc_data_structures::thin_vec::ThinVec;
-use syntax::ast::{self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident, StrLit};
-use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety};
+use syntax::ast::{self, DUMMY_NODE_ID, AttrVec, AttrStyle, CrateSugar, Extern, Ident, Unsafety};
+use syntax::ast::{StrLit, IsAsync, MacArgs, MacDelimiter, Mutability, Visibility, VisibilityKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token::{self, Token, TokenKind, DelimToken};
@@ -1054,8 +1053,8 @@ impl<'a> Parser<'a> {
 
     fn parse_or_use_outer_attributes(
         &mut self,
-        already_parsed_attrs: Option<ThinVec<Attribute>>,
-    ) -> PResult<'a, ThinVec<Attribute>> {
+        already_parsed_attrs: Option<AttrVec>,
+    ) -> PResult<'a, AttrVec> {
         if let Some(attrs) = already_parsed_attrs {
             Ok(attrs)
         } else {

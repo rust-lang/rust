@@ -11,7 +11,6 @@ use crate::ast::*;
 use crate::source_map::{Spanned, respan};
 use crate::token::{self, Token};
 use crate::ptr::P;
-use crate::ThinVec;
 use crate::tokenstream::*;
 use crate::util::map_in_place::MapInPlace;
 
@@ -337,7 +336,7 @@ pub fn visit_attrs<T: MutVisitor>(attrs: &mut Vec<Attribute>, vis: &mut T) {
 }
 
 // No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
-pub fn visit_thin_attrs<T: MutVisitor>(attrs: &mut ThinVec<Attribute>, vis: &mut T) {
+pub fn visit_thin_attrs<T: MutVisitor>(attrs: &mut AttrVec, vis: &mut T) {
     for attr in attrs.iter_mut() {
         vis.visit_attribute(attr);
     }
