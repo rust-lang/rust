@@ -1,3 +1,5 @@
+// This test checks that errors are showed for lines with `collect` rather than `push` method.
+
 fn main() {
     let v = vec![1_f64, 2.2_f64];
     let mut fft: Vec<Vec<f64>> = vec![];
