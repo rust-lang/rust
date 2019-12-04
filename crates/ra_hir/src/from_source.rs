@@ -257,7 +257,7 @@ impl Module {
                     InFile { file_id: src.file_id, value: module.clone() },
                 );
             }
-            ModuleSource::SourceFile(_) | ModuleSource::Block(_) => (),
+            ModuleSource::SourceFile(_) => (),
         };
 
         let original_file = src.file_id.original_file(db);

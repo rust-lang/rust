@@ -109,7 +109,6 @@ pub enum ModuleOrigin {
     /// Note that non-inline modules, by definition, live inside non-macro file.
     File(AstId<ast::Module>, FileId),
     Inline(AstId<ast::Module>),
-    Block(AstId<ast::Block>),
 }
 
 impl Default for ModuleOrigin {
@@ -140,7 +139,7 @@ impl ModuleOrigin {
     pub fn declaration(&self) -> Option<AstId<ast::Module>> {
         match self {
             ModuleOrigin::File(m, _) | ModuleOrigin::Inline(m) => Some(*m),
-            ModuleOrigin::Root(_) | ModuleOrigin::Block(_) => None,
+            ModuleOrigin::Root(_) => None,
         }
     }
 
@@ -162,7 +161,6 @@ impl ModuleOrigin {
             }
             ModuleOrigin::Root(None) => unreachable!(),
             ModuleOrigin::Inline(m) => InFile::new(m.file_id, ModuleSource::Module(m.to_node(db))),
-            ModuleOrigin::Block(b) => InFile::new(b.file_id, ModuleSource::Block(b.to_node(db))),
         }
     }
 }
@@ -360,7 +358,6 @@ impl ModuleData {
 pub enum ModuleSource {
     SourceFile(ast::SourceFile),
     Module(ast::Module),
-    Block(ast::Block),
 }
 
 impl ModuleSource {
@@ -384,8 +381,6 @@ impl ModuleSource {
             child.value.ancestors().filter_map(ast::Module::cast).find(|it| !it.has_semi())
         {
             ModuleSource::Module(m)
-        } else if let Some(b) = child.value.ancestors().filter_map(ast::Block::cast).next() {
-            ModuleSource::Block(b)
         } else {
             let file_id = child.file_id.original_file(db);
             let source_file = db.parse(file_id).tree();

@@ -234,7 +234,6 @@ impl ToNav for hir::Module {
         let syntax = match &src.value {
             ModuleSource::SourceFile(node) => node.syntax(),
             ModuleSource::Module(node) => node.syntax(),
-            ModuleSource::Block(node) => node.syntax(),
         };
         let frange = original_range(db, src.with_value(syntax));
         NavigationTarget::from_syntax(
