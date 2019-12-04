@@ -354,7 +354,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
 }
 
 impl<'tcx> Pat<'tcx> {
-    fn is_wildcard(&self) -> bool {
+    pub(super) fn is_wildcard(&self) -> bool {
         match *self.kind {
             PatKind::Binding { subpattern: None, .. } | PatKind::Wild => true,
             _ => false,

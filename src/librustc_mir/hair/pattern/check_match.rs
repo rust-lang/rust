@@ -466,34 +466,29 @@ fn check_exhaustive<'p, 'tcx>(
     };
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
+    let mut err;
     if is_empty_match && !non_empty_enum {
-        let mut err = create_e0004(
+        err = create_e0004(
             cx.tcx.sess,
             sp,
             format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
         );
-        err.help(
-            "ensure that all possible cases are being handled, \
-             possibly by adding wildcards or more match arms",
+    } else {
+        let joined_patterns = joined_uncovered_patterns(&witnesses);
+        err = create_e0004(
+            cx.tcx.sess,
+            sp,
+            format!("non-exhaustive patterns: {} not covered", joined_patterns),
         );
-        adt_defined_here(cx, &mut err, scrut_ty, &[]);
-        err.emit();
-        return;
-    }
+        err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+    };
 
-    let joined_patterns = joined_uncovered_patterns(&witnesses);
-    let mut err = create_e0004(
-        cx.tcx.sess,
-        sp,
-        format!("non-exhaustive patterns: {} not covered", joined_patterns),
-    );
-    err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
     err.help(
         "ensure that all possible cases are being handled, \
          possibly by adding wildcards or more match arms",
-    )
-    .emit();
+    );
+    err.emit();
 }
 
 fn joined_uncovered_patterns(witnesses: &[super::Pat<'_>]) -> String {
