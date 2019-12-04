@@ -16,4 +16,13 @@ fn main() {
     let mut x = 1;
     x = x + 1;
     assert_eq!(2, x);
+
+    macro_rules! mac {
+        () => {
+            let y = "".to_owned();
+            let z = y + "...";
+        };
+    }
+
+    mac!();
 }
