@@ -42,16 +42,16 @@ impl<'a> Parser<'a> {
             return self.parse_local_mk(lo, attrs.into()).map(Some)
         }
         if self.is_kw_followed_by_ident(kw::Mut) {
-            return self.recover_stmt_local(lo, attrs.into(), "missing `let`", "let mut");
+            return self.recover_stmt_local(lo, attrs.into(), "missing keyword", "let mut");
         }
         if self.is_kw_followed_by_ident(kw::Auto) {
             self.bump(); // `auto`
-            let msg = "to introduce a variable, write `let` instead of `auto`";
+            let msg = "write `let` instead of `auto` to introduce a new variable";
             return self.recover_stmt_local(lo, attrs.into(), msg, "let");
         }
         if self.is_kw_followed_by_ident(sym::var) {
             self.bump(); // `var`
-            let msg = "to introduce a variable, write `let` instead of `var`";
+            let msg = "write `let` instead of `var` to introduce a new variable";
             return self.recover_stmt_local(lo, attrs.into(), msg, "let");
         }
 
@@ -208,14 +208,14 @@ impl<'a> Parser<'a> {
 
     fn recover_stmt_local(
         &mut self,
-        span: Span,
+        lo: Span,
         attrs: AttrVec,
         msg: &str,
         sugg: &str,
     ) -> PResult<'a, Option<Stmt>> {
-        let stmt = self.parse_local_mk(span, attrs)?;
-        self.struct_span_err(stmt.span, "invalid variable declaration")
-            .span_suggestion_short(span, msg, sugg.to_string(), Applicability::MachineApplicable)
+        let stmt = self.parse_local_mk(lo, attrs)?;
+        self.struct_span_err(lo, "invalid variable declaration")
+            .span_suggestion(lo, msg, sugg.to_string(), Applicability::MachineApplicable)
             .emit();
         Ok(Some(stmt))
     }
