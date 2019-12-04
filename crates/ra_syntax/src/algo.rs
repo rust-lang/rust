@@ -140,13 +140,13 @@ pub fn insert_children(
     });
 
     let new_children = match &position {
-        InsertPosition::First => to_insert.chain(old_children).collect::<Box<[_]>>(),
-        InsertPosition::Last => old_children.chain(to_insert).collect::<Box<[_]>>(),
+        InsertPosition::First => to_insert.chain(old_children).collect::<Vec<_>>(),
+        InsertPosition::Last => old_children.chain(to_insert).collect::<Vec<_>>(),
         InsertPosition::Before(anchor) | InsertPosition::After(anchor) => {
             let take_anchor = if let InsertPosition::After(_) = position { 1 } else { 0 };
             let split_at = position_of_child(parent, anchor.clone()) + take_anchor;
             let before = old_children.by_ref().take(split_at).collect::<Vec<_>>();
-            before.into_iter().chain(to_insert).chain(old_children).collect::<Box<[_]>>()
+            before.into_iter().chain(to_insert).chain(old_children).collect::<Vec<_>>()
         }
     };
 
@@ -174,7 +174,7 @@ pub fn replace_children(
         .into_iter()
         .chain(to_insert.map(to_green_element))
         .chain(old_children.skip(end + 1 - start))
-        .collect::<Box<[_]>>();
+        .collect::<Vec<_>>();
     with_children(parent, new_children)
 }
 
@@ -187,7 +187,7 @@ pub fn replace_descendants(
     map: &FxHashMap<SyntaxElement, SyntaxElement>,
 ) -> SyntaxNode {
     //  FIXME: this could be made much faster.
-    let new_children = parent.children_with_tokens().map(|it| go(map, it)).collect::<Box<[_]>>();
+    let new_children = parent.children_with_tokens().map(|it| go(map, it)).collect::<Vec<_>>();
     return with_children(parent, new_children);
 
     fn go(
@@ -211,7 +211,7 @@ pub fn replace_descendants(
 
 fn with_children(
     parent: &SyntaxNode,
-    new_children: Box<[NodeOrToken<rowan::GreenNode, rowan::GreenToken>]>,
+    new_children: Vec<NodeOrToken<rowan::GreenNode, rowan::GreenToken>>,
 ) -> SyntaxNode {
     let len = new_children.iter().map(|it| it.text_len()).sum::<TextUnit>();
     let new_node =
