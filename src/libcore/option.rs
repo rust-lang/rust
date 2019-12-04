@@ -1742,16 +1742,6 @@ impl<T> Option<Option<T>> {
     /// ```
     #[inline]
     #[stable(feature = "option_flattening", since = "1.40.0")]
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    pub const fn flatten(self) -> Option<T> {
-        self.and_then(convert::identity)
-    }
-
-    /// No docs for bootstrap.
-    #[inline]
-    #[stable(feature = "option_flattening", since = "1.40.0")]
-    #[cfg(bootstrap)]
     pub fn flatten(self) -> Option<T> {
         self.and_then(convert::identity)
     }

@@ -51,8 +51,4 @@ assert_same_const! {
     const TRANSPOSE_A: Result<Option<i32>, bool> = Some(Ok(2)).transpose();
     const TRANSPOSE_B: Result<Option<i32>, bool> = Some(Err(false)).transpose();
     const TRANSPOSE_C: Result<Option<i32>, bool> = None.transpose();
-
-    const FLATTEN_A: Option<i32> = Some(Some(2)).flatten();
-    const FLATTEN_B: Option<i32> = Some(None).flatten();
-    const FLATTEN_C: Option<i32> = None.flatten();
 }
