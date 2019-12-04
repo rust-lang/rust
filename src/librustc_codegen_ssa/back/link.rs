@@ -541,6 +541,12 @@ fn check_for_buggy_ld_version(sess: &Session,
     };
     debug!("check_for_buggy_ld_version first_line: {:?}", first_line);
 
+    if !first_line.contains("GNU ld") {
+        // If we cannot find "GNU ld" in the version string, then assume that
+        // this is not actually GNU ld; no need for warning.
+        return;
+    }
+
     let version_suffix_start = match first_line.find(" 2.") {
         None => {
             // if we cannot find ` 2.`, then assume that this an ld version that
