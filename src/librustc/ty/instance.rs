@@ -1,8 +1,7 @@
 use crate::hir::CodegenFnAttrFlags;
-use crate::hir::Unsafety;
 use crate::hir::def::Namespace;
 use crate::hir::def_id::DefId;
-use crate::ty::{self, Ty, PolyFnSig, TypeFoldable, SubstsRef, TyCtxt};
+use crate::ty::{self, Ty, TypeFoldable, SubstsRef, TyCtxt};
 use crate::ty::print::{FmtPrinter, Printer};
 use crate::traits;
 use crate::middle::lang_items::DropInPlaceFnLangItem;
@@ -10,7 +9,6 @@ use rustc_target::spec::abi::Abi;
 use rustc_macros::HashStable;
 
 use std::fmt;
-use std::iter;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 #[derive(HashStable, Lift)]
@@ -29,17 +27,26 @@ pub enum InstanceDef<'tcx> {
 
     /// `fn()` pointer where the function itself cannot be turned into a pointer.
     ///
-    /// One example in the compiler today is functions annotated with `#[track_caller]`, which
-    /// must have their implicit caller location argument populated for a call. Because this is a
-    /// required part of the function's ABI but can't be tracked as a property of the function
-    /// pointer, we create a single "caller location" at the site where the function is reified.
+    /// One example is `<dyn Trait as Trait>::fn`, where the shim contains
+    /// a virtual call, which codegen supports only via a direct call to the
+    /// `<dyn Trait as Trait>::fn` instance (an `InstanceDef::Virtual`).
+    ///
+    /// Another example is functions annotated with `#[track_caller]`, which
+    /// must have their implicit caller location argument populated for a call.
+    /// Because this is a required part of the function's ABI but can't be tracked
+    /// as a property of the function pointer, we use a single "caller location"
+    /// (the definition of the function itself).
     ReifyShim(DefId),
 
     /// `<fn() as FnTrait>::call_*`
     /// `DefId` is `FnTrait::call_*`.
     FnPtrShim(DefId, Ty<'tcx>),
 
-    /// `<dyn Trait as Trait>::fn`
+    /// `<dyn Trait as Trait>::fn`, "direct calls" of which are implicitly
+    /// codegen'd as virtual calls.
+    ///
+    /// NB: if this is reified to a `fn` pointer, a `ReifyShim` is used
+    /// (see `ReifyShim` above for more details on that).
     Virtual(DefId, usize),
 
     /// `<[mut closure] as FnOnce>::call_once`
@@ -60,70 +67,6 @@ impl<'tcx> Instance<'tcx> {
             ty::ParamEnv::reveal_all(),
             &ty,
         )
-    }
-
-    fn fn_sig_noadjust(&self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
-        let ty = self.ty(tcx);
-        match ty.kind {
-            ty::FnDef(..) |
-            // Shims currently have type FnPtr. Not sure this should remain.
-            ty::FnPtr(_) => ty.fn_sig(tcx),
-            ty::Closure(def_id, substs) => {
-                let sig = substs.as_closure().sig(def_id, tcx);
-
-                let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-                sig.map_bound(|sig| tcx.mk_fn_sig(
-                    iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
-                    sig.output(),
-                    sig.c_variadic,
-                    sig.unsafety,
-                    sig.abi
-                ))
-            }
-            ty::Generator(def_id, substs, _) => {
-                let sig = substs.as_generator().poly_sig(def_id, tcx);
-
-                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-                let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
-
-                let pin_did = tcx.lang_items().pin_type().unwrap();
-                let pin_adt_ref = tcx.adt_def(pin_did);
-                let pin_substs = tcx.intern_substs(&[env_ty.into()]);
-                let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
-
-                sig.map_bound(|sig| {
-                    let state_did = tcx.lang_items().gen_state().unwrap();
-                    let state_adt_ref = tcx.adt_def(state_did);
-                    let state_substs = tcx.intern_substs(&[
-                        sig.yield_ty.into(),
-                        sig.return_ty.into(),
-                    ]);
-                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-
-                    tcx.mk_fn_sig(iter::once(env_ty),
-                        ret_ty,
-                        false,
-                        Unsafety::Normal,
-                        Abi::Rust
-                    )
-                })
-            }
-            _ => bug!("unexpected type {:?} in Instance::fn_sig_noadjust", ty)
-        }
-    }
-
-    pub fn fn_sig(&self, tcx: TyCtxt<'tcx>) -> ty::PolyFnSig<'tcx> {
-        let mut fn_sig = self.fn_sig_noadjust(tcx);
-        if let InstanceDef::VtableShim(..) = self.def {
-            // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
-            fn_sig = fn_sig.map_bound(|mut fn_sig| {
-                let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
-                inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
-                fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
-                fn_sig
-            });
-        }
-        fn_sig
     }
 }
 
@@ -196,7 +139,7 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
                 write!(f, " - intrinsic")
             }
             InstanceDef::Virtual(_, num) => {
-                write!(f, " - shim(#{})", num)
+                write!(f, " - virtual#{}", num)
             }
             InstanceDef::FnPtrShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
@@ -311,20 +254,23 @@ impl<'tcx> Instance<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> Option<Instance<'tcx>> {
         debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
-        Instance::resolve(tcx, param_env, def_id, substs).map(|resolved| {
+        Instance::resolve(tcx, param_env, def_id, substs).map(|mut resolved| {
             let has_track_caller = |def| tcx.codegen_fn_attrs(def).flags
                 .contains(CodegenFnAttrFlags::TRACK_CALLER);
 
             match resolved.def {
                 InstanceDef::Item(def_id) if has_track_caller(def_id) => {
                     debug!(" => fn pointer created for function with #[track_caller]");
-                    Instance {
-                        def: InstanceDef::ReifyShim(def_id),
-                        substs,
-                    }
-                },
-                _ => resolved,
+                    resolved.def = InstanceDef::ReifyShim(def_id);
+                }
+                InstanceDef::Virtual(def_id, _) => {
+                    debug!(" => fn pointer created for virtual call");
+                    resolved.def = InstanceDef::ReifyShim(def_id);
+                }
+                _ => {}
             }
+
+            resolved
         })
     }
 

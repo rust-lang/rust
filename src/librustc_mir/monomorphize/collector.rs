@@ -741,23 +741,21 @@ fn visit_instance_use<'tcx>(
     }
 
     match instance.def {
-        ty::InstanceDef::Intrinsic(def_id) => {
+        ty::InstanceDef::Virtual(..) |
+        ty::InstanceDef::Intrinsic(_) => {
             if !is_direct_call {
-                bug!("intrinsic {:?} being reified", def_id);
+                bug!("{:?} being reified", instance);
             }
         }
-        ty::InstanceDef::VtableShim(..) |
-        ty::InstanceDef::ReifyShim(..) |
-        ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::DropGlue(_, None) => {
-            // Don't need to emit shim if we are calling directly.
+            // Don't need to emit noop drop glue if we are calling directly.
             if !is_direct_call {
                 output.push(create_fn_mono_item(instance));
             }
         }
-        ty::InstanceDef::DropGlue(_, Some(_)) => {
-            output.push(create_fn_mono_item(instance));
-        }
+        ty::InstanceDef::DropGlue(_, Some(_)) |
+        ty::InstanceDef::VtableShim(..) |
+        ty::InstanceDef::ReifyShim(..) |
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Item(..) |
         ty::InstanceDef::FnPtrShim(..) |

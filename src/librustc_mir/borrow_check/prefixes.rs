@@ -143,7 +143,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                     // derefs, except we stop at the deref of a shared
                     // reference.
 
-                    let ty = Place::ty_from(cursor.base, proj_base, &*self.body, self.tcx).ty;
+                    let ty = Place::ty_from(cursor.base, proj_base, *self.body, self.tcx).ty;
                     match ty.kind {
                         ty::RawPtr(_) |
                         ty::Ref(

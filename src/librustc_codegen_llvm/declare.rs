@@ -18,8 +18,7 @@ use crate::attributes;
 use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::value::Value;
-use rustc::ty::{self, PolyFnSig};
-use rustc::ty::layout::{FnAbiExt, LayoutOf};
+use rustc::ty::Ty;
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
@@ -94,21 +93,12 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn declare_fn(
         &self,
         name: &str,
-        sig: PolyFnSig<'tcx>,
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     ) -> &'ll Value {
-        debug!("declare_rust_fn(name={:?}, sig={:?})", name, sig);
-        let sig = self.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-        debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
+        debug!("declare_rust_fn(name={:?}, fn_abi={:?})", name, fn_abi);
 
-        let fn_abi = FnAbi::new(self, sig, &[]);
         let llfn = declare_raw_fn(self, name, fn_abi.llvm_cconv(), fn_abi.llvm_type(self));
-
-        if self.layout_of(sig.output()).abi.is_uninhabited() {
-            llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
-        }
-
         fn_abi.apply_attrs_llfn(self, llfn);
-
         llfn
     }
 
@@ -128,28 +118,6 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe {
             llvm::LLVMRustInsertPrivateGlobal(self.llmod, ty)
         }
-    }
-
-    fn define_fn(
-        &self,
-        name: &str,
-        fn_sig: PolyFnSig<'tcx>,
-    ) -> &'ll Value {
-        if self.get_defined_value(name).is_some() {
-            self.sess().fatal(&format!("symbol `{}` already defined", name))
-        } else {
-            self.declare_fn(name, fn_sig)
-        }
-    }
-
-    fn define_internal_fn(
-        &self,
-        name: &str,
-        fn_sig: PolyFnSig<'tcx>,
-    ) -> &'ll Value {
-        let llfn = self.define_fn(name, fn_sig);
-        unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
-        llfn
     }
 
     fn get_declared_value(&self, name: &str) -> Option<&'ll Value> {
