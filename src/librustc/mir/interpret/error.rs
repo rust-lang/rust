@@ -320,7 +320,7 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
         use PanicInfo::*;
         match self {
             Panic { ref msg, line, col, ref file } =>
-                write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
+                write!(f, "the evaluated program panicked at {}:{}:{}, '{}'", file, line, col, msg),
             BoundsCheck { ref len, ref index } =>
                 write!(f, "index out of bounds: the len is {:?} but the index is {:?}", len, index),
             _ =>

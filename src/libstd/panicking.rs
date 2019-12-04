@@ -184,8 +184,8 @@ fn default_hook(info: &PanicInfo<'_>) {
     let name = thread.as_ref().and_then(|t| t.name()).unwrap_or("<unnamed>");
 
     let write = |err: &mut dyn crate::io::Write| {
-        let _ = writeln!(err, "thread '{}' panicked at '{}', {}",
-                         name, msg, location);
+        let _ = writeln!(err, "thread '{}' panicked at {}, '{}'",
+                         name, location, msg);
 
         static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
