@@ -140,8 +140,8 @@ pub type MiriEvalContext<'mir, 'tcx> = InterpCx<'mir, 'tcx, Evaluator<'tcx>>;
 
 /// A little trait that's useful to be inherited by extension traits.
 pub trait MiriEvalContextExt<'mir, 'tcx> {
-    fn eval_context_ref(&self) -> &MiriEvalContext<'mir, 'tcx>;
-    fn eval_context_mut(&mut self) -> &mut MiriEvalContext<'mir, 'tcx>;
+    fn eval_context_ref<'a>(&'a self) -> &'a MiriEvalContext<'mir, 'tcx>;
+    fn eval_context_mut<'a>(&'a mut self) -> &'a mut MiriEvalContext<'mir, 'tcx>;
 }
 impl<'mir, 'tcx> MiriEvalContextExt<'mir, 'tcx> for MiriEvalContext<'mir, 'tcx> {
     #[inline(always)]
