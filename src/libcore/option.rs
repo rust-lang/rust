@@ -479,19 +479,6 @@ impl<T> Option<T> {
     /// assert_eq!(Some(4).unwrap_or_else(|| 2 * k), 4);
     /// assert_eq!(None.unwrap_or_else(|| 2 * k), 20);
     /// ```
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
-        match self {
-            Some(x) => x,
-            None => f(),
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unwrap_or_else<F: FnOnce() -> T>(self, f: F) -> T {
@@ -521,19 +508,6 @@ impl<T> Option<T> {
     ///
     /// assert_eq!(maybe_some_len, Some(13));
     /// ```
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
-        match self {
-            Some(x) => Some(f(x)),
-            None => None,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U> {
@@ -555,19 +529,6 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.map_or(42, |v| v.len()), 42);
     /// ```
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn map_or<U, F: FnOnce(T) -> U>(self, default: U, f: F) -> U {
-        match self {
-            Some(t) => f(t),
-            None => default,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn map_or<U, F: FnOnce(T) -> U>(self, default: U, f: F) -> U {
@@ -591,19 +552,6 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.map_or_else(|| 2 * k, |v| v.len()), 42);
     /// ```
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn map_or_else<U, D: FnOnce() -> U, F: FnOnce(T) -> U>(self, default: D, f: F) -> U {
-        match self {
-            Some(t) => f(t),
-            None => default(),
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn map_or_else<U, D: FnOnce() -> U, F: FnOnce(T) -> U>(self, default: D, f: F) -> U {
@@ -676,19 +624,6 @@ impl<T> Option<T> {
     /// let x: Option<&str> = None;
     /// assert_eq!(x.ok_or_else(|| 0), Err(0));
     /// ```
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
-        match self {
-            Some(v) => Ok(v),
-            None => Err(err()),
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
@@ -807,19 +742,6 @@ impl<T> Option<T> {
     /// assert_eq!(Some(2).and_then(nope).and_then(sq), None);
     /// assert_eq!(None.and_then(sq).and_then(sq), None);
     /// ```
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn and_then<U, F: FnOnce(T) -> Option<U>>(self, f: F) -> Option<U> {
-        match self {
-            Some(x) => f(x),
-            None => None,
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn and_then<U, F: FnOnce(T) -> Option<U>>(self, f: F) -> Option<U> {
@@ -855,21 +777,6 @@ impl<T> Option<T> {
     /// [`None`]: #variant.None
     /// [`Some(t)`]: #variant.Some
     /// [`Iterator::filter()`]: ../../std/iter/trait.Iterator.html#method.filter
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "option_filter", since = "1.27.0")]
-    pub const fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
-        if let Some(x) = self {
-            if predicate(&x) {
-                return Some(x);
-            }
-        }
-        None
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "option_filter", since = "1.27.0")]
     pub fn filter<P: FnOnce(&T) -> bool>(self, predicate: P) -> Self {
@@ -943,19 +850,6 @@ impl<T> Option<T> {
     /// assert_eq!(None.or_else(vikings), Some("vikings"));
     /// assert_eq!(None.or_else(nobody), None);
     /// ```
-    #[rustc_const_unstable(feature = "const_option_match")]
-    #[cfg(not(bootstrap))]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Option<T> {
-        match self {
-            Some(_) => self,
-            None => f(),
-        }
-    }
-
-    /// No docs for bootstrap.
-    #[cfg(bootstrap)]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn or_else<F: FnOnce() -> Option<T>>(self, f: F) -> Option<T> {
