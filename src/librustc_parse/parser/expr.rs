@@ -1866,46 +1866,49 @@ impl<'a> Parser<'a> {
 
     /// Parses `ident (COLON expr)?`.
     fn parse_field(&mut self) -> PResult<'a, Field> {
-        let attrs = self.parse_outer_attributes()?;
+        let attrs = self.parse_outer_attributes()?.into();
         let lo = self.token.span;
 
         // Check if a colon exists one ahead. This means we're parsing a fieldname.
-        let (fieldname, expr, is_shorthand) =
-            if self.look_ahead(1, |t| t == &token::Colon || t == &token::Eq) {
-                let fieldname = self.parse_field_name()?;
-
-                // Check for an equals token. This means the source incorrectly attempts to
-                // initialize a field with an eq rather than a colon.
-                if self.token == token::Eq {
-                    self.diagnostic()
-                        .struct_span_err(self.token.span, "expected `:`, found `=`")
-                        .span_suggestion(
-                            fieldname.span.shrink_to_hi().to(self.token.span),
-                            "replace equals symbol with a colon",
-                            ":".to_string(),
-                            Applicability::MachineApplicable,
-                        )
-                        .emit();
-                }
-                self.bump(); // `:`
-                (fieldname, self.parse_expr()?, false)
-            } else {
-                let fieldname = self.parse_ident_common(false)?;
-
-                // Mimic `x: x` for the `x` field shorthand.
-                let path = ast::Path::from_ident(fieldname);
-                let expr = self.mk_expr(fieldname.span, ExprKind::Path(None, path), AttrVec::new());
-                (fieldname, expr, true)
-            };
+        let is_shorthand = !self.look_ahead(1, |t| t == &token::Colon || t == &token::Eq);
+        let (ident, expr) = if is_shorthand {
+            // Mimic `x: x` for the `x` field shorthand.
+            let ident = self.parse_ident_common(false)?;
+            let path = ast::Path::from_ident(ident);
+            (ident, self.mk_expr(ident.span, ExprKind::Path(None, path), AttrVec::new()))
+        } else {
+            let ident = self.parse_field_name()?;
+            self.error_on_eq_field_init(ident);
+            self.bump(); // `:`
+            (ident, self.parse_expr()?)
+        };
         Ok(ast::Field {
-            ident: fieldname,
+            ident,
             span: lo.to(expr.span),
             expr,
             is_shorthand,
-            attrs: attrs.into(),
+            attrs,
             id: DUMMY_NODE_ID,
             is_placeholder: false,
         })
+    }
+
+    /// Check for `=`. This means the source incorrectly attempts to
+    /// initialize a field with an eq rather than a colon.
+    fn error_on_eq_field_init(&self, field_name: Ident) {
+        if self.token != token::Eq {
+            return;
+        }
+
+        self.diagnostic()
+            .struct_span_err(self.token.span, "expected `:`, found `=`")
+            .span_suggestion(
+                field_name.span.shrink_to_hi().to(self.token.span),
+                "replace equals symbol with a colon",
+                ":".to_string(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     fn err_dotdotdot_syntax(&self, span: Span) {
