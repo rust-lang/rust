@@ -172,6 +172,7 @@ fn main() {}
 fn test_format_document() {
     let server = project(
         r#"
+//- Cargo.toml
 [package]
 name = "foo"
 version = "0.0.0"
@@ -219,6 +220,63 @@ pub use std::collections::HashMap;
     );
 }
 
+#[test]
+fn test_format_document_2018() {
+    let server = project(
+        r#"
+//- Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+edition = "2018"
+
+//- src/lib.rs
+mod bar;
+
+async fn test() {
+}
+
+fn main() {
+}
+
+pub use std::collections::HashMap;
+"#,
+    );
+    server.wait_until_workspace_is_loaded();
+
+    server.request::<Formatting>(
+        DocumentFormattingParams {
+            text_document: server.doc_id("src/lib.rs"),
+            options: FormattingOptions {
+                tab_size: 4,
+                insert_spaces: false,
+                properties: HashMap::new(),
+            },
+        },
+        json!([
+            {
+                "newText": r#"mod bar;
+
+async fn test() {}
+
+fn main() {}
+
+pub use std::collections::HashMap;
+"#,
+                "range": {
+                    "end": {
+                        "character": 0,
+                        "line": 10
+                    },
+                    "start": {
+                        "character": 0,
+                        "line": 0
+                    }
+                }
+            }
+        ]),
+    );
+}
 #[test]
 fn test_missing_module_code_action() {
     let server = project(

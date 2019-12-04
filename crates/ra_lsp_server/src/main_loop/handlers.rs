@@ -555,12 +555,18 @@ pub fn handle_formatting(
     let _p = profile("handle_formatting");
     let file_id = params.text_document.try_conv_with(&world)?;
     let file = world.analysis().file_text(file_id)?;
+    let crate_ids = world.analysis().crate_for(file_id)?;
 
     let file_line_index = world.analysis().file_line_index(file_id)?;
     let end_position = TextUnit::of_str(&file).conv_with(&file_line_index);
 
     use std::process;
     let mut rustfmt = process::Command::new("rustfmt");
+    if let Some(&crate_id) = crate_ids.first() {
+        // Assume all crates are in the same edition
+        let edition = world.analysis().crate_edition(crate_id)?;
+        rustfmt.args(&["--edition", &edition.to_string()]);
+    }
     rustfmt.stdin(process::Stdio::piped()).stdout(process::Stdio::piped());
 
     if let Ok(path) = params.text_document.uri.to_file_path() {
