@@ -4,7 +4,10 @@ error[E0308]: mismatched types
 LL | fn bar(x: usize) -> Option<usize> {
    |                     ------------- expected `std::option::Option<usize>` because of return type
 LL |     return x;
-   |            ^ expected enum `std::option::Option`, found `usize`
+   |            ^
+   |            |
+   |            expected enum `std::option::Option`, found `usize`
+   |            help: try using a variant of the expected enum: `Some(x)`
    |
    = note: expected enum `std::option::Option<usize>`
               found type `usize`
