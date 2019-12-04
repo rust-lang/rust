@@ -21,7 +21,7 @@ fn main() {
     };
 
     match enum_unit {};
-    //~^ ERROR non-exhaustive patterns: multiple patterns of type `enums::NonExhaustiveEnum` are not handled [E0004]
+    //~^ ERROR non-exhaustive patterns: `_` not covered [E0004]
 
     // Everything below this is expected to compile successfully.
 

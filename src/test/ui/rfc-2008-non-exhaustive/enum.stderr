@@ -14,11 +14,11 @@ LL |     match enum_unit {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error[E0004]: non-exhaustive patterns: multiple patterns of type `enums::NonExhaustiveEnum` are not handled
+error[E0004]: non-exhaustive patterns: `_` not covered
   --> $DIR/enum.rs:23:11
    |
 LL |     match enum_unit {};
-   |           ^^^^^^^^^
+   |           ^^^^^^^^^ pattern `_` not covered
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
