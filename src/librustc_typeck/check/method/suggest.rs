@@ -82,34 +82,63 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let print_disambiguation_help = |
             err: &mut DiagnosticBuilder<'_>,
             trait_name: String,
+            rcvr_ty: Ty<'_>,
+            kind: ty::AssocKind,
+            span: Span,
+            candidate: Option<usize>,
         | {
-            err.help(&format!(
-                "to disambiguate the method call, write `{}::{}({}{})` instead",
-                trait_name,
-                item_name,
-                if rcvr_ty.is_region_ptr() && args.is_some() {
-                    if rcvr_ty.is_mutable_ptr() {
-                        "&mut "
+            let mut applicability = Applicability::MachineApplicable;
+            let sugg_args = if let ty::AssocKind::Method = kind {
+                format!(
+                    "({}{})",
+                    if rcvr_ty.is_region_ptr() && args.is_some() {
+                        if rcvr_ty.is_mutable_ptr() {
+                            "&mut "
+                        } else {
+                            "&"
+                        }
                     } else {
-                        "&"
-                    }
-                } else {
-                    ""
-                },
-                args.map(|arg| arg
-                    .iter()
-                    .map(|arg| self.tcx.sess.source_map().span_to_snippet(arg.span)
-                        .unwrap_or_else(|_| "...".to_owned()))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-                ).unwrap_or_else(|| "...".to_owned())
-            ));
+                        ""
+                    },
+                    args.map(|arg| arg
+                        .iter()
+                        .map(|arg| self.tcx.sess.source_map().span_to_snippet(arg.span)
+                            .unwrap_or_else(|_| {
+                                applicability = Applicability::HasPlaceholders;
+                                "...".to_owned()
+                            }))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                    ).unwrap_or_else(|| {
+                        applicability = Applicability::HasPlaceholders;
+                        "...".to_owned()
+                    }),
+                )
+            } else {
+                String::new()
+            };
+            let sugg = format!("{}::{}{}", trait_name, item_name, sugg_args);
+            err.span_suggestion(
+                span,
+                &format!(
+                    "disambiguate the {} for {}",
+                    kind.suggestion_descr(),
+                    if let Some(candidate) = candidate {
+                        format!("candidate #{}", candidate)
+                    } else {
+                        "the candidate".to_string()
+                    },
+                ),
+                sugg,
+                applicability,
+            );
         };
 
         let report_candidates = |
             span: Span,
             err: &mut DiagnosticBuilder<'_>,
             mut sources: Vec<CandidateSource>,
+            sugg_span: Span,
         | {
             sources.sort();
             sources.dedup();
@@ -150,15 +179,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         };
 
-                        let note_str = if sources.len() > 1 {
-                            format!("candidate #{} is defined in an impl{} for the type `{}`",
-                                    idx + 1,
-                                    insertion,
-                                    impl_ty)
+                        let (note_str, idx) = if sources.len() > 1 {
+                            (format!(
+                                "candidate #{} is defined in an impl{} for the type `{}`",
+                                idx + 1,
+                                insertion,
+                                impl_ty,
+                            ), Some(idx + 1))
                         } else {
-                            format!("the candidate is defined in an impl{} for the type `{}`",
-                                    insertion,
-                                    impl_ty)
+                            (format!(
+                                "the candidate is defined in an impl{} for the type `{}`",
+                                insertion,
+                                impl_ty,
+                            ), None)
                         };
                         if let Some(note_span) = note_span {
                             // We have a span pointing to the method. Show note with snippet.
@@ -168,7 +201,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.note(&note_str);
                         }
                         if let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
-                            print_disambiguation_help(err, self.tcx.def_path_str(trait_ref.def_id));
+                            let path = self.tcx.def_path_str(trait_ref.def_id);
+
+                            let ty = match item.kind {
+                                ty::AssocKind::Const |
+                                ty::AssocKind::Type |
+                                ty::AssocKind::OpaqueTy => rcvr_ty,
+                                ty::AssocKind::Method => self.tcx.fn_sig(item.def_id)
+                                    .inputs()
+                                    .skip_binder()
+                                    .get(0)
+                                    .filter(|ty| ty.is_region_ptr() && !rcvr_ty.is_region_ptr())
+                                    .map(|ty| *ty)
+                                    .unwrap_or(rcvr_ty),
+                            };
+                            print_disambiguation_help(err, path, ty, item.kind, sugg_span, idx);
                         }
                     }
                     CandidateSource::TraitSource(trait_did) => {
@@ -182,25 +229,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         };
                         let item_span = self.tcx.sess.source_map()
                             .def_span(self.tcx.def_span(item.def_id));
-                        if sources.len() > 1 {
+                        let idx = if sources.len() > 1 {
                             span_note!(err,
                                        item_span,
                                        "candidate #{} is defined in the trait `{}`",
                                        idx + 1,
                                        self.tcx.def_path_str(trait_did));
+                            Some(idx + 1)
                         } else {
                             span_note!(err,
                                        item_span,
                                        "the candidate is defined in the trait `{}`",
                                        self.tcx.def_path_str(trait_did));
-                        }
-                        print_disambiguation_help(err, self.tcx.def_path_str(trait_did));
+                            None
+                        };
+                        let path = self.tcx.def_path_str(trait_did);
+                        print_disambiguation_help(err, path, rcvr_ty, item.kind, sugg_span, idx);
                     }
                 }
             }
             if sources.len() > limit {
                 err.note(&format!("and {} others", sources.len() - limit));
             }
+        };
+
+        let sugg_span = if let SelfSource::MethodCall(expr) = source {
+            // Given `foo.bar(baz)`, `expr` is `bar`, but we want to point to the whole thing.
+            self.tcx.hir().expect_expr(self.tcx.hir().get_parent_node(expr.hir_id)).span
+        } else {
+            span
         };
 
         match error {
@@ -495,9 +552,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ));
                     }
 
-                    report_candidates(span, &mut err, static_sources);
+                    report_candidates(span, &mut err, static_sources, sugg_span);
                 } else if static_sources.len() > 1 {
-                    report_candidates(span, &mut err, static_sources);
+                    report_candidates(span, &mut err, static_sources, sugg_span);
                 }
 
                 if !unsatisfied_predicates.is_empty() {
@@ -584,7 +641,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                "multiple applicable items in scope");
                 err.span_label(span, format!("multiple `{}` found", item_name));
 
-                report_candidates(span, &mut err, sources);
+                report_candidates(span, &mut err, sources, sugg_span);
                 err.emit();
             }
 
