@@ -473,12 +473,23 @@ fn check_for_buggy_ld_version(sess: &Session,
            program_name, flavor, crate_type);
 
     match crate_type {
-        config::CrateType::Dylib |
-        config::CrateType::ProcMacro => (),
+        // This is the one case that we fire on, because it is the one place we
+        // know of where using the output in a "supported" fashion (*) can
+        // trigger the bug in old GNU ld versions.
+        //
+        // (*) Of course this raises the question of how much support do we give
+        //     Rust dylibs in the first place
+        config::CrateType::Dylib => (),
 
         // FIXME: should we include CrateType::Cdylib in the warning? It is not
         // clear why we haven't seen it there.
         config::CrateType::Cdylib => return,
+
+        // We deliberately do not include CrateType::ProcMacro in the warning,
+        // as it would cause too many false-positives (and ot actually observe
+        // the known bugs in that context, you would have to be using the
+        // geneated dylib in an unsupported fashion anyway).
+        config::CrateType::ProcMacro => return,
 
         // Static objects won't run into this (unless they load a dynamic
         // object, which this heuristic is not attempting to detect).
