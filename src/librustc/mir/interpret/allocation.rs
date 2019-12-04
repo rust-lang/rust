@@ -324,8 +324,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         })
     }
 
-    /// Reads bytes until a `0x00` is encountered. Will error if the end of the allocation
-    /// is reached before a `0x00` is found.
+    /// Reads bytes until a `0x0000` is encountered. Will error if the end of the allocation
+    /// is reached before a `0x0000` is found.
     ///
     /// Most likely, you want to call `Memory::read_wide_str` instead of this method.
     pub fn read_wide_str(
@@ -336,7 +336,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
-        Ok(match self.bytes[offset..self.bytes.len() - 1].iter().step_by(2)
+        // The iterator below yields pairs of adjacent bytes, in order to find 0x0000.
+        Ok(match 
+            self.bytes[offset..].iter().step_by(2)
            .zip(self.bytes[(offset+1)..].iter().step_by(2))
            .position(|(&l, &r)| l == 0 && r == 0) {
             Some(size) => {
