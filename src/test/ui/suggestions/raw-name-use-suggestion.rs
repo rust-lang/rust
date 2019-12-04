@@ -5,5 +5,5 @@ mod foo {
 
 fn main() {
     foo::let(); //~ ERROR expected identifier, found keyword `let`
-    r#break(); //~ ERROR cannot find function `break` in this scope
+    r#break(); //~ ERROR cannot find function `r#break` in this scope
 }

@@ -20,7 +20,7 @@ help: you can escape reserved keywords to use them as identifiers
 LL |     foo::r#let();
    |          ^^^^^
 
-error[E0425]: cannot find function `break` in this scope
+error[E0425]: cannot find function `r#break` in this scope
   --> $DIR/raw-name-use-suggestion.rs:8:5
    |
 LL |     r#break();
