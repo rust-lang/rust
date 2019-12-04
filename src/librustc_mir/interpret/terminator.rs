@@ -451,6 +451,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Evaluate a const function where all arguments (if any) are zero-sized types.
     /// The evaluation is memoized thanks to the query system.
+    // FIXME: Consider moving this to `const_eval.rs`.
     pub (crate) fn eval_const_fn_call(
         &mut self,
         gid: GlobalId<'tcx>,
