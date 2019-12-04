@@ -1,0 +1,8 @@
+error: unexpected token: `#`
+  --> $DIR/attr-stmt-expr-attr-bad-2.rs:1:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
+   |                                  ^
+
+error: aborting due to previous error
+
