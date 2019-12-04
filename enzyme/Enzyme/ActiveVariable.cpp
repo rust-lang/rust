@@ -27,6 +27,8 @@
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
 
+#include "llvm/IR/InstIterator.h"
+
 #include "llvm/Support/raw_ostream.h"
 
 #include "ActiveVariable.h"
@@ -408,6 +410,12 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
             if (fast_tracking) return true;
         }
     }
+   
+    if (isa<FPToSIInst>(v) || isa<FPToUIInst>(v)) {
+        intUse = true;
+        intseen[v] = IntType::Integer;
+        if (fast_tracking) return true;
+    }
 
     if (auto ci = dyn_cast<BitCastInst>(v)) {
         if (ci->getSrcTy()->isPointerTy()) {
@@ -473,6 +481,44 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
             
             typeseen.insert(typeseen0.begin(), typeseen0.end());
             if (fast_tracking) return true;
+        }
+    }
+    
+    if (auto ci = dyn_cast<CallInst>(v)) {
+        if (auto F = ci->getCalledFunction()) {
+            std::map<Value*, IntType> intseen0(intseen.begin(), intseen.end());
+            SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
+            SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
+            bool allintUse = true;
+            for (llvm::inst_iterator I = llvm::inst_begin(F), E = llvm::inst_end(F); I != E; ++I) {
+                if (auto ri = dyn_cast<ReturnInst>(&*I)) {
+                    auto rv = ri->getReturnValue();
+                    bool intUse0 = false;
+                    bool fakeunknownuse0 = false;
+                    if ( trackInt(rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0) && (floatingUse || pointerUse) ) {
+                        intseen.insert(intseen0.begin(), intseen0.end());
+                        ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
+                        typeseen.insert(typeseen0.begin(), typeseen0.end());
+
+                        if (fast_tracking) return true;
+                    }
+                    if (!intUse0) {
+                        allintUse = false;
+                    }
+                }
+            }
+
+            if (allintUse) {
+                intUse = true;
+                intseen[v] = IntType::Integer;
+                
+                intseen.insert(intseen0.begin(), intseen0.end());
+                
+                ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
+                
+                typeseen.insert(typeseen0.begin(), typeseen0.end());
+                if (fast_tracking) return true;
+            }
         }
     }
     
@@ -861,6 +907,11 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
 		}
 	}
 
+    if (isa<FPToSIInst>(inst) || isa<FPToUIInst>(inst)) {
+            constants.insert(inst);
+            return true;
+    }
+
 	if (isa<CmpInst>(inst)) {
 		constants.insert(inst);
 		return true;
@@ -1236,6 +1287,8 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
     
     //! This instruction is certainly an integer (and only and integer, not a pointer or float). Therefore its value is constant
     if (val->getType()->isIntegerTy() && isIntASecretFloat(val, /*default*/IntType::Pointer)==IntType::Integer) {
+		if (printconst)
+			llvm::errs() << " Value const as integral " << (int)directions << " " << *val << "\n";
         return true;
     }
    

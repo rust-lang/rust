@@ -7,7 +7,8 @@ CLANG=../../build/bin/clang
 OPT=../../build/bin/opt
 
 %-unopt.ll: %.c
-	$(CLANG) $^ -O3 -S -emit-llvm -o - -o $@ 
+	$(CLANG) $^ -O0 -S -emit-llvm -o - -o $@ 
+	#$(CLANG) $^ -O3 -S -emit-llvm -o - -o $@ 
 	#$(CLANG) -fno-unroll-loops $^ -O2 -fno-vectorize -fno-slp-vectorize -S -emit-llvm -o - -ffast-math -o $@ 
 
 %-unopt.ll: %.cpp
@@ -38,7 +39,7 @@ OPT=../../build/bin/opt
 	$(OPT) $^ -S -indvars $(LOADSO) -enzyme -enzyme_inline=1 -verify -mem2reg -enzyme_print=0 -enzyme_nonmarkedglobals_inactive=1 -enzyme_emptyfnconst=1 -enzyme_printconst=1 -o $@ #| $(OPT) - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine #-inline -O3
 
 %-lower.ll: %-unopt.ll
-	$(OPT) $^ -indvars $(LOADSO) -enzyme -enzyme_inline=1 -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - -enzyme_print=0 -enzyme_nonmarkedglobals_inactive=1 -enzyme_emptyfnconst=1 | $(OPT) - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine #-inline -O3
+	$(OPT) $^ -indvars $(LOADSO) -enzyme -enzyme_inline=0 -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - -enzyme_print=0 -enzyme_nonmarkedglobals_inactive=1 -enzyme_emptyfnconst=1 -enzyme_printconst=1 | $(OPT) - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine #-inline -O3
 	#../build/bin/opt $^ -indvars -autodiff_inline=true -lower-autodiff -verify -mem2reg -sroa -adce -bdce -aggressive-instcombine -S -o - | ../build/bin/opt - -S -o $@ -instsimplify -correlated-propagation -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -loop-deletion -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -inline -O3
 	#../build/bin/opt $^ -indvars -lower-autodiff -mem2reg -sroa -early-cse-memssa -adce -bdce -aggressive-instcombine -simplifycfg -correlated-propagation -deadargelim -adce -bdce -aggressive-instcombine -O3 -S -o $@
 
