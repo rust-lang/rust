@@ -109,6 +109,7 @@ pub fn provide(providers: &mut Providers<'_>) {
         match tcx.fn_sig(def_id).abi() {
             Abi::RustIntrinsic |
             Abi::PlatformIntrinsic => {
+                // FIXME: deduplicate these two lists as much as possible
                 match tcx.item_name(def_id) {
                     // Keep this list in the same order as the match patterns in
                     // `librustc_mir/interpret/intrinsics.rs`
