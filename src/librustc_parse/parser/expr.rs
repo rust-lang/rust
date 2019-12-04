@@ -1780,9 +1780,7 @@ impl<'a> Parser<'a> {
             if self.eat(&token::DotDot) {
                 let exp_span = self.prev_span;
                 match self.parse_expr() {
-                    Ok(e) => {
-                        base = Some(e);
-                    }
+                    Ok(e) => base = Some(e),
                     Err(mut e) => {
                         e.emit();
                         self.recover_stmt();
@@ -1792,24 +1790,9 @@ impl<'a> Parser<'a> {
                 break;
             }
 
-            let mut recovery_field = None;
-            if let token::Ident(name, _) = self.token.kind {
-                if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
-                    // Use in case of error after field-looking code: `S { foo: () with a }`.
-                    recovery_field = Some(ast::Field {
-                        ident: Ident::new(name, self.token.span),
-                        span: self.token.span,
-                        expr: self.mk_expr(self.token.span, ExprKind::Err, AttrVec::new()),
-                        is_shorthand: false,
-                        attrs: AttrVec::new(),
-                        id: DUMMY_NODE_ID,
-                        is_placeholder: false,
-                    });
-                }
-            }
-            let mut parsed_field = None;
-            match self.parse_field() {
-                Ok(f) => parsed_field = Some(f),
+            let recovery_field = self.find_struct_error_after_field_looking_code();
+            let parsed_field = match self.parse_field() {
+                Ok(f) => Some(f),
                 Err(mut e) => {
                     e.span_label(struct_sp, "while parsing this struct");
                     e.emit();
@@ -1823,8 +1806,9 @@ impl<'a> Parser<'a> {
                             break;
                         }
                     }
+                    None
                 }
-            }
+            };
 
             match self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Brace)]) {
                 Ok(_) => {
@@ -1847,7 +1831,26 @@ impl<'a> Parser<'a> {
 
         let span = lo.to(self.token.span);
         self.expect(&token::CloseDelim(token::Brace))?;
-        return Ok(self.mk_expr(span, ExprKind::Struct(pth, fields, base), attrs));
+        Ok(self.mk_expr(span, ExprKind::Struct(pth, fields, base), attrs))
+    }
+
+    /// Use in case of error after field-looking code: `S { foo: () with a }`.
+    fn find_struct_error_after_field_looking_code(&self) -> Option<Field> {
+        if let token::Ident(name, _) = self.token.kind {
+            if !self.token.is_reserved_ident() && self.look_ahead(1, |t| *t == token::Colon) {
+                let span = self.token.span;
+                return Some(ast::Field {
+                    ident: Ident::new(name, span),
+                    span,
+                    expr: self.mk_expr_err(span),
+                    is_shorthand: false,
+                    attrs: AttrVec::new(),
+                    id: DUMMY_NODE_ID,
+                    is_placeholder: false,
+                });
+            }
+        }
+        None
     }
 
     fn recover_struct_comma_after_dotdot(&mut self, span: Span) {
