@@ -132,7 +132,7 @@ impl fmt::Display for PanicInfo<'_> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("panicked at ")?;
 
-        self.location.fmt(formatter)
+        self.location.fmt(formatter)?;
         if let Some(message) = self.message {
             write!(formatter, ", '{}'", message)?
         } else if let Some(payload) = self.payload.downcast_ref::<&'static str>() {
@@ -142,6 +142,8 @@ impl fmt::Display for PanicInfo<'_> {
         // since String is not available in libcore!
         // The payload is a String when `std::panic!` is called with multiple arguments,
         // but in that case the message is also available.
+
+        Ok(())
     }
 }
 
