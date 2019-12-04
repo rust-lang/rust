@@ -1747,20 +1747,21 @@ impl<'a> Parser<'a> {
             // This is a struct literal, but we don't can't accept them here.
             let expr = self.parse_struct_expr(lo, path.clone(), attrs.clone());
             if let (Ok(expr), false) = (&expr, struct_allowed) {
-                self.struct_span_err(expr.span, "struct literals are not allowed here")
-                    .multipart_suggestion(
-                        "surround the struct literal with parentheses",
-                        vec![
-                            (lo.shrink_to_lo(), "(".to_string()),
-                            (expr.span.shrink_to_hi(), ")".to_string()),
-                        ],
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
+                self.error_struct_lit_not_allowed_here(lo, expr.span);
             }
             return Some(expr);
         }
         None
+    }
+
+    fn error_struct_lit_not_allowed_here(&self, lo: Span, sp: Span) {
+        self.struct_span_err(sp, "struct literals are not allowed here")
+            .multipart_suggestion(
+                "surround the struct literal with parentheses",
+                vec![(lo.shrink_to_lo(), "(".to_string()), (sp.shrink_to_hi(), ")".to_string())],
+                Applicability::MachineApplicable,
+            )
+            .emit();
     }
 
     pub(super) fn parse_struct_expr(
