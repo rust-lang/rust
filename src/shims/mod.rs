@@ -12,7 +12,7 @@ use crate::*;
 
 impl<'mir, 'tcx> EvalContextExt<'mir, 'tcx> for crate::MiriEvalContext<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx> {
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Tag>],
