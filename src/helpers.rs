@@ -453,7 +453,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
-    fn read_os_string_from_c_string<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
+    fn read_os_str_from_c_str<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
         where 'tcx: 'a, 'mir: 'a
     {
         let this = self.eval_context_ref();
@@ -465,7 +465,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
     /// the Unix APIs usually handle. This function returns `Ok(false)` without trying to write if
     /// `size` is not large enough to fit the contents of `os_string` plus a null terminator. It
     /// returns `Ok(true)` if the writing process was successful.
-    fn write_os_str_to_c_string(
+    fn write_os_str_to_c_str(
         &mut self,
         os_str: &OsStr,
         scalar: Scalar<Tag>,
