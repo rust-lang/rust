@@ -1,5 +1,7 @@
 //! Main evaluator loop and setting up the initial stack frame.
 
+use std::ffi::OsStr;
+
 use rand::rngs::StdRng;
 use rand::SeedableRng;
 
@@ -75,26 +77,15 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
     let argc = Scalar::from_uint(config.args.len() as u128, ecx.pointer_size());
     // Third argument (`argv`): created from `config.args`.
     let argv = {
-        // For Windows, construct a command string with all the aguments (before we take apart `config.args`).
-        let mut cmd = String::new();
+        // Put each argument in memory, collect pointers.
+        let mut argvs = Vec::<Scalar<Tag>>::new();
         for arg in config.args.iter() {
-            if !cmd.is_empty() {
-                cmd.push(' ');
-            }
-            cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
-        }
-        // Don't forget `0` terminator.
-        cmd.push(std::char::from_u32(0).unwrap());
-        // Collect the pointers to the individual strings.
-        let mut argvs = Vec::<Pointer<Tag>>::new();
-        for arg in config.args {
-            // Add `0` terminator.
-            let mut arg = arg.into_bytes();
-            arg.push(0);
-            argvs.push(
-                ecx.memory
-                    .allocate_static_bytes(arg.as_slice(), MiriMemoryKind::Env.into()),
-            );
+            // Make space for `0` terminator.
+            let size = arg.len() as u64 + 1;
+            let arg_type = tcx.mk_array(tcx.types.u8, size);
+            let arg_place = ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Env.into());
+            ecx.write_os_str_to_c_string(OsStr::new(arg), arg_place.ptr, size)?;
+            argvs.push(arg_place.ptr);
         }
         // Make an array with all these pointers, in the Miri memory.
         let argvs_layout = ecx.layout_of(
@@ -107,7 +98,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
         ecx.memory
             .mark_immutable(argvs_place.ptr.assert_ptr().alloc_id)?;
-        // A pointer to that place is the argument.
+        // A pointer to that place is the 3rd argument for main.
         let argv = argvs_place.ptr;
         // Store `argc` and `argv` for macOS `_NSGetArg{c,v}`.
         {
@@ -127,6 +118,17 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
         }
         // Store command line as UTF-16 for Windows `GetCommandLineW`.
         {
+            // Construct a command string with all the aguments.
+            let mut cmd = String::new();
+            for arg in config.args.iter() {
+                if !cmd.is_empty() {
+                    cmd.push(' ');
+                }
+                cmd.push_str(&*shell_escape::windows::escape(arg.as_str().into()));
+            }
+            // Don't forget `0` terminator.
+            cmd.push(std::char::from_u32(0).unwrap());
+
             let cmd_utf16: Vec<u16> = cmd.encode_utf16().collect();
             let cmd_type = tcx.mk_array(tcx.types.u16, cmd_utf16.len() as u64);
             let cmd_place = ecx.allocate(ecx.layout_of(cmd_type)?, MiriMemoryKind::Env.into());
