@@ -1788,21 +1788,7 @@ impl<'a> Parser<'a> {
                         self.recover_stmt();
                     }
                 }
-                if self.token == token::Comma {
-                    self.struct_span_err(
-                        exp_span.to(self.prev_span),
-                        "cannot use a comma after the base struct",
-                    )
-                    .span_suggestion_short(
-                        self.token.span,
-                        "remove this comma",
-                        String::new(),
-                        Applicability::MachineApplicable,
-                    )
-                    .note("the base struct must always be the last field")
-                    .emit();
-                    self.recover_stmt();
-                }
+                self.recover_struct_comma_after_dotdot(exp_span);
                 break;
             }
 
@@ -1862,6 +1848,22 @@ impl<'a> Parser<'a> {
         let span = lo.to(self.token.span);
         self.expect(&token::CloseDelim(token::Brace))?;
         return Ok(self.mk_expr(span, ExprKind::Struct(pth, fields, base), attrs));
+    }
+
+    fn recover_struct_comma_after_dotdot(&mut self, span: Span) {
+        if self.token != token::Comma {
+            return;
+        }
+        self.struct_span_err(span.to(self.prev_span), "cannot use a comma after the base struct")
+            .span_suggestion_short(
+                self.token.span,
+                "remove this comma",
+                String::new(),
+                Applicability::MachineApplicable,
+            )
+            .note("the base struct must always be the last field")
+            .emit();
+        self.recover_stmt();
     }
 
     /// Parses `ident (COLON expr)?`.
