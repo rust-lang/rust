@@ -189,7 +189,14 @@ impl Socket {
                     flags: c_int
                 ) -> c_int
             }
-            let res = cvt_r(|| unsafe { accept4(self.0.raw(), storage, len, libc::SOCK_CLOEXEC) });
+            let is_blocking =
+                unsafe { (cvt(libc::fcntl(self.0.raw(), libc::F_GETFL))? & libc::O_NONBLOCK) != 0 };
+            let accept_flags = if is_blocking {
+                libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK
+            } else {
+                libc::SOCK_CLOEXEC
+            };
+            let res = cvt_r(|| unsafe { accept4(self.0.raw(), storage, len, accept_flags) });
             match res {
                 Ok(fd) => return Ok(Socket(FileDesc::new(fd))),
                 Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
@@ -329,7 +336,11 @@ impl Socket {
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         let raw: c_int = getsockopt(self, libc::SOL_SOCKET, libc::SO_ERROR)?;
-        if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
+        if raw == 0 {
+            Ok(None)
+        } else {
+            Ok(Some(io::Error::from_raw_os_error(raw as i32)))
+        }
     }
 }
 

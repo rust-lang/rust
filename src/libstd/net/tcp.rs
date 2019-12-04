@@ -1818,4 +1818,31 @@ mod tests {
         let addr = listener.local_addr().unwrap();
         TcpStream::connect_timeout(&addr, Duration::from_secs(2)).unwrap();
     }
+
+    #[test]
+    fn nonblocking_accept() {
+        let socket_addr = next_test_ip4();
+        let listener = t!(TcpListener::bind(&socket_addr));
+        t!(listener.set_nonblocking(true));
+
+        let _t = thread::spawn(move || {
+            t!(TcpStream::connect(&("localhost", socket_addr.port())));
+            thread::sleep(Duration::from_millis(1000));
+        });
+
+        loop {
+            match listener.accept() {
+                Ok((mut stream, _)) => {
+                    let mut buf = [0; 2];
+                    match stream.read_exact(&mut buf) {
+                        Ok(_) => panic!("expected error"),
+                        Err(ref e) if e.kind() == ErrorKind::WouldBlock => return,
+                        Err(e) => panic!("unexpected error {:?}", e),
+                    }
+                }
+                Err(e) if e.kind() == ErrorKind::WouldBlock => {}
+                Err(e) => panic!("unexpected error {:?}", e),
+            }
+        }
+    }
 }
