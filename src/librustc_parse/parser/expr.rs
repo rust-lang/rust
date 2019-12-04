@@ -366,9 +366,9 @@ impl<'a> Parser<'a> {
     /// Error on `and` and `or` suggesting `&&` and `||` respectively.
     fn error_bad_logical_op(&self, bad: &str, good: &str, english: &str) {
         self.struct_span_err(self.token.span, &format!("`{}` is not a logical operator", bad))
-            .span_suggestion(
+            .span_suggestion_short(
                 self.token.span,
-                &format!("instead of `{}`, use `{}` to perform logical {}", bad, good, english),
+                &format!("use `{}` to perform logical {}", good, english),
                 good.to_string(),
                 Applicability::MachineApplicable,
             )
