@@ -1,6 +1,8 @@
 //! ARMv7 NEON intrinsics
 
-use crate::{core_arch::simd_llvm::*, mem::transmute};
+use crate::core_arch::simd_llvm::*;
+#[cfg(target_arch = "arm")]
+use crate::mem::transmute;
 #[cfg(test)]
 use stdarch_test::assert_instr;
 
