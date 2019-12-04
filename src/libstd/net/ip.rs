@@ -9,6 +9,7 @@
 use crate::cmp::Ordering;
 use crate::fmt;
 use crate::hash;
+use crate::io::Write;
 use crate::sys::net::netc as c;
 use crate::sys_common::{AsInner, FromInner};
 
@@ -833,8 +834,16 @@ impl From<Ipv6Addr> for IpAddr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv4Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        const IPV4_BUF_LEN: usize = 15; // Long enough for the longest possible IPv4 address
+        let mut buf = [0u8; IPV4_BUF_LEN];
+        let mut buf_slice = &mut buf[..];
         let octets = self.octets();
-        write!(fmt, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3])
+        // Note: The call to write should never fail, hence the unwrap
+        write!(buf_slice, "{}.{}.{}.{}", octets[0], octets[1], octets[2], octets[3]).unwrap();
+        let len = IPV4_BUF_LEN - buf_slice.len();
+        // This unsafe is OK because we know what is being written to the buffer
+        let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+        fmt.pad(buf)
     }
 }
 
@@ -1495,18 +1504,40 @@ impl Ipv6Addr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Note: The calls to write should never fail, hence the unwraps in the function
+        // Long enough for the longest possible IPv6: 39
+        const IPV6_BUF_LEN: usize = 39;
+        let mut buf = [0u8; IPV6_BUF_LEN];
+        let mut buf_slice = &mut buf[..];
+
         match self.segments() {
             // We need special cases for :: and ::1, otherwise they're formatted
             // as ::0.0.0.[01]
-            [0, 0, 0, 0, 0, 0, 0, 0] => write!(fmt, "::"),
-            [0, 0, 0, 0, 0, 0, 0, 1] => write!(fmt, "::1"),
+            [0, 0, 0, 0, 0, 0, 0, 0] => write!(buf_slice, "::").unwrap(),
+            [0, 0, 0, 0, 0, 0, 0, 1] => write!(buf_slice, "::1").unwrap(),
             // Ipv4 Compatible address
             [0, 0, 0, 0, 0, 0, g, h] => {
-                write!(fmt, "::{}.{}.{}.{}", (g >> 8) as u8, g as u8, (h >> 8) as u8, h as u8)
+                write!(
+                    buf_slice,
+                    "::{}.{}.{}.{}",
+                    (g >> 8) as u8,
+                    g as u8,
+                    (h >> 8) as u8,
+                    h as u8
+                )
+                .unwrap();
             }
             // Ipv4-Mapped address
             [0, 0, 0, 0, 0, 0xffff, g, h] => {
-                write!(fmt, "::ffff:{}.{}.{}.{}", (g >> 8) as u8, g as u8, (h >> 8) as u8, h as u8)
+                write!(
+                    buf_slice,
+                    "::ffff:{}.{}.{}.{}",
+                    (g >> 8) as u8,
+                    g as u8,
+                    (h >> 8) as u8,
+                    h as u8
+                )
+                .unwrap();
             }
             _ => {
                 fn find_zero_slice(segments: &[u16; 8]) -> (usize, usize) {
@@ -1539,25 +1570,33 @@ impl fmt::Display for Ipv6Addr {
                 let (zeros_at, zeros_len) = find_zero_slice(&self.segments());
 
                 if zeros_len > 1 {
-                    fn fmt_subslice(segments: &[u16], fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    fn fmt_subslice(segments: &[u16], buf: &mut &mut [u8]) {
                         if !segments.is_empty() {
-                            write!(fmt, "{:x}", segments[0])?;
+                            write!(*buf, "{:x}", segments[0]).unwrap();
                             for &seg in &segments[1..] {
-                                write!(fmt, ":{:x}", seg)?;
+                                write!(*buf, ":{:x}", seg).unwrap();
                             }
                         }
-                        Ok(())
                     }
 
-                    fmt_subslice(&self.segments()[..zeros_at], fmt)?;
-                    fmt.write_str("::")?;
-                    fmt_subslice(&self.segments()[zeros_at + zeros_len..], fmt)
+                    fmt_subslice(&self.segments()[..zeros_at], &mut buf_slice);
+                    write!(buf_slice, "::").unwrap();
+                    fmt_subslice(&self.segments()[zeros_at + zeros_len..], &mut buf_slice);
                 } else {
                     let &[a, b, c, d, e, f, g, h] = &self.segments();
-                    write!(fmt, "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}", a, b, c, d, e, f, g, h)
+                    write!(
+                        buf_slice,
+                        "{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}:{:x}",
+                        a, b, c, d, e, f, g, h
+                    )
+                    .unwrap();
                 }
             }
         }
+        let len = IPV6_BUF_LEN - buf_slice.len();
+        // This is safe because we know exactly what can be in this buffer
+        let buf = unsafe { crate::str::from_utf8_unchecked(&buf[..len]) };
+        fmt.pad(buf)
     }
 }
 
@@ -1897,6 +1936,18 @@ mod tests {
     }
 
     #[test]
+    fn ipv4_addr_to_string() {
+        // Short address
+        assert_eq!(Ipv4Addr::new(1, 1, 1, 1).to_string(), "1.1.1.1");
+        // Long address
+        assert_eq!(Ipv4Addr::new(127, 127, 127, 127).to_string(), "127.127.127.127");
+
+        // Test padding
+        assert_eq!(&format!("{:16}", Ipv4Addr::new(1, 1, 1, 1)), "1.1.1.1         ");
+        assert_eq!(&format!("{:>16}", Ipv4Addr::new(1, 1, 1, 1)), "         1.1.1.1");
+    }
+
+    #[test]
     fn ipv6_addr_to_string() {
         // ipv4-mapped address
         let a1 = Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc000, 0x280);
@@ -1908,6 +1959,22 @@ mod tests {
 
         // v6 address with no zero segments
         assert_eq!(Ipv6Addr::new(8, 9, 10, 11, 12, 13, 14, 15).to_string(), "8:9:a:b:c:d:e:f");
+
+        // longest possible IPv6 length
+        assert_eq!(
+            Ipv6Addr::new(0x1111, 0x2222, 0x3333, 0x4444, 0x5555, 0x6666, 0x7777, 0x8888)
+                .to_string(),
+            "1111:2222:3333:4444:5555:6666:7777:8888"
+        );
+        // padding
+        assert_eq!(
+            &format!("{:20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)),
+            "1:2:3:4:5:6:7:8     "
+        );
+        assert_eq!(
+            &format!("{:>20}", Ipv6Addr::new(1, 2, 3, 4, 5, 6, 7, 8)),
+            "     1:2:3:4:5:6:7:8"
+        );
 
         // reduce a single run of zeros
         assert_eq!(
