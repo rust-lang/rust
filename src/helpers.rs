@@ -1,5 +1,5 @@
 use std::{mem, iter};
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 
 use syntax::source_map::DUMMY_SP;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
@@ -453,9 +453,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
     /// Helper function to read an OsString from a null-terminated sequence of bytes, which is what
     /// the Unix APIs usually handle.
-    fn read_os_string_from_c_string(&mut self, scalar: Scalar<Tag>) -> InterpResult<'tcx, OsString> {
-        let bytes = self.eval_context_mut().memory.read_c_str(scalar)?;
-        Ok(bytes_to_os_str(bytes)?.into())
+    fn read_os_string_from_c_string<'a>(&'a self, scalar: Scalar<Tag>) -> InterpResult<'tcx, &'a OsStr>
+        where 'tcx: 'a, 'mir: 'a
+    {
+        let this = self.eval_context_ref();
+        let bytes = this.memory.read_c_str(scalar)?;
+        bytes_to_os_str(bytes)
     }
 
     /// Helper function to write an OsStr as a null-terminated sequence of bytes, which is what
@@ -501,7 +504,7 @@ fn os_str_to_bytes<'tcx, 'a>(os_str: &'a OsStr) -> InterpResult<'tcx, &'a [u8]> 
 }
 
 #[cfg(not(target_os = "unix"))]
-fn bytes_to_os_str<'tcx, 'a>(bytes: &'a[u8]) -> InterpResult<'tcx, &'a OsStr> {
+fn bytes_to_os_str<'tcx, 'a>(bytes: &'a [u8]) -> InterpResult<'tcx, &'a OsStr> {
     let s = std::str::from_utf8(bytes)
         .map_err(|_| err_unsup_format!("{:?} is not a valid utf-8 string", bytes))?;
     Ok(&OsStr::new(s))
