@@ -96,7 +96,7 @@
 #![feature(prelude_import)]
 #![feature(repr_simd, platform_intrinsics)]
 #![feature(rustc_attrs)]
-#![feature(rustc_const_unstable)]
+#![cfg_attr(bootstrap, feature(rustc_const_unstable))]
 #![feature(simd_ffi)]
 #![feature(specialization)]
 #![feature(staged_api)]

@@ -189,9 +189,14 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             }
         } else {
             // Emit errors for non-staged-api crates.
+            let unstable_attrs = [
+                sym::unstable, sym::stable,
+                sym::rustc_deprecated,
+                sym::rustc_const_unstable,
+            ];
             for attr in attrs {
                 let name = attr.name_or_empty();
-                if [sym::unstable, sym::stable, sym::rustc_deprecated].contains(&name) {
+                if unstable_attrs.contains(&name) {
                     attr::mark_used(attr);
                     struct_span_err!(
                         self.tcx.sess,

@@ -4,7 +4,7 @@
             reason = "who ever let humans program computers, we're apparently really bad at it",
             issue = "0")]
 
-#![feature(rustc_const_unstable, const_fn, foo, foo2)]
+#![feature(const_fn, foo, foo2)]
 #![feature(staged_api)]
 
 // @has 'foo/fn.foo.html' '//pre' 'pub unsafe fn foo() -> u32'
