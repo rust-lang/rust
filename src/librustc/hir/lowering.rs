@@ -1800,8 +1800,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &Path,
         param_mode: ParamMode,
         explicit_owner: Option<NodeId>,
-    ) -> hir::Path<'hir> {
-        hir::Path {
+    ) -> &'hir hir::Path<'hir> {
+        self.arena.alloc(hir::Path {
             res,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
                 self.lower_path_segment(
@@ -1815,10 +1815,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 )
             })),
             span: p.span,
-        }
+        })
     }
 
-    fn lower_path(&mut self, id: NodeId, p: &Path, param_mode: ParamMode) -> hir::Path<'hir> {
+    fn lower_path(&mut self, id: NodeId, p: &Path, param_mode: ParamMode) -> &'hir hir::Path<'hir> {
         let res = self.expect_full_res(id);
         let res = self.lower_res(res);
         self.lower_path_extra(res, p, param_mode, None)
@@ -2396,12 +2396,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         });
 
         // ::std::future::Future<future_params>
-        let future_path = self.arena.alloc(self.std_path(
-            span,
-            &[sym::future, sym::Future],
-            Some(future_params),
-            false,
-        ));
+        let future_path =
+            self.std_path(span, &[sym::future, sym::Future], Some(future_params), false);
 
         hir::GenericBound::Trait(
             hir::PolyTraitRef {
@@ -3048,7 +3044,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         subpats: &'hir [&'hir hir::Pat<'hir>],
     ) -> &'hir hir::Pat<'hir> {
         let path = self.std_path(span, components, None, true);
-        let qpath = hir::QPath::Resolved(None, self.arena.alloc(path));
+        let qpath = hir::QPath::Resolved(None, path);
         let pt = if subpats.is_empty() {
             hir::PatKind::Path(qpath)
         } else {
@@ -3096,7 +3092,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         components: &[Symbol],
         params: Option<&'hir hir::GenericArgs<'hir>>,
         is_value: bool,
-    ) -> hir::Path<'hir> {
+    ) -> &'hir hir::Path<'hir> {
         let ns = if is_value { Namespace::ValueNS } else { Namespace::TypeNS };
         let (path, res) = self.resolver.resolve_str_path(span, self.crate_root, components, ns);
 
@@ -3116,11 +3112,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .collect();
         segments.last_mut().unwrap().args = params;
 
-        hir::Path {
+        self.arena.alloc(hir::Path {
             span,
             res: res.map_id(|_| panic!("unexpected `NodeId`")),
             segments: self.arena.alloc_from_iter(segments),
-        }
+        })
     }
 
     fn ty_path(

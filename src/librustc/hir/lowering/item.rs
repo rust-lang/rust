@@ -507,7 +507,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         let new_id = this.lower_node_id(new_node_id);
                         let res = this.lower_res(res);
                         let path = this.lower_path_extra(res, &path, ParamMode::Explicit, None);
-                        let kind = hir::ItemKind::Use(this.arena.alloc(path), hir::UseKind::Single);
+                        let kind = hir::ItemKind::Use(path, hir::UseKind::Single);
                         let vis = this.rebuild_vis(&vis);
 
                         this.insert_item(hir::Item {
@@ -522,15 +522,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }
 
                 let path = self.lower_path_extra(ret_res, &path, ParamMode::Explicit, None);
-                let path = self.arena.alloc(path);
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
-                let path = self.arena.alloc(self.lower_path(
-                    id,
-                    &Path { segments, span: path.span },
-                    ParamMode::Explicit,
-                ));
+                let path =
+                    self.lower_path(id, &Path { segments, span: path.span }, ParamMode::Explicit);
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
@@ -618,7 +614,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = self.expect_full_res_from_use(id).next().unwrap_or(Res::Err);
                 let res = self.lower_res(res);
                 let path = self.lower_path_extra(res, &prefix, ParamMode::Explicit, None);
-                let path = self.arena.alloc(path);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
@@ -627,7 +622,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
     /// many times in the HIR tree; for each occurrence, we need to assign distinct
     /// `NodeId`s. (See, e.g., #56128.)
-    fn rebuild_use_path(&mut self, path: &hir::Path<'hir>) -> hir::Path<'hir> {
+    fn rebuild_use_path(&mut self, path: &hir::Path<'hir>) -> &'hir hir::Path<'hir> {
         debug!("rebuild_use_path(path = {:?})", path);
         let segments =
             self.arena.alloc_from_iter(path.segments.iter().map(|seg| hir::PathSegment {
@@ -637,7 +632,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 args: None,
                 infer_args: seg.infer_args,
             }));
-        hir::Path { span: path.span, res: path.res, segments }
+        self.arena.alloc(hir::Path { span: path.span, res: path.res, segments })
     }
 
     fn rebuild_vis(&mut self, vis: &hir::Visibility<'hir>) -> hir::Visibility<'hir> {
@@ -647,7 +642,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
             hir::VisibilityKind::Restricted { ref path, hir_id: _ } => {
                 hir::VisibilityKind::Restricted {
-                    path: self.arena.alloc(self.rebuild_use_path(path)),
+                    path: self.rebuild_use_path(path),
                     hir_id: self.next_id(),
                 }
             }
@@ -944,12 +939,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = self.expect_full_res(id);
                 let res = self.lower_res(res);
                 hir::VisibilityKind::Restricted {
-                    path: self.arena.alloc(self.lower_path_extra(
-                        res,
-                        path,
-                        ParamMode::Explicit,
-                        explicit_owner,
-                    )),
+                    path: self.lower_path_extra(res, path, ParamMode::Explicit, explicit_owner),
                     hir_id: lowered_id,
                 }
             }
