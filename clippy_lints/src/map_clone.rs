@@ -3,11 +3,12 @@ use crate::utils::{
     is_copy, match_trait_method, match_type, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
 };
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use rustc::ty;
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use syntax::ast::Ident;
 use syntax::source_map::Span;
 

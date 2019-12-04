@@ -35,6 +35,8 @@ extern crate rustc_mir;
 #[allow(unused_extern_crates)]
 extern crate rustc_parse;
 #[allow(unused_extern_crates)]
+extern crate rustc_session;
+#[allow(unused_extern_crates)]
 extern crate rustc_target;
 #[allow(unused_extern_crates)]
 extern crate rustc_typeck;
@@ -69,9 +71,11 @@ use toml;
 /// # #![feature(rustc_private)]
 /// # #[allow(unused_extern_crates)]
 /// # extern crate rustc;
+/// # #[allow(unused_extern_crates)]
+/// # extern crate rustc_session;
 /// # #[macro_use]
 /// # use clippy_lints::declare_clippy_lint;
-/// use rustc::declare_tool_lint;
+/// use rustc_session::declare_tool_lint;
 ///
 /// declare_clippy_lint! {
 ///     /// **What it does:** Checks for ... (describe what the lint matches).

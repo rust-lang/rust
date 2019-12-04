@@ -1,10 +1,11 @@
 //! lint on `use`ing all variants of an enum
 
 use crate::utils::span_lint;
+use rustc::declare_lint_pass;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::*;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 use syntax::source_map::Span;
 
 declare_clippy_lint! {

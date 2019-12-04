@@ -127,7 +127,8 @@ where all the lint code is. We are going to call the file
 
 ```rust
 use rustc::lint::{LintArray, LintPass, EarlyLintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc::declare_lint_pass;
+use rustc_session::declare_tool_lint;
 ```
 
 The next step is to provide a lint declaration. Lints are declared using the

@@ -3,10 +3,11 @@ use crate::utils::{
     span_lint_and_then,
 };
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use syntax::ast::*;
 use syntax::source_map::Span;
 use syntax::visit::{walk_expr, FnKind, Visitor};

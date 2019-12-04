@@ -1,10 +1,11 @@
 use matches::matches;
+use rustc::declare_lint_pass;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::intravisit::*;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_session::declare_tool_lint;
 use syntax::source_map::Span;
 use syntax::symbol::kw;
 

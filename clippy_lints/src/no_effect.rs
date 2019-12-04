@@ -1,9 +1,10 @@
 use crate::utils::{has_drop, qpath_res, snippet_opt, span_lint, span_lint_and_sugg};
+use rustc::declare_lint_pass;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use std::ops::Deref;
 
 declare_clippy_lint! {

@@ -4,11 +4,12 @@ use crate::utils::{
 };
 use matches::matches;
 use rustc::hir::{self, def::Res, def_id::DefId, intravisit};
+use rustc::impl_lint_pass;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty::{self, Ty};
-use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::Attribute;
 use syntax::source_map::Span;

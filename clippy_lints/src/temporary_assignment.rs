@@ -1,9 +1,10 @@
 use crate::utils::is_adjusted;
 use crate::utils::span_lint;
+use rustc::declare_lint_pass;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::{Expr, ExprKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for construction of a structure or tuple just to

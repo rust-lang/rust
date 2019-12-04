@@ -6,14 +6,15 @@ use crate::utils::{
     span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir::*;
 use rustc::lint::{
     in_external_macro, CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray,
     LintContext, LintPass,
 };
 use rustc::ty;
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 use semver::Version;
 use syntax::ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
 use syntax::source_map::Span;

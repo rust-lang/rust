@@ -1,10 +1,11 @@
 use crate::reexport::*;
 use crate::utils::{contains_name, higher, iter_input_pats, snippet, span_lint_and_then};
+use rustc::declare_lint_pass;
 use rustc::hir::intravisit::FnKind;
 use rustc::hir::*;
 use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc::ty;
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 use syntax::source_map::Span;
 
 declare_clippy_lint! {

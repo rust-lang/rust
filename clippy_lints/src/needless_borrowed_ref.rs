@@ -4,10 +4,11 @@
 
 use crate::utils::{snippet_with_applicability, span_lint_and_then};
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir::{BindingAnnotation, Mutability, Node, Pat, PatKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for useless borrowed references.

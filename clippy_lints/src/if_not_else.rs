@@ -1,8 +1,9 @@
 //! lint on if branches that could be swapped so no `!` operation is necessary
 //! on the condition
 
+use rustc::declare_lint_pass;
 use rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 use syntax::ast::*;
 
 use crate::utils::span_help_and_lint;

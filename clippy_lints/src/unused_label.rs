@@ -1,9 +1,10 @@
 use crate::utils::span_lint;
+use rustc::declare_lint_pass;
 use rustc::hir;
 use rustc::hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_session::declare_tool_lint;
 use syntax::source_map::Span;
 use syntax::symbol::Symbol;
 

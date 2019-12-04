@@ -3,6 +3,8 @@
 
 #[macro_use]
 extern crate rustc;
+#[macro_use]
+extern crate rustc_session;
 use rustc::lint::{LintArray, LintPass};
 
 declare_tool_lint! {

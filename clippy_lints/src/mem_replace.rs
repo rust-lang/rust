@@ -2,10 +2,11 @@ use crate::utils::{
     match_def_path, match_qpath, paths, snippet_with_applicability, span_help_and_lint, span_lint_and_sugg,
 };
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir::{BorrowKind, Expr, ExprKind, Mutability, QPath};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for `mem::replace()` on an `Option` with

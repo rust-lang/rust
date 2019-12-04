@@ -1,6 +1,7 @@
 use crate::utils::{span_lint, span_lint_and_then};
+use rustc::impl_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, impl_lint_pass};
+use rustc_session::declare_tool_lint;
 use std::cmp::Ordering;
 use syntax::ast::*;
 use syntax::attr;

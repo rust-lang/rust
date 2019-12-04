@@ -1,7 +1,8 @@
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::hir::{ImplItem, ImplItemKind};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 
 use crate::utils::{
     get_trait_def_id, implements_trait, match_type, paths, return_ty, span_help_and_lint, trait_ref_of_method,

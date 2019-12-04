@@ -2,9 +2,10 @@ use crate::utils::{
     match_def_path, match_trait_method, paths, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then,
 };
 use rustc::hir::*;
+use rustc::impl_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_tool_lint, impl_lint_pass};
 use rustc_errors::Applicability;
+use rustc_session::declare_tool_lint;
 
 declare_clippy_lint! {
     /// **What it does:** Checks for always-identical `Into`/`From`/`IntoIter` conversions.

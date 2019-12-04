@@ -1,6 +1,7 @@
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 
 use crate::utils::{higher::if_block, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use rustc::hir::intravisit::*;

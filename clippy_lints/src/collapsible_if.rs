@@ -13,8 +13,9 @@
 //! This lint is **warn** by default
 
 use if_chain::if_chain;
+use rustc::declare_lint_pass;
 use rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint};
+use rustc_session::declare_tool_lint;
 use syntax::ast;
 
 use crate::utils::sugg::Sugg;

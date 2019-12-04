@@ -4,7 +4,8 @@ use matches::matches;
 use rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc::hir::{BorrowKind, Expr, ExprKind, Mutability, StmtKind, UnOp};
 use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use rustc::{declare_lint_pass, declare_tool_lint, ty};
+use rustc::{declare_lint_pass, ty};
+use rustc_session::declare_tool_lint;
 use syntax_pos::Span;
 
 declare_clippy_lint! {
