@@ -1721,6 +1721,21 @@ impl<'a> Parser<'a> {
             ))
     }
 
+    fn is_certainly_not_a_block(&self) -> bool {
+        self.look_ahead(1, |t| t.is_ident())
+            && (
+                // `{ ident, ` cannot start a block.
+                self.look_ahead(2, |t| t == &token::Comma)
+                    || self.look_ahead(2, |t| t == &token::Colon)
+                        && (
+                            // `{ ident: token, ` cannot start a block.
+                            self.look_ahead(4, |t| t == &token::Comma) ||
+                // `{ ident: ` cannot start a block unless it's a type ascription `ident: Type`.
+                self.look_ahead(3, |t| !t.can_begin_type())
+                        )
+            )
+    }
+
     fn maybe_parse_struct_expr(
         &mut self,
         lo: Span,
@@ -1728,22 +1743,7 @@ impl<'a> Parser<'a> {
         attrs: &AttrVec,
     ) -> Option<PResult<'a, P<Expr>>> {
         let struct_allowed = !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL);
-        let certainly_not_a_block = || {
-            self.look_ahead(1, |t| t.is_ident())
-                && (
-                    // `{ ident, ` cannot start a block.
-                    self.look_ahead(2, |t| t == &token::Comma)
-                        || self.look_ahead(2, |t| t == &token::Colon)
-                            && (
-                                // `{ ident: token, ` cannot start a block.
-                                self.look_ahead(4, |t| t == &token::Comma) ||
-                // `{ ident: ` cannot start a block unless it's a type ascription `ident: Type`.
-                self.look_ahead(3, |t| !t.can_begin_type())
-                            )
-                )
-        };
-
-        if struct_allowed || certainly_not_a_block() {
+        if struct_allowed || self.is_certainly_not_a_block() {
             // This is a struct literal, but we don't can't accept them here.
             let expr = self.parse_struct_expr(lo, path.clone(), attrs.clone());
             if let (Ok(expr), false) = (&expr, struct_allowed) {
