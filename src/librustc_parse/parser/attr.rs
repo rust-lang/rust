@@ -1,4 +1,4 @@
-use super::{SeqSep, Parser, TokenType, PathStyle};
+use super::{Parser, TokenType, PathStyle};
 use rustc_errors::PResult;
 use syntax::attr;
 use syntax::ast;
@@ -301,8 +301,10 @@ impl<'a> Parser<'a> {
     crate fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
-        } else if self.eat(&token::OpenDelim(token::Paren)) {
-            ast::MetaItemKind::List(self.parse_meta_seq()?)
+        } else if self.check(&token::OpenDelim(token::Paren)) {
+            // Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
+            let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
+            ast::MetaItemKind::List(list)
         } else {
             ast::MetaItemKind::Word
         })
@@ -311,28 +313,17 @@ impl<'a> Parser<'a> {
     /// Matches `meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;`.
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
         match self.parse_unsuffixed_lit() {
-            Ok(lit) => {
-                return Ok(ast::NestedMetaItem::Literal(lit))
-            }
+            Ok(lit) => return Ok(ast::NestedMetaItem::Literal(lit)),
             Err(ref mut err) => err.cancel(),
         }
 
         match self.parse_meta_item() {
-            Ok(mi) => {
-                return Ok(ast::NestedMetaItem::MetaItem(mi))
-            }
+            Ok(mi) => return Ok(ast::NestedMetaItem::MetaItem(mi)),
             Err(ref mut err) => err.cancel(),
         }
 
         let found = self.this_token_to_string();
         let msg = format!("expected unsuffixed literal or identifier, found `{}`", found);
         Err(self.diagnostic().struct_span_err(self.token.span, &msg))
-    }
-
-    /// Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
-    fn parse_meta_seq(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
-        self.parse_seq_to_end(&token::CloseDelim(token::Paren),
-                              SeqSep::trailing_allowed(token::Comma),
-                              |p: &mut Parser<'a>| p.parse_meta_item_inner())
     }
 }

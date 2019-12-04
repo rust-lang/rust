@@ -919,17 +919,13 @@ impl<'a> Parser<'a> {
 
     fn parse_tuple_parens_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let lo = self.token.span;
-        let mut first = true;
-        let parse_leading_attr_expr = |p: &mut Self| {
-            if first {
-                // `(#![foo] a, b, ...)` is OK...
-                attrs.extend(p.parse_inner_attributes()?);
-                // ...but not `(a, #![foo] b, ...)`.
-                first = false;
-            }
-            p.parse_expr_catch_underscore()
-        };
-        let (es, trailing_comma) = match self.parse_paren_comma_seq(parse_leading_attr_expr) {
+        self.expect(&token::OpenDelim(token::Paren))?;
+        attrs.extend(self.parse_inner_attributes()?); // `(#![foo] a, b, ...)` is OK.
+        let (es, trailing_comma) = match self.parse_seq_to_end(
+            &token::CloseDelim(token::Paren),
+            SeqSep::trailing_allowed(token::Comma),
+            |p| p.parse_expr_catch_underscore(),
+        ) {
             Ok(x) => x,
             Err(err) => return Ok(self.recover_seq_parse_error(token::Paren, lo, Err(err))),
         };
@@ -950,7 +946,8 @@ impl<'a> Parser<'a> {
 
         attrs.extend(self.parse_inner_attributes()?);
 
-        let kind = if self.eat(&token::CloseDelim(token::Bracket)) {
+        let close = &token::CloseDelim(token::Bracket);
+        let kind = if self.eat(close) {
             // Empty vector
             ExprKind::Array(Vec::new())
         } else {
@@ -962,21 +959,18 @@ impl<'a> Parser<'a> {
                     id: DUMMY_NODE_ID,
                     value: self.parse_expr()?,
                 };
-                self.expect(&token::CloseDelim(token::Bracket))?;
+                self.expect(close)?;
                 ExprKind::Repeat(first_expr, count)
             } else if self.eat(&token::Comma) {
                 // Vector with two or more elements.
-                let remaining_exprs = self.parse_seq_to_end(
-                    &token::CloseDelim(token::Bracket),
-                    SeqSep::trailing_allowed(token::Comma),
-                    |p| Ok(p.parse_expr()?)
-                )?;
+                let sep = SeqSep::trailing_allowed(token::Comma);
+                let (remaining_exprs, _) = self.parse_seq_to_end(close, sep, |p| p.parse_expr())?;
                 let mut exprs = vec![first_expr];
                 exprs.extend(remaining_exprs);
                 ExprKind::Array(exprs)
             } else {
                 // Vector with one element
-                self.expect(&token::CloseDelim(token::Bracket))?;
+                self.expect(close)?;
                 ExprKind::Array(vec![first_expr])
             }
         };
