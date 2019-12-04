@@ -1296,6 +1296,13 @@ endCheck:
         IRBuilder<> entryBuilder(inversionAllocs);
         entryBuilder.setFastMathFlags(getFast());
         AllocaInst* alloc = entryBuilder.CreateAlloca(types.back(), nullptr, name+"_cache");
+        {
+            ConstantInt* byteSizeOfType = ConstantInt::get(Type::getInt64Ty(ctx->getContext()), newFunc->getParent()->getDataLayout().getTypeAllocSizeInBits(types.back())/8);
+            unsigned bsize = (unsigned)byteSizeOfType->getZExtValue();
+            if ((bsize & (bsize - 1)) == 0) {
+                alloc->setAlignment(bsize);
+            }
+        }
                 
         Type *BPTy = Type::getInt8PtrTy(ctx->getContext());
         auto realloc = newFunc->getParent()->getOrInsertFunction("realloc", BPTy, BPTy, Type::getInt64Ty(ctx->getContext()));

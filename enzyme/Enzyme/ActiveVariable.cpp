@@ -533,6 +533,9 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
 
         if(auto inst = dyn_cast<Instruction>(val))
         llvm::errs() << *inst->getParent()->getParent() << "\n";
+        
+        if(auto arg = dyn_cast<Argument>(val))
+        llvm::errs() << *arg->getParent() << "\n";
 
         if (floatingUse)
         llvm::errs() << " val:" << *val << " pointer:" << pointerUse << " floating:" << *floatingUse << " int:" << intUse << "\n";
