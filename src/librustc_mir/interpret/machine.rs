@@ -146,7 +146,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// nor just jump to `ret`, but instead push their own stack frame.)
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
