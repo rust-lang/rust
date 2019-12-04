@@ -422,6 +422,11 @@ impl Analysis {
         self.with_db(|db| parent_module::crate_for(db, file_id))
     }
 
+    /// Returns the edition of the given crate.
+    pub fn crate_edition(&self, crate_id: CrateId) -> Cancelable<Edition> {
+        self.with_db(|db| db.crate_graph().edition(crate_id))
+    }
+
     /// Returns the root file of the given crate.
     pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
         self.with_db(|db| db.crate_graph().crate_root(crate_id))

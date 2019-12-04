@@ -235,6 +235,15 @@ impl FromStr for Edition {
     }
 }
 
+impl fmt::Display for Edition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Edition::Edition2015 => "2015",
+            Edition::Edition2018 => "2018",
+        })
+    }
+}
+
 impl Dependency {
     pub fn crate_id(&self) -> CrateId {
         self.crate_id
