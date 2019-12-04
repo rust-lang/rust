@@ -9,9 +9,13 @@ note: first, the lifetime cannot outlive the lifetime `'a` as defined on the fun
    |
 LL | fn transmute_lifetime<'a, 'b, T>(t: &'a (T,)) -> &'b T {
    |                       ^^
-   = note: ...so that the types are compatible:
-           expected (&&(T,),)
-              found (&&'a (T,),)
+note: ...so that the types are compatible
+  --> $DIR/issue-52213.rs:2:11
+   |
+LL |     match (&t,) {
+   |           ^^^^^
+   = note: expected  `(&&(T,),)`
+              found  `(&&'a (T,),)`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 1:27...
   --> $DIR/issue-52213.rs:1:27
    |

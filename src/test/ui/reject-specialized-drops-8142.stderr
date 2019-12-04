@@ -105,9 +105,13 @@ note: ...but the lifetime must also be valid for the lifetime `'l2` as defined o
    |
 LL | struct W<'l1, 'l2> { x: &'l1 i8, y: &'l2 u8 }
    |               ^^^
-   = note: ...so that the types are compatible:
-           expected W<'l1, 'l2>
-              found W<'_, '_>
+note: ...so that the types are compatible
+  --> $DIR/reject-specialized-drops-8142.rs:54:1
+   |
+LL | impl<'lw>         Drop for W<'lw,'lw>     { fn drop(&mut self) { } } // REJECT
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected  `W<'l1, 'l2>`
+              found  `W<'_, '_>`
 
 error: aborting due to 8 previous errors
 
