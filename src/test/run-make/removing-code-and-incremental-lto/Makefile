@@ -5,6 +5,15 @@
 # $ ./x.py test --target thumbv7m-none-eabi src/test/run-make
 
 # The original target of interest was thumbv7em-none-eabi
+#
+# It is possible that other targets could be tested, but as long as we are
+# testing *something*, that is enough for me. (Note that you should not just add
+# `# only-target` lines; see rust-lang/rust#67018.)
+ifeq (,$(filter $(TARGET),thumbv6m-none-eabi thumbv7em-none-eabi thumbv7em-none-eabihf thumbv7m-none-eabi))
+
+all:
+
+else
 
 # This is a test of a scenario that arose in issue rust-lang/rust#59535.
 #
