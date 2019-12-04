@@ -939,6 +939,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_transmute")]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
