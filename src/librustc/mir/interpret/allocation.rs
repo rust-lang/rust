@@ -337,7 +337,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
         // The iterator below yields pairs of adjacent bytes, in order to find 0x0000.
-        Ok(match 
+        Ok(match
             self.bytes[offset..].iter().step_by(2)
            .zip(self.bytes[(offset+1)..].iter().step_by(2))
            .position(|(&l, &r)| l == 0 && r == 0) {
