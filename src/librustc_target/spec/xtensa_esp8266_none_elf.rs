@@ -22,7 +22,7 @@ pub fn target() -> TargetResult {
             // to gcc to get object files. For this reason we have a hard
             // dependency on this specific gcc.
             // asm_args: vec!["-mcpu=esp8266".to_string()],
-            linker: Some("xtensa-esp32-elf-gcc".to_string()),
+            linker: Some("xtensa-lx106-elf-gcc".to_string()),
             no_integrated_as: true,
 
             max_atomic_width: Some(32),
