@@ -96,7 +96,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
             throw_unsup_format!("unsupported flags {:#x}", flag & !mirror);
         }
 
-        let path = this.read_os_string_from_c_string(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let fd = options.open(path).map(|file| {
             let mut fh = &mut this.machine.file_handler;
@@ -250,7 +250,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
 
         this.check_no_isolation("unlink")?;
 
-        let path = this.read_os_string_from_c_string(this.read_scalar(path_op)?.not_undef()?)?;
+        let path = this.read_os_str_from_c_str(this.read_scalar(path_op)?.not_undef()?)?;
 
         let result = remove_file(path).map(|_| 0);
 

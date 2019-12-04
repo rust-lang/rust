@@ -84,7 +84,7 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
             let size = arg.len() as u64 + 1;
             let arg_type = tcx.mk_array(tcx.types.u8, size);
             let arg_place = ecx.allocate(ecx.layout_of(arg_type)?, MiriMemoryKind::Env.into());
-            ecx.write_os_str_to_c_string(OsStr::new(arg), arg_place.ptr, size)?;
+            ecx.write_os_str_to_c_str(OsStr::new(arg), arg_place.ptr, size)?;
             argvs.push(arg_place.ptr);
         }
         // Make an array with all these pointers, in the Miri memory.
