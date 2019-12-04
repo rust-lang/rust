@@ -1220,6 +1220,8 @@ impl<'tcx> Witness<'tcx> {
 ///
 /// We make sure to omit constructors that are statically impossible. E.g., for
 /// `Option<!>`, we do not include `Some(_)` in the returned list of constructors.
+/// Invariant: this returns an empty `Vec` if and only if the type is uninhabited (as determined by
+/// `cx.is_uninhabited()`).
 fn all_constructors<'a, 'tcx>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     pcx: PatCtxt<'tcx>,
