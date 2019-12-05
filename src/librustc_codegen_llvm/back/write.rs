@@ -588,14 +588,11 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
                     cursor.position() as size_t
                 }
 
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                    let result =
-                        llvm::LLVMRustPrintModule(cpm, llmod, out_c.as_ptr(), demangle_callback);
-                    llvm::LLVMDisposePassManager(cpm);
-                    result.into_result().map_err(|()| {
-                        let msg = format!("failed to write LLVM IR to {}", out.display());
-                        llvm_err(diag_handler, &msg)
-                    })
+                let result =
+                    llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
+                result.into_result().map_err(|()| {
+                    let msg = format!("failed to write LLVM IR to {}", out.display());
+                    llvm_err(diag_handler, &msg)
                 })?;
             }
 

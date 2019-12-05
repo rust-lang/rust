@@ -658,46 +658,11 @@ public:
   }
 };
 
-class RustPrintModulePass : public ModulePass {
-  raw_ostream* OS;
-  DemangleFn Demangle;
-public:
-  static char ID;
-  RustPrintModulePass() : ModulePass(ID), OS(nullptr), Demangle(nullptr) {}
-  RustPrintModulePass(raw_ostream &OS, DemangleFn Demangle)
-      : ModulePass(ID), OS(&OS), Demangle(Demangle) {}
-
-  bool runOnModule(Module &M) override {
-    RustAssemblyAnnotationWriter AW(Demangle);
-
-    M.print(*OS, &AW, false);
-
-    return false;
-  }
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.setPreservesAll();
-  }
-
-  static StringRef name() { return "RustPrintModulePass"; }
-};
-
 } // namespace
 
-namespace llvm {
-  void initializeRustPrintModulePassPass(PassRegistry&);
-}
-
-char RustPrintModulePass::ID = 0;
-INITIALIZE_PASS(RustPrintModulePass, "print-rust-module",
-                "Print rust module to stderr", false, false)
-
 extern "C" LLVMRustResult
-LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
-                    const char *Path, DemangleFn Demangle) {
-  llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
+LLVMRustPrintModule(LLVMModuleRef M, const char *Path, DemangleFn Demangle) {
   std::string ErrorInfo;
-
   std::error_code EC;
   raw_fd_ostream OS(Path, EC, sys::fs::F_None);
   if (EC)
@@ -707,11 +672,9 @@ LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
     return LLVMRustResult::Failure;
   }
 
+  RustAssemblyAnnotationWriter AAW(Demangle);
   formatted_raw_ostream FOS(OS);
-
-  PM->add(new RustPrintModulePass(FOS, Demangle));
-
-  PM->run(*unwrap(M));
+  unwrap(M)->print(FOS, &AAW);
 
   return LLVMRustResult::Success;
 }
