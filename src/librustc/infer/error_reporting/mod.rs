@@ -1809,12 +1809,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             sub_region,
                             "...",
                         );
-                        err.note(&format!(
-                            "...so that the {}:\nexpected {}\n   found {}",
-                            sup_trace.cause.as_requirement_str(),
-                            sup_expected.content(),
-                            sup_found.content()
+                        err.span_note(sup_trace.cause.span, &format!(
+                            "...so that the {}",
+                            sup_trace.cause.as_requirement_str()
                         ));
+
+                        err.note_expected_found(
+                            &"",
+                            sup_expected,
+                            &"",
+                            sup_found
+                        );
                         err.emit();
                         return;
                     }

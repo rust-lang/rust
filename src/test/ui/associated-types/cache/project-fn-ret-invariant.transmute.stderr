@@ -9,13 +9,21 @@ note: first, the lifetime cannot outlive the lifetime `'a` as defined on the fun
    |
 LL | fn baz<'a,'b>(x: Type<'a>) -> Type<'static> {
    |        ^^
-   = note: ...so that the expression is assignable:
-           expected Type<'_>
-              found Type<'a>
+note: ...so that the expression is assignable
+  --> $DIR/project-fn-ret-invariant.rs:48:13
+   |
+LL |    bar(foo, x)
+   |             ^
+   = note: expected  `Type<'_>`
+              found  `Type<'a>`
    = note: but, the lifetime must be valid for the static lifetime...
-   = note: ...so that the expression is assignable:
-           expected Type<'static>
-              found Type<'_>
+note: ...so that the expression is assignable
+  --> $DIR/project-fn-ret-invariant.rs:48:4
+   |
+LL |    bar(foo, x)
+   |    ^^^^^^^^^^^
+   = note: expected  `Type<'static>`
+              found  `Type<'_>`
 
 error: aborting due to previous error
 
