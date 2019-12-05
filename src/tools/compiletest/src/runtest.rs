@@ -1782,8 +1782,8 @@ impl<'test> TestCx<'test> {
         let mut add_extern_priv = |priv_dep: &str, dylib: bool| {
             let lib_name = get_lib_name(priv_dep, dylib);
             rustc
-                .arg("--extern-private")
-                .arg(format!("{}={}", priv_dep, aux_dir.join(lib_name).to_str().unwrap()));
+                .arg("--extern")
+                .arg(format!("priv:{}={}", priv_dep, aux_dir.join(lib_name).to_str().unwrap()));
         };
 
         for rel_ab in &self.props.aux_builds {
@@ -1829,9 +1829,9 @@ impl<'test> TestCx<'test> {
 
             let trimmed = rel_ab.trim_end_matches(".rs").to_string();
 
-            // Normally, every 'extern-private' has a correspodning 'aux-build'
+            // Normally, every 'extern-private' has a corresponding 'aux-build'
             // entry. If so, we remove it from our list of private crates,
-            // and add an '--extern-private' flag to rustc
+            // and add an '--extern priv:NAME=PATH' flag to rustc
             if extern_priv.remove_item(&trimmed).is_some() {
                 add_extern_priv(&trimmed, dylib);
             }
@@ -1859,7 +1859,7 @@ impl<'test> TestCx<'test> {
             }
         }
 
-        // Add any '--extern-private' entries without a matching
+        // Add any '--extern' private entries without a matching
         // 'aux-build'
         for private_lib in extern_priv {
             add_extern_priv(&private_lib, true);

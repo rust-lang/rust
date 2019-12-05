@@ -311,7 +311,7 @@ pub struct TestProps {
     // directory as the test, but for backwards compatibility reasons
     // we also check the auxiliary directory)
     pub aux_builds: Vec<String>,
-    // A list of crates to pass '--extern-private name:PATH' flags for
+    // A list of crates to pass '--extern priv:name=PATH' flags for
     // This should be a subset of 'aux_build'
     // FIXME: Replace this with a better solution: https://github.com/rust-lang/rust/pull/54020
     pub extern_private: Vec<String>,

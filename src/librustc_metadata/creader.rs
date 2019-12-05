@@ -218,13 +218,14 @@ impl<'a> CrateLoader<'a> {
             let source = self.cstore.get_crate_data(cnum).source();
             if let Some(entry) = self.sess.opts.externs.get(&name.as_str()) {
                 // Only use `--extern crate_name=path` here, not `--extern crate_name`.
-                let found = entry.locations.iter().filter_map(|l| l.as_ref()).any(|l| {
-                    let l = fs::canonicalize(l).ok();
-                    source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
-                    source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
-                });
-                if found {
-                    ret = Some(cnum);
+                if let Some(mut files) = entry.files() {
+                    if files.any(|l| {
+                        let l = fs::canonicalize(l).ok();
+                        source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
+                        source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
+                    }) {
+                        ret = Some(cnum);
+                    }
                 }
                 return
             }
