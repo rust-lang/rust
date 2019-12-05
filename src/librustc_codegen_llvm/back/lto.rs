@@ -584,7 +584,7 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 fn equivalent_as_sets(a: &[String], b: &[String]) -> bool {
     // cheap path: unequal lengths means cannot possibly be set equivalent.
     if a.len() != b.len() { return false; }
-    // fast path: before taking time to build up sorted clones, just see if the given inputs are equivant as is.
+    // fast path: before sorting, check if inputs are equivalent as is.
     if a == b { return true; }
     // slow path: compare sorted contents
     let mut a: Vec<&str> = a.iter().map(|s| s.as_str()).collect();
