@@ -1,5 +1,7 @@
 project(Enzyme)
 
+cmake_minimum_required(VERSION 3.9)
+
 SET(CMAKE_CXX_FLAGS "-Wall")
 SET(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g -ggdb")
 SET(CMAKE_CXX_FLAGS_RELEASE "-O2")
@@ -9,8 +11,7 @@ SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g -ggdb -fno-omit-frame-pointer")
 #SET(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g -fno-omit-frame-pointer -fsanitize=address")
 #SET(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} -fno-omit-frame-pointer -fsanitize=address")
 
-set(CMAKE_CXX_STANDARD 11)
-cmake_minimum_required(VERSION 3.5)
+set(CMAKE_CXX_STANDARD 17)
 
 set(ENZYME_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(ENZYME_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR})

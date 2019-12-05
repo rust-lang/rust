@@ -379,15 +379,15 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
   return false;
 }
 
-
 //! return structtype if recursive function
-std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>, unsigned> > CreateAugmentedPrimal(Function* todiff, AAResults &global_AA, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed, const std::set<unsigned> _uncacheable_args) {
-  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>, unsigned> >> cachedfunctions;
+const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global_AA, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed, const std::set<unsigned> _uncacheable_args) {
+  static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, AugmentedReturn> cachedfunctions;
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, bool> cachedfinished;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::set<unsigned>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed);
   llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << "\n";
-  if (cachedfunctions.find(tup) != cachedfunctions.end()) {
-    return cachedfunctions[tup];
+  auto found = cachedfunctions.find(tup);
+  if (found != cachedfunctions.end()) {
+    return found->second;
   }
 
   //if (differentialReturn) assert(returnUsed);
@@ -431,11 +431,11 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
         auto ut = UndefValue::get(NewF->getReturnType());
         auto val = bb.CreateInsertValue(ut, cal, {1u});
         bb.CreateRet(val);
-        return cachedfunctions[tup] = std::tuple<Function*,StructType*, std::map<std::pair<Instruction*,std::string>,unsigned> >(NewF, nullptr, {});
+        return cachedfunctions.insert_or_assign(tup, AugmentedReturn(NewF, nullptr, {})).first->second;
       }
 
       //assert(st->getNumElements() > 0);
-      return cachedfunctions[tup] = std::tuple<Function*,StructType*, std::map<std::pair<Instruction*,std::string>,unsigned> >(foundcalled, nullptr, {}); //dyn_cast<StructType>(st->getElementType(0)));
+      return cachedfunctions.insert_or_assign(tup, AugmentedReturn(foundcalled, nullptr, {})).first->second; //dyn_cast<StructType>(st->getElementType(0)));
     }
 
 
@@ -449,12 +449,12 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
   assert(!todiff->empty());
   AAResults AA(TLI);
   GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnValue*/returnUsed ?  ReturnType::TapeAndReturns : ReturnType::Tape , /*differentialReturn*/differentialReturn);
-  cachedfunctions[tup] = std::tuple<Function*,StructType*, std::map<std::pair<Instruction*,std::string>,unsigned> >(gutils->newFunc, nullptr, {});
+  cachedfunctions.insert_or_assign(tup, AugmentedReturn(gutils->newFunc, nullptr, {}));
   cachedfinished[tup] = false;
 
   auto getIndex = [&](Instruction* I, std::string u)-> unsigned {
-    std::map<std::pair<Instruction*,std::string>,unsigned>& mapping = std::get<2>(cachedfunctions[tup]);
-    return gutils->getIndex( std::make_pair(I, u), mapping);
+    //std::map<std::pair<Instruction*,std::string>,unsigned>& mapping = cachedfunctions[tup].tapeIndices;
+    return gutils->getIndex( std::make_pair(I, u), cachedfunctions.find(tup)->second.tapeIndices);
   };
 
   gutils->forceContexts();
@@ -480,7 +480,7 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
     for (auto &iter : can_modref_map) {
       if (iter.second) {
         bool is_needed = is_value_needed_in_reverse(gutils, iter.first, /*topLevel*/false);
-        llvm::errs() << " iter.first: " << *iter.first << " " << is_needed << "\n";
+        //llvm::errs() << " iter.first: " << *iter.first << " " << is_needed << "\n";
         iter.second = is_needed;
       }
     }
@@ -488,21 +488,41 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
   //! Explicitly handle all returns first to ensure that all instructions know whether or not they are used
   SmallPtrSet<Instruction*, 4> returnuses;
 
-  ValueToValueMap returnsToOriginalValues;
+  //! Similarly keep track of inverted pointers we may need to return
+  ValueToValueMapTy invertedRetPs;
 
   for(BasicBlock* BB: gutils->originalBlocks) {
     if(auto ri = dyn_cast<ReturnInst>(BB->getTerminator())) {
         auto oldval = ri->getReturnValue();
-        Value* rt = UndefValue::get(gutils->newFunc->getReturnType());
         IRBuilder <>ib(ri);
+        Value* rt = UndefValue::get(gutils->newFunc->getReturnType());
         if (oldval && returnUsed) {
+            //llvm::errs() << " rt: " << *rt << " oldval:" << *oldval << "\n";
             rt = ib.CreateInsertValue(rt, oldval, {1});
             if (Instruction* inst = dyn_cast<Instruction>(rt)) {
                 returnuses.insert(inst);
             }
         }
+        
         auto newri = ib.CreateRet(rt);
-        returnsToOriginalValues[newri] = oldval;
+        ib.SetInsertPoint(newri);
+        
+        if (oldval) 
+        llvm::errs() << " newri(" << newri << "): " << *newri << " ri: " << *ri << " oldval: " << *oldval << "\n"; 
+        else
+        llvm::errs() << " newri(" << newri << "): " << *newri << " ri: " << *ri << " oldval:null\n"; 
+
+        //Only get the inverted pointer if necessary
+        if (differentialReturn && oldval && !oldval->getType()->isFPOrFPVectorTy()) {
+            // We need to still get even if not a constant value so the other end can handle all returns with a reasonable value 
+            //   That said, if we return a constant value (i.e. nullptr) we shouldn't try inverting the pointer and return undef instead (since it [hopefully] shouldn't be used)
+            if (!gutils->isConstantValue(oldval)) {
+                invertedRetPs[newri] = gutils->invertPointerM(oldval, ib);
+            } else {
+                invertedRetPs[newri] = UndefValue::get(oldval->getType());
+            }
+        }
+
         gutils->erase(ri);
         /*
          TODO should call DCE now ideally
@@ -745,8 +765,9 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
                     }
                 }
 
-                auto augmentation = CreateAugmentedPrimal(dyn_cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, uncacheable_args_map[op]);
-                Function* newcalled = std::get<0>(augmentation);
+                const AugmentedReturn& augmentation = CreateAugmentedPrimal(dyn_cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturn*/subdifferentialreturn, /*return is used*/subretused, uncacheable_args_map[op]);
+                cachedfunctions.find(tup)->second.subaugmentations.insert_or_assign(cast<CallInst>(gutils->getOriginal(op)), &augmentation);
+                Function* newcalled = augmentation.fn;
                 CallInst* augmentcall = BuilderZ.CreateCall(newcalled, args);
                 assert(augmentcall->getType()->isStructTy());
                 augmentcall->setCallingConv(op->getCallingConv());
@@ -878,29 +899,6 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
 
   auto nf = gutils->newFunc;
 
-  ValueToValueMapTy invertedRetPs;
-  if (differentialReturn) {
-    for (inst_iterator I = inst_begin(nf), E = inst_end(nf); I != E; ++I) {
-      if (ReturnInst* ri = dyn_cast<ReturnInst>(&*I)) {
-        assert(ri->getReturnValue());
-        IRBuilder <>builder(ri);
-        Value* toinvert = returnsToOriginalValues[ri];
-        assert(toinvert);
-        if (!gutils->isConstantValue(toinvert)) {
-            if (!gutils->oldFunc->getReturnType()->isFPOrFPVectorTy()) { //PointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) {
-                invertedRetPs[ri] = gutils->invertPointerM(toinvert, builder);
-            } else {
-                //llvm::errs() << "warning not allowing inverted return on type " << *toinvert->getType() << "\n";
-                invertedRetPs[ri] = UndefValue::get(toinvert->getType());
-            }
-        } else {
-            invertedRetPs[ri] = UndefValue::get(toinvert->getType());
-        } 
-        assert(invertedRetPs[ri]);
-      }
-    }
-  }
-
   while(gutils->inversionAllocs->size() > 0) {
     gutils->inversionAllocs->back().moveBefore(gutils->newFunc->getEntryBlock().getFirstNonPHIOrDbgOrLifetime());
   }
@@ -955,7 +953,7 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
     tapeType = StructType::get(nf->getContext(), MallocTypes);
   //}
 
-  bool recursive = std::get<0>(cachedfunctions[tup])->getNumUses() > 0;
+  bool recursive = cachedfunctions.find(tup)->second.fn->getNumUses() > 0;
 
   if (recursive) {
     RetTypes.push_back(Type::getInt8PtrTy(nf->getContext()));
@@ -1077,16 +1075,15 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
             }
 
             ib.CreateStore(actualrv, ib.CreateConstGEP2_32(RetType, ret, 0, 1, ""));
+          }
 
-            if (differentialReturn && !oldretTy->isFPOrFPVectorTy()) {
+          if (differentialReturn && !oldretTy->isFPOrFPVectorTy()) {
             //if ((oldretTy->isPointerTy() || oldretTy->isIntegerTy()) && differentialReturn) {
               assert(invertedRetPs[ri]);
               if (!isa<UndefValue>(invertedRetPs[ri])) {
                 assert(VMap[invertedRetPs[ri]]);
                 ib.CreateStore( VMap[invertedRetPs[ri]], ib.CreateConstGEP2_32(RetType, ret, 0, 2, ""));
               }
-            }
-            i++;
           }
           ib.CreateRet(ib.CreateLoad(ret));
           gutils->erase(cast<Instruction>(VMap[ri]));
@@ -1121,15 +1118,15 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
   }
 
   SmallVector<User*,4> fnusers;
-  for(auto user : std::get<0>(cachedfunctions[tup])->users()) {
+  for(auto user : cachedfunctions.find(tup)->second.fn->users()) {
     fnusers.push_back(user);
   }
   for(auto user : fnusers) {
     cast<CallInst>(user)->setCalledFunction(NewF);
   }
-  std::get<0>(cachedfunctions[tup]) = NewF;
+  cachedfunctions.find(tup)->second.fn = NewF;
   if (recursive)
-      std::get<1>(cachedfunctions[tup]) = tapeType;
+      cachedfunctions.find(tup)->second.tapeType = tapeType;
   cachedfinished[tup] = true;
 
   //llvm::errs() << "augmented fn seeing sub_index_map of " << std::get<2>(cachedfunctions[tup]).size() << " in ap " << NewF->getName() << "\n";
@@ -1138,7 +1135,7 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
   delete gutils;
   if (enzyme_print)
     llvm::errs() << *NewF << "\n";
-  return cachedfunctions[tup];
+  return cachedfunctions.find(tup)->second;
 }
 
 void createInvertedTerminator(DiffeGradientUtils* gutils, BasicBlock *BB, AllocaInst* retAlloca, AllocaInst* dretAlloca, unsigned extraArgs) {
@@ -1787,12 +1784,12 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> sub_index_map;
   if (modifyPrimal && called) {
     bool subdifferentialreturn = (!gutils->isConstantValue(op)) && augmentedsubdifferet;
-    auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
-    sub_index_map = std::get<2>(fnandtapetype);
+    const AugmentedReturn& fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
+    sub_index_map = fnandtapetype.tapeIndices;
     
     //llvm::errs() << "seeing sub_index_map of " << sub_index_map->size() << " in ap " << cast<Function>(called)->getName() << "\n";
     if (topLevel) {
-      Function* newcalled = std::get<0>(fnandtapetype);
+      Function* newcalled = fnandtapetype.fn;
       augmentcall = BuilderZ.CreateCall(newcalled, pre_args);
       augmentcall->setCallingConv(op->getCallingConv());
       augmentcall->setDebugLoc(op->getDebugLoc());
@@ -1862,8 +1859,8 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     }
 
 
-    if (std::get<1>(fnandtapetype)) {
-      auto tapep = BuilderZ.CreatePointerCast(tape, PointerType::getUnqual(std::get<1>(fnandtapetype)));
+    if (fnandtapetype.tapeType) {
+      auto tapep = BuilderZ.CreatePointerCast(tape, PointerType::getUnqual(fnandtapetype.tapeType));
       auto truetape = BuilderZ.CreateLoad(tapep);
 
       CallInst* ci = cast<CallInst>(CallInst::CreateFree(tape, &*BuilderZ.GetInsertPoint()));
