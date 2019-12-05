@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use ra_db::{CrateId, FileId, FilePosition};
+use ra_db::{CrateId, FileId, FilePosition, SourceDatabase};
 
 use crate::{db::RootDatabase, NavigationTarget};
 
@@ -21,7 +21,8 @@ pub(crate) fn parent_module(db: &RootDatabase, position: FilePosition) -> Vec<Na
 
 /// Returns `Vec` for the same reason as `parent_module`
 pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
-    let src = hir::ModuleSource::from_file_id(db, file_id);
+    let source_file = db.parse(file_id).tree();
+    let src = hir::ModuleSource::SourceFile(source_file);
     let module =
         match hir::Module::from_definition(db, hir::InFile { file_id: file_id.into(), value: src })
         {

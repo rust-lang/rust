@@ -235,11 +235,10 @@ impl Module {
                 let src_parent = InFile { file_id: src.file_id, value: parent_declaration };
                 Module::from_declaration(db, src_parent)
             }
-            _ => {
-                let src_parent = InFile {
-                    file_id: src.file_id,
-                    value: ModuleSource::from_file_id(db, src.file_id.original_file(db)),
-                };
+            None => {
+                let source_file = db.parse(src.file_id.original_file(db)).tree();
+                let src_parent =
+                    InFile { file_id: src.file_id, value: ModuleSource::SourceFile(source_file) };
                 Module::from_definition(db, src_parent)
             }
         }?;

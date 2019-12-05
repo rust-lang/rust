@@ -390,11 +390,6 @@ impl ModuleSource {
             ModuleSource::SourceFile(source_file)
         }
     }
-
-    pub fn from_file_id(db: &impl DefDatabase, file_id: FileId) -> ModuleSource {
-        let source_file = db.parse(file_id).tree();
-        ModuleSource::SourceFile(source_file)
-    }
 }
 
 mod diagnostics {
