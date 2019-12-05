@@ -26,8 +26,9 @@ use crate::consts::{constant, Constant};
 use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, int_bits, last_path_segment, match_def_path,
-    match_path, multispan_sugg, qpath_res, same_tys, sext, snippet, snippet_opt, snippet_with_applicability,
-    snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+    match_path, method_chain_args, multispan_sugg, qpath_res, same_tys, sext, snippet, snippet_opt,
+    snippet_with_applicability, snippet_with_macro_callsite, span_help_and_lint, span_lint, span_lint_and_sugg,
+    span_lint_and_then, unsext,
 };
 
 declare_clippy_lint! {
@@ -1021,14 +1022,22 @@ fn check_loss_of_sign(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
         }
     }
 
-    // don't lint for the result of `abs`
-    // `abs` is an inherent impl of `i{N}`, so a method call with ident `abs` will always
-    // resolve to that spesific method
-    if_chain! {
-        if let ExprKind::MethodCall(ref path, _, _) = op.kind;
-        if path.ident.name.as_str() == "abs";
-        then {
-            return
+    // don't lint for the result of methods that always return non-negative values
+    if let ExprKind::MethodCall(ref path, _, _) = op.kind {
+        let mut method_name = path.ident.name.as_str();
+        let whitelisted_methods = ["abs", "checked_abs", "rem_euclid", "checked_rem_euclid"];
+
+        if_chain! {
+            if method_name == "unwrap";
+            if let Some(arglist) = method_chain_args(op, &["unwrap"]);
+            if let ExprKind::MethodCall(ref inner_path, _, _) = &arglist[0][0].kind;
+            then {
+                method_name = inner_path.ident.name.as_str();
+            }
+        }
+
+        if whitelisted_methods.iter().any(|&name| method_name == name) {
+            return;
         }
     }
 
