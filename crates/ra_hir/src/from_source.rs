@@ -2,8 +2,8 @@
 use either::Either;
 
 use hir_def::{
-    child_from_source::ChildFromSource, nameres::ModuleSource, AstItemDef, EnumVariantId,
-    LocationCtx, ModuleId, VariantId,
+    child_from_source::ChildFromSource, nameres::ModuleSource, AstItemDef, EnumVariantId, ImplId,
+    LocationCtx, ModuleId, TraitId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
@@ -53,24 +53,18 @@ impl FromSource for Trait {
 impl FromSource for Function {
     type Ast = ast::FnDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
-            Container::Trait(it) => it.id.child_from_source(db, src),
-            Container::ImplBlock(it) => it.id.child_from_source(db, src),
-            Container::Module(it) => it.id.child_from_source(db, src),
-        }
-        .map(Function::from)
+        Container::find(db, src.as_ref().map(|it| it.syntax()))?
+            .child_from_source(db, src)
+            .map(Function::from)
     }
 }
 
 impl FromSource for Const {
     type Ast = ast::ConstDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
-            Container::Trait(it) => it.id.child_from_source(db, src),
-            Container::ImplBlock(it) => it.id.child_from_source(db, src),
-            Container::Module(it) => it.id.child_from_source(db, src),
-        }
-        .map(Const::from)
+        Container::find(db, src.as_ref().map(|it| it.syntax()))?
+            .child_from_source(db, src)
+            .map(Const::from)
     }
 }
 impl FromSource for Static {
@@ -86,12 +80,9 @@ impl FromSource for Static {
 impl FromSource for TypeAlias {
     type Ast = ast::TypeAliasDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
-            Container::Trait(it) => it.id.child_from_source(db, src),
-            Container::ImplBlock(it) => it.id.child_from_source(db, src),
-            Container::Module(it) => it.id.child_from_source(db, src),
-        }
-        .map(TypeAlias::from)
+        Container::find(db, src.as_ref().map(|it| it.syntax()))?
+            .child_from_source(db, src)
+            .map(TypeAlias::from)
     }
 }
 
@@ -261,5 +252,24 @@ impl Container {
         let module_source = ModuleSource::from_child_node(db, src);
         let c = Module::from_definition(db, src.with_value(module_source))?;
         Some(Container::Module(c))
+    }
+}
+
+impl<CHILD, SOURCE> ChildFromSource<CHILD, SOURCE> for Container
+where
+    TraitId: ChildFromSource<CHILD, SOURCE>,
+    ImplId: ChildFromSource<CHILD, SOURCE>,
+    ModuleId: ChildFromSource<CHILD, SOURCE>,
+{
+    fn child_from_source(
+        &self,
+        db: &impl DefDatabase,
+        child_source: InFile<SOURCE>,
+    ) -> Option<CHILD> {
+        match self {
+            Container::Trait(it) => it.id.child_from_source(db, child_source),
+            Container::ImplBlock(it) => it.id.child_from_source(db, child_source),
+            Container::Module(it) => it.id.child_from_source(db, child_source),
+        }
     }
 }
