@@ -9,17 +9,25 @@ note: first, the lifetime cannot outlive the lifetime `'a` as defined on the fun
    |
 LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
    |                ^^
-   = note: ...so that the expression is assignable:
-           expected &Ast<'_>
-              found &Ast<'a>
+note: ...so that the expression is assignable
+  --> $DIR/regions-creating-enums4.rs:7:14
+   |
+LL |     Ast::Add(x, y)
+   |              ^
+   = note: expected  `&Ast<'_>`
+              found  `&Ast<'a>`
 note: but, the lifetime must be valid for the lifetime `'b` as defined on the function body at 6:19...
   --> $DIR/regions-creating-enums4.rs:6:19
    |
 LL | fn mk_add_bad2<'a,'b>(x: &'a Ast<'a>, y: &'a Ast<'a>, z: &Ast) -> Ast<'b> {
    |                   ^^
-   = note: ...so that the expression is assignable:
-           expected Ast<'b>
-              found Ast<'_>
+note: ...so that the expression is assignable
+  --> $DIR/regions-creating-enums4.rs:7:5
+   |
+LL |     Ast::Add(x, y)
+   |     ^^^^^^^^^^^^^^
+   = note: expected  `Ast<'b>`
+              found  `Ast<'_>`
 
 error: aborting due to previous error
 

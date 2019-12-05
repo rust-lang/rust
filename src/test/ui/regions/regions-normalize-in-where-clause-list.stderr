@@ -17,9 +17,16 @@ note: ...but the lifetime must also be valid for the lifetime `'b` as defined on
    |
 LL | fn bar<'a, 'b>()
    |            ^^
-   = note: ...so that the types are compatible:
-           expected Project<'a, 'b>
-              found Project<'_, '_>
+note: ...so that the types are compatible
+  --> $DIR/regions-normalize-in-where-clause-list.rs:22:1
+   |
+LL | / fn bar<'a, 'b>()
+LL | |     where <() as Project<'a, 'b>>::Item : Eq
+LL | | {
+LL | | }
+   | |_^
+   = note: expected  `Project<'a, 'b>`
+              found  `Project<'_, '_>`
 
 error: aborting due to previous error
 

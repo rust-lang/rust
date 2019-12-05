@@ -18,9 +18,13 @@ note: ...so that reference does not outlive borrowed content
 LL |     Box::new(items.iter())
    |              ^^^^^
    = note: but, the lifetime must be valid for the static lifetime...
-   = note: ...so that the expression is assignable:
-           expected std::boxed::Box<(dyn std::iter::Iterator<Item = &T> + 'static)>
-              found std::boxed::Box<dyn std::iter::Iterator<Item = &T>>
+note: ...so that the expression is assignable
+  --> $DIR/dyn-trait-underscore.rs:8:5
+   |
+LL |     Box::new(items.iter())
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected  `std::boxed::Box<(dyn std::iter::Iterator<Item = &T> + 'static)>`
+              found  `std::boxed::Box<dyn std::iter::Iterator<Item = &T>>`
 
 error: aborting due to previous error
 
