@@ -1,8 +1,15 @@
 //! Builtin derives.
-use crate::db::AstDatabase;
-use crate::{name, MacroCallId, MacroDefId, MacroDefKind};
 
-use crate::quote;
+use log::debug;
+
+use ra_parser::FragmentKind;
+use ra_syntax::{
+    ast::{self, AstNode, ModuleItemOwner, NameOwner, TypeParamsOwner},
+    match_ast,
+};
+
+use crate::db::AstDatabase;
+use crate::{name, quote, MacroCallId, MacroDefId, MacroDefKind};
 
 macro_rules! register_builtin {
     ( $(($name:ident, $kind: ident) => $expand:ident),* ) => {
@@ -41,13 +48,79 @@ register_builtin! {
     (CLONE_TRAIT, Clone) => clone_expand
 }
 
+struct BasicAdtInfo {
+    name: tt::Ident,
+    type_params: usize,
+}
+
+fn parse_adt(tt: &tt::Subtree) -> Result<BasicAdtInfo, mbe::ExpandError> {
+    let (parsed, token_map) = mbe::token_tree_to_syntax_node(tt, FragmentKind::Items)?; // FragmentKind::Items doesn't parse attrs?
+    let macro_items = ast::MacroItems::cast(parsed.syntax_node()).ok_or_else(|| {
+        debug!("derive node didn't parse");
+        mbe::ExpandError::UnexpectedToken
+    })?;
+    let item = macro_items.items().next().ok_or_else(|| {
+        debug!("no module item parsed");
+        mbe::ExpandError::NoMatchingRule
+    })?;
+    let node = item.syntax();
+    let (name, params) = match_ast! {
+        match node {
+            ast::StructDef(it) => { (it.name(), it.type_param_list()) },
+            ast::EnumDef(it) => { (it.name(), it.type_param_list()) },
+            ast::UnionDef(it) => { (it.name(), it.type_param_list()) },
+            _ => {
+                debug!("unexpected node is {:?}", node);
+                return Err(mbe::ExpandError::ConversionError)
+            },
+        }
+    };
+    let name = name.ok_or_else(|| {
+        debug!("parsed item has no name");
+        mbe::ExpandError::NoMatchingRule
+    })?;
+    let name_token_id = token_map.token_by_range(name.syntax().text_range()).ok_or_else(|| {
+        debug!("name token not found");
+        mbe::ExpandError::ConversionError
+    })?;
+    let name_token = tt::Ident { id: name_token_id, text: name.text().clone() };
+    let type_params = params.map_or(0, |type_param_list| type_param_list.type_params().count());
+    Ok(BasicAdtInfo { name: name_token, type_params })
+}
+
+fn make_type_args(n: usize, bound: Vec<tt::TokenTree>) -> Vec<tt::TokenTree> {
+    let mut result = Vec::<tt::TokenTree>::new();
+    result.push(tt::Leaf::Punct(tt::Punct { char: '<', spacing: tt::Spacing::Alone }).into());
+    for i in 0..n {
+        if i > 0 {
+            result
+                .push(tt::Leaf::Punct(tt::Punct { char: ',', spacing: tt::Spacing::Alone }).into());
+        }
+        result.push(
+            tt::Leaf::Ident(tt::Ident {
+                id: tt::TokenId::unspecified(),
+                text: format!("T{}", i).into(),
+            })
+            .into(),
+        );
+        result.extend(bound.iter().cloned());
+    }
+    result.push(tt::Leaf::Punct(tt::Punct { char: '>', spacing: tt::Spacing::Alone }).into());
+    result
+}
+
 fn copy_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
-    _tt: &tt::Subtree,
+    tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
+    let info = parse_adt(tt)?;
+    let name = info.name;
+    let bound = (quote! { : std::marker::Copy }).token_trees;
+    let type_params = make_type_args(info.type_params, bound);
+    let type_args = make_type_args(info.type_params, Vec::new());
     let expanded = quote! {
-        impl Copy for Foo {}
+        impl ##type_params std::marker::Copy for #name ##type_args {}
     };
     Ok(expanded)
 }
@@ -55,10 +128,110 @@ fn copy_expand(
 fn clone_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
-    _tt: &tt::Subtree,
+    tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
+    let info = parse_adt(tt)?;
+    let name = info.name;
+    let bound = (quote! { : std::clone::Clone }).token_trees;
+    let type_params = make_type_args(info.type_params, bound);
+    let type_args = make_type_args(info.type_params, Vec::new());
     let expanded = quote! {
-        impl Clone for Foo {}
+        impl ##type_params std::clone::Clone for #name ##type_args {}
     };
     Ok(expanded)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{test_db::TestDB, AstId, MacroCallKind, MacroCallLoc, MacroFileKind};
+    use ra_db::{fixture::WithFixture, SourceDatabase};
+
+    fn expand_builtin_derive(s: &str, expander: BuiltinDeriveExpander) -> String {
+        let (db, file_id) = TestDB::with_single_file(&s);
+        let parsed = db.parse(file_id);
+        let items: Vec<_> =
+            parsed.syntax_node().descendants().filter_map(|it| ast::ModuleItem::cast(it)).collect();
+
+        let ast_id_map = db.ast_id_map(file_id.into());
+
+        // the first one should be a macro_rules
+        let def =
+            MacroDefId { krate: None, ast_id: None, kind: MacroDefKind::BuiltInDerive(expander) };
+
+        let loc = MacroCallLoc {
+            def,
+            kind: MacroCallKind::Attr(AstId::new(file_id.into(), ast_id_map.ast_id(&items[0]))),
+        };
+
+        let id = db.intern_macro(loc);
+        let parsed = db.parse_or_expand(id.as_file(MacroFileKind::Items)).unwrap();
+
+        // FIXME text() for syntax nodes parsed from token tree looks weird
+        // because there's no whitespace, see below
+        parsed.text().to_string()
+    }
+
+    #[test]
+    fn test_copy_expand_simple() {
+        let expanded = expand_builtin_derive(
+            r#"
+        #[derive(Copy)]
+        struct Foo;
+"#,
+            BuiltinDeriveExpander::Copy,
+        );
+
+        assert_eq!(expanded, "impl <>std::marker::CopyforFoo <>{}");
+    }
+
+    #[test]
+    fn test_copy_expand_with_type_params() {
+        let expanded = expand_builtin_derive(
+            r#"
+        #[derive(Copy)]
+        struct Foo<A, B>;
+"#,
+            BuiltinDeriveExpander::Copy,
+        );
+
+        assert_eq!(
+            expanded,
+            "impl<T0:std::marker::Copy,T1:std::marker::Copy>std::marker::CopyforFoo<T0,T1>{}"
+        );
+    }
+
+    #[test]
+    fn test_copy_expand_with_lifetimes() {
+        let expanded = expand_builtin_derive(
+            r#"
+        #[derive(Copy)]
+        struct Foo<A, B, 'a, 'b>;
+"#,
+            BuiltinDeriveExpander::Copy,
+        );
+
+        // We currently just ignore lifetimes
+
+        assert_eq!(
+            expanded,
+            "impl<T0:std::marker::Copy,T1:std::marker::Copy>std::marker::CopyforFoo<T0,T1>{}"
+        );
+    }
+
+    #[test]
+    fn test_clone_expand() {
+        let expanded = expand_builtin_derive(
+            r#"
+        #[derive(Clone)]
+        struct Foo<A, B>;
+"#,
+            BuiltinDeriveExpander::Clone,
+        );
+
+        assert_eq!(
+            expanded,
+            "impl<T0:std::clone::Clone,T1:std::clone::Clone>std::clone::CloneforFoo<T0,T1>{}"
+        );
+    }
 }

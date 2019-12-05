@@ -60,6 +60,15 @@ macro_rules! __quote {
         }
     };
 
+    ( ## $first:ident $($tail:tt)* ) => {
+        {
+            let mut tokens = $first.into_iter().map($crate::quote::ToTokenTree::to_token).collect::<Vec<tt::TokenTree>>();
+            let mut tail_tokens = $crate::quote::IntoTt::to_tokens($crate::__quote!($($tail)*));
+            tokens.append(&mut tail_tokens);
+            tokens
+        }
+    };
+
     // Brace
     ( { $($tt:tt)* } ) => { $crate::__quote!(@SUBTREE Brace $($tt)*) };
     // Bracket
@@ -85,6 +94,7 @@ macro_rules! __quote {
     ( & ) => {$crate::__quote!(@PUNCT '&')};
     ( , ) => {$crate::__quote!(@PUNCT ',')};
     ( : ) => {$crate::__quote!(@PUNCT ':')};
+    ( :: ) => {$crate::__quote!(@PUNCT ':', ':')};
     ( . ) => {$crate::__quote!(@PUNCT '.')};
 
     ( $first:tt $($tail:tt)+ ) => {
