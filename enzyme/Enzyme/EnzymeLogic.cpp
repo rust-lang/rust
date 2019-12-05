@@ -385,11 +385,12 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>, unsigned> >> cachedfunctions;
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, bool> cachedfinished;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::set<unsigned>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed);
-  //llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << "\n";
+  llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << "\n";
   if (cachedfunctions.find(tup) != cachedfunctions.end()) {
     return cachedfunctions[tup];
   }
-  if (differentialReturn) assert(returnUsed);
+
+  //if (differentialReturn) assert(returnUsed);
 
 
     if (constant_args.size() == 0 && hasMetadata(todiff, "enzyme_augment")) {
@@ -479,12 +480,15 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
     for (auto &iter : can_modref_map) {
       if (iter.second) {
         bool is_needed = is_value_needed_in_reverse(gutils, iter.first, /*topLevel*/false);
+        llvm::errs() << " iter.first: " << *iter.first << " " << is_needed << "\n";
         iter.second = is_needed;
       }
     }
   
   //! Explicitly handle all returns first to ensure that all instructions know whether or not they are used
   SmallPtrSet<Instruction*, 4> returnuses;
+
+  ValueToValueMap returnsToOriginalValues;
 
   for(BasicBlock* BB: gutils->originalBlocks) {
     if(auto ri = dyn_cast<ReturnInst>(BB->getTerminator())) {
@@ -497,7 +501,8 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
                 returnuses.insert(inst);
             }
         }
-        ib.CreateRet(rt);
+        auto newri = ib.CreateRet(rt);
+        returnsToOriginalValues[newri] = oldval;
         gutils->erase(ri);
         /*
          TODO should call DCE now ideally
@@ -879,15 +884,8 @@ std::tuple<Function*,StructType*, std::map<std::pair<Instruction*, std::string>,
       if (ReturnInst* ri = dyn_cast<ReturnInst>(&*I)) {
         assert(ri->getReturnValue());
         IRBuilder <>builder(ri);
-        Value* toinvert = nullptr;
-        if (auto iv = dyn_cast<InsertValueInst>(ri->getReturnValue())) {
-            if (iv->getNumIndices() == 1 && iv->getIndices()[0] == 1) {
-                toinvert = iv->getInsertedValueOperand();
-            }
-        }
-        if (toinvert == nullptr) {
-            toinvert = builder.CreateExtractValue(ri->getReturnValue(), {1});
-        }
+        Value* toinvert = returnsToOriginalValues[ri];
+        assert(toinvert);
         if (!gutils->isConstantValue(toinvert)) {
             if (!gutils->oldFunc->getReturnType()->isFPOrFPVectorTy()) { //PointerTy() || gutils->oldFunc->getReturnType()->isIntegerTy()) {
                 invertedRetPs[ri] = gutils->invertPointerM(toinvert, builder);
@@ -1379,6 +1377,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
   bool subretused = op->getNumUses() != 0;
   bool augmentedsubretused = subretused;
+  bool augmentedsubdifferet = subretused;
   // double check for uses that may have been removed by loads from a cache (specifically if this returns a pointer)
   // Note this is not true: we can safely ignore (and should ignore) return instances, since those are already taken into account by a store if we do need to return them
   if (!subretused) {
@@ -1390,11 +1389,13 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         break;
     }
     augmentedsubretused = subretused;
+    augmentedsubdifferet = subretused;
     for( auto user : gutils->getOriginal(op)->users()) {
         if (isa<ReturnInst>(user)) {
             if (metaretused) {
                 augmentedsubretused = true;
             }
+            augmentedsubdifferet = true;
             continue;
         }
     }
@@ -1785,7 +1786,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   //TODO consider what to do if called == nullptr for augmentation
   llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> sub_index_map;
   if (modifyPrimal && called) {
-    bool subdifferentialreturn = (!gutils->isConstantValue(op)) && augmentedsubretused;
+    bool subdifferentialreturn = (!gutils->isConstantValue(op)) && augmentedsubdifferet;
     auto fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
     sub_index_map = std::get<2>(fnandtapetype);
     

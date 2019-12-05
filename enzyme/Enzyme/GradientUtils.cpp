@@ -202,6 +202,11 @@ GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, T
     SmallPtrSet<Value*,2> returnvals;
     ValueToValueMapTy originalToNew;
     auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, /*returnValue*/returnValue, /*differentialReturn*/differentialReturn, "fakeaugmented_"+todiff->getName(), &originalToNew, /*diffeReturnArg*/false, additionalArg);
+    llvm::errs() <<  "returnvals:" << todiff->getName() << " \n";
+    for (auto a : returnvals ) {
+        llvm::errs() <<"   + " << *a << "\n";
+    }
+    llvm::errs() <<  "end returnvals:\n";
     auto res = new GradientUtils(newFunc, AA, TLI, invertedPointers, constants, nonconstant, returnvals, originalToNew);
     res->oldFunc = todiff;
     return res;
