@@ -139,7 +139,7 @@ impl ModuleOrigin {
         }
     }
 
-    pub(crate) fn file_id(&self) -> Option<FileId> {
+    pub fn file_id(&self) -> Option<FileId> {
         match self {
             ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
                 Some(*definition)
