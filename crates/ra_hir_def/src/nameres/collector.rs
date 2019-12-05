@@ -131,7 +131,7 @@ where
         let file_id = crate_graph.crate_root(self.def_map.krate);
         let raw_items = self.db.raw_items(file_id.into());
         let module_id = self.def_map.root;
-        self.def_map.modules[module_id].origin = ModuleOrigin::root(file_id);
+        self.def_map.modules[module_id].origin = ModuleOrigin::CrateRoot { definition: file_id };
         ModCollector {
             def_collector: &mut *self,
             module_id,

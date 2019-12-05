@@ -104,8 +104,9 @@ impl std::ops::Index<LocalModuleId> for CrateDefMap {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
 pub enum ModuleOrigin {
-    /// It should not be `None` after collecting definitions.
-    Root(Option<FileId>),
+    CrateRoot {
+        definition: FileId,
+    },
     /// Note that non-inline modules, by definition, live inside non-macro file.
     File {
         declaration: AstId<ast::Module>,
@@ -118,15 +119,11 @@ pub enum ModuleOrigin {
 
 impl Default for ModuleOrigin {
     fn default() -> Self {
-        ModuleOrigin::Root(None)
+        ModuleOrigin::CrateRoot { definition: FileId(0) }
     }
 }
 
 impl ModuleOrigin {
-    fn root(file_id: FileId) -> Self {
-        ModuleOrigin::Root(Some(file_id))
-    }
-
     pub(crate) fn not_sure_file(file: Option<FileId>, declaration: AstId<ast::Module>) -> Self {
         match file {
             None => ModuleOrigin::Inline { definition: declaration },
@@ -138,14 +135,14 @@ impl ModuleOrigin {
         match self {
             ModuleOrigin::File { declaration: module, .. }
             | ModuleOrigin::Inline { definition: module, .. } => Some(*module),
-            ModuleOrigin::Root(_) => None,
+            ModuleOrigin::CrateRoot { .. } => None,
         }
     }
 
     pub(crate) fn file_id(&self) -> Option<FileId> {
         match self {
-            ModuleOrigin::File { definition: file_id, .. } | ModuleOrigin::Root(Some(file_id)) => {
-                Some(*file_id)
+            ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
+                Some(*definition)
             }
             _ => None,
         }
@@ -155,12 +152,11 @@ impl ModuleOrigin {
     /// That is, a file or a `mod foo {}` with items.
     fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
         match self {
-            ModuleOrigin::File { definition: file_id, .. } | ModuleOrigin::Root(Some(file_id)) => {
-                let file_id = *file_id;
+            ModuleOrigin::File { definition, .. } | ModuleOrigin::CrateRoot { definition } => {
+                let file_id = *definition;
                 let sf = db.parse(file_id).tree();
                 return InFile::new(file_id.into(), ModuleSource::SourceFile(sf));
             }
-            ModuleOrigin::Root(None) => unreachable!(),
             ModuleOrigin::Inline { definition } => {
                 InFile::new(definition.file_id, ModuleSource::Module(definition.to_node(db)))
             }
