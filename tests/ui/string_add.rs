@@ -1,3 +1,8 @@
+// aux-build:macro_rules.rs
+
+#[macro_use]
+extern crate macro_rules;
+
 #[warn(clippy::string_add)]
 #[allow(clippy::string_add_assign, unused)]
 fn main() {
@@ -17,12 +22,5 @@ fn main() {
     x = x + 1;
     assert_eq!(2, x);
 
-    macro_rules! mac {
-        () => {
-            let y = "".to_owned();
-            let z = y + "...";
-        };
-    }
-
-    mac!();
+    string_add!();
 }

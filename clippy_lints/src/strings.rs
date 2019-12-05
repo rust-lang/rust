@@ -1,6 +1,6 @@
 use rustc::declare_lint_pass;
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 use syntax::source_map::Spanned;
@@ -8,9 +8,7 @@ use syntax::source_map::Spanned;
 use if_chain::if_chain;
 
 use crate::utils::SpanlessEq;
-use crate::utils::{
-    get_parent_expr, in_macro, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty,
-};
+use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
 declare_clippy_lint! {
     /// **What it does:** Checks for string appends of the form `x = x + y` (without
@@ -82,7 +80,7 @@ declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if in_macro(e.span) {
+        if in_external_macro(cx.sess(), e.span) {
             return;
         }
 

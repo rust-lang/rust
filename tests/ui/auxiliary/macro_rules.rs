@@ -31,3 +31,11 @@ macro_rules! try_err {
         }
     };
 }
+
+#[macro_export]
+macro_rules! string_add {
+    () => {
+        let y = "".to_owned();
+        let z = y + "...";
+    };
+}
