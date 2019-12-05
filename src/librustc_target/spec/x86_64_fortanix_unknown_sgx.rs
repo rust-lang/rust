@@ -29,7 +29,6 @@ pub fn target() -> Result<Target, String> {
     ];
 
     const EXPORT_SYMBOLS: &[&str] = &[
-        "elf_entry",
         "sgx_entry",
         "HEAP_BASE",
         "HEAP_SIZE",
