@@ -10,6 +10,7 @@
 
 use crate::validate_attr;
 use rustc_feature::Features;
+use rustc_errors::Applicability;
 use syntax::attr::HasAttrs;
 use syntax::feature_gate::{feature_err, get_features};
 use syntax::attr;
@@ -21,7 +22,6 @@ use syntax::sess::ParseSess;
 use syntax::util::map_in_place::MapInPlace;
 use syntax_pos::symbol::sym;
 
-use errors::Applicability;
 use smallvec::SmallVec;
 
 /// A folder that strips out items that do not belong in the current configuration.

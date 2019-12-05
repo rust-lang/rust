@@ -3,6 +3,8 @@ use super::diagnostics::{Error, dummy_arg, ConsumeClosingDelim};
 
 use crate::maybe_whole;
 
+use rustc_errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
+use rustc_error_codes::*;
 use syntax::ast::{self, DUMMY_NODE_ID, Ident, Attribute, AttrKind, AttrStyle, AnonConst, Item};
 use syntax::ast::{ItemKind, ImplItem, ImplItemKind, TraitItem, TraitItemKind, UseTree, UseTreeKind};
 use syntax::ast::{PathSegment, IsAuto, Constness, IsAsync, Unsafety, Defaultness, Extern, StrLit};
@@ -14,16 +16,13 @@ use syntax::ptr::P;
 use syntax::ThinVec;
 use syntax::token;
 use syntax::tokenstream::{DelimSpan, TokenTree, TokenStream};
-use syntax::source_map::{self, respan, Span};
 use syntax::struct_span_err;
 use syntax_pos::BytePos;
+use syntax_pos::source_map::{self, respan, Span};
 use syntax_pos::symbol::{kw, sym, Symbol};
-
-use rustc_error_codes::*;
 
 use log::debug;
 use std::mem;
-use errors::{PResult, Applicability, DiagnosticBuilder, StashKey};
 
 pub(super) type ItemInfo = (Ident, ItemKind, Option<Vec<Attribute>>);
 

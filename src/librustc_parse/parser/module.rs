@@ -4,13 +4,12 @@ use super::diagnostics::Error;
 
 use crate::{new_sub_parser_from_file, DirectoryOwnership};
 
+use rustc_errors::PResult;
 use syntax::attr;
 use syntax::ast::{self, Ident, Attribute, ItemKind, Mod, Crate};
 use syntax::token::{self, TokenKind};
-use syntax::source_map::{SourceMap, Span, DUMMY_SP, FileName};
-
+use syntax_pos::source_map::{SourceMap, Span, DUMMY_SP, FileName};
 use syntax_pos::symbol::sym;
-use errors::PResult;
 
 use std::path::{self, Path, PathBuf};
 

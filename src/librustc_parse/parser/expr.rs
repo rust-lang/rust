@@ -4,23 +4,20 @@ use super::pat::{GateOr, PARAM_EXPECTED};
 use super::diagnostics::Error;
 use crate::maybe_recover_from_interpolated_ty_qpath;
 
-use syntax::ast::{
-    self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode,
-    Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind,
-    FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit,
-};
+use rustc_data_structures::thin_vec::ThinVec;
+use rustc_errors::{PResult, Applicability};
+use syntax::ast::{self, DUMMY_NODE_ID, Attribute, AttrStyle, Ident, CaptureBy, BlockCheckMode};
+use syntax::ast::{Expr, ExprKind, RangeLimits, Label, Movability, IsAsync, Arm, Ty, TyKind};
+use syntax::ast::{FunctionRetTy, Param, FnDecl, BinOpKind, BinOp, UnOp, Mac, AnonConst, Field, Lit};
 use syntax::token::{self, Token, TokenKind};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::source_map::{self, Span};
 use syntax::util::classify;
 use syntax::util::literal::LitError;
 use syntax::util::parser::{AssocOp, Fixity, prec_let_scrutinee_needs_par};
-use syntax_pos::symbol::{kw, sym};
-use syntax_pos::Symbol;
-use errors::{PResult, Applicability};
+use syntax_pos::source_map::{self, Span};
+use syntax_pos::symbol::{kw, sym, Symbol};
 use std::mem;
-use rustc_data_structures::thin_vec::ThinVec;
 
 /// Possibly accepts an `token::Interpolated` expression (a pre-parsed expression
 /// dropped into the token stream, which happens while parsing the result of

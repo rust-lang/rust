@@ -1,16 +1,16 @@
 use super::{Parser, TokenType};
 use crate::maybe_whole;
+use rustc_errors::{PResult, Applicability, pluralize};
 use syntax::ast::{self, QSelf, Path, PathSegment, Ident, ParenthesizedArgs, AngleBracketedArgs};
 use syntax::ast::{AnonConst, GenericArg, AssocTyConstraint, AssocTyConstraintKind, BlockCheckMode};
 use syntax::ast::MacArgs;
 use syntax::ThinVec;
 use syntax::token::{self, Token};
-use syntax::source_map::{Span, BytePos};
+use syntax_pos::source_map::{Span, BytePos};
 use syntax_pos::symbol::{kw, sym};
 
 use std::mem;
 use log::debug;
-use errors::{PResult, Applicability, pluralize};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]

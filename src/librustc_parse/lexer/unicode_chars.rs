@@ -2,9 +2,9 @@
 // http://www.unicode.org/Public/security/10.0.0/confusables.txt
 
 use super::StringReader;
-use errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::{BytePos, Pos, Span, symbol::kw};
 use crate::token;
+use rustc_errors::{Applicability, DiagnosticBuilder};
+use syntax_pos::{BytePos, Pos, Span, symbol::kw};
 
 #[rustfmt::skip] // for line breaks
 const UNICODE_ARRAY: &[(char, &str, char)] = &[
