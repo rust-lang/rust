@@ -662,7 +662,7 @@ pub trait Display {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:o}", val) // delegate to i32's implementation
+///         fmt::Octal::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
@@ -712,7 +712,7 @@ pub trait Octal {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:b}", val) // delegate to i32's implementation
+///         fmt::Binary::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
@@ -771,7 +771,7 @@ pub trait Binary {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:x}", val) // delegate to i32's implementation
+///         fmt::LowerHex::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
@@ -824,7 +824,7 @@ pub trait LowerHex {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         let val = self.0;
 ///
-///         write!(f, "{:X}", val) // delegate to i32's implementation
+///         fmt::UpperHex::fmt(&val, f) // delegate to i32's implementation
 ///     }
 /// }
 ///
@@ -869,7 +869,8 @@ pub trait UpperHex {
 ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 ///         // use `as` to convert to a `*const T`, which implements Pointer, which we can use
 ///
-///         write!(f, "{:p}", self as *const Length)
+///         let ptr = self as *const Self;
+///         fmt::Pointer::fmt(&ptr, f)
 ///     }
 /// }
 ///
