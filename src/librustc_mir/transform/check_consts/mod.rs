@@ -79,8 +79,9 @@ impl ConstKind {
 
             // Note: this is deliberately checking for `is_const_fn_raw`, as the `is_const_fn`
             // checks take into account the `rustc_const_unstable` attribute combined with enabled
-            // feature gates. An unstable `const fn` could otherwise be considered "not const"
-            // by const qualification. See issue #67053 for more details.
+            // feature gates. Otherwise, const qualification would _not check_ whether this
+            // function body follows the `const fn` rules, as an unstable `const fn` would
+            // be considered "not const". More details are available in issue #67053.
             HirKind::Fn if tcx.is_const_fn_raw(def_id) => ConstKind::ConstFn,
             HirKind::Fn => return None,
 
