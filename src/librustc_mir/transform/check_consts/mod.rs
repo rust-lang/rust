@@ -77,7 +77,12 @@ impl ConstKind {
         let mode = match tcx.hir().body_owner_kind(hir_id) {
             HirKind::Closure => return None,
 
-            HirKind::Fn if tcx.is_const_fn(def_id) => ConstKind::ConstFn,
+            // Note: this is deliberately checking for `is_const_fn_raw`, as the `is_const_fn`
+            // checks take into account the `rustc_const_unstable` attribute combined with enabled
+            // feature gates. Otherwise, const qualification would _not check_ whether this
+            // function body follows the `const fn` rules, as an unstable `const fn` would
+            // be considered "not const". More details are available in issue #67053.
+            HirKind::Fn if tcx.is_const_fn_raw(def_id) => ConstKind::ConstFn,
             HirKind::Fn => return None,
 
             HirKind::Const => ConstKind::Const,

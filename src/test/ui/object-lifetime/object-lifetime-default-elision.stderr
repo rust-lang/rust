@@ -19,9 +19,13 @@ note: but, the lifetime must be valid for the lifetime `'b` as defined on the fu
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |             ^^
-   = note: ...so that the expression is assignable:
-           expected &'b (dyn SomeTrait + 'b)
-              found &dyn SomeTrait
+note: ...so that the expression is assignable
+  --> $DIR/object-lifetime-default-elision.rs:71:5
+   |
+LL |     ss
+   |     ^^
+   = note: expected  `&'b (dyn SomeTrait + 'b)`
+              found  `&dyn SomeTrait`
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/object-lifetime-default-elision.rs:71:5
@@ -44,9 +48,13 @@ note: but, the lifetime must be valid for the lifetime `'b` as defined on the fu
    |
 LL | fn load3<'a,'b>(ss: &'a dyn SomeTrait) -> &'b dyn SomeTrait {
    |             ^^
-   = note: ...so that the expression is assignable:
-           expected &'b (dyn SomeTrait + 'b)
-              found &dyn SomeTrait
+note: ...so that the expression is assignable
+  --> $DIR/object-lifetime-default-elision.rs:71:5
+   |
+LL |     ss
+   |     ^^
+   = note: expected  `&'b (dyn SomeTrait + 'b)`
+              found  `&dyn SomeTrait`
 
 error: aborting due to 2 previous errors
 

@@ -1282,6 +1282,9 @@ impl<F: fmt::Write> Printer<'tcx> for FmtPrinter<'_, 'tcx, F> {
             if !self.empty_path {
                 write!(self, "::")?;
             }
+            if ast::Ident::from_str(&name).is_raw_guess() {
+                write!(self, "r#")?;
+            }
             write!(self, "{}", name)?;
 
             // FIXME(eddyb) this will print e.g. `{{closure}}#3`, but it

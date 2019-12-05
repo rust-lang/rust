@@ -14,23 +14,20 @@ use diagnostics::Error;
 use crate::{Directory, DirectoryOwnership};
 use crate::lexer::UnmatchedBrace;
 
-use syntax::ast::{
-    self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident, StrLit,
-    IsAsync, MacArgs, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety,
-};
-
+use rustc_errors::{PResult, Applicability, DiagnosticBuilder, FatalError};
+use rustc_data_structures::thin_vec::ThinVec;
+use syntax::ast::{self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident, StrLit};
+use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token::{self, Token, TokenKind, DelimToken};
 use syntax::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use syntax::sess::ParseSess;
-use syntax::source_map::respan;
 use syntax::struct_span_err;
 use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
+use syntax_pos::source_map::respan;
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
-use rustc_data_structures::thin_vec::ThinVec;
-use errors::{PResult, Applicability, DiagnosticBuilder, FatalError};
 use log::debug;
 
 use std::borrow::Cow;

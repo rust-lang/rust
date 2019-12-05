@@ -582,11 +582,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If this is a break with a value, we need to type-check
                 // the expression. Get an expected type from the loop context.
                 let opt_coerce_to = {
+                    // We should release `enclosing_breakables` before the `check_expr_with_hint`
+                    // below, so can't move this block of code to the enclosing scope and share
+                    // `ctxt` with the second `encloding_breakables` borrow below.
                     let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                    enclosing_breakables.find_breakable(target_id)
-                                        .coerce
-                                        .as_ref()
-                                        .map(|coerce| coerce.expected_ty())
+                    match enclosing_breakables.opt_find_breakable(target_id) {
+                        Some(ctxt) =>
+                            ctxt.coerce.as_ref().map(|coerce| coerce.expected_ty()),
+                        None => { // Avoid ICE when `break` is inside a closure (#65383).
+                            self.tcx.sess.delay_span_bug(
+                                expr.span,
+                                "break was outside loop, but no error was emitted",
+                            );
+                            return tcx.types.err;
+                        }
+                    }
                 };
 
                 // If the loop context is not a `loop { }`, then break with

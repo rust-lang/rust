@@ -3371,8 +3371,8 @@ impl str {
     /// An iterator over the disjoint matches of a pattern within the given string
     /// slice.
     ///
-    /// The pattern can be any type that implements the Pattern trait. Notable
-    /// examples are `&str`, [`char`], and closures that determines the split.
+    /// The pattern can be a `&str`, [`char`], or a closure that determines if
+    /// a character matches.
     ///
     /// # Iterator behavior
     ///

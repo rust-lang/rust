@@ -1,10 +1,10 @@
 use super::{SeqSep, Parser, TokenType, PathStyle};
+use rustc_errors::PResult;
 use syntax::attr;
 use syntax::ast;
 use syntax::util::comments;
 use syntax::token::{self, Nonterminal};
 use syntax_pos::{Span, Symbol};
-use errors::PResult;
 
 use log::debug;
 

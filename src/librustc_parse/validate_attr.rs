@@ -1,6 +1,6 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use errors::{PResult, Applicability};
+use rustc_errors::{PResult, Applicability};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
 use syntax::ast::{self, Attribute, AttrKind, Ident, MacArgs, MetaItem, MetaItemKind};
 use syntax::attr::mk_name_value_item_str;

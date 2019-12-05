@@ -9,9 +9,13 @@ note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on th
    |
 LL |     s.f(|p| p)
    |         ^^^^^
-   = note: ...so that the expression is assignable:
-           expected &i32
-              found &i32
+note: ...so that the expression is assignable
+  --> $DIR/regions-escape-method.rs:15:13
+   |
+LL |     s.f(|p| p)
+   |             ^
+   = note: expected  `&i32`
+              found  `&i32`
 note: but, the lifetime must be valid for the method call at 15:5...
   --> $DIR/regions-escape-method.rs:15:5
    |

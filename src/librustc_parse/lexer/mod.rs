@@ -1,16 +1,15 @@
-use syntax::token::{self, Token, TokenKind};
-use syntax::sess::ParseSess;
-use syntax::symbol::{sym, Symbol};
-use syntax::util::comments;
-
-use errors::{FatalError, DiagnosticBuilder};
-use syntax_pos::{BytePos, Pos, Span};
+use rustc_data_structures::sync::Lrc;
+use rustc_errors::{FatalError, DiagnosticBuilder};
 use rustc_lexer::Base;
 use rustc_lexer::unescape;
+use syntax::token::{self, Token, TokenKind};
+use syntax::sess::ParseSess;
+use syntax::util::comments;
+use syntax_pos::symbol::{sym, Symbol};
+use syntax_pos::{BytePos, Pos, Span};
 
 use std::char;
 use std::convert::TryInto;
-use rustc_data_structures::sync::Lrc;
 use log::debug;
 
 mod tokentrees;
