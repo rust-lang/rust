@@ -493,6 +493,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // With floats that won't always be true,
                         // so we generate a (safe) abort.
                         bx.abort();
+                        // We still have to return a place but it doesn't matter,
+                        // this code is unreachable.
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
                         );
