@@ -403,6 +403,12 @@ pub struct Pin<P> {
     pointer: P,
 }
 
+// The following implementations aren't derived in order to avoid soundness
+// issues. `&self.pointer` should not be accessible to untrusted trait
+// implementations.
+//
+// See <https://internals.rust-lang.org/t/unsoundness-in-pin/11311/73> for more details.
+
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
 impl<P: Deref, Q: Deref> PartialEq<Pin<Q>> for Pin<P>
 where
