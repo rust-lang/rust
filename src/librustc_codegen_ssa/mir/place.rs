@@ -333,7 +333,9 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         variant_index: VariantIdx
     ) {
         if self.layout.for_variant(bx.cx(), variant_index).abi.is_uninhabited() {
-            bx.unreachable();
+            // We play it safe by using a well-defined `abort`, but we could go for immediate UB
+            // if that turns out to be helpful.
+            bx.abort();
             return;
         }
         match self.layout.variants {

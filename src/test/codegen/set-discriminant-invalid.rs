@@ -20,9 +20,9 @@ impl IntoError<Error> for Api
 {
     type Source = ApiError;
     // CHECK-LABEL: @into_error
-    // CHECK: unreachable
-    // Also check the next two instructions to make sure we do not match against `unreachable`
-    // elsewhere in the code (e.g., in the closure bode).
+    // CHECK: llvm.trap()
+    // Also check the next two instructions to make sure we do not match against `trap`
+    // elsewhere in the code.
     // CHECK-NEXT: load
     // CHECK-NEXT: ret
     #[no_mangle]
