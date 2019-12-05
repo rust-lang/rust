@@ -333,6 +333,7 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
         variant_index: VariantIdx
     ) {
         if self.layout.for_variant(bx.cx(), variant_index).abi.is_uninhabited() {
+            bx.unreachable();
             return;
         }
         match self.layout.variants {
@@ -488,9 +489,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     },
                     Err(_) => {
                         // This is unreachable as long as runtime
-                        // and compile-time agree on values
+                        // and compile-time agree perfectly.
                         // With floats that won't always be true,
-                        // so we generate an abort.
+                        // so we generate a (safe) abort.
                         bx.abort();
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
