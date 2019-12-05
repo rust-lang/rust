@@ -11,8 +11,8 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use hir_def::{
-    body::BodySourceMap, db::DefDatabase, nameres::CrateDefMap, AssocItemId, DefWithBodyId,
-    LocalModuleId, Lookup, ModuleDefId,
+    body::BodySourceMap, child_from_source::ChildFromSource, db::DefDatabase, nameres::CrateDefMap,
+    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::InFile;
 use insta::assert_snapshot;
@@ -31,18 +31,15 @@ use crate::{db::HirDatabase, display::HirDisplay, test_db::TestDB, InferenceResu
 fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     let file = db.parse(pos.file_id).ok().unwrap();
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
-
+    let fn_def = expr.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
     let module = db.module_for_file(pos.file_id);
-    let crate_def_map = db.crate_def_map(module.krate);
-    for decl in crate_def_map[module.local_id].scope.declarations() {
-        if let ModuleDefId::FunctionId(func) = decl {
-            let (_body, source_map) = db.body_with_source_map(func.into());
-            if let Some(expr_id) = source_map.node_expr(InFile::new(pos.file_id.into(), &expr)) {
-                let infer = db.infer(func.into());
-                let ty = &infer[expr_id];
-                return ty.display(db).to_string();
-            }
-        }
+    let func = module.child_from_source(db, InFile::new(pos.file_id.into(), fn_def)).unwrap();
+
+    let (_body, source_map) = db.body_with_source_map(func.into());
+    if let Some(expr_id) = source_map.node_expr(InFile::new(pos.file_id.into(), &expr)) {
+        let infer = db.infer(func.into());
+        let ty = &infer[expr_id];
+        return ty.display(db).to_string();
     }
     panic!("Can't find expression")
 }
