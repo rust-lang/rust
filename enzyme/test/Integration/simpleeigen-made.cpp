@@ -17,7 +17,8 @@ constexpr size_t IN = 3, OUT = 7, NUM = 5;
 
 __attribute__((noinline))
 static void matvec(const MatrixXd* __restrict W, const VectorXd* __restrict b, VectorXd* __restrict output) {
-
+  *output = *W * *b;
+  /*
   for (int r = 0; r < W->rows(); r++) {
     (*output)(r) = 0;
 
@@ -25,6 +26,7 @@ static void matvec(const MatrixXd* __restrict W, const VectorXd* __restrict b, V
       (*output)(r) += (*W)(r, c) * (*b)(c);
     }
   }
+  */
 }
 
 extern "C" {
