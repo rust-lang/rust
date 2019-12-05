@@ -14,9 +14,13 @@ note: ...but the lifetime must also be valid for the lifetime `'b` as defined on
    |
 LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> {
    |         ^^
-   = note: ...so that the types are compatible:
-           expected T1<'a>
-              found T1<'_>
+note: ...so that the types are compatible
+  --> $DIR/trait-impl-of-supertrait-has-wrong-lifetime-parameters.rs:24:13
+   |
+LL | impl<'a,'b> T2<'a, 'b> for S<'a, 'b> {
+   |             ^^^^^^^^^^
+   = note: expected  `T1<'a>`
+              found  `T1<'_>`
 
 error: aborting due to previous error
 

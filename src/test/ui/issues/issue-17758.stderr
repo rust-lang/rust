@@ -22,9 +22,13 @@ note: but, the lifetime must be valid for the lifetime `'a` as defined on the tr
    |
 LL | trait Foo<'a> {
    |           ^^
-   = note: ...so that the types are compatible:
-           expected &'a Self
-              found &Self
+note: ...so that the types are compatible
+  --> $DIR/issue-17758.rs:7:14
+   |
+LL |         self.foo();
+   |              ^^^
+   = note: expected  `&'a Self`
+              found  `&Self`
 
 error: aborting due to previous error
 
