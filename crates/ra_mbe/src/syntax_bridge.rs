@@ -245,8 +245,14 @@ impl Convertor {
                     }
                 }
                 NodeOrToken::Node(node) => {
-                    let child = self.go(&node)?.into();
-                    token_trees.push(child);
+                    let child_subtree = self.go(&node)?;
+                    if child_subtree.delimiter == tt::Delimiter::None
+                        && node.kind() != SyntaxKind::TOKEN_TREE
+                    {
+                        token_trees.extend(child_subtree.token_trees);
+                    } else {
+                        token_trees.push(child_subtree.into());
+                    }
                 }
             };
         }
