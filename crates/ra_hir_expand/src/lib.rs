@@ -9,6 +9,7 @@ pub mod ast_id_map;
 pub mod name;
 pub mod hygiene;
 pub mod diagnostics;
+pub mod builtin_derive;
 pub mod builtin_macro;
 pub mod quote;
 
@@ -23,6 +24,7 @@ use ra_syntax::{
 };
 
 use crate::ast_id_map::FileAstId;
+use crate::builtin_derive::BuiltinDeriveExpander;
 use crate::builtin_macro::BuiltinFnLikeExpander;
 
 #[cfg(test)]
@@ -69,7 +71,7 @@ impl HirFileId {
             HirFileIdRepr::FileId(file_id) => file_id,
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc = db.lookup_intern_macro(macro_file.macro_call_id);
-                loc.ast_id.file_id.original_file(db)
+                loc.kind.file_id().original_file(db)
             }
         }
     }
@@ -81,8 +83,8 @@ impl HirFileId {
             HirFileIdRepr::MacroFile(macro_file) => {
                 let loc: MacroCallLoc = db.lookup_intern_macro(macro_file.macro_call_id);
 
-                let arg_tt = loc.ast_id.to_node(db).token_tree()?;
-                let def_tt = loc.def.ast_id.to_node(db).token_tree()?;
+                let arg_tt = loc.kind.arg(db)?;
+                let def_tt = loc.def.ast_id?.to_node(db).token_tree()?;
 
                 let macro_def = db.macro_def(loc.def)?;
                 let (parse, exp_map) = db.parse_macro(macro_file)?;
@@ -90,8 +92,8 @@ impl HirFileId {
 
                 Some(ExpansionInfo {
                     expanded: InFile::new(self, parse.syntax_node()),
-                    arg: InFile::new(loc.ast_id.file_id, arg_tt),
-                    def: InFile::new(loc.ast_id.file_id, def_tt),
+                    arg: InFile::new(loc.kind.file_id(), arg_tt),
+                    def: InFile::new(loc.def.ast_id?.file_id, def_tt),
                     macro_arg,
                     macro_def,
                     exp_map,
@@ -129,18 +131,20 @@ impl salsa::InternKey for MacroCallId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
-    pub krate: CrateId,
-    pub ast_id: AstId<ast::MacroCall>,
+    // FIXME: krate and ast_id are currently optional because we don't have a
+    // definition location for built-in derives. There is one, though: the
+    // standard library defines them. The problem is that it uses the new
+    // `macro` syntax for this, which we don't support yet. As soon as we do
+    // (which will probably require touching this code), we can instead use
+    // that (and also remove the hacks for resolving built-in derives).
+    pub krate: Option<CrateId>,
+    pub ast_id: Option<AstId<ast::MacroCall>>,
     pub kind: MacroDefKind,
 }
 
 impl MacroDefId {
-    pub fn as_call_id(
-        self,
-        db: &dyn db::AstDatabase,
-        ast_id: AstId<ast::MacroCall>,
-    ) -> MacroCallId {
-        db.intern_macro(MacroCallLoc { def: self, ast_id })
+    pub fn as_call_id(self, db: &dyn db::AstDatabase, kind: MacroCallKind) -> MacroCallId {
+        db.intern_macro(MacroCallLoc { def: self, kind })
     }
 }
 
@@ -148,12 +152,38 @@ impl MacroDefId {
 pub enum MacroDefKind {
     Declarative,
     BuiltIn(BuiltinFnLikeExpander),
+    // FIXME: maybe just Builtin and rename BuiltinFnLikeExpander to BuiltinExpander
+    BuiltInDerive(BuiltinDeriveExpander),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MacroCallLoc {
     pub(crate) def: MacroDefId,
-    pub(crate) ast_id: AstId<ast::MacroCall>,
+    pub(crate) kind: MacroCallKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum MacroCallKind {
+    FnLike(AstId<ast::MacroCall>),
+    Attr(AstId<ast::ModuleItem>),
+}
+
+impl MacroCallKind {
+    pub fn file_id(&self) -> HirFileId {
+        match self {
+            MacroCallKind::FnLike(ast_id) => ast_id.file_id,
+            MacroCallKind::Attr(ast_id) => ast_id.file_id,
+        }
+    }
+
+    pub fn arg(&self, db: &dyn db::AstDatabase) -> Option<SyntaxNode> {
+        match self {
+            MacroCallKind::FnLike(ast_id) => {
+                Some(ast_id.to_node(db).token_tree()?.syntax().clone())
+            }
+            MacroCallKind::Attr(ast_id) => Some(ast_id.to_node(db).syntax().clone()),
+        }
+    }
 }
 
 impl MacroCallId {
@@ -167,7 +197,7 @@ impl MacroCallId {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExpansionInfo {
     expanded: InFile<SyntaxNode>,
-    arg: InFile<ast::TokenTree>,
+    arg: InFile<SyntaxNode>,
     def: InFile<ast::TokenTree>,
 
     macro_def: Arc<(db::TokenExpander, mbe::TokenMap)>,
@@ -178,8 +208,7 @@ pub struct ExpansionInfo {
 impl ExpansionInfo {
     pub fn map_token_down(&self, token: InFile<&SyntaxToken>) -> Option<InFile<SyntaxToken>> {
         assert_eq!(token.file_id, self.arg.file_id);
-        let range =
-            token.value.text_range().checked_sub(self.arg.value.syntax().text_range().start())?;
+        let range = token.value.text_range().checked_sub(self.arg.value.text_range().start())?;
         let token_id = self.macro_arg.1.token_by_range(range)?;
         let token_id = self.macro_def.0.map_id_down(token_id);
 
@@ -195,16 +224,15 @@ impl ExpansionInfo {
 
         let (token_id, origin) = self.macro_def.0.map_id_up(token_id);
         let (token_map, tt) = match origin {
-            mbe::Origin::Call => (&self.macro_arg.1, &self.arg),
-            mbe::Origin::Def => (&self.macro_def.1, &self.def),
+            mbe::Origin::Call => (&self.macro_arg.1, self.arg.clone()),
+            mbe::Origin::Def => {
+                (&self.macro_def.1, self.def.as_ref().map(|tt| tt.syntax().clone()))
+            }
         };
 
         let range = token_map.range_by_token(token_id)?;
-        let token = algo::find_covering_element(
-            tt.value.syntax(),
-            range + tt.value.syntax().text_range().start(),
-        )
-        .into_token()?;
+        let token = algo::find_covering_element(&tt.value, range + tt.value.text_range().start())
+            .into_token()?;
         Some(tt.with_value(token))
     }
 }

@@ -4,9 +4,10 @@
 //! resolves imports and expands macros.
 
 use hir_expand::{
+    builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
     name::{self, AsName, Name},
-    HirFileId, MacroCallId, MacroDefId, MacroDefKind, MacroFileKind,
+    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind, MacroFileKind,
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
@@ -58,6 +59,7 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
         unexpanded_macros: Vec::new(),
+        unexpanded_attribute_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
         macro_stack_monitor: MacroStackMonitor::default(),
         poison_macros: FxHashSet::default(),
@@ -102,6 +104,7 @@ struct DefCollector<'a, DB> {
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, LocalImportId)>>,
     unresolved_imports: Vec<(LocalModuleId, LocalImportId, raw::ImportData)>,
     unexpanded_macros: Vec<(LocalModuleId, AstId<ast::MacroCall>, Path)>,
+    unexpanded_attribute_macros: Vec<(LocalModuleId, AstId<ast::ModuleItem>, Path)>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
 
     /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
@@ -470,6 +473,8 @@ where
 
     fn resolve_macros(&mut self) -> ReachedFixedPoint {
         let mut macros = std::mem::replace(&mut self.unexpanded_macros, Vec::new());
+        let mut attribute_macros =
+            std::mem::replace(&mut self.unexpanded_attribute_macros, Vec::new());
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
         macros.retain(|(module_id, ast_id, path)| {
@@ -482,7 +487,19 @@ where
             );
 
             if let Some(def) = resolved_res.resolved_def.take_macros() {
-                let call_id = def.as_call_id(self.db, *ast_id);
+                let call_id = def.as_call_id(self.db, MacroCallKind::FnLike(*ast_id));
+                resolved.push((*module_id, call_id, def));
+                res = ReachedFixedPoint::No;
+                return false;
+            }
+
+            true
+        });
+        attribute_macros.retain(|(module_id, ast_id, path)| {
+            let resolved_res = self.resolve_attribute_macro(path);
+
+            if let Some(def) = resolved_res {
+                let call_id = def.as_call_id(self.db, MacroCallKind::Attr(*ast_id));
                 resolved.push((*module_id, call_id, def));
                 res = ReachedFixedPoint::No;
                 return false;
@@ -492,12 +509,27 @@ where
         });
 
         self.unexpanded_macros = macros;
+        self.unexpanded_attribute_macros = attribute_macros;
 
         for (module_id, macro_call_id, macro_def_id) in resolved {
             self.collect_macro_expansion(module_id, macro_call_id, macro_def_id);
         }
 
         res
+    }
+
+    fn resolve_attribute_macro(&self, path: &Path) -> Option<MacroDefId> {
+        // FIXME this is currently super hacky, just enough to support the
+        // built-in derives
+        if let Some(name) = path.as_ident() {
+            // FIXME this should actually be handled with the normal name
+            // resolution; the std lib defines built-in stubs for the derives,
+            // but these are new-style `macro`s, which we don't support yet
+            if let Some(def_id) = find_builtin_derive(name) {
+                return Some(def_id);
+            }
+        }
+        None
     }
 
     fn collect_macro_expansion(
@@ -587,7 +619,9 @@ where
                         .def_collector
                         .unresolved_imports
                         .push((self.module_id, import_id, self.raw_items[import_id].clone())),
-                    raw::RawItemKind::Def(def) => self.define_def(&self.raw_items[def]),
+                    raw::RawItemKind::Def(def) => {
+                        self.define_def(&self.raw_items[def], &item.attrs)
+                    }
                     raw::RawItemKind::Macro(mac) => self.collect_macro(&self.raw_items[mac]),
                     raw::RawItemKind::Impl(imp) => {
                         let module = ModuleId {
@@ -682,9 +716,15 @@ where
         res
     }
 
-    fn define_def(&mut self, def: &raw::DefData) {
+    fn define_def(&mut self, def: &raw::DefData, attrs: &Attrs) {
         let module = ModuleId { krate: self.def_collector.def_map.krate, local_id: self.module_id };
         let ctx = LocationCtx::new(self.def_collector.db, module, self.file_id);
+
+        // FIXME: check attrs to see if this is an attribute macro invocation;
+        // in which case we don't add the invocation, just a single attribute
+        // macro invocation
+
+        self.collect_derives(attrs, def);
 
         let name = def.name.clone();
         let def: PerNs = match def.kind {
@@ -736,6 +776,23 @@ where
         self.def_collector.update(self.module_id, None, &[(name, resolution)])
     }
 
+    fn collect_derives(&mut self, attrs: &Attrs, def: &raw::DefData) {
+        for derive_subtree in attrs.by_key("derive").tt_values() {
+            // for #[derive(Copy, Clone)], `derive_subtree` is the `(Copy, Clone)` subtree
+            for tt in &derive_subtree.token_trees {
+                let ident = match &tt {
+                    tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => ident,
+                    tt::TokenTree::Leaf(tt::Leaf::Punct(_)) => continue, // , is ok
+                    _ => continue, // anything else would be an error (which we currently ignore)
+                };
+                let path = Path::from_tt_ident(ident);
+
+                let ast_id = AstId::new(self.file_id, def.kind.ast_id());
+                self.def_collector.unexpanded_attribute_macros.push((self.module_id, ast_id, path));
+            }
+        }
+    }
+
     fn collect_macro(&mut self, mac: &raw::MacroData) {
         let ast_id = AstId::new(self.file_id, mac.ast_id);
 
@@ -759,8 +816,8 @@ where
         if is_macro_rules(&mac.path) {
             if let Some(name) = &mac.name {
                 let macro_id = MacroDefId {
-                    ast_id,
-                    krate: self.def_collector.def_map.krate,
+                    ast_id: Some(ast_id),
+                    krate: Some(self.def_collector.def_map.krate),
                     kind: MacroDefKind::Declarative,
                 };
                 self.def_collector.define_macro(self.module_id, name.clone(), macro_id, mac.export);
@@ -773,7 +830,8 @@ where
         if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
             self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
         }) {
-            let macro_call_id = macro_def.as_call_id(self.def_collector.db, ast_id);
+            let macro_call_id =
+                macro_def.as_call_id(self.def_collector.db, MacroCallKind::FnLike(ast_id));
 
             self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_def);
             return;
@@ -829,6 +887,7 @@ mod tests {
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
             unexpanded_macros: Vec::new(),
+            unexpanded_attribute_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
             macro_stack_monitor: monitor,
             poison_macros: FxHashSet::default(),

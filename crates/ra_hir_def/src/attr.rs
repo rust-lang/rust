@@ -61,7 +61,9 @@ impl Attrs {
                 AdtId::UnionId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
             },
             AttrDefId::TraitId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
-            AttrDefId::MacroDefId(it) => attrs_from_ast(it.ast_id, db),
+            AttrDefId::MacroDefId(it) => {
+                it.ast_id.map_or_else(Default::default, |ast_id| attrs_from_ast(ast_id, db))
+            }
             AttrDefId::ImplId(it) => attrs_from_ast(it.lookup_intern(db).ast_id, db),
             AttrDefId::ConstId(it) => attrs_from_loc(it.lookup(db), db),
             AttrDefId::StaticId(it) => attrs_from_loc(it.lookup(db), db),

@@ -20,7 +20,8 @@ use hir_def::{
     AssocItemId, DefWithBodyId,
 };
 use hir_expand::{
-    hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroFileKind,
+    hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
+    MacroFileKind,
 };
 use ra_syntax::{
     ast::{self, AstNode},
@@ -456,7 +457,7 @@ impl SourceAnalyzer {
             db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
         );
         Some(Expansion {
-            macro_call_id: def.as_call_id(db, ast_id),
+            macro_call_id: def.as_call_id(db, MacroCallKind::FnLike(ast_id)),
             macro_file_kind: to_macro_file_kind(macro_call.value),
         })
     }

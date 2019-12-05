@@ -6,7 +6,9 @@ pub mod scope;
 use std::{ops::Index, sync::Arc};
 
 use either::Either;
-use hir_expand::{hygiene::Hygiene, AstId, HirFileId, InFile, MacroDefId, MacroFileKind};
+use hir_expand::{
+    hygiene::Hygiene, AstId, HirFileId, InFile, MacroCallKind, MacroDefId, MacroFileKind,
+};
 use ra_arena::{map::ArenaMap, Arena};
 use ra_syntax::{ast, AstNode, AstPtr};
 use rustc_hash::FxHashMap;
@@ -46,7 +48,7 @@ impl Expander {
 
         if let Some(path) = macro_call.path().and_then(|path| self.parse_path(path)) {
             if let Some(def) = self.resolve_path_as_macro(db, &path) {
-                let call_id = def.as_call_id(db, ast_id);
+                let call_id = def.as_call_id(db, MacroCallKind::FnLike(ast_id));
                 let file_id = call_id.as_file(MacroFileKind::Expr);
                 if let Some(node) = db.parse_or_expand(file_id) {
                     if let Some(expr) = ast::Expr::cast(node) {

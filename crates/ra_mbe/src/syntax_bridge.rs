@@ -2,7 +2,7 @@
 
 use ra_parser::{FragmentKind, ParseError, TreeSink};
 use ra_syntax::{
-    ast, AstNode, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxNode,
+    ast, AstToken, NodeOrToken, Parse, SmolStr, SyntaxKind, SyntaxKind::*, SyntaxNode,
     SyntaxTreeBuilder, TextRange, TextUnit, T,
 };
 use std::iter::successors;
@@ -20,7 +20,7 @@ pub struct TokenMap {
 
 /// Convert the syntax tree (what user has written) to a `TokenTree` (what macro
 /// will consume).
-pub fn ast_to_token_tree(ast: &ast::TokenTree) -> Option<(tt::Subtree, TokenMap)> {
+pub fn ast_to_token_tree(ast: &impl ast::AstNode) -> Option<(tt::Subtree, TokenMap)> {
     syntax_node_to_token_tree(ast.syntax())
 }
 
@@ -208,13 +208,8 @@ impl Convertor {
                     } else if token.kind().is_trivia() {
                         continue;
                     } else if token.kind().is_punct() {
-                        assert!(
-                            token.text().len() == 1,
-                            "Input ast::token punct must be single char."
-                        );
-                        let char = token.text().chars().next().unwrap();
-
-                        let spacing = match child_iter.peek() {
+                        // we need to pull apart joined punctuation tokens
+                        let last_spacing = match child_iter.peek() {
                             Some(NodeOrToken::Token(token)) => {
                                 if token.kind().is_punct() {
                                     tt::Spacing::Joint
@@ -224,8 +219,12 @@ impl Convertor {
                             }
                             _ => tt::Spacing::Alone,
                         };
-
-                        token_trees.push(tt::Leaf::from(tt::Punct { char, spacing }).into());
+                        let spacing_iter = std::iter::repeat(tt::Spacing::Joint)
+                            .take(token.text().len() - 1)
+                            .chain(std::iter::once(last_spacing));
+                        for (char, spacing) in token.text().chars().zip(spacing_iter) {
+                            token_trees.push(tt::Leaf::from(tt::Punct { char, spacing }).into());
+                        }
                     } else {
                         let child: tt::TokenTree =
                             if token.kind() == T![true] || token.kind() == T![false] {
@@ -246,8 +245,14 @@ impl Convertor {
                     }
                 }
                 NodeOrToken::Node(node) => {
-                    let child = self.go(&node)?.into();
-                    token_trees.push(child);
+                    let child_subtree = self.go(&node)?;
+                    if child_subtree.delimiter == tt::Delimiter::None
+                        && node.kind() != SyntaxKind::TOKEN_TREE
+                    {
+                        token_trees.extend(child_subtree.token_trees);
+                    } else {
+                        token_trees.push(child_subtree.into());
+                    }
                 }
             };
         }
@@ -389,7 +394,10 @@ mod tests {
     use super::*;
     use crate::tests::{create_rules, expand};
     use ra_parser::TokenSource;
-    use ra_syntax::algo::{insert_children, InsertPosition};
+    use ra_syntax::{
+        algo::{insert_children, InsertPosition},
+        ast::AstNode,
+    };
 
     #[test]
     fn convert_tt_token_source() {
@@ -490,5 +498,13 @@ mod tests {
         let tt = ast_to_token_tree(&token_tree).unwrap().0;
 
         assert_eq!(tt.delimiter, tt::Delimiter::Brace);
+    }
+
+    #[test]
+    fn test_token_tree_multi_char_punct() {
+        let source_file = ast::SourceFile::parse("struct Foo { a: x::Y }").ok().unwrap();
+        let struct_def = source_file.syntax().descendants().find_map(ast::StructDef::cast).unwrap();
+        let tt = ast_to_token_tree(&struct_def).unwrap().0;
+        token_tree_to_syntax_node(&tt, FragmentKind::Item).unwrap();
     }
 }

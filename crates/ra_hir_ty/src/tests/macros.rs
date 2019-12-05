@@ -266,3 +266,54 @@ fn main() {
     "###
     );
 }
+
+#[test]
+fn infer_derive_clone_simple() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+#[derive(Clone)]
+struct S;
+fn test() {
+    S.clone()<|>;
+}
+
+//- /lib.rs crate:std
+#[prelude_import]
+use clone::*;
+mod clone {
+    trait Clone {
+        fn clone(&self) -> Self;
+    }
+}
+"#,
+    );
+    assert_eq!("S", type_at_pos(&db, pos));
+}
+
+#[test]
+fn infer_derive_clone_with_params() {
+    let (db, pos) = TestDB::with_position(
+        r#"
+//- /main.rs crate:main deps:std
+#[derive(Clone)]
+struct S;
+#[derive(Clone)]
+struct Wrapper<T>(T);
+struct NonClone;
+fn test() {
+    (Wrapper(S).clone(), Wrapper(NonClone).clone())<|>;
+}
+
+//- /lib.rs crate:std
+#[prelude_import]
+use clone::*;
+mod clone {
+    trait Clone {
+        fn clone(&self) -> Self;
+    }
+}
+"#,
+    );
+    assert_eq!("(Wrapper<S>, {unknown})", type_at_pos(&db, pos));
+}

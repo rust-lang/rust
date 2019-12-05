@@ -39,6 +39,16 @@ impl<N: AstNode> Hash for FileAstId<N> {
     }
 }
 
+impl<N: AstNode> FileAstId<N> {
+    // Can't make this a From implementation because of coherence
+    pub fn upcast<M: AstNode>(self) -> FileAstId<M>
+    where
+        M: From<N>,
+    {
+        FileAstId { raw: self.raw, _ty: PhantomData }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct ErasedFileAstId(RawId);
 impl_arena_id!(ErasedFileAstId);
@@ -53,7 +63,7 @@ impl AstIdMap {
     pub(crate) fn from_source(node: &SyntaxNode) -> AstIdMap {
         assert!(node.parent().is_none());
         let mut res = AstIdMap { arena: Arena::default() };
-        // By walking the tree in bread-first order we make sure that parents
+        // By walking the tree in breadth-first order we make sure that parents
         // get lower ids then children. That is, adding a new child does not
         // change parent's id. This means that, say, adding a new function to a
         // trait does not change ids of top-level items, which helps caching.
