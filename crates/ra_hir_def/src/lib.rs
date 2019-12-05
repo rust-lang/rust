@@ -30,6 +30,7 @@ mod trace;
 pub mod nameres;
 
 pub mod src;
+pub mod child_from_source;
 
 #[cfg(test)]
 mod test_db;
