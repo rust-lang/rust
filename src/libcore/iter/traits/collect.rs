@@ -91,9 +91,9 @@
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    message="a collection of type `{Self}` cannot be built from an iterator \
+    message="a value of type `{Self}` cannot be built from an iterator \
              over elements of type `{A}`",
-    label="a collection of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
+    label="value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
 )]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
