@@ -19,9 +19,13 @@ note: but, the lifetime must be valid for the lifetime `'c` as defined on the fu
    |
 LL | fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<dyn SomeTrait + 'c> {
    |                          ^^
-   = note: ...so that the expression is assignable:
-           expected std::boxed::Box<(dyn SomeTrait + 'c)>
-              found std::boxed::Box<dyn SomeTrait>
+note: ...so that the expression is assignable
+  --> $DIR/regions-close-over-type-parameter-multiple.rs:20:5
+   |
+LL |     box v as Box<dyn SomeTrait + 'a>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected  `std::boxed::Box<(dyn SomeTrait + 'c)>`
+              found  `std::boxed::Box<dyn SomeTrait>`
 
 error: aborting due to previous error
 
