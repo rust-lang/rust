@@ -3880,36 +3880,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_sp: Span,
         args: &'tcx [hir::Expr],
     ) {
-        if !call_sp.desugaring_kind().is_some() {
-            // We *do not* do this for desugared call spans to keep good diagnostics when involving
-            // the `?` operator.
-            for error in errors {
-                if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
-                    // Collect the argument position for all arguments that could have caused this
-                    // `FulfillmentError`.
-                    let mut referenced_in = final_arg_types.iter()
-                        .map(|(i, checked_ty, _)| (i, checked_ty))
-                        .chain(final_arg_types.iter().map(|(i, _, coerced_ty)| (i, coerced_ty)))
-                        .flat_map(|(i, ty)| {
-                            let ty = self.resolve_vars_if_possible(ty);
-                            // We walk the argument type because the argument's type could have
-                            // been `Option<T>`, but the `FulfillmentError` references `T`.
-                            ty.walk()
-                                .filter(|&ty| ty == predicate.skip_binder().self_ty())
-                                .map(move |_| *i)
-                        })
-                        .collect::<Vec<_>>();
+        // We *do not* do this for desugared call spans to keep good diagnostics when involving
+        // the `?` operator.
+        if call_sp.desugaring_kind().is_some() {
+            return
+        }
 
-                    // Both checked and coerced types could have matched, thus we need to remove
-                    // duplicates.
-                    referenced_in.dedup();
+        for error in errors {
+            // Only if the cause is somewhere inside the expression we want try to point at arg.
+            // Otherwise, it means that the cause is somewhere else and we should not change
+            // anything because we can break the correct span.
+            if !call_sp.contains(error.obligation.cause.span) {
+                continue
+            }
 
-                    if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
-                        // We make sure that only *one* argument matches the obligation failure
-                        // and we assign the obligation's span to its expression's.
-                        error.obligation.cause.span = args[ref_in].span;
-                        error.points_at_arg_span = true;
-                    }
+            if let ty::Predicate::Trait(predicate) = error.obligation.predicate {
+                // Collect the argument position for all arguments that could have caused this
+                // `FulfillmentError`.
+                let mut referenced_in = final_arg_types.iter()
+                    .map(|(i, checked_ty, _)| (i, checked_ty))
+                    .chain(final_arg_types.iter().map(|(i, _, coerced_ty)| (i, coerced_ty)))
+                    .flat_map(|(i, ty)| {
+                        let ty = self.resolve_vars_if_possible(ty);
+                        // We walk the argument type because the argument's type could have
+                        // been `Option<T>`, but the `FulfillmentError` references `T`.
+                        ty.walk()
+                            .filter(|&ty| ty == predicate.skip_binder().self_ty())
+                            .map(move |_| *i)
+                    })
+                    .collect::<Vec<_>>();
+
+                // Both checked and coerced types could have matched, thus we need to remove
+                // duplicates.
+                referenced_in.dedup();
+
+                if let (Some(ref_in), None) = (referenced_in.pop(), referenced_in.pop()) {
+                    // We make sure that only *one* argument matches the obligation failure
+                    // and we assign the obligation's span to its expression's.
+                    error.obligation.cause.span = args[ref_in].span;
+                    error.points_at_arg_span = true;
                 }
             }
         }
