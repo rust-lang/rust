@@ -1,3 +1,5 @@
+// ignore-tidy-filelength
+
 //! Contains infrastructure for configuring the compiler, including parsing
 //! command-line options.
 
@@ -31,7 +33,7 @@ use std::fmt;
 use std::str::{self, FromStr};
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
-use std::iter::FromIterator;
+use std::iter::{self, FromIterator};
 use std::path::{Path, PathBuf};
 
 pub struct Config {
@@ -322,10 +324,35 @@ impl OutputTypes {
 #[derive(Clone)]
 pub struct Externs(BTreeMap<String, ExternEntry>);
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct ExternEntry {
-    pub locations: BTreeSet<Option<String>>,
-    pub is_private_dep: bool
+    pub location: ExternLocation,
+    /// Indicates this is a "private" dependency for the
+    /// `exported_private_dependencies` lint.
+    ///
+    /// This can be set with the `priv` option like
+    /// `--extern priv:name=foo.rlib`.
+    pub is_private_dep: bool,
+    /// Add the extern entry to the extern prelude.
+    ///
+    /// This can be disabled with the `noprelude` option like
+    /// `--extern noprelude:name`.
+    pub add_prelude: bool,
+}
+
+#[derive(Clone, Debug)]
+pub enum ExternLocation {
+    /// Indicates to look for the library in the search paths.
+    ///
+    /// Added via `--extern name`.
+    FoundInLibrarySearchDirectories,
+    /// The locations where this extern entry must be found.
+    ///
+    /// The `CrateLoader` is responsible for loading these and figuring out
+    /// which one to use.
+    ///
+    /// Added via `--extern prelude_name=some_file.rlib`
+    ExactPaths(BTreeSet<String>),
 }
 
 impl Externs {
@@ -342,6 +369,18 @@ impl Externs {
     }
 }
 
+impl ExternEntry {
+    fn new(location: ExternLocation) -> ExternEntry {
+        ExternEntry { location, is_private_dep: false, add_prelude: false }
+    }
+
+    pub fn files(&self) -> Option<impl Iterator<Item = &String>> {
+        match &self.location {
+            ExternLocation::ExactPaths(set) => Some(set.iter()),
+            _ => None,
+        }
+    }
+}
 
 macro_rules! hash_option {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, [UNTRACKED]) => ({});
@@ -1869,12 +1908,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "Specify where an external rust library is located",
             "NAME[=PATH]",
         ),
-        opt::multi_s(
-            "",
-            "extern-private",
-            "Specify where an extern rust library is located, marking it as a private dependency",
-            "NAME=PATH",
-        ),
         opt::opt_s("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt_s(
@@ -2435,43 +2468,105 @@ fn parse_borrowck_mode(dopts: &DebuggingOptions, error_format: ErrorOutputType) 
     }
 }
 
-fn parse_externs(
+pub fn parse_externs(
     matches: &getopts::Matches,
     debugging_opts: &DebuggingOptions,
     error_format: ErrorOutputType,
 ) -> Externs {
-    if matches.opt_present("extern-private") && !debugging_opts.unstable_options {
-        early_error(
-            ErrorOutputType::default(),
-            "'--extern-private' is unstable and only \
-            available for nightly builds of rustc."
-        )
-    }
-
-    // We start out with a `Vec<(Option<String>, bool)>>`,
-    // and later convert it into a `BTreeSet<(Option<String>, bool)>`
-    // This allows to modify entries in-place to set their correct
-    // 'public' value.
+    let is_unstable_enabled = debugging_opts.unstable_options;
     let mut externs: BTreeMap<String, ExternEntry> = BTreeMap::new();
-    for (arg, private) in matches.opt_strs("extern").into_iter().map(|v| (v, false))
-        .chain(matches.opt_strs("extern-private").into_iter().map(|v| (v, true))) {
-
+    for arg in matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
-        let name = parts.next().unwrap_or_else(||
-            early_error(error_format, "--extern value must not be empty"));
-        let location = parts.next().map(|s| s.to_string());
+        let name = parts
+            .next()
+            .unwrap_or_else(|| early_error(error_format, "--extern value must not be empty"));
+        let path = parts.next().map(|s| s.to_string());
 
-        let entry = externs
-            .entry(name.to_owned())
-            .or_default();
+        let mut name_parts = name.splitn(2, ':');
+        let first_part = name_parts.next();
+        let second_part = name_parts.next();
+        let (options, name) = match (first_part, second_part) {
+            (Some(opts), Some(name)) => (Some(opts), name),
+            (Some(name), None) => (None, name),
+            (None, None) => early_error(error_format, "--extern name must not be empty"),
+            _ => unreachable!(),
+        };
 
+        let entry = externs.entry(name.to_owned());
 
-        entry.locations.insert(location.clone());
+        use std::collections::btree_map::Entry;
 
-        // Crates start out being not private,
-        // and go to being private if we see an '--extern-private'
-        // flag
-        entry.is_private_dep |= private;
+        let entry = if let Some(path) = path {
+            // --extern prelude_name=some_file.rlib
+            match entry {
+                Entry::Vacant(vacant) => {
+                    let files = BTreeSet::from_iter(iter::once(path));
+                    vacant.insert(ExternEntry::new(ExternLocation::ExactPaths(files)))
+                }
+                Entry::Occupied(occupied) => {
+                    let ext_ent = occupied.into_mut();
+                    match ext_ent {
+                        ExternEntry { location: ExternLocation::ExactPaths(files), .. } => {
+                            files.insert(path);
+                        }
+                        ExternEntry {
+                            location: location @ ExternLocation::FoundInLibrarySearchDirectories,
+                            ..
+                        } => {
+                            // Exact paths take precedence over search directories.
+                            let files = BTreeSet::from_iter(iter::once(path));
+                            *location = ExternLocation::ExactPaths(files);
+                        }
+                    }
+                    ext_ent
+                }
+            }
+        } else {
+            // --extern prelude_name
+            match entry {
+                Entry::Vacant(vacant) => {
+                    vacant.insert(ExternEntry::new(ExternLocation::FoundInLibrarySearchDirectories))
+                }
+                Entry::Occupied(occupied) => {
+                    // Ignore if already specified.
+                    occupied.into_mut()
+                }
+            }
+        };
+
+        let mut is_private_dep = false;
+        let mut add_prelude = true;
+        if let Some(opts) = options {
+            if !is_unstable_enabled {
+                early_error(
+                    error_format,
+                    "the `-Z unstable-options` flag must also be passed to \
+                     enable `--extern options",
+                );
+            }
+            for opt in opts.split(',') {
+                match opt {
+                    "priv" => is_private_dep = true,
+                    "noprelude" => {
+                        if let ExternLocation::ExactPaths(_) = &entry.location {
+                            add_prelude = false;
+                        } else {
+                            early_error(
+                                error_format,
+                                "the `noprelude` --extern option requires a file path",
+                            );
+                        }
+                    }
+                    _ => early_error(error_format, &format!("unknown --extern option `{}`", opt)),
+                }
+            }
+        }
+
+        // Crates start out being not private, and go to being private `priv`
+        // is specified.
+        entry.is_private_dep |= is_private_dep;
+        // If any flag is missing `noprelude`, then add to the prelude.
+        entry.add_prelude |= add_prelude;
     }
     Externs(externs)
 }
