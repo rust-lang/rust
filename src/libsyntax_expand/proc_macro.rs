@@ -188,14 +188,14 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             Some(x) => x,
         };
 
-        let mut retain_in_fm = true;
-        let mut retain_in_map = true;
+        let mut error_reported_filter_map = false;
+        let mut error_reported_map = false;
         let traits = nmis
             .into_iter()
             // 2) Moreover, let's ensure we have a path and not `#[derive("foo")]`.
             .filter_map(|nmi| match nmi {
                 NestedMetaItem::Literal(lit) => {
-                    retain_in_fm = false;
+                    error_reported_filter_map = true;
                     cx.struct_span_err(lit.span, "expected path to a trait, found literal")
                         .help("for example, write `#[derive(Debug)]` for `Debug`")
                         .emit();
@@ -209,7 +209,7 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             // wanted this trait to be derived, so let's keep it.
             .map(|mi| {
                 let mut traits_dont_accept = |title, action| {
-                    retain_in_map = false;
+                    error_reported_map = true;
                     let sp = mi.span.with_lo(mi.path.span.hi());
                     cx.struct_span_err(sp, title)
                         .span_suggestion(
@@ -235,7 +235,7 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
             });
 
         result.extend(traits);
-        retain_in_fm && retain_in_map
+        !error_reported_filter_map && !error_reported_map
     });
     result
 }

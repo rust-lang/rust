@@ -1,10 +1,13 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
+use crate::parse_in;
+
 use rustc_errors::{PResult, Applicability};
 use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
-use syntax::ast::{self, Attribute, AttrKind, Ident, MacArgs, MetaItem, MetaItemKind};
+use syntax::ast::{self, Attribute, AttrKind, Ident, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
 use syntax::attr::mk_name_value_item_str;
 use syntax::early_buffered_lints::ILL_FORMED_ATTRIBUTE_INPUT;
+use syntax::tokenstream::DelimSpan;
 use syntax::sess::ParseSess;
 use syntax_pos::{Symbol, sym};
 
@@ -27,14 +30,43 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
 pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
     Ok(match attr.kind {
         AttrKind::Normal(ref item) => MetaItem {
-            path: item.path.clone(),
-            kind: super::parse_in_attr(sess, attr, |p| p.parse_meta_item_kind())?,
             span: attr.span,
+            path: item.path.clone(),
+            kind: match &attr.get_normal_item().args {
+                MacArgs::Empty => MetaItemKind::Word,
+                MacArgs::Eq(_, t) => {
+                    let v = parse_in(sess, t.clone(), "name value", |p| p.parse_unsuffixed_lit())?;
+                    MetaItemKind::NameValue(v)
+                }
+                MacArgs::Delimited(dspan, delim, t) => {
+                    check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
+                    let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
+                    MetaItemKind::List(nmis)
+                }
+            }
         },
         AttrKind::DocComment(comment) => {
             mk_name_value_item_str(Ident::new(sym::doc, attr.span), comment, attr.span)
         }
     })
+}
+
+crate fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
+    if let ast::MacDelimiter::Parenthesis = delim {
+        return;
+    }
+
+    sess.span_diagnostic
+        .struct_span_err(span.entire(), msg)
+        .multipart_suggestion(
+            "the delimiters should be `(` and `)`",
+            vec![
+                (span.open, "(".to_string()),
+                (span.close, ")".to_string()),
+            ],
+            Applicability::MachineApplicable,
+        )
+        .emit();
 }
 
 /// Checks that the given meta-item is compatible with this `AttributeTemplate`.

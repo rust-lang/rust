@@ -284,17 +284,6 @@ pub fn parse_in<'a, T>(
     Ok(result)
 }
 
-/// Runs the given subparser `f` on the tokens of the given `attr`'s item.
-fn parse_in_attr<'a, T>(
-    sess: &'a ParseSess,
-    attr: &ast::Attribute,
-    f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
-) -> PResult<'a, T> {
-    // FIXME(#66940, Centril | petrochenkov): refactor this function so it doesn't
-    // require reconstructing and immediately re-parsing delimiters.
-    parse_in(sess, attr.get_normal_item().args.outer_tokens(), "attribute", f)
-}
-
 // NOTE(Centril): The following probably shouldn't be here but it acknowledges the
 // fact that architecturally, we are using parsing (read on below to understand why).
 

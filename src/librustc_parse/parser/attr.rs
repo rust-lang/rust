@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    pub(super) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
+    crate fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 
@@ -247,10 +247,25 @@ impl<'a> Parser<'a> {
             let lo = self.token.span;
             let item = self.parse_attr_item()?;
             expanded_attrs.push((item, lo.to(self.prev_span)));
-            self.eat(&token::Comma);
+            if !self.eat(&token::Comma) {
+                break;
+            }
         }
 
         Ok((cfg_predicate, expanded_attrs))
+    }
+
+    /// Matches `COMMASEP(meta_item_inner)`.
+    crate fn parse_meta_seq_top(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
+        // Presumably, the majority of the time there will only be one attr.
+        let mut nmis = Vec::with_capacity(1);
+        while self.token.kind != token::Eof {
+            nmis.push(self.parse_meta_item_inner()?);
+            if !self.eat(&token::Comma) {
+                break;
+            }
+        }
+        Ok(nmis)
     }
 
     /// Matches the following grammar (per RFC 1559).

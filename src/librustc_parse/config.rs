@@ -18,7 +18,6 @@ use syntax::ast::{self, Attribute, AttrItem, MetaItem};
 use syntax::edition::Edition;
 use syntax::mut_visit::*;
 use syntax::ptr::P;
-use syntax::tokenstream::DelimSpan;
 use syntax::sess::ParseSess;
 use syntax::util::map_in_place::MapInPlace;
 use syntax_pos::Span;
@@ -139,11 +138,10 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     fn parse_cfg_attr(&self, attr: &Attribute) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
-        match &attr.get_normal_item().args {
-            ast::MacArgs::Delimited(dspan, delim, tts) if !tts.is_empty() => {
-                if let ast::MacDelimiter::Brace | ast::MacDelimiter::Bracket = delim {
-                    self.error_malformed_cfg_attr_wrong_delim(*dspan);
-                }
+        match attr.get_normal_item().args {
+            ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
+                let msg = "wrong `cfg_attr` delimiters";
+                validate_attr::check_meta_bad_delim(self.sess, dspan, delim, msg);
                 match parse_in(self.sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                     Ok(r) => return Some(r),
                     Err(mut e) => e
@@ -155,21 +153,6 @@ impl<'a> StripUnconfigured<'a> {
             _ => self.error_malformed_cfg_attr_missing(attr.span),
         }
         None
-    }
-
-    fn error_malformed_cfg_attr_wrong_delim(&self, dspan: DelimSpan) {
-        self.sess
-            .span_diagnostic
-            .struct_span_err(dspan.entire(), "wrong `cfg_attr` delimiters")
-            .multipart_suggestion(
-                "the delimiters should be `(` and `)`",
-                vec![
-                    (dspan.open, "(".to_string()),
-                    (dspan.close, ")".to_string()),
-                ],
-                Applicability::MachineApplicable,
-            )
-            .emit();
     }
 
     fn error_malformed_cfg_attr_missing(&self, span: Span) {
