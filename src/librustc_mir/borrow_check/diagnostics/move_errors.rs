@@ -5,7 +5,7 @@ use syntax_pos::Span;
 
 use crate::borrow_check::MirBorrowckCtxt;
 use crate::borrow_check::prefixes::PrefixSet;
-use crate::borrow_check::error_reporting::UseSpans;
+use crate::borrow_check::diagnostics::UseSpans;
 use crate::dataflow::move_paths::{
     IllegalMoveOrigin, IllegalMoveOriginKind,
     LookupResult, MoveError, MovePathIndex,

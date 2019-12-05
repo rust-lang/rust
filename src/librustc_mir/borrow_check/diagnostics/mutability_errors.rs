@@ -8,18 +8,18 @@ use syntax_pos::Span;
 use syntax_pos::symbol::kw;
 
 use crate::borrow_check::MirBorrowckCtxt;
-use crate::borrow_check::error_reporting::BorrowedContentSource;
+use crate::borrow_check::diagnostics::BorrowedContentSource;
 use crate::util::collect_writes::FindAssignments;
 use rustc_errors::Applicability;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
-pub(super) enum AccessKind {
+pub(crate) enum AccessKind {
     MutableBorrow,
     Mutate,
 }
 
 impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
-    pub(super) fn report_mutability_error(
+    pub(crate) fn report_mutability_error(
         &mut self,
         access_place: &Place<'tcx>,
         span: Span,

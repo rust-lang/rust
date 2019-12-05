@@ -46,17 +46,14 @@ use self::flows::Flows;
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
-use self::mutability_errors::AccessKind;
+use self::diagnostics::AccessKind;
 
 use self::path_utils::*;
 
 crate mod borrow_set;
-mod error_reporting;
+mod diagnostics;
 mod flows;
 mod location;
-mod conflict_errors;
-mod move_errors;
-mod mutability_errors;
 mod path_utils;
 crate mod place_ext;
 crate mod places_conflict;

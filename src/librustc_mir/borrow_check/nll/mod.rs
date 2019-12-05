@@ -32,16 +32,16 @@ use crate::util as mir_util;
 use crate::util::pretty;
 
 mod constraint_generation;
-pub mod explain_borrow;
 mod facts;
 mod invalidation;
-crate mod region_infer;
 mod renumber;
-crate mod type_check;
-mod universal_regions;
 
-mod constraints;
 mod member_constraints;
+
+crate mod constraints;
+crate mod universal_regions;
+crate mod type_check;
+crate mod region_infer;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;

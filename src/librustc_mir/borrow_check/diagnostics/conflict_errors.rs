@@ -14,17 +14,21 @@ use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 use syntax::source_map::DesugaringKind;
 
-use super::nll::explain_borrow::BorrowExplanation;
-use super::nll::region_infer::{RegionName, RegionNameSource};
-use super::prefixes::IsPrefixOf;
-use super::WriteKind;
-use super::borrow_set::BorrowData;
-use super::MirBorrowckCtxt;
-use super::{InitializationRequiringAction, PrefixSet};
-use super::error_reporting::{IncludingDowncast, UseSpans};
 use crate::dataflow::drop_flag_effects;
 use crate::dataflow::indexes::{MovePathIndex, MoveOutIndex};
 use crate::util::borrowck_errors;
+
+use crate::borrow_check::{
+    prefixes::IsPrefixOf,
+    WriteKind,
+    borrow_set::BorrowData,
+    MirBorrowckCtxt, InitializationRequiringAction, PrefixSet
+};
+
+use super::{
+    IncludingDowncast, UseSpans, RegionName, RegionNameSource,
+    explain_borrow::BorrowExplanation,
+};
 
 #[derive(Debug)]
 struct MoveSite {
@@ -46,7 +50,7 @@ enum StorageDeadOrDrop<'tcx> {
 }
 
 impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
-    pub(super) fn report_use_of_moved_or_uninitialized(
+    pub(in crate::borrow_check) fn report_use_of_moved_or_uninitialized(
         &mut self,
         location: Location,
         desired_action: InitializationRequiringAction,
@@ -269,7 +273,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         }
     }
 
-    pub(super) fn report_move_out_while_borrowed(
+    pub(in crate::borrow_check) fn report_move_out_while_borrowed(
         &mut self,
         location: Location,
         (place, span): (&Place<'tcx>, Span),
@@ -326,7 +330,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err.buffer(&mut self.errors_buffer);
     }
 
-    pub(super) fn report_use_while_mutably_borrowed(
+    pub(in crate::borrow_check) fn report_use_while_mutably_borrowed(
         &mut self,
         location: Location,
         (place, _span): (&Place<'tcx>, Span),
@@ -368,7 +372,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         err
     }
 
-    pub(super) fn report_conflicting_borrow(
+    pub(in crate::borrow_check) fn report_conflicting_borrow(
         &mut self,
         location: Location,
         (place, span): (&Place<'tcx>, Span),
@@ -614,7 +618,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     ///
     /// >  cannot borrow `a.u` (via `a.u.z.c`) as immutable because it is also borrowed as
     /// >  mutable (via `a.u.s.b`) [E0502]
-    pub(super) fn describe_place_for_conflicting_borrow(
+    pub(in crate::borrow_check) fn describe_place_for_conflicting_borrow(
         &self,
         first_borrowed_place: &Place<'tcx>,
         second_borrowed_place: &Place<'tcx>,
@@ -722,7 +726,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// short a lifetime. (But sometimes it is more useful to report
     /// it as a more direct conflict between the execution of a
     /// `Drop::drop` with an aliasing borrow.)
-    pub(super) fn report_borrowed_value_does_not_live_long_enough(
+    pub(in crate::borrow_check) fn report_borrowed_value_does_not_live_long_enough(
         &mut self,
         location: Location,
         borrow: &BorrowData<'tcx>,
@@ -1478,7 +1482,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         result
     }
 
-    pub(super) fn report_illegal_mutation_of_borrowed(
+    pub(in crate::borrow_check) fn report_illegal_mutation_of_borrowed(
         &mut self,
         location: Location,
         (place, span): (&Place<'tcx>, Span),
@@ -1537,7 +1541,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// assigned; `err_place` is a place providing a reason why
     /// `place` is not mutable (e.g., the non-`mut` local `x` in an
     /// assignment to `x.f`).
-    pub(super) fn report_illegal_reassignment(
+    pub(in crate::borrow_check) fn report_illegal_reassignment(
         &mut self,
         _location: Location,
         (place, span): (&Place<'tcx>, Span),
@@ -2080,7 +2084,7 @@ enum AnnotatedBorrowFnSignature<'tcx> {
 impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
     /// Annotate the provided diagnostic with information about borrow from the fn signature that
     /// helps explain.
-    pub(super) fn emit(
+    pub(in crate::borrow_check) fn emit(
         &self,
         cx: &mut MirBorrowckCtxt<'_, 'tcx>,
         diag: &mut DiagnosticBuilder<'_>,

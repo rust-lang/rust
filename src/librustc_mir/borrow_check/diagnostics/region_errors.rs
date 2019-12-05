@@ -19,14 +19,7 @@ use syntax::symbol::kw;
 use syntax_pos::Span;
 use syntax_pos::symbol::Symbol;
 
-use self::outlives_suggestion::OutlivesSuggestionBuilder;
-
-pub mod outlives_suggestion;
-
-mod region_name;
-mod var_name;
-
-crate use self::region_name::{RegionName, RegionNameSource, RegionErrorNamingCtx};
+use super::{OutlivesSuggestionBuilder, RegionName, RegionNameSource, RegionErrorNamingCtx};
 
 impl ConstraintDescription for ConstraintCategory {
     fn description(&self) -> &'static str {
@@ -61,36 +54,36 @@ enum Trace {
 /// Various pieces of state used when reporting borrow checker errors.
 pub struct ErrorReportingCtx<'a, 'b, 'tcx> {
     /// The region inference context used for borrow chekcing this MIR body.
-    region_infcx: &'b RegionInferenceContext<'tcx>,
+    pub(super) region_infcx: &'b RegionInferenceContext<'tcx>,
 
     /// The inference context used for type checking.
-    infcx: &'b InferCtxt<'a, 'tcx>,
+    pub(super) infcx: &'b InferCtxt<'a, 'tcx>,
 
     /// The MIR def we are reporting errors on.
-    mir_def_id: DefId,
+    pub(super) mir_def_id: DefId,
 
     /// The MIR body we are reporting errors on (for convenience).
-    body: &'b Body<'tcx>,
+    pub(super) body: &'b Body<'tcx>,
 
     /// User variable names for MIR locals (where applicable).
-    local_names: &'b IndexVec<Local, Option<Symbol>>,
+    pub(super) local_names: &'b IndexVec<Local, Option<Symbol>>,
 
     /// Any upvars for the MIR body we have kept track of during borrow checking.
-    upvars: &'b [Upvar],
+    pub(super) upvars: &'b [Upvar],
 }
 
 /// Information about the various region constraints involved in a borrow checker error.
 #[derive(Clone, Debug)]
 pub struct ErrorConstraintInfo {
     // fr: outlived_fr
-    fr: RegionVid,
-    fr_is_local: bool,
-    outlived_fr: RegionVid,
-    outlived_fr_is_local: bool,
+    pub(super) fr: RegionVid,
+    pub(super) fr_is_local: bool,
+    pub(super) outlived_fr: RegionVid,
+    pub(super) outlived_fr_is_local: bool,
 
     // Category and span for best blame constraint
-    category: ConstraintCategory,
-    span: Span,
+    pub(super) category: ConstraintCategory,
+    pub(super) span: Span,
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {
@@ -368,7 +361,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// ```
     ///
     /// Here we would be invoked with `fr = 'a` and `outlived_fr = `'b`.
-    pub(super) fn report_error<'a>(
+    pub(in crate::borrow_check) fn report_error<'a>(
         &'a self,
         body: &Body<'tcx>,
         local_names: &IndexVec<Local, Option<Symbol>>,

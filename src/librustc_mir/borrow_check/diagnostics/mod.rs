@@ -1,3 +1,5 @@
+//! Borrow checker diagnostics.
+
 use rustc::hir;
 use rustc::hir::def::Namespace;
 use rustc::hir::def_id::DefId;
@@ -16,6 +18,22 @@ use syntax_pos::Span;
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
 use crate::dataflow::move_paths::{InitLocation, LookupResult};
+
+mod find_use;
+mod var_name;
+mod region_name;
+mod outlives_suggestion;
+
+mod conflict_errors;
+mod move_errors;
+mod mutability_errors;
+mod region_errors;
+mod explain_borrow;
+
+crate use mutability_errors::AccessKind;
+crate use region_name::{RegionName, RegionNameSource, RegionErrorNamingCtx};
+crate use region_errors::{ErrorReportingCtx, ErrorConstraintInfo};
+crate use outlives_suggestion::OutlivesSuggestionBuilder;
 
 pub(super) struct IncludingDowncast(pub(super) bool);
 

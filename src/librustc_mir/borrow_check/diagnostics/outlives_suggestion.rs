@@ -13,12 +13,10 @@ use syntax_pos::symbol::Symbol;
 
 use smallvec::SmallVec;
 
-use crate::borrow_check::nll::region_infer::{
-    error_reporting::{
-        region_name::{RegionName, RegionNameSource},
-        ErrorConstraintInfo, ErrorReportingCtx, RegionErrorNamingCtx,
-    },
-    RegionInferenceContext,
+use crate::borrow_check::nll::region_infer::RegionInferenceContext;
+
+use super::{
+    RegionName, RegionNameSource, ErrorConstraintInfo, ErrorReportingCtx, RegionErrorNamingCtx,
 };
 
 /// The different things we could suggest.
