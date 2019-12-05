@@ -74,6 +74,8 @@
 #![feature(const_fn)]
 #![feature(const_fn_union)]
 #![feature(const_generics)]
+#![cfg_attr(not(bootstrap), feature(const_ptr_offset_from))]
+#![cfg_attr(not(bootstrap), feature(const_type_name))]
 #![feature(custom_inner_attributes)]
 #![feature(decl_macro)]
 #![feature(doc_cfg)]
