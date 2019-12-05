@@ -107,8 +107,13 @@ pub enum ModuleOrigin {
     /// It should not be `None` after collecting definitions.
     Root(Option<FileId>),
     /// Note that non-inline modules, by definition, live inside non-macro file.
-    File(AstId<ast::Module>, FileId),
-    Inline(AstId<ast::Module>),
+    File {
+        declaration: AstId<ast::Module>,
+        definition: FileId,
+    },
+    Inline {
+        definition: AstId<ast::Module>,
+    },
 }
 
 impl Default for ModuleOrigin {
@@ -118,49 +123,47 @@ impl Default for ModuleOrigin {
 }
 
 impl ModuleOrigin {
-    pub fn root(file_id: FileId) -> Self {
+    fn root(file_id: FileId) -> Self {
         ModuleOrigin::Root(Some(file_id))
     }
 
-    pub fn not_sure_file(file: Option<FileId>, module: AstId<ast::Module>) -> Self {
+    pub(crate) fn not_sure_file(file: Option<FileId>, declaration: AstId<ast::Module>) -> Self {
         match file {
-            None => ModuleOrigin::Inline(module),
-            Some(file) => ModuleOrigin::File(module, file),
+            None => ModuleOrigin::Inline { definition: declaration },
+            Some(definition) => ModuleOrigin::File { declaration, definition },
         }
     }
 
-    pub fn not_sure_mod(file: FileId, module: Option<AstId<ast::Module>>) -> Self {
-        match module {
-            None => ModuleOrigin::root(file),
-            Some(module) => ModuleOrigin::File(module, file),
-        }
-    }
-
-    pub fn declaration(&self) -> Option<AstId<ast::Module>> {
+    fn declaration(&self) -> Option<AstId<ast::Module>> {
         match self {
-            ModuleOrigin::File(m, _) | ModuleOrigin::Inline(m) => Some(*m),
+            ModuleOrigin::File { declaration: module, .. }
+            | ModuleOrigin::Inline { definition: module, .. } => Some(*module),
             ModuleOrigin::Root(_) => None,
         }
     }
 
-    pub fn file_id(&self) -> Option<FileId> {
+    pub(crate) fn file_id(&self) -> Option<FileId> {
         match self {
-            ModuleOrigin::File(_, file_id) | ModuleOrigin::Root(Some(file_id)) => Some(*file_id),
+            ModuleOrigin::File { definition: file_id, .. } | ModuleOrigin::Root(Some(file_id)) => {
+                Some(*file_id)
+            }
             _ => None,
         }
     }
 
     /// Returns a node which defines this module.
     /// That is, a file or a `mod foo {}` with items.
-    pub fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
+    fn definition_source(&self, db: &impl DefDatabase) -> InFile<ModuleSource> {
         match self {
-            ModuleOrigin::File(_, file_id) | ModuleOrigin::Root(Some(file_id)) => {
+            ModuleOrigin::File { definition: file_id, .. } | ModuleOrigin::Root(Some(file_id)) => {
                 let file_id = *file_id;
                 let sf = db.parse(file_id).tree();
                 return InFile::new(file_id.into(), ModuleSource::SourceFile(sf));
             }
             ModuleOrigin::Root(None) => unreachable!(),
-            ModuleOrigin::Inline(m) => InFile::new(m.file_id, ModuleSource::Module(m.to_node(db))),
+            ModuleOrigin::Inline { definition } => {
+                InFile::new(definition.file_id, ModuleSource::Module(definition.to_node(db)))
+            }
         }
     }
 }
