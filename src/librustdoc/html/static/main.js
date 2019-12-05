@@ -1221,7 +1221,7 @@ function getSearchElement() {
                     // then an exact path match
                     path.indexOf(keys[i]) > -1 ||
                     // next if there is a parent, check for exact parent match
-                    (parent !== undefined &&
+                    (parent !== undefined && parent.name !== undefined &&
                         parent.name.toLowerCase().indexOf(keys[i]) > -1) ||
                     // lastly check to see if the name was a levenshtein match
                     levenshtein(name, keys[i]) <= MAX_LEV_DISTANCE)) {
