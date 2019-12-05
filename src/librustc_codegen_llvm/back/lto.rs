@@ -479,7 +479,7 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
         info!("thin LTO data created");
 
-        let (import_map_path, prev_import_map, mut curr_import_map) =
+        let (import_map_path, prev_import_map, curr_import_map) =
             if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir
         {
             let path = incr_comp_session_dir.join(THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME);
@@ -522,35 +522,39 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         for (module_index, module_name) in shared.module_names.iter().enumerate() {
             let module_name = module_name_to_str(module_name);
 
-            // If the module hasn't changed, and none of the modules it imported
-            // from (*) has changed, then we can (1.) re-use the post-ThinLTO
-            // version of the module, and thus (2.) save those previous ThinLTO
-            // imports as its current set of imports.
+            // If (1.) the module hasn't changed, and (2.) none of the modules
+            // it imports from has changed, *and* (3.) the import-set itself has
+            // not changed from the previous compile when it was last
+            // ThinLTO'ed, then we can re-use the post-ThinLTO version of the
+            // module. Otherwise, freshly perform LTO optimization.
             //
-            // (*): that is, "imported from" at the time it was previously ThinLTO'ed;
-            // see rust-lang/rust#59535.
+            // This strategy means we can always save the computed imports as
+            // canon: when we reuse the post-ThinLTO version, condition (3.)
+            // ensures that the curent import set is the same as the previous
+            // one. (And of course, when we don't reuse the post-ThinLTO
+            // version, the current import set *is* the correct one, since we
+            // are doing the ThinLTO in this current compilation cycle.)
             //
-            // If we do *not* re-use the post-ThinLTO version of the module,
-            // then we should save the computed imports that LLVM reported to us
-            // during this cycle.
+            // See rust-lang/rust#59535.
             if green_modules.contains_key(module_name) {
                 assert!(cgcx.incr_comp_session_dir.is_some());
                 assert!(prev_import_map.is_some());
 
                 let prev_import_map = prev_import_map.as_ref().unwrap();
+
                 let prev_imports = prev_import_map.modules_imported_by(module_name);
-                let imports_all_green = prev_imports
+                let curr_imports = curr_import_map.modules_imported_by(module_name);
+                let imports_all_green = curr_imports
                     .iter()
                     .all(|imported_module| green_modules.contains_key(imported_module));
 
-                if imports_all_green {
+                if imports_all_green && equivalent_as_sets(prev_imports, curr_imports) {
                     let work_product = green_modules[module_name].clone();
                     copy_jobs.push(work_product);
                     info!(" - {}: re-used", module_name);
                     assert!(cgcx.incr_comp_session_dir.is_some());
                     cgcx.cgu_reuse_tracker.set_actual_reuse(module_name,
                                                             CguReuse::PostLto);
-                    curr_import_map.overwrite_with_past_import_state(module_name, prev_imports);
                     continue
                 }
             }
@@ -572,6 +576,22 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
         Ok((opt_jobs, copy_jobs))
     }
+}
+
+/// Given two slices, each with no repeat elements. returns true if and only if
+/// the two slices have the same contents when considered as sets (i.e. when
+/// element order is disregarded).
+fn equivalent_as_sets(a: &[String], b: &[String]) -> bool {
+    // cheap path: unequal lengths means cannot possibly be set equivalent.
+    if a.len() != b.len() { return false; }
+    // fast path: before taking time to build up sorted clones, just see if the given inputs are equivant as is.
+    if a == b { return true; }
+    // slow path: compare sorted contents
+    let mut a: Vec<&str> = a.iter().map(|s| s.as_str()).collect();
+    let mut b: Vec<&str> = b.iter().map(|s| s.as_str()).collect();
+    a.sort();
+    b.sort();
+    a == b
 }
 
 pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
@@ -871,17 +891,6 @@ pub struct ThinLTOImports {
 }
 
 impl ThinLTOImports {
-    /// Records `llvm_module_name` as importing `prev_imports` rather than what
-    /// we have currently computed.
-    fn overwrite_with_past_import_state(&mut self,
-                                        llvm_module_name: &str,
-                                        prev_imports: &[String]) {
-        debug!("ThinLTOImports::overwrite_with_past_import_state \
-                mod: {:?} replacing curr state: {:?} with prev state: {:?}",
-               llvm_module_name, self.modules_imported_by(llvm_module_name), prev_imports);
-        self.imports.insert(llvm_module_name.to_owned(), prev_imports.to_vec());
-    }
-
     fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
         self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
     }
