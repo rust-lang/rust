@@ -14,6 +14,7 @@ use hir_def::{
         BodySourceMap,
     },
     expr::{ExprId, PatId},
+    nameres::ModuleSource,
     path::known,
     resolver::{self, resolver_for_scope, HasResolver, Resolver, TypeNs, ValueNs},
     AssocItemId, DefWithBodyId,
@@ -46,7 +47,7 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -
                 Some(crate::Module::from_declaration(db, src)?.id.resolver(db))
             },
              ast::SourceFile(it) => {
-                let src = node.with_value(crate::ModuleSource::SourceFile(it));
+                let src = node.with_value(ModuleSource::SourceFile(it));
                 Some(crate::Module::from_definition(db, src)?.id.resolver(db))
             },
             ast::StructDef(it) => {

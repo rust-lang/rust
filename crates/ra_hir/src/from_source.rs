@@ -1,6 +1,6 @@
 //! FIXME: write short doc here
 
-use hir_def::{AstItemDef, LocationCtx, ModuleId};
+use hir_def::{nameres::ModuleSource, AstItemDef, LocationCtx, ModuleId};
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
@@ -10,8 +10,8 @@ use ra_syntax::{
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     AssocItem, Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, HasSource, ImplBlock,
-    InFile, Local, MacroDef, Module, ModuleDef, ModuleSource, Static, Struct, StructField, Trait,
-    TypeAlias, Union, VariantDef,
+    InFile, Local, MacroDef, Module, ModuleDef, Static, Struct, StructField, Trait, TypeAlias,
+    Union, VariantDef,
 };
 
 pub trait FromSource: Sized {
@@ -235,11 +235,10 @@ impl Module {
                 let src_parent = InFile { file_id: src.file_id, value: parent_declaration };
                 Module::from_declaration(db, src_parent)
             }
-            _ => {
-                let src_parent = InFile {
-                    file_id: src.file_id,
-                    value: ModuleSource::new(db, Some(src.file_id.original_file(db)), None),
-                };
+            None => {
+                let source_file = db.parse(src.file_id.original_file(db)).tree();
+                let src_parent =
+                    InFile { file_id: src.file_id, value: ModuleSource::SourceFile(source_file) };
                 Module::from_definition(db, src_parent)
             }
         }?;
