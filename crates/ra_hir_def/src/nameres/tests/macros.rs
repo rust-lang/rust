@@ -600,3 +600,27 @@ fn macro_dollar_crate_is_correct_in_indirect_deps() {
         ⋮bar: t v
     "###);
 }
+
+#[test]
+fn expand_derive() {
+    let map = compute_crate_def_map(
+        "
+        //- /main.rs
+        #[derive(Clone)]
+        struct Foo;
+        ",
+    );
+    assert_eq!(map.modules[map.root].impls.len(), 1);
+}
+
+#[test]
+fn expand_multiple_derive() {
+    let map = compute_crate_def_map(
+        "
+        //- /main.rs
+        #[derive(Copy, Clone)]
+        struct Foo;
+        ",
+    );
+    assert_eq!(map.modules[map.root].impls.len(), 2);
+}

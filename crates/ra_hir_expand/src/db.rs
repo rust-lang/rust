@@ -9,14 +9,15 @@ use ra_prof::profile;
 use ra_syntax::{AstNode, Parse, SyntaxNode};
 
 use crate::{
-    ast_id_map::AstIdMap, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr, MacroCallId,
-    MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, MacroFileKind,
+    ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr,
+    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, MacroFileKind,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TokenExpander {
     MacroRules(mbe::MacroRules),
     Builtin(BuiltinFnLikeExpander),
+    BuiltinDerive(BuiltinDeriveExpander),
 }
 
 impl TokenExpander {
@@ -29,6 +30,7 @@ impl TokenExpander {
         match self {
             TokenExpander::MacroRules(it) => it.expand(tt),
             TokenExpander::Builtin(it) => it.expand(db, id, tt),
+            TokenExpander::BuiltinDerive(it) => it.expand(db, id, tt),
         }
     }
 
@@ -36,6 +38,7 @@ impl TokenExpander {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_down(id),
             TokenExpander::Builtin(..) => id,
+            TokenExpander::BuiltinDerive(..) => id,
         }
     }
 
@@ -43,6 +46,7 @@ impl TokenExpander {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_up(id),
             TokenExpander::Builtin(..) => (id, mbe::Origin::Def),
+            TokenExpander::BuiltinDerive(..) => (id, mbe::Origin::Def),
         }
     }
 }
@@ -76,7 +80,7 @@ pub(crate) fn macro_def(
 ) -> Option<Arc<(TokenExpander, mbe::TokenMap)>> {
     match id.kind {
         MacroDefKind::Declarative => {
-            let macro_call = id.ast_id.to_node(db);
+            let macro_call = id.ast_id?.to_node(db);
             let arg = macro_call.token_tree()?;
             let (tt, tmap) = mbe::ast_to_token_tree(&arg).or_else(|| {
                 log::warn!("fail on macro_def to token tree: {:#?}", arg);
@@ -91,6 +95,10 @@ pub(crate) fn macro_def(
         MacroDefKind::BuiltIn(expander) => {
             Some(Arc::new((TokenExpander::Builtin(expander.clone()), mbe::TokenMap::default())))
         }
+        MacroDefKind::BuiltInDerive(expander) => Some(Arc::new((
+            TokenExpander::BuiltinDerive(expander.clone()),
+            mbe::TokenMap::default(),
+        ))),
     }
 }
 
@@ -99,9 +107,8 @@ pub(crate) fn macro_arg(
     id: MacroCallId,
 ) -> Option<Arc<(tt::Subtree, mbe::TokenMap)>> {
     let loc = db.lookup_intern_macro(id);
-    let macro_call = loc.ast_id.to_node(db);
-    let arg = macro_call.token_tree()?;
-    let (tt, tmap) = mbe::ast_to_token_tree(&arg)?;
+    let arg = loc.kind.arg(db)?;
+    let (tt, tmap) = mbe::syntax_node_to_token_tree(&arg)?;
     Some(Arc::new((tt, tmap)))
 }
 

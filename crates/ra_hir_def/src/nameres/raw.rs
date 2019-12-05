@@ -184,6 +184,21 @@ pub(super) enum DefKind {
     TypeAlias(FileAstId<ast::TypeAliasDef>),
 }
 
+impl DefKind {
+    pub fn ast_id(&self) -> FileAstId<ast::ModuleItem> {
+        match self {
+            DefKind::Function(it) => it.upcast(),
+            DefKind::Struct(it) => it.upcast(),
+            DefKind::Union(it) => it.upcast(),
+            DefKind::Enum(it) => it.upcast(),
+            DefKind::Const(it) => it.upcast(),
+            DefKind::Static(it) => it.upcast(),
+            DefKind::Trait(it) => it.upcast(),
+            DefKind::TypeAlias(it) => it.upcast(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(super) struct Macro(RawId);
 impl_arena_id!(Macro);

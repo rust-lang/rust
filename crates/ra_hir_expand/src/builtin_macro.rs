@@ -39,7 +39,7 @@ macro_rules! register_builtin {
                  _ => return None,
             };
 
-            Some(MacroDefId { krate, ast_id, kind: MacroDefKind::BuiltIn(kind) })
+            Some(MacroDefId { krate: Some(krate), ast_id: Some(ast_id), kind: MacroDefKind::BuiltIn(kind) })
         }
     };
 }
@@ -82,10 +82,9 @@ fn line_expand(
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let loc = db.lookup_intern_macro(id);
-    let macro_call = loc.ast_id.to_node(db);
 
-    let arg = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
-    let arg_start = arg.syntax().text_range().start();
+    let arg = loc.kind.arg(db).ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
+    let arg_start = arg.text_range().start();
 
     let file = id.as_file(MacroFileKind::Expr);
     let line_num = to_line_number(db, file, arg_start);
@@ -103,11 +102,10 @@ fn stringify_expand(
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let loc = db.lookup_intern_macro(id);
-    let macro_call = loc.ast_id.to_node(db);
 
     let macro_content = {
-        let arg = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
-        let macro_args = arg.syntax().clone();
+        let arg = loc.kind.arg(db).ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
+        let macro_args = arg.clone();
         let text = macro_args.text();
         let without_parens = TextUnit::of_char('(')..text.len() - TextUnit::of_char(')');
         text.slice(without_parens).to_string()
@@ -148,7 +146,10 @@ fn column_expand(
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
     let loc = db.lookup_intern_macro(id);
-    let macro_call = loc.ast_id.to_node(db);
+    let macro_call = match loc.kind {
+        crate::MacroCallKind::FnLike(ast_id) => ast_id.to_node(db),
+        _ => panic!("column macro called as attr"),
+    };
 
     let _arg = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
     let col_start = macro_call.syntax().text_range().start();
@@ -164,15 +165,10 @@ fn column_expand(
 }
 
 fn file_expand(
-    db: &dyn AstDatabase,
-    id: MacroCallId,
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
     _tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    let loc = db.lookup_intern_macro(id);
-    let macro_call = loc.ast_id.to_node(db);
-
-    let _ = macro_call.token_tree().ok_or_else(|| mbe::ExpandError::UnexpectedToken)?;
-
     // FIXME: RA purposefully lacks knowledge of absolute file names
     // so just return "".
     let file_name = "";
@@ -207,7 +203,7 @@ fn compile_error_expand(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_db::TestDB, MacroCallLoc};
+    use crate::{test_db::TestDB, MacroCallKind, MacroCallLoc};
     use ra_db::{fixture::WithFixture, SourceDatabase};
 
     fn expand_builtin_macro(s: &str, expander: BuiltinFnLikeExpander) -> String {
@@ -220,14 +216,17 @@ mod tests {
 
         // the first one should be a macro_rules
         let def = MacroDefId {
-            krate: CrateId(0),
-            ast_id: AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0])),
+            krate: Some(CrateId(0)),
+            ast_id: Some(AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[0]))),
             kind: MacroDefKind::BuiltIn(expander),
         };
 
         let loc = MacroCallLoc {
             def,
-            ast_id: AstId::new(file_id.into(), ast_id_map.ast_id(&macro_calls[1])),
+            kind: MacroCallKind::FnLike(AstId::new(
+                file_id.into(),
+                ast_id_map.ast_id(&macro_calls[1]),
+            )),
         };
 
         let id = db.intern_macro(loc);

@@ -199,6 +199,11 @@ impl Path {
         name_ref.as_name().into()
     }
 
+    /// Converts an `tt::Ident` into a single-identifier `Path`.
+    pub(crate) fn from_tt_ident(ident: &tt::Ident) -> Path {
+        ident.as_name().into()
+    }
+
     /// `true` is this path is a single identifier, like `foo`
     pub fn is_ident(&self) -> bool {
         self.kind == PathKind::Plain && self.segments.len() == 1
