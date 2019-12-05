@@ -212,13 +212,13 @@ impl<'a> Parser<'a> {
         // `./<id>.rs` and `./<id>/mod.rs`.
         let relative_prefix_string;
         let relative_prefix = if let Some(ident) = relative {
-            relative_prefix_string = format!("{}{}", ident, path::MAIN_SEPARATOR);
+            relative_prefix_string = format!("{}{}", ident.name, path::MAIN_SEPARATOR);
             &relative_prefix_string
         } else {
             ""
         };
 
-        let mod_name = id.to_string();
+        let mod_name = id.name.to_string();
         let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
         let secondary_path_str = format!("{}{}{}mod.rs",
                                          relative_prefix, mod_name, path::MAIN_SEPARATOR);

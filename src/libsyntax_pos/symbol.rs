@@ -869,12 +869,18 @@ impl Hash for Ident {
 
 impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_raw_guess() {
+            write!(f, "r#")?;
+        }
         write!(f, "{}{:?}", self.name, self.span.ctxt())
     }
 }
 
 impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.is_raw_guess() {
+            write!(f, "r#")?;
+        }
         fmt::Display::fmt(&self.name, f)
     }
 }
