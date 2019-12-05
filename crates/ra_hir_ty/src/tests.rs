@@ -50,6 +50,10 @@ fn type_at(content: &str) -> String {
 }
 
 fn infer(content: &str) -> String {
+    infer_with_mismatches(content, false)
+}
+
+fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let (db, file_id) = TestDB::with_single_file(content);
 
     let mut acc = String::new();
@@ -57,6 +61,7 @@ fn infer(content: &str) -> String {
     let mut infer_def = |inference_result: Arc<InferenceResult>,
                          body_source_map: Arc<BodySourceMap>| {
         let mut types = Vec::new();
+        let mut mismatches = Vec::new();
 
         for (pat, ty) in inference_result.type_of_pat.iter() {
             let syntax_ptr = match body_source_map.pat_syntax(pat) {
@@ -76,6 +81,9 @@ fn infer(content: &str) -> String {
                 None => continue,
             };
             types.push((syntax_ptr, ty));
+            if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr) {
+                mismatches.push((syntax_ptr, mismatch));
+            }
         }
 
         // sort ranges for consistency
@@ -100,6 +108,24 @@ fn infer(content: &str) -> String {
                 ty.display(&db)
             )
             .unwrap();
+        }
+        if include_mismatches {
+            mismatches.sort_by_key(|(src_ptr, _)| {
+                (src_ptr.value.range().start(), src_ptr.value.range().end())
+            });
+            for (src_ptr, mismatch) in &mismatches {
+                let range = src_ptr.value.range();
+                let macro_prefix = if src_ptr.file_id != file_id.into() { "!" } else { "" };
+                write!(
+                    acc,
+                    "{}{}: expected {}, got {}\n",
+                    macro_prefix,
+                    range,
+                    mismatch.expected.display(&db),
+                    mismatch.actual.display(&db),
+                )
+                .unwrap();
+            }
         }
     };
 

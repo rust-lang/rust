@@ -1,3 +1,4 @@
+use super::infer_with_mismatches;
 use insta::assert_snapshot;
 use test_utils::covers;
 
@@ -364,6 +365,41 @@ fn test() {
     [115; 116) '_': i32
     [120; 121) 't': &mut i32
     [120; 135) 't as *const i32': *const i32
+    "###
+    );
+}
+
+#[test]
+fn coerce_autoderef() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+struct Foo;
+fn takes_ref_foo(x: &Foo) {}
+fn test() {
+    takes_ref_foo(&Foo);
+    takes_ref_foo(&&Foo);
+    takes_ref_foo(&&&Foo);
+}
+"#, true),
+        @r###"
+    [30; 31) 'x': &Foo
+    [39; 41) '{}': ()
+    [52; 133) '{     ...oo); }': ()
+    [58; 71) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [58; 77) 'takes_...(&Foo)': ()
+    [72; 76) '&Foo': &Foo
+    [73; 76) 'Foo': Foo
+    [83; 96) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [83; 103) 'takes_...&&Foo)': ()
+    [97; 102) '&&Foo': &&Foo
+    [98; 102) '&Foo': &Foo
+    [99; 102) 'Foo': Foo
+    [109; 122) 'takes_ref_foo': fn takes_ref_foo(&Foo) -> ()
+    [109; 130) 'takes_...&&Foo)': ()
+    [123; 129) '&&&Foo': &&&Foo
+    [124; 129) '&&Foo': &&Foo
+    [125; 129) '&Foo': &Foo
+    [126; 129) 'Foo': Foo
     "###
     );
 }
