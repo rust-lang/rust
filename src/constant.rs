@@ -5,8 +5,8 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::{layout::Align, Const, ConstKind};
 use rustc_mir::interpret::{
-    ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer, StackPopCleanup,
-    StackPopInfo,
+    ImmTy, InterpCx, Machine, Memory, MemoryKind, OpTy, PanicInfo, PlaceTy, Pointer,
+    StackPopCleanup, StackPopInfo,
 };
 
 use cranelift_module::*;
@@ -407,7 +407,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         _: &mut InterpCx<'mir, 'tcx, Self>,
         _: Instance<'tcx>,
         _: &[OpTy<'tcx>],
@@ -449,7 +449,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn tag_allocation<'b>(
+    fn init_allocation_extra<'b>(
         _: &(),
         _: AllocId,
         alloc: Cow<'b, Allocation>,
@@ -478,6 +478,15 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for TransPlaceInterpreter {
 
     fn stack_pop(_: &mut InterpCx<'mir, 'tcx, Self>, _: (), _: bool) -> InterpResult<'tcx, StackPopInfo> {
         Ok(StackPopInfo::Normal)
+    }
+
+    fn assert_panic(
+        _: &mut InterpCx<'mir, 'tcx, Self>,
+        _: Span,
+        _: &PanicInfo<Operand<'tcx>>,
+        _: Option<BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        unreachable!()
     }
 }
 

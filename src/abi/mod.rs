@@ -10,6 +10,69 @@ use crate::prelude::*;
 
 pub use self::returning::codegen_return;
 
+// Copied from https://github.com/rust-lang/rust/blob/c2f4c57296f0d929618baed0b0d6eb594abf01eb/src/librustc/ty/layout.rs#L2349
+pub fn fn_sig_for_fn_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::PolyFnSig<'tcx> {
+    let ty = instance.ty(tcx);
+    match ty.kind {
+        ty::FnDef(..) |
+        // Shims currently have type FnPtr. Not sure this should remain.
+        ty::FnPtr(_) => {
+            let mut sig = ty.fn_sig(tcx);
+            if let ty::InstanceDef::VtableShim(..) = instance.def {
+                // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
+                sig = sig.map_bound(|mut sig| {
+                    let mut inputs_and_output = sig.inputs_and_output.to_vec();
+                    inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
+                    sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                    sig
+                });
+            }
+            sig
+        }
+        ty::Closure(def_id, substs) => {
+            let sig = substs.as_closure().sig(def_id, tcx);
+
+            let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+            sig.map_bound(|sig| tcx.mk_fn_sig(
+                std::iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                sig.output(),
+                sig.c_variadic,
+                sig.unsafety,
+                sig.abi
+            ))
+        }
+        ty::Generator(def_id, substs, _) => {
+            let sig = substs.as_generator().poly_sig(def_id, tcx);
+
+            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+
+            let pin_did = tcx.lang_items().pin_type().unwrap();
+            let pin_adt_ref = tcx.adt_def(pin_did);
+            let pin_substs = tcx.intern_substs(&[env_ty.into()]);
+            let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
+
+            sig.map_bound(|sig| {
+                let state_did = tcx.lang_items().gen_state().unwrap();
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.intern_substs(&[
+                    sig.yield_ty.into(),
+                    sig.return_ty.into(),
+                ]);
+                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                tcx.mk_fn_sig(std::iter::once(env_ty),
+                    ret_ty,
+                    false,
+                    rustc::hir::Unsafety::Normal,
+                    rustc_target::spec::abi::Abi::Rust
+                )
+            })
+        }
+        _ => bug!("unexpected type {:?} in Instance::fn_sig", ty)
+    }
+}
+
 fn clif_sig_from_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: FnSig<'tcx>,
@@ -98,7 +161,7 @@ pub fn get_function_name_and_sig<'tcx>(
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
     let fn_sig =
-        tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &inst.fn_sig(tcx));
+        tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &fn_sig_for_fn_abi(tcx, inst));
     if fn_sig.c_variadic && !support_vararg {
         unimpl!("Variadic function definitions are not yet supported");
     }
@@ -199,7 +262,7 @@ impl<'tcx, B: Backend + 'static> FunctionCx<'_, 'tcx, B> {
     fn self_sig(&self) -> FnSig<'tcx> {
         self.tcx.normalize_erasing_late_bound_regions(
             ParamEnv::reveal_all(),
-            &self.instance.fn_sig(self.tcx),
+            &fn_sig_for_fn_abi(self.tcx, self.instance),
         )
     }
 

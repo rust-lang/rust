@@ -98,10 +98,9 @@ diff --git a/src/libstd/sys/unix/thread.rs b/src/libstd/sys/unix/thread.rs
 index f4a1783..362b537 100644
 --- a/src/libstd/sys/unix/thread.rs
 +++ b/src/libstd/sys/unix/thread.rs
-@@ -40,6 +40,8 @@ impl Thread {
+@@ -40,5 +40,7 @@ impl Thread {
      // unsafe: see thread::Builder::spawn_unchecked for safety requirements
-     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>)
-                           -> io::Result<Thread> {
+     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
 +        panic!("Threads are not yet supported, because cranelift doesn't support atomics.");
 +
          let p = box p;

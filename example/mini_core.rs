@@ -1,6 +1,6 @@
 #![feature(
     no_core, lang_items, intrinsics, unboxed_closures, type_ascription, extern_types,
-    untagged_unions, decl_macro, rustc_attrs, transparent_unions
+    untagged_unions, decl_macro, rustc_attrs, transparent_unions, optin_builtin_traits
 )]
 #![no_core]
 #![allow(dead_code)]
@@ -76,7 +76,13 @@ unsafe impl<'a, T: ?Sized> Sync for &'a T {}
 unsafe impl Sync for [u8; 16] {}
 
 #[lang = "freeze"]
-trait Freeze {}
+unsafe auto trait Freeze {}
+
+unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
+unsafe impl<T: ?Sized> Freeze for *const T {}
+unsafe impl<T: ?Sized> Freeze for *mut T {}
+unsafe impl<T: ?Sized> Freeze for &T {}
+unsafe impl<T: ?Sized> Freeze for &mut T {}
 
 #[lang = "not"]
 pub trait Not {
@@ -538,3 +544,10 @@ pub macro line() { /* compiler built-in */ }
 pub macro cfg() { /* compiler built-in */ }
 
 pub static A_STATIC: u8 = 42;
+
+#[lang = "panic_location"]
+struct PanicLocation {
+    file: &'static str,
+    line: u32,
+    column: u32,
+}
