@@ -1,21 +1,21 @@
-error[E0277]: a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+error[E0277]: a value of type `i32` cannot be built from an iterator over elements of type `i32`
   --> $DIR/type-check-defaults.rs:6:19
    |
 LL | struct Foo<T, U: FromIterator<T>>(T, U);
    | ---------------------------------------- required by `Foo`
 LL | struct WellFormed<Z = Foo<i32, i32>>(Z);
-   |                   ^ a collection of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |                   ^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
 
-error[E0277]: a collection of type `i32` cannot be built from an iterator over elements of type `i32`
+error[E0277]: a value of type `i32` cannot be built from an iterator over elements of type `i32`
   --> $DIR/type-check-defaults.rs:8:27
    |
 LL | struct Foo<T, U: FromIterator<T>>(T, U);
    | ---------------------------------------- required by `Foo`
 ...
 LL | struct WellFormedNoBounds<Z:?Sized = Foo<i32, i32>>(Z);
-   |                           ^ a collection of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
+   |                           ^ value of type `i32` cannot be built from `std::iter::Iterator<Item=i32>`
    |
    = help: the trait `std::iter::FromIterator<i32>` is not implemented for `i32`
 
