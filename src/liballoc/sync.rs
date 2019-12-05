@@ -1324,10 +1324,8 @@ impl<T> Weak<T> {
 
     /// Returns a raw pointer to the object `T` pointed to by this `Weak<T>`.
     ///
-    /// It is up to the caller to ensure that the object is still alive when accessing it through
-    /// the pointer.
-    ///
-    /// The pointer may be [`null`] or be dangling in case the object has already been destroyed.
+    /// The pointer is valid only if there are some strong references. The pointer may be dangling
+    /// or even [`null`] otherwise.
     ///
     /// # Examples
     ///
@@ -1408,14 +1406,18 @@ impl<T> Weak<T> {
     /// This can be used to safely get a strong reference (by calling [`upgrade`]
     /// later) or to deallocate the weak count by dropping the `Weak<T>`.
     ///
-    /// It takes ownership of one weak count. In case a [`null`] is passed, a dangling [`Weak`] is
-    /// returned.
+    /// It takes ownership of one weak count (with the exception of pointers created by [`new`],
+    /// as these don't have any corresponding weak count).
     ///
     /// # Safety
     ///
-    /// The pointer must represent one valid weak count. In other words, it must point to `T` which
-    /// is or *was* managed by an [`Arc`] and the weak count of that [`Arc`] must not have reached
-    /// 0. It is allowed for the strong count to be 0.
+    /// The pointer must have originated from the [`into_raw`] (or [`as_raw'], provided there was
+    /// a corresponding [`forget`] on the `Weak<T>`) and must still own its potential weak reference
+    /// count.
+    ///
+    /// It is allowed for the strong count to be 0 at the time of calling this, but the weak count
+    /// must be non-zero or the pointer must have originated from a dangling `Weak<T>` (one created
+    /// by [`new`]).
     ///
     /// # Examples
     ///
@@ -1440,11 +1442,13 @@ impl<T> Weak<T> {
     /// assert!(unsafe { Weak::from_raw(raw_2) }.upgrade().is_none());
     /// ```
     ///
-    /// [`null`]: ../../std/ptr/fn.null.html
+    /// [`as_raw`]: struct.Weak.html#method.as_raw
+    /// [`new`]: struct.Weak.html#method.new
     /// [`into_raw`]: struct.Weak.html#method.into_raw
     /// [`upgrade`]: struct.Weak.html#method.upgrade
     /// [`Weak`]: struct.Weak.html
     /// [`Arc`]: struct.Arc.html
+    /// [`forget`]: ../../std/mem/fn.forget.html
     #[unstable(feature = "weak_into_raw", issue = "60728")]
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         if ptr.is_null() {
