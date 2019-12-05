@@ -7,7 +7,7 @@ edition = "2018"
 [lib]
 name = "rustc_driver"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 graphviz = { path = "../libgraphviz" }
