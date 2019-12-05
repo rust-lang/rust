@@ -16,6 +16,9 @@ pub mod builtin_type;
 pub mod diagnostics;
 pub mod per_ns;
 
+pub mod dyn_map;
+pub mod keys;
+
 pub mod adt;
 pub mod data;
 pub mod generics;
@@ -30,7 +33,7 @@ mod trace;
 pub mod nameres;
 
 pub mod src;
-pub mod child_from_source;
+pub mod child_by_source;
 
 #[cfg(test)]
 mod test_db;

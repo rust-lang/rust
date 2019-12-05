@@ -1,9 +1,7 @@
 //! FIXME: write short doc here
-use either::Either;
-
 use hir_def::{
-    child_from_source::ChildFromSource, nameres::ModuleSource, AstItemDef, EnumVariantId, ImplId,
-    LocationCtx, ModuleId, TraitId, VariantId,
+    child_by_source::ChildBySource, dyn_map::DynMap, keys, nameres::ModuleSource, AstItemDef,
+    EnumVariantId, LocationCtx, ModuleId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
@@ -53,8 +51,9 @@ impl FromSource for Trait {
 impl FromSource for Function {
     type Ast = ast::FnDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        Container::find(db, src.as_ref().map(|it| it.syntax()))?
-            .child_from_source(db, src)
+        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)[keys::FUNCTION]
+            .get(&src)
+            .copied()
             .map(Function::from)
     }
 }
@@ -62,26 +61,29 @@ impl FromSource for Function {
 impl FromSource for Const {
     type Ast = ast::ConstDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        Container::find(db, src.as_ref().map(|it| it.syntax()))?
-            .child_from_source(db, src)
+        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)[keys::CONST]
+            .get(&src)
+            .copied()
             .map(Const::from)
     }
 }
 impl FromSource for Static {
     type Ast = ast::StaticDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        match Container::find(db, src.as_ref().map(|it| it.syntax()))? {
-            Container::Module(it) => it.id.child_from_source(db, src).map(Static::from),
-            Container::Trait(_) | Container::ImplBlock(_) => None,
-        }
+        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)[keys::STATIC]
+            .get(&src)
+            .copied()
+            .map(Static::from)
     }
 }
 
 impl FromSource for TypeAlias {
     type Ast = ast::TypeAliasDef;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
-        Container::find(db, src.as_ref().map(|it| it.syntax()))?
-            .child_from_source(db, src)
+        Container::find(db, src.as_ref().map(|it| it.syntax()))?.child_by_source(db)
+            [keys::TYPE_ALIAS]
+            .get(&src)
+            .copied()
             .map(TypeAlias::from)
     }
 }
@@ -116,32 +118,41 @@ impl FromSource for EnumVariant {
         let parent_enum = src.value.parent_enum();
         let src_enum = InFile { file_id: src.file_id, value: parent_enum };
         let parent_enum = Enum::from_source(db, src_enum)?;
-        parent_enum.id.child_from_source(db, src).map(EnumVariant::from)
+        parent_enum.id.child_by_source(db)[keys::ENUM_VARIANT]
+            .get(&src)
+            .copied()
+            .map(EnumVariant::from)
     }
 }
 
 impl FromSource for StructField {
     type Ast = FieldSource;
     fn from_source(db: &(impl DefDatabase + AstDatabase), src: InFile<Self::Ast>) -> Option<Self> {
+        let src = src.as_ref();
+
+        // FIXME this is buggy
         let variant_id: VariantId = match src.value {
-            FieldSource::Named(ref field) => {
+            FieldSource::Named(field) => {
                 let value = field.syntax().ancestors().find_map(ast::StructDef::cast)?;
                 let src = InFile { file_id: src.file_id, value };
                 let def = Struct::from_source(db, src)?;
                 def.id.into()
             }
-            FieldSource::Pos(ref field) => {
+            FieldSource::Pos(field) => {
                 let value = field.syntax().ancestors().find_map(ast::EnumVariant::cast)?;
                 let src = InFile { file_id: src.file_id, value };
                 let def = EnumVariant::from_source(db, src)?;
                 EnumVariantId::from(def).into()
             }
         };
-        let src = src.map(|field_source| match field_source {
-            FieldSource::Pos(it) => Either::Left(it),
-            FieldSource::Named(it) => Either::Right(it),
-        });
-        variant_id.child_from_source(db, src).map(StructField::from)
+
+        let dyn_map = variant_id.child_by_source(db);
+        match src.value {
+            FieldSource::Pos(it) => dyn_map[keys::TUPLE_FIELD].get(&src.with_value(it.clone())),
+            FieldSource::Named(it) => dyn_map[keys::RECORD_FIELD].get(&src.with_value(it.clone())),
+        }
+        .copied()
+        .map(StructField::from)
     }
 }
 
@@ -255,21 +266,12 @@ impl Container {
     }
 }
 
-impl<CHILD, SOURCE> ChildFromSource<CHILD, SOURCE> for Container
-where
-    TraitId: ChildFromSource<CHILD, SOURCE>,
-    ImplId: ChildFromSource<CHILD, SOURCE>,
-    ModuleId: ChildFromSource<CHILD, SOURCE>,
-{
-    fn child_from_source(
-        &self,
-        db: &impl DefDatabase,
-        child_source: InFile<SOURCE>,
-    ) -> Option<CHILD> {
+impl ChildBySource for Container {
+    fn child_by_source(&self, db: &impl DefDatabase) -> DynMap {
         match self {
-            Container::Trait(it) => it.id.child_from_source(db, child_source),
-            Container::ImplBlock(it) => it.id.child_from_source(db, child_source),
-            Container::Module(it) => it.id.child_from_source(db, child_source),
+            Container::Trait(it) => it.id.child_by_source(db),
+            Container::ImplBlock(it) => it.id.child_by_source(db),
+            Container::Module(it) => it.id.child_by_source(db),
         }
     }
 }

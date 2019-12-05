@@ -1,6 +1,10 @@
 //! FIXME: write short doc here
 
-use std::{iter::successors, marker::PhantomData};
+use std::{
+    hash::{Hash, Hasher},
+    iter::successors,
+    marker::PhantomData,
+};
 
 use crate::{AstNode, SyntaxKind, SyntaxNode, TextRange};
 
@@ -43,7 +47,7 @@ impl SyntaxNodePtr {
 }
 
 /// Like `SyntaxNodePtr`, but remembers the type of node
-#[derive(Debug, Hash)]
+#[derive(Debug)]
 pub struct AstPtr<N: AstNode> {
     raw: SyntaxNodePtr,
     _ty: PhantomData<fn() -> N>,
@@ -61,6 +65,12 @@ impl<N: AstNode> Eq for AstPtr<N> {}
 impl<N: AstNode> PartialEq for AstPtr<N> {
     fn eq(&self, other: &AstPtr<N>) -> bool {
         self.raw == other.raw
+    }
+}
+
+impl<N: AstNode> Hash for AstPtr<N> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.raw.hash(state)
     }
 }
 

@@ -11,8 +11,8 @@ use std::fmt::Write;
 use std::sync::Arc;
 
 use hir_def::{
-    body::BodySourceMap, child_from_source::ChildFromSource, db::DefDatabase, nameres::CrateDefMap,
-    AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
+    body::BodySourceMap, child_by_source::ChildBySource, db::DefDatabase, keys,
+    nameres::CrateDefMap, AssocItemId, DefWithBodyId, LocalModuleId, Lookup, ModuleDefId,
 };
 use hir_expand::InFile;
 use insta::assert_snapshot;
@@ -33,7 +33,9 @@ fn type_at_pos(db: &TestDB, pos: FilePosition) -> String {
     let expr = algo::find_node_at_offset::<ast::Expr>(file.syntax(), pos.offset).unwrap();
     let fn_def = expr.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
     let module = db.module_for_file(pos.file_id);
-    let func = module.child_from_source(db, InFile::new(pos.file_id.into(), fn_def)).unwrap();
+    let func = *module.child_by_source(db)[keys::FUNCTION]
+        .get(&InFile::new(pos.file_id.into(), fn_def))
+        .unwrap();
 
     let (_body, source_map) = db.body_with_source_map(func.into());
     if let Some(expr_id) = source_map.node_expr(InFile::new(pos.file_id.into(), &expr)) {
