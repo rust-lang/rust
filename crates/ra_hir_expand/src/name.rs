@@ -163,3 +163,10 @@ pub const STRINGIFY_MACRO: Name = Name::new_inline_ascii(9, b"stringify");
 // Builtin derives
 pub const COPY_TRAIT: Name = Name::new_inline_ascii(4, b"Copy");
 pub const CLONE_TRAIT: Name = Name::new_inline_ascii(5, b"Clone");
+pub const DEFAULT_TRAIT: Name = Name::new_inline_ascii(7, b"Default");
+pub const DEBUG_TRAIT: Name = Name::new_inline_ascii(5, b"Debug");
+pub const HASH_TRAIT: Name = Name::new_inline_ascii(4, b"Hash");
+pub const ORD_TRAIT: Name = Name::new_inline_ascii(3, b"Ord");
+pub const PARTIAL_ORD_TRAIT: Name = Name::new_inline_ascii(10, b"PartialOrd");
+pub const EQ_TRAIT: Name = Name::new_inline_ascii(2, b"Eq");
+pub const PARTIAL_EQ_TRAIT: Name = Name::new_inline_ascii(9, b"PartialEq");

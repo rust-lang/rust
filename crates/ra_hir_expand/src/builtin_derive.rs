@@ -45,7 +45,14 @@ macro_rules! register_builtin {
 
 register_builtin! {
     (COPY_TRAIT, Copy) => copy_expand,
-    (CLONE_TRAIT, Clone) => clone_expand
+    (CLONE_TRAIT, Clone) => clone_expand,
+    (DEFAULT_TRAIT, Default) => default_expand,
+    (DEBUG_TRAIT, Debug) => debug_expand,
+    (HASH_TRAIT, Hash) => hash_expand,
+    (ORD_TRAIT, Ord) => ord_expand,
+    (PARTIAL_ORD_TRAIT, PartialOrd) => partial_ord_expand,
+    (EQ_TRAIT, Eq) => eq_expand,
+    (PARTIAL_EQ_TRAIT, PartialEq) => partial_eq_expand
 }
 
 struct BasicAdtInfo {
@@ -109,20 +116,29 @@ fn make_type_args(n: usize, bound: Vec<tt::TokenTree>) -> Vec<tt::TokenTree> {
     result
 }
 
+fn expand_simple_derive(
+    tt: &tt::Subtree,
+    trait_path: tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    let info = parse_adt(tt)?;
+    let name = info.name;
+    let trait_path_clone = trait_path.token_trees.clone();
+    let bound = (quote! { : ##trait_path_clone }).token_trees;
+    let type_params = make_type_args(info.type_params, bound);
+    let type_args = make_type_args(info.type_params, Vec::new());
+    let trait_path = trait_path.token_trees;
+    let expanded = quote! {
+        impl ##type_params ##trait_path for #name ##type_args {}
+    };
+    Ok(expanded)
+}
+
 fn copy_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    let info = parse_adt(tt)?;
-    let name = info.name;
-    let bound = (quote! { : std::marker::Copy }).token_trees;
-    let type_params = make_type_args(info.type_params, bound);
-    let type_args = make_type_args(info.type_params, Vec::new());
-    let expanded = quote! {
-        impl ##type_params std::marker::Copy for #name ##type_args {}
-    };
-    Ok(expanded)
+    expand_simple_derive(tt, quote! { std::marker::Copy })
 }
 
 fn clone_expand(
@@ -130,15 +146,63 @@ fn clone_expand(
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    let info = parse_adt(tt)?;
-    let name = info.name;
-    let bound = (quote! { : std::clone::Clone }).token_trees;
-    let type_params = make_type_args(info.type_params, bound);
-    let type_args = make_type_args(info.type_params, Vec::new());
-    let expanded = quote! {
-        impl ##type_params std::clone::Clone for #name ##type_args {}
-    };
-    Ok(expanded)
+    expand_simple_derive(tt, quote! { std::clone::Clone })
+}
+
+fn default_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    expand_simple_derive(tt, quote! { std::default::Default })
+}
+
+fn debug_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    expand_simple_derive(tt, quote! { std::fmt::Debug })
+}
+
+fn hash_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    expand_simple_derive(tt, quote! { std::hash::Hash })
+}
+
+fn eq_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    expand_simple_derive(tt, quote! { std::cmp::Eq })
+}
+
+fn partial_eq_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    expand_simple_derive(tt, quote! { std::cmp::PartialEq })
+}
+
+fn ord_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    expand_simple_derive(tt, quote! { std::cmp::Ord })
+}
+
+fn partial_ord_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    expand_simple_derive(tt, quote! { std::cmp::PartialOrd })
 }
 
 #[cfg(test)]
