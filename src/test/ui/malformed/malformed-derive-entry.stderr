@@ -1,20 +1,33 @@
-error: expected one of `)`, `,`, or `::`, found `(`
+error: traits in `#[derive(...)]` don't accept arguments
   --> $DIR/malformed-derive-entry.rs:1:14
    |
 LL | #[derive(Copy(Bad))]
-   |              ^ expected one of `)`, `,`, or `::`
+   |              ^^^^^ help: remove the arguments
 
-error: expected one of `)`, `,`, or `::`, found `=`
-  --> $DIR/malformed-derive-entry.rs:4:14
+error: traits in `#[derive(...)]` don't accept values
+  --> $DIR/malformed-derive-entry.rs:6:14
    |
 LL | #[derive(Copy="bad")]
-   |              ^ expected one of `)`, `,`, or `::`
+   |              ^^^^^^ help: remove the value
 
 error: malformed `derive` attribute input
-  --> $DIR/malformed-derive-entry.rs:7:1
+  --> $DIR/malformed-derive-entry.rs:11:1
    |
 LL | #[derive]
    | ^^^^^^^^^ help: missing traits to be derived: `#[derive(Trait1, Trait2, ...)]`
 
-error: aborting due to 3 previous errors
+error[E0277]: the trait bound `Test1: std::clone::Clone` is not satisfied
+  --> $DIR/malformed-derive-entry.rs:1:10
+   |
+LL | #[derive(Copy(Bad))]
+   |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test1`
 
+error[E0277]: the trait bound `Test2: std::clone::Clone` is not satisfied
+  --> $DIR/malformed-derive-entry.rs:6:10
+   |
+LL | #[derive(Copy="bad")]
+   |          ^^^^ the trait `std::clone::Clone` is not implemented for `Test2`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

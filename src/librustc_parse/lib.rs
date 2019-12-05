@@ -285,7 +285,7 @@ pub fn parse_in<'a, T>(
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
-pub fn parse_in_attr<'a, T>(
+fn parse_in_attr<'a, T>(
     sess: &'a ParseSess,
     attr: &ast::Attribute,
     f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
