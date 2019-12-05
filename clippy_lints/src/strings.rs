@@ -1,6 +1,6 @@
 use rustc::declare_lint_pass;
 use rustc::hir::*;
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 use syntax::source_map::Spanned;
@@ -80,6 +80,10 @@ declare_lint_pass!(StringAdd => [STRING_ADD, STRING_ADD_ASSIGN]);
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+        if in_external_macro(cx.sess(), e.span) {
+            return;
+        }
+
         if let ExprKind::Binary(
             Spanned {
                 node: BinOpKind::Add, ..
