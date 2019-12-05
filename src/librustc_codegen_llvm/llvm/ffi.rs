@@ -1727,8 +1727,7 @@ extern "C" {
                                    Output: *const c_char,
                                    FileType: FileType)
                                    -> LLVMRustResult;
-    pub fn LLVMRustPrintModule(PM: &PassManager<'a>,
-                               M: &'a Module,
+    pub fn LLVMRustPrintModule(M: &'a Module,
                                Output: *const c_char,
                                Demangle: extern fn(*const c_char,
                                                    size_t,
