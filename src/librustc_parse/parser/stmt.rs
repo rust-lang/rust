@@ -6,6 +6,7 @@ use super::diagnostics::Error;
 use crate::maybe_whole;
 use crate::DirectoryOwnership;
 
+use rustc_errors::{PResult, Applicability};
 use syntax::ThinVec;
 use syntax::ptr::P;
 use syntax::ast;
@@ -13,11 +14,10 @@ use syntax::ast::{DUMMY_NODE_ID, Stmt, StmtKind, Local, Block, BlockCheckMode, E
 use syntax::ast::{Attribute, AttrStyle, VisibilityKind, MacStmtStyle, Mac};
 use syntax::util::classify;
 use syntax::token;
-use syntax::source_map::{respan, Span};
-use syntax::symbol::{kw, sym};
+use syntax_pos::source_map::{respan, Span};
+use syntax_pos::symbol::{kw, sym};
 
 use std::mem;
-use errors::{PResult, Applicability};
 
 impl<'a> Parser<'a> {
     /// Parses a statement. This stops just before trailing semicolons on everything but items.

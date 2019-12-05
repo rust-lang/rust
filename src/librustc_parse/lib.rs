@@ -8,7 +8,7 @@ use syntax::sess::ParseSess;
 use syntax::token::{self, Nonterminal};
 use syntax::tokenstream::{self, TokenStream, TokenTree};
 
-use errors::{PResult, FatalError, Level, Diagnostic};
+use rustc_errors::{PResult, FatalError, Level, Diagnostic};
 use rustc_data_structures::sync::Lrc;
 use syntax_pos::{Span, SourceFile, FileName};
 
@@ -53,7 +53,7 @@ pub enum DirectoryOwnership {
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => ({
         use std::result::Result::{Ok, Err};
-        use errors::FatalError;
+        use rustc_errors::FatalError;
         match $e {
             Ok(e) => e,
             Err(errs) => {

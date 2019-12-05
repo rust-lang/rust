@@ -3806,7 +3806,6 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_lexer",
- "rustc_target",
  "smallvec 1.0.0",
  "syntax",
  "syntax_pos",
