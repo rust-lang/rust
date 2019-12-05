@@ -65,13 +65,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn demand_eqtype_pat(
+    pub fn demand_eqtype_pat_diag(
         &self,
         cause_span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         match_expr_span: Option<Span>,
-    ) {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         let cause = if let Some(span) = match_expr_span {
             self.cause(
                 cause_span,
@@ -80,9 +80,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.misc(cause_span)
         };
-        self.demand_eqtype_with_origin(&cause, expected, actual).map(|mut err| err.emit());
+        self.demand_eqtype_with_origin(&cause, expected, actual)
     }
 
+    pub fn demand_eqtype_pat(
+        &self,
+        cause_span: Span,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        match_expr_span: Option<Span>,
+    ) {
+        self.demand_eqtype_pat_diag(cause_span, expected, actual, match_expr_span)
+            .map(|mut err| err.emit());
+    }
 
     pub fn demand_coerce(&self,
                          expr: &hir::Expr,
