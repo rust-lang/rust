@@ -46,3 +46,4 @@ LL |     bar(f);
 
 error: aborting due to 4 previous errors
 
+For more information about this error, try `rustc --explain E0631`.
