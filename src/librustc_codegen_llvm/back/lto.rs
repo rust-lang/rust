@@ -872,28 +872,14 @@ pub struct ThinLTOImports {
 
 impl ThinLTOImports {
     /// Records `llvm_module_name` as importing `prev_imports` rather than what
-    /// we have currently computed. Ensures that the previous imports are a
-    /// superset of what imports LLVM currently computed.
+    /// we have currently computed.
     fn overwrite_with_past_import_state(&mut self,
                                         llvm_module_name: &str,
                                         prev_imports: &[String]) {
-        // There were imports used to previous LTO optimize the module; make
-        // sure they are a superset of whatever we have in our current state,
-        // and then store them as our new current state.
-        let curr_imports_for_mod = self.modules_imported_by(llvm_module_name);
-        for imported in curr_imports_for_mod {
-            assert!(prev_imports.contains(imported));
-        }
-        // We can avoid doing the insertion entirely if the sets are equivalent,
-        // and we can determine equivalence cheaply via a length comparison,
-        // since we have already asserted the past state to be a superset of the
-        // current state.
-        if prev_imports.len() != curr_imports_for_mod.len() {
-            debug!("ThinLTOImports::restore_past_import_state \
-                    mod: {:?} replacing curr state: {:?} with prev state: {:?}",
-                   llvm_module_name, curr_imports_for_mod, prev_imports);
-            self.imports.insert(llvm_module_name.to_owned(), prev_imports.to_vec());
-        }
+        debug!("ThinLTOImports::overwrite_with_past_import_state \
+                mod: {:?} replacing curr state: {:?} with prev state: {:?}",
+               llvm_module_name, self.modules_imported_by(llvm_module_name), prev_imports);
+        self.imports.insert(llvm_module_name.to_owned(), prev_imports.to_vec());
     }
 
     fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {

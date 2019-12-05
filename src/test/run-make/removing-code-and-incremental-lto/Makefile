@@ -76,3 +76,12 @@ all:
 	$(RUSTC) --crate-name rubble $(TMPDIR)/rubble.rs --crate-type bin --emit=link -C opt-level=s --out-dir $(RUBBLE1_OUT_DIR) --target $(TARGET) -C incremental=$(INCREMENTAL_DIR) -L dependency=$(OUT_DIR) --extern nrf52810_hal=$(OUT_DIR)/libnrf52810_hal.rlib -C link-arg=-Tlink.x.in -L $(LINK_X_DIR) -C linker-flavor=ld.lld -C codegen-units=2
 	cp rubble.rs.v2 $(TMPDIR)/rubble.rs
 	$(RUSTC) --crate-name rubble $(TMPDIR)/rubble.rs --crate-type bin --emit=link -C opt-level=s --out-dir $(RUBBLE2_OUT_DIR) --target $(TARGET) -C incremental=$(INCREMENTAL_DIR) -L dependency=$(OUT_DIR) --extern nrf52810_hal=$(OUT_DIR)/libnrf52810_hal.rlib -C link-arg=-Tlink.x.in -L $(LINK_X_DIR) -C linker-flavor=ld.lld -C codegen-units=2
+	echo Now testing the reverse direction
+	rm -rf $(INCREMENTAL_DIR)
+	mkdir -p $(INCREMENTAL_DIR)
+	cp rubble.rs.v2 $(TMPDIR)/rubble.rs
+	$(RUSTC) --crate-name rubble $(TMPDIR)/rubble.rs --crate-type bin --emit=link -C opt-level=s --out-dir $(RUBBLE2_OUT_DIR) --target $(TARGET) -C incremental=$(INCREMENTAL_DIR) -L dependency=$(OUT_DIR) --extern nrf52810_hal=$(OUT_DIR)/libnrf52810_hal.rlib -C link-arg=-Tlink.x.in -L $(LINK_X_DIR) -C linker-flavor=ld.lld -C codegen-units=2
+	cp rubble.rs.v1 $(TMPDIR)/rubble.rs
+	$(RUSTC) --crate-name rubble $(TMPDIR)/rubble.rs --crate-type bin --emit=link -C opt-level=s --out-dir $(RUBBLE1_OUT_DIR) --target $(TARGET) -C incremental=$(INCREMENTAL_DIR) -L dependency=$(OUT_DIR) --extern nrf52810_hal=$(OUT_DIR)/libnrf52810_hal.rlib -C link-arg=-Tlink.x.in -L $(LINK_X_DIR) -C linker-flavor=ld.lld -C codegen-units=2
+
+endif
