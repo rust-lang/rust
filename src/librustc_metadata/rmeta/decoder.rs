@@ -1360,10 +1360,16 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    // This replicates some of the logic of the crate-local `is_const_fn_raw` query, because we
+    // don't serialize constness for tuple variant and tuple struct constructors.
     fn is_const_fn_raw(&self, id: DefIndex) -> bool {
         let constness = match self.kind(id) {
             EntryKind::Method(data) => data.decode(self).fn_data.constness,
             EntryKind::Fn(data) => data.decode(self).constness,
+            // Some intrinsics can be const fn. While we could recompute this (at least until we
+            // stop having hardcoded whitelists and move to stability attributes), it seems cleaner
+            // to treat all const fns equally.
+            EntryKind::ForeignFn(data) => data.decode(self).constness,
             EntryKind::Variant(..) | EntryKind::Struct(..) => hir::Constness::Const,
             _ => hir::Constness::NotConst,
         };

@@ -1525,7 +1525,11 @@ impl EncodeContext<'tcx> {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 let data = FnData {
                     asyncness: hir::IsAsync::NotAsync,
-                    constness: hir::Constness::NotConst,
+                    constness: if self.tcx.is_const_fn_raw(def_id) {
+                        hir::Constness::Const
+                    } else {
+                        hir::Constness::NotConst
+                    },
                     param_names: self.encode_fn_param_names(names),
                 };
                 EntryKind::ForeignFn(self.lazy(data))

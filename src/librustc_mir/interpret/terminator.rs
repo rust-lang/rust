@@ -266,20 +266,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
-                // If this function is a `const fn` then as an optimization we can query this
-                // evaluation immediately.
-                //
-                // For the moment we only do this for functions which take no arguments
-                // (or all arguments are ZSTs) so that we don't memoize too much.
-                if self.tcx.is_const_fn_raw(instance.def.def_id()) &&
-                   args.iter().all(|a| a.layout.is_zst())
-                {
-                    let gid = GlobalId { instance, promoted: None };
-                    return self.eval_const_fn_call(gid, ret);
-                }
-
                 // We need MIR for this fn
-                let body = match M::find_fn(self, instance, args, ret, unwind)? {
+                let body = match M::find_mir_or_eval_fn(self, instance, args, ret, unwind)? {
                     Some(body) => body,
                     None => return Ok(()),
                 };
@@ -445,7 +433,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Evaluate a const function where all arguments (if any) are zero-sized types.
     /// The evaluation is memoized thanks to the query system.
-    fn eval_const_fn_call(
+    // FIXME: Consider moving this to `const_eval.rs`.
+    pub (crate) fn eval_const_fn_call(
         &mut self,
         gid: GlobalId<'tcx>,
         ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
