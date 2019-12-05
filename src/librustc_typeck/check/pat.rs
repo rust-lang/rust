@@ -703,7 +703,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pat_ty = pat_ty.fn_sig(tcx).output();
         let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
 
-        self.demand_eqtype_pat(pat.span, expected, pat_ty, match_arm_pat_span);
+        // Type-check the tuple struct pattern against the expected type.
+        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, match_arm_pat_span);
+        let had_err = diag.is_some();
+        diag.map(|mut err| err.emit());
 
         // Type-check subpatterns.
         if subpats.len() == variant.fields.len()
@@ -721,7 +724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         } else {
             // Pattern has wrong number of fields.
-            self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected);
+            self.e0023(pat.span, res, qpath, subpats, &variant.fields, expected, had_err);
             on_error();
             return tcx.types.err;
         }
@@ -734,8 +737,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         res: Res,
         qpath: &hir::QPath,
         subpats: &'tcx [P<Pat>],
-        fields: &[ty::FieldDef],
-        expected: Ty<'tcx>
+        fields: &'tcx [ty::FieldDef],
+        expected: Ty<'tcx>,
+        had_err: bool,
     ) {
         let subpats_ending = pluralize!(subpats.len());
         let fields_ending = pluralize!(fields.len());
@@ -763,9 +767,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // More generally, the expected type wants a tuple variant with one field of an
         // N-arity-tuple, e.g., `V_i((p_0, .., p_N))`. Meanwhile, the user supplied a pattern
         // with the subpatterns directly in the tuple variant pattern, e.g., `V_i(p_0, .., p_N)`.
-        let missing_parenthesis = match expected.kind {
-            ty::Adt(_, substs) if fields.len() == 1 => {
-                let field_ty = fields[0].ty(self.tcx, substs);
+        let missing_parenthesis = match (&expected.kind, fields, had_err) {
+            // #67037: only do this if we could sucessfully type-check the expected type against
+            // the tuple struct pattern. Otherwise the substs could get out of range on e.g.,
+            // `let P() = U;` where `P != U` with `struct P<T>(T);`.
+            (ty::Adt(_, substs), [field], false) => {
+                let field_ty = self.field_ty(pat_span, field, substs);
                 match field_ty.kind {
                     ty::Tuple(_) => field_ty.tuple_fields().count() == subpats.len(),
                     _ => false,
