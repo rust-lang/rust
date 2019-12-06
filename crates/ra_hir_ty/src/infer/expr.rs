@@ -201,7 +201,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
             Expr::Return { expr } => {
                 if let Some(expr) = expr {
-                    self.infer_expr(*expr, &Expectation::has_type(self.return_ty.clone()));
+                    self.infer_expr_coerce(*expr, &Expectation::has_type(self.return_ty.clone()));
                 }
                 Ty::simple(TypeCtor::Never)
             }
@@ -245,7 +245,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ty
             }
             Expr::Field { expr, name } => {
-                let receiver_ty = self.infer_expr(*expr, &Expectation::none());
+                let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let canonicalized = self.canonicalizer().canonicalize_ty(receiver_ty);
                 let ty = autoderef::autoderef(
                     self.db,
@@ -280,7 +280,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 self.normalize_associated_types_in(ty)
             }
             Expr::Await { expr } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let ty = match self.resolve_future_future_output() {
                     Some(future_future_output_alias) => {
                         let ty = self.table.new_type_var();
@@ -299,7 +299,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ty
             }
             Expr::Try { expr } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let ty = match self.resolve_ops_try_ok() {
                     Some(ops_try_ok_alias) => {
                         let ty = self.table.new_type_var();
@@ -318,7 +318,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 ty
             }
             Expr::Cast { expr, type_ref } => {
-                let _inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let _inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 let cast_ty = self.make_ty(type_ref);
                 // FIXME check the cast...
                 cast_ty
@@ -334,12 +334,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     } else {
                         Expectation::none()
                     };
-                // FIXME reference coercions etc.
-                let inner_ty = self.infer_expr(*expr, &expectation);
+                let inner_ty = self.infer_expr_inner(*expr, &expectation);
                 Ty::apply_one(TypeCtor::Ref(*mutability), inner_ty)
             }
             Expr::Box { expr } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 if let Some(box_) = self.resolve_boxed_box() {
                     Ty::apply_one(TypeCtor::Adt(box_), inner_ty)
                 } else {
@@ -347,7 +346,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             Expr::UnaryOp { expr, op } => {
-                let inner_ty = self.infer_expr(*expr, &Expectation::none());
+                let inner_ty = self.infer_expr_inner(*expr, &Expectation::none());
                 match op {
                     UnaryOp::Deref => match self.resolver.krate() {
                         Some(krate) => {
@@ -417,7 +416,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 _ => Ty::Unknown,
             },
             Expr::Range { lhs, rhs, range_type } => {
-                let lhs_ty = lhs.map(|e| self.infer_expr(e, &Expectation::none()));
+                let lhs_ty = lhs.map(|e| self.infer_expr_inner(e, &Expectation::none()));
                 let rhs_expect = lhs_ty
                     .as_ref()
                     .map_or_else(Expectation::none, |ty| Expectation::has_type(ty.clone()));
@@ -455,7 +454,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                 }
             }
             Expr::Index { base, index } => {
-                let _base_ty = self.infer_expr(*base, &Expectation::none());
+                let _base_ty = self.infer_expr_inner(*base, &Expectation::none());
                 let _index_ty = self.infer_expr(*index, &Expectation::none());
                 // FIXME: use `std::ops::Index::Output` to figure out the real return type
                 Ty::Unknown
