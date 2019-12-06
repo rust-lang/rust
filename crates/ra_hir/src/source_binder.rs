@@ -76,16 +76,28 @@ fn def_with_body_from_child_node(
     db: &impl HirDatabase,
     child: InFile<&SyntaxNode>,
 ) -> Option<DefWithBody> {
-    child.value.ancestors().find_map(|node| {
+    ancestors_with_macros(db, child).find_map(|node| {
+        let n = &node.value;
         match_ast! {
-            match node {
-                ast::FnDef(def)  => { return Function::from_source(db, child.with_value(def)).map(DefWithBody::from); },
-                ast::ConstDef(def) => { return Const::from_source(db, child.with_value(def)).map(DefWithBody::from); },
-                ast::StaticDef(def) => { return Static::from_source(db, child.with_value(def)).map(DefWithBody::from); },
+            match n {
+                ast::FnDef(def)  => { return Function::from_source(db, node.with_value(def)).map(DefWithBody::from); },
+                ast::ConstDef(def) => { return Const::from_source(db, node.with_value(def)).map(DefWithBody::from); },
+                ast::StaticDef(def) => { return Static::from_source(db, node.with_value(def)).map(DefWithBody::from); },
                 _ => { None },
             }
         }
     })
+}
+
+fn ancestors_with_macros<'a>(
+    db: &'a (impl HirDatabase),
+    node: InFile<&SyntaxNode>,
+) -> impl Iterator<Item = InFile<SyntaxNode>> + 'a {
+    let file = node.with_value(()); // keep just the file id for borrow checker purposes
+    let parent_node = node.file_id.call_node(db);
+    let parent_ancestors: Box<dyn Iterator<Item = InFile<SyntaxNode>>> =
+        Box::new(parent_node.into_iter().flat_map(move |n| ancestors_with_macros(db, n.as_ref())));
+    node.value.ancestors().map(move |n| file.with_value(n)).chain(parent_ancestors)
 }
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
@@ -135,6 +147,7 @@ pub struct ReferenceDescriptor {
     pub name: String,
 }
 
+#[derive(Debug)]
 pub struct Expansion {
     macro_file_kind: MacroFileKind,
     macro_call_id: MacroCallId,

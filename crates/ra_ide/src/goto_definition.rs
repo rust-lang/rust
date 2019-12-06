@@ -693,4 +693,31 @@ mod tests {
             "foo FN_DEF FileId(1) [52; 63) [55; 58)",
         );
     }
+
+    #[test]
+    fn goto_through_format() {
+        check_goto(
+            "
+            //- /lib.rs
+            #[macro_export]
+            macro_rules! format {
+                ($($arg:tt)*) => ($crate::fmt::format($crate::__export::format_args!($($arg)*)))
+            }
+            #[rustc_builtin_macro]
+            #[macro_export]
+            macro_rules! format_args {
+                ($fmt:expr) => ({ /* compiler built-in */ });
+                ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+            }
+            pub mod __export {
+                pub use crate::format_args;
+            }
+            fn foo() -> i8 {}
+            fn test() {
+                format!(\"{}\", fo<|>o())
+            }
+            ",
+            "foo FN_DEF FileId(1) [359; 376) [362; 365)",
+        );
+    }
 }
