@@ -299,6 +299,13 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
         }
     }
 
+    fn insert_field_names_local(&mut self, def_id: DefId, vdata: &ast::VariantData) {
+        let field_names = vdata.fields().iter().map(|field| {
+            respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
+        }).collect();
+        self.insert_field_names(def_id, field_names);
+    }
+
     fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Name>>) {
         if !field_names.is_empty() {
             self.r.field_names.insert(def_id, field_names);
@@ -736,58 +743,50 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in both the type and value namespaces.
-            ItemKind::Struct(ref struct_def, _) => {
+            ItemKind::Struct(ref vdata, _) => {
                 // Define a name in the type namespace.
                 let def_id = self.r.definitions.local_def_id(item.id);
                 let res = Res::Def(DefKind::Struct, def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
-                let mut ctor_vis = vis;
-
-                let has_non_exhaustive = attr::contains_name(&item.attrs, sym::non_exhaustive);
-
-                // If the structure is marked as non_exhaustive then lower the visibility
-                // to within the crate.
-                if has_non_exhaustive && vis == ty::Visibility::Public {
-                    ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-                }
-
                 // Record field names for error reporting.
-                let field_names = struct_def.fields().iter().map(|field| {
-                    // NOTE: The field may be an expansion placeholder, but expansion sets correct
-                    // visibilities for unnamed field placeholders specifically, so the constructor
-                    // visibility should still be determined correctly.
-                    let field_vis = self.resolve_visibility_speculative(&field.vis, true);
-                    if ctor_vis.is_at_least(field_vis, &*self.r) {
-                        ctor_vis = field_vis;
-                    }
-                    respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
-                }).collect();
-                let item_def_id = self.r.definitions.local_def_id(item.id);
-                self.insert_field_names(item_def_id, field_names);
+                self.insert_field_names_local(def_id, vdata);
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
-                if let Some(ctor_node_id) = struct_def.ctor_id() {
+                if let Some(ctor_node_id) = vdata.ctor_id() {
+                    let mut ctor_vis = vis;
+                    // If the structure is marked as non_exhaustive then lower the visibility
+                    // to within the crate.
+                    if vis == ty::Visibility::Public &&
+                       attr::contains_name(&item.attrs, sym::non_exhaustive) {
+                        ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+                    }
+                    for field in vdata.fields() {
+                        // NOTE: The field may be an expansion placeholder, but expansion sets
+                        // correct visibilities for unnamed field placeholders specifically, so the
+                        // constructor visibility should still be determined correctly.
+                        let field_vis = self.resolve_visibility_speculative(&field.vis, true);
+                        if ctor_vis.is_at_least(field_vis, &*self.r) {
+                            ctor_vis = field_vis;
+                        }
+                    }
                     let ctor_res = Res::Def(
-                        DefKind::Ctor(CtorOf::Struct, CtorKind::from_ast(struct_def)),
+                        DefKind::Ctor(CtorOf::Struct, CtorKind::from_ast(vdata)),
                         self.r.definitions.local_def_id(ctor_node_id),
                     );
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
-                    self.r.struct_constructors.insert(res.def_id(), (ctor_res, ctor_vis));
+                    self.r.struct_constructors.insert(def_id, (ctor_res, ctor_vis));
                 }
             }
 
             ItemKind::Union(ref vdata, _) => {
-                let res = Res::Def(DefKind::Union, self.r.definitions.local_def_id(item.id));
+                let def_id = self.r.definitions.local_def_id(item.id);
+                let res = Res::Def(DefKind::Union, def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
                 // Record field names for error reporting.
-                let field_names = vdata.fields().iter().map(|field| {
-                    respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
-                }).collect();
-                let item_def_id = self.r.definitions.local_def_id(item.id);
-                self.insert_field_names(item_def_id, field_names);
+                self.insert_field_names_local(def_id, vdata);
             }
 
             ItemKind::Impl(.., ref impl_items) => {
