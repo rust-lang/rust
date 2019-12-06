@@ -2883,7 +2883,7 @@ mod test_map {
     }
 
     #[test]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/654
+    #[cfg(not(miri))] // FIXME: takes too long
     fn test_lots_of_insertions() {
         let mut m = HashMap::new();
 
@@ -3377,7 +3377,6 @@ mod test_map {
 
         let mut m = HashMap::new();
 
-        // FIXME: https://github.com/rust-lang/miri/issues/653
         let mut rng = {
             let seed = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
             SmallRng::from_seed(seed)
@@ -3491,7 +3490,7 @@ mod test_map {
     }
 
     #[test]
-    #[cfg(not(miri))] // FIXME: https://github.com/rust-lang/miri/issues/655
+    #[cfg(not(miri))] // FIXME: no OOM signalling (https://github.com/rust-lang/miri/issues/613)
     fn test_try_reserve() {
         let mut empty_bytes: HashMap<u8, u8> = HashMap::new();
 
