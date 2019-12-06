@@ -565,7 +565,8 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             }));
         }
 
-        // Save the accumulated ThinLTO import information
+        // Save the curent ThinLTO import information for the next compilation
+        // session, overwriting the previous serialized imports (if any).
         if let Some(path) = import_map_path {
             if let Err(err) = curr_import_map.save_to_file(&path) {
                 let msg = format!("Error while writing ThinLTO import data: {}", err);
