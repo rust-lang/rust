@@ -129,8 +129,9 @@ extern "C" LLVMValueRef LLVMRustGetOrInsertFunction(LLVMModuleRef M,
 }
 
 extern "C" LLVMValueRef
-LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, LLVMTypeRef Ty) {
-  return wrap(unwrap(M)->getOrInsertGlobal(Name, unwrap(Ty)));
+LLVMRustGetOrInsertGlobal(LLVMModuleRef M, const char *Name, size_t NameLen, LLVMTypeRef Ty) {
+  StringRef NameRef(Name, NameLen);
+  return wrap(unwrap(M)->getOrInsertGlobal(NameRef, unwrap(Ty)));
 }
 
 extern "C" LLVMValueRef
@@ -1287,11 +1288,12 @@ extern "C" void LLVMRustPositionBuilderAtStart(LLVMBuilderRef B,
 }
 
 extern "C" void LLVMRustSetComdat(LLVMModuleRef M, LLVMValueRef V,
-                                  const char *Name) {
+                                  const char *Name, size_t NameLen) {
   Triple TargetTriple(unwrap(M)->getTargetTriple());
   GlobalObject *GV = unwrap<GlobalObject>(V);
   if (!TargetTriple.isOSBinFormatMachO()) {
-    GV->setComdat(unwrap(M)->getOrInsertComdat(Name));
+    StringRef NameRef(Name, NameLen);
+    GV->setComdat(unwrap(M)->getOrInsertComdat(NameRef));
   }
 }
 

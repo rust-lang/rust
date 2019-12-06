@@ -22,7 +22,7 @@ use rustc_fs_util::{path_to_c_string, link_or_copy};
 use rustc_data_structures::small_c_str::SmallCStr;
 use errors::{Handler, FatalError};
 
-use std::ffi::{CString, CStr};
+use std::ffi::CString;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -833,8 +833,8 @@ fn create_msvc_imps(
             })
             .filter_map(|val| {
                 // Exclude some symbols that we know are not Rust symbols.
-                let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                if ignored(name.to_bytes()) {
+                let name = llvm::get_value_name(val);
+                if ignored(name) {
                     None
                 } else {
                     Some((val, name))
@@ -842,7 +842,7 @@ fn create_msvc_imps(
             })
             .map(move |(val, name)| {
                 let mut imp_name = prefix.as_bytes().to_vec();
-                imp_name.extend(name.to_bytes());
+                imp_name.extend(name);
                 let imp_name = CString::new(imp_name).unwrap();
                 (imp_name, val)
             })

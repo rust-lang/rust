@@ -21,7 +21,7 @@ use rustc::ty::layout::{self, Size, Align, LayoutOf};
 
 use rustc::hir::{self, CodegenFnAttrs, CodegenFnAttrFlags};
 
-use std::ffi::{CStr, CString};
+use std::ffi::CStr;
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
@@ -392,16 +392,14 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             } else {
                 // If we created the global with the wrong type,
                 // correct the type.
-                let empty_string = const_cstr!("");
-                let name_str_ref = CStr::from_ptr(llvm::LLVMGetValueName(g));
-                let name_string = CString::new(name_str_ref.to_bytes()).unwrap();
-                llvm::LLVMSetValueName(g, empty_string.as_ptr());
+                let name = llvm::get_value_name(g).to_vec();
+                llvm::set_value_name(g, b"");
 
                 let linkage = llvm::LLVMRustGetLinkage(g);
                 let visibility = llvm::LLVMRustGetVisibility(g);
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
-                    self.llmod, name_string.as_ptr(), val_llty);
+                    self.llmod, name.as_ptr().cast(), name.len(), val_llty);
 
                 llvm::LLVMRustSetLinkage(new_g, linkage);
                 llvm::LLVMRustSetVisibility(new_g, visibility);

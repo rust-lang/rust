@@ -76,9 +76,8 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         name: &str, ty: &'ll Type
     ) -> &'ll Value {
         debug!("declare_global(name={:?})", name);
-        let namebuf = SmallCStr::new(name);
         unsafe {
-            llvm::LLVMRustGetOrInsertGlobal(self.llmod, namebuf.as_ptr(), ty)
+            llvm::LLVMRustGetOrInsertGlobal(self.llmod, name.as_ptr().cast(), name.len(), ty)
         }
     }
 

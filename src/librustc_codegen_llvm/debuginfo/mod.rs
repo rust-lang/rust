@@ -32,7 +32,7 @@ use rustc_codegen_ssa::mir::debuginfo::{FunctionDebugContext, DebugScope,
 
 use libc::c_uint;
 use std::cell::RefCell;
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 use smallvec::SmallVec;
 use syntax_pos::{self, BytePos, Span, Pos};
@@ -255,23 +255,11 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             return;
         }
 
-        let old_name = unsafe {
-            CStr::from_ptr(llvm::LLVMGetValueName(value))
-        };
-        match old_name.to_str() {
-            Ok("") => {}
-            Ok(_) => {
-                // Avoid replacing the name if it already exists.
-                // While we could combine the names somehow, it'd
-                // get noisy quick, and the usefulness is dubious.
-                return;
-            }
-            Err(_) => return,
-        }
-
-        let cname = SmallCStr::new(name);
-        unsafe {
-            llvm::LLVMSetValueName(value, cname.as_ptr());
+        // Avoid replacing the name if it already exists.
+        // While we could combine the names somehow, it'd
+        // get noisy quick, and the usefulness is dubious.
+        if llvm::get_value_name(value).is_empty() {
+            llvm::set_value_name(value, name.as_bytes());
         }
     }
 }

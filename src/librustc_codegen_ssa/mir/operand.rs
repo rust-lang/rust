@@ -475,9 +475,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             },
                         }
                         // Allow RalfJ to sleep soundly knowing that even refactorings that remove
-                        // the above error (or silence it under some conditions) will not cause UB
+                        // the above error (or silence it under some conditions) will not cause UB.
                         bx.abort();
-                        // We've errored, so we don't have to produce working code.
+                        // We still have to return an operand but it doesn't matter,
+                        // this code is unreachable.
                         let ty = self.monomorphize(&constant.literal.ty);
                         let layout = bx.cx().layout_of(ty);
                         bx.load_operand(PlaceRef::new_sized(
