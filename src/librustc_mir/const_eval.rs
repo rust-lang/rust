@@ -12,7 +12,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
-use rustc::ty::layout::{self, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, VariantIdx};
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 use crate::interpret::eval_nullary_intrinsic;
@@ -347,7 +347,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 //
                 // For the moment we only do this for functions which take no arguments
                 // (or all arguments are ZSTs) so that we don't memoize too much.
-                if args.iter().all(|a| a.layout.is_zst()) {
+                //
+                // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
+                // perform this optimization on items tagged with it.
+                let no_implicit_args = !instance.def.requires_caller_location(ecx.tcx());
+                if args.iter().all(|a| a.layout.is_zst()) && no_implicit_args {
                     let gid = GlobalId { instance, promoted: None };
                     ecx.eval_const_fn_call(gid, ret)?;
                     return Ok(None);
