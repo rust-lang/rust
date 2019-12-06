@@ -1360,26 +1360,24 @@ impl<'a> Parser<'a> {
 
     /// Parses the `|arg, arg|` header of a closure.
     fn parse_fn_block_decl(&mut self) -> PResult<'a, P<FnDecl>> {
-        let inputs_captures = {
-            if self.eat(&token::OrOr) {
-                Vec::new()
-            } else {
-                self.expect(&token::BinOp(token::Or))?;
-                let args = self
-                    .parse_seq_to_before_tokens(
-                        &[&token::BinOp(token::Or), &token::OrOr],
-                        SeqSep::trailing_allowed(token::Comma),
-                        TokenExpectType::NoExpect,
-                        |p| p.parse_fn_block_param(),
-                    )?
-                    .0;
-                self.expect_or()?;
-                args
-            }
+        let inputs = if self.eat(&token::OrOr) {
+            Vec::new()
+        } else {
+            self.expect(&token::BinOp(token::Or))?;
+            let args = self
+                .parse_seq_to_before_tokens(
+                    &[&token::BinOp(token::Or), &token::OrOr],
+                    SeqSep::trailing_allowed(token::Comma),
+                    TokenExpectType::NoExpect,
+                    |p| p.parse_fn_block_param(),
+                )?
+                .0;
+            self.expect_or()?;
+            args
         };
         let output = self.parse_ret_ty(true, true)?;
 
-        Ok(P(FnDecl { inputs: inputs_captures, output }))
+        Ok(P(FnDecl { inputs, output }))
     }
 
     /// Parses a parameter in a closure header (e.g., `|arg, arg|`).
