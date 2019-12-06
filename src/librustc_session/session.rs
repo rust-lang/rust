@@ -752,11 +752,7 @@ impl Session {
     }
 
     pub fn incr_comp_session_dir_opt(&self) -> Option<cell::Ref<'_, PathBuf>> {
-        if self.opts.incremental.is_some() {
-            Some(self.incr_comp_session_dir())
-        } else {
-            None
-        }
+        self.opts.incremental.as_ref().map(|_| self.incr_comp_session_dir())
     }
 
     pub fn print_perf_stats(&self) {
@@ -1079,8 +1075,9 @@ fn build_session_(
                     None
                 }
             }
-        }
-        else { None };
+        } else {
+            None
+        };
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
     let host = Target::search(&host_triple).unwrap_or_else(|e|

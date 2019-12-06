@@ -24,6 +24,7 @@
 #![cfg_attr(any(unix, target_os = "cloudabi"), feature(libc))]
 #![feature(rustc_private)]
 #![feature(nll)]
+#![feature(bool_to_option)]
 #![feature(set_stdio)]
 #![feature(panic_unwind)]
 #![feature(staged_api)]
@@ -562,11 +563,7 @@ fn run_test_in_process(
         None
     };
 
-    let start = if report_time {
-        Some(Instant::now())
-    } else {
-        None
-    };
+    let start = report_time.then(Instant::now);
     let result = catch_unwind(AssertUnwindSafe(testfn));
     let exec_time = start.map(|start| {
         let duration = start.elapsed();
@@ -597,11 +594,7 @@ fn spawn_test_subprocess(
         let args = env::args().collect::<Vec<_>>();
         let current_exe = &args[0];
 
-        let start = if report_time {
-            Some(Instant::now())
-        } else {
-            None
-        };
+        let start = report_time.then(Instant::now);
         let output = match Command::new(current_exe)
             .env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice())
             .output() {

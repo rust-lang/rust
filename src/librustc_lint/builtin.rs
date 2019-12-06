@@ -1491,11 +1491,7 @@ impl ExplicitOutlivesRequirements {
             match pred {
                 ty::Predicate::TypeOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
-                    if outlives.0.is_param(index) {
-                        Some(outlives.1)
-                    } else {
-                        None
-                    }
+                    outlives.0.is_param(index).then_some(outlives.1)
                 }
                 _ => None
             }
@@ -1554,11 +1550,7 @@ impl ExplicitOutlivesRequirements {
                             }),
                         _ => false,
                     };
-                    if is_inferred {
-                        Some((i, bound.span()))
-                    } else {
-                        None
-                    }
+                    is_inferred.then_some((i, bound.span()))
                 } else {
                     None
                 }

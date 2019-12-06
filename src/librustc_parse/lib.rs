@@ -1,5 +1,6 @@
 //! The main parser interface.
 
+#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 
 use syntax::ast;

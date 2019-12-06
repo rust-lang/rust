@@ -422,11 +422,7 @@ impl<'a> Resolver<'a> {
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
                         let res = binding.res();
-                        if filter_fn(res) {
-                            Some(TypoSuggestion::from_res(*name, res))
-                        } else {
-                            None
-                        }
+                        filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
                     }));
                 }
                 Scope::BuiltinAttrs => {
@@ -440,11 +436,7 @@ impl<'a> Resolver<'a> {
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
-                        if filter_fn(res) {
-                            Some(TypoSuggestion::from_res(ident.name, res))
-                        } else {
-                            None
-                        }
+                        filter_fn(res).then_some(TypoSuggestion::from_res(ident.name, res))
                     }));
                 }
                 Scope::ToolPrelude => {
@@ -467,11 +459,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(
                         primitive_types.iter().flat_map(|(name, prim_ty)| {
                             let res = Res::PrimTy(*prim_ty);
-                            if filter_fn(res) {
-                                Some(TypoSuggestion::from_res(*name, res))
-                            } else {
-                                None
-                            }
+                            filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
                         })
                     )
                 }

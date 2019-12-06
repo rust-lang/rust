@@ -29,7 +29,7 @@ fn get_switched_on_type<'tcx>(
     // Only bother checking blocks which terminate by switching on a local.
     if let Some(local) = get_discriminant_local(&terminator.kind) {
         let stmt_before_term = (block_data.statements.len() > 0)
-            .then_with(|| &block_data.statements[block_data.statements.len() - 1].kind);
+            .then(|| &block_data.statements[block_data.statements.len() - 1].kind);
 
         if let Some(StatementKind::Assign(box (l, Rvalue::Discriminant(place)))) = stmt_before_term
         {
@@ -59,7 +59,7 @@ fn variant_discriminants<'tcx>(
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
                 (layout.abi != Abi::Uninhabited)
-                    .then_with(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
+                    .then(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
             })
             .collect(),
     }

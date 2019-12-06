@@ -1,3 +1,4 @@
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(set_stdio)]
 #![feature(nll)]

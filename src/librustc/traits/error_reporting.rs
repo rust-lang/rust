@@ -363,11 +363,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             return None
         };
 
-        if tcx.has_attr(impl_def_id, sym::rustc_on_unimplemented) {
-            Some(impl_def_id)
-        } else {
-            None
-        }
+        tcx.has_attr(impl_def_id, sym::rustc_on_unimplemented).then_some(impl_def_id)
     }
 
     fn describe_generator(&self, body_id: hir::BodyId) -> Option<&'static str> {

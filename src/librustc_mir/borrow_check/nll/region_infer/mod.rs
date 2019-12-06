@@ -493,7 +493,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // functions below, which will trigger them to report errors
         // eagerly.
         let mut outlives_requirements =
-            if infcx.tcx.is_closure(mir_def_id) { Some(vec![]) } else { None };
+            infcx.tcx.is_closure(mir_def_id).then(|| vec![]);
 
         self.check_type_tests(
             infcx,
@@ -709,14 +709,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let min = |r1: ty::RegionVid, r2: ty::RegionVid| -> Option<ty::RegionVid> {
             let r1_outlives_r2 = self.universal_region_relations.outlives(r1, r2);
             let r2_outlives_r1 = self.universal_region_relations.outlives(r2, r1);
-            if r1_outlives_r2 && r2_outlives_r1 {
-                Some(r1.min(r2))
-            } else if r1_outlives_r2 {
-                Some(r2)
-            } else if r2_outlives_r1 {
-                Some(r1)
-            } else {
-                None
+            match (r1_outlives_r2, r2_outlives_r1) {
+                (true, true) => Some(r1.min(r2)),
+                (true, false) => Some(r2),
+                (false, true) => Some(r1),
+                (false, false) => None,
             }
         };
         let mut min_choice = choice_regions[0];

@@ -11,6 +11,7 @@
 #![feature(nll)]
 #![feature(rustc_private)]
 #![feature(unicode_internals)]
+#![feature(bool_to_option)]
 
 pub use Piece::*;
 pub use Position::*;
@@ -644,11 +645,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        if found {
-            Some(cur)
-        } else {
-            None
-        }
+        found.then_some(cur)
     }
 }
 

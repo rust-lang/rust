@@ -8,6 +8,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(in_band_lifetimes)]
 #![feature(inner_deref)]
 #![feature(slice_patterns)]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -27,7 +28,6 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(associated_type_bounds)]
 #![feature(range_is_empty)]
 #![feature(stmt_expr_attributes)]
-#![feature(bool_to_option)]
 #![feature(trait_alias)]
 #![feature(matches_macro)]
 

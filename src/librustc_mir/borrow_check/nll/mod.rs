@@ -173,11 +173,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>>>,
     Option<ClosureRegionRequirements<'tcx>>,
 ) {
-    let mut all_facts = if AllFacts::enabled(infcx.tcx) {
-        Some(AllFacts::default())
-    } else {
-        None
-    };
+    let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
 
     let universal_regions = Rc::new(universal_regions);
 

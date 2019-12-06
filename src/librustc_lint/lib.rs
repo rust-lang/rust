@@ -12,6 +12,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![cfg_attr(test, feature(test))]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(nll)]

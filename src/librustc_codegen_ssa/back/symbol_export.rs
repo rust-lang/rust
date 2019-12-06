@@ -85,11 +85,7 @@ fn reachable_non_generics_provider(
             match tcx.hir().get(hir_id) {
                 Node::ForeignItem(..) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
-                    if tcx.is_statically_included_foreign_item(def_id) {
-                        Some(def_id)
-                    } else {
-                        None
-                    }
+                    tcx.is_statically_included_foreign_item(def_id).then_some(def_id)
                 }
 
                 // Only consider nodes that actually have exported symbols.

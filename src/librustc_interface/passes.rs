@@ -547,13 +547,7 @@ fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool 
 }
 
 fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| {
-        if output_path.is_dir() {
-            Some(output_path.clone())
-        } else {
-            None
-        }
-    };
+    let check = |output_path: &PathBuf| output_path.is_dir().then(|| output_path.clone());
     check_output(output_paths, check)
 }
 
