@@ -44,19 +44,6 @@ impl<'a> Parser<'a> {
         self.read_atomically(move |p| cb(p).filter(|_| p.is_eof()))
     }
 
-    // Return result of first successful parser
-    fn read_or<T>(
-        &mut self,
-        parsers: &mut [Box<dyn FnMut(&mut Parser<'_>) -> Option<T> + 'static>],
-    ) -> Option<T> {
-        for pf in parsers {
-            if let Some(r) = self.read_atomically(|p: &mut Parser<'_>| pf(p)) {
-                return Some(r);
-            }
-        }
-        None
-    }
-
     // Apply 3 parsers sequentially
     fn read_seq_3<A, B, C, PA, PB, PC>(&mut self, pa: PA, pb: PB, pc: PC) -> Option<(A, B, C)>
     where
@@ -235,9 +222,8 @@ impl<'a> Parser<'a> {
     }
 
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
-        let ipv4_addr = |p: &mut Parser<'_>| p.read_ipv4_addr().map(IpAddr::V4);
-        let ipv6_addr = |p: &mut Parser<'_>| p.read_ipv6_addr().map(IpAddr::V6);
-        self.read_or(&mut [Box::new(ipv4_addr), Box::new(ipv6_addr)])
+        self.read_ipv4_addr().map(IpAddr::V4)
+            .or_else(|| self.read_ipv6_addr().map(IpAddr::V6))
     }
 
     fn read_socket_addr_v4(&mut self) -> Option<SocketAddrV4> {
@@ -268,9 +254,8 @@ impl<'a> Parser<'a> {
     }
 
     fn read_socket_addr(&mut self) -> Option<SocketAddr> {
-        let v4 = |p: &mut Parser<'_>| p.read_socket_addr_v4().map(SocketAddr::V4);
-        let v6 = |p: &mut Parser<'_>| p.read_socket_addr_v6().map(SocketAddr::V6);
-        self.read_or(&mut [Box::new(v4), Box::new(v6)])
+        self.read_socket_addr_v4().map(SocketAddr::V4)
+            .or_else(|| self.read_socket_addr_v6().map(SocketAddr::V6))
     }
 }
 
