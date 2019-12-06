@@ -12,7 +12,7 @@ LL |     if true 'b: {}
    |     |       |
    |     |       expected `{`
    |     |       help: try placing this code inside a block: `{ 'b: {} }`
-   |     this `if` statement has a condition, but no block
+   |     this `if` expression has a condition, but no block
 
 error: expected `{`, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:14:21

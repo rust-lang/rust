@@ -1412,21 +1412,18 @@ impl<'a> Parser<'a> {
         // verify that the last statement is either an implicit return (no `;`) or an explicit
         // return. This won't catch blocks with an explicit `return`, but that would be caught by
         // the dead code lint.
-        if self.eat_keyword(kw::Else) || !cond.returns() {
-            let sp = self.sess.source_map().next_point(lo);
-            let mut err =
-                self.diagnostic().struct_span_err(sp, "missing condition for `if` expression");
-            err.span_label(sp, "expected if condition here");
-            return Err(err);
-        }
-        let not_block = self.token != token::OpenDelim(token::Brace);
-        let thn = self.parse_block().map_err(|mut err| {
-            if not_block {
-                err.span_label(lo, "this `if` statement has a condition, but no block");
-            }
-            err
-        })?;
-        let mut els: Option<P<Expr>> = None;
+        let thn = if self.eat_keyword(kw::Else) || !cond.returns() {
+            self.error_missing_if_cond(lo, cond.span)
+        } else {
+            let not_block = self.token != token::OpenDelim(token::Brace);
+            self.parse_block().map_err(|mut err| {
+                if not_block {
+                    err.span_label(lo, "this `if` expression has a condition, but no block");
+                }
+                err
+            })?
+        };
+        let mut els = None;
         let mut hi = thn.span;
         if self.eat_keyword(kw::Else) {
             let elexpr = self.parse_else_expr()?;
@@ -1434,6 +1431,16 @@ impl<'a> Parser<'a> {
             els = Some(elexpr);
         }
         Ok(self.mk_expr(lo.to(hi), ExprKind::If(cond, thn, els), attrs))
+    }
+
+    fn error_missing_if_cond(&self, lo: Span, span: Span) -> P<ast::Block> {
+        let sp = self.sess.source_map().next_point(lo);
+        self.struct_span_err(sp, "missing condition for `if` expression")
+            .span_label(sp, "expected if condition here")
+            .emit();
+        let expr = self.mk_expr_err(span);
+        let stmt = self.mk_stmt(span, ast::StmtKind::Expr(expr));
+        self.mk_block(vec![stmt], BlockCheckMode::Default, span)
     }
 
     /// Parses the condition of a `if` or `while` expression.
@@ -1465,10 +1472,10 @@ impl<'a> Parser<'a> {
     /// Parses an `else { ... }` expression (`else` token already eaten).
     fn parse_else_expr(&mut self) -> PResult<'a, P<Expr>> {
         if self.eat_keyword(kw::If) {
-            return self.parse_if_expr(AttrVec::new());
+            self.parse_if_expr(AttrVec::new())
         } else {
             let blk = self.parse_block()?;
-            return Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()));
+            Ok(self.mk_expr(blk.span, ExprKind::Block(blk, None), AttrVec::new()))
         }
     }
 

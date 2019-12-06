@@ -411,7 +411,7 @@ impl<'a> Parser<'a> {
                 continue;
             };
         }
-        Ok(P(ast::Block { stmts, id: DUMMY_NODE_ID, rules: s, span: lo.to(self.prev_span) }))
+        Ok(self.mk_block(stmts, s, lo.to(self.prev_span)))
     }
 
     /// Parses a statement, including the trailing semicolon.
@@ -471,7 +471,11 @@ impl<'a> Parser<'a> {
             .emit();
     }
 
-    fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
+    pub(super) fn mk_block(&self, stmts: Vec<Stmt>, rules: BlockCheckMode, span: Span) -> P<Block> {
+        P(Block { stmts, id: DUMMY_NODE_ID, rules, span })
+    }
+
+    pub(super) fn mk_stmt(&self, span: Span, kind: StmtKind) -> Stmt {
         Stmt { id: DUMMY_NODE_ID, kind, span }
     }
 }
