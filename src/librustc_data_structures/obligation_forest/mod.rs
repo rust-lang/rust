@@ -520,6 +520,72 @@ impl<O: ForestObligation> ObligationForest<O> {
         }
     }
 
+    /// Returns a vector of obligations for `p` and all of its
+    /// ancestors, putting them into the error state in the process.
+    fn error_at(&self, mut index: usize) -> Vec<O> {
+        let mut error_stack: Vec<usize> = vec![];
+        let mut trace = vec![];
+
+        loop {
+            let node = &self.nodes[index];
+            node.state.set(NodeState::Error);
+            trace.push(node.obligation.clone());
+            if node.has_parent {
+                // The first dependent is the parent, which is treated
+                // specially.
+                error_stack.extend(node.dependents.iter().skip(1));
+                index = node.dependents[0];
+            } else {
+                // No parent; treat all dependents non-specially.
+                error_stack.extend(node.dependents.iter());
+                break;
+            }
+        }
+
+        while let Some(index) = error_stack.pop() {
+            let node = &self.nodes[index];
+            if node.state.get() != NodeState::Error {
+                node.state.set(NodeState::Error);
+                error_stack.extend(node.dependents.iter());
+            }
+        }
+
+        trace
+    }
+
+    /// Mark all `Success` nodes that depend on a pending node as still
+    /// waiting. Upon completion, any `Success` nodes that aren't still waiting
+    /// can be removed by `compress`.
+    fn mark_still_waiting_nodes(&self) {
+        for node in &self.nodes {
+            if node.state.get() == NodeState::Pending {
+                // This call site is hot.
+                self.inlined_mark_dependents_as_still_waiting(node);
+            }
+        }
+    }
+
+    // This always-inlined function is for the hot call site.
+    #[inline(always)]
+    fn inlined_mark_dependents_as_still_waiting(&self, node: &Node<O>) {
+        for &index in node.dependents.iter() {
+            let node = &self.nodes[index];
+            if let NodeState::Success(waiting) = node.state.get() {
+                if !self.is_still_waiting(waiting) {
+                    node.state.set(NodeState::Success(self.still_waiting()));
+                    // This call site is cold.
+                    self.uninlined_mark_dependents_as_still_waiting(node);
+                }
+            }
+        }
+    }
+
+    // This never-inlined function is for the cold call site.
+    #[inline(never)]
+    fn uninlined_mark_dependents_as_still_waiting(&self, node: &Node<O>) {
+        self.inlined_mark_dependents_as_still_waiting(node)
+    }
+
     /// Report cycles between all `Success` nodes that aren't still waiting.
     /// This must be called after `mark_still_waiting_nodes`.
     fn process_cycles<P>(&self, processor: &mut P)
@@ -567,72 +633,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                         );
                     }
                 }
-            }
-        }
-    }
-
-    /// Returns a vector of obligations for `p` and all of its
-    /// ancestors, putting them into the error state in the process.
-    fn error_at(&self, mut index: usize) -> Vec<O> {
-        let mut error_stack: Vec<usize> = vec![];
-        let mut trace = vec![];
-
-        loop {
-            let node = &self.nodes[index];
-            node.state.set(NodeState::Error);
-            trace.push(node.obligation.clone());
-            if node.has_parent {
-                // The first dependent is the parent, which is treated
-                // specially.
-                error_stack.extend(node.dependents.iter().skip(1));
-                index = node.dependents[0];
-            } else {
-                // No parent; treat all dependents non-specially.
-                error_stack.extend(node.dependents.iter());
-                break;
-            }
-        }
-
-        while let Some(index) = error_stack.pop() {
-            let node = &self.nodes[index];
-            if node.state.get() != NodeState::Error {
-                node.state.set(NodeState::Error);
-                error_stack.extend(node.dependents.iter());
-            }
-        }
-
-        trace
-    }
-
-    // This always-inlined function is for the hot call site.
-    #[inline(always)]
-    fn inlined_mark_dependents_as_still_waiting(&self, node: &Node<O>) {
-        for &index in node.dependents.iter() {
-            let node = &self.nodes[index];
-            if let NodeState::Success(waiting) = node.state.get() {
-                if !self.is_still_waiting(waiting) {
-                    node.state.set(NodeState::Success(self.still_waiting()));
-                    // This call site is cold.
-                    self.uninlined_mark_dependents_as_still_waiting(node);
-                }
-            }
-        }
-    }
-
-    // This never-inlined function is for the cold call site.
-    #[inline(never)]
-    fn uninlined_mark_dependents_as_still_waiting(&self, node: &Node<O>) {
-        self.inlined_mark_dependents_as_still_waiting(node)
-    }
-
-    /// Mark all `Success` nodes that depend on a pending node as still
-    /// waiting. Upon completion, any `Success` nodes that aren't still waiting
-    /// can be removed by `compress`.
-    fn mark_still_waiting_nodes(&self) {
-        for node in &self.nodes {
-            if node.state.get() == NodeState::Pending {
-                // This call site is hot.
-                self.inlined_mark_dependents_as_still_waiting(node);
             }
         }
     }
