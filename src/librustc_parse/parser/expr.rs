@@ -1423,14 +1423,8 @@ impl<'a> Parser<'a> {
                 err
             })?
         };
-        let mut els = None;
-        let mut hi = thn.span;
-        if self.eat_keyword(kw::Else) {
-            let elexpr = self.parse_else_expr()?;
-            hi = elexpr.span;
-            els = Some(elexpr);
-        }
-        Ok(self.mk_expr(lo.to(hi), ExprKind::If(cond, thn, els), attrs))
+        let els = if self.eat_keyword(kw::Else) { Some(self.parse_else_expr()?) } else { None };
+        Ok(self.mk_expr(lo.to(self.prev_span), ExprKind::If(cond, thn, els), attrs))
     }
 
     fn error_missing_if_cond(&self, lo: Span, span: Span) -> P<ast::Block> {
