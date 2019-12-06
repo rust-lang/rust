@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "compiler-builtins", compiler_builtins)]
 #![feature(abi_unadjusted)]
 #![feature(asm)]
+#![feature(global_asm)]
 #![feature(cfg_target_has_atomic)]
 #![feature(compiler_builtins)]
 #![feature(core_intrinsics)]
