@@ -496,7 +496,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LateResolutionVisitor<'a, '_> {
                 GenericParamKind::Lifetime { .. } => None,
                 GenericParamKind::Type { ref default, .. } => {
                     found_default |= default.is_some();
-                    found_default.to_option((Ident::with_dummy_span(param.ident.name), Res::Err))
+                    found_default.then_some((Ident::with_dummy_span(param.ident.name), Res::Err))
                 }
             }));
 

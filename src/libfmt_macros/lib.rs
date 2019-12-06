@@ -645,7 +645,7 @@ impl<'a> Parser<'a> {
                 break;
             }
         }
-        found.to_option(cur)
+        found.then_some(cur)
     }
 }
 

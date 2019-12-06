@@ -75,7 +75,7 @@ macro_rules! configure {
 impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
-        self.in_cfg(node.attrs()).to_option(node)
+        self.in_cfg(node.attrs()).then_some(node)
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes

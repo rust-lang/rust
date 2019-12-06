@@ -117,7 +117,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn dep_graph_future(&self) -> Result<&Query<Option<DepGraphFuture>>> {
         self.dep_graph_future.compute(|| {
-            Ok(self.session().opts.build_dep_graph().to_option_with(|| {
+            Ok(self.session().opts.build_dep_graph().then(|| {
                 rustc_incremental::load_dep_graph(self.session())
             }))
         })

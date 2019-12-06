@@ -21,7 +21,7 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgAbi<'a, Ty>)
             RegKind::Vector => size.bits() == 64 || size.bits() == 128
         };
 
-        valid_unit.to_option(Uniform { unit, total: size })
+        valid_unit.then_some(Uniform { unit, total: size })
     })
 }
 

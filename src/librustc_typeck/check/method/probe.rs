@@ -1105,7 +1105,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref = Some(mutbl);
-                pick.unsize = step.unsize.to_option(self_ty);
+                pick.unsize = step.unsize.then_some(self_ty);
                 pick
             })
         })

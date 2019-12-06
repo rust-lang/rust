@@ -211,7 +211,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 (r, p)
             );
             let p_ty = p.to_ty(tcx);
-            compare_ty(p_ty).to_option(ty::OutlivesPredicate(p_ty, r))
+            compare_ty(p_ty).then_some(ty::OutlivesPredicate(p_ty, r))
         });
 
         param_bounds

@@ -563,7 +563,7 @@ fn run_test_in_process(
         None
     };
 
-    let start = report_time.to_option(Instant::now());
+    let start = report_time.then_some(Instant::now());
     let result = catch_unwind(AssertUnwindSafe(testfn));
     let exec_time = start.map(|start| {
         let duration = start.elapsed();
@@ -594,7 +594,7 @@ fn spawn_test_subprocess(
         let args = env::args().collect::<Vec<_>>();
         let current_exe = &args[0];
 
-        let start = report_time.to_option(Instant::now());
+        let start = report_time.then_some(Instant::now());
         let output = match Command::new(current_exe)
             .env(SECONDARY_TEST_INVOKER_VAR, desc.name.as_slice())
             .output() {

@@ -1491,7 +1491,7 @@ impl ExplicitOutlivesRequirements {
             match pred {
                 ty::Predicate::TypeOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
-                    outlives.0.is_param(index).to_option(outlives.1)
+                    outlives.0.is_param(index).then_some(outlives.1)
                 }
                 _ => None
             }
@@ -1550,7 +1550,7 @@ impl ExplicitOutlivesRequirements {
                             }),
                         _ => false,
                     };
-                    is_inferred.to_option((i, bound.span()))
+                    is_inferred.then_some((i, bound.span()))
                 } else {
                     None
                 }

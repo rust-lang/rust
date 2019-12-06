@@ -107,7 +107,7 @@ const STACK_SIZE: usize = 16 * 1024 * 1024;
 fn get_stack_size() -> Option<usize> {
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
-    env::var_os("RUST_MIN_STACK").is_none().to_option(STACK_SIZE)
+    env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
 struct Sink(Arc<Mutex<Vec<u8>>>);
@@ -281,7 +281,7 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
             } else {
                 "rustc"
             });
-            candidate.exists().to_option(candidate)
+            candidate.exists().then_some(candidate)
         })
         .next()
 }

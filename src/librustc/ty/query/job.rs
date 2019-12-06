@@ -303,7 +303,7 @@ fn connected_to_root<'tcx>(
         return true;
     }
 
-    visit_waiters(query, |_, successor| connected_to_root(successor, visited).to_option(None))
+    visit_waiters(query, |_, successor| connected_to_root(successor, visited).then_some(None))
         .is_some()
 }
 

@@ -2784,7 +2784,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         };
 
-        is_associated_item.to_option_with(|| self.associated_item(def_id))
+        is_associated_item.then(|| self.associated_item(def_id))
     }
 
     fn associated_item_from_trait_item_ref(self,
@@ -3249,7 +3249,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ParamEnv<'_> {
     let unnormalized_env = ty::ParamEnv::new(
         tcx.intern_predicates(&predicates),
         traits::Reveal::UserFacing,
-        tcx.sess.opts.debugging_opts.chalk.to_option(def_id),
+        tcx.sess.opts.debugging_opts.chalk.then_some(def_id),
     );
 
     let body_id = tcx.hir().as_local_hir_id(def_id).map_or(hir::DUMMY_HIR_ID, |id| {

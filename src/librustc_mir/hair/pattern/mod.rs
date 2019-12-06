@@ -1154,7 +1154,7 @@ pub fn compare_const_vals<'tcx>(
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
 
-    let from_bool = |v: bool| v.to_option(Ordering::Equal);
+    let from_bool = |v: bool| v.then_some(Ordering::Equal);
 
     let fallback = || from_bool(a == b);
 

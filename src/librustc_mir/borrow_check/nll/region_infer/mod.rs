@@ -493,7 +493,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // functions below, which will trigger them to report errors
         // eagerly.
         let mut outlives_requirements =
-            infcx.tcx.is_closure(mir_def_id).to_option_with(|| vec![]);
+            infcx.tcx.is_closure(mir_def_id).then(|| vec![]);
 
         self.check_type_tests(
             infcx,

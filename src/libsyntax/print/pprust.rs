@@ -317,7 +317,7 @@ pub fn token_to_string(token: &Token) -> String {
 }
 
 fn token_to_string_ext(token: &Token, convert_dollar_crate: bool) -> String {
-    let convert_dollar_crate = convert_dollar_crate.to_option(token.span);
+    let convert_dollar_crate = convert_dollar_crate.then_some(token.span);
     token_kind_to_string_ext(&token.kind, convert_dollar_crate)
 }
 

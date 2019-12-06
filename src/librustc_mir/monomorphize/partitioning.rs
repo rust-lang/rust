@@ -761,7 +761,7 @@ fn compute_codegen_unit_name(
             .iter()
             .map(|part| part.data.as_symbol());
 
-        let volatile_suffix = volatile.to_option("volatile");
+        let volatile_suffix = volatile.then_some("volatile");
 
         name_builder.build_cgu_name(def_path.krate, components, volatile_suffix)
     }).clone()
