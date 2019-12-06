@@ -115,11 +115,11 @@ IMAGE_BASE:
 .type elf_entry,function
 elf_entry:
 /* print error message */
-    movq $1,%rax                     /* write() syscall        */
-    movq $2,%rdi                     /* write to stderr (fd 2) */
+    movq $2,%rdi                      /* write to stderr (fd 2) */
     lea .Lelf_entry_error_msg(%rip),%rsi
     movq $.Lelf_entry_error_msg_end-.Lelf_entry_error_msg,%rdx
 .Lelf_entry_call:
+    movq $1,%rax                      /* write() syscall        */
     syscall
     test %rax,%rax
     jle .Lelf_exit                    /* exit on error          */
