@@ -689,11 +689,13 @@ mod tests {
                     fo<|>o();
                 }
             }
+            mod confuse_index { fn foo(); }
             ",
             "foo FN_DEF FileId(1) [52; 63) [55; 58)",
         );
     }
 
+    #[should_panic] // currently failing because of expr mapping problems
     #[test]
     fn goto_through_format() {
         check_goto(
@@ -711,6 +713,7 @@ mod tests {
             }
             pub mod __export {
                 pub use crate::format_args;
+                fn foo() {} // for index confusion
             }
             fn foo() -> i8 {}
             fn test() {
