@@ -53,7 +53,7 @@ pub struct Layout {
 
 impl Layout {
     /// Constructs a `Layout` from a given `size` and `align`,
-    /// or returns `LayoutErr` if either of the following conditions
+    /// or returns `LayoutErr` if any of the following conditions
     /// are not met:
     ///
     /// * `align` must not be zero,
