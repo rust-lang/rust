@@ -451,9 +451,8 @@ impl<O: ForestObligation> ObligationForest<O> {
                 index += 1;
                 continue;
             }
-            let result = processor.process_obligation(&mut node.obligation);
 
-            match result {
+            match processor.process_obligation(&mut node.obligation) {
                 ProcessResult::Unchanged => {
                     // No change in state.
                 }
