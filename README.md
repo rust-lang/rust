@@ -39,10 +39,9 @@ program, and cannot run all programs:
   addresses or other non-deterministic data, try running Miri with different
   values for `-Zmiri-seed` to test different executions.
 * Miri runs the program as a platform-independent interpreter, so the program
-  has no access to any platform-specific APIs or FFI. A few APIs have been
+  has no access to most platform-specific APIs or FFI. A few APIs have been
   implemented (such as printing to stdout) but most have not: for example, Miri
-  currently does not support concurrency, or SIMD, or networking, or file system
-  access.
+  currently does not support concurrency, or SIMD, or networking.
 
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
@@ -78,9 +77,7 @@ dependencies.  It will ask you for confirmation before installing anything.
 You can pass arguments to Miri after the first `--`, and pass arguments to the
 interpreted program or test suite after the second `--`.  For example, `cargo
 miri run -- -Zmiri-disable-validation` runs the program without validation of
-basic type invariants and references.  `cargo miri test -- -- -Zunstable-options
---exclude-should-panic` skips `#[should_panic]` tests, which is a good idea
-because Miri does not support unwinding or catching panics.
+basic type invariants and references.
 
 When running code via `cargo miri`, the `miri` config flag is set.  You can
 use this to exclude test cases that will fail under Miri because they do things
@@ -90,8 +87,9 @@ Miri does not support:
 #[cfg(not(miri))]
 #[test]
 fn does_not_work_on_miri() {
-    let x = 0u8;
-    assert!(&x as *const _ as usize % 4 < 4);
+    std::thread::spawn(|| println!("Hello Thread!"))
+        .join()
+        .unwrap();
 }
 ```
 
@@ -111,7 +109,7 @@ rustup default "$MIRI_NIGHTLY"
 rustup component add miri
 cargo miri setup
 
-cargo miri test -- -- -Zunstable-options --exclude-should-panic
+cargo miri test
 ```
 
 We use `cargo miri setup` to avoid getting interactive questions about the extra
