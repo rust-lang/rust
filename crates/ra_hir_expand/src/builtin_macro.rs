@@ -207,12 +207,34 @@ fn compile_error_expand(
 fn format_args_expand(
     _db: &dyn AstDatabase,
     _id: MacroCallId,
-    _tt: &tt::Subtree,
+    tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    // FIXME this is just a stub to make format macros type-check without mismatches
-    // We should make this at least insert the arguments, so that go to def etc. work within format macros
+    // We expand `format_args!("", arg1, arg2)` to
+    // `std::fmt::Arguments::new_v1(&[], &[&arg1, &arg2])`,
+    // which is still not really correct, but close enough for now
+    let mut args = Vec::new();
+    let mut current = Vec::new();
+    for tt in tt.token_trees.iter().cloned() {
+        match tt {
+            tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => {
+                args.push(tt::Subtree { delimiter: tt::Delimiter::None, token_trees: current });
+                current = Vec::new();
+            }
+            _ => {
+                current.push(tt);
+            }
+        }
+    }
+    if !current.is_empty() {
+        args.push(tt::Subtree { delimiter: tt::Delimiter::None, token_trees: current });
+    }
+    if args.is_empty() {
+        return Err(mbe::ExpandError::NoMatchingRule);
+    }
+    let _format_string = args.remove(0);
+    let arg_tts = args.into_iter().flat_map(|arg| (quote! { & #arg , }).token_trees);
     let expanded = quote! {
-        std::fmt::Arguments::new_v1(&[], &[])
+        std::fmt::Arguments::new_v1(&[], &[##arg_tts])
     };
     Ok(expanded)
 }
@@ -323,5 +345,22 @@ mod tests {
         );
 
         assert_eq!(expanded, r#"loop{"error!"}"#);
+    }
+
+    #[test]
+    fn test_format_args_expand() {
+        let expanded = expand_builtin_macro(
+            r#"
+        #[rustc_builtin_macro]
+        macro_rules! format_args {
+            ($fmt:expr) => ({ /* compiler built-in */ });
+            ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+        }
+        format_args!("{} {:?}", arg1(a, b, c), arg2);
+"#,
+            BuiltinFnLikeExpander::FormatArgs,
+        );
+
+        assert_eq!(expanded, r#"std::fmt::Arguments::new_v1(&[] ,&[&arg1(a,b,c),&arg2,])"#);
     }
 }
