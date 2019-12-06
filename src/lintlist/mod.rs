@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 338] = [
+pub const ALL_LINTS: [Lint; 339] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1126,6 +1126,13 @@ pub const ALL_LINTS: [Lint; 338] = [
         desc: "detects missing documentation for public and private members",
         deprecation: None,
         module: "missing_doc",
+    },
+    Lint {
+        name: "missing_errors_doc",
+        group: "pedantic",
+        desc: "`pub fn` returns `Result` without `# Errors` in doc comment",
+        deprecation: None,
+        module: "doc",
     },
     Lint {
         name: "missing_inline_in_public_items",
