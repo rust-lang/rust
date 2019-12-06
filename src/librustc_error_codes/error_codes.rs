@@ -347,6 +347,7 @@ E0622: include_str!("./error_codes/E0622.md"),
 E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
 E0626: include_str!("./error_codes/E0626.md"),
+E0631: include_str!("./error_codes/E0631.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0635: include_str!("./error_codes/E0635.md"),
 E0636: include_str!("./error_codes/E0636.md"),
@@ -580,7 +581,6 @@ E0745: include_str!("./error_codes/E0745.md"),
     // rustc_const_unstable attribute must be paired with stable/unstable
     // attribute
     E0630,
-    E0631, // type mismatch in closure arguments
     E0632, // cannot provide explicit generic arguments when `impl Trait` is
            // used in argument position
     E0634, // type has conflicting packed representaton hints
