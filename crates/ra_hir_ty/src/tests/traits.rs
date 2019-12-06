@@ -1,4 +1,4 @@
-use super::{infer, type_at, type_at_pos};
+use super::{infer, infer_with_mismatches, type_at, type_at_pos};
 use crate::test_db::TestDB;
 use insta::assert_snapshot;
 use ra_db::fixture::WithFixture;
@@ -1485,4 +1485,30 @@ fn test<T, U>() where T: Trait<U::Item>, U: Trait<T::Item> {
     );
     // this is a legitimate cycle
     assert_eq!(t, "{unknown}");
+}
+
+#[test]
+fn unify_impl_trait() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+trait Trait<T> {}
+
+fn foo(x: impl Trait<u32>) { loop {} }
+fn bar<T>(x: impl Trait<T>) -> T { loop {} }
+
+struct S<T>(T);
+impl<T> Trait<T> for S<T> {}
+
+fn default<T>() -> T { loop {} }
+
+fn test() -> impl Trait<i32> {
+    let s1 = S(default());
+    foo(s1);
+    let x: i32 = bar(S(default()));
+    S(default())
+}
+"#, true),
+        @r###"
+    "###
+    );
 }
