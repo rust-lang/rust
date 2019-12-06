@@ -328,10 +328,12 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
         //Proving that none of the uses (or uses' uses) are used in control flow allows us to safely not do this load
         
         if (isa<BranchInst>(use) || isa<SwitchInst>(use)) {
+            llvm::errs() << " had to use in reverse since used in branch/switch " << *inst << " use: " << *use << "\n";
             return seen[inst] = true;
         }
 
         if (is_value_needed_in_reverse(gutils, user, topLevel, seen)) {
+            llvm::errs() << " had to use in reverse since used in " << *inst << " use: " << *use << "\n";
             return seen[inst] = true;
         }
     }
@@ -346,6 +348,7 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
         bool unknown = true;
         for (auto zu : inst->users()) {
             if (isa<LoadInst>(zu) && is_value_needed_in_reverse(gutils, inst, topLevel, seen)) {
+                llvm::errs() << " had to use in reverse since load use " << *zu << " of " << *inst << "\n";
                 return seen[inst] = true;
             }
             if (auto si = dyn_cast<StoreInst>(zu)) {
@@ -367,13 +370,14 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
       }
     }
     if (isa<CmpInst>(use) || isa<BranchInst>(use) || isa<CastInst>(use) || isa<PHINode>(use) || isa<ReturnInst>(use) || isa<FPExtInst>(use) ||
-        (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst)
+        (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst) || isa<InsertElementInst>(use) || isa<ExtractElementInst>(use)
         //isa<LoadInst>(use) || (isa<SelectInst>(use) && cast<SelectInst>(use)->getCondition() != inst) //TODO remove load?
         //|| isa<SwitchInst>(use) || isa<ExtractElement>(use) || isa<InsertElementInst>(use) || isa<ShuffleVectorInst>(use) ||
         //isa<ExtractValueInst>(use) || isa<AllocaInst>(use)
         /*|| isa<StoreInst>(use)*/){
       continue;
     }
+    llvm::errs() << " had to use in reverse since had " << *inst << "\n";
     return seen[inst] = true;
   }
   return false;
@@ -384,14 +388,11 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, AugmentedReturn> cachedfunctions;
   static std::map<std::tuple<Function*,std::set<unsigned>/*constant_args*/, std::set<unsigned>/*uncacheable_args*/, bool/*differentialReturn*/, bool/*returnUsed*/>, bool> cachedfinished;
   auto tup = std::make_tuple(todiff, std::set<unsigned>(constant_args.begin(), constant_args.end()), std::set<unsigned>(_uncacheable_args.begin(), _uncacheable_args.end()), differentialReturn, returnUsed);
-  llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << "\n";
+  //llvm::errs() << "augmenting function " << todiff->getName() << " constant args " << to_string(constant_args) << " uncacheable_args: " << to_string(_uncacheable_args) << " differet" << differentialReturn << " returnUsed: " << returnUsed << "\n";
   auto found = cachedfunctions.find(tup);
   if (found != cachedfunctions.end()) {
     return found->second;
   }
-
-  //if (differentialReturn) assert(returnUsed);
-
 
     if (constant_args.size() == 0 && hasMetadata(todiff, "enzyme_augment")) {
       auto md = todiff->getMetadata("enzyme_augment");
@@ -465,6 +466,16 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
       compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_args);
 
   std::map<Instruction*, bool> can_modref_map = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_args);
+  for (auto &iter : can_modref_map) {
+      if (iter.second) {
+        //iter.first->getParent()->getParent()->dump();
+        bool is_needed = is_value_needed_in_reverse(gutils, iter.first, /*toplevel*/false);
+        iter.second = is_needed;
+        llvm::errs() << "isneeded: " << is_needed << " augmented can_modref_map: " << *iter.first << " fn: " << gutils->oldFunc->getName() << "\n";
+      } else {
+        llvm::errs() << "augmented can_modref_map: " << *iter.first << "\n";
+      }
+  }
   gutils->can_modref_map = &can_modref_map;
 
   // Allow forcing cache reads to be on or off using flags.
@@ -507,11 +518,6 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
         auto newri = ib.CreateRet(rt);
         ib.SetInsertPoint(newri);
         
-        if (oldval) 
-        llvm::errs() << " newri(" << newri << "): " << *newri << " ri: " << *ri << " oldval: " << *oldval << "\n"; 
-        else
-        llvm::errs() << " newri(" << newri << "): " << *newri << " ri: " << *ri << " oldval:null\n"; 
-
         //Only get the inverted pointer if necessary
         if (differentialReturn && oldval && !oldval->getType()->isFPOrFPVectorTy()) {
             // We need to still get even if not a constant value so the other end can handle all returns with a reasonable value 
@@ -709,6 +715,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
               SmallVector<Value*, 8> args;
               SmallVector<DIFFE_TYPE, 8> argsInverted;
               bool modifyPrimal = !called->hasFnAttribute(Attribute::ReadNone);
+              if (modifyPrimal) {
+                 //llvm::errs() << "primal modified " << called->getName() << " modified via reading from memory" << "\n";
+              }
               IRBuilder<> BuilderZ(op);
               BuilderZ.setFastMathFlags(getFast());
 
@@ -1347,7 +1356,7 @@ std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>> getDefaultFunctionTypeForGr
     return std::pair<SmallVector<Type*,4>,SmallVector<Type*,4>>(args, outs);
 }
 
-void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, AAResults & global_AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::set<unsigned> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused) {
+void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::reverse_iterator &E, IRBuilder <>& Builder2, CallInst* op, DiffeGradientUtils* const gutils, TargetLibraryInfo &TLI, AAResults &AA, AAResults & global_AA, const bool topLevel, const std::map<ReturnInst*,StoreInst*> &replacedReturns, AllocaInst* dretAlloca, const std::set<unsigned> uncacheable_args, std::function<unsigned(Instruction*, std::string)> getIndex, const bool metaretused, const AugmentedReturn* subdata) {
   Function *called = op->getCalledFunction();
 
   if (auto castinst = dyn_cast<ConstantExpr>(op->getCalledValue())) {
@@ -1490,6 +1499,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool foreignFunction = false;
 
   if (called && !called->hasFnAttribute(Attribute::ReadNone)) {
+    //llvm::errs() << "augmented modified " << called->getName() << " modified via readnone" << "\n";
     modifyPrimal = true;
   }
 
@@ -1531,7 +1541,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
                 //TODO this check should consider whether this pointer has allocation/etc modifications and so on
       if (called && ! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
-                    //llvm::errs() << "augmented modified " << called->getName() << " modified via arg " << i << "\n";
+        //llvm::errs() << "augmented modified " << called->getName() << " modified via arg " << i << "\n";
         modifyPrimal = true;
       }
 
@@ -1781,11 +1791,15 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool constval = gutils->isConstantValue(op);
 
   //TODO consider what to do if called == nullptr for augmentation
-  llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> sub_index_map;
+  //llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> sub_index_map;
+  
   if (modifyPrimal && called) {
     bool subdifferentialreturn = (!gutils->isConstantValue(op)) && augmentedsubdifferet;
-    const AugmentedReturn& fnandtapetype = CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
-    sub_index_map = fnandtapetype.tapeIndices;
+    if (topLevel) 
+        subdata = &CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
+    assert(subdata);
+    const AugmentedReturn& fnandtapetype = *subdata;
+    //sub_index_map = fnandtapetype.tapeIndices;
     
     //llvm::errs() << "seeing sub_index_map of " << sub_index_map->size() << " in ap " << cast<Function>(called)->getName() << "\n";
     if (topLevel) {
@@ -1898,7 +1912,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   bool subdretptr = (!gutils->isConstantValue(op)) && ( op->getType()->isPointerTy() || op->getType()->isIntegerTy()) && replaceFunction;
   //llvm::errs() << "subdifferet:" << subdiffereturn << " " << *op << "\n";
   if (called) {
-    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/augmentedsubretused, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args, sub_index_map);//, LI, DT);
+    newcalled = CreatePrimalAndGradient(cast<Function>(called), subconstant_args, TLI, global_AA, /*returnValue*/augmentedsubretused, /*subdiffereturn*/subdiffereturn, /*subdretptr*/subdretptr, /*topLevel*/replaceFunction, tape ? tape->getType() : nullptr, uncacheable_args, subdata);//, LI, DT);
   } else {
     newcalled = gutils->invertPointerM(op->getCalledValue(), Builder2);
     auto ft = cast<FunctionType>(cast<PointerType>(op->getCalledValue()->getType())->getElementType());
@@ -2054,7 +2068,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
   }
 }
 
-Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &global_AA, bool returnUsed, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, std::set<unsigned> _uncacheable_args, llvm::Optional<std::map<std::pair<Instruction*, std::string>, unsigned>> index_map) {
+Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& constant_args, TargetLibraryInfo &TLI, AAResults &global_AA, bool returnUsed, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, std::set<unsigned> _uncacheable_args, const AugmentedReturn* augmenteddata) {
   if (differentialReturn) {
       if(!todiff->getReturnType()->isFPOrFPVectorTy()) {
          llvm::errs() << *todiff << "\n";
@@ -2169,7 +2183,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
   gutils->forceAugmentedReturns();
   
   std::map<std::pair<Instruction*,std::string>,unsigned> mapping;
-  if (index_map) mapping = *index_map;
+  if (augmenteddata) mapping = augmenteddata->tapeIndices;
   auto getIndex = [&](Instruction* I, std::string u)-> unsigned {
     return gutils->getIndex( std::make_pair(I, u), mapping);
   };
@@ -2185,6 +2199,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (iter.second) {
         bool is_needed = is_value_needed_in_reverse(gutils, iter.first, topLevel);
         iter.second = is_needed;
+        llvm::errs() << "isneeded: " << is_needed << " gradient can_modref_map: " << *iter.first << " fn: " << gutils->oldFunc->getName() << "\n";
+      } else {
+        llvm::errs() << "gradient can_modref_map: " << *iter.first << "\n";
       }
     }
 
@@ -2658,7 +2675,17 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (dif1) addToDiffe(op->getOperand(1), dif1);
       continue;
 realcall:
-      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, global_AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map[op], getIndex, returnUsed);
+      const AugmentedReturn* subdata = nullptr;
+      //llvm::errs() << " consdering op: " << *op << " toplevel" << topLevel << " ad: " << augmenteddata << "\n";
+      if (!topLevel) {
+        if (augmenteddata) {
+            auto fd = augmenteddata->subaugmentations.find(cast<CallInst>(gutils->getOriginal(op)));
+            if (fd != augmenteddata->subaugmentations.end()) {
+                subdata = fd->second;
+            }
+        }
+      }
+      handleGradientCallInst(I, E, Builder2, op, gutils, TLI, global_AA, global_AA, topLevel, replacedReturns, dretAlloca, uncacheable_args_map[op], getIndex, returnUsed, subdata); //topLevel ? augmenteddata->subaugmentations[cast<CallInst>(gutils->getOriginal(op))] : nullptr);
     } else if(auto op = dyn_cast_or_null<SelectInst>(inst)) {
       if (gutils->isConstantValue(inst)) continue;
       if (op->getType()->isPointerTy()) continue;
