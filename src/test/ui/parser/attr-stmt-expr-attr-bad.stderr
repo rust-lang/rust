@@ -380,11 +380,35 @@ error: expected one of `=>`, `if`, or `|`, found `#`
 LL | #[cfg(FALSE)] fn e() { match 0 { 0..=#[attr] FOO => () } }
    |                                      ^ expected one of `=>`, `if`, or `|`
 
+error: unexpected token: `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:104:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
+   |                                  ^
+
+error: expected one of `.`, `;`, `?`, or an operator, found `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:104:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
+   |                                  ^ expected one of `.`, `;`, `?`, or an operator
+
+error: unexpected token: `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:106:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
+   |                                  ^
+
+error: expected one of `.`, `;`, `?`, or an operator, found `#`
+  --> $DIR/attr-stmt-expr-attr-bad.rs:106:34
+   |
+LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
+   |                                  ^ expected one of `.`, `;`, `?`, or an operator
+
 error: expected statement after outer attribute
-  --> $DIR/attr-stmt-expr-attr-bad.rs:105:44
+  --> $DIR/attr-stmt-expr-attr-bad.rs:110:44
    |
 LL | #[cfg(FALSE)] fn e() { { fn foo() { #[attr]; } } }
    |                                            ^
 
-error: aborting due to 52 previous errors
+error: aborting due to 56 previous errors
 

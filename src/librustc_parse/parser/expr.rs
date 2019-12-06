@@ -715,11 +715,7 @@ impl<'a> Parser<'a> {
                             err?
                         }
                     }
-                    _ => {
-                        // FIXME Could factor this out into non_fatal_unexpected or something.
-                        let actual = self.this_token_to_string();
-                        self.span_err(self.token.span, &format!("unexpected token: `{}`", actual));
-                    }
+                    _ => self.error_unexpected_after_dot(),
                 }
                 continue;
             }
@@ -733,6 +729,12 @@ impl<'a> Parser<'a> {
             }
         }
         return Ok(e);
+    }
+
+    fn error_unexpected_after_dot(&self) {
+        // FIXME Could factor this out into non_fatal_unexpected or something.
+        let actual = self.this_token_to_string();
+        self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
     }
 
     fn recover_field_access_by_float_lit(

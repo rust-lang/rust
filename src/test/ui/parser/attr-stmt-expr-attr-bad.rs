@@ -101,6 +101,13 @@ fn main() {}
 //~^ ERROR `X..=` range patterns are not supported
 //~| ERROR expected one of `=>`, `if`, or `|`, found `#`
 
+#[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
+//~^ ERROR unexpected token: `#`
+//~| ERROR expected one of `.`
+#[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
+//~^ ERROR unexpected token: `#`
+//~| ERROR expected one of `.`
+
 // make sure we don't catch this bug again...
 #[cfg(FALSE)] fn e() { { fn foo() { #[attr]; } } }
 //~^ ERROR expected statement after outer attribute
