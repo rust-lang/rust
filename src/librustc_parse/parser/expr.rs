@@ -694,7 +694,6 @@ impl<'a> Parser<'a> {
 
     fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         let mut e = e0;
-        let mut hi;
         loop {
             // expr?
             while self.eat(&token::Question) {
@@ -766,21 +765,19 @@ impl<'a> Parser<'a> {
                     });
                     e = self.recover_seq_parse_error(token::Paren, lo, seq);
                 }
-
-                // expr[...]
-                // Could be either an index expression or a slicing expression.
-                token::OpenDelim(token::Bracket) => {
-                    self.bump();
-                    let ix = self.parse_expr()?;
-                    hi = self.token.span;
-                    self.expect(&token::CloseDelim(token::Bracket))?;
-                    let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo.to(hi), index, AttrVec::new())
-                }
+                token::OpenDelim(token::Bracket) => e = self.parse_index_expr(lo, e)?,
                 _ => return Ok(e),
             }
         }
         return Ok(e);
+    }
+
+    /// Parse an indexing expression `expr[...]`.
+    fn parse_index_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
+        self.bump(); // `[`
+        let index = self.parse_expr()?;
+        self.expect(&token::CloseDelim(token::Bracket))?;
+        Ok(self.mk_expr(lo.to(self.prev_span), self.mk_index(base, index), AttrVec::new()))
     }
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
@@ -792,25 +789,22 @@ impl<'a> Parser<'a> {
         let segment = self.parse_path_segment(PathStyle::Expr)?;
         self.check_trailing_angle_brackets(&segment, token::OpenDelim(token::Paren));
 
-        Ok(match self.token.kind {
-            token::OpenDelim(token::Paren) => {
-                // Method call `expr.f()`
-                let mut args = self.parse_paren_expr_seq()?;
-                args.insert(0, self_arg);
+        if self.check(&token::OpenDelim(token::Paren)) {
+            // Method call `expr.f()`
+            let mut args = self.parse_paren_expr_seq()?;
+            args.insert(0, self_arg);
 
-                let span = lo.to(self.prev_span);
-                self.mk_expr(span, ExprKind::MethodCall(segment, args), AttrVec::new())
+            let span = lo.to(self.prev_span);
+            Ok(self.mk_expr(span, ExprKind::MethodCall(segment, args), AttrVec::new()))
+        } else {
+            // Field access `expr.f`
+            if let Some(args) = segment.args {
+                self.span_err(args.span(), "field expressions may not have generic arguments");
             }
-            _ => {
-                // Field access `expr.f`
-                if let Some(args) = segment.args {
-                    self.span_err(args.span(), "field expressions may not have generic arguments");
-                }
 
-                let span = lo.to(self.prev_span);
-                self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), AttrVec::new())
-            }
-        })
+            let span = lo.to(self.prev_span);
+            Ok(self.mk_expr(span, ExprKind::Field(self_arg, segment.ident), AttrVec::new()))
+        }
     }
 
     /// At the bottom (top?) of the precedence hierarchy,
