@@ -32,7 +32,7 @@ There are lots of them; they emit different types of "errors", such as
 warnings, errors, fatal errors, suggestions, etc.
 
 [parsesses]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.ParseSess.html
-[session]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html
+[session]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
 
 In general, there are two class of such methods: ones that emit an error
 directly and ones that allow finer control over what to emit. For example,
@@ -45,8 +45,8 @@ before emitting it by calling the [`emit`][emit] method. (Failing to either
 emit or [cancel][cancel] a `DiagnosticBuilder` will result in an ICE.) See the
 [docs][diagbuild] for more info on what you can do.
 
-[spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html#method.span_err
-[strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html#method.struct_span_err
+[spanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.span_err
+[strspanerr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.struct_span_err
 [diagbuild]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic_builder/struct.DiagnosticBuilder.html
 [emit]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/diagnostic_builder/struct.DiagnosticBuilder.html#method.emit
 [cancel]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_errors/struct.Diagnostic.html#method.cancel
@@ -314,7 +314,7 @@ processed. [`Session`][sessbl] and [`ParseSess`][parsebl] both have
 `buffer_lint` methods that allow you to buffer a lint for later. The linting
 system automatically takes care of handling buffered lints later.
 
-[sessbl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html#method.buffer_lint
+[sessbl]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html#method.buffer_lint
 [parsebl]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/sess/struct.ParseSess.html#method.buffer_lint
 
 Thus, to define a lint that runs early in the compilation, one defines a lint
@@ -330,15 +330,6 @@ infrastructure is defined. That's troublesome!
 To solve this, `libsyntax` defines its own buffered lint type, which
 `ParseSess::buffer_lint` uses. After macro expansion, these buffered lints are
 then dumped into the `Session::buffered_lints` used by the rest of the compiler.
-
-Usage for buffered lints in `libsyntax` is pretty much the same as the rest of
-the compiler with one exception because we cannot import the `LintId`s for
-lints we want to emit. Instead, the [`BufferedEarlyLintId`] type is used. If you
-are defining a new lint, you will want to add an entry to this enum. Then, add
-an appropriate mapping to the body of [`Lint::from_parser_lint_id`][fplid].
-
-[`BufferedEarlyLintId`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/early_buffered_lints/enum.BufferedEarlyLintId.html
-[fplid]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/lint/struct.Lint.html#method.from_parser_lint_id
 
 ## JSON diagnostic output
 

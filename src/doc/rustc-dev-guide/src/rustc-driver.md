@@ -52,7 +52,7 @@ thread-locals, although you should rarely need to touch it.
 [`rustc_interface`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/index.html
 [`rustc_driver`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_driver/
 [`Compiler`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_interface/interface/struct.Compiler.html
-[`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/session/struct.Session.html
+[`Session`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_session/struct.Session.html
 [`TyCtxt`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty/struct.TyCtxt.html
 [`SourceMap`]: https://doc.rust-lang.org/nightly/nightly-rustc/syntax/source_map/struct.SourceMap.html
 [stupid-stats]: https://github.com/nrc/stupid-stats
