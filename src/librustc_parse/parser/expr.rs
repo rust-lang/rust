@@ -1280,17 +1280,13 @@ impl<'a> Parser<'a> {
     pub fn parse_literal_maybe_minus(&mut self) -> PResult<'a, P<Expr>> {
         maybe_whole_expr!(self);
 
-        let minus_lo = self.token.span;
-        let minus_present = self.eat(&token::BinOp(token::Minus));
         let lo = self.token.span;
-        let literal = self.parse_lit()?;
-        let hi = self.prev_span;
-        let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), AttrVec::new());
+        let minus_present = self.eat(&token::BinOp(token::Minus));
+        let lit = self.parse_lit()?;
+        let expr = self.mk_expr(lit.span, ExprKind::Lit(lit), AttrVec::new());
 
         if minus_present {
-            let minus_hi = self.prev_span;
-            let unary = self.mk_unary(UnOp::Neg, expr);
-            Ok(self.mk_expr(minus_lo.to(minus_hi), unary, AttrVec::new()))
+            Ok(self.mk_expr(lo.to(self.prev_span), self.mk_unary(UnOp::Neg, expr), AttrVec::new()))
         } else {
             Ok(expr)
         }
