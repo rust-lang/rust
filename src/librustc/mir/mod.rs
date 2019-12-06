@@ -242,7 +242,7 @@ impl<'tcx> Body<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            self.local_decls[local].is_user_variable().to_option(local)
+            self.local_decls[local].is_user_variable().then_some(local)
         })
     }
 
