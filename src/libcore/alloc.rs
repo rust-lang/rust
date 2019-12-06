@@ -459,7 +459,7 @@ pub unsafe trait GlobalAlloc {
     /// # Errors
     ///
     /// Returning a null pointer indicates that either memory is exhausted
-    /// or `layout` does not meet allocator's size or alignment constraints.
+    /// or `layout` does not meet this allocator's size or alignment constraints.
     ///
     /// Implementations are encouraged to return null on memory
     /// exhaustion rather than aborting, but this is not
