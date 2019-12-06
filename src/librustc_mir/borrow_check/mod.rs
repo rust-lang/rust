@@ -40,13 +40,11 @@ use crate::dataflow::{do_dataflow, DebugFormatted};
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
 
-use self::borrow_set::{BorrowData, BorrowSet};
 use self::flows::Flows;
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
 use self::diagnostics::AccessKind;
-use self::region_infer::RegionInferenceContext;
 
 use self::path_utils::*;
 
@@ -61,15 +59,20 @@ mod facts;
 mod invalidation;
 mod renumber;
 mod member_constraints;
+mod constraints;
+mod universal_regions;
+mod type_check;
+mod region_infer;
+mod borrow_set;
+mod place_ext;
+mod places_conflict;
+mod nll;
 
-crate mod constraints;
-crate mod universal_regions;
-crate mod type_check;
-crate mod region_infer;
-crate mod borrow_set;
-crate mod place_ext;
-crate mod places_conflict;
-crate mod nll;
+crate use region_infer::RegionInferenceContext;
+crate use borrow_set::{BorrowSet, BorrowData};
+crate use places_conflict::{places_conflict, PlaceConflictBias};
+crate use place_ext::PlaceExt;
+crate use nll::ToRegionVid;
 
 // FIXME(eddyb) perhaps move this somewhere more centrally.
 #[derive(Debug)]
