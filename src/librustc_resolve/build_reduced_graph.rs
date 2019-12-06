@@ -194,6 +194,14 @@ impl<'a> AsMut<Resolver<'a>> for BuildReducedGraphVisitor<'a, '_> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
+        self.resolve_visibility_speculative(vis, false)
+    }
+
+    fn resolve_visibility_speculative(
+        &mut self,
+        vis: &ast::Visibility,
+        speculative: bool,
+    ) -> ty::Visibility {
         let parent_scope = &self.parent_scope;
         match vis.node {
             ast::VisibilityKind::Public => ty::Visibility::Public,
@@ -241,13 +249,15 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     &segments,
                     Some(TypeNS),
                     parent_scope,
-                    true,
+                    !speculative,
                     path.span,
                     CrateLint::SimplePath(id),
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
-                        self.r.record_partial_res(id, PartialRes::new(res));
+                        if !speculative {
+                            self.r.record_partial_res(id, PartialRes::new(res));
+                        }
                         if module.is_normal() {
                             if res == Res::Err {
                                 ty::Visibility::Public
@@ -742,7 +752,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                 // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().map(|field| {
-                    let field_vis = self.resolve_visibility(&field.vis);
+                    // NOTE: The field may be an expansion placeholder, but expansion sets correct
+                    // visibilities for unnamed field placeholders specifically, so the constructor
+                    // visibility should still be determined correctly.
+                    let field_vis = self.resolve_visibility_speculative(&field.vis, true);
                     if ctor_vis.is_at_least(field_vis, &*self.r) {
                         ctor_vis = field_vis;
                     }
@@ -769,7 +782,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                 // Record field names for error reporting.
                 let field_names = vdata.fields().iter().map(|field| {
-                    self.resolve_visibility(&field.vis);
                     respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
                 }).collect();
                 let item_def_id = self.r.definitions.local_def_id(item.id);
@@ -1279,6 +1291,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         if sf.is_placeholder {
             self.visit_invoc(sf.id);
         } else {
+            self.resolve_visibility(&sf.vis);
             visit::walk_struct_field(self, sf);
         }
     }

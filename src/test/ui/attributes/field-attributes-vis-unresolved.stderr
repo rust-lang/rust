@@ -1,0 +1,22 @@
+error[E0578]: cannot determine resolution for the visibility
+  --> $DIR/field-attributes-vis-unresolved.rs:22:12
+   |
+LL |     pub(in nonexistent) u8
+   |            ^^^^^^^^^^^
+
+error[E0433]: failed to resolve: maybe a missing crate `nonexistent`?
+  --> $DIR/field-attributes-vis-unresolved.rs:17:12
+   |
+LL |     pub(in nonexistent) field: u8
+   |            ^^^^^^^^^^^ maybe a missing crate `nonexistent`?
+
+error[E0433]: failed to resolve: maybe a missing crate `nonexistent`?
+  --> $DIR/field-attributes-vis-unresolved.rs:22:12
+   |
+LL |     pub(in nonexistent) u8
+   |            ^^^^^^^^^^^ maybe a missing crate `nonexistent`?
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0433, E0578.
+For more information about an error, try `rustc --explain E0433`.
