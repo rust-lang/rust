@@ -24,26 +24,6 @@
 use back::write::{create_target_machine, create_informational_target_machine};
 use syntax_pos::symbol::Symbol;
 
-extern crate rustc_demangle;
-extern crate flate2;
-#[macro_use] extern crate bitflags;
-extern crate libc;
-#[macro_use] extern crate rustc;
-extern crate rustc_target;
-#[macro_use] extern crate rustc_data_structures;
-extern crate rustc_feature;
-extern crate rustc_index;
-extern crate rustc_incremental;
-extern crate rustc_codegen_utils;
-extern crate rustc_codegen_ssa;
-extern crate rustc_fs_util;
-
-#[macro_use] extern crate log;
-extern crate smallvec;
-extern crate syntax;
-extern crate syntax_pos;
-extern crate rustc_errors as errors;
-
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModule};
