@@ -756,20 +756,20 @@ impl<'a> Parser<'a> {
                 break;
             }
             match self.token.kind {
-                // expr(...)
-                token::OpenDelim(token::Paren) => {
-                    let seq = self.parse_paren_expr_seq().map(|es| {
-                        let nd = self.mk_call(e, es);
-                        let hi = self.prev_span;
-                        self.mk_expr(lo.to(hi), nd, AttrVec::new())
-                    });
-                    e = self.recover_seq_parse_error(token::Paren, lo, seq);
-                }
+                token::OpenDelim(token::Paren) => e = Ok(self.parse_fn_call_expr(lo, e)),
                 token::OpenDelim(token::Bracket) => e = self.parse_index_expr(lo, e)?,
                 _ => return Ok(e),
             }
         }
         return Ok(e);
+    }
+
+    /// Parse a function call expression, `expr(...)`.
+    fn parse_fn_call_expr(&mut self, lo: Span, fun: P<Expr>) -> P<Expr> {
+        let seq = self.parse_paren_expr_seq().map(|args| {
+            self.mk_expr(lo.to(self.prev_span), self.mk_call(fun, args), AttrVec::new())
+        });
+        self.recover_seq_parse_error(token::Paren, lo, seq)
     }
 
     /// Parse an indexing expression `expr[...]`.
