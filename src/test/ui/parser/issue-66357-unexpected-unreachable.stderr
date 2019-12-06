@@ -13,3 +13,4 @@ LL | fn f() { |[](* }
    |             unclosed delimiter
 
 error: aborting due to 2 previous errors
+
