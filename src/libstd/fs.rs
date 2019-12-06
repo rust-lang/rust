@@ -2339,8 +2339,10 @@ mod tests {
         let filename = &tmpdir.join("file_that_does_not_exist.txt");
         let result = File::open(filename);
 
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_os = "vxworks")))]
         error!(result, "No such file or directory");
+        #[cfg(target_os = "vxworks")]
+        error!(result, "no such file or directory");
         #[cfg(windows)]
         error!(result, 2); // ERROR_FILE_NOT_FOUND
     }
@@ -2352,8 +2354,10 @@ mod tests {
 
         let result = fs::remove_file(filename);
 
-        #[cfg(unix)]
+        #[cfg(all(unix, not(target_os = "vxworks")))]
         error!(result, "No such file or directory");
+        #[cfg(target_os = "vxworks")]
+        error!(result, "no such file or directory");
         #[cfg(windows)]
         error!(result, 2); // ERROR_FILE_NOT_FOUND
     }
@@ -2553,7 +2557,10 @@ mod tests {
 
         check!(fs::set_permissions(filename, fs::Permissions::from_mode(0o1777)));
         let metadata1 = check!(fs::metadata(filename));
+        #[cfg(all(unix, not(target_os = "vxworks")))]
         assert_eq!(mask & metadata1.permissions().mode(), 0o1777);
+        #[cfg(target_os = "vxworks")]
+        assert_eq!(mask & metadata1.permissions().mode(), 0o0777);
     }
 
     #[test]
