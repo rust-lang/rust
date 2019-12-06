@@ -38,8 +38,8 @@ impl Name {
     }
 
     /// Shortcut to create inline plain text name
-    const fn new_inline_ascii(len: usize, text: &[u8]) -> Name {
-        Name::new_text(SmolStr::new_inline_from_ascii(len, text))
+    const fn new_inline_ascii(text: &[u8]) -> Name {
+        Name::new_text(SmolStr::new_inline_from_ascii(text.len(), text))
     }
 
     /// Resolve a name from the text of token.
@@ -105,68 +105,70 @@ impl AsName for ra_db::Dependency {
 }
 
 // Primitives
-pub const ISIZE: Name = Name::new_inline_ascii(5, b"isize");
-pub const I8: Name = Name::new_inline_ascii(2, b"i8");
-pub const I16: Name = Name::new_inline_ascii(3, b"i16");
-pub const I32: Name = Name::new_inline_ascii(3, b"i32");
-pub const I64: Name = Name::new_inline_ascii(3, b"i64");
-pub const I128: Name = Name::new_inline_ascii(4, b"i128");
-pub const USIZE: Name = Name::new_inline_ascii(5, b"usize");
-pub const U8: Name = Name::new_inline_ascii(2, b"u8");
-pub const U16: Name = Name::new_inline_ascii(3, b"u16");
-pub const U32: Name = Name::new_inline_ascii(3, b"u32");
-pub const U64: Name = Name::new_inline_ascii(3, b"u64");
-pub const U128: Name = Name::new_inline_ascii(4, b"u128");
-pub const F32: Name = Name::new_inline_ascii(3, b"f32");
-pub const F64: Name = Name::new_inline_ascii(3, b"f64");
-pub const BOOL: Name = Name::new_inline_ascii(4, b"bool");
-pub const CHAR: Name = Name::new_inline_ascii(4, b"char");
-pub const STR: Name = Name::new_inline_ascii(3, b"str");
+pub const ISIZE: Name = Name::new_inline_ascii(b"isize");
+pub const I8: Name = Name::new_inline_ascii(b"i8");
+pub const I16: Name = Name::new_inline_ascii(b"i16");
+pub const I32: Name = Name::new_inline_ascii(b"i32");
+pub const I64: Name = Name::new_inline_ascii(b"i64");
+pub const I128: Name = Name::new_inline_ascii(b"i128");
+pub const USIZE: Name = Name::new_inline_ascii(b"usize");
+pub const U8: Name = Name::new_inline_ascii(b"u8");
+pub const U16: Name = Name::new_inline_ascii(b"u16");
+pub const U32: Name = Name::new_inline_ascii(b"u32");
+pub const U64: Name = Name::new_inline_ascii(b"u64");
+pub const U128: Name = Name::new_inline_ascii(b"u128");
+pub const F32: Name = Name::new_inline_ascii(b"f32");
+pub const F64: Name = Name::new_inline_ascii(b"f64");
+pub const BOOL: Name = Name::new_inline_ascii(b"bool");
+pub const CHAR: Name = Name::new_inline_ascii(b"char");
+pub const STR: Name = Name::new_inline_ascii(b"str");
 
 // Special names
-pub const SELF_PARAM: Name = Name::new_inline_ascii(4, b"self");
-pub const SELF_TYPE: Name = Name::new_inline_ascii(4, b"Self");
-pub const MACRO_RULES: Name = Name::new_inline_ascii(11, b"macro_rules");
+pub const SELF_PARAM: Name = Name::new_inline_ascii(b"self");
+pub const SELF_TYPE: Name = Name::new_inline_ascii(b"Self");
+pub const MACRO_RULES: Name = Name::new_inline_ascii(b"macro_rules");
 
 // Components of known path (value or mod name)
-pub const STD: Name = Name::new_inline_ascii(3, b"std");
-pub const ITER: Name = Name::new_inline_ascii(4, b"iter");
-pub const OPS: Name = Name::new_inline_ascii(3, b"ops");
-pub const FUTURE: Name = Name::new_inline_ascii(6, b"future");
-pub const RESULT: Name = Name::new_inline_ascii(6, b"result");
-pub const BOXED: Name = Name::new_inline_ascii(5, b"boxed");
+pub const STD: Name = Name::new_inline_ascii(b"std");
+pub const ITER: Name = Name::new_inline_ascii(b"iter");
+pub const OPS: Name = Name::new_inline_ascii(b"ops");
+pub const FUTURE: Name = Name::new_inline_ascii(b"future");
+pub const RESULT: Name = Name::new_inline_ascii(b"result");
+pub const BOXED: Name = Name::new_inline_ascii(b"boxed");
 
 // Components of known path (type name)
-pub const INTO_ITERATOR_TYPE: Name = Name::new_inline_ascii(12, b"IntoIterator");
-pub const ITEM_TYPE: Name = Name::new_inline_ascii(4, b"Item");
-pub const TRY_TYPE: Name = Name::new_inline_ascii(3, b"Try");
-pub const OK_TYPE: Name = Name::new_inline_ascii(2, b"Ok");
-pub const FUTURE_TYPE: Name = Name::new_inline_ascii(6, b"Future");
-pub const RESULT_TYPE: Name = Name::new_inline_ascii(6, b"Result");
-pub const OUTPUT_TYPE: Name = Name::new_inline_ascii(6, b"Output");
-pub const TARGET_TYPE: Name = Name::new_inline_ascii(6, b"Target");
-pub const BOX_TYPE: Name = Name::new_inline_ascii(3, b"Box");
-pub const RANGE_FROM_TYPE: Name = Name::new_inline_ascii(9, b"RangeFrom");
-pub const RANGE_FULL_TYPE: Name = Name::new_inline_ascii(9, b"RangeFull");
-pub const RANGE_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(14, b"RangeInclusive");
-pub const RANGE_TO_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(16, b"RangeToInclusive");
-pub const RANGE_TO_TYPE: Name = Name::new_inline_ascii(7, b"RangeTo");
-pub const RANGE_TYPE: Name = Name::new_inline_ascii(5, b"Range");
+pub const INTO_ITERATOR_TYPE: Name = Name::new_inline_ascii(b"IntoIterator");
+pub const ITEM_TYPE: Name = Name::new_inline_ascii(b"Item");
+pub const TRY_TYPE: Name = Name::new_inline_ascii(b"Try");
+pub const OK_TYPE: Name = Name::new_inline_ascii(b"Ok");
+pub const FUTURE_TYPE: Name = Name::new_inline_ascii(b"Future");
+pub const RESULT_TYPE: Name = Name::new_inline_ascii(b"Result");
+pub const OUTPUT_TYPE: Name = Name::new_inline_ascii(b"Output");
+pub const TARGET_TYPE: Name = Name::new_inline_ascii(b"Target");
+pub const BOX_TYPE: Name = Name::new_inline_ascii(b"Box");
+pub const RANGE_FROM_TYPE: Name = Name::new_inline_ascii(b"RangeFrom");
+pub const RANGE_FULL_TYPE: Name = Name::new_inline_ascii(b"RangeFull");
+pub const RANGE_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(b"RangeInclusive");
+pub const RANGE_TO_INCLUSIVE_TYPE: Name = Name::new_inline_ascii(b"RangeToInclusive");
+pub const RANGE_TO_TYPE: Name = Name::new_inline_ascii(b"RangeTo");
+pub const RANGE_TYPE: Name = Name::new_inline_ascii(b"Range");
 
 // Builtin Macros
-pub const FILE_MACRO: Name = Name::new_inline_ascii(4, b"file");
-pub const COLUMN_MACRO: Name = Name::new_inline_ascii(6, b"column");
-pub const COMPILE_ERROR_MACRO: Name = Name::new_inline_ascii(13, b"compile_error");
-pub const LINE_MACRO: Name = Name::new_inline_ascii(4, b"line");
-pub const STRINGIFY_MACRO: Name = Name::new_inline_ascii(9, b"stringify");
+pub const FILE_MACRO: Name = Name::new_inline_ascii(b"file");
+pub const COLUMN_MACRO: Name = Name::new_inline_ascii(b"column");
+pub const COMPILE_ERROR_MACRO: Name = Name::new_inline_ascii(b"compile_error");
+pub const LINE_MACRO: Name = Name::new_inline_ascii(b"line");
+pub const STRINGIFY_MACRO: Name = Name::new_inline_ascii(b"stringify");
+pub const FORMAT_ARGS_MACRO: Name = Name::new_inline_ascii(b"format_args");
+pub const FORMAT_ARGS_NL_MACRO: Name = Name::new_inline_ascii(b"format_args_nl");
 
 // Builtin derives
-pub const COPY_TRAIT: Name = Name::new_inline_ascii(4, b"Copy");
-pub const CLONE_TRAIT: Name = Name::new_inline_ascii(5, b"Clone");
-pub const DEFAULT_TRAIT: Name = Name::new_inline_ascii(7, b"Default");
-pub const DEBUG_TRAIT: Name = Name::new_inline_ascii(5, b"Debug");
-pub const HASH_TRAIT: Name = Name::new_inline_ascii(4, b"Hash");
-pub const ORD_TRAIT: Name = Name::new_inline_ascii(3, b"Ord");
-pub const PARTIAL_ORD_TRAIT: Name = Name::new_inline_ascii(10, b"PartialOrd");
-pub const EQ_TRAIT: Name = Name::new_inline_ascii(2, b"Eq");
-pub const PARTIAL_EQ_TRAIT: Name = Name::new_inline_ascii(9, b"PartialEq");
+pub const COPY_TRAIT: Name = Name::new_inline_ascii(b"Copy");
+pub const CLONE_TRAIT: Name = Name::new_inline_ascii(b"Clone");
+pub const DEFAULT_TRAIT: Name = Name::new_inline_ascii(b"Default");
+pub const DEBUG_TRAIT: Name = Name::new_inline_ascii(b"Debug");
+pub const HASH_TRAIT: Name = Name::new_inline_ascii(b"Hash");
+pub const ORD_TRAIT: Name = Name::new_inline_ascii(b"Ord");
+pub const PARTIAL_ORD_TRAIT: Name = Name::new_inline_ascii(b"PartialOrd");
+pub const EQ_TRAIT: Name = Name::new_inline_ascii(b"Eq");
+pub const PARTIAL_EQ_TRAIT: Name = Name::new_inline_ascii(b"PartialEq");

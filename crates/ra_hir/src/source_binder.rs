@@ -76,12 +76,13 @@ fn def_with_body_from_child_node(
     db: &impl HirDatabase,
     child: InFile<&SyntaxNode>,
 ) -> Option<DefWithBody> {
-    child.value.ancestors().find_map(|node| {
+    child.cloned().ancestors_with_macros(db).find_map(|node| {
+        let n = &node.value;
         match_ast! {
-            match node {
-                ast::FnDef(def)  => { return Function::from_source(db, child.with_value(def)).map(DefWithBody::from); },
-                ast::ConstDef(def) => { return Const::from_source(db, child.with_value(def)).map(DefWithBody::from); },
-                ast::StaticDef(def) => { return Static::from_source(db, child.with_value(def)).map(DefWithBody::from); },
+            match n {
+                ast::FnDef(def)  => { return Function::from_source(db, node.with_value(def)).map(DefWithBody::from); },
+                ast::ConstDef(def) => { return Const::from_source(db, node.with_value(def)).map(DefWithBody::from); },
+                ast::StaticDef(def) => { return Static::from_source(db, node.with_value(def)).map(DefWithBody::from); },
                 _ => { None },
             }
         }
@@ -135,6 +136,7 @@ pub struct ReferenceDescriptor {
     pub name: String,
 }
 
+#[derive(Debug)]
 pub struct Expansion {
     macro_file_kind: MacroFileKind,
     macro_call_id: MacroCallId,

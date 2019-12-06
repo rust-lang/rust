@@ -76,6 +76,17 @@ impl HirFileId {
         }
     }
 
+    /// If this is a macro call, returns the syntax node of the call.
+    pub fn call_node(self, db: &dyn db::AstDatabase) -> Option<InFile<SyntaxNode>> {
+        match self.0 {
+            HirFileIdRepr::FileId(_) => None,
+            HirFileIdRepr::MacroFile(macro_file) => {
+                let loc = db.lookup_intern_macro(macro_file.macro_call_id);
+                Some(loc.kind.node(db))
+            }
+        }
+    }
+
     /// Return expansion information if it is a macro-expansion file
     pub fn expansion_info(self, db: &dyn db::AstDatabase) -> Option<ExpansionInfo> {
         match self.0 {
@@ -173,6 +184,13 @@ impl MacroCallKind {
         match self {
             MacroCallKind::FnLike(ast_id) => ast_id.file_id,
             MacroCallKind::Attr(ast_id) => ast_id.file_id,
+        }
+    }
+
+    pub fn node(&self, db: &dyn db::AstDatabase) -> InFile<SyntaxNode> {
+        match self {
+            MacroCallKind::FnLike(ast_id) => ast_id.with_value(ast_id.to_node(db).syntax().clone()),
+            MacroCallKind::Attr(ast_id) => ast_id.with_value(ast_id.to_node(db).syntax().clone()),
         }
     }
 
@@ -281,5 +299,26 @@ impl<T> InFile<T> {
     }
     pub fn file_syntax(&self, db: &impl db::AstDatabase) -> SyntaxNode {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")
+    }
+}
+
+impl<T: Clone> InFile<&T> {
+    pub fn cloned(&self) -> InFile<T> {
+        self.with_value(self.value.clone())
+    }
+}
+
+impl InFile<SyntaxNode> {
+    pub fn ancestors_with_macros<'a>(
+        self,
+        db: &'a impl crate::db::AstDatabase,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + 'a {
+        std::iter::successors(Some(self), move |node| match node.value.parent() {
+            Some(parent) => Some(node.with_value(parent)),
+            None => {
+                let parent_node = node.file_id.call_node(db)?;
+                Some(parent_node)
+            }
+        })
     }
 }
