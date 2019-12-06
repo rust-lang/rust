@@ -483,11 +483,11 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             if let Some(ref incr_comp_session_dir) = cgcx.incr_comp_session_dir
         {
             let path = incr_comp_session_dir.join(THIN_LTO_IMPORTS_INCR_COMP_FILE_NAME);
+            // If previous imports have been deleted, or we get an IO error
+            // reading the file storing them, then we'll just use `None` as the
+            // prev_import_map, which will force the code to be recompiled.
             let prev = if path.exists() {
-                // FIXME: can/should we recover from IO error occuring here
-                // (e.g. by clearing green_modules), rather than panicking from
-                // unwrap call?
-                Some(ThinLTOImports::load_from_file(&path).unwrap())
+                ThinLTOImports::load_from_file(&path).ok()
             } else {
                 None
             };
@@ -536,11 +536,10 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
             // are doing the ThinLTO in this current compilation cycle.)
             //
             // See rust-lang/rust#59535.
-            if green_modules.contains_key(module_name) {
+            if let (Some(prev_import_map), true) =
+                (prev_import_map.as_ref(), green_modules.contains_key(module_name))
+            {
                 assert!(cgcx.incr_comp_session_dir.is_some());
-                assert!(prev_import_map.is_some());
-
-                let prev_import_map = prev_import_map.as_ref().unwrap();
 
                 let prev_imports = prev_import_map.modules_imported_by(module_name);
                 let curr_imports = curr_import_map.modules_imported_by(module_name);
