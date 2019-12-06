@@ -336,6 +336,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem) {
                 (1, vec![param(0), param(0)], param(0)),
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" =>
                 (1, vec![param(0), param(0)], param(0)),
+            "float_to_int_approx_unchecked" => (2, vec![ param(0) ], param(1)),
 
             "assume" => (0, vec![tcx.types.bool], tcx.mk_unit()),
             "likely" => (0, vec![tcx.types.bool], tcx.types.bool),

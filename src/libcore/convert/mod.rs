@@ -40,6 +40,11 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+mod num;
+
+#[unstable(feature = "convert_float_to_int", issue = "67057")]
+pub use num::FloatToInt;
+
 /// The identity function.
 ///
 /// Two things are important to note about this function:

@@ -7,9 +7,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(bootstrap))]
+use crate::convert::FloatToInt;
 #[cfg(not(test))]
 use crate::intrinsics;
-
 use crate::mem;
 use crate::num::FpCategory;
 
@@ -398,6 +399,35 @@ impl f32 {
     #[inline]
     pub fn min(self, other: f32) -> f32 {
         intrinsics::minnumf32(self, other)
+    }
+
+    /// Rounds toward zero and converts to any primitive integer type,
+    /// assuming that the value is finite and fits in that type.
+    ///
+    /// ```
+    /// #![feature(float_approx_unchecked_to)]
+    ///
+    /// let value = 4.6_f32;
+    /// let rounded = unsafe { value.approx_unchecked_to::<u16>() };
+    /// assert_eq!(rounded, 4);
+    ///
+    /// let value = -128.9_f32;
+    /// let rounded = unsafe { value.approx_unchecked_to::<i8>() };
+    /// assert_eq!(rounded, std::i8::MIN);
+    /// ```
+    ///
+    /// # Safety
+    ///
+    /// The value must:
+    ///
+    /// * Not be `NaN`
+    /// * Not be infinite
+    /// * Be representable in the return type `Int`, after truncating off its fractional part
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
+    #[inline]
+    pub unsafe fn approx_unchecked_to<Int>(self) -> Int where Self: FloatToInt<Int> {
+        FloatToInt::<Int>::approx_unchecked(self)
     }
 
     /// Raw transmutation to `u32`.
