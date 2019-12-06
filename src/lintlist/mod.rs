@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 340] = [
+pub const ALL_LINTS: [Lint; 341] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1238,6 +1238,13 @@ pub const ALL_LINTS: [Lint; 340] = [
         desc: "for loop over a range where one of the bounds is a mutable variable",
         deprecation: None,
         module: "loops",
+    },
+    Lint {
+        name: "mutable_key_type",
+        group: "correctness",
+        desc: "Check for mutable Map/Set key type",
+        deprecation: None,
+        module: "mut_key",
     },
     Lint {
         name: "mutex_atomic",

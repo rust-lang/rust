@@ -1108,6 +1108,7 @@ Released 2018-09-13
 [`mut_from_ref`]: https://rust-lang.github.io/rust-clippy/master/index.html#mut_from_ref
 [`mut_mut`]: https://rust-lang.github.io/rust-clippy/master/index.html#mut_mut
 [`mut_range_bound`]: https://rust-lang.github.io/rust-clippy/master/index.html#mut_range_bound
+[`mutable_key_type`]: https://rust-lang.github.io/rust-clippy/master/index.html#mutable_key_type
 [`mutex_atomic`]: https://rust-lang.github.io/rust-clippy/master/index.html#mutex_atomic
 [`mutex_integer`]: https://rust-lang.github.io/rust-clippy/master/index.html#mutex_integer
 [`naive_bytecount`]: https://rust-lang.github.io/rust-clippy/master/index.html#naive_bytecount
