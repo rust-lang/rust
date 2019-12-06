@@ -49,7 +49,11 @@ register_builtin! {
     (COMPILE_ERROR_MACRO, CompileError) => compile_error_expand,
     (FILE_MACRO, File) => file_expand,
     (LINE_MACRO, Line) => line_expand,
-    (STRINGIFY_MACRO, Stringify) => stringify_expand
+    (STRINGIFY_MACRO, Stringify) => stringify_expand,
+    (FORMAT_ARGS_MACRO, FormatArgs) => format_args_expand,
+    // format_args_nl only differs in that it adds a newline in the end,
+    // so we use the same stub expansion for now
+    (FORMAT_ARGS_NL_MACRO, FormatArgsNl) => format_args_expand
 }
 
 fn to_line_number(db: &dyn AstDatabase, file: HirFileId, pos: TextUnit) -> usize {
@@ -198,6 +202,19 @@ fn compile_error_expand(
     }
 
     Err(mbe::ExpandError::BindingError("Must be a string".into()))
+}
+
+fn format_args_expand(
+    _db: &dyn AstDatabase,
+    _id: MacroCallId,
+    _tt: &tt::Subtree,
+) -> Result<tt::Subtree, mbe::ExpandError> {
+    // FIXME this is just a stub to make format macros type-check without mismatches
+    // We should make this at least insert the arguments, so that go to def etc. work within format macros
+    let expanded = quote! {
+        std::fmt::Arguments::new_v1(&[], &[])
+    };
+    Ok(expanded)
 }
 
 #[cfg(test)]

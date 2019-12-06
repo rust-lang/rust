@@ -159,6 +159,8 @@ pub const COLUMN_MACRO: Name = Name::new_inline_ascii(6, b"column");
 pub const COMPILE_ERROR_MACRO: Name = Name::new_inline_ascii(13, b"compile_error");
 pub const LINE_MACRO: Name = Name::new_inline_ascii(4, b"line");
 pub const STRINGIFY_MACRO: Name = Name::new_inline_ascii(9, b"stringify");
+pub const FORMAT_ARGS_MACRO: Name = Name::new_inline_ascii(11, b"format_args");
+pub const FORMAT_ARGS_NL_MACRO: Name = Name::new_inline_ascii(14, b"format_args_nl");
 
 // Builtin derives
 pub const COPY_TRAIT: Name = Name::new_inline_ascii(4, b"Copy");
