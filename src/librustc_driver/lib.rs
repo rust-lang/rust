@@ -42,8 +42,6 @@ use rustc_metadata::locator;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use errors::{PResult, registry::Registry};
 use rustc_interface::{interface, Queries};
-use rustc_interface::util::get_codegen_sysroot;
-use rustc_interface::interface;
 use rustc_interface::util::get_builtin_codegen_backend;
 use rustc_data_structures::sync::SeqCst;
 use rustc_feature::{find_gated_cfg, UnstableFeatures};

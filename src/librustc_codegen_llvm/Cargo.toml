@@ -21,10 +21,12 @@ rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
+rustc_feature = { path = "../librustc_feature" }
 rustc_fs_util = { path = "../librustc_fs_util" }
 rustc_incremental = { path = "../librustc_incremental" }
 rustc_index = { path = "../librustc_index" }
 rustc_llvm = { path = "../librustc_llvm" }
+rustc_session = { path = "../librustc_session" }
 rustc_target = { path = "../librustc_target" }
 smallvec = { version = "0.6.7", features = ["union", "may_dangle"] }
 syntax = { path = "../libsyntax" }

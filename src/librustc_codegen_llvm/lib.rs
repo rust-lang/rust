@@ -24,7 +24,6 @@
 use back::write::{create_target_machine, create_informational_target_machine};
 use syntax_pos::symbol::Symbol;
 
-<<<<<<< HEAD
 extern crate rustc_demangle;
 extern crate flate2;
 #[macro_use] extern crate bitflags;
@@ -38,17 +37,13 @@ extern crate rustc_incremental;
 extern crate rustc_codegen_utils;
 extern crate rustc_codegen_ssa;
 extern crate rustc_fs_util;
-extern crate rustc_driver as _;
 
 #[macro_use] extern crate log;
 extern crate smallvec;
 extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
-extern crate rustc_session;
 
-=======
->>>>>>> rustc: Link LLVM directly into rustc again
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, FatLTOInput};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModule};
