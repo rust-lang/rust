@@ -1556,7 +1556,7 @@ impl<'a> Parser<'a> {
     fn parse_match_expr(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_span;
         let lo = self.prev_span;
-        let discriminant = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
+        let scrutinee = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
         if let Err(mut e) = self.expect(&token::OpenDelim(token::Brace)) {
             if self.token == token::Semi {
                 e.span_suggestion_short(
@@ -1582,13 +1582,13 @@ impl<'a> Parser<'a> {
                     if self.token == token::CloseDelim(token::Brace) {
                         self.bump();
                     }
-                    return Ok(self.mk_expr(span, ExprKind::Match(discriminant, arms), attrs));
+                    return Ok(self.mk_expr(span, ExprKind::Match(scrutinee, arms), attrs));
                 }
             }
         }
         let hi = self.token.span;
         self.bump();
-        return Ok(self.mk_expr(lo.to(hi), ExprKind::Match(discriminant, arms), attrs));
+        return Ok(self.mk_expr(lo.to(hi), ExprKind::Match(scrutinee, arms), attrs));
     }
 
     pub(super) fn parse_arm(&mut self) -> PResult<'a, Arm> {
@@ -1697,16 +1697,13 @@ impl<'a> Parser<'a> {
 
     /// Parses an `async move? {...}` expression.
     fn parse_async_block(&mut self, mut attrs: AttrVec) -> PResult<'a, P<Expr>> {
-        let span_lo = self.token.span;
+        let lo = self.token.span;
         self.expect_keyword(kw::Async)?;
         let capture_clause = self.parse_capture_clause();
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
-        Ok(self.mk_expr(
-            span_lo.to(body.span),
-            ExprKind::Async(capture_clause, DUMMY_NODE_ID, body),
-            attrs,
-        ))
+        let kind = ExprKind::Async(capture_clause, DUMMY_NODE_ID, body);
+        Ok(self.mk_expr(lo.to(self.prev_span), kind, attrs))
     }
 
     fn is_async_block(&self) -> bool {
