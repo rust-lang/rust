@@ -301,3 +301,24 @@ impl<T> InFile<T> {
         db.parse_or_expand(self.file_id).expect("source created from invalid file")
     }
 }
+
+impl<T: Clone> InFile<&T> {
+    pub fn cloned(&self) -> InFile<T> {
+        self.with_value(self.value.clone())
+    }
+}
+
+impl InFile<SyntaxNode> {
+    pub fn ancestors_with_macros<'a>(
+        self,
+        db: &'a impl crate::db::AstDatabase,
+    ) -> impl Iterator<Item = InFile<SyntaxNode>> + 'a {
+        std::iter::successors(Some(self), move |node| match node.value.parent() {
+            Some(parent) => Some(node.with_value(parent)),
+            None => {
+                let parent_node = node.file_id.call_node(db)?;
+                Some(parent_node)
+            }
+        })
+    }
+}

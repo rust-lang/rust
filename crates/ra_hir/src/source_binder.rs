@@ -76,7 +76,7 @@ fn def_with_body_from_child_node(
     db: &impl HirDatabase,
     child: InFile<&SyntaxNode>,
 ) -> Option<DefWithBody> {
-    ancestors_with_macros(db, child).find_map(|node| {
+    child.cloned().ancestors_with_macros(db).find_map(|node| {
         let n = &node.value;
         match_ast! {
             match n {
@@ -87,17 +87,6 @@ fn def_with_body_from_child_node(
             }
         }
     })
-}
-
-fn ancestors_with_macros<'a>(
-    db: &'a (impl HirDatabase),
-    node: InFile<&SyntaxNode>,
-) -> impl Iterator<Item = InFile<SyntaxNode>> + 'a {
-    let file = node.with_value(()); // keep just the file id for borrow checker purposes
-    let parent_node = node.file_id.call_node(db);
-    let parent_ancestors: Box<dyn Iterator<Item = InFile<SyntaxNode>>> =
-        Box::new(parent_node.into_iter().flat_map(move |n| ancestors_with_macros(db, n.as_ref())));
-    node.value.ancestors().map(move |n| file.with_value(n)).chain(parent_ancestors)
 }
 
 /// `SourceAnalyzer` is a convenience wrapper which exposes HIR API in terms of
