@@ -312,9 +312,9 @@ impl<'tcx> UniversalRegions<'tcx> {
         match self.defining_ty {
             DefiningTy::Closure(def_id, substs) => {
                 err.note(&format!(
-                    "defining type: {:?} with closure substs {:#?}",
-                    def_id,
-                    &substs[..]
+                    "defining type: {} with closure substs {:#?}",
+                    tcx.def_path_str_with_substs(def_id, substs),
+                    &substs[tcx.generics_of(def_id).parent_count..],
                 ));
 
                 // FIXME: It'd be nice to print the late-bound regions
@@ -332,9 +332,9 @@ impl<'tcx> UniversalRegions<'tcx> {
             }
             DefiningTy::Generator(def_id, substs, _) => {
                 err.note(&format!(
-                    "defining type: {:?} with generator substs {:#?}",
-                    def_id,
-                    &substs[..]
+                    "defining type: {} with generator substs {:#?}",
+                    tcx.def_path_str_with_substs(def_id, substs),
+                    &substs[tcx.generics_of(def_id).parent_count..],
                 ));
 
                 // FIXME: As above, we'd like to print out the region
@@ -350,16 +350,14 @@ impl<'tcx> UniversalRegions<'tcx> {
             }
             DefiningTy::FnDef(def_id, substs) => {
                 err.note(&format!(
-                    "defining type: {:?} with substs {:#?}",
-                    def_id,
-                    &substs[..]
+                    "defining type: {}",
+                    tcx.def_path_str_with_substs(def_id, substs),
                 ));
             }
             DefiningTy::Const(def_id, substs) => {
                 err.note(&format!(
-                    "defining constant type: {:?} with substs {:#?}",
-                    def_id,
-                    &substs[..]
+                    "defining constant type: {}",
+                    tcx.def_path_str_with_substs(def_id, substs),
                 ));
             }
         }

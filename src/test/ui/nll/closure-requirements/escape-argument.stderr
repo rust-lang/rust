@@ -4,7 +4,7 @@ note: No external requirements
 LL |         let mut closure = expect_sig(|p, y| *p = y);
    |                                      ^^^^^^^^^^^^^
    |
-   = note: defining type: DefId(0:4 ~ escape_argument[317d]::test[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: test::{{closure}}#0 with closure substs [
                i16,
                for<'r, 's> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BrNamed('r)) mut &ReLateBound(DebruijnIndex(0), BrNamed('s)) i32, &ReLateBound(DebruijnIndex(0), BrNamed('s)) i32)),
            ]
@@ -21,7 +21,7 @@ LL | |     deref(p);
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:3 ~ escape_argument[317d]::test[0]) with substs []
+   = note: defining type: test
 
 error[E0597]: `y` does not live long enough
   --> $DIR/escape-argument.rs:27:25

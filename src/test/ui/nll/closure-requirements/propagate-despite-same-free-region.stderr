@@ -8,7 +8,7 @@ LL | |             demand_y(x, y, p)
 LL | |         },
    | |_________^
    |
-   = note: defining type: DefId(0:14 ~ propagate_despite_same_free_region[317d]::supply[0]::{{closure}}[0]) with closure substs [
+   = note: defining type: supply::{{closure}}#0 with closure substs [
                i16,
                for<'r, 's> extern "rust-call" fn((std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) &'_#2r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('r)) u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BrNamed('s)) u32>)),
            ]
@@ -28,5 +28,5 @@ LL | |     );
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:12 ~ propagate_despite_same_free_region[317d]::supply[0]) with substs []
+   = note: defining type: supply
 

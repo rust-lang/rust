@@ -11,8 +11,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:14 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]::{{closure}}[0]) with closure substs [
-               T,
+   = note: defining type: no_region::<T>::{{closure}}#0 with closure substs [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#1r ()>, T)),
            ]
@@ -32,9 +31,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:11 ~ ty_param_closure_outlives_from_where_clause[317d]::no_region[0]) with substs [
-               T,
-           ]
+   = note: defining type: no_region::<T>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:27:26
@@ -64,9 +61,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:18 ~ ty_param_closure_outlives_from_where_clause[317d]::correct_region[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               T,
+   = note: defining type: correct_region::<'_#1r, T>::{{closure}}#0 with closure substs [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
            ]
@@ -85,10 +80,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:15 ~ ty_param_closure_outlives_from_where_clause[317d]::correct_region[0]) with substs [
-               '_#1r,
-               T,
-           ]
+   = note: defining type: correct_region::<'_#1r, T>
 
 note: External requirements
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
@@ -101,9 +93,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:23 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               T,
+   = note: defining type: wrong_region::<'_#1r, T>::{{closure}}#0 with closure substs [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#2r ()>, T)),
            ]
@@ -123,10 +113,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:19 ~ ty_param_closure_outlives_from_where_clause[317d]::wrong_region[0]) with substs [
-               '_#1r,
-               T,
-           ]
+   = note: defining type: wrong_region::<'_#1r, T>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-where-clause.rs:64:26
@@ -151,10 +138,7 @@ LL | |         require(&x, &y)
 LL | |     })
    | |_____^
    |
-   = note: defining type: DefId(0:28 ~ ty_param_closure_outlives_from_where_clause[317d]::outlives_region[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               '_#2r,
-               T,
+   = note: defining type: outlives_region::<'_#1r, '_#2r, T>::{{closure}}#0 with closure substs [
                i32,
                extern "rust-call" fn((std::cell::Cell<&'_#3r ()>, T)),
            ]
@@ -173,11 +157,7 @@ LL | |     })
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:24 ~ ty_param_closure_outlives_from_where_clause[317d]::outlives_region[0]) with substs [
-               '_#1r,
-               '_#2r,
-               T,
-           ]
+   = note: defining type: outlives_region::<'_#1r, '_#2r, T>
 
 error: aborting due to 2 previous errors
 
