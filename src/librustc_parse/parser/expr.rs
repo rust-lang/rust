@@ -711,33 +711,9 @@ impl<'a> Parser<'a> {
                         e = self.parse_tuple_field_access_expr(lo, e, symbol, suffix);
                     }
                     token::Literal(token::Lit { kind: token::Float, symbol, .. }) => {
-                        self.bump();
-                        let fstr = symbol.as_str();
-                        let msg = format!("unexpected token: `{}`", symbol);
-                        let mut err = self.diagnostic().struct_span_err(self.prev_span, &msg);
-                        err.span_label(self.prev_span, "unexpected token");
-                        if fstr.chars().all(|x| "0123456789.".contains(x)) {
-                            let float = match fstr.parse::<f64>().ok() {
-                                Some(f) => f,
-                                None => continue,
-                            };
-                            let sugg = pprust::to_string(|s| {
-                                s.popen();
-                                s.print_expr(&e);
-                                s.s.word(".");
-                                s.print_usize(float.trunc() as usize);
-                                s.pclose();
-                                s.s.word(".");
-                                s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
-                            });
-                            err.span_suggestion(
-                                lo.to(self.prev_span),
-                                "try parenthesizing the first index",
-                                sugg,
-                                Applicability::MachineApplicable,
-                            );
+                        if let Some(err) = self.recover_field_access_by_float_lit(lo, &e, symbol) {
+                            err?
                         }
-                        return Err(err);
                     }
                     _ => {
                         // FIXME Could factor this out into non_fatal_unexpected or something.
@@ -757,6 +733,41 @@ impl<'a> Parser<'a> {
             }
         }
         return Ok(e);
+    }
+
+    fn recover_field_access_by_float_lit(
+        &mut self,
+        lo: Span,
+        base: &P<Expr>,
+        sym: Symbol,
+    ) -> Option<PResult<'a, ()>> {
+        self.bump();
+
+        let fstr = sym.as_str();
+        let msg = format!("unexpected token: `{}`", sym);
+
+        let mut err = self.struct_span_err(self.prev_span, &msg);
+        err.span_label(self.prev_span, "unexpected token");
+
+        if fstr.chars().all(|x| "0123456789.".contains(x)) {
+            let float = fstr.parse::<f64>().ok()?;
+            let sugg = pprust::to_string(|s| {
+                s.popen();
+                s.print_expr(&base);
+                s.s.word(".");
+                s.print_usize(float.trunc() as usize);
+                s.pclose();
+                s.s.word(".");
+                s.s.word(fstr.splitn(2, ".").last().unwrap().to_string())
+            });
+            err.span_suggestion(
+                lo.to(self.prev_span),
+                "try parenthesizing the first index",
+                sugg,
+                Applicability::MachineApplicable,
+            );
+        }
+        Some(Err(err))
     }
 
     fn parse_tuple_field_access_expr(
