@@ -1472,15 +1472,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parses a `for ... in` expression (`for` token already eaten).
+    /// Parses `for <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
     fn parse_for_expr(
         &mut self,
         opt_label: Option<Label>,
-        span_lo: Span,
+        lo: Span,
         mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
-        // Parse: `for <src_pat> in <src_expr> <src_loop_block>`
-
         // Record whether we are about to parse `for (`.
         // This is used below for recovery in case of `for ( $stuff ) $block`
         // in which case we will suggest `for $stuff $block`.
@@ -1491,19 +1489,9 @@ impl<'a> Parser<'a> {
 
         let pat = self.parse_top_pat(GateOr::Yes)?;
         if !self.eat_keyword(kw::In) {
-            let in_span = self.prev_span.between(self.token.span);
-            self.struct_span_err(in_span, "missing `in` in `for` loop")
-                .span_suggestion_short(
-                    in_span,
-                    "try adding `in` here",
-                    " in ".into(),
-                    // has been misleading, at least in the past (closed Issue #48492)
-                    Applicability::MaybeIncorrect,
-                )
-                .emit();
+            self.error_missing_in_for_loop();
         }
-        let in_span = self.prev_span;
-        self.check_for_for_in_in_typo(in_span);
+        self.check_for_for_in_in_typo(self.prev_span);
         let expr = self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL, None)?;
 
         let pat = self.recover_parens_around_for_head(pat, &expr, begin_paren);
@@ -1511,45 +1499,54 @@ impl<'a> Parser<'a> {
         let (iattrs, loop_block) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
 
-        let hi = self.prev_span;
-        Ok(self.mk_expr(span_lo.to(hi), ExprKind::ForLoop(pat, expr, loop_block, opt_label), attrs))
+        let kind = ExprKind::ForLoop(pat, expr, loop_block, opt_label);
+        Ok(self.mk_expr(lo.to(self.prev_span), kind, attrs))
+    }
+
+    fn error_missing_in_for_loop(&self) {
+        let in_span = self.prev_span.between(self.token.span);
+        self.struct_span_err(in_span, "missing `in` in `for` loop")
+            .span_suggestion_short(
+                in_span,
+                "try adding `in` here",
+                " in ".into(),
+                // Has been misleading, at least in the past (closed Issue #48492).
+                Applicability::MaybeIncorrect,
+            )
+            .emit();
     }
 
     /// Parses a `while` or `while let` expression (`while` token already eaten).
     fn parse_while_expr(
         &mut self,
         opt_label: Option<Label>,
-        span_lo: Span,
+        lo: Span,
         mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         let cond = self.parse_cond_expr()?;
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
-        let span = span_lo.to(body.span);
-        Ok(self.mk_expr(span, ExprKind::While(cond, body, opt_label), attrs))
+        Ok(self.mk_expr(lo.to(self.prev_span), ExprKind::While(cond, body, opt_label), attrs))
     }
 
     /// Parses `loop { ... }` (`loop` token already eaten).
     fn parse_loop_expr(
         &mut self,
         opt_label: Option<Label>,
-        span_lo: Span,
+        lo: Span,
         mut attrs: AttrVec,
     ) -> PResult<'a, P<Expr>> {
         let (iattrs, body) = self.parse_inner_attrs_and_block()?;
         attrs.extend(iattrs);
-        let span = span_lo.to(body.span);
-        Ok(self.mk_expr(span, ExprKind::Loop(body, opt_label), attrs))
+        Ok(self.mk_expr(lo.to(self.prev_span), ExprKind::Loop(body, opt_label), attrs))
     }
 
     fn eat_label(&mut self) -> Option<Label> {
-        if let Some(ident) = self.token.lifetime() {
+        self.token.lifetime().map(|ident| {
             let span = self.token.span;
             self.bump();
-            Some(Label { ident: Ident::new(ident.name, span) })
-        } else {
-            None
-        }
+            Label { ident: Ident::new(ident.name, span) }
+        })
     }
 
     /// Parses a `match ... { ... }` expression (`match` token already eaten).
