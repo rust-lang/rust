@@ -118,7 +118,7 @@ fn require_c_abi_if_c_variadic(tcx: TyCtxt<'_>, decl: &hir::FnDecl<'_>, abi: Abi
         let mut err = struct_span_err!(
             tcx.sess,
             span,
-            E0045,
+            "E0045",
             "C-variadic function must have C or cdecl calling convention"
         );
         err.span_label(span, "C-variadics require C or cdecl calling convention").emit();
@@ -168,7 +168,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                                    parameters"
                             .to_owned();
                         let label = "`main` cannot have generic parameters".to_string();
-                        struct_span_err!(tcx.sess, generics.span, E0131, "{}", msg)
+                        struct_span_err!(tcx.sess, generics.span, "E0131", "{}", msg)
                             .span_label(generics.span, label)
                             .emit();
                         error = true;
@@ -177,7 +177,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
                         struct_span_err!(
                             tcx.sess,
                             sp,
-                            E0646,
+                            "E0646",
                             "`main` function is not allowed to have a `where` clause"
                         )
                         .span_label(sp, "`main` cannot have a `where` clause")
@@ -234,7 +234,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         struct_span_err!(
                             tcx.sess,
                             generics.span,
-                            E0132,
+                            "E0132",
                             "start function is not allowed to have type parameters"
                         )
                         .span_label(generics.span, "start function cannot have type parameters")
@@ -245,7 +245,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
                         struct_span_err!(
                             tcx.sess,
                             sp,
-                            E0647,
+                            "E0647",
                             "start function is not allowed to have a `where` clause"
                         )
                         .span_label(sp, "start function cannot have a `where` clause")

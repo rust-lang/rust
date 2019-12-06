@@ -744,7 +744,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             (span, msg)
         };
 
-        let mut diag = struct_span_err!(self.r.session, span, E0432, "{}", &msg);
+        let mut diag = struct_span_err!(self.r.session, span, "E0432", "{}", &msg);
 
         if let Some((_, UnresolvedImportError { note, .. })) = errors.iter().last() {
             for message in note {
@@ -850,7 +850,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     }
                     Ok(binding) if !binding.is_importable() => {
                         let msg = format!("`{}` is not directly importable", target);
-                        struct_span_err!(this.session, directive.span, E0253, "{}", &msg)
+                        struct_span_err!(this.session, directive.span, "E0253", "{}", &msg)
                             .span_label(directive.span, "cannot be imported directly")
                             .emit();
                         // Do not import this illegal binding. Import a dummy binding and pretend
@@ -1214,7 +1214,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 struct_span_err!(
                     self.r.session,
                     directive.span,
-                    E0365,
+                    "E0365",
                     "`{}` is private, and cannot be re-exported",
                     ident
                 )
@@ -1225,7 +1225,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let msg = format!("`{}` is private, and cannot be re-exported", ident);
                 let note_msg =
                     format!("consider marking `{}` as `pub` in the imported module", ident,);
-                struct_span_err!(self.r.session, directive.span, E0364, "{}", &msg)
+                struct_span_err!(self.r.session, directive.span, "E0364", "{}", &msg)
                     .span_note(directive.span, &note_msg)
                     .emit();
             }

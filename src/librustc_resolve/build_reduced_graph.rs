@@ -951,7 +951,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     struct_span_err!(
                         self.r.session,
                         item.span,
-                        E0468,
+                        "E0468",
                         "an `extern crate` loading macros must be at the crate root"
                     )
                     .emit();
@@ -968,7 +968,10 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                     }
                 }
                 let ill_formed =
-                    |span| struct_span_err!(self.r.session, span, E0466, "bad macro import").emit();
+                    |span| {
+                        struct_span_err!(self.r.session, span, "E0466", "bad macro import")
+                            .emit();
+                    };
                 match attr.meta() {
                     Some(meta) => match meta.kind {
                         MetaItemKind::Word => {
@@ -1041,7 +1044,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                         allow_shadowing,
                     );
                 } else {
-                    struct_span_err!(self.r.session, ident.span, E0469, "imported macro not found")
+                    struct_span_err!(self.r.session, ident.span, "E0469", "imported macro not found")
                         .emit();
                 }
             }

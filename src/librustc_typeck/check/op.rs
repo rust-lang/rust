@@ -255,7 +255,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let mut err = struct_span_err!(
                                 self.tcx.sess,
                                 expr.span,
-                                E0368,
+                                "E0368",
                                 "binary assignment operation `{}=` cannot be applied to type `{}`",
                                 op.node.as_str(),
                                 lhs_ty,
@@ -399,7 +399,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             let mut err = struct_span_err!(
                                 self.tcx.sess,
                                 op.span,
-                                E0369,
+                                "E0369",
                                 "{}",
                                 message.as_str()
                             );
@@ -674,7 +674,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         ex.span,
-                        E0600,
+                        "E0600",
                         "cannot apply unary operator `{}` to type `{}`",
                         op.as_str(),
                         actual

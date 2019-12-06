@@ -212,7 +212,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
 }
 
 pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'tcx> {
-    struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
+    struct_span_err!(tcx.sess, tcx.span, "E0080", "{}", msg)
 }
 
 /// Packages the kind of error we got from the const code interpreter

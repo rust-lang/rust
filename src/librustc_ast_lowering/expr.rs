@@ -540,7 +540,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let mut err = struct_span_err!(
                     self.sess,
                     await_span,
-                    E0728,
+                    "E0728",
                     "`await` is only allowed inside `async` functions and blocks"
                 );
                 err.span_label(await_span, "only allowed inside `async` functions and blocks");
@@ -692,7 +692,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     struct_span_err!(
                         self.sess,
                         fn_decl_span,
-                        E0628,
+                        "E0628",
                         "too many parameters for a generator (expected 0 or 1 parameters)"
                     )
                     .emit();
@@ -704,7 +704,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }
             None => {
                 if movability == Movability::Static {
-                    struct_span_err!(self.sess, fn_decl_span, E0697, "closures cannot be static")
+                    struct_span_err!(self.sess, fn_decl_span, "E0697", "closures cannot be static")
                         .emit();
                 }
                 None
@@ -733,7 +733,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 struct_span_err!(
                     this.sess,
                     fn_decl_span,
-                    E0708,
+                    "E0708",
                     "`async` non-`move` closures with parameters are not currently supported",
                 )
                 .help(
@@ -946,7 +946,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 struct_span_err!(
                     self.sess,
                     span,
-                    E0727,
+                    "E0727",
                     "`async` generators are not yet supported"
                 )
                 .emit();

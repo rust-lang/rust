@@ -33,7 +33,7 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
 }
 
 fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
-    struct_span_err!(sess, sp, E0004, "{}", &error_message)
+    struct_span_err!(sess, sp, "E0004", "{}", &error_message)
 }
 
 struct MatchVisitor<'a, 'tcx> {
@@ -107,7 +107,7 @@ impl PatCtxt<'_, '_> {
     }
 
     fn span_e0158(&self, span: Span, text: &str) {
-        struct_span_err!(self.tcx.sess, span, E0158, "{}", text).emit();
+        struct_span_err!(self.tcx.sess, span, "E0158", "{}", text).emit();
     }
 }
 
@@ -198,7 +198,7 @@ impl<'tcx> MatchVisitor<'_, 'tcx> {
             let mut err = struct_span_err!(
                 self.tcx.sess,
                 pat.span,
-                E0005,
+                "E0005",
                 "refutable pattern in {}: {} not covered",
                 origin,
                 joined_patterns
@@ -297,7 +297,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor<'_, '_>, pat: &Pa
                                                 of the variants of the type `{}`",
                                     ident, ty_path
                                 ))
-                                .code(error_code!(E0170))
+                                .code(error_code!("E0170"))
                                 .span_suggestion(
                                     p.span,
                                     "to match on the variant, qualify the path",
@@ -590,7 +590,7 @@ fn check_legality_of_move_bindings(cx: &mut MatchVisitor<'_, '_>, has_guard: boo
         //
         // `x @ Foo(..)` is legal, but `x @ Foo(y)` isn't.
         if sub.map_or(false, |p| p.contains_bindings()) {
-            struct_span_err!(sess, p.span, E0007, "cannot bind by-move with sub-bindings")
+            struct_span_err!(sess, p.span, "E0007", "cannot bind by-move with sub-bindings")
                 .span_label(p.span, "binds an already bound by-move value by moving it")
                 .emit();
         } else if !has_guard && !by_ref_spans.is_empty() {

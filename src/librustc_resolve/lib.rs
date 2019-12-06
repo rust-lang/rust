@@ -2538,15 +2538,15 @@ impl<'a> Resolver<'a> {
         let msg = format!("the name `{}` is defined multiple times", name);
 
         let mut err = match (old_binding.is_extern_crate(), new_binding.is_extern_crate()) {
-            (true, true) => struct_span_err!(self.session, span, E0259, "{}", msg),
+            (true, true) => struct_span_err!(self.session, span, "E0259", "{}", msg),
             (true, _) | (_, true) => match new_binding.is_import() && old_binding.is_import() {
-                true => struct_span_err!(self.session, span, E0254, "{}", msg),
-                false => struct_span_err!(self.session, span, E0260, "{}", msg),
+                true => struct_span_err!(self.session, span, "E0254", "{}", msg),
+                false => struct_span_err!(self.session, span, "E0260", "{}", msg),
             },
             _ => match (old_binding.is_import(), new_binding.is_import()) {
-                (false, false) => struct_span_err!(self.session, span, E0428, "{}", msg),
-                (true, true) => struct_span_err!(self.session, span, E0252, "{}", msg),
-                _ => struct_span_err!(self.session, span, E0255, "{}", msg),
+                (false, false) => struct_span_err!(self.session, span, "E0428", "{}", msg),
+                (true, true) => struct_span_err!(self.session, span, "E0252", "{}", msg),
+                _ => struct_span_err!(self.session, span, "E0255", "{}", msg),
             },
         };
 

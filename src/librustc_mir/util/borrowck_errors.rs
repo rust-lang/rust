@@ -4,7 +4,13 @@ use rustc_span::{MultiSpan, Span};
 
 impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
     crate fn cannot_move_when_borrowed(&self, span: Span, desc: &str) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, span, E0505, "cannot move out of `{}` because it is borrowed", desc,)
+        struct_span_err!(
+            self,
+            span,
+            "E0505",
+            "cannot move out of `{}` because it is borrowed",
+            desc,
+        )
     }
 
     crate fn cannot_use_when_mutably_borrowed(
@@ -17,7 +23,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             span,
-            E0503,
+            "E0503",
             "cannot use `{}` because it was mutably borrowed",
             desc,
         );
@@ -36,7 +42,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         struct_span_err!(
             self,
             span,
-            E0381,
+            "E0381",
             "{} of possibly-uninitialized variable: `{}`",
             verb,
             desc,
@@ -57,7 +63,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             new_loan_span,
-            E0499,
+            "E0499",
             "cannot borrow `{}`{} as mutable more than once at a time",
             desc,
             via(opt_via),
@@ -102,7 +108,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             new_loan_span,
-            E0524,
+            "E0524",
             "two closures require unique access to `{}` at the same time",
             desc,
         );
@@ -135,7 +141,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             new_loan_span,
-            E0500,
+            "E0500",
             "closure requires unique access to `{}` but {} is already borrowed{}",
             desc_new,
             noun_old,
@@ -167,7 +173,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             new_loan_span,
-            E0501,
+            "E0501",
             "cannot borrow `{}`{} as {} because previous closure \
              requires unique access",
             desc_new,
@@ -205,7 +211,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             span,
-            E0502,
+            "E0502",
             "cannot borrow `{}`{} as {} because {} is also borrowed \
              as {}{}",
             desc_new,
@@ -247,7 +253,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             span,
-            E0506,
+            "E0506",
             "cannot assign to `{}` because it is borrowed",
             desc,
         );
@@ -264,11 +270,11 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         is_arg: bool,
     ) -> DiagnosticBuilder<'cx> {
         let msg = if is_arg { "to immutable argument" } else { "twice to immutable variable" };
-        struct_span_err!(self, span, E0384, "cannot assign {} `{}`", msg, desc,)
+        struct_span_err!(self, span, "E0384", "cannot assign {} `{}`", msg, desc,)
     }
 
     crate fn cannot_assign(&self, span: Span, desc: &str) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, span, E0594, "cannot assign to {}", desc)
+        struct_span_err!(self, span, "E0594", "cannot assign to {}", desc)
     }
 
     crate fn cannot_move_out_of(
@@ -276,7 +282,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         move_from_span: Span,
         move_from_desc: &str,
     ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, move_from_span, E0507, "cannot move out of {}", move_from_desc,)
+        struct_span_err!(self, move_from_span, "E0507", "cannot move out of {}", move_from_desc,)
     }
 
     /// Signal an error due to an attempt to move out of the interior
@@ -296,7 +302,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             move_from_span,
-            E0508,
+            "E0508",
             "cannot move out of type `{}`, a non-copy {}",
             ty,
             type_name,
@@ -313,7 +319,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             move_from_span,
-            E0509,
+            "E0509",
             "cannot move out of type `{}`, which implements the `Drop` trait",
             container_ty,
         );
@@ -333,7 +339,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         struct_span_err!(
             self,
             use_span,
-            E0382,
+            "E0382",
             "{} of {}moved value{}",
             verb,
             optional_adverb_for_moved,
@@ -347,7 +353,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         path: &str,
         reason: &str,
     ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, span, E0596, "cannot borrow {} as mutable{}", path, reason,)
+        struct_span_err!(self, span, "E0596", "cannot borrow {} as mutable{}", path, reason,)
     }
 
     crate fn cannot_mutate_in_immutable_section(
@@ -361,7 +367,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             mutate_span,
-            E0510,
+            "E0510",
             "cannot {} `{}` in {}",
             action,
             immutable_place,
@@ -380,7 +386,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             span,
-            E0626,
+            "E0626",
             "borrow may still be in use when generator yields",
         );
         err.span_label(yield_span, "possible yield occurs here");
@@ -391,7 +397,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         struct_span_err!(
             self,
             borrow_span,
-            E0713,
+            "E0713",
             "borrow may still be in use when destructor runs",
         )
     }
@@ -401,7 +407,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         span: Span,
         path: &str,
     ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, span, E0597, "{} does not live long enough", path,)
+        struct_span_err!(self, span, "E0597", "{} does not live long enough", path,)
     }
 
     crate fn cannot_return_reference_to_local(
@@ -414,7 +420,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             span,
-            E0515,
+            "E0515",
             "cannot {RETURN} {REFERENCE} {LOCAL}",
             RETURN = return_kind,
             REFERENCE = reference_desc,
@@ -438,7 +444,7 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         let mut err = struct_span_err!(
             self,
             closure_span,
-            E0373,
+            "E0373",
             "closure may outlive the current function, \
              but it borrows {}, \
              which is owned by the current function",
@@ -453,11 +459,11 @@ impl<'cx, 'tcx> crate::borrow_check::MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         span: Span,
     ) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, span, E0712, "thread-local variable borrowed past end of function",)
+        struct_span_err!(self, span, "E0712", "thread-local variable borrowed past end of function",)
     }
 
     crate fn temporary_value_borrowed_for_too_long(&self, span: Span) -> DiagnosticBuilder<'cx> {
-        struct_span_err!(self, span, E0716, "temporary value dropped while borrowed",)
+        struct_span_err!(self, span, "E0716", "temporary value dropped while borrowed",)
     }
 
     fn struct_span_err_with_code<S: Into<MultiSpan>>(
@@ -478,7 +484,7 @@ crate fn borrowed_data_escapes_closure<'tcx>(
     struct_span_err!(
         tcx.sess,
         escape_span,
-        E0521,
+        "E0521",
         "borrowed data escapes outside of {}",
         escapes_from,
     )

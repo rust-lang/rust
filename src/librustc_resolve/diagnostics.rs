@@ -131,7 +131,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0401,
+                    "E0401",
                     "can't use generic parameters from outer function",
                 );
                 err.span_label(span, format!("use of generic parameter from outer function"));
@@ -204,7 +204,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0403,
+                    "E0403",
                     "the name `{}` is already used for a generic \
                      parameter in this item's generic parameters",
                     name,
@@ -217,7 +217,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0407,
+                    "E0407",
                     "method `{}` is not a member of trait `{}`",
                     method,
                     trait_
@@ -229,7 +229,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0437,
+                    "E0437",
                     "type `{}` is not a member of trait `{}`",
                     type_,
                     trait_
@@ -241,7 +241,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0438,
+                    "E0438",
                     "const `{}` is not a member of trait `{}`",
                     const_,
                     trait_
@@ -259,7 +259,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     msp,
-                    E0408,
+                    "E0408",
                     "variable `{}` is not bound in all patterns",
                     name,
                 );
@@ -283,7 +283,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0409,
+                    "E0409",
                     "variable `{}` is bound in inconsistent \
                                 ways within the same match arm",
                     variable_name
@@ -296,7 +296,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0415,
+                    "E0415",
                     "identifier `{}` is bound more than once in this parameter list",
                     identifier
                 );
@@ -307,7 +307,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0416,
+                    "E0416",
                     "identifier `{}` is bound more than once in the same pattern",
                     identifier
                 );
@@ -318,7 +318,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0426,
+                    "E0426",
                     "use of undeclared label `{}`",
                     name
                 );
@@ -337,7 +337,7 @@ impl<'a> Resolver<'a> {
             ResolutionError::SelfImportsOnlyAllowedWithin => struct_span_err!(
                 self.session,
                 span,
-                E0429,
+                "E0429",
                 "{}",
                 "`self` imports are only allowed within a { } list"
             ),
@@ -355,7 +355,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0431,
+                    "E0431",
                     "`self` import can only appear in an import list with \
                                                 a non-empty prefix"
                 );
@@ -364,7 +364,7 @@ impl<'a> Resolver<'a> {
             }
             ResolutionError::FailedToResolve { label, suggestion } => {
                 let mut err =
-                    struct_span_err!(self.session, span, E0433, "failed to resolve: {}", &label);
+                    struct_span_err!(self.session, span, "E0433", "failed to resolve: {}", &label);
                 err.span_label(span, label);
 
                 if let Some((suggestions, msg, applicability)) = suggestion {
@@ -377,7 +377,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0434,
+                    "E0434",
                     "{}",
                     "can't capture dynamic environment in a fn item"
                 );
@@ -388,7 +388,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0435,
+                    "E0435",
                     "attempt to use a non-constant value in a constant"
                 );
                 err.span_label(span, "non-constant value");
@@ -400,7 +400,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0530,
+                    "E0530",
                     "{}s cannot shadow {}s",
                     what_binding,
                     shadows_what
@@ -418,7 +418,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0128,
+                    "E0128",
                     "type parameters with a default cannot use \
                                                 forward declared identifiers"
                 );
@@ -432,7 +432,7 @@ impl<'a> Resolver<'a> {
                 let mut err = struct_span_err!(
                     self.session,
                     span,
-                    E0735,
+                    "E0735",
                     "type parameters cannot use `Self` in their defaults"
                 );
                 err.span_label(span, "`Self` in type parameter default".to_string());

@@ -122,7 +122,7 @@ impl CheckAttrVisitor<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     attr.span,
-                    E0518,
+                    "E0518",
                     "attribute should be applied to function or closure",
                 )
                 .span_label(*span, "not a function or closure")
@@ -145,7 +145,7 @@ impl CheckAttrVisitor<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
-                    E0736,
+                    "E0736",
                     "cannot use `#[track_caller]` with `#[naked]`",
                 )
                 .emit();
@@ -156,7 +156,7 @@ impl CheckAttrVisitor<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
-                    E0738,
+                    "E0738",
                     "`#[track_caller]` may not be used on trait methods",
                 )
                 .emit();
@@ -166,7 +166,7 @@ impl CheckAttrVisitor<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     *attr_span,
-                    E0739,
+                    "E0739",
                     "attribute should be applied to function"
                 )
                 .span_label(*span, "not a function")
@@ -184,7 +184,7 @@ impl CheckAttrVisitor<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     attr.span,
-                    E0701,
+                    "E0701",
                     "attribute can only be applied to a struct or enum"
                 )
                 .span_label(*span, "not a struct or enum")
@@ -329,7 +329,7 @@ impl CheckAttrVisitor<'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 hint_spans,
-                E0692,
+                "E0692",
                 "transparent {} cannot have other repr hints",
                 target
             )
@@ -346,7 +346,7 @@ impl CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 |lint| {
                     lint.build("conflicting representation hints")
-                        .code(rustc_errors::error_code!(E0566))
+                        .code(rustc_errors::error_code!("E0566"))
                         .emit();
                 },
             );
@@ -360,7 +360,7 @@ impl CheckAttrVisitor<'tcx> {
         hint_message: &str,
         label_message: &str,
     ) {
-        struct_span_err!(self.tcx.sess, hint_span, E0517, "{}", hint_message)
+        struct_span_err!(self.tcx.sess, hint_span, "E0517", "{}", hint_message)
             .span_label(label_span, label_message)
             .emit();
     }

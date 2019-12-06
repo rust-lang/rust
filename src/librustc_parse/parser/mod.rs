@@ -1206,7 +1206,7 @@ impl<'a> Parser<'a> {
 
         let path_str = pprust::path_to_string(&path);
 
-        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{}", msg)
+        struct_span_err!(self.sess.span_diagnostic, path.span, "E0704", "{}", msg)
             .help(suggestion)
             .span_suggestion(
                 path.span,

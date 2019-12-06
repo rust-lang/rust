@@ -35,7 +35,7 @@ impl UnsafetyChecker<'tcx> {
                     struct_span_err!(
                         self.tcx.sess,
                         item.span,
-                        E0199,
+                        "E0199",
                         "implementing the trait `{}` is not unsafe",
                         trait_ref.print_only_trait_path()
                     )
@@ -46,7 +46,7 @@ impl UnsafetyChecker<'tcx> {
                     struct_span_err!(
                         self.tcx.sess,
                         item.span,
-                        E0200,
+                        "E0200",
                         "the trait `{}` requires an `unsafe impl` declaration",
                         trait_ref.print_only_trait_path()
                     )
@@ -62,7 +62,7 @@ impl UnsafetyChecker<'tcx> {
                     struct_span_err!(
                         self.tcx.sess,
                         item.span,
-                        E0569,
+                        "E0569",
                         "requires an `unsafe impl` declaration due to `#[{}]` attribute",
                         attr_name
                     )

@@ -345,7 +345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             tcx.sess,
                             expr.span,
                             oprnd_t,
-                            E0614,
+                            "E0614",
                             "type `{}` cannot be dereferenced",
                             oprnd_t,
                         );
@@ -458,7 +458,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 oprnd.span,
-                E0745,
+                "E0745",
                 "cannot take address of a temporary"
             )
             .span_label(oprnd.span, "temporary value")
@@ -676,7 +676,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 expr.span,
-                E0572,
+                "E0572",
                 "return statement outside of function body",
             )
             .emit();
@@ -1109,7 +1109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 expr.span,
-                E0639,
+                "E0639",
                 "cannot create non-exhaustive {} using struct expression",
                 adt.variant_descr()
             )
@@ -1154,7 +1154,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         struct_span_err!(
                             self.tcx.sess,
                             base_expr.span,
-                            E0436,
+                            "E0436",
                             "functional record update syntax requires a struct"
                         )
                         .emit();
@@ -1223,7 +1223,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         field.ident.span,
-                        E0062,
+                        "E0062",
                         "field `{}` specified more than once",
                         ident
                     );
@@ -1273,7 +1273,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0063,
+                "E0063",
                 "missing field{} {}{} in initializer of `{}`",
                 pluralize!(remaining_fields.len()),
                 remaining_fields_names,
@@ -1320,7 +1320,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Adt(adt, ..) if adt.is_enum() => struct_span_err!(
                     self.tcx.sess,
                     field.ident.span,
-                    E0559,
+                    "E0559",
                     "{} `{}::{}` has no field named `{}`",
                     kind_name,
                     actual,
@@ -1330,7 +1330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => struct_span_err!(
                     self.tcx.sess,
                     field.ident.span,
-                    E0560,
+                    "E0560",
                     "{} `{}` has no field named `{}`",
                     kind_name,
                     actual,
@@ -1512,7 +1512,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx().sess,
                 field.span,
                 expr_t,
-                E0610,
+                "E0610",
                 "`{}` is a primitive type and therefore doesn't have fields",
                 expr_t
             )
@@ -1573,7 +1573,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = struct_span_err!(
             self.tcx().sess,
             expr.span,
-            E0616,
+            "E0616",
             "field `{}` of {} `{}` is private",
             field,
             kind_name,
@@ -1598,7 +1598,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx().sess,
             field.span,
             expr_t,
-            E0615,
+            "E0615",
             "attempted to take value of method `{}` on type `{}`",
             field,
             expr_t
@@ -1720,7 +1720,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx().sess,
             span,
             expr_t,
-            E0609,
+            "E0609",
             "no field `{}` on type `{}`",
             field,
             expr_t
@@ -1754,7 +1754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.sess,
                         expr.span,
                         base_t,
-                        E0608,
+                        "E0608",
                         "cannot index into a value of type `{}`",
                         base_t
                     );
@@ -1815,7 +1815,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     expr.span,
-                    E0627,
+                    "E0627",
                     "yield expression outside of generator literal"
                 )
                 .emit();

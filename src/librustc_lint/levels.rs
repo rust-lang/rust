@@ -110,7 +110,7 @@ impl<'s> LintLevelsBuilder<'s> {
     pub fn push(&mut self, attrs: &[ast::Attribute], store: &LintStore) -> BuilderPush {
         let mut specs = FxHashMap::default();
         let sess = self.sess;
-        let bad_attr = |span| struct_span_err!(sess, span, E0452, "malformed lint attribute input");
+        let bad_attr = |span| struct_span_err!(sess, span, "E0452", "malformed lint attribute input");
         for attr in attrs {
             let level = match Level::from_symbol(attr.name_or_empty()) {
                 None => continue,
@@ -196,7 +196,7 @@ impl<'s> LintLevelsBuilder<'s> {
                         struct_span_err!(
                             sess,
                             tool_ident.span,
-                            E0710,
+                            "E0710",
                             "an unknown tool name found in scoped lint: `{}`",
                             pprust::path_to_string(&meta_item.path),
                         )
@@ -350,7 +350,7 @@ impl<'s> LintLevelsBuilder<'s> {
             let mut diag_builder = struct_span_err!(
                 self.sess,
                 lint_attr_span,
-                E0453,
+                "E0453",
                 "{}({}) overruled by outer forbid({})",
                 level.as_str(),
                 lint_attr_name,

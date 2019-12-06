@@ -1229,7 +1229,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         err = struct_span_err!(
                             fcx.tcx.sess,
                             cause.span,
-                            E0069,
+                            "E0069",
                             "`return;` in a function whose return type is not `()`"
                         );
                         err.span_label(cause.span, "return type is not `()`");

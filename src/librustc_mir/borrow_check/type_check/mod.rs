@@ -1909,7 +1909,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 let mut diag = struct_span_err!(
                     self.tcx().sess,
                     span,
-                    E0161,
+                    "E0161",
                     "cannot move a value of type {0}: the size of {0} \
                      cannot be statically determined",
                     ty

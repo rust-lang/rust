@@ -207,7 +207,7 @@ fn report_unused_parameter(tcx: TyCtxt<'_>, span: Span, kind: &str, name: &str) 
     struct_span_err!(
         tcx.sess,
         span,
-        E0207,
+        "E0207",
         "the {} parameter `{}` is not constrained by the \
         impl trait, self type, or predicates",
         kind,
@@ -232,7 +232,7 @@ fn enforce_impl_items_are_distinct(tcx: TyCtxt<'_>, impl_item_refs: &[hir::ImplI
                 let mut err = struct_span_err!(
                     tcx.sess,
                     impl_item.span,
-                    E0201,
+                    "E0201",
                     "duplicate definitions with name `{}`:",
                     impl_item.ident
                 );

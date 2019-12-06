@@ -469,7 +469,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
-            E0029,
+            "E0029",
             "only char and numeric types are allowed in range patterns"
         );
         let msg = |ty| format!("this is of type `{}` but it should be `char` or numeric", ty);
@@ -603,7 +603,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         span,
-                        E0033,
+                        "E0033",
                         "type `{}` cannot be dereferenced",
                         type_str
                     );
@@ -710,7 +710,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 res.descr(),
                 hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false)),
             );
-            let mut err = struct_span_err!(tcx.sess, pat.span, E0164, "{}", msg);
+            let mut err = struct_span_err!(tcx.sess, pat.span, "E0164", "{}", msg);
             match (res, &pat.kind) {
                 (Res::Def(DefKind::Fn, _), _) | (Res::Def(DefKind::Method, _), _) => {
                     err.span_label(pat.span, "`fn` calls are not allowed in patterns");
@@ -805,7 +805,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = struct_span_err!(
             self.tcx.sess,
             pat_span,
-            E0023,
+            "E0023",
             "this pattern has {} field{}, but the corresponding {} has {} field{}",
             subpats.len(),
             subpats_ending,
@@ -1001,7 +1001,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0638,
+                "E0638",
                 "`..` required with {} marked as non-exhaustive",
                 kind_name
             )
@@ -1028,7 +1028,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         struct_span_err!(
             self.tcx.sess,
             span,
-            E0025,
+            "E0025",
             "field `{}` bound multiple times in the pattern",
             ident
         )
@@ -1065,7 +1065,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = struct_span_err!(
             tcx.sess,
             spans,
-            E0026,
+            "E0026",
             "{} `{}` does not have {}",
             kind_name,
             tcx.def_path_str(variant.def_id),
@@ -1132,7 +1132,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut diag = struct_span_err!(
             self.tcx.sess,
             span,
-            E0027,
+            "E0027",
             "pattern does not mention {}",
             field_names
         );
@@ -1327,7 +1327,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         struct_span_err!(
             self.tcx.sess,
             span,
-            E0527,
+            "E0527",
             "pattern requires {} element{} but array has {}",
             min_len,
             pluralize!(min_len),
@@ -1341,7 +1341,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         struct_span_err!(
             self.tcx.sess,
             span,
-            E0528,
+            "E0528",
             "pattern requires at least {} element{} but array has {}",
             min_len,
             pluralize!(min_len),
@@ -1358,7 +1358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         struct_span_err!(
             self.tcx.sess,
             span,
-            E0730,
+            "E0730",
             "cannot pattern-match on an array without a fixed length",
         )
         .emit();
@@ -1368,7 +1368,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
-            E0529,
+            "E0529",
             "expected an array or slice, found `{}`",
             expected_ty
         );

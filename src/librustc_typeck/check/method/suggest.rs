@@ -274,7 +274,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut err = struct_span_err!(
                             tcx.sess,
                             span,
-                            E0689,
+                            "E0689",
                             "can't call {} `{}` on ambiguous numeric type `{}`",
                             item_kind,
                             item_name,
@@ -356,7 +356,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let mut err = struct_span_err!(
                             tcx.sess,
                             span,
-                            E0599,
+                            "E0599",
                             "no {} named `{}` found for {} `{}` in the current scope",
                             item_kind,
                             item_name,
@@ -617,7 +617,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.sess(),
                     span,
-                    E0034,
+                    "E0034",
                     "multiple applicable items in scope"
                 );
                 err.span_label(span, format!("multiple `{}` found", item_name));
@@ -630,7 +630,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0624,
+                    "E0624",
                     "{} `{}` is private",
                     kind.descr(def_id),
                     item_name

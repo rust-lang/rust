@@ -73,7 +73,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                             struct_span_err!(
                                 self.tcx.sess,
                                 item.span(),
-                                E0458,
+                                "E0458",
                                 "unknown kind: `{}`",
                                 k
                             )
@@ -118,7 +118,7 @@ impl ItemLikeVisitor<'tcx> for Collector<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     m.span,
-                    E0459,
+                    "E0459",
                     "`#[link(...)]` specified without \
                                   `name = \"foo\"`"
                 )
@@ -141,7 +141,7 @@ impl Collector<'tcx> {
                     struct_span_err!(
                         self.tcx.sess,
                         span,
-                        E0454,
+                        "E0454",
                         "`#[link(name = \"\")]` given with empty name"
                     )
                     .span_label(span, "empty name given")
@@ -157,7 +157,7 @@ impl Collector<'tcx> {
         if lib.kind == cstore::NativeFramework && !is_osx {
             let msg = "native frameworks are only available on macOS targets";
             match span {
-                Some(span) => struct_span_err!(self.tcx.sess, span, E0455, "{}", msg).emit(),
+                Some(span) => struct_span_err!(self.tcx.sess, span, "E0455", "{}", msg).emit(),
                 None => self.tcx.sess.err(msg),
             }
         }

@@ -446,7 +446,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0579,
+                    "E0579",
                     "lower range bound must be less than upper"
                 )
                 .emit();
@@ -461,7 +461,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0030,
+                    "E0030",
                     "lower range bound must be less than or equal to upper"
                 );
                 err.span_label(span, "lower bound larger than upper bound");

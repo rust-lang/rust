@@ -581,7 +581,7 @@ impl Visitor<'tcx> for Validator<'_, 'mir, 'tcx> {
 }
 
 fn error_min_const_fn_violation(tcx: TyCtxt<'_>, span: Span, msg: Cow<'_, str>) {
-    struct_span_err!(tcx.sess, span, E0723, "{}", msg)
+    struct_span_err!(tcx.sess, span, "E0723", "{}", msg)
         .note(
             "see issue #57563 <https://github.com/rust-lang/rust/issues/57563> \
              for more information",

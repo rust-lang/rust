@@ -517,7 +517,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
-            E0698,
+            "E0698",
             "type inside {} must be known in this context",
             kind,
         );

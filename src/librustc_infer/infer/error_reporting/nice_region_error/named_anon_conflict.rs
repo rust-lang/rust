@@ -99,7 +99,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let mut diag = struct_span_err!(
             self.tcx().sess,
             span,
-            E0621,
+            "E0621",
             "explicit lifetime required in {}",
             error_var
         );

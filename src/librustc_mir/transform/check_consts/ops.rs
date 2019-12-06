@@ -33,7 +33,7 @@ pub trait NonConstOp: std::fmt::Debug {
         let mut err = struct_span_err!(
             item.tcx.sess,
             span,
-            E0019,
+            "E0019",
             "{} contains unimplemented expression type",
             item.const_kind()
         );
@@ -81,7 +81,7 @@ impl NonConstOp for FnCallNonConst {
         let mut err = struct_span_err!(
             item.tcx.sess,
             span,
-            E0015,
+            "E0015",
             "calls in {}s are limited to constant functions, \
              tuple structs and tuple variants",
             item.const_kind(),
@@ -129,7 +129,7 @@ impl NonConstOp for HeapAllocation {
         let mut err = struct_span_err!(
             item.tcx.sess,
             span,
-            E0010,
+            "E0010",
             "allocations are not allowed in {}s",
             item.const_kind()
         );
@@ -166,7 +166,7 @@ impl NonConstOp for LiveDrop {
         struct_span_err!(
             item.tcx.sess,
             span,
-            E0493,
+            "E0493",
             "destructors cannot be evaluated at compile-time"
         )
         .span_label(span, format!("{}s cannot evaluate destructors", item.const_kind()))
@@ -347,7 +347,7 @@ impl NonConstOp for StaticAccess {
         let mut err = struct_span_err!(
             item.tcx.sess,
             span,
-            E0013,
+            "E0013",
             "{}s cannot refer to statics",
             item.const_kind()
         );
@@ -375,7 +375,7 @@ impl NonConstOp for ThreadLocalAccess {
         struct_span_err!(
             item.tcx.sess,
             span,
-            E0625,
+            "E0625",
             "thread-local statics cannot be \
             accessed at compile-time"
         )

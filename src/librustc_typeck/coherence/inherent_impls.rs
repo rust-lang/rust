@@ -279,7 +279,7 @@ impl ItemLikeVisitor<'v> for InherentCollect<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     ty.span,
-                    E0118,
+                    "E0118",
                     "no base type found for inherent implementation"
                 )
                 .span_label(ty.span, "impl requires a base type")
@@ -311,7 +311,7 @@ impl InherentCollect<'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 item.span,
-                E0116,
+                "E0116",
                 "cannot define inherent `impl` for a type outside of the crate \
                               where the type is defined"
             )
@@ -341,7 +341,7 @@ impl InherentCollect<'tcx> {
                 struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0390,
+                    "E0390",
                     "only a single inherent implementation marked with `#[lang = \
                                   \"{}\"]` is allowed for the `{}` primitive",
                     lang,

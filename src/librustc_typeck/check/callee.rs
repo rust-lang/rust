@@ -21,7 +21,7 @@ use syntax::ast::Ident;
 /// method that is called).
 pub fn check_legal_trait_for_method_call(tcx: TyCtxt<'_>, span: Span, trait_id: DefId) {
     if tcx.lang_items().drop_trait() == Some(trait_id) {
-        struct_span_err!(tcx.sess, span, E0040, "explicit use of destructor method")
+        struct_span_err!(tcx.sess, span, "E0040", "explicit use of destructor method")
             .span_label(span, "explicit destructor calls not allowed")
             .emit();
     }
@@ -276,7 +276,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         self.tcx.sess,
                         callee.span,
                         callee_ty,
-                        E0618,
+                        "E0618",
                         "expected function, found {}",
                         match unit_variant {
                             Some(ref path) => format!("enum variant `{}`", path),

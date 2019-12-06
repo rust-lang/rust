@@ -346,7 +346,7 @@ impl<'tcx> TyCtxt<'tcx> {
             let mut err = struct_span_err!(
                 self.sess,
                 span,
-                E0391,
+                "E0391",
                 "cycle detected when {}",
                 stack[0].query.describe(self)
             );

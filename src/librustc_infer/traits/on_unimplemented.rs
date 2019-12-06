@@ -39,7 +39,7 @@ fn parse_error(
     label: &str,
     note: Option<&str>,
 ) -> ErrorReported {
-    let mut diag = struct_span_err!(tcx.sess, span, E0232, "{}", message);
+    let mut diag = struct_span_err!(tcx.sess, span, "E0232", "{}", message);
     diag.span_label(span, label);
     if let Some(note) = note {
         diag.note(note);
@@ -295,7 +295,7 @@ impl<'tcx> OnUnimplementedFormatString {
                                 struct_span_err!(
                                     tcx.sess,
                                     span,
-                                    E0230,
+                                    "E0230",
                                     "there is no parameter `{}` on trait `{}`",
                                     s,
                                     name
@@ -310,7 +310,7 @@ impl<'tcx> OnUnimplementedFormatString {
                         struct_span_err!(
                             tcx.sess,
                             span,
-                            E0231,
+                            "E0231",
                             "only named substitution parameters are allowed"
                         )
                         .emit();

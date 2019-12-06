@@ -48,7 +48,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for VariadicError<'tcx> {
     }
 
     fn code(&self) -> DiagnosticId {
-        rustc_errors::error_code!(E0617)
+        rustc_errors::error_code!("E0617")
     }
 
     fn common(&self) -> DiagnosticBuilder<'tcx> {
@@ -109,7 +109,7 @@ impl<'tcx> StructuredDiagnostic<'tcx> for SizedUnsizedCastError<'tcx> {
     }
 
     fn code(&self) -> DiagnosticId {
-        rustc_errors::error_code!(E0607)
+        rustc_errors::error_code!("E0607")
     }
 
     fn common(&self) -> DiagnosticBuilder<'tcx> {

@@ -1318,7 +1318,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let mut err = struct_span_err!(
                             self.sess,
                             t.span,
-                            E0562,
+                            "E0562",
                             "`impl Trait` not allowed outside of {}",
                             allowed_in,
                         );
@@ -2532,7 +2532,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             ),
         };
 
-        let mut err = struct_span_err!(self.sess, span, E0637, "{}", msg,);
+        let mut err = struct_span_err!(self.sess, span, "E0637", "{}", msg,);
         err.span_label(span, label);
         err.emit();
 

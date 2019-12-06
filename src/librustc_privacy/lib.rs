@@ -1032,7 +1032,7 @@ impl<'a, 'tcx> NamePrivacyVisitor<'a, 'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 span,
-                E0451,
+                "E0451",
                 "field `{}` of {} `{}` is private",
                 field.ident,
                 def.variant_descr(),
@@ -1808,9 +1808,9 @@ impl SearchInterfaceForPrivateItemsVisitor<'tcx> {
             let make_msg = || format!("{} {} `{}` in public interface", vis_descr, kind, descr);
             if self.has_pub_restricted || self.has_old_errors || self.in_assoc_ty {
                 let mut err = if kind == "trait" {
-                    struct_span_err!(self.tcx.sess, self.span, E0445, "{}", make_msg())
+                    struct_span_err!(self.tcx.sess, self.span, "E0445", "{}", make_msg())
                 } else {
-                    struct_span_err!(self.tcx.sess, self.span, E0446, "{}", make_msg())
+                    struct_span_err!(self.tcx.sess, self.span, "E0446", "{}", make_msg())
                 };
                 err.span_label(self.span, format!("can't leak {} {}", vis_descr, kind));
                 err.span_label(vis_span, format!("`{}` declared as {}", descr, vis_descr));

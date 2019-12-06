@@ -112,7 +112,7 @@ fn parse_inline_asm<'a>(
                     return Err(struct_span_err!(
                         cx.parse_sess.span_diagnostic,
                         sp,
-                        E0660,
+                        "E0660",
                         "malformed inline assembly"
                     ));
                 }
@@ -173,7 +173,7 @@ fn parse_inline_asm<'a>(
                             struct_span_err!(
                                 cx.parse_sess.span_diagnostic,
                                 span,
-                                E0661,
+                                "E0661",
                                 "output operand constraint lacks '=' or '+'"
                             )
                             .emit();
@@ -203,7 +203,7 @@ fn parse_inline_asm<'a>(
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
                             p.prev_span,
-                            E0662,
+                            "E0662",
                             "input operand constraint contains '='"
                         )
                         .emit();
@@ -211,7 +211,7 @@ fn parse_inline_asm<'a>(
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
                             p.prev_span,
-                            E0663,
+                            "E0663",
                             "input operand constraint contains '+'"
                         )
                         .emit();
@@ -238,7 +238,7 @@ fn parse_inline_asm<'a>(
                         struct_span_err!(
                             cx.parse_sess.span_diagnostic,
                             p.prev_span,
-                            E0664,
+                            "E0664",
                             "clobber should not be surrounded by braces"
                         )
                         .emit();

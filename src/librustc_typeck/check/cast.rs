@@ -184,7 +184,7 @@ fn make_invalid_casting_error<'a, 'tcx>(
         sess,
         span,
         expr_ty,
-        E0606,
+        "E0606",
         "casting `{}` as `{}` is invalid",
         fcx.ty_to_string(expr_ty),
         fcx.ty_to_string(cast_ty)
@@ -305,7 +305,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             }
             CastError::CastToBool => {
                 let mut err =
-                    struct_span_err!(fcx.tcx.sess, self.span, E0054, "cannot cast as `bool`");
+                    struct_span_err!(fcx.tcx.sess, self.span, "E0054", "cannot cast as `bool`");
 
                 if self.expr_ty.is_numeric() {
                     match fcx.tcx.sess.source_map().span_to_snippet(self.expr.span) {
@@ -332,7 +332,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx.tcx.sess,
                     self.span,
                     self.expr_ty,
-                    E0604,
+                    "E0604",
                     "only `u8` can be cast as `char`, not `{}`",
                     self.expr_ty
                 )
@@ -343,7 +343,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                     fcx.tcx.sess,
                     self.span,
                     self.expr_ty,
-                    E0605,
+                    "E0605",
                     "non-primitive cast: `{}` as `{}`",
                     self.expr_ty,
                     fcx.ty_to_string(self.cast_ty)
@@ -374,7 +374,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let mut err = struct_span_err!(
                     fcx.tcx.sess,
                     self.span,
-                    E0641,
+                    "E0641",
                     "cannot cast {} a pointer of an unknown kind",
                     if unknown_cast_to { "to" } else { "from" }
                 );
@@ -405,7 +405,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             fcx.tcx.sess,
             self.span,
             self.expr_ty,
-            E0620,
+            "E0620",
             "cast to unsized type: `{}` as `{}`",
             fcx.resolve_vars_if_possible(&self.expr_ty),
             tstr

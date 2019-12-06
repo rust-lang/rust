@@ -107,7 +107,7 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
             if ctxt.main_fn.is_none() {
                 ctxt.main_fn = Some((item.hir_id, item.span));
             } else {
-                struct_span_err!(ctxt.session, item.span, E0136, "multiple `main` functions")
+                struct_span_err!(ctxt.session, item.span, "E0136", "multiple `main` functions")
                     .emit();
             }
         }
@@ -121,7 +121,7 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
                 struct_span_err!(
                     ctxt.session,
                     item.span,
-                    E0137,
+                    "E0137",
                     "multiple functions with a `#[main]` attribute"
                 )
                 .span_label(item.span, "additional `#[main]` function")
@@ -133,7 +133,7 @@ fn find_item(item: &Item<'_>, ctxt: &mut EntryContext<'_, '_>, at_root: bool) {
             if ctxt.start_fn.is_none() {
                 ctxt.start_fn = Some((item.hir_id, item.span));
             } else {
-                struct_span_err!(ctxt.session, item.span, E0138, "multiple `start` functions")
+                struct_span_err!(ctxt.session, item.span, "E0138", "multiple `start` functions")
                     .span_label(ctxt.start_fn.unwrap().1, "previous `#[start]` function here")
                     .span_label(item.span, "multiple `start` functions")
                     .emit();
@@ -169,7 +169,7 @@ fn no_main_err(tcx: TyCtxt<'_>, visitor: &EntryContext<'_, '_>) {
     let mut err = struct_span_err!(
         tcx.sess,
         DUMMY_SP,
-        E0601,
+        "E0601",
         "`main` function not found in crate `{}`",
         tcx.crate_name(LOCAL_CRATE)
     );

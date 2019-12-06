@@ -407,7 +407,7 @@ impl<'a> Drop for DiagnosticBuilder<'a> {
 
 #[macro_export]
 macro_rules! struct_span_err {
-    ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
+    ($session:expr, $span:expr, $code:expr, $($message:tt)*) => ({
         $session.struct_span_err_with_code(
             $span,
             &format!($($message)*),
@@ -418,5 +418,5 @@ macro_rules! struct_span_err {
 
 #[macro_export]
 macro_rules! error_code {
-    ($code:ident) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
+    ($code:expr) => {{ $crate::DiagnosticId::Error(stringify!($code).to_owned()) }};
 }

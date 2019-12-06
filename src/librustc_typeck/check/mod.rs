@@ -158,7 +158,7 @@ use self::TupleArgumentsFlag::*;
 
 #[macro_export]
 macro_rules! type_error_struct {
-    ($session:expr, $span:expr, $typ:expr, $code:ident, $($message:tt)*) => ({
+    ($session:expr, $span:expr, $typ:expr, $code:expr, $($message:tt)*) => ({
         if $typ.references_error() {
             $session.diagnostic().struct_dummy()
         } else {
@@ -1134,7 +1134,7 @@ fn check_abi(tcx: TyCtxt<'_>, span: Span, abi: Abi) {
         struct_span_err!(
             tcx.sess,
             span,
-            E0570,
+            "E0570",
             "The ABI `{}` is not supported for the current target",
             abi
         )
@@ -1566,7 +1566,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: DefId) -> bool {
                 struct_span_err!(
                     tcx.sess,
                     field_span,
-                    E0740,
+                    "E0740",
                     "unions may not contain fields that need dropping"
                 )
                 .span_note(field_span, "`std::mem::ManuallyDrop` can be used to wrap the type")
@@ -1671,13 +1671,14 @@ fn check_opaque_for_cycles<'tcx>(
 ) {
     if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
         if let hir::OpaqueTyOrigin::AsyncFn = origin {
-            struct_span_err!(tcx.sess, span, E0733, "recursion in an `async fn` requires boxing",)
+            struct_span_err!(tcx.sess, span, "E0733", "recursion in an `async fn` requires boxing",)
                 .span_label(span, "recursive `async fn`")
                 .note("a recursive `async fn` must be rewritten to return a boxed `dyn Future`")
                 .emit();
         } else {
             let mut err =
-                struct_span_err!(tcx.sess, span, E0720, "opaque type expands to a recursive type",);
+                struct_span_err!(tcx.sess, span, "E0720",
+                                 "opaque type expands to a recursive type",);
             err.span_label(span, "expands to a recursive type");
             if let ty::Opaque(..) = partially_expanded_type.kind {
                 err.note("type resolves to itself");
@@ -1783,7 +1784,7 @@ pub fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, it: &'tcx hir::Item<'tcx>) {
                         struct_span_err!(
                             tcx.sess,
                             item.span,
-                            E0044,
+                            "E0044",
                             "foreign items may not have {} parameters",
                             kinds,
                         )
@@ -1859,7 +1860,7 @@ fn report_forbidden_specialization(
     let mut err = struct_span_err!(
         tcx.sess,
         impl_item.span,
-        E0520,
+        "E0520",
         "`{}` specializes an item from a parent `impl`, but \
          that item is not marked `default`",
         impl_item.ident
@@ -2000,7 +2001,7 @@ fn check_impl_items_against_trait<'tcx>(
                         let mut err = struct_span_err!(
                             tcx.sess,
                             impl_item.span,
-                            E0323,
+                            "E0323",
                             "item `{}` is an associated const, \
                               which doesn't match its trait `{}`",
                             ty_impl_item.ident,
@@ -2030,7 +2031,7 @@ fn check_impl_items_against_trait<'tcx>(
                         let mut err = struct_span_err!(
                             tcx.sess,
                             impl_item.span,
-                            E0324,
+                            "E0324",
                             "item `{}` is an associated method, \
                              which doesn't match its trait `{}`",
                             ty_impl_item.ident,
@@ -2061,7 +2062,7 @@ fn check_impl_items_against_trait<'tcx>(
                         let mut err = struct_span_err!(
                             tcx.sess,
                             impl_item.span,
-                            E0325,
+                            "E0325",
                             "item `{}` is an associated type, \
                              which doesn't match its trait `{}`",
                             ty_impl_item.ident,
@@ -2109,7 +2110,7 @@ fn check_impl_items_against_trait<'tcx>(
         struct_span_err!(
             tcx.sess,
             invalidator.span,
-            E0399,
+            "E0399",
             "the following trait items need to be reimplemented as `{}` was overridden: `{}`",
             invalidator.ident,
             invalidated_items.iter().map(|name| name.to_string()).collect::<Vec<_>>().join("`, `")
@@ -2133,7 +2134,7 @@ fn missing_items_err(
     let mut err = struct_span_err!(
         tcx.sess,
         impl_span,
-        E0046,
+        "E0046",
         "not all trait items implemented, missing: `{}`",
         missing_items_msg
     );
@@ -2336,12 +2337,12 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
         if def.is_struct() {
             let fields = &def.non_enum_variant().fields;
             if fields.is_empty() {
-                struct_span_err!(tcx.sess, sp, E0075, "SIMD vector cannot be empty").emit();
+                struct_span_err!(tcx.sess, sp, "E0075", "SIMD vector cannot be empty").emit();
                 return;
             }
             let e = fields[0].ty(tcx, substs);
             if !fields.iter().all(|f| f.ty(tcx, substs) == e) {
-                struct_span_err!(tcx.sess, sp, E0076, "SIMD vector should be homogeneous")
+                struct_span_err!(tcx.sess, sp, "E0076", "SIMD vector should be homogeneous")
                     .span_label(sp, "SIMD elements must have the same type")
                     .emit();
                 return;
@@ -2353,7 +2354,7 @@ pub fn check_simd(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
                     struct_span_err!(
                         tcx.sess,
                         sp,
-                        E0077,
+                        "E0077",
                         "SIMD vector element type should be machine type"
                     )
                     .emit();
@@ -2375,7 +2376,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
                             struct_span_err!(
                                 tcx.sess,
                                 sp,
-                                E0634,
+                                "E0634",
                                 "type has conflicting packed representation hints"
                             )
                             .emit();
@@ -2388,7 +2389,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
             struct_span_err!(
                 tcx.sess,
                 sp,
-                E0587,
+                "E0587",
                 "type has conflicting packed and align representation hints"
             )
             .emit();
@@ -2397,7 +2398,7 @@ fn check_packed(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
                 let mut err = struct_span_err!(
                     tcx.sess,
                     sp,
-                    E0588,
+                    "E0588",
                     "packed type cannot transitively contain a `#[repr(align)]` type"
                 );
 
@@ -2477,7 +2478,7 @@ fn bad_variant_count<'tcx>(tcx: TyCtxt<'tcx>, adt: &'tcx ty::AdtDef, sp: Span, d
         .map(|variant| tcx.hir().span_if_local(variant.def_id).unwrap())
         .collect();
     let msg = format!("needs exactly one variant, but has {}", adt.variants.len(),);
-    let mut err = struct_span_err!(tcx.sess, sp, E0731, "transparent enum {}", msg);
+    let mut err = struct_span_err!(tcx.sess, sp, "E0731", "transparent enum {}", msg);
     err.span_label(sp, &msg);
     if let [start @ .., end] = &*variant_spans {
         for variant_span in start {
@@ -2501,7 +2502,7 @@ fn bad_non_zero_sized_fields<'tcx>(
     let mut err = struct_span_err!(
         tcx.sess,
         sp,
-        E0690,
+        "E0690",
         "{}transparent {} {}",
         if adt.is_enum() { "the variant of a " } else { "" },
         adt.descr(),
@@ -2562,7 +2563,7 @@ fn check_transparent(tcx: TyCtxt<'_>, sp: Span, def_id: DefId) {
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0691,
+                "E0691",
                 "zero-sized field in transparent {} has alignment larger than 1",
                 adt.descr(),
             )
@@ -2589,7 +2590,7 @@ pub fn check_enum<'tcx>(
             struct_span_err!(
                 tcx.sess,
                 attr.span,
-                E0084,
+                "E0084",
                 "unsupported representation for zero-variant enum"
             )
             .span_label(sp, "zero-variant enum")
@@ -2629,7 +2630,7 @@ pub fn check_enum<'tcx>(
 
         if disr_non_unit || (disr_units && has_non_units) {
             let mut err =
-                struct_span_err!(tcx.sess, sp, E0732, "`#[repr(inttype)]` must be specified");
+                struct_span_err!(tcx.sess, sp, "E0732", "`#[repr(inttype)]` must be specified");
             err.emit();
         }
     }
@@ -2652,7 +2653,7 @@ pub fn check_enum<'tcx>(
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0081,
+                "E0081",
                 "discriminant value `{}` already exists",
                 disr_vals[i]
             )
@@ -2671,7 +2672,7 @@ fn report_unexpected_variant_res(tcx: TyCtxt<'_>, res: Res, span: Span, qpath: &
     struct_span_err!(
         tcx.sess,
         span,
-        E0533,
+        "E0533",
         "expected unit struct, unit variant or constant, found {} `{}`",
         res.descr(),
         hir::print::to_string(&tcx.hir(), |s| s.print_qpath(qpath, false))
@@ -3942,7 +3943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     struct_span_err!(
                         tcx.sess,
                         sp,
-                        E0059,
+                        "E0059",
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
                     )
@@ -4360,7 +4361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             struct_span_err!(
                 self.tcx.sess,
                 path_span,
-                E0071,
+                "E0071",
                 "expected struct, variant or union type, found {}",
                 ty.sort_string(self.tcx)
             )
@@ -5783,7 +5784,7 @@ pub fn check_bounds_are_used<'tcx>(tcx: TyCtxt<'tcx>, generics: &ty::Generics, t
         if !used {
             let id = tcx.hir().as_local_hir_id(param.def_id).unwrap();
             let span = tcx.hir().span(id);
-            struct_span_err!(tcx.sess, span, E0091, "type parameter `{}` is unused", param.name)
+            struct_span_err!(tcx.sess, span, "E0091", "type parameter `{}` is unused", param.name)
                 .span_label(span, "unused type parameter")
                 .emit();
         }

@@ -202,7 +202,7 @@ impl<'a> AstValidator<'a> {
         }
 
         let mut err =
-            struct_span_err!(self.session, vis.span, E0449, "unnecessary visibility qualifier");
+            struct_span_err!(self.session, vis.span, "E0449", "unnecessary visibility qualifier");
         if vis.node.is_pub() {
             err.span_label(vis.span, "`pub` not permitted here because it's implied");
         }
@@ -229,7 +229,7 @@ impl<'a> AstValidator<'a> {
             struct_span_err!(
                 self.session,
                 fn_span,
-                E0706,
+                "E0706",
                 "functions in traits cannot be declared `async`"
             )
             .span_label(span, "`async` because of this")
@@ -244,7 +244,7 @@ impl<'a> AstValidator<'a> {
             struct_span_err!(
                 self.session,
                 span,
-                E0379,
+                "E0379",
                 "functions in traits cannot be declared const"
             )
             .span_label(span, "functions in traits cannot be const")
@@ -700,7 +700,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 struct_span_err!(
                     self.session,
                     expr.span,
-                    E0472,
+                    "E0472",
                     "asm! is unsupported on this target"
                 )
                 .emit();
@@ -719,7 +719,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     struct_span_err!(
                         self.session,
                         span,
-                        E0561,
+                        "E0561",
                         "patterns aren't allowed in function pointer types"
                     )
                     .emit();
@@ -734,7 +734,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                             struct_span_err!(
                                 self.session,
                                 lifetime.ident.span,
-                                E0226,
+                                "E0226",
                                 "only a single explicit lifetime bound is permitted"
                             )
                             .emit();
@@ -750,7 +750,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     struct_span_err!(
                         self.session,
                         ty.span,
-                        E0667,
+                        "E0667",
                         "`impl Trait` is not allowed in path parameters"
                     )
                     .emit();
@@ -760,7 +760,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     struct_span_err!(
                         self.session,
                         ty.span,
-                        E0666,
+                        "E0666",
                         "nested `impl Trait` is not allowed"
                     )
                     .span_label(outer_impl_trait_sp, "outer `impl Trait`")
@@ -854,7 +854,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     struct_span_err!(
                         self.session,
                         item.span,
-                        E0197,
+                        "E0197",
                         "inherent impls cannot be unsafe"
                     )
                     .span_label(span, "unsafe because of this")
@@ -910,7 +910,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         struct_span_err!(
                             self.session,
                             item.span,
-                            E0567,
+                            "E0567",
                             "auto traits cannot have generic parameters"
                         )
                         .emit();
@@ -919,7 +919,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         struct_span_err!(
                             self.session,
                             item.span,
-                            E0568,
+                            "E0568",
                             "auto traits cannot have super traits"
                         )
                         .emit();
@@ -928,7 +928,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                         struct_span_err!(
                             self.session,
                             item.span,
-                            E0380,
+                            "E0380",
                             "auto traits cannot have methods or associated items"
                         )
                         .emit();

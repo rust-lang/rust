@@ -390,7 +390,7 @@ impl<'a> CrateLocator<'a> {
             let mut err = struct_span_err!(
                 self.sess,
                 self.span,
-                E0460,
+                "E0460",
                 "found possibly newer version of crate `{}`{}",
                 self.crate_name,
                 add
@@ -414,9 +414,8 @@ impl<'a> CrateLocator<'a> {
             let mut err = struct_span_err!(
                 self.sess,
                 self.span,
-                E0461,
-                "couldn't find crate `{}` \
-                                            with expected target triple {}{}",
+                "E0461",
+                "couldn't find crate `{}` with expected target triple {}{}",
                 self.crate_name,
                 self.triple,
                 add
@@ -436,7 +435,7 @@ impl<'a> CrateLocator<'a> {
             let mut err = struct_span_err!(
                 self.sess,
                 self.span,
-                E0462,
+                "E0462",
                 "found staticlib `{}` instead of rlib or dylib{}",
                 self.crate_name,
                 add
@@ -452,9 +451,8 @@ impl<'a> CrateLocator<'a> {
             let mut err = struct_span_err!(
                 self.sess,
                 self.span,
-                E0514,
-                "found crate `{}` compiled by an incompatible version \
-                                            of rustc{}",
+                "E0514",
+                "found crate `{}` compiled by an incompatible version of rustc{}",
                 self.crate_name,
                 add
             );
@@ -477,7 +475,7 @@ impl<'a> CrateLocator<'a> {
             let mut err = struct_span_err!(
                 self.sess,
                 self.span,
-                E0463,
+                "E0463",
                 "can't find crate for `{}`{}",
                 self.crate_name,
                 add
@@ -617,7 +615,7 @@ impl<'a> CrateLocator<'a> {
                 let mut err = struct_span_err!(
                     self.sess,
                     self.span,
-                    E0464,
+                    "E0464",
                     "multiple matching crates for `{}`",
                     self.crate_name
                 );
@@ -746,7 +744,7 @@ impl<'a> CrateLocator<'a> {
                 let mut e = struct_span_err!(
                     self.sess,
                     self.span,
-                    E0465,
+                    "E0465",
                     "multiple {} candidates for `{}` found",
                     flavor,
                     self.crate_name
@@ -1071,7 +1069,7 @@ pub fn find_plugin_registrar(
             config::host_triple(),
             sess.opts.target_triple
         );
-        struct_span_err!(sess, span, E0456, "{}", &message).emit();
+        struct_span_err!(sess, span, "E0456", "{}", &message).emit();
         return None;
     }
 
@@ -1081,9 +1079,8 @@ pub fn find_plugin_registrar(
             struct_span_err!(
                 sess,
                 span,
-                E0457,
-                "plugin `{}` only found in rlib format, but must be available \
-                        in dylib format",
+                "E0457",
+                "plugin `{}` only found in rlib format, but must be available in dylib format",
                 name
             )
             .emit();

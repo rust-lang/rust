@@ -50,7 +50,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
         struct_span_err!(
             tcx.sess,
             span,
-            E0322,
+            "E0322",
             "explicit impls for the `Sized` trait are not permitted"
         )
         .span_label(span, "impl of 'Sized' not allowed")
@@ -63,7 +63,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
         struct_span_err!(
             tcx.sess,
             span,
-            E0328,
+            "E0328",
             "explicit impls for the `Unsize` trait are not permitted"
         )
         .span_label(span, "impl of `Unsize` not allowed")
@@ -90,7 +90,7 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt<'_>, impl_def_id: DefId, tra
     struct_span_err!(
         tcx.sess,
         span,
-        E0183,
+        "E0183",
         "manual implementations of `{}` are experimental",
         trait_name
     )
@@ -111,7 +111,8 @@ fn enforce_empty_impls_for_marker_traits(tcx: TyCtxt<'_>, impl_def_id: DefId, tr
     }
 
     let span = impl_header_span(tcx, impl_def_id);
-    struct_span_err!(tcx.sess, span, E0715, "impls for marker traits cannot contain items").emit();
+    struct_span_err!(tcx.sess, span, "E0715", "impls for marker traits cannot contain items")
+        .emit();
 }
 
 pub fn provide(providers: &mut Providers<'_>) {
@@ -200,7 +201,7 @@ fn check_object_overlap<'tcx>(
                     struct_span_err!(
                         tcx.sess,
                         span,
-                        E0371,
+                        "E0371",
                         "the object type `{}` automatically implements the trait `{}`",
                         trait_ref.self_ty(),
                         tcx.def_path_str(trait_def_id)

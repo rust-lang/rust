@@ -110,7 +110,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                             struct_span_err!(
                                 self.sess,
                                 e.span,
-                                E0571,
+                                "E0571",
                                 "`break` with value from a `{}` loop",
                                 kind.name()
                             )
@@ -145,7 +145,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                             struct_span_err!(
                                 self.sess,
                                 e.span,
-                                E0696,
+                                "E0696",
                                 "`continue` pointing to a labeled block"
                             )
                             .span_label(e.span, "labeled blocks cannot be `continue`'d")
@@ -178,7 +178,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
 
     fn require_break_cx(&self, name: &str, span: Span) {
         let err_inside_of = |article, ty, closure_span| {
-            struct_span_err!(self.sess, span, E0267, "`{}` inside of {} {}", name, article, ty)
+            struct_span_err!(self.sess, span, "E0267", "`{}` inside of {} {}", name, article, ty)
                 .span_label(span, format!("cannot `{}` inside of {} {}", name, article, ty))
                 .span_label(closure_span, &format!("enclosing {}", ty))
                 .emit();
@@ -189,7 +189,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
             Closure(closure_span) => err_inside_of("a", "closure", closure_span),
             AsyncClosure(closure_span) => err_inside_of("an", "`async` block", closure_span),
             Normal | AnonConst => {
-                struct_span_err!(self.sess, span, E0268, "`{}` outside of a loop", name)
+                struct_span_err!(self.sess, span, "E0268", "`{}` outside of a loop", name)
                     .span_label(span, format!("cannot `{}` outside of a loop", name))
                     .emit();
             }
@@ -207,7 +207,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 struct_span_err!(
                     self.sess,
                     span,
-                    E0695,
+                    "E0695",
                     "unlabeled `{}` inside of a labeled block",
                     cf_type
                 )
@@ -229,7 +229,7 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
         struct_span_err!(
             self.sess,
             span,
-            E0590,
+            "E0590",
             "`break` or `continue` with no label in the condition of a `while` loop"
         )
         .span_label(span, format!("unlabeled `{}` in the condition of a `while` loop", cf_type))

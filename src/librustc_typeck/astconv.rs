@@ -239,7 +239,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let mut err = struct_span_err! {
                 tcx.sess,
                 spans.clone(),
-                E0632,
+                "E0632",
                 "cannot provide explicit generic arguments when `impl Trait` is \
                 used in argument position"
             };
@@ -839,7 +839,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut err = struct_span_err!(
             self.tcx().sess,
             span,
-            E0393,
+            "E0393",
             "the type parameter{} {} must be explicitly specified",
             pluralize!(missing_type_params.len()),
             display,
@@ -1128,7 +1128,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     struct_span_err!(
                         tcx.sess,
                         span,
-                        E0203,
+                        "E0203",
                         "type parameter has more than one relaxed default \
                         bound, only one is supported"
                     )
@@ -1312,7 +1312,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     struct_span_err!(
                         tcx.sess,
                         binding.span,
-                        E0582,
+                        "E0582",
                         "binding for associated type `{}` references lifetime `{}`, \
                          which does not appear in the trait input types",
                         binding.item_name,
@@ -1366,7 +1366,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     struct_span_err!(
                         self.tcx().sess,
                         binding.span,
-                        E0719,
+                        "E0719",
                         "the value of the associated type `{}` (from trait `{}`) \
                          is already specified",
                         binding.item_name,
@@ -1454,7 +1454,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let mut err = struct_span_err!(
                 tcx.sess,
                 additional_trait.bottom().1,
-                E0225,
+                "E0225",
                 "only auto traits can be used as additional traits in a trait object"
             );
             additional_trait.label_with_exp_info(
@@ -1470,7 +1470,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0224,
+                "E0224",
                 "at least one trait is required for an object type"
             )
             .emit();
@@ -1635,7 +1635,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         struct_span_err!(
                             tcx.sess,
                             span,
-                            E0228,
+                            "E0228",
                             "the lifetime bound for this object type cannot be deduced \
                              from context; please supply an explicit bound"
                         )
@@ -1734,7 +1734,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut err = struct_span_err!(
             tcx.sess,
             trait_bound_spans,
-            E0191,
+            "E0191",
             "the value of the associated type{} {} must be specified",
             pluralize!(names.len()),
             names.join(", "),
@@ -1851,7 +1851,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         trait_str: &str,
         name: ast::Name,
     ) {
-        let mut err = struct_span_err!(self.tcx().sess, span, E0223, "ambiguous associated type");
+        let mut err = struct_span_err!(self.tcx().sess, span, "E0223", "ambiguous associated type");
         if let (Some(_), Ok(snippet)) = (
             self.tcx().sess.confused_type_with_std_module.borrow().get(&span),
             self.tcx().sess.source_map().span_to_snippet(span),
@@ -1951,7 +1951,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 struct_span_err!(
                     self.tcx().sess,
                     span,
-                    E0222,
+                    "E0222",
                     "ambiguous associated type `{}` in bounds of `{}`",
                     assoc_name,
                     ty_param_name()
@@ -1960,7 +1960,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 struct_span_err!(
                     self.tcx().sess,
                     span,
-                    E0221,
+                    "E0221",
                     "ambiguous associated type `{}` in bounds of `{}`",
                     assoc_name,
                     ty_param_name()
@@ -2045,7 +2045,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut err = struct_span_err!(
             self.tcx().sess,
             span,
-            E0220,
+            "E0220",
             "associated type `{}` not found for `{}`",
             assoc_name,
             ty_param_name
@@ -2151,7 +2151,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let mut err = struct_span_err!(
                         tcx.sess,
                         assoc_ident.span,
-                        E0599,
+                        "E0599",
                         "no variant named `{}` found for enum `{}`",
                         assoc_ident,
                         qself_ty,
@@ -2348,7 +2348,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let mut err = struct_span_err!(
                     self.tcx().sess,
                     span,
-                    E0109,
+                    "E0109",
                     "{} arguments are not allowed for this type",
                     kind,
                 );
@@ -2371,7 +2371,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut err = struct_span_err!(
             tcx.sess,
             span,
-            E0229,
+            "E0229",
             "associated type bindings are not allowed here"
         );
         err.span_label(span, "associated type not allowed here").emit();
@@ -2670,7 +2670,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 struct_span_err!(
                     tcx.sess,
                     ast_ty.span,
-                    E0516,
+                    "E0516",
                     "`typeof` is a reserved keyword but unimplemented"
                 )
                 .span_label(ast_ty.span, "reserved keyword")
@@ -2873,9 +2873,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let mut err = struct_span_err!(
                 tcx.sess,
                 decl.output.span(),
-                E0581,
-                "return type references {} \
-                                            which is not constrained by the fn input types",
+                "E0581",
+                "return type references {} which is not constrained by the fn input types",
                 lifetime_name
             );
             if let ty::BrAnon(_) = *br {
@@ -2935,7 +2934,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0227,
+                "E0227",
                 "ambiguous lifetime bound, explicit lifetime bound required"
             )
             .emit();

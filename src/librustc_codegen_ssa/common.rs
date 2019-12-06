@@ -195,5 +195,5 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 pub fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
-    struct_span_err!(a, b, E0511, "{}", c).emit();
+    struct_span_err!(a, b, "E0511", "{}", c).emit();
 }

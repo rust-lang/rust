@@ -80,7 +80,7 @@ impl ExprVisitor<'tcx> {
             let from = unpack_option_like(self.tcx, from);
             if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (&from.kind, sk_to) {
                 if size_to == Pointer.size(&self.tcx) {
-                    struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
+                    struct_span_err!(self.tcx.sess, span, "E0591", "can't transmute zero-sized type")
                         .note(&format!("source type: {}", from))
                         .note(&format!("target type: {}", to))
                         .help("cast with `as` to a pointer instead")
@@ -107,7 +107,7 @@ impl ExprVisitor<'tcx> {
         let mut err = struct_span_err!(
             self.tcx.sess,
             span,
-            E0512,
+            "E0512",
             "cannot transmute between types of different sizes, \
                                         or dependently-sized types"
         );

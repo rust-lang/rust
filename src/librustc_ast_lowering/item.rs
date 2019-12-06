@@ -1269,7 +1269,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn error_on_invalid_abi(&self, abi: StrLit) {
-        struct_span_err!(self.sess, abi.span, E0703, "invalid ABI: found `{}`", abi.symbol)
+        struct_span_err!(self.sess, abi.span, "E0703", "invalid ABI: found `{}`", abi.symbol)
             .span_label(abi.span, "invalid ABI")
             .help(&format!("valid ABIs: {}", abi::all_names().join(", ")))
             .emit();

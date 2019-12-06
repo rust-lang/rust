@@ -286,7 +286,7 @@ fn compare_predicate_entailment<'tcx>(
             let mut diag = struct_span_err!(
                 tcx.sess,
                 cause.span(tcx),
-                E0053,
+                "E0053",
                 "method `{}` has an incompatible type for trait",
                 trait_m.ident
             );
@@ -368,7 +368,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
         let mut err = struct_span_err!(
             tcx.sess,
             span,
-            E0195,
+            "E0195",
             "lifetime parameters or bounds on {} `{}` do not match the trait declaration",
             item_kind,
             impl_m.ident,
@@ -525,9 +525,8 @@ fn compare_self_type<'tcx>(
             let mut err = struct_span_err!(
                 tcx.sess,
                 impl_m_span,
-                E0185,
-                "method `{}` has a `{}` declaration in the impl, but \
-                                            not in the trait",
+                "E0185",
+                "method `{}` has a `{}` declaration in the impl, but not in the trait",
                 trait_m.ident,
                 self_descr
             );
@@ -546,9 +545,8 @@ fn compare_self_type<'tcx>(
             let mut err = struct_span_err!(
                 tcx.sess,
                 impl_m_span,
-                E0186,
-                "method `{}` has a `{}` declaration in the trait, but \
-                                            not in the impl",
+                "E0186",
+                "method `{}` has a `{}` declaration in the trait, but not in the impl",
                 trait_m.ident,
                 self_descr
             );
@@ -752,9 +750,8 @@ fn compare_number_of_method_arguments<'tcx>(
         let mut err = struct_span_err!(
             tcx.sess,
             impl_span,
-            E0050,
-            "method `{}` has {} but the declaration in \
-                                        trait `{}` has {}",
+            "E0050",
+            "method `{}` has {} but the declaration in trait `{}` has {}",
             trait_m.ident,
             potentially_plural_count(impl_number_args, "parameter"),
             tcx.def_path_str(trait_m.def_id),
@@ -817,7 +814,7 @@ fn compare_synthetic_generics<'tcx>(
             let mut err = struct_span_err!(
                 tcx.sess,
                 impl_span,
-                E0643,
+                "E0643",
                 "method `{}` has incompatible signature for trait",
                 trait_m.ident
             );
@@ -1000,9 +997,8 @@ crate fn compare_const_impl<'tcx>(
             let mut diag = struct_span_err!(
                 tcx.sess,
                 cause.span,
-                E0326,
-                "implemented const `{}` has an incompatible type for \
-                                             trait",
+                "E0326",
+                "implemented const `{}` has an incompatible type for trait",
                 trait_c.ident
             );
 

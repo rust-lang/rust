@@ -260,7 +260,7 @@ impl<'a> CrateLoader<'a> {
             struct_span_err!(
                 self.sess,
                 span,
-                E0519,
+                "E0519",
                 "the current crate is indistinguishable from one of its \
                          dependencies: it has the same crate-name `{}` and was \
                          compiled with the same `-C metadata` arguments. This \
@@ -280,7 +280,7 @@ impl<'a> CrateLoader<'a> {
                 struct_span_err!(
                     self.sess,
                     span,
-                    E0523,
+                    "E0523",
                     "found two different crates with name `{}` that are \
                          not distinguished by differing `-C metadata`. This \
                          will result in symbol conflicts between the two.",

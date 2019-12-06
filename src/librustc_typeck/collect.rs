@@ -259,7 +259,7 @@ fn bad_placeholder_type(
     let mut err = struct_span_err!(
         tcx.sess,
         spans.clone(),
-        E0121,
+        "E0121",
         "the type placeholder `_` is not allowed within types on item signatures",
     );
     for span in spans {
@@ -356,7 +356,7 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
             let mut err = struct_span_err!(
                 self.tcx().sess,
                 span,
-                E0212,
+                "E0212",
                 "cannot extract an associated type from a higher-ranked trait bound \
                  in this context"
             );
@@ -762,7 +762,7 @@ fn convert_enum_variant_types(tcx: TyCtxt<'_>, def_id: DefId, variants: &[hir::V
             } else if let Some(discr) = repr_type.disr_incr(tcx, prev_discr) {
                 Some(discr)
             } else {
-                struct_span_err!(tcx.sess, variant.span, E0370, "enum discriminant overflowed")
+                struct_span_err!(tcx.sess, variant.span, "E0370", "enum discriminant overflowed")
                     .span_label(
                         variant.span,
                         format!("overflowed on value after {}", prev_discr.unwrap()),
@@ -814,7 +814,7 @@ fn convert_variant(
                 struct_span_err!(
                     tcx.sess,
                     f.span,
-                    E0124,
+                    "E0124",
                     "field `{}` is already declared",
                     f.ident
                 )
@@ -2298,7 +2298,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                 struct_span_err!(
                     tcx.sess,
                     attr.span,
-                    E0724,
+                    "E0724",
                     "`#[ffi_returns_twice]` may only be used on foreign functions"
                 )
                 .emit();
@@ -2319,7 +2319,12 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::THREAD_LOCAL;
         } else if attr.check_name(sym::track_caller) {
             if tcx.is_closure(id) || tcx.fn_sig(id).abi() != abi::Abi::Rust {
-                struct_span_err!(tcx.sess, attr.span, E0737, "`#[track_caller]` requires Rust ABI")
+                struct_span_err!(
+                    tcx.sess,
+                    attr.span,
+                    "E0737",
+                    "`#[track_caller]` requires Rust ABI",
+                )
                     .emit();
             }
             codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
@@ -2331,7 +2336,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     struct_span_err!(
                         tcx.sess,
                         attr.span,
-                        E0648,
+                        "E0648",
                         "`export_name` may not contain null characters"
                     )
                     .emit();
@@ -2409,7 +2414,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     struct_span_err!(
                         tcx.sess.diagnostic(),
                         attr.span,
-                        E0534,
+                        "E0534",
                         "expected one argument"
                     )
                     .emit();
@@ -2422,7 +2427,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
                     struct_span_err!(
                         tcx.sess.diagnostic(),
                         items[0].span(),
-                        E0535,
+                        "E0535",
                         "invalid argument"
                     )
                     .emit();
@@ -2439,7 +2444,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, id: DefId) -> CodegenFnAttrs {
         if !attr.has_name(sym::optimize) {
             return ia;
         }
-        let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, E0722, "{}", s).emit();
+        let err = |sp, s| struct_span_err!(tcx.sess.diagnostic(), sp, "E0722", "{}", s).emit();
         match attr.meta().map(|i| i.kind) {
             Some(MetaItemKind::Word) => {
                 err(attr.span, "expected one argument");

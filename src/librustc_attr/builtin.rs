@@ -29,25 +29,25 @@ fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
     let diag = &sess.span_diagnostic;
     match error {
         AttrError::MultipleItem(item) => {
-            struct_span_err!(diag, span, E0538, "multiple '{}' items", item).emit();
+            struct_span_err!(diag, span, "E0538", "multiple '{}' items", item).emit();
         }
         AttrError::UnknownMetaItem(item, expected) => {
             let expected = expected.iter().map(|name| format!("`{}`", name)).collect::<Vec<_>>();
-            struct_span_err!(diag, span, E0541, "unknown meta item '{}'", item)
+            struct_span_err!(diag, span, "E0541", "unknown meta item '{}'", item)
                 .span_label(span, format!("expected one of {}", expected.join(", ")))
                 .emit();
         }
         AttrError::MissingSince => {
-            struct_span_err!(diag, span, E0542, "missing 'since'").emit();
+            struct_span_err!(diag, span, "E0542", "missing 'since'").emit();
         }
         AttrError::MissingFeature => {
-            struct_span_err!(diag, span, E0546, "missing 'feature'").emit();
+            struct_span_err!(diag, span, "E0546", "missing 'feature'").emit();
         }
         AttrError::MultipleStabilityLevels => {
-            struct_span_err!(diag, span, E0544, "multiple stability levels").emit();
+            struct_span_err!(diag, span, "E0544", "multiple stability levels").emit();
         }
         AttrError::UnsupportedLiteral(msg, is_bytestr) => {
-            let mut err = struct_span_err!(diag, span, E0565, "{}", msg);
+            let mut err = struct_span_err!(diag, span, "E0565", "{}", msg);
             if is_bytestr {
                 if let Ok(lint_str) = sess.source_map().span_to_snippet(span) {
                     err.span_suggestion(
@@ -99,7 +99,8 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
                     }
 
                     diagnostic.map(|d| {
-                        struct_span_err!(d, attr.span, E0633, "malformed `unwind` attribute input")
+                        struct_span_err!(d, attr.span, "E0633",
+                                         "malformed `unwind` attribute input")
                             .span_label(attr.span, "invalid argument")
                             .span_suggestions(
                                 attr.span,
@@ -286,7 +287,7 @@ where
                     *item = Some(v);
                     true
                 } else {
-                    struct_span_err!(diagnostic, meta.span, E0539, "incorrect meta item").emit();
+                    struct_span_err!(diagnostic, meta.span, "E0539", "incorrect meta item").emit();
                     false
                 }
             };
@@ -337,7 +338,7 @@ where
                         struct_span_err!(
                             diagnostic,
                             item_sp,
-                            E0540,
+                            "E0540",
                             "multiple rustc_deprecated attributes"
                         )
                         .emit();
@@ -355,7 +356,7 @@ where
                             continue;
                         }
                         _ => {
-                            struct_span_err!(diagnostic, attr.span, E0543, "missing 'reason'")
+                            struct_span_err!(diagnostic, attr.span, "E0543", "missing 'reason'")
                                 .emit();
                             continue;
                         }
@@ -477,7 +478,7 @@ where
                             continue;
                         }
                         _ => {
-                            struct_span_err!(diagnostic, attr.span, E0547, "missing 'issue'")
+                            struct_span_err!(diagnostic, attr.span, "E0547", "missing 'issue'")
                                 .emit();
                             continue;
                         }
@@ -567,7 +568,7 @@ where
             struct_span_err!(
                 diagnostic,
                 item_sp,
-                E0549,
+                "E0549",
                 "rustc_deprecated attribute must be paired with \
                        either stable or unstable attribute"
             )
@@ -584,7 +585,7 @@ where
             struct_span_err!(
                 diagnostic,
                 item_sp,
-                E0717,
+                "E0717",
                 "rustc_promotable and rustc_allow_const_fn_ptr attributes \
                       must be paired with either a rustc_const_unstable or a rustc_const_stable \
                       attribute"
@@ -679,7 +680,7 @@ pub fn eval_condition(
                         struct_span_err!(
                             sess.span_diagnostic,
                             cfg.span,
-                            E0536,
+                            "E0536",
                             "expected 1 cfg-pattern"
                         )
                         .emit();
@@ -692,7 +693,7 @@ pub fn eval_condition(
                     struct_span_err!(
                         sess.span_diagnostic,
                         cfg.span,
-                        E0537,
+                        "E0537",
                         "invalid predicate `{}`",
                         pprust::path_to_string(&cfg.path)
                     )
@@ -737,7 +738,7 @@ where
         }
 
         if depr.is_some() {
-            struct_span_err!(diagnostic, item_sp, E0550, "multiple deprecated attributes").emit();
+            struct_span_err!(diagnostic, item_sp, "E0550", "multiple deprecated attributes").emit();
             break;
         }
 
@@ -775,7 +776,7 @@ where
                                 ),
                             );
                         } else {
-                            struct_span_err!(diagnostic, meta.span, E0551, "incorrect meta item")
+                            struct_span_err!(diagnostic, meta.span, "E0551", "incorrect meta item")
                                 .emit();
                         }
 
@@ -940,7 +941,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                         struct_span_err!(
                             diagnostic,
                             item.span(),
-                            E0589,
+                            "E0589",
                             "invalid `repr(align)` attribute: {}",
                             literal_error
                         )
@@ -954,7 +955,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                                 let mut err = struct_span_err!(
                                     diagnostic,
                                     item.span(),
-                                    E0693,
+                                    "E0693",
                                     "incorrect `repr(align)` attribute format"
                                 );
                                 match value.kind {
@@ -986,7 +987,7 @@ pub fn find_repr_attrs(sess: &ParseSess, attr: &Attribute) -> Vec<ReprAttr> {
                     struct_span_err!(
                         diagnostic,
                         item.span(),
-                        E0552,
+                        "E0552",
                         "unrecognized representation hint"
                     )
                     .emit();

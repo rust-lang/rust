@@ -614,7 +614,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
                 struct_span_err!(
                     tcx.sess,
                     source_info.span,
-                    E0133,
+                    "E0133",
                     "{} is unsafe and requires unsafe function or block",
                     description
                 )

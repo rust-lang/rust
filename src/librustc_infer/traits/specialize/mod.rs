@@ -380,7 +380,7 @@ pub(super) fn specialization_graph_provider(
 
                 match used_to_be_allowed {
                     None => {
-                        let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
+                        let err = struct_span_err!(tcx.sess, impl_span, "E0119", "");
                         decorate(LintDiagnosticBuilder::new(err));
                     }
                     Some(kind) => {

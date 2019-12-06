@@ -181,7 +181,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0312,
+                    "E0312",
                     "lifetime of reference outlives lifetime of \
                                                 borrowed content..."
                 );
@@ -208,7 +208,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0313,
+                    "E0313",
                     "lifetime of borrowed pointer outlives lifetime \
                                                 of captured variable `{}`...",
                     var_name
@@ -233,7 +233,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             infer::InfStackClosure(span) => {
                 let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0314, "closure outlives stack frame");
+                    struct_span_err!(self.tcx.sess, span, "E0314", "closure outlives stack frame");
                 note_and_explain_region(
                     self.tcx,
                     region_scope_tree,
@@ -257,7 +257,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0315,
+                    "E0315",
                     "cannot invoke closure outside of its lifetime"
                 );
                 note_and_explain_region(
@@ -274,7 +274,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0473,
+                    "E0473",
                     "dereference of reference outside its lifetime"
                 );
                 note_and_explain_region(
@@ -291,7 +291,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0474,
+                    "E0474",
                     "captured variable `{}` does not outlive the \
                                                 enclosing closure",
                     self.tcx.hir().name(id)
@@ -318,7 +318,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0475,
+                    "E0475",
                     "index of slice outside its lifetime"
                 );
                 note_and_explain_region(
@@ -335,7 +335,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0476,
+                    "E0476",
                     "lifetime of the source pointer does not outlive \
                                                 lifetime bound of the object type"
                 );
@@ -361,7 +361,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0477,
+                    "E0477",
                     "the type `{}` does not fulfill the required \
                                                 lifetime",
                     self.ty_to_string(ty)
@@ -388,7 +388,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
             infer::RelateRegionParamBound(span) => {
                 let mut err =
-                    struct_span_err!(self.tcx.sess, span, E0478, "lifetime bound not satisfied");
+                    struct_span_err!(self.tcx.sess, span, "E0478", "lifetime bound not satisfied");
                 note_and_explain_region(
                     self.tcx,
                     region_scope_tree,
@@ -411,7 +411,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0479,
+                    "E0479",
                     "the type `{}` (provided as the value of a type \
                                                 parameter) is not valid at this point",
                     self.ty_to_string(ty)
@@ -430,7 +430,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0480,
+                    "E0480",
                     "lifetime of method receiver does not outlive the \
                                                 method call"
                 );
@@ -448,7 +448,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0481,
+                    "E0481",
                     "lifetime of function argument does not outlive \
                                                 the function call"
                 );
@@ -466,7 +466,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0482,
+                    "E0482",
                     "lifetime of return value does not outlive the \
                                                 function call"
                 );
@@ -484,7 +484,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0483,
+                    "E0483",
                     "lifetime of operand does not outlive the \
                                                 operation"
                 );
@@ -502,7 +502,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0484,
+                    "E0484",
                     "reference is not valid at the time of borrow"
                 );
                 note_and_explain_region(
@@ -519,7 +519,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0485,
+                    "E0485",
                     "automatically reference is not valid at the time \
                                                 of borrow"
                 );
@@ -537,7 +537,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0486,
+                    "E0486",
                     "type of expression contains references that are \
                                                 not valid during the expression: `{}`",
                     self.ty_to_string(t)
@@ -556,7 +556,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0487,
+                    "E0487",
                     "unsafe use of destructor: destructor might be \
                                                 called while references are dead"
                 );
@@ -583,7 +583,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0488,
+                    "E0488",
                     "lifetime of variable does not enclose its \
                                                 declaration"
                 );
@@ -601,7 +601,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0489,
+                    "E0489",
                     "type/lifetime parameter not in scope here"
                 );
                 note_and_explain_region(
@@ -618,7 +618,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0490,
+                    "E0490",
                     "a value of type `{}` is borrowed for too long",
                     self.ty_to_string(ty)
                 );
@@ -644,7 +644,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0491,
+                    "E0491",
                     "in type `{}`, reference has a longer lifetime \
                                                 than the data it references",
                     self.ty_to_string(ty)

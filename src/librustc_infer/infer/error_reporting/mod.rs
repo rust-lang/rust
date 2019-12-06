@@ -1622,16 +1622,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 report_object_safety_error(self.tcx, span, did, violations)
             }
             FailureCode::Error0317(failure_str) => {
-                struct_span_err!(self.tcx.sess, span, E0317, "{}", failure_str)
+                struct_span_err!(self.tcx.sess, span, "E0317", "{}", failure_str)
             }
             FailureCode::Error0580(failure_str) => {
-                struct_span_err!(self.tcx.sess, span, E0580, "{}", failure_str)
+                struct_span_err!(self.tcx.sess, span, "E0580", "{}", failure_str)
             }
             FailureCode::Error0308(failure_str) => {
-                struct_span_err!(self.tcx.sess, span, E0308, "{}", failure_str)
+                struct_span_err!(self.tcx.sess, span, "E0308", "{}", failure_str)
             }
             FailureCode::Error0644(failure_str) => {
-                struct_span_err!(self.tcx.sess, span, E0644, "{}", failure_str)
+                struct_span_err!(self.tcx.sess, span, "E0644", "{}", failure_str)
             }
         };
         self.note_type_err(&mut diag, &trace.cause, None, Some(trace.values), terr);
@@ -1816,7 +1816,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0309,
+                    "E0309",
                     "{} may not live long enough",
                     labeled_user_string
                 );
@@ -1833,7 +1833,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0310,
+                    "E0310",
                     "{} may not live long enough",
                     labeled_user_string
                 );
@@ -1846,7 +1846,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     span,
-                    E0311,
+                    "E0311",
                     "{} may not live long enough",
                     labeled_user_string
                 );
@@ -1992,7 +1992,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         struct_span_err!(
             self.tcx.sess,
             var_origin.span(),
-            E0495,
+            "E0495",
             "cannot infer an appropriate lifetime{} \
              due to conflicting requirements",
             var_description

@@ -18,7 +18,7 @@ use std::path::PathBuf;
 type PluginRegistrarFn = fn(&mut Registry<'_>);
 
 fn call_malformed_plugin_attribute(sess: &Session, span: Span) {
-    struct_span_err!(sess, span, E0498, "malformed `plugin` attribute")
+    struct_span_err!(sess, span, "E0498", "malformed `plugin` attribute")
         .span_label(span, "malformed attribute")
         .emit();
 }

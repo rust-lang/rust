@@ -41,7 +41,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                     let mut err = struct_span_err!(
                         self.tcx.sess,
                         sp,
-                        E0117,
+                        "E0117",
                         "only traits defined in the current crate can be implemented for \
                          arbitrary types"
                     );
@@ -94,7 +94,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                             struct_span_err!(
                                 self.tcx.sess,
                                 sp,
-                                E0210,
+                                "E0210",
                                 "type parameter `{}` must be covered by another type \
                                 when it appears before the first local type (`{}`)",
                                 param_ty,
@@ -125,7 +125,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                             struct_span_err!(
                                 self.tcx.sess,
                                 sp,
-                                E0210,
+                                "E0210",
                                 "type parameter `{}` must be used as the type parameter for some \
                                 local type (e.g., `MyStruct<{}>`)",
                                 param_ty,
@@ -224,7 +224,7 @@ impl ItemLikeVisitor<'v> for OrphanChecker<'tcx> {
                 };
 
                 if let Some((msg, label)) = msg {
-                    struct_span_err!(self.tcx.sess, sp, E0321, "{}", msg)
+                    struct_span_err!(self.tcx.sess, sp, "E0321", "{}", msg)
                         .span_label(sp, label)
                         .emit();
                     return;

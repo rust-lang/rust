@@ -98,7 +98,7 @@ fn ensure_drop_params_and_item_params_correspond<'tcx>(
                 struct_span_err!(
                     tcx.sess,
                     drop_impl_span,
-                    E0366,
+                    "E0366",
                     "`Drop` impls cannot be specialized"
                 )
                 .span_note(
@@ -246,7 +246,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             struct_span_err!(
                 tcx.sess,
                 *predicate_sp,
-                E0367,
+                "E0367",
                 "`Drop` impl requires `{}` but the {} it is implemented for does not",
                 predicate,
                 self_descr,

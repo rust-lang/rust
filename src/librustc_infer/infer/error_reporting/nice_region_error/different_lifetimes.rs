@@ -126,7 +126,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             ),
         };
 
-        struct_span_err!(self.tcx().sess, span, E0623, "lifetime mismatch")
+        struct_span_err!(self.tcx().sess, span, "E0623", "lifetime mismatch")
             .span_label(span_1, main_label)
             .span_label(span_2, String::new())
             .span_label(span, span_label)

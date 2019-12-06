@@ -66,7 +66,7 @@ impl Error {
                 let mut err = struct_span_err!(
                     handler,
                     sp,
-                    E0583,
+                    "E0583",
                     "file not found for module `{}`",
                     mod_name,
                 );
@@ -80,7 +80,7 @@ impl Error {
                 let mut err = struct_span_err!(
                     handler,
                     sp,
-                    E0584,
+                    "E0584",
                     "file for module `{}` found at both {} and {}",
                     mod_name,
                     default_path,
@@ -93,7 +93,7 @@ impl Error {
                 let mut err = struct_span_err!(
                     handler,
                     sp,
-                    E0585,
+                    "E0585",
                     "found a documentation comment that doesn't document anything",
                 );
                 err.help(
@@ -728,7 +728,7 @@ impl<'a> Parser<'a> {
         let mut err = struct_span_err!(
             self.sess.span_diagnostic,
             sum_span,
-            E0178,
+            "E0178",
             "expected a path on the left-hand side of `+`, not `{}`",
             pprust::ty_to_string(ty)
         );
@@ -1362,7 +1362,7 @@ impl<'a> Parser<'a> {
         struct_span_err!(
             self.diagnostic(),
             pat.span,
-            E0642,
+            "E0642",
             "patterns aren't allowed in methods without bodies",
         )
         .span_suggestion_short(

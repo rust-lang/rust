@@ -376,7 +376,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     struct_span_err!(
                         self.tcx.sess,
                         span,
-                        E0699,
+                        "E0699",
                         "the type of this value must be known \
                                to call a method on a raw pointer on it"
                     )

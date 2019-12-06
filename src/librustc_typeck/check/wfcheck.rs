@@ -115,7 +115,7 @@ pub fn check_item_well_formed(tcx: TyCtxt<'_>, def_id: DefId) {
                         struct_span_err!(
                             tcx.sess,
                             item.span,
-                            E0192,
+                            "E0192",
                             "negative impls are only allowed for \
                                    auto traits (e.g., `Send` and `Sync`)"
                         )
@@ -416,7 +416,7 @@ fn check_trait(tcx: TyCtxt<'_>, item: &hir::Item<'_>) {
             struct_span_err!(
                 tcx.sess,
                 tcx.def_span(*associated_def_id),
-                E0714,
+                "E0714",
                 "marker traits cannot have associated items",
             )
             .emit();
@@ -930,7 +930,7 @@ fn e0307(fcx: &FnCtxt<'fcx, 'tcx>, span: Span, receiver_ty: Ty<'_>) {
     struct_span_err!(
         fcx.tcx.sess.diagnostic(),
         span,
-        E0307,
+        "E0307",
         "invalid `self` parameter type: {:?}",
         receiver_ty,
     )
@@ -1219,7 +1219,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 fn error_392(tcx: TyCtxt<'_>, span: Span, param_name: ast::Name) -> DiagnosticBuilder<'_> {
     let mut err =
-        struct_span_err!(tcx.sess, span, E0392, "parameter `{}` is never used", param_name);
+        struct_span_err!(tcx.sess, span, "E0392", "parameter `{}` is never used", param_name);
     err.span_label(span, "unused parameter");
     err
 }

@@ -628,7 +628,7 @@ pub fn unexpected_hidden_region_diagnostic(
     let mut err = struct_span_err!(
         tcx.sess,
         span,
-        E0700,
+        "E0700",
         "hidden type for `impl Trait` captures lifetime that does not appear in bounds",
     );
 

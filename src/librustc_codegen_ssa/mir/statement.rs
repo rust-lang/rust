@@ -83,7 +83,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             struct_span_err!(
                                 bx.sess(),
                                 span.to_owned(),
-                                E0669,
+                                "E0669",
                                 "invalid value for constraint in inline assembly"
                             )
                             .emit();
@@ -103,7 +103,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         struct_span_err!(
                             bx.sess(),
                             statement.source_info.span,
-                            E0668,
+                            "E0668",
                             "malformed inline assembly"
                         )
                         .emit();

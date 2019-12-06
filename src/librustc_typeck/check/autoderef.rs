@@ -244,7 +244,7 @@ pub fn report_autoderef_recursion_limit_error<'tcx>(tcx: TyCtxt<'tcx>, span: Spa
         struct_span_err!(
             tcx.sess,
             span,
-            E0055,
+            "E0055",
             "reached the recursion limit while auto-dereferencing `{:?}`",
             ty
         )

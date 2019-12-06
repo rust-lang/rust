@@ -61,7 +61,7 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: DefId) {
     struct_span_err!(
         tcx.sess,
         sp,
-        E0120,
+        "E0120",
         "the `Drop` trait may only be implemented for structs, enums, and unions",
     )
     .span_label(sp, "must be a struct, enum, or union")
@@ -100,7 +100,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
-                E0204,
+                "E0204",
                 "the trait `Copy` may not be implemented for this type"
             );
             for span in fields.iter().map(|f| tcx.def_span(f.did)) {
@@ -116,7 +116,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0206,
+                "E0206",
                 "the trait `Copy` may not be implemented for this type"
             )
             .span_label(span, "type is not a structure or enumeration")
@@ -126,7 +126,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: DefId) {
             struct_span_err!(
                 tcx.sess,
                 span,
-                E0184,
+                "E0184",
                 "the trait `Copy` may not be implemented for this type; the \
                               type has a destructor"
             )
@@ -169,7 +169,7 @@ fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: DefId) {
 
         let param_env = tcx.param_env(impl_did);
 
-        let create_err = |msg: &str| struct_span_err!(tcx.sess, span, E0378, "{}", msg);
+        let create_err = |msg: &str| struct_span_err!(tcx.sess, span, "E0378", "{}", msg);
 
         tcx.infer_ctxt().enter(|infcx| {
             let cause = ObligationCause::misc(span, impl_hir_id);
@@ -392,7 +392,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     struct_span_err!(
                         tcx.sess,
                         span,
-                        E0377,
+                        "E0377",
                         "the trait `CoerceUnsized` may only be implemented \
                                for a coercion between structures with the same \
                                definition; expected `{}`, found `{}`",
@@ -479,7 +479,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     struct_span_err!(
                         tcx.sess,
                         span,
-                        E0374,
+                        "E0374",
                         "the trait `CoerceUnsized` may only be implemented \
                                for a coercion between structures with one field \
                                being coerced, none found"
@@ -497,10 +497,8 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                     struct_span_err!(
                         tcx.sess,
                         span,
-                        E0375,
-                        "implementing the trait \
-                                                    `CoerceUnsized` requires multiple \
-                                                    coercions"
+                        "E0375",
+                        "implementing the trait `CoerceUnsized` requires multiple coercions"
                     )
                     .note(
                         "`CoerceUnsized` may only be implemented for \
@@ -531,7 +529,7 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 struct_span_err!(
                     tcx.sess,
                     span,
-                    E0376,
+                    "E0376",
                     "the trait `CoerceUnsized` may only be implemented \
                            for a coercion between structures"
                 )

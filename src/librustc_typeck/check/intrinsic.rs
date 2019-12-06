@@ -27,7 +27,7 @@ fn equate_intrinsic_type<'tcx>(
     match it.kind {
         hir::ForeignItemKind::Fn(..) => {}
         _ => {
-            struct_span_err!(tcx.sess, it.span, E0622, "intrinsic must be a function")
+            struct_span_err!(tcx.sess, it.span, "E0622", "intrinsic must be a function")
                 .span_label(it.span, "expected a function")
                 .emit();
             return;
@@ -44,9 +44,8 @@ fn equate_intrinsic_type<'tcx>(
         struct_span_err!(
             tcx.sess,
             span,
-            E0094,
-            "intrinsic has wrong number of type \
-                         parameters: found {}, expected {}",
+            "E0094",
+            "intrinsic has wrong number of type parameters: found {}, expected {}",
             i_n_tps,
             n_tps
         )
@@ -120,7 +119,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 struct_span_err!(
                     tcx.sess,
                     it.span,
-                    E0092,
+                    "E0092",
                     "unrecognized atomic operation function: `{}`",
                     op
                 )
@@ -337,7 +336,7 @@ pub fn check_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>) {
                 struct_span_err!(
                     tcx.sess,
                     it.span,
-                    E0093,
+                    "E0093",
                     "unrecognized intrinsic function: `{}`",
                     *other
                 )
@@ -414,7 +413,7 @@ pub fn check_platform_intrinsic_type(tcx: TyCtxt<'_>, it: &hir::ForeignItem<'_>)
                 struct_span_err!(
                     tcx.sess,
                     it.span,
-                    E0439,
+                    "E0439",
                     "invalid `simd_shuffle`, needs length: `{}`",
                     name
                 )
