@@ -3855,7 +3855,10 @@ dependencies = [
  "rustc_ast_pretty",
  "rustc_attr",
  "rustc_data_structures",
+<<<<<<< HEAD
  "rustc_errors",
+=======
+>>>>>>> Update lock file
  "rustc_feature",
  "rustc_hir",
  "rustc_index",
@@ -4005,9 +4008,12 @@ name = "rustc_plugin_impl"
 version = "0.0.0"
 dependencies = [
  "rustc",
+<<<<<<< HEAD
  "rustc_errors",
  "rustc_hir",
  "rustc_lint",
+=======
+>>>>>>> Update lock file
  "rustc_metadata",
  "rustc_span",
  "syntax",
@@ -4021,9 +4027,12 @@ dependencies = [
  "rustc",
  "rustc_attr",
  "rustc_data_structures",
+<<<<<<< HEAD
  "rustc_errors",
  "rustc_hir",
  "rustc_span",
+=======
+>>>>>>> Update lock file
  "rustc_typeck",
  "syntax",
 ]
@@ -4696,6 +4705,58 @@ dependencies = [
  "scoped-tls",
  "serialize",
  "smallvec 1.0.0",
+<<<<<<< HEAD
+=======
+ "syntax_pos",
+]
+
+[[package]]
+name = "syntax_expand"
+version = "0.0.0"
+dependencies = [
+ "log",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_lexer",
+ "rustc_parse",
+ "serialize",
+ "smallvec 1.0.0",
+ "syntax",
+ "syntax_pos",
+]
+
+[[package]]
+name = "syntax_ext"
+version = "0.0.0"
+dependencies = [
+ "fmt_macros",
+ "log",
+ "rustc_data_structures",
+ "rustc_errors",
+ "rustc_feature",
+ "rustc_parse",
+ "rustc_target",
+ "smallvec 1.0.0",
+ "syntax",
+ "syntax_expand",
+ "syntax_pos",
+]
+
+[[package]]
+name = "syntax_pos"
+version = "0.0.0"
+dependencies = [
+ "arena",
+ "cfg-if",
+ "log",
+ "rustc_data_structures",
+ "rustc_index",
+ "rustc_macros",
+ "scoped-tls",
+ "serialize",
+ "unicode-width",
+>>>>>>> Update lock file
 ]
 
 [[package]]
