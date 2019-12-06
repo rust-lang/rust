@@ -15,7 +15,7 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_codegen_ssa::{RLIB_BYTECODE_EXTENSION, ModuleCodegen, ModuleKind};
 
 use std::ffi::{CStr, CString};
@@ -584,13 +584,11 @@ fn thin_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 fn equivalent_as_sets(a: &[String], b: &[String]) -> bool {
     // cheap path: unequal lengths means cannot possibly be set equivalent.
     if a.len() != b.len() { return false; }
-    // fast path: before sorting, check if inputs are equivalent as is.
+    // fast path: before building new things, check if inputs are equivalent as is.
     if a == b { return true; }
-    // slow path: compare sorted contents
-    let mut a: Vec<&str> = a.iter().map(|s| s.as_str()).collect();
-    let mut b: Vec<&str> = b.iter().map(|s| s.as_str()).collect();
-    a.sort();
-    b.sort();
+    // slow path: general set comparison.
+    let a: FxHashSet<&str> = a.iter().map(|s| s.as_str()).collect();
+    let b: FxHashSet<&str> = b.iter().map(|s| s.as_str()).collect();
     a == b
 }
 
