@@ -15,6 +15,22 @@ use errors::{Applicability, DiagnosticBuilder};
 use super::method::probe;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+
+    pub fn emit_coerce_suggestions(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>
+    ) {
+        self.annotate_expected_due_to_let_ty(err, expr);
+        self.suggest_compatible_variants(err, expr, expected, expr_ty);
+        self.suggest_ref_or_into(err, expr, expected, expr_ty);
+        self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
+        self.suggest_missing_await(err, expr, expected, expr_ty);
+    }
+
+
     // Requires that the two types unify, and prints an error message if
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
@@ -137,11 +153,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return (expected, None)
         }
 
-        self.annotate_expected_due_to_let_ty(&mut err, expr);
-        self.suggest_compatible_variants(&mut err, expr, expected, expr_ty);
-        self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
-        self.suggest_boxing_when_appropriate(&mut err, expr, expected, expr_ty);
-        self.suggest_missing_await(&mut err, expr, expected, expr_ty);
+        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected);
 
         (expected, Some(err))
     }

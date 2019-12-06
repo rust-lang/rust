@@ -220,7 +220,7 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    pub(super) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
+    crate fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
         let lit = self.parse_lit()?;
         debug!("checking if {:?} is unusuffixed", lit);
 
@@ -238,23 +238,34 @@ impl<'a> Parser<'a> {
 
     /// Parses `cfg_attr(pred, attr_item_list)` where `attr_item_list` is comma-delimited.
     pub fn parse_cfg_attr(&mut self) -> PResult<'a, (ast::MetaItem, Vec<(ast::AttrItem, Span)>)> {
-        self.expect(&token::OpenDelim(token::Paren))?;
-
         let cfg_predicate = self.parse_meta_item()?;
         self.expect(&token::Comma)?;
 
         // Presumably, the majority of the time there will only be one attr.
         let mut expanded_attrs = Vec::with_capacity(1);
-
-        while !self.check(&token::CloseDelim(token::Paren)) {
-            let lo = self.token.span.lo();
+        while self.token.kind != token::Eof {
+            let lo = self.token.span;
             let item = self.parse_attr_item()?;
-            expanded_attrs.push((item, self.prev_span.with_lo(lo)));
-            self.expect_one_of(&[token::Comma], &[token::CloseDelim(token::Paren)])?;
+            expanded_attrs.push((item, lo.to(self.prev_span)));
+            if !self.eat(&token::Comma) {
+                break;
+            }
         }
 
-        self.expect(&token::CloseDelim(token::Paren))?;
         Ok((cfg_predicate, expanded_attrs))
+    }
+
+    /// Matches `COMMASEP(meta_item_inner)`.
+    crate fn parse_meta_seq_top(&mut self) -> PResult<'a, Vec<ast::NestedMetaItem>> {
+        // Presumably, the majority of the time there will only be one attr.
+        let mut nmis = Vec::with_capacity(1);
+        while self.token.kind != token::Eof {
+            nmis.push(self.parse_meta_item_inner()?);
+            if !self.eat(&token::Comma) {
+                break;
+            }
+        }
+        Ok(nmis)
     }
 
     /// Matches the following grammar (per RFC 1559).

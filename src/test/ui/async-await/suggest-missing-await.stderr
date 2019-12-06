@@ -10,6 +10,23 @@ LL |     take_u32(x)
    = note:     expected type `u32`
            found opaque type `impl std::future::Future`
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/suggest-missing-await.rs:23:5
+   |
+LL |     dummy()
+   |     ^^^^^^^ expected `()`, found opaque type
+   |
+   = note: expected unit type `()`
+            found opaque type `impl std::future::Future`
+help: try adding a semicolon
+   |
+LL |     dummy();
+   |            ^
+help: consider using `.await` here
+   |
+LL |     dummy().await
+   |
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

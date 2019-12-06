@@ -271,21 +271,13 @@ pub fn stream_to_parser_with_base_dir<'a>(
 }
 
 /// Runs the given subparser `f` on the tokens of the given `attr`'s item.
-pub fn parse_in_attr<'a, T>(
+pub fn parse_in<'a, T>(
     sess: &'a ParseSess,
-    attr: &ast::Attribute,
+    tts: TokenStream,
+    name: &'static str,
     mut f: impl FnMut(&mut Parser<'a>) -> PResult<'a, T>,
 ) -> PResult<'a, T> {
-    let mut parser = Parser::new(
-        sess,
-        // FIXME(#66940, Centril | petrochenkov): refactor this function so it doesn't
-        // require reconstructing and immediately re-parsing delimiters.
-        attr.get_normal_item().args.outer_tokens(),
-        None,
-        false,
-        false,
-        Some("attribute"),
-    );
+    let mut parser = Parser::new(sess, tts, None, false, false, Some(name));
     let result = f(&mut parser)?;
     if parser.token != token::Eof {
         parser.unexpected()?;

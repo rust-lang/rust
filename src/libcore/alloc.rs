@@ -53,7 +53,7 @@ pub struct Layout {
 
 impl Layout {
     /// Constructs a `Layout` from a given `size` and `align`,
-    /// or returns `LayoutErr` if either of the following conditions
+    /// or returns `LayoutErr` if any of the following conditions
     /// are not met:
     ///
     /// * `align` must not be zero,
@@ -137,7 +137,7 @@ impl Layout {
     #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
-        // See rationale in `new` for why this us using an unsafe variant below
+        // See rationale in `new` for why this is using an unsafe variant below
         debug_assert!(Layout::from_size_align(size, align).is_ok());
         unsafe {
             Layout::from_size_align_unchecked(size, align)
@@ -196,7 +196,7 @@ impl Layout {
         //    valid.
         //
         // 2. `len + align - 1` can overflow by at most `align - 1`,
-        //    so the &-mask wth `!(align - 1)` will ensure that in the
+        //    so the &-mask with `!(align - 1)` will ensure that in the
         //    case of overflow, `len_rounded_up` will itself be 0.
         //    Thus the returned padding, when added to `len`, yields 0,
         //    which trivially satisfies the alignment `align`.

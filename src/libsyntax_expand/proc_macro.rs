@@ -1,7 +1,7 @@
 use crate::base::{self, *};
 use crate::proc_macro_server;
 
-use syntax::ast::{self, ItemKind, MacArgs};
+use syntax::ast::{self, ItemKind, MetaItemKind, NestedMetaItem};
 use syntax::errors::{Applicability, FatalError};
 use syntax::symbol::sym;
 use syntax::token;
@@ -171,34 +171,71 @@ crate fn collect_derives(cx: &mut ExtCtxt<'_>, attrs: &mut Vec<ast::Attribute>) 
         if !attr.has_name(sym::derive) {
             return true;
         }
-        if !attr.is_meta_item_list() {
-            cx.struct_span_err(attr.span, "malformed `derive` attribute input")
-                .span_suggestion(
-                    attr.span,
-                    "missing traits to be derived",
-                    "#[derive(Trait1, Trait2, ...)]".to_owned(),
-                    Applicability::HasPlaceholders,
-                ).emit();
-            return false;
-        }
 
-        let parse_derive_paths = |attr: &ast::Attribute| {
-            if let MacArgs::Empty = attr.get_normal_item().args {
-                return Ok(Vec::new());
+        // 1) First let's ensure that it's a meta item.
+        let nmis = match attr.meta_item_list() {
+            None => {
+                cx.struct_span_err(attr.span, "malformed `derive` attribute input")
+                    .span_suggestion(
+                        attr.span,
+                        "missing traits to be derived",
+                        "#[derive(Trait1, Trait2, ...)]".to_owned(),
+                        Applicability::HasPlaceholders,
+                    )
+                    .emit();
+                return false;
             }
-            rustc_parse::parse_in_attr(cx.parse_sess, attr, |p| p.parse_derive_paths())
+            Some(x) => x,
         };
 
-        match parse_derive_paths(attr) {
-            Ok(traits) => {
-                result.extend(traits);
-                true
-            }
-            Err(mut e) => {
-                e.emit();
-                false
-            }
-        }
+        let mut error_reported_filter_map = false;
+        let mut error_reported_map = false;
+        let traits = nmis
+            .into_iter()
+            // 2) Moreover, let's ensure we have a path and not `#[derive("foo")]`.
+            .filter_map(|nmi| match nmi {
+                NestedMetaItem::Literal(lit) => {
+                    error_reported_filter_map = true;
+                    cx.struct_span_err(lit.span, "expected path to a trait, found literal")
+                        .help("for example, write `#[derive(Debug)]` for `Debug`")
+                        .emit();
+                    None
+                }
+                NestedMetaItem::MetaItem(mi) => Some(mi),
+            })
+            // 3) Finally, we only accept `#[derive($path_0, $path_1, ..)]`
+            // but not e.g. `#[derive($path_0 = "value", $path_1(abc))]`.
+            // In this case we can still at least determine that the user
+            // wanted this trait to be derived, so let's keep it.
+            .map(|mi| {
+                let mut traits_dont_accept = |title, action| {
+                    error_reported_map = true;
+                    let sp = mi.span.with_lo(mi.path.span.hi());
+                    cx.struct_span_err(sp, title)
+                        .span_suggestion(
+                            sp,
+                            action,
+                            String::new(),
+                            Applicability::MachineApplicable,
+                        )
+                        .emit();
+                };
+                match &mi.kind {
+                    MetaItemKind::List(..) => traits_dont_accept(
+                        "traits in `#[derive(...)]` don't accept arguments",
+                        "remove the arguments",
+                    ),
+                    MetaItemKind::NameValue(..) => traits_dont_accept(
+                        "traits in `#[derive(...)]` don't accept values",
+                        "remove the value",
+                    ),
+                    MetaItemKind::Word => {}
+                }
+                mi.path
+            });
+
+        result.extend(traits);
+        !error_reported_filter_map && !error_reported_map
     });
     result
 }

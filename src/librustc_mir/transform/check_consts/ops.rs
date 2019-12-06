@@ -1,7 +1,6 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::BorrowKind;
 use rustc::session::config::nightly_options;
 use rustc::ty::TyCtxt;
 use syntax::feature_gate::feature_err;
@@ -181,38 +180,53 @@ impl NonConstOp for Loop {
 }
 
 #[derive(Debug)]
-pub struct MutBorrow(pub BorrowKind);
-impl NonConstOp for MutBorrow {
+pub struct CellBorrow;
+impl NonConstOp for CellBorrow {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let kind = self.0;
-        if let BorrowKind::Mut { .. } = kind {
-            let mut err = struct_span_err!(item.tcx.sess, span, E0017,
-                                           "references in {}s may only refer \
-                                            to immutable values", item.const_kind());
-            err.span_label(span, format!("{}s require immutable values",
-                                                item.const_kind()));
-            if item.tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note("References in statics and constants may only refer \
-                          to immutable values.\n\n\
-                          Statics are shared everywhere, and if they refer to \
-                          mutable data one might violate memory safety since \
-                          holding multiple mutable references to shared data \
-                          is not allowed.\n\n\
-                          If you really want global mutable state, try using \
-                          static mut or a global UnsafeCell.");
-            }
-            err.emit();
-        } else {
-            span_err!(item.tcx.sess, span, E0492,
-                      "cannot borrow a constant which may contain \
-                       interior mutability, create a static instead");
+        span_err!(item.tcx.sess, span, E0492,
+            "cannot borrow a constant which may contain \
+            interior mutability, create a static instead");
+    }
+}
+
+#[derive(Debug)]
+pub struct MutBorrow;
+impl NonConstOp for MutBorrow {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_mut_refs)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        let mut err = feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_mut_refs,
+            span,
+            &format!("references in {}s may only refer \
+                      to immutable values", item.const_kind())
+        );
+        err.span_label(span, format!("{}s require immutable values",
+                                            item.const_kind()));
+        if item.tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note("References in statics and constants may only refer \
+                      to immutable values.\n\n\
+                      Statics are shared everywhere, and if they refer to \
+                      mutable data one might violate memory safety since \
+                      holding multiple mutable references to shared data \
+                      is not allowed.\n\n\
+                      If you really want global mutable state, try using \
+                      static mut or a global UnsafeCell.");
         }
+        err.emit();
     }
 }
 
 #[derive(Debug)]
 pub struct MutDeref;
-impl NonConstOp for MutDeref {}
+impl NonConstOp for MutDeref {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_mut_refs)
+    }
+}
 
 #[derive(Debug)]
 pub struct Panic;
