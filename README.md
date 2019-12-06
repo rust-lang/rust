@@ -77,7 +77,7 @@ dependencies.  It will ask you for confirmation before installing anything.
 You can pass arguments to Miri after the first `--`, and pass arguments to the
 interpreted program or test suite after the second `--`.  For example, `cargo
 miri run -- -Zmiri-disable-validation` runs the program without validation of
-basic type invariants and references.
+basic type invariants and without checking the aliasing of references.
 
 When running code via `cargo miri`, the `miri` config flag is set.  You can
 use this to exclude test cases that will fail under Miri because they do things
@@ -152,10 +152,10 @@ Several `-Z` flags are relevant for Miri:
   **NOTE**: This entropy is not good enough for cryptographic use!  Do not
   generate secret keys in Miri or perform other kinds of cryptographic
   operations that rely on proper random numbers.
-* `-Zmiri-disable-validation` disables enforcing the validity invariant, which
-  is enforced by default.  This is mostly useful for debugging; it means Miri
-  will miss bugs in your program.  However, this can also help to make Miri run
-  faster.
+* `-Zmiri-disable-validation` disables enforcing validity invariants and
+  reference aliasing rules, which are enforced by default.  This is mostly
+  useful for debugging.  It means Miri will miss bugs in your program.  However,
+  this can also help to make Miri run faster.
 * `-Zmiri-disable-isolation` disables host host isolation.  As a consequence,
   the program has access to host resources such as environment variables and
   randomness (and, eventually, file systems and more).
