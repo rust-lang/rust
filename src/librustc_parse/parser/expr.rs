@@ -708,12 +708,7 @@ impl<'a> Parser<'a> {
                         e = self.parse_dot_suffix(e, lo)?;
                     }
                     token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
-                        let span = self.token.span;
-                        self.bump();
-                        let field = ExprKind::Field(e, Ident::new(symbol, span));
-                        e = self.mk_expr(lo.to(span), field, AttrVec::new());
-
-                        self.expect_no_suffix(span, "a tuple index", suffix);
+                        e = self.parse_tuple_field_access_expr(lo, e, symbol, suffix);
                     }
                     token::Literal(token::Lit { kind: token::Float, symbol, .. }) => {
                         self.bump();
@@ -756,12 +751,26 @@ impl<'a> Parser<'a> {
                 break;
             }
             match self.token.kind {
-                token::OpenDelim(token::Paren) => e = Ok(self.parse_fn_call_expr(lo, e)),
+                token::OpenDelim(token::Paren) => e = self.parse_fn_call_expr(lo, e),
                 token::OpenDelim(token::Bracket) => e = self.parse_index_expr(lo, e)?,
                 _ => return Ok(e),
             }
         }
         return Ok(e);
+    }
+
+    fn parse_tuple_field_access_expr(
+        &mut self,
+        lo: Span,
+        base: P<Expr>,
+        field: Symbol,
+        suffix: Option<Symbol>,
+    ) -> P<Expr> {
+        let span = self.token.span;
+        self.bump();
+        let field = ExprKind::Field(base, Ident::new(field, span));
+        self.expect_no_suffix(span, "a tuple index", suffix);
+        self.mk_expr(lo.to(span), field, AttrVec::new())
     }
 
     /// Parse a function call expression, `expr(...)`.
