@@ -1617,38 +1617,40 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
     // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
     // inlined, despite being large, because it has only two call sites that
     // are extremely hot.
+    //
+    // Note that `typ` is always a `ty::Infer(_)`.
     #[inline(always)]
-    pub fn shallow_resolve_changed(&mut self, typ: Ty<'tcx>) -> bool {
+    pub fn shallow_resolve_changed(&self, typ: Ty<'tcx>) -> bool {
         match typ.kind {
             ty::Infer(ty::TyVar(v)) => {
                 use self::type_variable::TypeVariableValue;
 
-                // See the comment in `shallow_resolve()`.
+                // If `inlined_probe` returns a `Known` value it never matches
+                // `typ`.
                 match self.infcx.type_variables.borrow_mut().inlined_probe(v) {
-                    TypeVariableValue::Known { value: t } => self.fold_ty(t) != typ,
                     TypeVariableValue::Unknown { .. } => false,
+                    TypeVariableValue::Known { .. } => true,
                 }
             }
 
             ty::Infer(ty::IntVar(v)) => {
-                match self.infcx.int_unification_table.borrow_mut().inlined_probe_value(v) {
-                    Some(v) => v.to_type(self.infcx.tcx) != typ,
-                    None => false,
-                }
+                // If inlined_probe_value returns a value it's always a
+                // `ty::Int(_)` or `ty::UInt(_)`, which nevers matches a
+                // `ty::Infer(_)`.
+                self.infcx.int_unification_table.borrow_mut().inlined_probe_value(v).is_some()
             }
 
             ty::Infer(ty::FloatVar(v)) => {
+                // If inlined_probe_value returns a value it's always a
+                // `ty::Float(_)`, which nevers matches a `ty::Infer(_)`.
+                //
                 // Not `inlined_probe_value(v)` because this call site is colder.
-                match self.infcx.float_unification_table.borrow_mut().probe_value(v) {
-                    Some(v) => v.to_type(self.infcx.tcx) != typ,
-                    None => false,
-                }
+                self.infcx.float_unification_table.borrow_mut().probe_value(v).is_some()
             }
 
-            _ => false,
+            _ => unreachable!(),
         }
     }
-
 }
 
 impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
