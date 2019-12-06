@@ -253,7 +253,7 @@ impl Layout {
 
     /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned. Note that the result layout will
+    /// will be properly aligned. Note that the resulting layout will
     /// satisfy the alignment properties of both `self` and `next`.
     ///
     /// The resulting layout will be the same as that of a C struct containing
