@@ -449,6 +449,7 @@ fn check_must_use_candidate<'a, 'tcx>(
         || mutates_static(cx, body)
         || in_external_macro(cx.sess(), item_span)
         || returns_unit(decl)
+        || !cx.access_levels.is_exported(item_id)
         || is_must_use_ty(cx, return_ty(cx, item_id))
     {
         return;
