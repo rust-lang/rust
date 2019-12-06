@@ -5,18 +5,19 @@
 use std::sync::Arc;
 
 use hir_expand::name::{self, AsName, Name};
+use ra_arena::Arena;
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::DefDatabase,
     src::HasSource,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, ContainerId, GenericDefId, Lookup,
+    AdtId, AstItemDef, ContainerId, GenericDefId, LocalGenericParamId, Lookup,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct GenericParam {
+pub struct GenericParamData {
     // FIXME: give generic params proper IDs
     pub idx: u32,
     pub name: Name,
@@ -27,7 +28,7 @@ pub struct GenericParam {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParams {
     pub parent_params: Option<Arc<GenericParams>>,
-    pub params: Vec<GenericParam>,
+    pub params: Arena<LocalGenericParamId, GenericParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
@@ -56,7 +57,7 @@ impl GenericParams {
         parent_params: Option<Arc<GenericParams>>,
     ) -> GenericParams {
         let mut generics =
-            GenericParams { params: Vec::new(), parent_params, where_predicates: Vec::new() };
+            GenericParams { params: Arena::default(), parent_params, where_predicates: Vec::new() };
         let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
@@ -66,7 +67,7 @@ impl GenericParams {
             GenericDefId::AdtId(AdtId::EnumId(it)) => generics.fill(&it.source(db).value, start),
             GenericDefId::TraitId(it) => {
                 // traits get the Self type as an implicit first type parameter
-                generics.params.push(GenericParam {
+                generics.params.alloc(GenericParamData {
                     idx: start,
                     name: name::SELF_TYPE,
                     default: None,
@@ -110,8 +111,8 @@ impl GenericParams {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
             let default = type_param.default_type().map(TypeRef::from_ast);
-            let param = GenericParam { idx: idx as u32 + start, name: name.clone(), default };
-            self.params.push(param);
+            let param = GenericParamData { idx: idx as u32 + start, name: name.clone(), default };
+            self.params.alloc(param);
 
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(&type_param, type_ref);
@@ -140,8 +141,8 @@ impl GenericParams {
         self.where_predicates.push(WherePredicate { type_ref, bound });
     }
 
-    pub fn find_by_name(&self, name: &Name) -> Option<&GenericParam> {
-        self.params.iter().find(|p| &p.name == name)
+    pub fn find_by_name(&self, name: &Name) -> Option<&GenericParamData> {
+        self.params.iter().map(|(_id, data)| data).find(|p| &p.name == name)
     }
 
     pub fn count_parent_params(&self) -> usize {
@@ -153,14 +154,14 @@ impl GenericParams {
         parent_count + self.params.len()
     }
 
-    fn for_each_param<'a>(&'a self, f: &mut impl FnMut(&'a GenericParam)) {
+    fn for_each_param<'a>(&'a self, f: &mut impl FnMut(&'a GenericParamData)) {
         if let Some(parent) = &self.parent_params {
             parent.for_each_param(f);
         }
-        self.params.iter().for_each(f);
+        self.params.iter().map(|(_id, data)| data).for_each(f);
     }
 
-    pub fn params_including_parent(&self) -> Vec<&GenericParam> {
+    pub fn params_including_parent(&self) -> Vec<&GenericParamData> {
         let mut vec = Vec::with_capacity(self.count_params_including_parent());
         self.for_each_param(&mut |p| vec.push(p));
         vec

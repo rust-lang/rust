@@ -662,7 +662,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         let mut substs = Vec::with_capacity(parent_param_count + param_count);
         // Parent arguments are unknown, except for the receiver type
         if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
-            for param in &parent_generics.params {
+            for (_id, param) in parent_generics.params.iter() {
                 if param.name == name::SELF_TYPE {
                     substs.push(receiver_ty.clone());
                 } else {

@@ -426,7 +426,7 @@ impl Scope {
                 }
             }
             Scope::GenericParams { params, .. } => {
-                for param in params.params.iter() {
+                for (_id, param) in params.params.iter() {
                     f(param.name.clone(), ScopeDef::GenericParam(param.idx))
                 }
             }
