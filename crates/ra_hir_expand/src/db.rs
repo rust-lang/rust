@@ -45,8 +45,8 @@ impl TokenExpander {
     pub fn map_id_up(&self, id: tt::TokenId) -> (tt::TokenId, mbe::Origin) {
         match self {
             TokenExpander::MacroRules(it) => it.map_id_up(id),
-            TokenExpander::Builtin(..) => (id, mbe::Origin::Def),
-            TokenExpander::BuiltinDerive(..) => (id, mbe::Origin::Def),
+            TokenExpander::Builtin(..) => (id, mbe::Origin::Call),
+            TokenExpander::BuiltinDerive(..) => (id, mbe::Origin::Call),
         }
     }
 }
