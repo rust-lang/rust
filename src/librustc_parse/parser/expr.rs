@@ -1387,17 +1387,16 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let attrs = self.parse_outer_attributes()?;
         let pat = self.parse_pat(PARAM_EXPECTED)?;
-        let t = if self.eat(&token::Colon) {
+        let ty = if self.eat(&token::Colon) {
             self.parse_ty()?
         } else {
-            P(Ty { id: DUMMY_NODE_ID, kind: TyKind::Infer, span: self.prev_span })
+            self.mk_ty(self.prev_span, TyKind::Infer)
         };
-        let span = lo.to(self.token.span);
         Ok(Param {
             attrs: attrs.into(),
-            ty: t,
+            ty,
             pat,
-            span,
+            span: lo.to(self.token.span),
             id: DUMMY_NODE_ID,
             is_placeholder: false,
         })
