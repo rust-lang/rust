@@ -4584,8 +4584,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             pointing_at_return_type = self.suggest_missing_return_type(
                 err, &fn_decl, expected, found, can_suggest);
         }
-        self.suggest_ref_or_into(err, expr, expected, found);
-        self.suggest_boxing_when_appropriate(err, expr, expected, found);
         pointing_at_return_type
     }
 
@@ -4957,7 +4955,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty: expected,
                 }));
                 let obligation = traits::Obligation::new(self.misc(sp), self.param_env, predicate);
+                debug!("suggest_missing_await: trying obligation {:?}", obligation);
                 if self.infcx.predicate_may_hold(&obligation) {
+                    debug!("suggest_missing_await: obligation held: {:?}", obligation);
                     if let Ok(code) = self.sess().source_map().span_to_snippet(sp) {
                         err.span_suggestion(
                             sp,
@@ -4965,7 +4965,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             format!("{}.await", code),
                             Applicability::MaybeIncorrect,
                         );
+                    } else {
+                        debug!("suggest_missing_await: no snippet for {:?}", sp);
                     }
+                } else {
+                    debug!("suggest_missing_await: obligation did not hold: {:?}", obligation)
                 }
             }
         }

@@ -26,7 +26,10 @@ error[E0308]: mismatched types
 LL | fn b() -> Option<Foo> {
    |           ----------- expected `std::option::Option<Foo>` because of return type
 LL |     Foo { bar: 1 }
-   |     ^^^^^^^^^^^^^^ expected enum `std::option::Option`, found struct `Foo`
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     expected enum `std::option::Option`, found struct `Foo`
+   |     help: try using a variant of the expected enum: `Some(Foo { bar: 1 })`
    |
    = note: expected enum `std::option::Option<Foo>`
             found struct `Foo`
@@ -37,7 +40,10 @@ error[E0308]: mismatched types
 LL | fn c() -> Result<Foo, Bar> {
    |           ---------------- expected `std::result::Result<Foo, Bar>` because of return type
 LL |     Foo { bar: 1 }
-   |     ^^^^^^^^^^^^^^ expected enum `std::result::Result`, found struct `Foo`
+   |     ^^^^^^^^^^^^^^
+   |     |
+   |     expected enum `std::result::Result`, found struct `Foo`
+   |     help: try using a variant of the expected enum: `Ok(Foo { bar: 1 })`
    |
    = note: expected enum `std::result::Result<Foo, Bar>`
             found struct `Foo`
