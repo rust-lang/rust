@@ -701,8 +701,8 @@ extern "C" {
 
     // Operations on all values
     pub fn LLVMTypeOf(Val: &Value) -> &Type;
-    pub fn LLVMGetValueName(Val: &Value) -> *const c_char;
-    pub fn LLVMSetValueName(Val: &Value, Name: *const c_char);
+    pub fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
+    pub fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
     pub fn LLVMReplaceAllUsesWith(OldVal: &'a Value, NewVal: &'a Value);
     pub fn LLVMSetMetadata(Val: &'a Value, KindID: c_uint, Node: &'a Value);
 
@@ -774,7 +774,8 @@ extern "C" {
     pub fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub fn LLVMAddGlobal(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
     pub fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
-    pub fn LLVMRustGetOrInsertGlobal(M: &'a Module, Name: *const c_char, T: &'a Type) -> &'a Value;
+    pub fn LLVMRustGetOrInsertGlobal(M: &'a Module, Name: *const c_char, NameLen: size_t,
+                                     T: &'a Type) -> &'a Value;
     pub fn LLVMRustInsertPrivateGlobal(M: &'a Module, T: &'a Type) -> &'a Value;
     pub fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
@@ -1811,7 +1812,7 @@ extern "C" {
 
     pub fn LLVMRustPositionBuilderAtStart(B: &Builder<'a>, BB: &'a BasicBlock);
 
-    pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char);
+    pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char, NameLen: size_t);
     pub fn LLVMRustUnsetComdat(V: &Value);
     pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);
