@@ -79,10 +79,14 @@ pub fn is_min_const_fn(tcx: TyCtxt<'tcx>, def_id: DefId, body: &'a Body<'tcx>) -
 fn check_ty(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, span: Span, fn_def_id: DefId) -> McfResult {
     for ty in ty.walk() {
         match ty.kind {
-            ty::Ref(_, _, hir::Mutability::Mutable) => return Err((
-                span,
-                "mutable references in const fn are unstable".into(),
-            )),
+            ty::Ref(_, _, hir::Mutability::Mutable) => {
+                if !tcx.features().const_mut_refs {
+                    return Err((
+                        span,
+                        "mutable references in const fn are unstable".into(),
+                    ))
+                }
+            }
             ty::Opaque(..) => return Err((span, "`impl Trait` in const fn is unstable".into())),
             ty::FnPtr(..) => {
                 if !tcx.const_fn_is_allowed_fn_ptr(fn_def_id) {

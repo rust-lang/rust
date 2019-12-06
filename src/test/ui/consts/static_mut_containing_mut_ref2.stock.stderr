@@ -1,16 +1,19 @@
-error[E0017]: references in statics may only refer to immutable values
-  --> $DIR/static_mut_containing_mut_ref2.rs:3:46
+error[E0658]: references in statics may only refer to immutable values
+  --> $DIR/static_mut_containing_mut_ref2.rs:7:46
    |
 LL | pub static mut STDERR_BUFFER: () = unsafe { *(&mut STDERR_BUFFER_SPACE) = 42; };
    |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^ statics require immutable values
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0019]: static contains unimplemented expression type
-  --> $DIR/static_mut_containing_mut_ref2.rs:3:45
+  --> $DIR/static_mut_containing_mut_ref2.rs:7:45
    |
 LL | pub static mut STDERR_BUFFER: () = unsafe { *(&mut STDERR_BUFFER_SPACE) = 42; };
    |                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0017, E0019.
-For more information about an error, try `rustc --explain E0017`.
+Some errors have detailed explanations: E0019, E0658.
+For more information about an error, try `rustc --explain E0019`.

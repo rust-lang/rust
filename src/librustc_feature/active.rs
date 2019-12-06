@@ -523,6 +523,9 @@ declare_features! (
     /// Allows the use of `#[cfg(sanitize = "option")]`; set when -Zsanitizer is used.
     (active, cfg_sanitize, "1.41.0", Some(39699), None),
 
+    /// Allows using `&mut` in constant functions.
+    (active, const_mut_refs, "1.41.0", Some(57349), None),
+
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
     // -------------------------------------------------------------------------
