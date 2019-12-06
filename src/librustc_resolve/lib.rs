@@ -218,6 +218,15 @@ enum ResolutionError<'a> {
     SelfInTyParamDefault,
 }
 
+enum VisResolutionError<'a> {
+    Relative2018(Span, &'a ast::Path),
+    AncestorOnly(Span),
+    FailedToResolve(Span, String, Option<Suggestion>),
+    ExpectedFound(Span, String, Res),
+    Indeterminate(Span),
+    ModuleOnly(Span),
+}
+
 // A minimal representation of a path segment. We use this in resolve because
 // we synthesize 'path segments' which don't have the rest of an AST or HIR
 // `PathSegment`.

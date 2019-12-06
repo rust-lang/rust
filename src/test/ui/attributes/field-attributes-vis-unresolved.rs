@@ -20,7 +20,6 @@ struct S {
 struct Z(
     #[rustfmt::skip]
     pub(in nonexistent) u8 //~ ERROR failed to resolve
-                           //~| ERROR cannot determine resolution for the visibility
 );
 
 fn main() {}
