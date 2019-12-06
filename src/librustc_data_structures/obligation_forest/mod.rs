@@ -329,10 +329,7 @@ impl<O: ForestObligation> ObligationForest<O> {
 
         match self.active_cache.entry(obligation.as_predicate().clone()) {
             Entry::Occupied(o) => {
-                let index = *o.get();
-                debug!("register_obligation_at({:?}, {:?}) - duplicate of {:?}!",
-                       obligation, parent, index);
-                let node = &mut self.nodes[index];
+                let node = &mut self.nodes[*o.get()];
                 if let Some(parent_index) = parent {
                     // If the node is already in `active_cache`, it has already
                     // had its chance to be marked with a parent. So if it's
@@ -349,9 +346,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
             }
             Entry::Vacant(v) => {
-                debug!("register_obligation_at({:?}, {:?}) - ok, new index is {}",
-                       obligation, parent, self.nodes.len());
-
                 let obligation_tree_id = match parent {
                     Some(parent_index) => self.nodes[parent_index].obligation_tree_id,
                     None => self.obligation_tree_id_generator.next().unwrap(),
@@ -431,8 +425,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                                   -> Outcome<O, P::Error>
         where P: ObligationProcessor<Obligation=O>
     {
-        debug!("process_obligations(len={})", self.nodes.len());
-
         self.gen += 1;
 
         let mut errors = vec![];
@@ -450,8 +442,6 @@ impl<O: ForestObligation> ObligationForest<O> {
         while index < self.nodes.len() {
             let node = &mut self.nodes[index];
 
-            debug!("process_obligations: node {} == {:?}", index, node);
-
             // `processor.process_obligation` can modify the predicate within
             // `node.obligation`, and that predicate is the key used for
             // `self.active_cache`. This means that `self.active_cache` can get
@@ -462,8 +452,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 continue;
             }
             let result = processor.process_obligation(&mut node.obligation);
-
-            debug!("process_obligations: node {} got result {:?}", index, result);
 
             match result {
                 ProcessResult::Unchanged => {
@@ -510,8 +498,6 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.mark_still_waiting_nodes();
         self.process_cycles(processor);
         let completed = self.compress(do_completed);
-
-        debug!("process_obligations: complete");
 
         Outcome {
             completed,
@@ -593,8 +579,6 @@ impl<O: ForestObligation> ObligationForest<O> {
     {
         let mut stack = vec![];
 
-        debug!("process_cycles()");
-
         for (index, node) in self.nodes.iter().enumerate() {
             // For some benchmarks this state test is extremely hot. It's a win
             // to handle the no-op cases immediately to avoid the cost of the
@@ -605,8 +589,6 @@ impl<O: ForestObligation> ObligationForest<O> {
                 }
             }
         }
-
-        debug!("process_cycles: complete");
 
         debug_assert!(stack.is_empty());
     }
