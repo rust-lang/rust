@@ -10,11 +10,11 @@ error[E0080]: evaluation of constant value failed
 LL |     let s: [u32; l] = v.into_iter().collect();
    |                  ^ referenced constant has errors
 
-error[E0277]: a collection of type `[u32; _]` cannot be built from an iterator over elements of type `{integer}`
+error[E0277]: a value of type `[u32; _]` cannot be built from an iterator over elements of type `{integer}`
   --> $DIR/type-dependent-def-issue-49241.rs:4:37
    |
 LL |     let s: [u32; l] = v.into_iter().collect();
-   |                                     ^^^^^^^ a collection of type `[u32; _]` cannot be built from `std::iter::Iterator<Item={integer}>`
+   |                                     ^^^^^^^ value of type `[u32; _]` cannot be built from `std::iter::Iterator<Item={integer}>`
    |
    = help: the trait `std::iter::FromIterator<{integer}>` is not implemented for `[u32; _]`
 
