@@ -228,8 +228,6 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// #![feature(wait_until)]
-    ///
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     ///
@@ -249,7 +247,7 @@ impl Condvar {
     /// // As long as the value inside the `Mutex<bool>` is `false`, we wait.
     /// let _guard = cvar.wait_until(lock.lock().unwrap(), |started| { *started }).unwrap();
     /// ```
-    #[unstable(feature = "wait_until", issue = "47960")]
+    #[stable(feature = "wait_until", since = "1.42.0")]
     pub fn wait_until<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
@@ -433,8 +431,6 @@ impl Condvar {
     /// # Examples
     ///
     /// ```
-    /// #![feature(wait_timeout_until)]
-    ///
     /// use std::sync::{Arc, Mutex, Condvar};
     /// use std::thread;
     /// use std::time::Duration;
@@ -462,7 +458,7 @@ impl Condvar {
     /// }
     /// // access the locked mutex via result.0
     /// ```
-    #[unstable(feature = "wait_timeout_until", issue = "47960")]
+    #[stable(feature = "wait_timeout_until", since = "1.42.0")]
     pub fn wait_timeout_until<'a, T, F>(
         &self,
         mut guard: MutexGuard<'a, T>,
@@ -613,7 +609,6 @@ impl Drop for Condvar {
 #[cfg(test)]
 mod tests {
     use crate::sync::atomic::{AtomicBool, Ordering};
-    /// #![feature(wait_until)]
     use crate::sync::mpsc::channel;
     use crate::sync::{Arc, Condvar, Mutex};
     use crate::thread;
