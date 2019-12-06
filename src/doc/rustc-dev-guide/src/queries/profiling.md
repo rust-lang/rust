@@ -74,7 +74,9 @@ _actual_ output is much longer.
 [View full HTML output][profile-example-html]. Note; it could take up
 to a second to properly render depending on your browser.
 
-[profile-example-html]: https://github.com/rust-lang/rustc-guide/tree/master/src/queries/example-0.html
+Here is the corresponding text output](./example-0.counts.txt).
+
+[profile-example-html]: ./example-0.html
 
 ### Example 0 explanation
 
