@@ -1617,30 +1617,28 @@ impl<'a, 'tcx> ShallowResolver<'a, 'tcx> {
     // `resolver.shallow_resolve(ty) != ty`, but more efficient. It's always
     // inlined, despite being large, because it has only two call sites that
     // are extremely hot.
-    //
-    // Note that `typ` is always a `ty::Infer(_)`.
     #[inline(always)]
-    pub fn shallow_resolve_changed(&self, typ: Ty<'tcx>) -> bool {
-        match typ.kind {
-            ty::Infer(ty::TyVar(v)) => {
+    pub fn shallow_resolve_changed(&self, infer: ty::InferTy) -> bool {
+        match infer {
+            ty::TyVar(v) => {
                 use self::type_variable::TypeVariableValue;
 
-                // If `inlined_probe` returns a `Known` value it never matches
-                // `typ`.
+                // If `inlined_probe` returns a `Known` value its `kind` never
+                // matches `infer`.
                 match self.infcx.type_variables.borrow_mut().inlined_probe(v) {
                     TypeVariableValue::Unknown { .. } => false,
                     TypeVariableValue::Known { .. } => true,
                 }
             }
 
-            ty::Infer(ty::IntVar(v)) => {
+            ty::IntVar(v) => {
                 // If inlined_probe_value returns a value it's always a
                 // `ty::Int(_)` or `ty::UInt(_)`, which nevers matches a
                 // `ty::Infer(_)`.
                 self.infcx.int_unification_table.borrow_mut().inlined_probe_value(v).is_some()
             }
 
-            ty::Infer(ty::FloatVar(v)) => {
+            ty::FloatVar(v) => {
                 // If inlined_probe_value returns a value it's always a
                 // `ty::Float(_)`, which nevers matches a `ty::Infer(_)`.
                 //
