@@ -261,7 +261,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if self.fn_abi.ret.layout.abi.is_uninhabited() {
             // Functions with uninhabited return values are marked `noreturn`,
             // so we should make sure that we never actually do.
+            // We play it safe by using a well-defined `abort`, but we could go for immediate UB
+            // if that turns out to be helpful.
             bx.abort();
+            // `abort` does not terminate the block, so we still need to generate
+            // an `unreachable` terminator after it.
             bx.unreachable();
             return;
         }
@@ -825,6 +829,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::TerminatorKind::Abort => {
                 bx.abort();
+                // `abort` does not terminate the block, so we still need to generate
+                // an `unreachable` terminator after it.
                 bx.unreachable();
             }
 
