@@ -3,14 +3,24 @@ use core::num::flt2dec::estimator::*;
 #[test]
 fn test_estimate_scaling_factor() {
     macro_rules! assert_almost_eq {
-        ($actual:expr, $expected:expr) => ({
+        ($actual:expr, $expected:expr) => {{
             let actual = $actual;
             let expected = $expected;
-            println!("{} - {} = {} - {} = {}", stringify!($expected), stringify!($actual),
-                     expected, actual, expected - actual);
-            assert!(expected == actual || expected == actual + 1,
-                    "expected {}, actual {}", expected, actual);
-        })
+            println!(
+                "{} - {} = {} - {} = {}",
+                stringify!($expected),
+                stringify!($actual),
+                expected,
+                actual,
+                expected - actual
+            );
+            assert!(
+                expected == actual || expected == actual + 1,
+                "expected {}, actual {}",
+                expected,
+                actual
+            );
+        }};
     }
 
     assert_almost_eq!(estimate_scaling_factor(1, 0), 0);

@@ -1,12 +1,12 @@
-use std::{i16, f64};
 use super::super::*;
 use core::num::flt2dec::strategy::grisu::*;
+use std::{f64, i16};
 use test::Bencher;
 
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {:?} instead", full_decoded)
+        full_decoded => panic!("expected finite, got {:?} instead", full_decoded),
     }
 }
 
