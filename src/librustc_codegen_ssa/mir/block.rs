@@ -771,14 +771,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
 
         let needs_location =
-            instance.map(|i| i.def.requires_caller_location(self.cx.tcx())).unwrap_or_default();
+            instance.map_or(false, |i| i.def.requires_caller_location(self.cx.tcx()));
         if needs_location {
             assert_eq!(
                 fn_abi.args.len(), args.len() + 1,
                 "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
             );
             let location = self.get_caller_location(&mut bx, span);
-            let last_arg = &fn_abi.args.last().unwrap();
+            let last_arg = fn_abi.args.last().unwrap();
             self.codegen_argument(&mut bx, location, &mut llargs, last_arg);
         }
 

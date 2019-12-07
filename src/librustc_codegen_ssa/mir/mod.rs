@@ -435,10 +435,10 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
         );
 
-        let arg = &fx.fn_abi.args.last().unwrap();
+        let arg = fx.fn_abi.args.last().unwrap();
         match arg.mode {
             PassMode::Direct(_) => (),
-            _ => panic!("caller location must be PassMode::Direct, found {:?}", arg.mode),
+            _ => bug!("caller location must be PassMode::Direct, found {:?}", arg.mode),
         }
 
         fx.caller_location = Some(OperandRef {

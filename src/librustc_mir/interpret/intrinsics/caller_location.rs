@@ -7,24 +7,17 @@ use crate::interpret::{Scalar, MemoryKind, MPlaceTy, intrinsics::{InterpCx, Mach
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Walks up the callstack from the intrinsic's callsite, searching for the first frame which is
-    /// not `#[track_caller]`. Returns the (passed) span of the intrinsic's callsite if the first
-    /// frame in the stack is untracked so that we can display the callsite of the intrinsic within
-    /// that function.
-    crate fn find_closest_untracked_caller_location(
-        &self,
-        intrinsic_loc: Span,
-    ) -> Span {
-        debug!("finding closest untracked caller relative to {:?}", intrinsic_loc);
-
-        let mut caller_span = intrinsic_loc;
+    /// not `#[track_caller]`.
+    crate fn find_closest_untracked_caller_location(&self) -> Option<Span> {
+        let mut caller_span = None;
         for next_caller in self.stack.iter().rev() {
             if !next_caller.instance.def.requires_caller_location(*self.tcx) {
                 return caller_span;
             }
-            caller_span = next_caller.span;
+            caller_span = Some(next_caller.span);
         }
 
-        intrinsic_loc
+        caller_span
     }
 
     /// Allocate a `const core::panic::Location` with the provided filename and line/column numbers.
