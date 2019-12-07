@@ -19,7 +19,7 @@ use crate::{
     nameres::{BuiltinShadowMode, CrateDefMap},
     path::{Path, PathKind},
     per_ns::PerNs,
-    AdtId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
+    AdtId, CrateId, EnumVariantId, LocalModuleId, ModuleDefId, ModuleId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,19 +39,21 @@ pub(super) struct ResolvePathResult {
     pub(super) resolved_def: PerNs,
     pub(super) segment_index: Option<usize>,
     pub(super) reached_fixedpoint: ReachedFixedPoint,
+    pub(super) krate: Option<CrateId>,
 }
 
 impl ResolvePathResult {
     fn empty(reached_fixedpoint: ReachedFixedPoint) -> ResolvePathResult {
-        ResolvePathResult::with(PerNs::none(), reached_fixedpoint, None)
+        ResolvePathResult::with(PerNs::none(), reached_fixedpoint, None, None)
     }
 
     fn with(
         resolved_def: PerNs,
         reached_fixedpoint: ReachedFixedPoint,
         segment_index: Option<usize>,
+        krate: Option<CrateId>,
     ) -> ResolvePathResult {
-        ResolvePathResult { resolved_def, reached_fixedpoint, segment_index }
+        ResolvePathResult { resolved_def, reached_fixedpoint, segment_index, krate }
     }
 }
 
@@ -175,6 +177,7 @@ impl CrateDefMap {
                             def,
                             ReachedFixedPoint::Yes,
                             s.map(|s| s + i),
+                            Some(module.krate),
                         );
                     }
 
@@ -201,6 +204,7 @@ impl CrateDefMap {
                                 PerNs::types(e.into()),
                                 ReachedFixedPoint::Yes,
                                 Some(i),
+                                Some(self.krate),
                             );
                         }
                     }
@@ -218,12 +222,13 @@ impl CrateDefMap {
                         PerNs::types(s),
                         ReachedFixedPoint::Yes,
                         Some(i),
+                        Some(self.krate),
                     );
                 }
             };
         }
 
-        ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None)
+        ResolvePathResult::with(curr_per_ns, ReachedFixedPoint::Yes, None, Some(self.krate))
     }
 
     fn resolve_name_in_module(
