@@ -110,6 +110,15 @@ pub(crate) fn classify_name(db: &RootDatabase, name: InFile<&ast::Name>) -> Opti
                     kind: NameKind::Macro(def),
                 })
             },
+            ast::TypeParam(it) => {
+                let src = name.with_value(it);
+                let def = hir::GenericParam::from_source(db, src)?;
+                Some(NameDefinition {
+                    visibility: None,
+                    container: def.module(db),
+                    kind: NameKind::GenericParam(def),
+                })
+            },
             _ => None,
         }
     }

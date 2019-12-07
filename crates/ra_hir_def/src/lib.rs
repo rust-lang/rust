@@ -525,6 +525,20 @@ impl HasModule for DefWithBodyId {
     }
 }
 
+impl HasModule for GenericDefId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        match self {
+            GenericDefId::FunctionId(it) => it.lookup(db).module(db),
+            GenericDefId::AdtId(it) => it.module(db),
+            GenericDefId::TraitId(it) => it.module(db),
+            GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
+            GenericDefId::ImplId(it) => it.module(db),
+            GenericDefId::EnumVariantId(it) => it.parent.module(db),
+            GenericDefId::ConstId(it) => it.lookup(db).module(db),
+        }
+    }
+}
+
 impl HasModule for StaticLoc {
     fn module(&self, _db: &impl db::DefDatabase) -> ModuleId {
         self.container

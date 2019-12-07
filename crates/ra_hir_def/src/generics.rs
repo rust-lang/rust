@@ -14,11 +14,14 @@ use ra_db::FileId;
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
+    child_by_source::ChildBySource,
     db::DefDatabase,
+    dyn_map::DynMap,
+    keys,
     src::HasChildSource,
     src::HasSource,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, GenericDefId, LocalGenericParamId, Lookup,
+    AdtId, AstItemDef, GenericDefId, GenericParamId, LocalGenericParamId, Lookup,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
@@ -181,5 +184,20 @@ impl HasChildSource for GenericDefId {
     fn child_source(&self, db: &impl DefDatabase) -> InFile<SourceMap> {
         let (_, sm) = GenericParams::new(db, *self);
         sm
+    }
+}
+
+impl ChildBySource for GenericDefId {
+    fn child_by_source(&self, db: &impl DefDatabase) -> DynMap {
+        let mut res = DynMap::default();
+        let arena_map = self.child_source(db);
+        let arena_map = arena_map.as_ref();
+        for (local_id, src) in arena_map.value.iter() {
+            let id = GenericParamId { parent: *self, local_id };
+            if let Either::Right(type_param) = src {
+                res[keys::TYPE_PARAM].insert(arena_map.with_value(type_param.clone()), id)
+            }
+        }
+        res
     }
 }

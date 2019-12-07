@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     dyn_map::{DynMap, Policy},
-    ConstId, EnumVariantId, FunctionId, StaticId, StructFieldId, TypeAliasId,
+    ConstId, EnumVariantId, FunctionId, GenericParamId, StaticId, StructFieldId, TypeAliasId,
 };
 
 type Key<K, V> = crate::dyn_map::Key<InFile<K>, V, AstPtrPolicy<K, V>>;
@@ -20,6 +20,7 @@ pub const ENUM_VARIANT: Key<ast::EnumVariant, EnumVariantId> = Key::new();
 pub const TYPE_ALIAS: Key<ast::TypeAliasDef, TypeAliasId> = Key::new();
 pub const TUPLE_FIELD: Key<ast::TupleFieldDef, StructFieldId> = Key::new();
 pub const RECORD_FIELD: Key<ast::RecordFieldDef, StructFieldId> = Key::new();
+pub const TYPE_PARAM: Key<ast::TypeParam, GenericParamId> = Key::new();
 
 /// XXX: AST Nodes and SyntaxNodes have identity equality semantics: nodes are
 /// equal if they point to exactly the same object.

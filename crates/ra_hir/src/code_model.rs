@@ -865,6 +865,10 @@ impl GenericParam {
         let params = db.generic_params(self.id.parent);
         params.params[self.id.local_id].name.clone()
     }
+
+    pub fn module(self, db: &impl HirDatabase) -> Module {
+        self.id.parent.module(db).into()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
