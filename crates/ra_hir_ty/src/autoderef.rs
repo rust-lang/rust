@@ -10,10 +10,10 @@ use hir_expand::name;
 use log::{info, warn};
 use ra_db::CrateId;
 
-use crate::db::HirDatabase;
-
-use super::{
+use crate::{
+    db::HirDatabase,
     traits::{InEnvironment, Solution},
+    utils::generics,
     Canonical, Substs, Ty, TypeWalk,
 };
 
@@ -54,7 +54,7 @@ fn deref_by_trait(
     };
     let target = db.trait_data(deref_trait).associated_type_by_name(&name::TARGET_TYPE)?;
 
-    let generic_params = db.generic_params(target.into());
+    let generic_params = generics(db, target.into());
     if generic_params.count_params_including_parent() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
         // namely Deref's Self type

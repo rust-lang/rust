@@ -5,9 +5,10 @@ use std::sync::Arc;
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
+    generics::{GenericParamData, GenericParams},
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    TraitId, TypeAliasId, VariantId,
+    ContainerId, GenericDefId, GenericParamId, Lookup, TraitId, TypeAliasId, VariantId,
 };
 use hir_expand::name::{self, Name};
 
@@ -81,4 +82,83 @@ pub(crate) fn make_mut_slice<T: Clone>(a: &mut Arc<[T]>) -> &mut [T] {
         *a = a.iter().cloned().collect();
     }
     Arc::get_mut(a).unwrap()
+}
+
+pub(crate) fn generics(db: &impl DefDatabase, def: GenericDefId) -> Generics {
+    let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));
+    Generics { def, params: db.generic_params(def), parent_generics }
+}
+
+pub(crate) struct Generics {
+    def: GenericDefId,
+    pub(crate) params: Arc<GenericParams>,
+    parent_generics: Option<Box<Generics>>,
+}
+
+impl Generics {
+    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (u32, &'a GenericParamData)> + 'a {
+        self.parent_generics
+            .as_ref()
+            .into_iter()
+            .flat_map(|it| it.params.params.iter())
+            .chain(self.params.params.iter())
+            .enumerate()
+            .map(|(i, (_local_id, p))| (i as u32, p))
+    }
+
+    pub(crate) fn iter_parent<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (u32, &'a GenericParamData)> + 'a {
+        self.parent_generics
+            .as_ref()
+            .into_iter()
+            .flat_map(|it| it.params.params.iter())
+            .enumerate()
+            .map(|(i, (_local_id, p))| (i as u32, p))
+    }
+
+    pub(crate) fn count_parent_params(&self) -> usize {
+        self.parent_generics.as_ref().map_or(0, |p| p.count_params_including_parent())
+    }
+
+    pub(crate) fn count_params_including_parent(&self) -> usize {
+        let parent_count = self.count_parent_params();
+        parent_count + self.params.params.len()
+    }
+    pub(crate) fn param_idx(&self, param: GenericParamId) -> u32 {
+        self.find_param(param).0
+    }
+    pub(crate) fn param_name(&self, param: GenericParamId) -> Name {
+        self.find_param(param).1.name.clone()
+    }
+    fn find_param(&self, param: GenericParamId) -> (u32, &GenericParamData) {
+        if param.parent == self.def {
+            let (idx, (_local_id, data)) = self
+                .params
+                .params
+                .iter()
+                .enumerate()
+                .find(|(_, (idx, _))| *idx == param.local_id)
+                .unwrap();
+
+            return ((self.count_parent_params() + idx) as u32, data);
+        }
+        self.parent_generics.as_ref().unwrap().find_param(param)
+    }
+}
+
+fn parent_generic_def(db: &impl DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
+    let container = match def {
+        GenericDefId::FunctionId(it) => it.lookup(db).container,
+        GenericDefId::TypeAliasId(it) => it.lookup(db).container,
+        GenericDefId::ConstId(it) => it.lookup(db).container,
+        GenericDefId::EnumVariantId(it) => return Some(it.parent.into()),
+        GenericDefId::AdtId(_) | GenericDefId::TraitId(_) | GenericDefId::ImplId(_) => return None,
+    };
+
+    match container {
+        ContainerId::ImplId(it) => Some(it.into()),
+        ContainerId::TraitId(it) => Some(it.into()),
+        ContainerId::ModuleId(_) => None,
+    }
 }

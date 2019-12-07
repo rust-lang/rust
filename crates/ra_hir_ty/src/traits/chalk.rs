@@ -19,8 +19,8 @@ use ra_db::{
 
 use super::{builtin, AssocTyValue, Canonical, ChalkContext, Impl, Obligation};
 use crate::{
-    db::HirDatabase, display::HirDisplay, ApplicationTy, GenericPredicate, ProjectionTy, Substs,
-    TraitRef, Ty, TypeCtor, TypeWalk,
+    db::HirDatabase, display::HirDisplay, utils::generics, ApplicationTy, GenericPredicate,
+    ProjectionTy, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
 };
 
 /// This represents a trait whose name we could not resolve.
@@ -547,7 +547,7 @@ pub(crate) fn associated_ty_data_query(
         ContainerId::TraitId(t) => t,
         _ => panic!("associated type not in trait"),
     };
-    let generic_params = db.generic_params(type_alias.into());
+    let generic_params = generics(db, type_alias.into());
     let bound_data = chalk_rust_ir::AssociatedTyDatumBound {
         // FIXME add bounds and where clauses
         bounds: vec![],
@@ -589,7 +589,7 @@ pub(crate) fn trait_datum_query(
     let trait_: TraitId = from_chalk(db, trait_id);
     let trait_data = db.trait_data(trait_);
     debug!("trait {:?} = {:?}", trait_id, trait_data.name);
-    let generic_params = db.generic_params(trait_.into());
+    let generic_params = generics(db, trait_.into());
     let bound_vars = Substs::bound_vars(&generic_params);
     let flags = chalk_rust_ir::TraitFlags {
         auto: trait_data.auto,
@@ -626,7 +626,7 @@ pub(crate) fn struct_datum_query(
     let where_clauses = type_ctor
         .as_generic_def()
         .map(|generic_def| {
-            let generic_params = db.generic_params(generic_def.into());
+            let generic_params = generics(db, generic_def.into());
             let bound_vars = Substs::bound_vars(&generic_params);
             convert_where_clauses(db, generic_def, &bound_vars)
         })
@@ -669,7 +669,7 @@ fn impl_block_datum(
     let trait_ref = db.impl_trait(impl_id)?;
     let impl_data = db.impl_data(impl_id);
 
-    let generic_params = db.generic_params(impl_id.into());
+    let generic_params = generics(db, impl_id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
     let trait_ref = trait_ref.subst(&bound_vars);
     let trait_ = trait_ref.trait_;
@@ -767,7 +767,7 @@ fn type_alias_associated_ty_value(
         .trait_data(trait_ref.trait_)
         .associated_type_by_name(&type_alias_data.name)
         .expect("assoc ty value should not exist"); // validated when building the impl data as well
-    let generic_params = db.generic_params(impl_id.into());
+    let generic_params = generics(db, impl_id.into());
     let bound_vars = Substs::bound_vars(&generic_params);
     let ty = db.ty(type_alias.into()).subst(&bound_vars);
     let value_bound = chalk_rust_ir::AssociatedTyValueBound { ty: ty.to_chalk(db) };
