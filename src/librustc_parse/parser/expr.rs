@@ -481,7 +481,7 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 (lo.to(span), self.mk_unary(UnOp::Deref, e))
             }
-            token::BinOp(token::And) | token::AndAnd => self.parse_address_of(lo)?,
+            token::BinOp(token::And) | token::AndAnd => self.parse_borrow_expr(lo)?,
             token::Ident(..) if self.token.is_keyword(kw::Box) => {
                 self.bump();
                 let e = self.parse_prefix_expr(None);
@@ -637,20 +637,27 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
-    fn parse_address_of(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
+    fn parse_borrow_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
         self.expect_and()?;
-        let (k, m) = if self.check_keyword(kw::Raw) && self.look_ahead(1, Token::is_mutability) {
+        let (borrow_kind, mutbl) = self.parse_borrow_modifiers(lo);
+        let expr = self.parse_prefix_expr(None);
+        let (span, expr) = self.interpolated_or_expr_span(expr)?;
+        Ok((lo.to(span), ExprKind::AddrOf(borrow_kind, mutbl, expr)))
+    }
+
+    /// Parse `mut?` or `raw [ const | mut ]`.
+    fn parse_borrow_modifiers(&mut self, lo: Span) -> (ast::BorrowKind, ast::Mutability) {
+        if self.check_keyword(kw::Raw) && self.look_ahead(1, Token::is_mutability) {
+            // `raw [ const | mut ]`.
             let found_raw = self.eat_keyword(kw::Raw);
             assert!(found_raw);
             let mutability = self.parse_const_or_mut().unwrap();
             self.sess.gated_spans.gate(sym::raw_ref_op, lo.to(self.prev_span));
             (ast::BorrowKind::Raw, mutability)
         } else {
+            // `mut?`
             (ast::BorrowKind::Ref, self.parse_mutability())
-        };
-        let e = self.parse_prefix_expr(None);
-        let (span, e) = self.interpolated_or_expr_span(e)?;
-        Ok((lo.to(span), ExprKind::AddrOf(k, m, e)))
+        }
     }
 
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
