@@ -18,6 +18,7 @@ pub use core::future::*;
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "from_generator")]
 pub fn from_generator<T: Generator<Yield = ()>>(x: T) -> impl Future<Output = T::Return> {
     GenFuture(x)
 }
