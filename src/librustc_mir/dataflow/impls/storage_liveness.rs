@@ -75,20 +75,20 @@ impl<'a, 'tcx> BottomValue for MaybeStorageLive<'a, 'tcx> {
 /// Dataflow analysis that determines whether each local requires storage at a
 /// given location; i.e. whether its storage can go away without being observed.
 pub struct RequiresStorage<'mir, 'tcx> {
-    body: ReadOnlyBodyCache<'mir, 'tcx>,
+    body: ReadOnlyBodyAndCache<'mir, 'tcx>,
     borrowed_locals:
         RefCell<DataflowResultsRefCursor<'mir, 'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>>,
 }
 
 impl<'mir, 'tcx: 'mir> RequiresStorage<'mir, 'tcx> {
     pub fn new(
-        body: ReadOnlyBodyCache<'mir, 'tcx>,
+        body: ReadOnlyBodyAndCache<'mir, 'tcx>,
         borrowed_locals: &'mir DataflowResults<'tcx, HaveBeenBorrowedLocals<'mir, 'tcx>>,
     ) -> Self {
         RequiresStorage {
             body,
             borrowed_locals: RefCell::new(
-                DataflowResultsCursor::new(borrowed_locals, body.body())
+                DataflowResultsCursor::new(borrowed_locals, *body)
             ),
         }
     }

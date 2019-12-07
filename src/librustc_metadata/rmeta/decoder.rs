@@ -18,7 +18,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc::dep_graph::{self, DepNodeIndex};
 use rustc::middle::lang_items;
-use rustc::mir::{self, BodyCache, interpret, Promoted};
+use rustc::mir::{self, BodyAndCache, interpret, Promoted};
 use rustc::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -1079,7 +1079,7 @@ impl<'a, 'tcx> CrateMetadata {
             self.root.per_def.mir.get(self, id).is_some()
     }
 
-    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> BodyCache<'tcx> {
+    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> BodyAndCache<'tcx> {
         let mut cache = self.root.per_def.mir.get(self, id)
             .filter(|_| !self.is_proc_macro(id))
             .unwrap_or_else(|| {
@@ -1094,7 +1094,7 @@ impl<'a, 'tcx> CrateMetadata {
         &self,
         tcx: TyCtxt<'tcx>,
         id: DefIndex,
-    ) -> IndexVec<Promoted, BodyCache<'tcx>> {
+    ) -> IndexVec<Promoted, BodyAndCache<'tcx>> {
         let mut cache = self.root.per_def.promoted_mir.get(self, id)
             .filter(|_| !self.is_proc_macro(id))
             .unwrap_or_else(|| {

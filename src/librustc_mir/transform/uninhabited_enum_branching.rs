@@ -2,7 +2,7 @@
 
 use crate::transform::{MirPass, MirSource};
 use rustc::mir::{
-    BasicBlock, BasicBlockData, Body, BodyCache, Local, Operand, Rvalue, StatementKind,
+    BasicBlock, BasicBlockData, Body, BodyAndCache, Local, Operand, Rvalue, StatementKind,
     TerminatorKind,
 };
 use rustc::ty::layout::{Abi, TyLayout, Variants};
@@ -66,7 +66,7 @@ fn variant_discriminants<'tcx>(
 }
 
 impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         if source.promoted.is_some() {
             return;
         }

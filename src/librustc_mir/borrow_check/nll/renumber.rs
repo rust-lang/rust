@@ -1,6 +1,6 @@
 use rustc::ty::subst::SubstsRef;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::mir::{BodyCache, Location, PlaceElem, Promoted};
+use rustc::mir::{BodyAndCache, Location, PlaceElem, Promoted};
 use rustc::mir::visit::{MutVisitor, TyContext};
 use rustc::infer::{InferCtxt, NLLRegionVariableOrigin};
 use rustc_index::vec::IndexVec;
@@ -9,8 +9,8 @@ use rustc_index::vec::IndexVec;
 /// inference variables, returning the number of variables created.
 pub fn renumber_mir<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
-    body: &mut BodyCache<'tcx>,
-    promoted: &mut IndexVec<Promoted, BodyCache<'tcx>>,
+    body: &mut BodyAndCache<'tcx>,
+    promoted: &mut IndexVec<Promoted, BodyAndCache<'tcx>>,
 ) {
     debug!("renumber_mir()");
     debug!("renumber_mir: body.arg_count={:?}", body.arg_count);

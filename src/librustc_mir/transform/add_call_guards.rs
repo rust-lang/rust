@@ -32,14 +32,14 @@ pub use self::AddCallGuards::*;
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
     fn run_pass(
-        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
     ) {
         self.add_call_guards(body);
     }
 }
 
 impl AddCallGuards {
-    pub fn add_call_guards(&self, body: &mut BodyCache<'_>) {
+    pub fn add_call_guards(&self, body: &mut BodyAndCache<'_>) {
         let pred_count: IndexVec<_, _> = body.predecessors().iter().map(|ps| ps.len()).collect();
 
         // We need a place to store the new blocks generated

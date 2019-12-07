@@ -1,6 +1,6 @@
 use rustc::hir;
 use rustc::hir::Node;
-use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location, ReadOnlyBodyCache};
+use rustc::mir::{self, ClearCrossCrate, Local, LocalInfo, Location, ReadOnlyBodyAndCache};
 use rustc::mir::{Mutability, Place, PlaceRef, PlaceBase, ProjectionElem};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc_index::vec::Idx;
@@ -533,7 +533,7 @@ fn suggest_ampmut_self<'tcx>(
 // by trying (3.), then (2.) and finally falling back on (1.).
 fn suggest_ampmut<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
     local: Local,
     local_decl: &mir::LocalDecl<'tcx>,
     opt_ty_info: Option<Span>,

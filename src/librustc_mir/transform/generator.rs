@@ -378,7 +378,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
 fn make_generator_state_argument_indirect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
 ) {
     let gen_ty = body.local_decls.raw[1].ty;
 
@@ -401,7 +401,7 @@ fn make_generator_state_argument_indirect<'tcx>(
     DerefArgVisitor { tcx }.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyCache<'tcx>) {
+fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.lang_items().pin_type().unwrap();
@@ -418,7 +418,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 
 fn replace_result_variable<'tcx>(
     ret_ty: Ty<'tcx>,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
     let source_info = source_info(body);
@@ -481,7 +481,7 @@ struct LivenessInfo {
 
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'tcx>,
-    body: ReadOnlyBodyCache<'_, 'tcx>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
     source: MirSource<'tcx>,
     movable: bool,
 ) -> LivenessInfo {
@@ -751,7 +751,7 @@ fn compute_layout<'tcx>(
     upvars: &Vec<Ty<'tcx>>,
     interior: Ty<'tcx>,
     movable: bool,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
 ) -> (
     FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
     GeneratorLayout<'tcx>,
@@ -830,7 +830,7 @@ fn compute_layout<'tcx>(
 }
 
 fn insert_switch<'tcx>(
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     cases: Vec<(usize, BasicBlock)>,
     transform: &TransformVisitor<'tcx>,
     default: TerminatorKind<'tcx>,
@@ -862,7 +862,7 @@ fn insert_switch<'tcx>(
 }
 
 fn elaborate_generator_drops<'tcx>(
-    tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut BodyCache<'tcx>
+    tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut BodyAndCache<'tcx>
 ) {
     use crate::util::elaborate_drops::{elaborate_drop, Unwind};
     use crate::util::patch::MirPatch;
@@ -928,9 +928,9 @@ fn create_generator_drop_shim<'tcx>(
     def_id: DefId,
     source: MirSource<'tcx>,
     gen_ty: Ty<'tcx>,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     drop_clean: BasicBlock,
-) -> BodyCache<'tcx> {
+) -> BodyAndCache<'tcx> {
     let mut body = body.clone();
 
     let source_info = source_info(&body);
@@ -997,7 +997,7 @@ fn create_generator_drop_shim<'tcx>(
 }
 
 fn insert_term_block<'tcx>(
-    body: &mut BodyCache<'tcx>, kind: TerminatorKind<'tcx>
+    body: &mut BodyAndCache<'tcx>, kind: TerminatorKind<'tcx>
 ) -> BasicBlock {
     let term_block = BasicBlock::new(body.basic_blocks().len());
     let source_info = source_info(body);
@@ -1014,7 +1014,7 @@ fn insert_term_block<'tcx>(
 
 fn insert_panic_block<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks().len());
@@ -1048,7 +1048,7 @@ fn create_generator_resume_function<'tcx>(
     transform: TransformVisitor<'tcx>,
     def_id: DefId,
     source: MirSource<'tcx>,
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
 ) {
     // Poison the generator when it unwinds
     for block in body.basic_blocks_mut() {
@@ -1101,7 +1101,7 @@ fn source_info(body: &Body<'_>) -> SourceInfo {
     }
 }
 
-fn insert_clean_drop(body: &mut BodyCache<'_>) -> BasicBlock {
+fn insert_clean_drop(body: &mut BodyAndCache<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
@@ -1125,7 +1125,7 @@ fn insert_clean_drop(body: &mut BodyCache<'_>) -> BasicBlock {
 }
 
 fn create_cases<'tcx, F>(
-    body: &mut BodyCache<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     transform: &TransformVisitor<'tcx>,
     target: F,
 ) -> Vec<(usize, BasicBlock)>
@@ -1170,7 +1170,7 @@ where
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
     fn run_pass(
-        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
     ) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty

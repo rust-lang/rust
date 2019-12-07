@@ -1,6 +1,8 @@
 //! Def-use analysis.
 
-use rustc::mir::{Body, BodyCache, Local, Location, PlaceElem, ReadOnlyBodyCache, VarDebugInfo};
+use rustc::mir::{
+    Body, BodyAndCache, Local, Location, PlaceElem, ReadOnlyBodyAndCache, VarDebugInfo,
+};
 use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
 use rustc::ty::TyCtxt;
 use rustc_index::vec::IndexVec;
@@ -30,7 +32,7 @@ impl DefUseAnalysis {
         }
     }
 
-    pub fn analyze(&mut self, body: ReadOnlyBodyCache<'_, '_>) {
+    pub fn analyze(&mut self, body: ReadOnlyBodyAndCache<'_, '_>) {
         self.clear();
 
         let mut finder = DefUseFinder {
@@ -55,7 +57,7 @@ impl DefUseAnalysis {
     fn mutate_defs_and_uses(
         &self,
         local: Local,
-        body: &mut BodyCache<'tcx>,
+        body: &mut BodyAndCache<'tcx>,
         new_local: Local,
         tcx: TyCtxt<'tcx>,
     ) {
@@ -73,7 +75,7 @@ impl DefUseAnalysis {
     // FIXME(pcwalton): this should update the def-use chains.
     pub fn replace_all_defs_and_uses_with(&self,
                                           local: Local,
-                                          body: &mut BodyCache<'tcx>,
+                                          body: &mut BodyAndCache<'tcx>,
                                           new_local: Local,
                                           tcx: TyCtxt<'tcx>) {
         self.mutate_defs_and_uses(local, body, new_local, tcx)
