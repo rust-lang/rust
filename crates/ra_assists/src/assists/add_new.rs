@@ -56,42 +56,39 @@ pub(crate) fn add_new(ctx: AssistCtx<impl HirDatabase>) -> Option<Assist> {
         let vis = vis.as_ref().map(String::as_str).unwrap_or("");
         write!(&mut buf, "    {}fn new(", vis).unwrap();
 
-        join(field_list.fields().map(|f| {
-            format!(
-                "{}: {}",
-                f.name().unwrap().syntax().text(),
-                f.ascribed_type().unwrap().syntax().text()
-            )
+        join(field_list.fields().filter_map(|f| {
+            Some(format!("{}: {}", f.name()?.syntax().text(), f.ascribed_type()?.syntax().text()))
         }))
         .separator(", ")
         .to_buf(&mut buf);
 
         buf.push_str(") -> Self { Self {");
 
-        join(field_list.fields().map(|f| f.name().unwrap().syntax().text()))
+        join(field_list.fields().filter_map(|f| Some(f.name()?.syntax().text())))
             .separator(", ")
             .surround_with(" ", " ")
             .to_buf(&mut buf);
 
         buf.push_str("} }");
 
-        let (start_offset, end_offset) = if let Some(impl_block) = impl_block {
-            buf.push('\n');
-            let start = impl_block
-                .syntax()
-                .descendants_with_tokens()
-                .find(|t| t.kind() == T!['{'])
-                .unwrap()
-                .text_range()
-                .end();
+        let (start_offset, end_offset) = impl_block
+            .and_then(|impl_block| {
+                buf.push('\n');
+                let start = impl_block
+                    .syntax()
+                    .descendants_with_tokens()
+                    .find(|t| t.kind() == T!['{'])?
+                    .text_range()
+                    .end();
 
-            (start, TextUnit::from_usize(1))
-        } else {
-            buf = generate_impl_text(&strukt, &buf);
-            let start = strukt.syntax().text_range().end();
+                Some((start, TextUnit::from_usize(1)))
+            })
+            .unwrap_or_else(|| {
+                buf = generate_impl_text(&strukt, &buf);
+                let start = strukt.syntax().text_range().end();
 
-            (start, TextUnit::from_usize(3))
-        };
+                (start, TextUnit::from_usize(3))
+            });
 
         edit.set_cursor(start_offset + TextUnit::of_str(&buf) - end_offset);
         edit.insert(start_offset, buf);
