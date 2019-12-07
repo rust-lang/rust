@@ -453,22 +453,7 @@ impl<'a> Parser<'a> {
                 let (span, e) = self.interpolated_or_expr_span(e)?;
                 (lo.to(span), self.mk_unary(UnOp::Not, e))
             }
-            // Suggest `!` for bitwise negation when encountering a `~`
-            token::Tilde => {
-                self.bump();
-                let e = self.parse_prefix_expr(None);
-                let (span, e) = self.interpolated_or_expr_span(e)?;
-                let span_of_tilde = lo;
-                self.struct_span_err(span_of_tilde, "`~` cannot be used as a unary operator")
-                    .span_suggestion_short(
-                        span_of_tilde,
-                        "use `!` to perform bitwise not",
-                        "!".to_owned(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                (lo.to(span), self.mk_unary(UnOp::Not, e))
-            }
+            token::Tilde => self.recover_tilde_expr(lo)?,
             token::BinOp(token::Minus) => self.parse_neg_expr(lo)?,
             token::BinOp(token::Star) => self.parse_deref_expr(lo)?,
             token::BinOp(token::And) | token::AndAnd => self.parse_borrow_expr(lo)?,
@@ -479,6 +464,22 @@ impl<'a> Parser<'a> {
             _ => return self.parse_dot_or_call_expr(Some(attrs)),
         };
         return Ok(self.mk_expr(lo.to(hi), ex, attrs));
+    }
+
+    // Recover on `!` suggesting for bitwise negation instead.
+    fn recover_tilde_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
+        self.bump();
+        let expr = self.parse_prefix_expr(None);
+        let (span, expr) = self.interpolated_or_expr_span(expr)?;
+        self.struct_span_err(lo, "`~` cannot be used as a unary operator")
+            .span_suggestion_short(
+                lo,
+                "use `!` to perform bitwise not",
+                "!".to_owned(),
+                Applicability::MachineApplicable,
+            )
+            .emit();
+        Ok((lo.to(span), self.mk_unary(UnOp::Not, expr)))
     }
 
     /// Parse `-expr`.
