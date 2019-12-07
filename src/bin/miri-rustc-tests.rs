@@ -41,6 +41,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                                 let config = MiriConfig {
                                     validate: true,
                                     communicate: false,
+                                    ignore_leaks: false,
                                     excluded_env_vars: vec![],
                                     args: vec![],
                                     seed: None,
@@ -60,6 +61,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                 let config = MiriConfig {
                     validate: true,
                     communicate: false,
+                    ignore_leaks: false,
                     excluded_env_vars: vec![],
                     args: vec![],
                     seed: None

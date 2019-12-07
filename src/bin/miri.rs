@@ -124,6 +124,7 @@ fn main() {
     // Parse our arguments and split them across `rustc` and `miri`.
     let mut validate = true;
     let mut communicate = false;
+    let mut ignore_leaks = false;
     let mut seed: Option<u64> = None;
     let mut rustc_args = vec![];
     let mut miri_args = vec![];
@@ -144,6 +145,9 @@ fn main() {
                 },
                 "-Zmiri-disable-isolation" => {
                     communicate = true;
+                },
+                "-Zmiri-ignore-leaks" => {
+                    ignore_leaks = true;
                 },
                 "--" => {
                     after_dashdash = true;
@@ -200,6 +204,7 @@ fn main() {
     let miri_config = miri::MiriConfig {
         validate,
         communicate,
+        ignore_leaks,
         excluded_env_vars,
         seed,
         args: miri_args,
