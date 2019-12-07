@@ -58,11 +58,12 @@ impl GenericParams {
             GenericDefId::TraitId(it) => {
                 // traits get the Self type as an implicit first type parameter
                 generics.params.alloc(GenericParamData { name: name::SELF_TYPE, default: None });
-                generics.fill(&it.source(db).value);
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name::SELF_TYPE.into());
                 generics.fill_bounds(&it.source(db).value, self_param);
+
+                generics.fill(&it.source(db).value);
             }
             GenericDefId::TypeAliasId(it) => generics.fill(&it.lookup(db).source(db).value),
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
@@ -75,7 +76,7 @@ impl GenericParams {
         generics
     }
 
-    fn fill(&mut self, node: &impl TypeParamsOwner) {
+    fn fill(&mut self, node: &dyn TypeParamsOwner) {
         if let Some(params) = node.type_param_list() {
             self.fill_params(params)
         }
@@ -84,7 +85,7 @@ impl GenericParams {
         }
     }
 
-    fn fill_bounds(&mut self, node: &impl ast::TypeBoundsOwner, type_ref: TypeRef) {
+    fn fill_bounds(&mut self, node: &dyn ast::TypeBoundsOwner, type_ref: TypeRef) {
         for bound in
             node.type_bound_list().iter().flat_map(|type_bound_list| type_bound_list.bounds())
         {
