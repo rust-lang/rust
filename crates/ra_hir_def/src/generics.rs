@@ -5,20 +5,19 @@
 use std::sync::Arc;
 
 use hir_expand::name::{self, AsName, Name};
+use ra_arena::Arena;
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::DefDatabase,
     src::HasSource,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, ContainerId, GenericDefId, Lookup,
+    AdtId, AstItemDef, GenericDefId, LocalGenericParamId, Lookup,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct GenericParam {
-    // FIXME: give generic params proper IDs
-    pub idx: u32,
+pub struct GenericParamData {
     pub name: Name,
     pub default: Option<TypeRef>,
 }
@@ -26,8 +25,7 @@ pub struct GenericParam {
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParams {
-    pub parent_params: Option<Arc<GenericParams>>,
-    pub params: Vec<GenericParam>,
+    pub params: Arena<LocalGenericParamId, GenericParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
@@ -46,51 +44,40 @@ impl GenericParams {
         db: &impl DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
-        let parent_generics = parent_generic_def(db, def).map(|it| db.generic_params(it));
-        Arc::new(GenericParams::new(db, def.into(), parent_generics))
+        Arc::new(GenericParams::new(db, def.into()))
     }
 
-    fn new(
-        db: &impl DefDatabase,
-        def: GenericDefId,
-        parent_params: Option<Arc<GenericParams>>,
-    ) -> GenericParams {
-        let mut generics =
-            GenericParams { params: Vec::new(), parent_params, where_predicates: Vec::new() };
-        let start = generics.parent_params.as_ref().map(|p| p.params.len()).unwrap_or(0) as u32;
+    fn new(db: &impl DefDatabase, def: GenericDefId) -> GenericParams {
+        let mut generics = GenericParams { params: Arena::default(), where_predicates: Vec::new() };
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         match def {
-            GenericDefId::FunctionId(it) => generics.fill(&it.lookup(db).source(db).value, start),
-            GenericDefId::AdtId(AdtId::StructId(it)) => generics.fill(&it.source(db).value, start),
-            GenericDefId::AdtId(AdtId::UnionId(it)) => generics.fill(&it.source(db).value, start),
-            GenericDefId::AdtId(AdtId::EnumId(it)) => generics.fill(&it.source(db).value, start),
+            GenericDefId::FunctionId(it) => generics.fill(&it.lookup(db).source(db).value),
+            GenericDefId::AdtId(AdtId::StructId(it)) => generics.fill(&it.source(db).value),
+            GenericDefId::AdtId(AdtId::UnionId(it)) => generics.fill(&it.source(db).value),
+            GenericDefId::AdtId(AdtId::EnumId(it)) => generics.fill(&it.source(db).value),
             GenericDefId::TraitId(it) => {
                 // traits get the Self type as an implicit first type parameter
-                generics.params.push(GenericParam {
-                    idx: start,
-                    name: name::SELF_TYPE,
-                    default: None,
-                });
-                generics.fill(&it.source(db).value, start + 1);
+                generics.params.alloc(GenericParamData { name: name::SELF_TYPE, default: None });
+                generics.fill(&it.source(db).value);
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name::SELF_TYPE.into());
                 generics.fill_bounds(&it.source(db).value, self_param);
             }
-            GenericDefId::TypeAliasId(it) => generics.fill(&it.lookup(db).source(db).value, start),
+            GenericDefId::TypeAliasId(it) => generics.fill(&it.lookup(db).source(db).value),
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
             // type-parameter, but rather is a type-alias for impl's target
             // type, so this is handled by the resolver.
-            GenericDefId::ImplId(it) => generics.fill(&it.source(db).value, start),
+            GenericDefId::ImplId(it) => generics.fill(&it.source(db).value),
             GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {}
         }
 
         generics
     }
 
-    fn fill(&mut self, node: &impl TypeParamsOwner, start: u32) {
+    fn fill(&mut self, node: &impl TypeParamsOwner) {
         if let Some(params) = node.type_param_list() {
-            self.fill_params(params, start)
+            self.fill_params(params)
         }
         if let Some(where_clause) = node.where_clause() {
             self.fill_where_predicates(where_clause);
@@ -105,13 +92,13 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(&mut self, params: ast::TypeParamList, start: u32) {
-        for (idx, type_param) in params.type_params().enumerate() {
+    fn fill_params(&mut self, params: ast::TypeParamList) {
+        for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
             let default = type_param.default_type().map(TypeRef::from_ast);
-            let param = GenericParam { idx: idx as u32 + start, name: name.clone(), default };
-            self.params.push(param);
+            let param = GenericParamData { name: name.clone(), default };
+            self.params.alloc(param);
 
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(&type_param, type_ref);
@@ -140,45 +127,7 @@ impl GenericParams {
         self.where_predicates.push(WherePredicate { type_ref, bound });
     }
 
-    pub fn find_by_name(&self, name: &Name) -> Option<&GenericParam> {
-        self.params.iter().find(|p| &p.name == name)
-    }
-
-    pub fn count_parent_params(&self) -> usize {
-        self.parent_params.as_ref().map(|p| p.count_params_including_parent()).unwrap_or(0)
-    }
-
-    pub fn count_params_including_parent(&self) -> usize {
-        let parent_count = self.count_parent_params();
-        parent_count + self.params.len()
-    }
-
-    fn for_each_param<'a>(&'a self, f: &mut impl FnMut(&'a GenericParam)) {
-        if let Some(parent) = &self.parent_params {
-            parent.for_each_param(f);
-        }
-        self.params.iter().for_each(f);
-    }
-
-    pub fn params_including_parent(&self) -> Vec<&GenericParam> {
-        let mut vec = Vec::with_capacity(self.count_params_including_parent());
-        self.for_each_param(&mut |p| vec.push(p));
-        vec
-    }
-}
-
-fn parent_generic_def(db: &impl DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
-    let container = match def {
-        GenericDefId::FunctionId(it) => it.lookup(db).container,
-        GenericDefId::TypeAliasId(it) => it.lookup(db).container,
-        GenericDefId::ConstId(it) => it.lookup(db).container,
-        GenericDefId::EnumVariantId(it) => return Some(it.parent.into()),
-        GenericDefId::AdtId(_) | GenericDefId::TraitId(_) | GenericDefId::ImplId(_) => return None,
-    };
-
-    match container {
-        ContainerId::ImplId(it) => Some(it.into()),
-        ContainerId::TraitId(it) => Some(it.into()),
-        ContainerId::ModuleId(_) => None,
+    pub fn find_by_name(&self, name: &Name) -> Option<LocalGenericParamId> {
+        self.params.iter().find_map(|(id, p)| if &p.name == name { Some(id) } else { None })
     }
 }

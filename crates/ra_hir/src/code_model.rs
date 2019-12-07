@@ -15,7 +15,7 @@ use hir_def::{
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
-    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, GenericDefId,
+    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, GenericParamId,
     HasModule, ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId,
     Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
 };
@@ -857,8 +857,7 @@ impl Local {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct GenericParam {
-    pub(crate) parent: GenericDefId,
-    pub(crate) idx: u32,
+    pub(crate) id: GenericParamId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

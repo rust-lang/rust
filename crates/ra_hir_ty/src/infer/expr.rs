@@ -6,7 +6,6 @@ use std::sync::Arc;
 use hir_def::{
     builtin_type::Signedness,
     expr::{Array, BinaryOp, Expr, ExprId, Literal, Statement, UnaryOp},
-    generics::GenericParams,
     path::{GenericArg, GenericArgs},
     resolver::resolver_for_expr,
     AdtId, ContainerId, Lookup, StructFieldId,
@@ -15,7 +14,11 @@ use hir_expand::name::{self, Name};
 use ra_syntax::ast::RangeOp;
 
 use crate::{
-    autoderef, db::HirDatabase, method_resolution, op, traits::InEnvironment, utils::variant_data,
+    autoderef,
+    db::HirDatabase,
+    method_resolution, op,
+    traits::InEnvironment,
+    utils::{generics, variant_data, Generics},
     CallableDef, InferTy, IntTy, Mutability, Obligation, ProjectionPredicate, ProjectionTy, Substs,
     TraitRef, Ty, TypeCtor, TypeWalk, Uncertain,
 };
@@ -596,7 +599,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             Some((ty, func)) => {
                 let ty = canonicalized_receiver.decanonicalize_ty(ty);
                 self.write_method_resolution(tgt_expr, func);
-                (ty, self.db.value_ty(func.into()), Some(self.db.generic_params(func.into())))
+                (ty, self.db.value_ty(func.into()), Some(generics(self.db, func.into())))
             }
             None => (receiver_ty, Ty::Unknown, None),
         };
@@ -653,16 +656,16 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
 
     fn substs_for_method_call(
         &mut self,
-        def_generics: Option<Arc<GenericParams>>,
+        def_generics: Option<Generics>,
         generic_args: Option<&GenericArgs>,
         receiver_ty: &Ty,
     ) -> Substs {
-        let (parent_param_count, param_count) =
-            def_generics.as_ref().map_or((0, 0), |g| (g.count_parent_params(), g.params.len()));
-        let mut substs = Vec::with_capacity(parent_param_count + param_count);
+        let (total_len, _parent_len, child_len) =
+            def_generics.as_ref().map_or((0, 0, 0), |g| g.len_split());
+        let mut substs = Vec::with_capacity(total_len);
         // Parent arguments are unknown, except for the receiver type
-        if let Some(parent_generics) = def_generics.and_then(|p| p.parent_params.clone()) {
-            for param in &parent_generics.params {
+        if let Some(parent_generics) = def_generics.as_ref().map(|p| p.iter_parent()) {
+            for (_id, param) in parent_generics {
                 if param.name == name::SELF_TYPE {
                     substs.push(receiver_ty.clone());
                 } else {
@@ -673,7 +676,7 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
         // handle provided type arguments
         if let Some(generic_args) = generic_args {
             // if args are provided, it should be all of them, but we can't rely on that
-            for arg in generic_args.args.iter().take(param_count) {
+            for arg in generic_args.args.iter().take(child_len) {
                 match arg {
                     GenericArg::Type(type_ref) => {
                         let ty = self.make_ty(type_ref);
@@ -683,10 +686,10 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
             }
         };
         let supplied_params = substs.len();
-        for _ in supplied_params..parent_param_count + param_count {
+        for _ in supplied_params..total_len {
             substs.push(Ty::Unknown);
         }
-        assert_eq!(substs.len(), parent_param_count + param_count);
+        assert_eq!(substs.len(), total_len);
         Substs(substs.into())
     }
 
@@ -705,11 +708,8 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     CallableDef::FunctionId(f) => {
                         if let ContainerId::TraitId(trait_) = f.lookup(self.db).container {
                             // construct a TraitDef
-                            let substs = a_ty.parameters.prefix(
-                                self.db
-                                    .generic_params(trait_.into())
-                                    .count_params_including_parent(),
-                            );
+                            let substs =
+                                a_ty.parameters.prefix(generics(self.db, trait_.into()).len());
                             self.obligations.push(Obligation::Trait(TraitRef {
                                 trait_: trait_.into(),
                                 substs,

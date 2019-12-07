@@ -44,8 +44,8 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{
-    expr::ExprId, generics::GenericParams, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId,
-    GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
+    expr::ExprId, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId, GenericDefId, HasModule,
+    Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name::Name;
 use ra_db::{impl_intern_key, salsa, CrateId};
@@ -53,7 +53,7 @@ use ra_db::{impl_intern_key, salsa, CrateId};
 use crate::{
     db::HirDatabase,
     primitive::{FloatTy, IntTy, Uncertain},
-    utils::make_mut_slice,
+    utils::{generics, make_mut_slice, Generics},
 };
 use display::{HirDisplay, HirFormatter};
 
@@ -166,16 +166,16 @@ impl TypeCtor {
             | TypeCtor::Closure { .. } // 1 param representing the signature of the closure
             => 1,
             TypeCtor::Adt(adt) => {
-                let generic_params = db.generic_params(AdtId::from(adt).into());
-                generic_params.count_params_including_parent()
+                let generic_params = generics(db, AdtId::from(adt).into());
+                generic_params.len()
             }
             TypeCtor::FnDef(callable) => {
-                let generic_params = db.generic_params(callable.into());
-                generic_params.count_params_including_parent()
+                let generic_params = generics(db, callable.into());
+                generic_params.len()
             }
             TypeCtor::AssociatedType(type_alias) => {
-                let generic_params = db.generic_params(type_alias.into());
-                generic_params.count_params_including_parent()
+                let generic_params = generics(db, type_alias.into());
+                generic_params.len()
             }
             TypeCtor::FnPtr { num_args } => num_args as usize + 1,
             TypeCtor::Tuple { cardinality } => cardinality as usize,
@@ -364,36 +364,26 @@ impl Substs {
     }
 
     /// Return Substs that replace each parameter by itself (i.e. `Ty::Param`).
-    pub fn identity(generic_params: &GenericParams) -> Substs {
+    pub(crate) fn identity(generic_params: &Generics) -> Substs {
         Substs(
-            generic_params
-                .params_including_parent()
-                .into_iter()
-                .map(|p| Ty::Param { idx: p.idx, name: p.name.clone() })
-                .collect(),
+            generic_params.iter().map(|(idx, p)| Ty::Param { idx, name: p.name.clone() }).collect(),
         )
     }
 
     /// Return Substs that replace each parameter by a bound variable.
-    pub fn bound_vars(generic_params: &GenericParams) -> Substs {
-        Substs(
-            generic_params
-                .params_including_parent()
-                .into_iter()
-                .map(|p| Ty::Bound(p.idx))
-                .collect(),
-        )
+    pub(crate) fn bound_vars(generic_params: &Generics) -> Substs {
+        Substs(generic_params.iter().map(|(idx, _p)| Ty::Bound(idx)).collect())
     }
 
     pub fn build_for_def(db: &impl HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
         let def = def.into();
-        let params = db.generic_params(def);
-        let param_count = params.count_params_including_parent();
+        let params = generics(db, def);
+        let param_count = params.len();
         Substs::builder(param_count)
     }
 
-    pub fn build_for_generics(generic_params: &GenericParams) -> SubstsBuilder {
-        Substs::builder(generic_params.count_params_including_parent())
+    pub(crate) fn build_for_generics(generic_params: &Generics) -> SubstsBuilder {
+        Substs::builder(generic_params.len())
     }
 
     pub fn build_for_type_ctor(db: &impl HirDatabase, type_ctor: TypeCtor) -> SubstsBuilder {
