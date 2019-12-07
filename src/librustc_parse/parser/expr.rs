@@ -703,20 +703,7 @@ impl<'a> Parser<'a> {
 
             // expr.f
             if self.eat(&token::Dot) {
-                match self.token.kind {
-                    token::Ident(..) => {
-                        e = self.parse_dot_suffix(e, lo)?;
-                    }
-                    token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
-                        e = self.parse_tuple_field_access_expr(lo, e, symbol, suffix);
-                    }
-                    token::Literal(token::Lit { kind: token::Float, symbol, .. }) => {
-                        if let Some(err) = self.recover_field_access_by_float_lit(lo, &e, symbol) {
-                            err?
-                        }
-                    }
-                    _ => self.error_unexpected_after_dot(),
-                }
+                e = self.parse_dot_suffix_expr(lo, e)?;
                 continue;
             }
             if self.expr_is_complete(&e) {
@@ -731,6 +718,22 @@ impl<'a> Parser<'a> {
         return Ok(e);
     }
 
+    fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
+        match self.token.kind {
+            token::Ident(..) => self.parse_dot_suffix(base, lo),
+            token::Literal(token::Lit { kind: token::Integer, symbol, suffix }) => {
+                Ok(self.parse_tuple_field_access_expr(lo, base, symbol, suffix))
+            }
+            token::Literal(token::Lit { kind: token::Float, symbol, .. }) => {
+                self.recover_field_access_by_float_lit(lo, base, symbol)
+            }
+            _ => {
+                self.error_unexpected_after_dot();
+                Ok(base)
+            }
+        }
+    }
+
     fn error_unexpected_after_dot(&self) {
         // FIXME Could factor this out into non_fatal_unexpected or something.
         let actual = self.this_token_to_string();
@@ -740,9 +743,9 @@ impl<'a> Parser<'a> {
     fn recover_field_access_by_float_lit(
         &mut self,
         lo: Span,
-        base: &P<Expr>,
+        base: P<Expr>,
         sym: Symbol,
-    ) -> Option<PResult<'a, ()>> {
+    ) -> PResult<'a, P<Expr>> {
         self.bump();
 
         let fstr = sym.as_str();
@@ -752,7 +755,13 @@ impl<'a> Parser<'a> {
         err.span_label(self.prev_span, "unexpected token");
 
         if fstr.chars().all(|x| "0123456789.".contains(x)) {
-            let float = fstr.parse::<f64>().ok()?;
+            let float = match fstr.parse::<f64>() {
+                Ok(f) => f,
+                Err(_) => {
+                    err.emit();
+                    return Ok(base);
+                }
+            };
             let sugg = pprust::to_string(|s| {
                 s.popen();
                 s.print_expr(&base);
@@ -769,7 +778,7 @@ impl<'a> Parser<'a> {
                 Applicability::MachineApplicable,
             );
         }
-        Some(Err(err))
+        Err(err)
     }
 
     fn parse_tuple_field_access_expr(

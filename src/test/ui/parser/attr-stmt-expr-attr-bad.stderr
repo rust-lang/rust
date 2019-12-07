@@ -393,19 +393,19 @@ LL | #[cfg(FALSE)] fn e() { let _ = x.#![attr]foo(); }
    |                                  ^ expected one of `.`, `;`, `?`, or an operator
 
 error: unexpected token: `#`
-  --> $DIR/attr-stmt-expr-attr-bad.rs:106:34
+  --> $DIR/attr-stmt-expr-attr-bad.rs:107:34
    |
 LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
    |                                  ^
 
 error: expected one of `.`, `;`, `?`, or an operator, found `#`
-  --> $DIR/attr-stmt-expr-attr-bad.rs:106:34
+  --> $DIR/attr-stmt-expr-attr-bad.rs:107:34
    |
 LL | #[cfg(FALSE)] fn e() { let _ = x.#[attr]foo(); }
    |                                  ^ expected one of `.`, `;`, `?`, or an operator
 
 error: expected statement after outer attribute
-  --> $DIR/attr-stmt-expr-attr-bad.rs:110:44
+  --> $DIR/attr-stmt-expr-attr-bad.rs:112:44
    |
 LL | #[cfg(FALSE)] fn e() { { fn foo() { #[attr]; } } }
    |                                            ^
