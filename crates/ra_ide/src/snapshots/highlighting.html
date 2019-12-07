@@ -9,6 +9,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .parameter          { color: #94BFF3; }
 .builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
+.type               { color: #7CB8BB; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
 .macro              { color: #94BFF3; }
@@ -45,4 +46,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="keyword">let</span> <span class="variable">z</span> = &<span class="variable.mut">y</span>;
 
     <span class="variable.mut">y</span>;
+}
+
+<span class="keyword">enum</span> <span class="type">E</span>&lt;<span class="type">X</span>&gt; {
+    <span class="constant">V</span>(<span class="type">X</span>)
+}
+
+<span class="keyword">impl</span>&lt;<span class="type">X</span>&gt; <span class="type">E</span>&lt;<span class="type">X</span>&gt; {
+    <span class="keyword">fn</span> <span class="function">new</span>&lt;<span class="type">T</span>&gt;() -&gt; <span class="type">E</span>&lt;<span class="type">T</span>&gt; {}
 }</code></pre>

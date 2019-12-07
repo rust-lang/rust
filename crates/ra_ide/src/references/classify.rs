@@ -178,7 +178,6 @@ pub(crate) fn classify_name_ref(
             Some(NameDefinition { kind, container, visibility: None })
         }
         PathResolution::GenericParam(par) => {
-            // FIXME: get generic param def
             let kind = NameKind::GenericParam(par);
             Some(NameDefinition { kind, container, visibility })
         }

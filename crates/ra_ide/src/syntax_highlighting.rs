@@ -255,6 +255,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .parameter          { color: #94BFF3; }
 .builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
+.type               { color: #7CB8BB; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
 .macro              { color: #94BFF3; }
@@ -302,6 +303,14 @@ fn main() {
     let z = &y;
 
     y;
+}
+
+enum E<X> {
+    V(X)
+}
+
+impl<X> E<X> {
+    fn new<T>() -> E<T> {}
 }
 "#
             .trim(),
