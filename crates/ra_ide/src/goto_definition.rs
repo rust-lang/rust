@@ -66,7 +66,7 @@ pub(crate) fn reference_definition(
     match name_kind {
         Some(Macro(it)) => return Exact(it.to_nav(db)),
         Some(Field(it)) => return Exact(it.to_nav(db)),
-        Some(GenericParam(it)) => return Exact(it.to_nav(db)),
+        Some(TypeParam(it)) => return Exact(it.to_nav(db)),
         Some(AssocItem(it)) => return Exact(it.to_nav(db)),
         Some(Local(it)) => return Exact(it.to_nav(db)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {

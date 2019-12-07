@@ -9,8 +9,8 @@ use hir_def::{
 use ra_syntax::ast;
 
 use crate::{
-    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, GenericParam, ImplBlock,
-    Import, MacroDef, Module, Static, Struct, StructField, Trait, TypeAlias, Union,
+    db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplBlock, Import, MacroDef,
+    Module, Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub use hir_expand::InFile;
@@ -130,7 +130,7 @@ impl HasSource for Import {
     }
 }
 
-impl HasSource for GenericParam {
+impl HasSource for TypeParam {
     type Ast = Either<ast::TraitDef, ast::TypeParam>;
     fn source(self, db: &impl DefDatabase) -> InFile<Self::Ast> {
         let child_source = self.id.parent.child_source(db);

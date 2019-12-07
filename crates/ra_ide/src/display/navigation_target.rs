@@ -351,7 +351,7 @@ impl ToNav for hir::Local {
     }
 }
 
-impl ToNav for hir::GenericParam {
+impl ToNav for hir::TypeParam {
     fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
         let src = self.source(db);
         let range = match src.value {

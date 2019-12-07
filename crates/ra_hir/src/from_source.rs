@@ -11,8 +11,8 @@ use ra_syntax::{
 
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
-    Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, GenericParam, ImplBlock, InFile,
-    Local, MacroDef, Module, Static, Struct, StructField, Trait, TypeAlias, Union,
+    Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, ImplBlock, InFile, Local,
+    MacroDef, Module, Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub trait FromSource: Sized {
@@ -177,7 +177,7 @@ impl Local {
     }
 }
 
-impl GenericParam {
+impl TypeParam {
     pub fn from_source(db: &impl HirDatabase, src: InFile<ast::TypeParam>) -> Option<Self> {
         let file_id = src.file_id;
         let parent: GenericDefId = src.value.syntax().ancestors().find_map(|it| {
@@ -190,7 +190,7 @@ impl GenericParam {
             Some(res)
         })?;
         let &id = parent.child_by_source(db)[keys::TYPE_PARAM].get(&src)?;
-        Some(GenericParam { id })
+        Some(TypeParam { id })
     }
 }
 

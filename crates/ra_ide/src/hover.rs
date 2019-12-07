@@ -138,7 +138,7 @@ fn hover_text_from_name_kind(
             *no_fallback = true;
             None
         }
-        GenericParam(_) | SelfType(_) => {
+        TypeParam(_) | SelfType(_) => {
             // FIXME: Hover for generic param
             None
         }

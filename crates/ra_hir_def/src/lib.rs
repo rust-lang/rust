@@ -318,14 +318,14 @@ macro_rules! impl_froms {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GenericParamId {
+pub struct TypeParamId {
     pub parent: GenericDefId,
-    pub local_id: LocalGenericParamId,
+    pub local_id: LocalTypeParamId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalGenericParamId(RawId);
-impl_arena_id!(LocalGenericParamId);
+pub struct LocalTypeParamId(RawId);
+impl_arena_id!(LocalTypeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContainerId {

@@ -112,11 +112,11 @@ pub(crate) fn classify_name(db: &RootDatabase, name: InFile<&ast::Name>) -> Opti
             },
             ast::TypeParam(it) => {
                 let src = name.with_value(it);
-                let def = hir::GenericParam::from_source(db, src)?;
+                let def = hir::TypeParam::from_source(db, src)?;
                 Some(NameDefinition {
                     visibility: None,
                     container: def.module(db),
-                    kind: NameKind::GenericParam(def),
+                    kind: NameKind::TypeParam(def),
                 })
             },
             _ => None,
@@ -177,8 +177,8 @@ pub(crate) fn classify_name_ref(
             let kind = NameKind::Local(local);
             Some(NameDefinition { kind, container, visibility: None })
         }
-        PathResolution::GenericParam(par) => {
-            let kind = NameKind::GenericParam(par);
+        PathResolution::TypeParam(par) => {
+            let kind = NameKind::TypeParam(par);
             Some(NameDefinition { kind, container, visibility })
         }
         PathResolution::Macro(def) => {

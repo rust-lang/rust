@@ -85,7 +85,7 @@ pub(crate) fn find_all_refs(
         NameKind::Def(def) => NavigationTarget::from_def(db, def)?,
         NameKind::SelfType(imp) => imp.to_nav(db),
         NameKind::Local(local) => local.to_nav(db),
-        NameKind::GenericParam(_) => return None,
+        NameKind::TypeParam(_) => return None,
     };
 
     let search_scope = {

@@ -42,9 +42,9 @@ pub mod from_source;
 pub use crate::{
     code_model::{
         src::HasSource, Adt, AssocItem, AttrDef, Const, Container, Crate, CrateDependency,
-        DefWithBody, Docs, Enum, EnumVariant, FieldSource, Function, GenericDef, GenericParam,
-        HasAttrs, ImplBlock, Import, Local, MacroDef, Module, ModuleDef, ScopeDef, Static, Struct,
-        StructField, Trait, Type, TypeAlias, Union, VariantDef,
+        DefWithBody, Docs, Enum, EnumVariant, FieldSource, Function, GenericDef, HasAttrs,
+        ImplBlock, Import, Local, MacroDef, Module, ModuleDef, ScopeDef, Static, Struct,
+        StructField, Trait, Type, TypeAlias, TypeParam, Union, VariantDef,
     },
     from_source::FromSource,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},

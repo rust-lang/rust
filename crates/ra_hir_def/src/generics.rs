@@ -21,12 +21,12 @@ use crate::{
     src::HasChildSource,
     src::HasSource,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, GenericDefId, GenericParamId, LocalGenericParamId, Lookup,
+    AdtId, AstItemDef, GenericDefId, LocalTypeParamId, Lookup, TypeParamId,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct GenericParamData {
+pub struct TypeParamData {
     pub name: Name,
     pub default: Option<TypeRef>,
 }
@@ -34,7 +34,8 @@ pub struct GenericParamData {
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParams {
-    pub params: Arena<LocalGenericParamId, GenericParamData>,
+    pub types: Arena<LocalTypeParamId, TypeParamData>,
+    // lifetimes: Arena<LocalLifetimeParamId, LifetimeParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
@@ -48,7 +49,7 @@ pub struct WherePredicate {
     pub bound: TypeBound,
 }
 
-type SourceMap = ArenaMap<LocalGenericParamId, Either<ast::TraitDef, ast::TypeParam>>;
+type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::TraitDef, ast::TypeParam>>;
 
 impl GenericParams {
     pub(crate) fn generic_params_query(
@@ -60,7 +61,7 @@ impl GenericParams {
     }
 
     fn new(db: &impl DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
-        let mut generics = GenericParams { params: Arena::default(), where_predicates: Vec::new() };
+        let mut generics = GenericParams { types: Arena::default(), where_predicates: Vec::new() };
         let mut sm = ArenaMap::default();
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
         let file_id = match def {
@@ -88,9 +89,8 @@ impl GenericParams {
                 let src = it.source(db);
 
                 // traits get the Self type as an implicit first type parameter
-                let self_param_id = generics
-                    .params
-                    .alloc(GenericParamData { name: name::SELF_TYPE, default: None });
+                let self_param_id =
+                    generics.types.alloc(TypeParamData { name: name::SELF_TYPE, default: None });
                 sm.insert(self_param_id, Either::Left(src.value.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
@@ -142,8 +142,8 @@ impl GenericParams {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
             let default = type_param.default_type().map(TypeRef::from_ast);
-            let param = GenericParamData { name: name.clone(), default };
-            let param_id = self.params.alloc(param);
+            let param = TypeParamData { name: name.clone(), default };
+            let param_id = self.types.alloc(param);
             sm.insert(param_id, Either::Right(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
@@ -173,13 +173,13 @@ impl GenericParams {
         self.where_predicates.push(WherePredicate { type_ref, bound });
     }
 
-    pub fn find_by_name(&self, name: &Name) -> Option<LocalGenericParamId> {
-        self.params.iter().find_map(|(id, p)| if &p.name == name { Some(id) } else { None })
+    pub fn find_by_name(&self, name: &Name) -> Option<LocalTypeParamId> {
+        self.types.iter().find_map(|(id, p)| if &p.name == name { Some(id) } else { None })
     }
 }
 
 impl HasChildSource for GenericDefId {
-    type ChildId = LocalGenericParamId;
+    type ChildId = LocalTypeParamId;
     type Value = Either<ast::TraitDef, ast::TypeParam>;
     fn child_source(&self, db: &impl DefDatabase) -> InFile<SourceMap> {
         let (_, sm) = GenericParams::new(db, *self);
@@ -193,7 +193,7 @@ impl ChildBySource for GenericDefId {
         let arena_map = self.child_source(db);
         let arena_map = arena_map.as_ref();
         for (local_id, src) in arena_map.value.iter() {
-            let id = GenericParamId { parent: *self, local_id };
+            let id = TypeParamId { parent: *self, local_id };
             if let Either::Right(type_param) = src {
                 res[keys::TYPE_PARAM].insert(arena_map.with_value(type_param.clone()), id)
             }

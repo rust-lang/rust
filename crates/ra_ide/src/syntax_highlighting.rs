@@ -225,8 +225,7 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
         Def(hir::ModuleDef::Trait(_)) => "type",
         Def(hir::ModuleDef::TypeAlias(_)) => "type",
         Def(hir::ModuleDef::BuiltinType(_)) => "type",
-        SelfType(_) => "type",
-        GenericParam(_) => "type",
+        SelfType(_) | TypeParam(_) => "type",
         Local(local) => {
             if local.is_mut(db) {
                 "variable.mut"

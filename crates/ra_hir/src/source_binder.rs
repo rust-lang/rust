@@ -36,8 +36,8 @@ use crate::{
         method_resolution::{self, implements_trait},
         InEnvironment, TraitEnvironment, Ty,
     },
-    Adt, AssocItem, Const, DefWithBody, Enum, EnumVariant, FromSource, Function, GenericParam,
-    ImplBlock, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
+    Adt, AssocItem, Const, DefWithBody, Enum, EnumVariant, FromSource, Function, ImplBlock, Local,
+    MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> Option<Resolver> {
@@ -112,7 +112,7 @@ pub enum PathResolution {
     /// A local binding (only value namespace)
     Local(Local),
     /// A generic parameter
-    GenericParam(GenericParam),
+    TypeParam(TypeParam),
     SelfType(crate::ImplBlock),
     Macro(MacroDef),
     AssocItem(crate::AssocItem),
@@ -266,7 +266,7 @@ impl SourceAnalyzer {
     ) -> Option<PathResolution> {
         let types = self.resolver.resolve_path_in_type_ns_fully(db, &path).map(|ty| match ty {
             TypeNs::SelfType(it) => PathResolution::SelfType(it.into()),
-            TypeNs::GenericParam(id) => PathResolution::GenericParam(GenericParam { id }),
+            TypeNs::GenericParam(id) => PathResolution::TypeParam(TypeParam { id }),
             TypeNs::AdtSelfType(it) | TypeNs::AdtId(it) => {
                 PathResolution::Def(Adt::from(it).into())
             }
@@ -338,7 +338,7 @@ impl SourceAnalyzer {
                 resolver::ScopeDef::PerNs(it) => it.into(),
                 resolver::ScopeDef::ImplSelfType(it) => ScopeDef::ImplSelfType(it.into()),
                 resolver::ScopeDef::AdtSelfType(it) => ScopeDef::AdtSelfType(it.into()),
-                resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(GenericParam { id }),
+                resolver::ScopeDef::GenericParam(id) => ScopeDef::GenericParam(TypeParam { id }),
                 resolver::ScopeDef::Local(pat_id) => {
                     let parent = self.resolver.body_owner().unwrap().into();
                     ScopeDef::Local(Local { parent, pat_id })
