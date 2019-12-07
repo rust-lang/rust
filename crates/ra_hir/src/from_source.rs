@@ -184,6 +184,11 @@ impl TypeParam {
             let res = match_ast! {
                 match it {
                     ast::FnDef(value) => { Function::from_source(db, InFile { value, file_id})?.id.into() },
+                    ast::StructDef(value) => { Struct::from_source(db, InFile { value, file_id})?.id.into() },
+                    ast::EnumDef(value) => { Enum::from_source(db, InFile { value, file_id})?.id.into() },
+                    ast::TraitDef(value) => { Trait::from_source(db, InFile { value, file_id})?.id.into() },
+                    ast::TypeAliasDef(value) => { TypeAlias::from_source(db, InFile { value, file_id})?.id.into() },
+                    ast::ImplBlock(value) => { ImplBlock::from_source(db, InFile { value, file_id})?.id.into() },
                     _ => return None,
                 }
             };
