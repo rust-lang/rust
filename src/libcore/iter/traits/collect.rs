@@ -91,9 +91,9 @@
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented(
-    message="a value of type `{Self}` cannot be built from an iterator \
-             over elements of type `{A}`",
-    label="value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`",
+    message = "a value of type `{Self}` cannot be built from an iterator \
+               over elements of type `{A}`",
+    label = "value of type `{Self}` cannot be built from `std::iter::Iterator<Item={A}>`"
 )]
 pub trait FromIterator<A>: Sized {
     /// Creates a value from an iterator.
@@ -116,7 +116,7 @@ pub trait FromIterator<A>: Sized {
     /// assert_eq!(v, vec![5, 5, 5, 5, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> Self;
+    fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self;
 }
 
 /// Conversion into an `Iterator`.
@@ -214,7 +214,7 @@ pub trait IntoIterator {
 
     /// Which kind of iterator are we turning this into?
     #[stable(feature = "rust1", since = "1.0.0")]
-    type IntoIter: Iterator<Item=Self::Item>;
+    type IntoIter: Iterator<Item = Self::Item>;
 
     /// Creates an iterator from a value.
     ///
@@ -340,7 +340,7 @@ pub trait Extend<A> {
     /// assert_eq!("abcdef", &message);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T);
+    fn extend<T: IntoIterator<Item = A>>(&mut self, iter: T);
 }
 
 #[stable(feature = "extend_for_unit", since = "1.28.0")]

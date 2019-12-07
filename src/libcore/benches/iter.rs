@@ -1,5 +1,5 @@
 use core::iter::*;
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 
 #[bench]
 fn bench_rposition(b: &mut Bencher) {
@@ -14,7 +14,11 @@ fn bench_skip_while(b: &mut Bencher) {
     b.iter(|| {
         let it = 0..100;
         let mut sum = 0;
-        it.skip_while(|&x| { sum += x; sum < 4000 }).all(|_| true);
+        it.skip_while(|&x| {
+            sum += x;
+            sum < 4000
+        })
+        .all(|_| true);
     });
 }
 
@@ -29,7 +33,9 @@ fn bench_multiple_take(b: &mut Bencher) {
     });
 }
 
-fn scatter(x: i32) -> i32 { (x * 31) % 127 }
+fn scatter(x: i32) -> i32 {
+    (x * 31) % 127
+}
 
 #[bench]
 fn bench_max_by_key(b: &mut Bencher) {
@@ -76,23 +82,21 @@ pub fn add_zip(xs: &[f32], ys: &mut [f32]) {
 fn bench_zip_copy(b: &mut Bencher) {
     let source = vec![0u8; 16 * 1024];
     let mut dst = black_box(vec![0u8; 16 * 1024]);
-    b.iter(|| {
-        copy_zip(&source, &mut dst)
-    })
+    b.iter(|| copy_zip(&source, &mut dst))
 }
 
 #[bench]
 fn bench_zip_add(b: &mut Bencher) {
     let source = vec![1.; 16 * 1024];
     let mut dst = vec![0.; 16 * 1024];
-    b.iter(|| {
-        add_zip(&source, &mut dst)
-    });
+    b.iter(|| add_zip(&source, &mut dst));
 }
 
 /// `Iterator::for_each` implemented as a plain loop.
-fn for_each_loop<I, F>(iter: I, mut f: F) where
-    I: Iterator, F: FnMut(I::Item)
+fn for_each_loop<I, F>(iter: I, mut f: F)
+where
+    I: Iterator,
+    F: FnMut(I::Item),
 {
     for item in iter {
         f(item);
@@ -101,8 +105,10 @@ fn for_each_loop<I, F>(iter: I, mut f: F) where
 
 /// `Iterator::for_each` implemented with `fold` for internal iteration.
 /// (except when `by_ref()` effectively disables that optimization.)
-fn for_each_fold<I, F>(iter: I, mut f: F) where
-    I: Iterator, F: FnMut(I::Item)
+fn for_each_fold<I, F>(iter: I, mut f: F)
+where
+    I: Iterator,
+    F: FnMut(I::Item),
 {
     iter.fold((), move |(), item| f(item));
 }
@@ -137,25 +143,20 @@ fn bench_for_each_chain_ref_fold(b: &mut Bencher) {
     });
 }
 
-
 /// Helper to benchmark `sum` for iterators taken by value which
 /// can optimize `fold`, and by reference which cannot.
 macro_rules! bench_sums {
     ($bench_sum:ident, $bench_ref_sum:ident, $iter:expr) => {
         #[bench]
         fn $bench_sum(b: &mut Bencher) {
-            b.iter(|| -> i64 {
-                $iter.map(black_box).sum()
-            });
+            b.iter(|| -> i64 { $iter.map(black_box).sum() });
         }
 
         #[bench]
         fn $bench_ref_sum(b: &mut Bencher) {
-            b.iter(|| -> i64 {
-                $iter.map(black_box).by_ref().sum()
-            });
+            b.iter(|| -> i64 { $iter.map(black_box).by_ref().sum() });
         }
-    }
+    };
 }
 
 bench_sums! {
@@ -286,7 +287,10 @@ fn bench_zip_then_skip(b: &mut Bencher) {
     let t: Vec<_> = (0..100_000).collect();
 
     b.iter(|| {
-        let s = v.iter().zip(t.iter()).skip(10000)
+        let s = v
+            .iter()
+            .zip(t.iter())
+            .skip(10000)
             .take_while(|t| *t.0 < 10100)
             .map(|(a, b)| *a + *b)
             .sum::<u64>();
@@ -299,7 +303,10 @@ fn bench_skip_then_zip(b: &mut Bencher) {
     let t: Vec<_> = (0..100_000).collect();
 
     b.iter(|| {
-        let s = v.iter().skip(10000).zip(t.iter().skip(10000))
+        let s = v
+            .iter()
+            .skip(10000)
+            .zip(t.iter().skip(10000))
             .take_while(|t| *t.0 < 10100)
             .map(|(a, b)| *a + *b)
             .sum::<u64>();
@@ -309,23 +316,17 @@ fn bench_skip_then_zip(b: &mut Bencher) {
 
 #[bench]
 fn bench_filter_count(b: &mut Bencher) {
-    b.iter(|| {
-        (0i64..1000000).map(black_box).filter(|x| x % 3 == 0).count()
-    })
+    b.iter(|| (0i64..1000000).map(black_box).filter(|x| x % 3 == 0).count())
 }
 
 #[bench]
 fn bench_filter_ref_count(b: &mut Bencher) {
-    b.iter(|| {
-        (0i64..1000000).map(black_box).by_ref().filter(|x| x % 3 == 0).count()
-    })
+    b.iter(|| (0i64..1000000).map(black_box).by_ref().filter(|x| x % 3 == 0).count())
 }
 
 #[bench]
 fn bench_filter_chain_count(b: &mut Bencher) {
-    b.iter(|| {
-        (0i64..1000000).chain(0..1000000).map(black_box).filter(|x| x % 3 == 0).count()
-    })
+    b.iter(|| (0i64..1000000).chain(0..1000000).map(black_box).filter(|x| x % 3 == 0).count())
 }
 
 #[bench]

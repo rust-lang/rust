@@ -439,7 +439,10 @@ impl f64 {
     #[cfg(not(bootstrap))]
     #[unstable(feature = "float_approx_unchecked_to", issue = "67058")]
     #[inline]
-    pub unsafe fn approx_unchecked_to<Int>(self) -> Int where Self: FloatToInt<Int> {
+    pub unsafe fn approx_unchecked_to<Int>(self) -> Int
+    where
+        Self: FloatToInt<Int>,
+    {
         FloatToInt::<Int>::approx_unchecked(self)
     }
 
