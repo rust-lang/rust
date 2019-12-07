@@ -10,7 +10,7 @@ use ra_syntax::ast;
 
 use crate::{
     db::DefDatabase, Const, Enum, EnumVariant, FieldSource, Function, ImplBlock, Import, MacroDef,
-    Module, Static, Struct, StructField, Trait, TypeAlias, Union,
+    Module, Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub use hir_expand::InFile;
@@ -127,5 +127,13 @@ impl HasSource for Import {
         let root = db.parse_or_expand(src.file_id).unwrap();
         let ptr = source_map.get(self.id);
         src.with_value(ptr.map_left(|it| it.to_node(&root)).map_right(|it| it.to_node(&root)))
+    }
+}
+
+impl HasSource for TypeParam {
+    type Ast = Either<ast::TraitDef, ast::TypeParam>;
+    fn source(self, db: &impl DefDatabase) -> InFile<Self::Ast> {
+        let child_source = self.id.parent.child_source(db);
+        child_source.map(|it| it[self.id.local_id].clone())
     }
 }

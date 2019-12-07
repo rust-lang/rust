@@ -15,9 +15,9 @@ use hir_def::{
     per_ns::PerNs,
     resolver::HasResolver,
     type_ref::{Mutability, TypeRef},
-    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, GenericParamId,
-    HasModule, ImplId, LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId,
-    Lookup, ModuleId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, AstItemDef, ConstId, ContainerId, DefWithBodyId, EnumId, FunctionId, HasModule, ImplId,
+    LocalEnumVariantId, LocalImportId, LocalModuleId, LocalStructFieldId, Lookup, ModuleId,
+    StaticId, StructId, TraitId, TypeAliasId, TypeParamId, UnionId,
 };
 use hir_expand::{
     diagnostics::DiagnosticSink,
@@ -856,8 +856,19 @@ impl Local {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct GenericParam {
-    pub(crate) id: GenericParamId,
+pub struct TypeParam {
+    pub(crate) id: TypeParamId,
+}
+
+impl TypeParam {
+    pub fn name(self, db: &impl HirDatabase) -> Name {
+        let params = db.generic_params(self.id.parent);
+        params.types[self.id.local_id].name.clone()
+    }
+
+    pub fn module(self, db: &impl HirDatabase) -> Module {
+        self.id.parent.module(db).into()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1100,7 +1111,7 @@ impl HirDisplay for Type {
 pub enum ScopeDef {
     ModuleDef(ModuleDef),
     MacroDef(MacroDef),
-    GenericParam(GenericParam),
+    GenericParam(TypeParam),
     ImplSelfType(ImplBlock),
     AdtSelfType(Adt),
     Local(Local),

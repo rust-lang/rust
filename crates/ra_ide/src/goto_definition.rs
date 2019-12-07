@@ -64,9 +64,11 @@ pub(crate) fn reference_definition(
 
     let name_kind = classify_name_ref(db, name_ref).map(|d| d.kind);
     match name_kind {
-        Some(Macro(mac)) => return Exact(mac.to_nav(db)),
-        Some(Field(field)) => return Exact(field.to_nav(db)),
-        Some(AssocItem(assoc)) => return Exact(assoc.to_nav(db)),
+        Some(Macro(it)) => return Exact(it.to_nav(db)),
+        Some(Field(it)) => return Exact(it.to_nav(db)),
+        Some(TypeParam(it)) => return Exact(it.to_nav(db)),
+        Some(AssocItem(it)) => return Exact(it.to_nav(db)),
+        Some(Local(it)) => return Exact(it.to_nav(db)),
         Some(Def(def)) => match NavigationTarget::from_def(db, def) {
             Some(nav) => return Exact(nav),
             None => return Approximate(vec![]),
@@ -76,10 +78,6 @@ pub(crate) fn reference_definition(
             // not at the whole impl. And goto **type** definition should bring
             // us to the actual type
             return Exact(imp.to_nav(db));
-        }
-        Some(Local(local)) => return Exact(local.to_nav(db)),
-        Some(GenericParam(_)) => {
-            // FIXME: go to the generic param def
         }
         None => {}
     };
@@ -721,6 +719,19 @@ mod tests {
             }
             ",
             "foo FN_DEF FileId(1) [359; 376) [362; 365)",
+        );
+    }
+
+    #[test]
+    fn goto_for_type_param() {
+        check_goto(
+            "
+            //- /lib.rs
+            struct Foo<T> {
+                t: <|>T,
+            }
+            ",
+            "T TYPE_PARAM FileId(1) [11; 12)",
         );
     }
 }

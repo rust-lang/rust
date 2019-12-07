@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 use hir_def::{
     child_by_source::ChildBySource, dyn_map::DynMap, keys, nameres::ModuleSource, AstItemDef,
-    EnumVariantId, LocationCtx, ModuleId, VariantId,
+    EnumVariantId, GenericDefId, LocationCtx, ModuleId, VariantId,
 };
 use hir_expand::{name::AsName, AstId, MacroDefId, MacroDefKind};
 use ra_syntax::{
@@ -12,7 +12,7 @@ use ra_syntax::{
 use crate::{
     db::{AstDatabase, DefDatabase, HirDatabase},
     Const, DefWithBody, Enum, EnumVariant, FieldSource, Function, ImplBlock, InFile, Local,
-    MacroDef, Module, Static, Struct, StructField, Trait, TypeAlias, Union,
+    MacroDef, Module, Static, Struct, StructField, Trait, TypeAlias, TypeParam, Union,
 };
 
 pub trait FromSource: Sized {
@@ -174,6 +174,23 @@ impl Local {
         let src = src.map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         Some(Local { parent, pat_id })
+    }
+}
+
+impl TypeParam {
+    pub fn from_source(db: &impl HirDatabase, src: InFile<ast::TypeParam>) -> Option<Self> {
+        let file_id = src.file_id;
+        let parent: GenericDefId = src.value.syntax().ancestors().find_map(|it| {
+            let res = match_ast! {
+                match it {
+                    ast::FnDef(value) => { Function::from_source(db, InFile { value, file_id})?.id.into() },
+                    _ => return None,
+                }
+            };
+            Some(res)
+        })?;
+        let &id = parent.child_by_source(db)[keys::TYPE_PARAM].get(&src)?;
+        Some(TypeParam { id })
     }
 }
 

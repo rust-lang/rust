@@ -5,10 +5,10 @@ use std::sync::Arc;
 use hir_def::{
     adt::VariantData,
     db::DefDatabase,
-    generics::{GenericParamData, GenericParams},
+    generics::{GenericParams, TypeParamData},
     resolver::{HasResolver, TypeNs},
     type_ref::TypeRef,
-    ContainerId, GenericDefId, GenericParamId, Lookup, TraitId, TypeAliasId, VariantId,
+    ContainerId, GenericDefId, Lookup, TraitId, TypeAliasId, TypeParamId, VariantId,
 };
 use hir_expand::name::{self, Name};
 
@@ -96,23 +96,21 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (u32, &'a GenericParamData)> + 'a {
+    pub(crate) fn iter<'a>(&'a self) -> impl Iterator<Item = (u32, &'a TypeParamData)> + 'a {
         self.parent_generics
             .as_ref()
             .into_iter()
-            .flat_map(|it| it.params.params.iter())
-            .chain(self.params.params.iter())
+            .flat_map(|it| it.params.types.iter())
+            .chain(self.params.types.iter())
             .enumerate()
             .map(|(i, (_local_id, p))| (i as u32, p))
     }
 
-    pub(crate) fn iter_parent<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (u32, &'a GenericParamData)> + 'a {
+    pub(crate) fn iter_parent<'a>(&'a self) -> impl Iterator<Item = (u32, &'a TypeParamData)> + 'a {
         self.parent_generics
             .as_ref()
             .into_iter()
-            .flat_map(|it| it.params.params.iter())
+            .flat_map(|it| it.params.types.iter())
             .enumerate()
             .map(|(i, (_local_id, p))| (i as u32, p))
     }
@@ -123,20 +121,20 @@ impl Generics {
     /// (total, parents, child)
     pub(crate) fn len_split(&self) -> (usize, usize, usize) {
         let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
-        let child = self.params.params.len();
+        let child = self.params.types.len();
         (parent + child, parent, child)
     }
-    pub(crate) fn param_idx(&self, param: GenericParamId) -> u32 {
+    pub(crate) fn param_idx(&self, param: TypeParamId) -> u32 {
         self.find_param(param).0
     }
-    pub(crate) fn param_name(&self, param: GenericParamId) -> Name {
+    pub(crate) fn param_name(&self, param: TypeParamId) -> Name {
         self.find_param(param).1.name.clone()
     }
-    fn find_param(&self, param: GenericParamId) -> (u32, &GenericParamData) {
+    fn find_param(&self, param: TypeParamId) -> (u32, &TypeParamData) {
         if param.parent == self.def {
             let (idx, (_local_id, data)) = self
                 .params
-                .params
+                .types
                 .iter()
                 .enumerate()
                 .find(|(_, (idx, _))| *idx == param.local_id)

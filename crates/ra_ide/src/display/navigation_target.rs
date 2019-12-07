@@ -6,7 +6,7 @@ use ra_db::{FileId, SourceDatabase};
 use ra_syntax::{
     ast::{self, DocCommentsOwner, NameOwner},
     match_ast, AstNode, SmolStr,
-    SyntaxKind::{self, BIND_PAT},
+    SyntaxKind::{self, BIND_PAT, TYPE_PARAM},
     TextRange,
 };
 
@@ -344,6 +344,26 @@ impl ToNav for hir::Local {
             kind: BIND_PAT,
             full_range,
             focus_range,
+            container_name: None,
+            description: None,
+            docs: None,
+        }
+    }
+}
+
+impl ToNav for hir::TypeParam {
+    fn to_nav(&self, db: &RootDatabase) -> NavigationTarget {
+        let src = self.source(db);
+        let range = match src.value {
+            Either::Left(it) => it.syntax().text_range(),
+            Either::Right(it) => it.syntax().text_range(),
+        };
+        NavigationTarget {
+            file_id: src.file_id.original_file(db),
+            name: self.name(db).to_string().into(),
+            kind: TYPE_PARAM,
+            full_range: range,
+            focus_range: None,
             container_name: None,
             description: None,
             docs: None,

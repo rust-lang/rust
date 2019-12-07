@@ -318,14 +318,14 @@ macro_rules! impl_froms {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GenericParamId {
+pub struct TypeParamId {
     pub parent: GenericDefId,
-    pub local_id: LocalGenericParamId,
+    pub local_id: LocalTypeParamId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct LocalGenericParamId(RawId);
-impl_arena_id!(LocalGenericParamId);
+pub struct LocalTypeParamId(RawId);
+impl_arena_id!(LocalTypeParamId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ContainerId {
@@ -521,6 +521,20 @@ impl HasModule for DefWithBodyId {
             DefWithBodyId::FunctionId(it) => it.lookup(db).module(db),
             DefWithBodyId::StaticId(it) => it.lookup(db).module(db),
             DefWithBodyId::ConstId(it) => it.lookup(db).module(db),
+        }
+    }
+}
+
+impl HasModule for GenericDefId {
+    fn module(&self, db: &impl db::DefDatabase) -> ModuleId {
+        match self {
+            GenericDefId::FunctionId(it) => it.lookup(db).module(db),
+            GenericDefId::AdtId(it) => it.module(db),
+            GenericDefId::TraitId(it) => it.module(db),
+            GenericDefId::TypeAliasId(it) => it.lookup(db).module(db),
+            GenericDefId::ImplId(it) => it.module(db),
+            GenericDefId::EnumVariantId(it) => it.parent.module(db),
+            GenericDefId::ConstId(it) => it.lookup(db).module(db),
         }
     }
 }

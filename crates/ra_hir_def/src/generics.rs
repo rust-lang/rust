@@ -4,20 +4,29 @@
 //! in rustc.
 use std::sync::Arc;
 
-use hir_expand::name::{self, AsName, Name};
-use ra_arena::Arena;
+use either::Either;
+use hir_expand::{
+    name::{self, AsName, Name},
+    InFile,
+};
+use ra_arena::{map::ArenaMap, Arena};
+use ra_db::FileId;
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
+    child_by_source::ChildBySource,
     db::DefDatabase,
+    dyn_map::DynMap,
+    keys,
+    src::HasChildSource,
     src::HasSource,
     type_ref::{TypeBound, TypeRef},
-    AdtId, AstItemDef, GenericDefId, LocalGenericParamId, Lookup,
+    AdtId, AstItemDef, GenericDefId, LocalTypeParamId, Lookup, TypeParamId,
 };
 
 /// Data about a generic parameter (to a function, struct, impl, ...).
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct GenericParamData {
+pub struct TypeParamData {
     pub name: Name,
     pub default: Option<TypeRef>,
 }
@@ -25,7 +34,8 @@ pub struct GenericParamData {
 /// Data about the generic parameters of a function, struct, impl, etc.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GenericParams {
-    pub params: Arena<LocalGenericParamId, GenericParamData>,
+    pub types: Arena<LocalTypeParamId, TypeParamData>,
+    // lifetimes: Arena<LocalLifetimeParamId, LifetimeParamData>,
     pub where_predicates: Vec<WherePredicate>,
 }
 
@@ -39,52 +49,87 @@ pub struct WherePredicate {
     pub bound: TypeBound,
 }
 
+type SourceMap = ArenaMap<LocalTypeParamId, Either<ast::TraitDef, ast::TypeParam>>;
+
 impl GenericParams {
     pub(crate) fn generic_params_query(
         db: &impl DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
-        Arc::new(GenericParams::new(db, def.into()))
+        let (params, _source_map) = GenericParams::new(db, def.into());
+        Arc::new(params)
     }
 
-    fn new(db: &impl DefDatabase, def: GenericDefId) -> GenericParams {
-        let mut generics = GenericParams { params: Arena::default(), where_predicates: Vec::new() };
+    fn new(db: &impl DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
+        let mut generics = GenericParams { types: Arena::default(), where_predicates: Vec::new() };
+        let mut sm = ArenaMap::default();
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
-        match def {
-            GenericDefId::FunctionId(it) => generics.fill(&it.lookup(db).source(db).value),
-            GenericDefId::AdtId(AdtId::StructId(it)) => generics.fill(&it.source(db).value),
-            GenericDefId::AdtId(AdtId::UnionId(it)) => generics.fill(&it.source(db).value),
-            GenericDefId::AdtId(AdtId::EnumId(it)) => generics.fill(&it.source(db).value),
+        let file_id = match def {
+            GenericDefId::FunctionId(it) => {
+                let src = it.lookup(db).source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            GenericDefId::AdtId(AdtId::StructId(it)) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            GenericDefId::AdtId(AdtId::UnionId(it)) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            GenericDefId::AdtId(AdtId::EnumId(it)) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
             GenericDefId::TraitId(it) => {
+                let src = it.source(db);
+
                 // traits get the Self type as an implicit first type parameter
-                generics.params.alloc(GenericParamData { name: name::SELF_TYPE, default: None });
-                generics.fill(&it.source(db).value);
+                let self_param_id =
+                    generics.types.alloc(TypeParamData { name: name::SELF_TYPE, default: None });
+                sm.insert(self_param_id, Either::Left(src.value.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name::SELF_TYPE.into());
-                generics.fill_bounds(&it.source(db).value, self_param);
+                generics.fill_bounds(&src.value, self_param);
+
+                generics.fill(&mut sm, &src.value);
+                src.file_id
             }
-            GenericDefId::TypeAliasId(it) => generics.fill(&it.lookup(db).source(db).value),
+            GenericDefId::TypeAliasId(it) => {
+                let src = it.lookup(db).source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
             // type-parameter, but rather is a type-alias for impl's target
             // type, so this is handled by the resolver.
-            GenericDefId::ImplId(it) => generics.fill(&it.source(db).value),
-            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {}
-        }
+            GenericDefId::ImplId(it) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            // We won't be using this ID anyway
+            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => FileId(!0).into(),
+        };
 
-        generics
+        (generics, InFile::new(file_id, sm))
     }
 
-    fn fill(&mut self, node: &impl TypeParamsOwner) {
+    fn fill(&mut self, sm: &mut SourceMap, node: &dyn TypeParamsOwner) {
         if let Some(params) = node.type_param_list() {
-            self.fill_params(params)
+            self.fill_params(sm, params)
         }
         if let Some(where_clause) = node.where_clause() {
             self.fill_where_predicates(where_clause);
         }
     }
 
-    fn fill_bounds(&mut self, node: &impl ast::TypeBoundsOwner, type_ref: TypeRef) {
+    fn fill_bounds(&mut self, node: &dyn ast::TypeBoundsOwner, type_ref: TypeRef) {
         for bound in
             node.type_bound_list().iter().flat_map(|type_bound_list| type_bound_list.bounds())
         {
@@ -92,13 +137,14 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(&mut self, params: ast::TypeParamList) {
+    fn fill_params(&mut self, sm: &mut SourceMap, params: ast::TypeParamList) {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
             let default = type_param.default_type().map(TypeRef::from_ast);
-            let param = GenericParamData { name: name.clone(), default };
-            self.params.alloc(param);
+            let param = TypeParamData { name: name.clone(), default };
+            let param_id = self.types.alloc(param);
+            sm.insert(param_id, Either::Right(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(&type_param, type_ref);
@@ -127,7 +173,31 @@ impl GenericParams {
         self.where_predicates.push(WherePredicate { type_ref, bound });
     }
 
-    pub fn find_by_name(&self, name: &Name) -> Option<LocalGenericParamId> {
-        self.params.iter().find_map(|(id, p)| if &p.name == name { Some(id) } else { None })
+    pub fn find_by_name(&self, name: &Name) -> Option<LocalTypeParamId> {
+        self.types.iter().find_map(|(id, p)| if &p.name == name { Some(id) } else { None })
+    }
+}
+
+impl HasChildSource for GenericDefId {
+    type ChildId = LocalTypeParamId;
+    type Value = Either<ast::TraitDef, ast::TypeParam>;
+    fn child_source(&self, db: &impl DefDatabase) -> InFile<SourceMap> {
+        let (_, sm) = GenericParams::new(db, *self);
+        sm
+    }
+}
+
+impl ChildBySource for GenericDefId {
+    fn child_by_source(&self, db: &impl DefDatabase) -> DynMap {
+        let mut res = DynMap::default();
+        let arena_map = self.child_source(db);
+        let arena_map = arena_map.as_ref();
+        for (local_id, src) in arena_map.value.iter() {
+            let id = TypeParamId { parent: *self, local_id };
+            if let Either::Right(type_param) = src {
+                res[keys::TYPE_PARAM].insert(arena_map.with_value(type_param.clone()), id)
+            }
+        }
+        res
     }
 }

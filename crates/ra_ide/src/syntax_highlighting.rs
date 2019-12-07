@@ -225,8 +225,7 @@ fn highlight_name(db: &RootDatabase, name_kind: NameKind) -> &'static str {
         Def(hir::ModuleDef::Trait(_)) => "type",
         Def(hir::ModuleDef::TypeAlias(_)) => "type",
         Def(hir::ModuleDef::BuiltinType(_)) => "type",
-        SelfType(_) => "type",
-        GenericParam(_) => "type",
+        SelfType(_) | TypeParam(_) => "type",
         Local(local) => {
             if local.is_mut(db) {
                 "variable.mut"
@@ -255,6 +254,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .parameter          { color: #94BFF3; }
 .builtin            { color: #DD6718; }
 .text               { color: #DCDCCC; }
+.type               { color: #7CB8BB; }
 .attribute          { color: #94BFF3; }
 .literal            { color: #BFEBBF; }
 .macro              { color: #94BFF3; }
@@ -302,6 +302,14 @@ fn main() {
     let z = &y;
 
     y;
+}
+
+enum E<X> {
+    V(X)
+}
+
+impl<X> E<X> {
+    fn new<T>() -> E<T> {}
 }
 "#
             .trim(),
