@@ -192,7 +192,7 @@ impl LoweringContext<'_> {
             hir_id: self.lower_node_id(e.id),
             kind,
             span: e.span,
-            attrs: e.attrs.clone(),
+            attrs: self.lower_attrs_extendable(&e.attrs).into(),
         }
     }
 

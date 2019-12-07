@@ -10,11 +10,11 @@ use attributes_included::*;
 #[bar]
 #[inline]
 /// doc
-#[foo]
+#[foo] //~ WARN unused variable: `a`
 #[inline]
 /// doc
 fn foo() {
-    let a: i32 = "foo"; //~ WARN: unused variable
+    let a: i32 = "foo";
 }
 
 fn main() {

@@ -15,6 +15,7 @@ use crate::{Directory, DirectoryOwnership};
 use crate::lexer::UnmatchedBrace;
 
 use rustc_errors::{PResult, Applicability, DiagnosticBuilder, FatalError};
+use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::thin_vec::ThinVec;
 use syntax::ast::{self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident, StrLit};
 use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety};
@@ -1028,22 +1029,10 @@ impl<'a> Parser<'a> {
         } else if !delimited_only {
             if self.eat(&token::Eq) {
                 let eq_span = self.prev_span;
-                let mut is_interpolated_expr = false;
-                if let token::Interpolated(nt) = &self.token.kind {
-                    if let token::NtExpr(..) = **nt {
-                        is_interpolated_expr = true;
-                    }
-                }
-                let token_tree = if is_interpolated_expr {
-                    // We need to accept arbitrary interpolated expressions to continue
-                    // supporting things like `doc = $expr` that work on stable.
-                    // Non-literal interpolated expressions are rejected after expansion.
-                    self.parse_token_tree()
-                } else {
-                    self.parse_unsuffixed_lit()?.token_tree()
-                };
-
-                MacArgs::Eq(eq_span, token_tree.into())
+                let expr = self.parse_expr()?;
+                let span = expr.span;
+                let kind = token::Interpolated(Lrc::new(token::NtExpr(expr)));
+                MacArgs::Eq(eq_span, TokenTree::token(kind, span).into())
             } else {
                 MacArgs::Empty
             }
