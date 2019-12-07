@@ -1603,16 +1603,10 @@ pub struct FnSig {
     pub decl: P<FnDecl>,
 }
 
-// FIXME(Centril): Remove all of these.
-pub type TraitItem = AssocItem<AssocItemKind>;
-pub type TraitItemKind = AssocItemKind;
-pub type ImplItem = AssocItem<AssocItemKind>;
-pub type ImplItemKind = AssocItemKind;
-
 /// Represents associated items.
 /// These include items in `impl` and `trait` definitions.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub struct AssocItem<K = ImplItemKind> {
+pub struct AssocItem {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
@@ -1621,7 +1615,7 @@ pub struct AssocItem<K = ImplItemKind> {
 
     pub defaultness: Defaultness,
     pub generics: Generics,
-    pub kind: K,
+    pub kind: AssocItemKind,
     /// See `Item::tokens` for what this is.
     pub tokens: Option<TokenStream>,
 }
@@ -2598,7 +2592,7 @@ pub enum ItemKind {
     /// A trait declaration (`trait`).
     ///
     /// E.g., `trait Foo { .. }`, `trait Foo<T> { .. }` or `auto trait Foo {}`.
-    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<TraitItem>),
+    Trait(IsAuto, Unsafety, Generics, GenericBounds, Vec<AssocItem>),
     /// Trait alias
     ///
     /// E.g., `trait Foo = Bar + Quux;`.
@@ -2613,7 +2607,7 @@ pub enum ItemKind {
         Generics,
         Option<TraitRef>, // (optional) trait this impl implements
         P<Ty>,            // self
-        Vec<ImplItem>,
+        Vec<AssocItem>,
     ),
     /// A macro invocation.
     ///

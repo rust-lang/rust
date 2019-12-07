@@ -571,9 +571,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         visit::walk_assoc_ty_constraint(self, constraint)
     }
 
-    fn visit_trait_item(&mut self, ti: &'a ast::TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'a ast::AssocItem) {
         match ti.kind {
-            ast::TraitItemKind::Method(ref sig, ref block) => {
+            ast::AssocItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_extern(sig.header.ext);
                 }
@@ -581,7 +581,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     gate_feature_post!(&self, const_fn, ti.span, "const fn is unstable");
                 }
             }
-            ast::TraitItemKind::TyAlias(_, ref default) => {
+            ast::AssocItemKind::TyAlias(_, ref default) => {
                 if let Some(_) = default {
                     gate_feature_post!(
                         &self, associated_type_defaults, ti.span,

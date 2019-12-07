@@ -50,15 +50,15 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
             kind: ast::ItemKind::Mac(mac_placeholder()),
             tokens: None,
         })]),
-        AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::TraitItem {
+        AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::AssocItem {
             id, span, ident, vis, attrs, generics,
-            kind: ast::TraitItemKind::Macro(mac_placeholder()),
+            kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
         }]),
-        AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::ImplItem {
+        AstFragmentKind::ImplItems => AstFragment::ImplItems(smallvec![ast::AssocItem {
             id, span, ident, vis, attrs, generics,
-            kind: ast::ImplItemKind::Macro(mac_placeholder()),
+            kind: ast::AssocItemKind::Macro(mac_placeholder()),
             defaultness: ast::Defaultness::Final,
             tokens: None,
         }]),

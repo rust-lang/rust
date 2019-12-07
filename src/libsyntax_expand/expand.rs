@@ -155,10 +155,10 @@ ast_fragments! {
     Items(SmallVec<[P<ast::Item>; 1]>) {
         "item"; many fn flat_map_item; fn visit_item; fn make_items;
     }
-    TraitItems(SmallVec<[ast::TraitItem; 1]>) {
+    TraitItems(SmallVec<[ast::AssocItem; 1]>) {
         "trait item"; many fn flat_map_trait_item; fn visit_trait_item; fn make_trait_items;
     }
-    ImplItems(SmallVec<[ast::ImplItem; 1]>) {
+    ImplItems(SmallVec<[ast::AssocItem; 1]>) {
         "impl item"; many fn flat_map_impl_item; fn visit_impl_item; fn make_impl_items;
     }
     ForeignItems(SmallVec<[ast::ForeignItem; 1]>) {

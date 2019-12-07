@@ -212,23 +212,23 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
         visit::walk_generic_param(self, param);
     }
 
-    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
+    fn visit_trait_item(&mut self, ti: &'a AssocItem) {
         let def_data = match ti.kind {
-            TraitItemKind::Method(..) | TraitItemKind::Const(..) =>
+            AssocItemKind::Method(..) | AssocItemKind::Const(..) =>
                 DefPathData::ValueNs(ti.ident.name),
-            TraitItemKind::TyAlias(..) => {
+            AssocItemKind::TyAlias(..) => {
                 DefPathData::TypeNs(ti.ident.name)
             },
-            TraitItemKind::Macro(..) => return self.visit_macro_invoc(ti.id),
+            AssocItemKind::Macro(..) => return self.visit_macro_invoc(ti.id),
         };
 
         let def = self.create_def(ti.id, def_data, ti.span);
         self.with_parent(def, |this| visit::walk_trait_item(this, ti));
     }
 
-    fn visit_impl_item(&mut self, ii: &'a ImplItem) {
+    fn visit_impl_item(&mut self, ii: &'a AssocItem) {
         let def_data = match ii.kind {
-            ImplItemKind::Method(FnSig {
+            AssocItemKind::Method(FnSig {
                 ref header,
                 ref decl,
             }, ref body) if header.asyncness.node.is_async() => {
@@ -242,10 +242,10 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     body.as_deref(),
                 )
             }
-            ImplItemKind::Method(..) |
-            ImplItemKind::Const(..) => DefPathData::ValueNs(ii.ident.name),
-            ImplItemKind::TyAlias(..) => DefPathData::TypeNs(ii.ident.name),
-            ImplItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),
+            AssocItemKind::Method(..) |
+            AssocItemKind::Const(..) => DefPathData::ValueNs(ii.ident.name),
+            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(ii.ident.name),
+            AssocItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),
         };
 
         let def = self.create_def(ii.id, def_data, ii.span);

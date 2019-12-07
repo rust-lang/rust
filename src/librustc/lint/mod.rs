@@ -258,10 +258,10 @@ macro_rules! early_lint_methods {
                 c: Span,
                 d: ast::NodeId
             );
-            fn check_trait_item(a: &ast::TraitItem);
-            fn check_trait_item_post(a: &ast::TraitItem);
-            fn check_impl_item(a: &ast::ImplItem);
-            fn check_impl_item_post(a: &ast::ImplItem);
+            fn check_trait_item(a: &ast::AssocItem);
+            fn check_trait_item_post(a: &ast::AssocItem);
+            fn check_impl_item(a: &ast::AssocItem);
+            fn check_impl_item_post(a: &ast::AssocItem);
             fn check_struct_def(a: &ast::VariantData);
             fn check_struct_def_post(a: &ast::VariantData);
             fn check_struct_field(a: &ast::StructField);

@@ -86,7 +86,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
         }
     }
 
-    fn visit_trait_item(&mut self, item: &'tcx TraitItem) {
+    fn visit_trait_item(&mut self, item: &'tcx AssocItem) {
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_trait_item(item);
             let id = hir::TraitItemId { hir_id: hir_item.hir_id };
@@ -97,7 +97,7 @@ impl<'tcx, 'interner> Visitor<'tcx> for ItemLowerer<'tcx, 'interner> {
         visit::walk_assoc_item(self, item);
     }
 
-    fn visit_impl_item(&mut self, item: &'tcx ImplItem) {
+    fn visit_impl_item(&mut self, item: &'tcx AssocItem) {
         self.lctx.with_hir_id_owner(item.id, |lctx| {
             let hir_item = lctx.lower_impl_item(item);
             let id = hir::ImplItemId { hir_id: hir_item.hir_id };
@@ -813,11 +813,11 @@ impl LoweringContext<'_> {
         }
     }
 
-    fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
+    fn lower_trait_item(&mut self, i: &AssocItem) -> hir::TraitItem {
         let trait_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
-            TraitItemKind::Const(ref ty, ref default) => (
+            AssocItemKind::Const(ref ty, ref default) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::TraitItemKind::Const(
                     self.lower_ty(ty, ImplTraitContext::disallowed()),
@@ -826,7 +826,7 @@ impl LoweringContext<'_> {
                         .map(|x| self.lower_const_body(i.span, Some(x))),
                 ),
             ),
-            TraitItemKind::Method(ref sig, None) => {
+            AssocItemKind::Method(ref sig, None) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
@@ -837,7 +837,7 @@ impl LoweringContext<'_> {
                 );
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
-            TraitItemKind::Method(ref sig, Some(ref body)) => {
+            AssocItemKind::Method(ref sig, Some(ref body)) => {
                 let body_id = self.lower_fn_body_block(i.span, &sig.decl, Some(body));
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
@@ -848,7 +848,7 @@ impl LoweringContext<'_> {
                 );
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Provided(body_id)))
             }
-            TraitItemKind::TyAlias(ref bounds, ref default) => {
+            AssocItemKind::TyAlias(ref bounds, ref default) => {
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let kind = hir::TraitItemKind::Type(
                     self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
@@ -859,7 +859,7 @@ impl LoweringContext<'_> {
 
                 (generics, kind)
             },
-            TraitItemKind::Macro(..) => bug!("macro item shouldn't exist at this point"),
+            AssocItemKind::Macro(..) => bug!("macro item shouldn't exist at this point"),
         };
 
         hir::TraitItem {
@@ -872,21 +872,21 @@ impl LoweringContext<'_> {
         }
     }
 
-    fn lower_trait_item_ref(&mut self, i: &TraitItem) -> hir::TraitItemRef {
+    fn lower_trait_item_ref(&mut self, i: &AssocItem) -> hir::TraitItemRef {
         let (kind, has_default) = match i.kind {
-            TraitItemKind::Const(_, ref default) => {
+            AssocItemKind::Const(_, ref default) => {
                 (hir::AssocItemKind::Const, default.is_some())
             }
-            TraitItemKind::TyAlias(_, ref default) => {
+            AssocItemKind::TyAlias(_, ref default) => {
                 (hir::AssocItemKind::Type, default.is_some())
             }
-            TraitItemKind::Method(ref sig, ref default) => (
+            AssocItemKind::Method(ref sig, ref default) => (
                 hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
                 default.is_some(),
             ),
-            TraitItemKind::Macro(..) => unimplemented!(),
+            AssocItemKind::Macro(..) => unimplemented!(),
         };
         hir::TraitItemRef {
             id: hir::TraitItemId { hir_id: self.lower_node_id(i.id) },
@@ -902,18 +902,18 @@ impl LoweringContext<'_> {
         self.expr(span, hir::ExprKind::Err, ThinVec::new())
     }
 
-    fn lower_impl_item(&mut self, i: &ImplItem) -> hir::ImplItem {
+    fn lower_impl_item(&mut self, i: &AssocItem) -> hir::ImplItem {
         let impl_item_def_id = self.resolver.definitions().local_def_id(i.id);
 
         let (generics, kind) = match i.kind {
-            ImplItemKind::Const(ref ty, ref expr) => (
+            AssocItemKind::Const(ref ty, ref expr) => (
                 self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
                 hir::ImplItemKind::Const(
                     self.lower_ty(ty, ImplTraitContext::disallowed()),
                     self.lower_const_body(i.span, expr.as_deref()),
                 ),
             ),
-            ImplItemKind::Method(ref sig, ref body) => {
+            AssocItemKind::Method(ref sig, ref body) => {
                 self.current_item = Some(i.span);
                 let body_id = self.lower_maybe_async_body(
                     i.span,
@@ -932,7 +932,7 @@ impl LoweringContext<'_> {
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
-            ImplItemKind::TyAlias(_, ref ty) => {
+            AssocItemKind::TyAlias(_, ref ty) => {
                 let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
                 let kind = match ty {
                     None => {
@@ -951,7 +951,7 @@ impl LoweringContext<'_> {
                 };
                 (generics, kind)
             },
-            ImplItemKind::Macro(..) => bug!("`TyMac` should have been expanded by now"),
+            AssocItemKind::Macro(..) => bug!("`TyMac` should have been expanded by now"),
         };
 
         hir::ImplItem {
@@ -968,7 +968,7 @@ impl LoweringContext<'_> {
         // [1] since `default impl` is not yet implemented, this is always true in impls
     }
 
-    fn lower_impl_item_ref(&mut self, i: &ImplItem) -> hir::ImplItemRef {
+    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef {
         hir::ImplItemRef {
             id: hir::ImplItemId { hir_id: self.lower_node_id(i.id) },
             ident: i.ident,
@@ -976,18 +976,18 @@ impl LoweringContext<'_> {
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
             kind: match &i.kind {
-                ImplItemKind::Const(..) => hir::AssocItemKind::Const,
-                ImplItemKind::TyAlias(_, ty) => match ty
+                AssocItemKind::Const(..) => hir::AssocItemKind::Const,
+                AssocItemKind::TyAlias(_, ty) => match ty
                     .as_deref()
                     .and_then(|ty| ty.kind.opaque_top_hack())
                 {
                     None => hir::AssocItemKind::Type,
                     Some(_) => hir::AssocItemKind::OpaqueTy,
                 },
-                ImplItemKind::Method(sig, _) => hir::AssocItemKind::Method {
+                AssocItemKind::Method(sig, _) => hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
-                ImplItemKind::Macro(..) => unimplemented!(),
+                AssocItemKind::Macro(..) => unimplemented!(),
             },
         }
 

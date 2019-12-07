@@ -477,11 +477,11 @@ impl<'a> LoweringContext<'a> {
                 });
             }
 
-            fn visit_trait_item(&mut self, item: &'tcx TraitItem) {
+            fn visit_trait_item(&mut self, item: &'tcx AssocItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.kind {
-                    TraitItemKind::Method(_, None) => {
+                    AssocItemKind::Method(_, None) => {
                         // Ignore patterns in trait methods without bodies
                         self.with_hir_id_owner(None, |this| {
                             visit::walk_trait_item(this, item)
@@ -493,7 +493,7 @@ impl<'a> LoweringContext<'a> {
                 }
             }
 
-            fn visit_impl_item(&mut self, item: &'tcx ImplItem) {
+            fn visit_impl_item(&mut self, item: &'tcx AssocItem) {
                 self.lctx.allocate_hir_id_counter(item.id);
                 self.with_hir_id_owner(Some(item.id), |this| {
                     visit::walk_impl_item(this, item);

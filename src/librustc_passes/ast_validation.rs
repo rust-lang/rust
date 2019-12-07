@@ -544,7 +544,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, None);
-                    if let ImplItemKind::Method(ref sig, _) = impl_item.kind {
+                    if let AssocItemKind::Method(ref sig, _) = impl_item.kind {
                         self.check_trait_fn_not_const(sig.header.constness);
                         self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness.node);
                     }
