@@ -53,7 +53,7 @@ impl LocationTable {
         }
     }
 
-    crate fn all_points(&self) -> impl Iterator<Item = LocationIndex> {
+    crate fn all_points(&self) -> impl Iterator<Item = LocationIndex> + ExactSizeIterator {
         (0..self.num_points).map(LocationIndex::new)
     }
 

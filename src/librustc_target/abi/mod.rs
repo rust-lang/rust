@@ -723,7 +723,9 @@ impl FieldPlacement {
 
     /// Gets source indices of the fields by increasing offsets.
     #[inline]
-    pub fn index_by_increasing_offset<'a>(&'a self) -> impl Iterator<Item=usize>+'a {
+    pub fn index_by_increasing_offset<'a>(&'a self)
+        -> impl Iterator<Item=usize> + ExactSizeIterator + 'a
+    {
         let mut inverse_small = [0u8; 64];
         let mut inverse_big = vec![];
         let use_small = self.count() <= inverse_small.len();

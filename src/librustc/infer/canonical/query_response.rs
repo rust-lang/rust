@@ -574,7 +574,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         unsubstituted_region_constraints: &'a [QueryOutlivesConstraint<'tcx>],
         result_subst: &'a CanonicalVarValues<'tcx>,
-    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + 'a + Captures<'tcx> {
+    ) -> impl Iterator<Item = PredicateObligation<'tcx>> + ExactSizeIterator + 'a + Captures<'tcx> {
         unsubstituted_region_constraints
             .iter()
             .map(move |constraint| {

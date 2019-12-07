@@ -449,7 +449,7 @@ impl DirtyCleanVisitor<'tcx> {
         &self,
         labels: &'l Labels,
         def_id: DefId
-    ) -> impl Iterator<Item = DepNode> + 'l {
+    ) -> impl Iterator<Item = DepNode> + ExactSizeIterator + 'l {
         let def_path_hash = self.tcx.def_path_hash(def_id);
         labels
             .iter()

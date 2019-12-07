@@ -155,7 +155,7 @@ where
 {
     crate fn all_indices(
         &self,
-    ) -> impl Iterator<Item = NllMemberConstraintIndex> {
+    ) -> impl Iterator<Item = NllMemberConstraintIndex> + ExactSizeIterator {
         self.constraints.indices()
     }
 

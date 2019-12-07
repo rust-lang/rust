@@ -1274,7 +1274,7 @@ impl Build {
         t!(fs::remove_dir_all(dir))
     }
 
-    fn read_dir(&self, dir: &Path) -> impl Iterator<Item=fs::DirEntry> {
+    fn read_dir(&self, dir: &Path) -> impl Iterator<Item=fs::DirEntry> + ExactSizeIterator {
         let iter = match fs::read_dir(dir) {
             Ok(v) => v,
             Err(_) if self.config.dry_run => return vec![].into_iter(),

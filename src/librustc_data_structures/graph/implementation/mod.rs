@@ -186,14 +186,18 @@ impl<N: Debug, E: Debug> Graph<N, E> {
 
     // # Iterating over nodes, edges
 
-    pub fn enumerated_nodes(&self) -> impl Iterator<Item = (NodeIndex, &Node<N>)> {
+    pub fn enumerated_nodes(&self)
+        -> impl Iterator<Item = (NodeIndex, &Node<N>)> + ExactSizeIterator
+    {
         self.nodes
             .iter()
             .enumerate()
             .map(|(idx, n)| (NodeIndex(idx), n))
     }
 
-    pub fn enumerated_edges(&self) -> impl Iterator<Item = (EdgeIndex, &Edge<E>)> {
+    pub fn enumerated_edges(&self)
+        -> impl Iterator<Item = (EdgeIndex, &Edge<E>)> + ExactSizeIterator
+    {
         self.edges
             .iter()
             .enumerate()
