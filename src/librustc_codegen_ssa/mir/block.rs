@@ -1016,9 +1016,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         span: Span,
     ) -> OperandRef<'tcx, Bx::Value> {
-        if let Some(l) = self.caller_location {
-            bx.load_operand(l)
-        } else {
+        self.caller_location.unwrap_or_else(|| {
             let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
             let caller = bx.tcx().sess.source_map().lookup_char_pos(topmost.lo());
             let const_loc = bx.tcx().const_caller_location((
@@ -1027,7 +1025,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 caller.col_display as u32 + 1,
             ));
             OperandRef::from_const(bx, const_loc)
-        }
+        })
     }
 
     fn get_personality_slot(

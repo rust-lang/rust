@@ -79,7 +79,7 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<&'tcx mir::VarDebugInfo<'tcx>>>>,
 
     /// Caller location propagated if this function has `#[track_caller]`.
-    caller_location: Option<PlaceRef<'tcx, Bx::Value>>,
+    caller_location: Option<OperandRef<'tcx, Bx::Value>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -434,10 +434,17 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             fx.fn_abi.args.len(), args.len() + 1,
             "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
         );
+
         let arg = &fx.fn_abi.args.last().unwrap();
-        let place = PlaceRef::alloca(bx, arg.layout);
-        bx.store_fn_arg(arg, &mut llarg_idx, place);
-        fx.caller_location = Some(place);
+        match arg.mode {
+            PassMode::Direct(_) => (),
+            _ => panic!("caller location must be PassMode::Direct, found {:?}", arg.mode),
+        }
+
+        fx.caller_location = Some(OperandRef {
+            val: OperandValue::Immediate(bx.get_param(llarg_idx)),
+            layout: arg.layout,
+        });
     }
 
     args
