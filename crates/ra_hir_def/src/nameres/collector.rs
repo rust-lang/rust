@@ -352,10 +352,10 @@ where
 
                         self.update(module_id, Some(import_id), &items);
                         // record the glob import in case we add further items
-                        self.glob_imports
-                            .entry(m.local_id)
-                            .or_default()
-                            .push((module_id, import_id));
+                        let glob = self.glob_imports.entry(m.local_id).or_default();
+                        if !glob.iter().any(|it| *it == (module_id, import_id)) {
+                            glob.push((module_id, import_id));
+                        }
                     }
                 }
                 Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
