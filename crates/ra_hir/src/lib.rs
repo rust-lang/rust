@@ -60,4 +60,7 @@ pub use hir_def::{
 pub use hir_expand::{
     name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile, Origin,
 };
-pub use hir_ty::{display::HirDisplay, CallableDef};
+pub use hir_ty::{
+    display::{HirDisplay, TruncateOptions},
+    CallableDef,
+};

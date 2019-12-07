@@ -1,7 +1,7 @@
 //! FIXME: write short doc here
 
 use crate::{db::RootDatabase, FileId};
-use hir::{HirDisplay, SourceAnalyzer};
+use hir::{HirDisplay, SourceAnalyzer, TruncateOptions};
 use ra_syntax::{
     ast::{self, AstNode, TypeAscriptionOwner},
     match_ast, SmolStr, SourceFile, SyntaxKind, SyntaxNode, TextRange,
@@ -23,11 +23,11 @@ pub(crate) fn inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
     file: &SourceFile,
-    max_inlay_hint_length: Option<usize>,
+    truncate_options: &TruncateOptions,
 ) -> Vec<InlayHint> {
     file.syntax()
         .descendants()
-        .map(|node| get_inlay_hints(db, file_id, &node, max_inlay_hint_length).unwrap_or_default())
+        .map(|node| get_inlay_hints(db, file_id, &node, truncate_options).unwrap_or_default())
         .flatten()
         .collect()
 }
@@ -36,7 +36,7 @@ fn get_inlay_hints(
     db: &RootDatabase,
     file_id: FileId,
     node: &SyntaxNode,
-    max_inlay_hint_length: Option<usize>,
+    truncate_options: &TruncateOptions,
 ) -> Option<Vec<InlayHint>> {
     let analyzer = SourceAnalyzer::new(db, hir::InFile::new(file_id.into(), node), None);
     match_ast! {
@@ -46,7 +46,7 @@ fn get_inlay_hints(
                     return None;
                 }
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
+                Some(get_pat_type_hints(db, &analyzer, pat, false, truncate_options))
             },
             ast::LambdaExpr(it) => {
                 it.param_list().map(|param_list| {
@@ -54,22 +54,22 @@ fn get_inlay_hints(
                         .params()
                         .filter(|closure_param| closure_param.ascribed_type().is_none())
                         .filter_map(|closure_param| closure_param.pat())
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false, max_inlay_hint_length))
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, false, truncate_options))
                         .flatten()
                         .collect()
                 })
             },
             ast::ForExpr(it) => {
                 let pat = it.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, false, max_inlay_hint_length))
+                Some(get_pat_type_hints(db, &analyzer, pat, false, truncate_options))
             },
             ast::IfExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
+                Some(get_pat_type_hints(db, &analyzer, pat, true, truncate_options))
             },
             ast::WhileExpr(it) => {
                 let pat = it.condition()?.pat()?;
-                Some(get_pat_type_hints(db, &analyzer, pat, true, max_inlay_hint_length))
+                Some(get_pat_type_hints(db, &analyzer, pat, true, truncate_options))
             },
             ast::MatchArmList(it) => {
                 Some(
@@ -77,7 +77,7 @@ fn get_inlay_hints(
                         .arms()
                         .map(|match_arm| match_arm.pats())
                         .flatten()
-                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true, max_inlay_hint_length))
+                        .map(|root_pat| get_pat_type_hints(db, &analyzer, root_pat, true, truncate_options))
                         .flatten()
                         .collect(),
                 )
@@ -92,7 +92,7 @@ fn get_pat_type_hints(
     analyzer: &SourceAnalyzer,
     root_pat: ast::Pat,
     skip_root_pat_hint: bool,
-    max_inlay_hint_length: Option<usize>,
+    truncate_options: &TruncateOptions,
 ) -> Vec<InlayHint> {
     let original_pat = &root_pat.clone();
 
@@ -109,7 +109,7 @@ fn get_pat_type_hints(
         .map(|(range, pat_type)| InlayHint {
             range,
             kind: InlayKind::TypeHint,
-            label: pat_type.display_truncated(db, max_inlay_hint_length).to_string().into(),
+            label: pat_type.display_truncated(db, truncate_options).to_string().into(),
         })
         .collect()
 }
@@ -160,6 +160,58 @@ mod tests {
     use crate::mock_analysis::single_file;
 
     #[test]
+    fn default_generic_types_disabled() {
+        let (analysis, file_id) = single_file(
+            r#"
+struct Test<K, T = u8> {
+k: K,
+    t: T,
+}
+
+fn main() {
+    let zz = Test { t: 23, k: 33 };
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, false).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [65; 67),
+                kind: TypeHint,
+                label: "Test<i32>",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
+    fn default_generic_types_enabled() {
+        let (analysis, file_id) = single_file(
+            r#"
+struct Test<K, T = u8> {
+    k: K,
+    t: T,
+}
+
+fn main() {
+    let zz = Test { t: 23, k: 33 };
+}"#,
+        );
+
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
+        [
+            InlayHint {
+                range: [69; 71),
+                kind: TypeHint,
+                label: "Test<i32, u8>",
+            },
+        ]
+        "###
+        );
+    }
+
+    #[test]
     fn let_statement() {
         let (analysis, file_id) = single_file(
             r#"
@@ -199,7 +251,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
         [
             InlayHint {
                 range: [193; 197),
@@ -273,7 +325,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -302,7 +354,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
         [
             InlayHint {
                 range: [21; 30),
@@ -350,7 +402,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
         [
             InlayHint {
                 range: [166; 170),
@@ -413,7 +465,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
         [
             InlayHint {
                 range: [166; 170),
@@ -476,7 +528,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, None).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, None, true).unwrap(), @r###"
         [
             InlayHint {
                 range: [311; 315),
@@ -518,7 +570,7 @@ fn main() {
 }"#,
         );
 
-        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8)).unwrap(), @r###"
+        assert_debug_snapshot!(analysis.inlay_hints(file_id, Some(8), true).unwrap(), @r###"
         [
             InlayHint {
                 range: [74; 75),

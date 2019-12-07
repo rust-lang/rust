@@ -30,6 +30,7 @@ export class Config {
     public lruCapacity: null | number = null;
     public displayInlayHints = true;
     public maxInlayHintLength: null | number = null;
+    public showDefaultTypesInInlayHints = false;
     public excludeGlobs = [];
     public useClientWatching = true;
     public featureFlags = {};
@@ -152,6 +153,11 @@ export class Config {
             this.maxInlayHintLength = config.get(
                 'maxInlayHintLength',
             ) as number;
+        }
+        if (config.has('showDefaultTypesInInlayHints')) {
+            this.showDefaultTypesInInlayHints = config.get(
+                'showDefaultTypesInInlayHints',
+            ) as boolean;
         }
         if (config.has('excludeGlobs')) {
             this.excludeGlobs = config.get('excludeGlobs') || [];

@@ -31,6 +31,7 @@ pub struct Options {
     pub supports_location_link: bool,
     pub line_folding_only: bool,
     pub max_inlay_hint_length: Option<usize>,
+    pub show_default_types_in_inlay_hints: bool,
 }
 
 /// `WorldState` is the primary mutable state of the language server

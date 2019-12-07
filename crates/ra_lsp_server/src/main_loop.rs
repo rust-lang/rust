@@ -125,6 +125,7 @@ pub fn main_loop(
                     .and_then(|it| it.line_folding_only)
                     .unwrap_or(false),
                 max_inlay_hint_length: config.max_inlay_hint_length,
+                show_default_types_in_inlay_hints: config.show_default_types_in_inlay_hints,
             }
         };
 
