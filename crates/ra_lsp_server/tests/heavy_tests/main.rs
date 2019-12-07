@@ -12,6 +12,7 @@ use ra_lsp_server::req::{
 };
 use serde_json::json;
 use tempfile::TempDir;
+use test_utils::skip_slow_tests;
 
 use crate::support::{project, Project};
 
@@ -20,6 +21,10 @@ const PROFILE: &'static str = "";
 
 #[test]
 fn completes_items_from_standard_library() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let project_start = Instant::now();
     let server = Project::with_fixture(
         r#"
@@ -50,6 +55,10 @@ use std::collections::Spam;
 
 #[test]
 fn test_runnables_no_project() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = project(
         r"
 //- lib.rs
@@ -99,6 +108,10 @@ fn foo() {
 
 #[test]
 fn test_runnables_project() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let code = r#"
 //- foo/Cargo.toml
 [package]
@@ -170,6 +183,10 @@ fn main() {}
 
 #[test]
 fn test_format_document() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = project(
         r#"
 //- Cargo.toml
@@ -222,6 +239,10 @@ pub use std::collections::HashMap;
 
 #[test]
 fn test_format_document_2018() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = project(
         r#"
 //- Cargo.toml
@@ -277,8 +298,13 @@ pub use std::collections::HashMap;
         ]),
     );
 }
+
 #[test]
 fn test_missing_module_code_action() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = project(
         r#"
 //- Cargo.toml
@@ -337,6 +363,10 @@ fn main() {}
 
 #[test]
 fn test_missing_module_code_action_in_json_project() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let tmp_dir = TempDir::new().unwrap();
 
     let path = tmp_dir.path();
@@ -412,6 +442,10 @@ fn main() {{}}
 
 #[test]
 fn diagnostics_dont_block_typing() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let librs: String = (0..10).map(|i| format!("mod m{};", i)).collect();
     let libs: String = (0..10).map(|i| format!("//- src/m{}.rs\nfn foo() {{}}\n\n", i)).collect();
     let server = Project::with_fixture(&format!(
@@ -480,6 +514,10 @@ fn main() {{}}
 
 #[test]
 fn preserves_dos_line_endings() {
+    if skip_slow_tests() {
+        return;
+    }
+
     let server = Project::with_fixture(
         &"
 //- Cargo.toml
