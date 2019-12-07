@@ -23,7 +23,6 @@ fn main() {
     //~^ ERROR const_err
     let _e = [5u8][1];
     //~^ ERROR const_err
-    //~| ERROR this expression will panic at runtime
     black_box(a);
     black_box(b);
     black_box(c);

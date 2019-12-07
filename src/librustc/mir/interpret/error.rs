@@ -370,6 +370,14 @@ pub enum UndefinedBehaviorInfo {
     Unreachable,
     /// An enum discriminant was set to a value which was outside the range of valid values.
     InvalidDiscriminant(ScalarMaybeUndef),
+    /// A slice/array index projection went out-of-bounds.
+    BoundsCheckFailed { len: u64, index: u64 },
+    /// Something was divided by 0 (x / 0).
+    DivisionByZero,
+    /// Something was "remainded" by 0 (x % 0).
+    RemainderByZero,
+    /// Overflowing inbounds pointer arithmetic.
+    PointerArithOverflow,
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -379,9 +387,18 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             Ub(msg) | UbExperimental(msg) =>
                 write!(f, "{}", msg),
             Unreachable =>
-                write!(f, "entered unreachable code"),
+                write!(f, "entering unreachable code"),
             InvalidDiscriminant(val) =>
-                write!(f, "encountered invalid enum discriminant {}", val),
+                write!(f, "encountering invalid enum discriminant {}", val),
+            BoundsCheckFailed { ref len, ref index } =>
+                write!(f, "indexing out of bounds: the len is {:?} but the index is {:?}",
+                    len, index),
+            DivisionByZero =>
+                write!(f, "dividing by zero"),
+            RemainderByZero =>
+                write!(f, "calculating the remainder with a divisor of zero"),
+            PointerArithOverflow =>
+                write!(f, "overflowing in-bounds pointer arithmetic"),
         }
     }
 }
