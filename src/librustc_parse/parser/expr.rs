@@ -596,14 +596,7 @@ impl<'a> Parser<'a> {
                             op_noun,
                         );
                         let span_after_type = parser_snapshot_after_type.token.span;
-                        let expr = mk_expr(
-                            self,
-                            P(Ty {
-                                span: path.span,
-                                kind: TyKind::Path(None, path),
-                                id: DUMMY_NODE_ID,
-                            }),
-                        );
+                        let expr = mk_expr(self, self.mk_ty(path.span, TyKind::Path(None, path)));
 
                         let expr_str = self
                             .span_to_snippet(expr.span)
