@@ -501,37 +501,38 @@ impl<'a> Parser<'a> {
                     token::Literal(..) | token::Pound => true,
                     _ => t.is_whole_expr(),
                 };
-                let cannot_continue_expr = self.look_ahead(1, token_cannot_continue_expr);
-                if cannot_continue_expr {
-                    self.bump();
-                    // Emit the error ...
-                    self.struct_span_err(
-                        self.token.span,
-                        &format!("unexpected {} after identifier", self.this_token_descr()),
-                    )
-                    .span_suggestion_short(
-                        // Span the `not` plus trailing whitespace to avoid
-                        // trailing whitespace after the `!` in our suggestion
-                        self.sess.source_map().span_until_non_whitespace(lo.to(self.token.span)),
-                        "use `!` to perform logical negation",
-                        "!".to_owned(),
-                        Applicability::MachineApplicable,
-                    )
-                    .emit();
-                    // —and recover! (just as if we were in the block
-                    // for the `token::Not` arm)
-                    let e = self.parse_prefix_expr(None);
-                    let (span, e) = self.interpolated_or_expr_span(e)?;
-                    (lo.to(span), self.mk_unary(UnOp::Not, e))
-                } else {
+                if !self.look_ahead(1, token_cannot_continue_expr) {
                     return self.parse_dot_or_call_expr(Some(attrs));
                 }
+
+                self.recover_not_expr(lo)?
             }
-            _ => {
-                return self.parse_dot_or_call_expr(Some(attrs));
-            }
+            _ => return self.parse_dot_or_call_expr(Some(attrs)),
         };
         return Ok(self.mk_expr(lo.to(hi), ex, attrs));
+    }
+
+    fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
+        self.bump();
+        // Emit the error ...
+        self.struct_span_err(
+            self.token.span,
+            &format!("unexpected {} after identifier", self.this_token_descr()),
+        )
+        .span_suggestion_short(
+            // Span the `not` plus trailing whitespace to avoid
+            // trailing whitespace after the `!` in our suggestion
+            self.sess.source_map().span_until_non_whitespace(lo.to(self.token.span)),
+            "use `!` to perform logical negation",
+            "!".to_owned(),
+            Applicability::MachineApplicable,
+        )
+        .emit();
+        // —and recover! (just as if we were in the block
+        // for the `token::Not` arm)
+        let expr = self.parse_prefix_expr(None);
+        let (span, e) = self.interpolated_or_expr_span(expr)?;
+        Ok((lo.to(span), self.mk_unary(UnOp::Not, e)))
     }
 
     /// Returns the span of expr, if it was not interpolated or the span of the interpolated token.
