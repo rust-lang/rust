@@ -860,6 +860,13 @@ pub struct GenericParam {
     pub(crate) id: GenericParamId,
 }
 
+impl GenericParam {
+    pub fn name(self, db: &impl HirDatabase) -> Name {
+        let params = db.generic_params(self.id.parent);
+        params.params[self.id.local_id].name.clone()
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct ImplBlock {
     pub(crate) id: ImplId,
