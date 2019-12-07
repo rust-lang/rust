@@ -165,7 +165,9 @@ jobs:
     steps:
     - uses: actions/checkout@master
     - name: Install Rust (rustup)
-      run: rustup update nightly --no-self-update && rustup default nightly
+      run: |
+        rustup update nightly --no-self-update
+        rustup default nightly
       if: matrix.os != 'macos-latest'
     - name: Install Rust (macos)
       run: |
