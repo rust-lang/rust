@@ -341,7 +341,7 @@ fn register_builtins(store: &mut lint::LintStore, no_interleave_lints: bool) {
         "converted into hard error, see https://github.com/rust-lang/rust/issues/46205");
     store.register_removed("legacy_constructor_visibility",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/39207");
-    store.register_removed("legacy_disrectory_ownership",
+    store.register_removed("legacy_directory_ownership",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/37872");
     store.register_removed("safe_extern_statics",
         "converted into hard error, see https://github.com/rust-lang/rust/issues/36247");
