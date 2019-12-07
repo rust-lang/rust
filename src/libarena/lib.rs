@@ -202,53 +202,18 @@ impl<T> TypedArena<T> {
     #[inline]
     pub fn alloc_from_iter<I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
         assert!(mem::size_of::<T>() != 0);
-        let mut iter = iter.into_iter();
-        let size_hint = iter.size_hint();
-
-        match size_hint {
-            (min, Some(max)) if min == max => {
-                // We know the exact number of elements the iterator will produce here
-                let len = min;
-
-                if len == 0 {
-                    return &mut [];
-                }
-
-                self.ensure_capacity(len);
-
-                let slice = self.ptr.get();
-
-                unsafe {
-                    let mut ptr = self.ptr.get();
-                    for _ in 0..len {
-                        // Write into uninitialized memory.
-                        ptr::write(ptr, iter.next().unwrap());
-                        // Advance the pointer.
-                        ptr = ptr.offset(1);
-                        // Update the pointer per iteration so if `iter.next()` panics
-                        // we destroy the correct amount
-                        self.ptr.set(ptr);
-                    }
-                    slice::from_raw_parts_mut(slice, len)
-                }
-            }
-            _ => {
-                cold_path(move || -> &mut [T] {
-                    let mut vec: SmallVec<[_; 8]> = iter.collect();
-                    if vec.is_empty() {
-                        return &mut [];
-                    }
-                    // Move the content to the arena by copying it and then forgetting
-                    // the content of the SmallVec
-                    unsafe {
-                        let len = vec.len();
-                        let start_ptr = self.alloc_raw_slice(len);
-                        vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
-                        vec.set_len(0);
-                        slice::from_raw_parts_mut(start_ptr, len)
-                    }
-                })
-            }
+        let mut vec: SmallVec<[_; 8]> = iter.into_iter().collect();
+        if vec.is_empty() {
+            return &mut [];
+        }
+        // Move the content to the arena by copying it and then forgetting
+        // the content of the SmallVec
+        unsafe {
+            let len = vec.len();
+            let start_ptr = self.alloc_raw_slice(len);
+            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            vec.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
         }
     }
 
