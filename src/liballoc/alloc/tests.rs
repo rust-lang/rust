@@ -22,7 +22,7 @@ fn allocate_zeroed() {
 }
 
 #[bench]
-#[cfg(not(miri))] // Miri does not support benchmarks
+#[cfg_attr(miri, ignore)] // Miri does not support benchmarks
 fn alloc_owned_small(b: &mut Bencher) {
     b.iter(|| {
         let _: Box<_> = box 10;

@@ -1100,7 +1100,7 @@ fn test_reserve_exact_2() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri does not support signalling OOM
+#[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
 fn test_try_reserve() {
     // These are the interesting cases:
     // * exactly isize::MAX should never trigger a CapacityOverflow (can be OOM)
@@ -1214,7 +1214,7 @@ fn test_try_reserve() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri does not support signalling OOM
+#[cfg_attr(miri, ignore)] // Miri does not support signalling OOM
 fn test_try_reserve_exact() {
     // This is exactly the same as test_try_reserve with the method changed.
     // See that test for comments.
