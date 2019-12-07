@@ -904,10 +904,8 @@ pub fn ensure_complete_parse<'a>(
     span: Span,
 ) {
     if this.token != token::Eof {
-        let msg = format!(
-            "macro expansion ignores token `{}` and any following",
-            this.this_token_to_string()
-        );
+        let token = pprust::token_to_string(&this.token);
+        let msg = format!("macro expansion ignores token `{}` and any following", token);
         // Avoid emitting backtrace info twice.
         let def_site_span = this.token.span.with_ctxt(SyntaxContext::root());
         let mut err = this.struct_span_err(def_site_span, &msg);

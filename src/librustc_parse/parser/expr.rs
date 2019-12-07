@@ -442,35 +442,37 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a prefix-unary-operator expr.
-    fn parse_prefix_expr(&mut self, already_parsed_attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
-        let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
+    fn parse_prefix_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
+        let attrs = self.parse_or_use_outer_attributes(attrs)?;
         let lo = self.token.span;
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
         let (hi, ex) = match self.token.kind {
-            token::Not => {
-                self.bump();
-                let e = self.parse_prefix_expr(None);
-                let (span, e) = self.interpolated_or_expr_span(e)?;
-                (lo.to(span), self.mk_unary(UnOp::Not, e))
-            }
-            token::Tilde => self.recover_tilde_expr(lo)?,
-            token::BinOp(token::Minus) => self.parse_neg_expr(lo)?,
-            token::BinOp(token::Star) => self.parse_deref_expr(lo)?,
-            token::BinOp(token::And) | token::AndAnd => self.parse_borrow_expr(lo)?,
-            token::Ident(..) if self.token.is_keyword(kw::Box) => self.parse_box_expr(lo)?,
-            token::Ident(..) if self.is_mistaken_not_ident_negation() => {
-                self.recover_not_expr(lo)?
-            }
+            token::Not => self.parse_unary_expr(lo, UnOp::Not), // `!expr`
+            token::Tilde => self.recover_tilde_expr(lo),        // `~expr`
+            token::BinOp(token::Minus) => self.parse_unary_expr(lo, UnOp::Neg), // `-expr`
+            token::BinOp(token::Star) => self.parse_unary_expr(lo, UnOp::Deref), // `*expr`
+            token::BinOp(token::And) | token::AndAnd => self.parse_borrow_expr(lo),
+            token::Ident(..) if self.token.is_keyword(kw::Box) => self.parse_box_expr(lo),
+            token::Ident(..) if self.is_mistaken_not_ident_negation() => self.recover_not_expr(lo),
             _ => return self.parse_dot_or_call_expr(Some(attrs)),
-        };
-        return Ok(self.mk_expr(lo.to(hi), ex, attrs));
+        }?;
+        Ok(self.mk_expr(lo.to(hi), ex, attrs))
+    }
+
+    fn parse_prefix_expr_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
+        self.bump();
+        let expr = self.parse_prefix_expr(None);
+        let (span, expr) = self.interpolated_or_expr_span(expr)?;
+        Ok((lo.to(span), expr))
+    }
+
+    fn parse_unary_expr(&mut self, lo: Span, op: UnOp) -> PResult<'a, (Span, ExprKind)> {
+        let (span, expr) = self.parse_prefix_expr_common(lo)?;
+        Ok((span, self.mk_unary(op, expr)))
     }
 
     // Recover on `!` suggesting for bitwise negation instead.
     fn recover_tilde_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump();
-        let expr = self.parse_prefix_expr(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
         self.struct_span_err(lo, "`~` cannot be used as a unary operator")
             .span_suggestion_short(
                 lo,
@@ -479,31 +481,13 @@ impl<'a> Parser<'a> {
                 Applicability::MachineApplicable,
             )
             .emit();
-        Ok((lo.to(span), self.mk_unary(UnOp::Not, expr)))
-    }
 
-    /// Parse `-expr`.
-    fn parse_neg_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump(); // `-`
-        let expr = self.parse_prefix_expr(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
-        Ok((lo.to(span), self.mk_unary(UnOp::Neg, expr)))
-    }
-
-    /// Parse `*expr`.
-    fn parse_deref_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump(); // `*`
-        let expr = self.parse_prefix_expr(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
-        Ok((lo.to(span), self.mk_unary(UnOp::Deref, expr)))
+        self.parse_unary_expr(lo, UnOp::Not)
     }
 
     /// Parse `box expr`.
     fn parse_box_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump(); // `box`
-        let expr = self.parse_prefix_expr(None);
-        let (span, expr) = self.interpolated_or_expr_span(expr)?;
-        let span = lo.to(span);
+        let (span, expr) = self.parse_prefix_expr_common(lo)?;
         self.sess.gated_spans.gate(sym::box_syntax, span);
         Ok((span, ExprKind::Box(expr)))
     }
@@ -521,26 +505,24 @@ impl<'a> Parser<'a> {
 
     /// Recover on `not expr` in favor of `!expr`.
     fn recover_not_expr(&mut self, lo: Span) -> PResult<'a, (Span, ExprKind)> {
-        self.bump();
-        // Emit the error ...
+        // Emit the error...
+        let not_token = self.look_ahead(1, |t| t.clone());
         self.struct_span_err(
-            self.token.span,
-            &format!("unexpected {} after identifier", self.this_token_descr()),
+            not_token.span,
+            &format!("unexpected {} after identifier", super::token_descr(&not_token)),
         )
         .span_suggestion_short(
             // Span the `not` plus trailing whitespace to avoid
             // trailing whitespace after the `!` in our suggestion
-            self.sess.source_map().span_until_non_whitespace(lo.to(self.token.span)),
+            self.sess.source_map().span_until_non_whitespace(lo.to(not_token.span)),
             "use `!` to perform logical negation",
             "!".to_owned(),
             Applicability::MachineApplicable,
         )
         .emit();
-        // —and recover! (just as if we were in the block
-        // for the `token::Not` arm)
-        let expr = self.parse_prefix_expr(None);
-        let (span, e) = self.interpolated_or_expr_span(expr)?;
-        Ok((lo.to(span), self.mk_unary(UnOp::Not, e)))
+
+        // ...and recover!
+        self.parse_unary_expr(lo, UnOp::Not)
     }
 
     /// Returns the span of expr, if it was not interpolated or the span of the interpolated token.
@@ -738,7 +720,7 @@ impl<'a> Parser<'a> {
 
     fn error_unexpected_after_dot(&self) {
         // FIXME Could factor this out into non_fatal_unexpected or something.
-        let actual = self.this_token_to_string();
+        let actual = pprust::token_to_string(&self.token);
         self.struct_span_err(self.token.span, &format!("unexpected token: `{}`", actual)).emit();
     }
 
@@ -1142,7 +1124,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_lit(&mut self) -> PResult<'a, Lit> {
         self.parse_opt_lit().ok_or_else(|| {
-            let msg = format!("unexpected token: {}", self.this_token_descr());
+            let msg = format!("unexpected token: {}", super::token_descr(&self.token));
             self.span_fatal(self.token.span, &msg)
         })
     }
