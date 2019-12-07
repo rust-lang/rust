@@ -9,11 +9,16 @@ pub mod set;
 /// while deterministic hashing was disabled.
 ///
 /// Deterministic hashing is useful when repeatability is desired,
-/// e.g., during debugging. The intended use is to put a call of the
-/// following form near the start of `main`:
+/// e.g., during debugging. A possible use is to structure one's
+/// program as follows:
 ///
 /// ```
-/// debug_assert!(std::collections::enable_deterministic_hashing());
+/// #![feature(deterministic_hashing)]
+///
+/// fn main() {
+///    debug_assert!(std::collections::enable_deterministic_hashing());
+///    // ...
+/// }
 /// ```
 ///
 /// In this way, deterministic hashing will be enabled for debug
