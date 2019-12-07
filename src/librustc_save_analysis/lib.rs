@@ -815,15 +815,15 @@ impl<'l, 'tcx> SaveContext<'l, 'tcx> {
         let mut result = String::new();
 
         for attr in attrs {
-            if attr.check_name(sym::doc) {
-                if let Some(val) = attr.value_str() {
-                    if attr.is_doc_comment() {
-                        result.push_str(&strip_doc_comment_decoration(&val.as_str()));
-                    } else {
-                        result.push_str(&val.as_str());
-                    }
-                    result.push('\n');
-                } else if let Some(meta_list) = attr.meta_item_list() {
+            if let Some(val) = attr.doc_str() {
+                if attr.is_doc_comment() {
+                    result.push_str(&strip_doc_comment_decoration(&val.as_str()));
+                } else {
+                    result.push_str(&val.as_str());
+                }
+                result.push('\n');
+            } else if attr.check_name(sym::doc) {
+                if let Some(meta_list) = attr.meta_item_list() {
                     meta_list
                         .into_iter()
                         .filter(|it| it.check_name(sym::include))

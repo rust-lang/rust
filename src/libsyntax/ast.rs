@@ -2364,10 +2364,6 @@ pub enum AttrKind {
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
-    ///
-    /// Note: `self.has_name(sym::doc)` and `self.check_name(sym::doc)` succeed
-    /// for this variant, but this may change in the future.
-    /// ```
     DocComment(Symbol),
 }
 

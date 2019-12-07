@@ -271,6 +271,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext<'_, '_>, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
 
+        if attr.is_doc_comment() {
+            return;
+        }
+
         let attr_info = attr.ident().and_then(|ident| self.builtin_attributes.get(&ident.name));
 
         if let Some(&&(name, ty, ..)) = attr_info {
