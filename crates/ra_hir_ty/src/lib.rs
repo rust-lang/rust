@@ -44,8 +44,8 @@ use std::sync::Arc;
 use std::{fmt, iter, mem};
 
 use hir_def::{
-    expr::ExprId, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId,
-    GenericDefId, HasModule, Lookup, TraitId, TypeAliasId,
+    expr::ExprId, type_ref::Mutability, AdtId, ContainerId, DefWithBodyId, GenericDefId, HasModule,
+    Lookup, TraitId, TypeAliasId,
 };
 use hir_expand::name::Name;
 use ra_db::{impl_intern_key, salsa, CrateId};
