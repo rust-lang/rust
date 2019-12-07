@@ -18,6 +18,8 @@ pub struct MiriConfig {
     pub validate: bool,
     /// Determines if communication with the host environment is enabled.
     pub communicate: bool,
+    /// Determines if memory leaks should be ignored.
+    pub ignore_leaks: bool,
     /// Environment variables that should always be isolated from the host.
     pub excluded_env_vars: Vec<String>,
     /// Command-line arguments passed to the interpreted program.
@@ -169,6 +171,11 @@ pub fn create_ecx<'mir, 'tcx: 'mir>(
 /// Returns `Some(return_code)` if program executed completed.
 /// Returns `None` if an evaluation error occured.
 pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) -> Option<i64> {
+    // FIXME: We always ignore leaks on some platforms where we do not
+    // correctly implement TLS destructors.
+    let target_os = tcx.sess.target.target.target_os.to_lowercase();
+    let ignore_leaks = config.ignore_leaks || target_os == "windows" || target_os == "macos";
+
     let (mut ecx, ret_place) = match create_ecx(tcx, main_id, config) {
         Ok(v) => v,
         Err(mut err) => {
@@ -190,10 +197,6 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
     // Process the result.
     match res {
         Ok(return_code) => {
-            // Disable the leak test on some platforms where we do not
-            // correctly implement TLS destructors.
-            let target_os = ecx.tcx.tcx.sess.target.target.target_os.to_lowercase();
-            let ignore_leaks = target_os == "windows" || target_os == "macos";
             if !ignore_leaks {
                 let leaks = ecx.memory.leak_report();
                 if leaks != 0 {
