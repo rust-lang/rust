@@ -5,7 +5,7 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 
-use rustc::mir::{Body, BodyCache};
+use rustc::mir::{Body, BodyAndCache};
 use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
 use crate::transform::{MirPass, MirSource};
@@ -19,7 +19,7 @@ impl<'tcx> MirPass<'tcx> for Marker {
     }
 
     fn run_pass(
-        &self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut BodyCache<'tcx>
+        &self, _tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, _body: &mut BodyAndCache<'tcx>
     ) {}
 }
 

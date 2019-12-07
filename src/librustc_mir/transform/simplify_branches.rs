@@ -19,7 +19,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyBranches {
         Cow::Borrowed(&self.label)
     }
 
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         let param_env = tcx.param_env(src.def_id());
         for block in body.basic_blocks_mut() {
             let terminator = block.terminator_mut();

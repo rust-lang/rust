@@ -1,4 +1,4 @@
-use rustc::mir::{BasicBlock, Location, Body, ReadOnlyBodyCache};
+use rustc::mir::{BasicBlock, Location, Body, ReadOnlyBodyAndCache};
 use rustc::ty::{self, RegionVid};
 use rustc_index::bit_set::{HybridBitSet, SparseBitMatrix};
 use rustc_data_structures::fx::FxHashMap;
@@ -92,7 +92,7 @@ impl RegionValueElements {
     /// Pushes all predecessors of `index` onto `stack`.
     crate fn push_predecessors(
         &self,
-        body: ReadOnlyBodyCache<'_, '_>,
+        body: ReadOnlyBodyAndCache<'_, '_>,
         index: PointIndex,
         stack: &mut Vec<PointIndex>,
     ) {
