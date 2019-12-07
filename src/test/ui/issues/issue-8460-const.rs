@@ -23,19 +23,14 @@ fn main() {
     //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
     //~^ ERROR attempt to divide by zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i8 / 0; }).join().is_err());
     //~^ ERROR attempt to divide by zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i16 / 0; }).join().is_err());
     //~^ ERROR attempt to divide by zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i32 / 0; }).join().is_err());
     //~^ ERROR attempt to divide by zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i64 / 0; }).join().is_err());
     //~^ ERROR attempt to divide by zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { isize::MIN % -1; }).join().is_err());
     //~^ ERROR attempt to calculate the remainder with overflow
     //~| ERROR this expression will panic at runtime
@@ -53,17 +48,12 @@ fn main() {
     //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1isize % 0; }).join().is_err());
     //~^ ERROR attempt to calculate the remainder with a divisor of zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i8 % 0; }).join().is_err());
     //~^ ERROR attempt to calculate the remainder with a divisor of zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i16 % 0; }).join().is_err());
     //~^ ERROR attempt to calculate the remainder with a divisor of zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i32 % 0; }).join().is_err());
     //~^ ERROR attempt to calculate the remainder with a divisor of zero
-    //~| ERROR this expression will panic at runtime
     assert!(thread::spawn(move|| { 1i64 % 0; }).join().is_err());
     //~^ ERROR attempt to calculate the remainder with a divisor of zero
-    //~| ERROR this expression will panic at runtime
 }

@@ -20,7 +20,7 @@ error: reaching this expression at runtime will panic or abort
   --> $DIR/promoted_errors.rs:9:20
    |
 LL |     println!("{}", 1/(1-1));
-   |                    ^^^^^^^ attempt to divide by zero
+   |                    ^^^^^^^ dividing by zero
 
 error: attempt to divide by zero
   --> $DIR/promoted_errors.rs:12:14
@@ -28,35 +28,23 @@ error: attempt to divide by zero
 LL |     let _x = 1/(1-1);
    |              ^^^^^^^
 
-error: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:12:14
-   |
-LL |     let _x = 1/(1-1);
-   |              ^^^^^^^ attempt to divide by zero
-
 error: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:15:20
+  --> $DIR/promoted_errors.rs:14:20
    |
 LL |     println!("{}", 1/(false as u32));
    |                    ^^^^^^^^^^^^^^^^
 
 error: reaching this expression at runtime will panic or abort
-  --> $DIR/promoted_errors.rs:15:20
+  --> $DIR/promoted_errors.rs:14:20
    |
 LL |     println!("{}", 1/(false as u32));
-   |                    ^^^^^^^^^^^^^^^^ attempt to divide by zero
+   |                    ^^^^^^^^^^^^^^^^ dividing by zero
 
 error: attempt to divide by zero
-  --> $DIR/promoted_errors.rs:18:14
+  --> $DIR/promoted_errors.rs:17:14
    |
 LL |     let _x = 1/(false as u32);
    |              ^^^^^^^^^^^^^^^^
 
-error: this expression will panic at runtime
-  --> $DIR/promoted_errors.rs:18:14
-   |
-LL |     let _x = 1/(false as u32);
-   |              ^^^^^^^^^^^^^^^^ attempt to divide by zero
-
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
