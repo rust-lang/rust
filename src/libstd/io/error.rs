@@ -39,7 +39,7 @@ use crate::sys;
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = result::Result<T, Error>;
+pub type Result<T, E = Error> = result::Result<T, E>;
 
 /// The error type for I/O operations of the [`Read`], [`Write`], [`Seek`], and
 /// associated traits.

@@ -66,7 +66,7 @@ pub mod rt {
 /// println!("{}", pythagorean_triple);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result = result::Result<(), Error>;
+pub type Result<T = (), E = Error> = result::Result<T, E>;
 
 /// The error type which is returned from formatting a message into a stream.
 ///
