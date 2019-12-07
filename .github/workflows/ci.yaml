@@ -14,6 +14,7 @@ jobs:
     env:
       RUSTFLAGS: -D warnings
       CARGO_INCREMENTAL: 0
+      RUN_SLOW_TESTS: 1
     steps:
 
       - name: Checkout repository
@@ -46,9 +47,10 @@ jobs:
 
       - name: Prepare build directory for cache
         run: |
-          find ./target/debug -maxdepth 1 -type f -delete && \
-          rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*heavy_test*,*gen_lsp*,*thread_worker*} && \
-          rm -f  ./target/.rustc_info.json
+          find ./target/debug -maxdepth 1 -type f -delete \
+          && rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*heavy_test*,*gen_lsp*,*thread_worker*} \
+          && rm -f  ./target/.rustc_info.json \
+          && rm ./target/.slow_tests_cookie
 
   type-script:
     name: TypeScript

@@ -356,6 +356,17 @@ pub fn read_text(path: &Path) -> String {
         .replace("\r\n", "\n")
 }
 
+pub fn skip_slow_tests() -> bool {
+    let should_skip = std::env::var("CI").is_err() && std::env::var("RUN_SLOW_TESTS").is_err();
+    if should_skip {
+        eprintln!("ignoring slow test")
+    } else {
+        let path = project_dir().join("./target/.slow_tests_cookie");
+        fs::write(&path, ".").unwrap();
+    }
+    should_skip
+}
+
 const REWRITE: bool = false;
 
 fn assert_equal_text(expected: &str, actual: &str, path: &Path) {
