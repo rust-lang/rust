@@ -654,15 +654,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `a.b` or `a(13)` or `a[4]` or just `a`.
-    fn parse_dot_or_call_expr(
-        &mut self,
-        already_parsed_attrs: Option<AttrVec>,
-    ) -> PResult<'a, P<Expr>> {
-        let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
-
-        let b = self.parse_bottom_expr();
-        let (span, b) = self.interpolated_or_expr_span(b)?;
-        self.parse_dot_or_call_expr_with(b, span, attrs)
+    fn parse_dot_or_call_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
+        let attrs = self.parse_or_use_outer_attributes(attrs)?;
+        let base = self.parse_bottom_expr();
+        let (span, base) = self.interpolated_or_expr_span(base)?;
+        self.parse_dot_or_call_expr_with(base, span, attrs)
     }
 
     pub(super) fn parse_dot_or_call_expr_with(
