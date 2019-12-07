@@ -692,30 +692,27 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_dot_or_call_expr_with_(&mut self, e0: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        let mut e = e0;
+    fn parse_dot_or_call_expr_with_(&mut self, mut e: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
         loop {
-            // expr?
-            while self.eat(&token::Question) {
-                let hi = self.prev_span;
-                e = self.mk_expr(lo.to(hi), ExprKind::Try(e), AttrVec::new());
+            if self.eat(&token::Question) {
+                // `expr?`
+                e = self.mk_expr(lo.to(self.prev_span), ExprKind::Try(e), AttrVec::new());
+                continue;
             }
-
-            // expr.f
             if self.eat(&token::Dot) {
+                // expr.f
                 e = self.parse_dot_suffix_expr(lo, e)?;
                 continue;
             }
             if self.expr_is_complete(&e) {
-                break;
+                return Ok(e);
             }
-            match self.token.kind {
-                token::OpenDelim(token::Paren) => e = self.parse_fn_call_expr(lo, e),
-                token::OpenDelim(token::Bracket) => e = self.parse_index_expr(lo, e)?,
+            e = match self.token.kind {
+                token::OpenDelim(token::Paren) => self.parse_fn_call_expr(lo, e),
+                token::OpenDelim(token::Bracket) => self.parse_index_expr(lo, e)?,
                 _ => return Ok(e),
             }
         }
-        return Ok(e);
     }
 
     fn parse_dot_suffix_expr(&mut self, lo: Span, base: P<Expr>) -> PResult<'a, P<Expr>> {
