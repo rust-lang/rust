@@ -194,21 +194,46 @@ bool GradientUtils::shouldRecompute(Value* val, const ValueToValueMapTy& availab
   return false;
 }
 
-GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, llvm::Type* additionalArg) {
+GradientUtils* GradientUtils::CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned> &returnMapping ) {
     assert(!todiff->empty());
+
+    // Since this is forward pass this should always return the tape (at index 0)
+    returnMapping[AugmentedStruct::Tape] = 0;
+
+    int returnCount = 0;
+
+    if (returnUsed) {
+        assert(!todiff->getReturnType()->isEmptyTy());
+        returnMapping[AugmentedStruct::Return] = returnCount+1;
+        returnCount++;
+    } 
+   
+    // We don't need to differentially return something that we know is not a pointer (or somehow needed for shadow analysis)
+    if (differentialReturn && !todiff->getReturnType()->isFPOrFPVectorTy()) { 
+        assert(!todiff->getReturnType()->isEmptyTy());
+        assert(!todiff->getReturnType()->isFPOrFPVectorTy());
+        returnMapping[AugmentedStruct::DifferentialReturn] = returnCount+1;
+        returnCount++;
+    } 
+
+    ReturnType returnValue;
+    if (returnCount == 0) returnValue = ReturnType::Tape;
+    else if (returnCount == 1) returnValue = ReturnType::TapeAndReturn;
+    else if (returnCount == 2) returnValue = ReturnType::TapeAndTwoReturns;
+    else llvm_unreachable("illegal number of elements in augmented return struct");
+
     ValueToValueMapTy invertedPointers;
     SmallPtrSet<Value*,4> constants;
     SmallPtrSet<Value*,20> nonconstant;
     SmallPtrSet<Value*,2> returnvals;
     ValueToValueMapTy originalToNew;
-    auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, /*returnValue*/returnValue, /*differentialReturn*/differentialReturn, "fakeaugmented_"+todiff->getName(), &originalToNew, /*diffeReturnArg*/false, additionalArg);
+    auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, /*returnValue*/returnValue, /*differentialReturn*/differentialReturn, "fakeaugmented_"+todiff->getName(), &originalToNew, /*diffeReturnArg*/false, /*additionalArg*/nullptr);
     //llvm::errs() <<  "returnvals:" << todiff->getName() << " \n";
     //for (auto a : returnvals ) {
     //    llvm::errs() <<"   + " << *a << "\n";
     //}
     //llvm::errs() <<  "end returnvals:\n";
-    auto res = new GradientUtils(newFunc, AA, TLI, invertedPointers, constants, nonconstant, returnvals, originalToNew);
-    res->oldFunc = todiff;
+    auto res = new GradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, returnvals, originalToNew);
     return res;
 }
 
@@ -220,8 +245,7 @@ DiffeGradientUtils* DiffeGradientUtils::CreateFromClone(Function *todiff, AAResu
   SmallPtrSet<Value*,2> returnvals;
   ValueToValueMapTy originalToNew;
   auto newFunc = CloneFunctionWithReturns(todiff, AA, TLI, invertedPointers, constant_args, constants, nonconstant, returnvals, returnValue, differentialReturn, "diffe"+todiff->getName(), &originalToNew, /*diffeReturnArg*/true, additionalArg);
-  auto res = new DiffeGradientUtils(newFunc, AA, TLI, invertedPointers, constants, nonconstant, returnvals, originalToNew);
-  res->oldFunc = todiff;
+  auto res = new DiffeGradientUtils(newFunc, todiff, AA, TLI, invertedPointers, constants, nonconstant, returnvals, originalToNew);
   return res;
 }
 
@@ -273,7 +297,7 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       return invertedPointers[val] = cs;
     } else if (auto fn = dyn_cast<Function>(val)) {
       //! Todo allow tape propagation
-      std::set<unsigned> uncacheable_args;
+      std::map<Argument*, bool> uncacheable_args;
       auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/nullptr, uncacheable_args, /*map*/nullptr); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
       return BuilderM.CreatePointerCast(newf, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
@@ -806,7 +830,7 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
         }
     }
 
-    if (!(*(this->can_modref_map))[inst]) {
+    if (! can_modref_map->find(inst)->second) {
       if (shouldRecompute(inst, available)) {
           auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/true);
           assert(op);

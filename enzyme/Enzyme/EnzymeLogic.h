@@ -33,6 +33,12 @@
 
 extern llvm::cl::opt<bool> enzyme_print;
 
+enum class AugmentedStruct {
+    Tape,
+    Return,
+    DifferentialReturn
+};
+
 //! return structtype if recursive function
 class AugmentedReturn {
 public:
@@ -42,12 +48,14 @@ public:
     std::map<std::pair<llvm::Instruction*, std::string>, unsigned> tapeIndices;
     //! Map from original call to sub augmentation data
     std::map<const llvm::CallInst*, const AugmentedReturn*> subaugmentations;
-    AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType) : fn(fn), tapeType(tapeType), tapeIndices() {}
-    AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType, std::map<std::pair<llvm::Instruction*, std::string>, unsigned> tapeIndices) : fn(fn), tapeType(tapeType), tapeIndices(tapeIndices) {}
+    //! Map from information desired from a augmented return to its index in the returned struct
+    std::map<AugmentedStruct, unsigned> returns;
+    //AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType) : fn(fn), tapeType(tapeType), tapeIndices() {}
+    AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType, std::map<std::pair<llvm::Instruction*, std::string>, unsigned> tapeIndices, std::map<AugmentedStruct, unsigned> returns) : fn(fn), tapeType(tapeType), tapeIndices(tapeIndices), returns(returns) {}
 };
 
-const AugmentedReturn& CreateAugmentedPrimal(llvm::Function* todiff, llvm::AAResults &global_AA, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed, const std::set<unsigned> _uncacheable_args);
+const AugmentedReturn& CreateAugmentedPrimal(llvm::Function* todiff, llvm::AAResults &global_AA, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed, const std::map<llvm::Argument*, bool> _uncacheable_args);
 
-llvm::Function* CreatePrimalAndGradient(llvm::Function* todiff, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, llvm::AAResults &global_AA, bool returnValue, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, std::set<unsigned> _uncacheable_args, const AugmentedReturn* augmented);
+llvm::Function* CreatePrimalAndGradient(llvm::Function* todiff, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, llvm::AAResults &global_AA, bool returnValue, bool differentialReturn, bool dretPtr, bool topLevel, llvm::Type* additionalArg, std::map<llvm::Argument*, bool> _uncacheable_args, const AugmentedReturn* augmented);
 
 #endif

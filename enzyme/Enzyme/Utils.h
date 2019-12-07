@@ -76,7 +76,8 @@ enum class ReturnType {
     ArgsWithReturn,
     ArgsWithTwoReturns,
     Args,
-    TapeAndReturns,
+    TapeAndReturn,
+    TapeAndTwoReturns,
     Tape,
 };
 

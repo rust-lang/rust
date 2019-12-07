@@ -506,16 +506,15 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
     ArgTypes.push_back(additionalArg);
  }
  Type* RetType = StructType::get(F->getContext(), RetTypes);
- if (returnValue == ReturnType::TapeAndReturns || returnValue == ReturnType::Tape) {
+ if (returnValue == ReturnType::TapeAndTwoReturns || returnValue == ReturnType::TapeAndReturn || returnValue == ReturnType::Tape) {
      RetTypes.clear();
      RetTypes.push_back(Type::getInt8PtrTy(F->getContext()));
-     if (!F->getReturnType()->isVoidTy() && returnValue == ReturnType::TapeAndReturns) {
+     if (returnValue == ReturnType::TapeAndTwoReturns) {
         RetTypes.push_back(F->getReturnType());
-        //if ( (F->getReturnType()->isPointerTy() || F->getReturnType()->isIntegerTy()) && differentialReturn)
-        //if (differentialReturn)
-        if (differentialReturn && !F->getReturnType()->isFPOrFPVectorTy())
-          RetTypes.push_back(F->getReturnType());
-    }
+        RetTypes.push_back(F->getReturnType());
+      } else if (returnValue == ReturnType::TapeAndReturn) {
+        RetTypes.push_back(F->getReturnType());
+      }
     RetType = StructType::get(F->getContext(), RetTypes);
  }
 
@@ -620,14 +619,6 @@ Function *CloneFunctionWithReturns(Function *&F, AAResults &AA, TargetLibraryInf
      }
    }
  }
-
- //SmallPtrSet<Value*,4> constants2;
- //for (auto a :constants){
- //   constants2.insert(a);
-// }
- //for (auto a :nonconstant){
- //   nonconstant2.insert(a);
- //}
 
  return NewF;
 }

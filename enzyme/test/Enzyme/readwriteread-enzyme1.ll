@@ -12,8 +12,8 @@ target triple = "x86_64-unknown-linux-gnu"
 ; Function Attrs: norecurse nounwind readonly uwtable
 define dso_local double @f_read(double* nocapture readonly %x) local_unnamed_addr #0 {
 entry:
-  %0 = load double, double* %x, align 8, !tbaa !2
-  %mul = fmul double %0, %0
+  %f0 = load double, double* %x, align 8, !tbaa !2
+  %mul = fmul double %f0, %f0
   ret double %mul
 }
 

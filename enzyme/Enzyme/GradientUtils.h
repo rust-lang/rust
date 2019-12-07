@@ -52,6 +52,7 @@
 
 using namespace llvm;
 
+enum class AugmentedStruct; 
 typedef struct {
   PHINode* var;
   Instruction* incvar;
@@ -72,10 +73,11 @@ static inline bool operator==(const LoopContext& lhs, const LoopContext &rhs) {
 
 class GradientUtils {
 public:
-  llvm::Function *oldFunc;
   llvm::Function *newFunc;
+  llvm::Function *oldFunc;
   ValueToValueMapTy invertedPointers;
   DominatorTree DT;
+  DominatorTree OrigDT;
   SmallPtrSet<Value*,4> constants;
   SmallPtrSet<Value*,20> nonconstant;
   SmallPtrSet<Value*,2> nonconstant_values;
@@ -93,7 +95,7 @@ public:
   std::map<AllocaInst*, std::vector<Value*>> scopeStores;
   ValueToValueMapTy originalToNewFn;
 
-  std::map<Instruction*, bool>* can_modref_map;  
+  const std::map<Instruction*, bool>* can_modref_map;  
 
 
   Value* getNewFromOriginal(Value* originst) {
@@ -114,6 +116,9 @@ public:
     assert(f->second);
     return f->second;
   }
+  Instruction* getNewFromOriginal(Instruction* newinst) {
+    return cast<Instruction>(getNewFromOriginal((Value*)newinst));
+  }
   Value* getOriginal(Value* newinst) {
     for(auto v: originalToNewFn) {
         if (v.second == newinst) return const_cast<Value*>(v.first);
@@ -124,6 +129,9 @@ public:
   }
   Instruction* getOriginal(Instruction* newinst) {
     return cast<Instruction>(getOriginal((Value*)newinst));
+  }
+  CallInst* getOriginal(CallInst* newinst) {
+    return cast<CallInst>(getOriginal((Value*)newinst));
   }
 
   Value* getOriginalPointer(Value* newinst) {
@@ -703,8 +711,8 @@ public:
 protected:
   AAResults &AA;
   TargetLibraryInfo &TLI;
-  GradientUtils(Function* newFunc_, AAResults &AA_, TargetLibraryInfo &TLI_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
-      newFunc(newFunc_), invertedPointers(), DT(*newFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), AA(AA_), TLI(TLI_) {
+  GradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA_, TargetLibraryInfo &TLI_, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy& originalToNewFn_) :
+      newFunc(newFunc_), oldFunc(oldFunc_), invertedPointers(), DT(*newFunc_), OrigDT(*oldFunc_), constants(constants_.begin(), constants_.end()), nonconstant(nonconstant_.begin(), nonconstant_.end()), nonconstant_values(returnvals_.begin(), returnvals_.end()), LI(DT), AC(*newFunc_), SE(*newFunc_, TLI_, AC, DT, LI), inversionAllocs(nullptr), AA(AA_), TLI(TLI_) {
         invertedPointers.insert(invertedPointers_.begin(), invertedPointers_.end());
         originalToNewFn.insert(originalToNewFn_.begin(), originalToNewFn_.end());
           for (BasicBlock &BB: *newFunc) {
@@ -720,7 +728,7 @@ protected:
     }
 
 public:
-  static GradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, ReturnType returnValue, bool differentialReturn, llvm::Type* additionalArg=nullptr);
+  static GradientUtils* CreateFromClone(Function *todiff, AAResults &AA, TargetLibraryInfo &TLI, const std::set<unsigned> & constant_args, bool returnUsed, bool differentialReturn, std::map<AugmentedStruct, unsigned>& returnMapping);
 
   void prepareForReverse() {
     assert(reverseBlocks.size() == 0);
@@ -1644,8 +1652,8 @@ endCheck:
 };
 
 class DiffeGradientUtils : public GradientUtils {
-  DiffeGradientUtils(Function* newFunc_, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_)
-      : GradientUtils(newFunc_, AA, TLI, invertedPointers_, constants_, nonconstant_, returnvals_, origToNew_) {
+  DiffeGradientUtils(Function* newFunc_, Function* oldFunc_, AAResults &AA, TargetLibraryInfo &TLI, ValueToValueMapTy& invertedPointers_, const SmallPtrSetImpl<Value*> &constants_, const SmallPtrSetImpl<Value*> &nonconstant_, const SmallPtrSetImpl<Value*> &returnvals_, ValueToValueMapTy &origToNew_)
+      : GradientUtils(newFunc_, oldFunc_, AA, TLI, invertedPointers_, constants_, nonconstant_, returnvals_, origToNew_) {
         prepareForReverse();
     }
 
