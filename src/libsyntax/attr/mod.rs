@@ -144,7 +144,7 @@ impl Attribute {
     pub fn has_name(&self, name: Symbol) -> bool {
         match self.kind {
             AttrKind::Normal(ref item) => item.path == name,
-            AttrKind::DocComment(_) => name == sym::doc,
+            AttrKind::DocComment(_) => false,
         }
     }
 
@@ -168,7 +168,7 @@ impl Attribute {
                     None
                 }
             }
-            AttrKind::DocComment(_) => Some(Ident::new(sym::doc, self.span)),
+            AttrKind::DocComment(_) => None,
         }
     }
     pub fn name_or_empty(&self) -> Symbol {
@@ -180,7 +180,7 @@ impl Attribute {
             AttrKind::Normal(ref item) => {
                 item.meta(self.span).and_then(|meta| meta.value_str())
             }
-            AttrKind::DocComment(comment) => Some(comment),
+            AttrKind::DocComment(..) => None,
         }
     }
 
@@ -294,17 +294,26 @@ impl Attribute {
         }
     }
 
+    pub fn doc_str(&self) -> Option<Symbol> {
+        match self.kind {
+            AttrKind::DocComment(symbol) => Some(symbol),
+            AttrKind::Normal(ref item) if item.path == sym::doc =>
+                item.meta(self.span).and_then(|meta| meta.value_str()),
+            _ => None,
+        }
+    }
+
     pub fn get_normal_item(&self) -> &AttrItem {
         match self.kind {
             AttrKind::Normal(ref item) => item,
-            AttrKind::DocComment(_) => panic!("unexpected sugared doc"),
+            AttrKind::DocComment(_) => panic!("unexpected doc comment"),
         }
     }
 
     pub fn unwrap_normal_item(self) -> AttrItem {
         match self.kind {
             AttrKind::Normal(item) => item,
-            AttrKind::DocComment(_) => panic!("unexpected sugared doc"),
+            AttrKind::DocComment(_) => panic!("unexpected doc comment"),
         }
     }
 
@@ -312,8 +321,7 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match self.kind {
             AttrKind::Normal(ref item) => item.meta(self.span),
-            AttrKind::DocComment(comment) =>
-                Some(mk_name_value_item_str(Ident::new(sym::doc, self.span), comment, self.span)),
+            AttrKind::DocComment(..) => None,
         }
     }
 }
