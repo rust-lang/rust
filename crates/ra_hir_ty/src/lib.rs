@@ -167,15 +167,15 @@ impl TypeCtor {
             => 1,
             TypeCtor::Adt(adt) => {
                 let generic_params = generics(db, AdtId::from(adt).into());
-                generic_params.count_params_including_parent()
+                generic_params.len()
             }
             TypeCtor::FnDef(callable) => {
                 let generic_params = generics(db, callable.into());
-                generic_params.count_params_including_parent()
+                generic_params.len()
             }
             TypeCtor::AssociatedType(type_alias) => {
                 let generic_params = generics(db, type_alias.into());
-                generic_params.count_params_including_parent()
+                generic_params.len()
             }
             TypeCtor::FnPtr { num_args } => num_args as usize + 1,
             TypeCtor::Tuple { cardinality } => cardinality as usize,
@@ -378,12 +378,12 @@ impl Substs {
     pub fn build_for_def(db: &impl HirDatabase, def: impl Into<GenericDefId>) -> SubstsBuilder {
         let def = def.into();
         let params = generics(db, def);
-        let param_count = params.count_params_including_parent();
+        let param_count = params.len();
         Substs::builder(param_count)
     }
 
     pub(crate) fn build_for_generics(generic_params: &Generics) -> SubstsBuilder {
-        Substs::builder(generic_params.count_params_including_parent())
+        Substs::builder(generic_params.len())
     }
 
     pub fn build_for_type_ctor(db: &impl HirDatabase, type_ctor: TypeCtor) -> SubstsBuilder {

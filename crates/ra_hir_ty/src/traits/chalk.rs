@@ -557,7 +557,7 @@ pub(crate) fn associated_ty_data_query(
         trait_id: trait_.to_chalk(db),
         id,
         name: lalrpop_intern::intern(&db.type_alias_data(type_alias).name.to_string()),
-        binders: make_binders(bound_data, generic_params.count_params_including_parent()),
+        binders: make_binders(bound_data, generic_params.len()),
     };
     Arc::new(datum)
 }

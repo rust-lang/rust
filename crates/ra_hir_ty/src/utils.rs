@@ -117,13 +117,14 @@ impl Generics {
             .map(|(i, (_local_id, p))| (i as u32, p))
     }
 
-    pub(crate) fn count_parent_params(&self) -> usize {
-        self.parent_generics.as_ref().map_or(0, |p| p.count_params_including_parent())
+    pub(crate) fn len(&self) -> usize {
+        self.len_split().0
     }
-
-    pub(crate) fn count_params_including_parent(&self) -> usize {
-        let parent_count = self.count_parent_params();
-        parent_count + self.params.params.len()
+    /// (total, parents, child)
+    pub(crate) fn len_split(&self) -> (usize, usize, usize) {
+        let parent = self.parent_generics.as_ref().map_or(0, |p| p.len());
+        let child = self.params.params.len();
+        (parent + child, parent, child)
     }
     pub(crate) fn param_idx(&self, param: GenericParamId) -> u32 {
         self.find_param(param).0
@@ -140,8 +141,8 @@ impl Generics {
                 .enumerate()
                 .find(|(_, (idx, _))| *idx == param.local_id)
                 .unwrap();
-
-            return ((self.count_parent_params() + idx) as u32, data);
+            let (_total, parent_len, _child) = self.len_split();
+            return ((parent_len + idx) as u32, data);
         }
         self.parent_generics.as_ref().unwrap().find_param(param)
     }

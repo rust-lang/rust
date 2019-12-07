@@ -55,7 +55,7 @@ fn deref_by_trait(
     let target = db.trait_data(deref_trait).associated_type_by_name(&name::TARGET_TYPE)?;
 
     let generic_params = generics(db, target.into());
-    if generic_params.count_params_including_parent() != 1 {
+    if generic_params.len() != 1 {
         // the Target type + Deref trait should only have one generic parameter,
         // namely Deref's Self type
         return None;

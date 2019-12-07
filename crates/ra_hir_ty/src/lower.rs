@@ -321,9 +321,8 @@ pub(super) fn substs_from_path_segment(
     let mut substs = Vec::new();
     let def_generics = def_generic.map(|def| generics(db, def.into()));
 
-    let (parent_param_count, param_count) =
-        def_generics.map_or((0, 0), |g| (g.count_parent_params(), g.params.params.len()));
-    substs.extend(iter::repeat(Ty::Unknown).take(parent_param_count));
+    let (total_len, parent_len, child_len) = def_generics.map_or((0, 0, 0), |g| g.len_split());
+    substs.extend(iter::repeat(Ty::Unknown).take(parent_len));
     if add_self_param {
         // FIXME this add_self_param argument is kind of a hack: Traits have the
         // Self type as an implicit first type parameter, but it can't be
@@ -334,8 +333,8 @@ pub(super) fn substs_from_path_segment(
     if let Some(generic_args) = &segment.args_and_bindings {
         // if args are provided, it should be all of them, but we can't rely on that
         let self_param_correction = if add_self_param { 1 } else { 0 };
-        let param_count = param_count - self_param_correction;
-        for arg in generic_args.args.iter().take(param_count) {
+        let child_len = child_len + self_param_correction;
+        for arg in generic_args.args.iter().take(child_len) {
             match arg {
                 GenericArg::Type(type_ref) => {
                     let ty = Ty::from_hir(db, resolver, type_ref);
@@ -346,10 +345,10 @@ pub(super) fn substs_from_path_segment(
     }
     // add placeholders for args that were not provided
     let supplied_params = substs.len();
-    for _ in supplied_params..parent_param_count + param_count {
+    for _ in supplied_params..total_len {
         substs.push(Ty::Unknown);
     }
-    assert_eq!(substs.len(), parent_param_count + param_count);
+    assert_eq!(substs.len(), total_len);
 
     // handle defaults
     if let Some(def_generic) = def_generic {
