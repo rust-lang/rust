@@ -57,6 +57,7 @@ macro_rules! cfg_has_statx {
                 // target_arch = "mips64",
                 // target_arch = "s390x",
                 target_arch = "sparc64",
+                target_arch = "riscv64",
             )))] {
                 $($then_tt)*
             } else {
@@ -76,6 +77,7 @@ macro_rules! cfg_has_statx {
             // target_arch = "mips64",
             // target_arch = "s390x",
             target_arch = "sparc64",
+            target_arch = "riscv64",
         )))]
         {
             $($block_inner)*
