@@ -830,7 +830,21 @@ Value* GradientUtils::lookupM(Value* val, IRBuilder<>& BuilderM) {
         }
     }
 
-    if (! can_modref_map->find(inst)->second) {
+    bool legalRecompute = true;
+    if (isa<LoadInst>(inst) && originalInstructions.find(inst) != originalInstructions.end()) {
+        auto found = can_modref_map->find(getOriginal(inst));
+        if(found == can_modref_map->end()) {
+            llvm::errs() << "can_modref_map:\n"; 
+            for(auto& pair : *can_modref_map) {
+                llvm::errs() << " + " << *pair.first << ": " << pair.second << " of func " << pair.first->getParent()->getParent()->getName() << "\n";
+            }
+            llvm::errs() << "couldn't find in can_modref_map: " << *getOriginal(inst) << " in fn: " << getOriginal(inst)->getParent()->getParent()->getName();
+        }
+        assert(found != can_modref_map->end());
+        legalRecompute = !found->second;
+    }
+
+    if (legalRecompute) {
       if (shouldRecompute(inst, available)) {
           auto op = unwrapM(inst, BuilderM, available, /*lookupIfAble*/true);
           assert(op);
