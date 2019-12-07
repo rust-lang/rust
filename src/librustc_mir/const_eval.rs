@@ -9,11 +9,10 @@ use std::convert::TryInto;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
-use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
-use rustc::ty::layout::{self, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, VariantIdx};
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 use crate::interpret::eval_nullary_intrinsic;
@@ -348,7 +347,11 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
                 //
                 // For the moment we only do this for functions which take no arguments
                 // (or all arguments are ZSTs) so that we don't memoize too much.
-                if args.iter().all(|a| a.layout.is_zst()) {
+                //
+                // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
+                // perform this optimization on items tagged with it.
+                let no_implicit_args = !instance.def.requires_caller_location(ecx.tcx());
+                if args.iter().all(|a| a.layout.is_zst()) && no_implicit_args {
                     let gid = GlobalId { instance, promoted: None };
                     ecx.eval_const_fn_call(gid, ret)?;
                     return Ok(None);
@@ -559,11 +562,7 @@ pub fn const_caller_location<'tcx>(
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all());
 
-    let loc_ty = tcx.mk_imm_ref(
-        tcx.lifetimes.re_static,
-        tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
-            .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
-    );
+    let loc_ty = tcx.caller_location_ty();
     let loc_place = ecx.alloc_caller_location(file, line, col);
     intern_const_alloc_recursive(&mut ecx, None, loc_place).unwrap();
     let loc_const = ty::Const {

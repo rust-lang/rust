@@ -8,6 +8,7 @@ use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
 use crate::middle;
+use crate::middle::lang_items::PanicLocationLangItem;
 use crate::hir::{self, TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
 use crate::hir::def::{Res, DefKind, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
@@ -1587,6 +1588,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(&self) -> bool {
         self.sess.target.target.arch.contains("nvptx")
+    }
+
+    /// Returns `&'static core::panic::Location<'static>`.
+    pub fn caller_location_ty(&self) -> Ty<'tcx> {
+        self.mk_imm_ref(
+            self.lifetimes.re_static,
+            self.type_of(self.require_lang_item(PanicLocationLangItem, None))
+                .subst(*self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
+        )
     }
 }
 

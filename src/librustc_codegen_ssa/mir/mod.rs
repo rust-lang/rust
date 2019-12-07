@@ -77,6 +77,9 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// All `VarDebuginfo` from the MIR body, partitioned by `Local`.
     /// This is `None` if no variable debuginfo/names are needed.
     per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<&'tcx mir::VarDebugInfo<'tcx>>>>,
+
+    /// Caller location propagated if this function has `#[track_caller]`.
+    caller_location: Option<OperandRef<'tcx, Bx::Value>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -172,13 +175,14 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         locals: IndexVec::new(),
         debug_context,
         per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir_body),
+        caller_location: None,
     };
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
-        let args = arg_local_refs(&mut bx, &fx, &memory_locals);
+        let args = arg_local_refs(&mut bx, &mut fx, &memory_locals);
 
         let mut allocate_local = |local| {
             let decl = &mir_body.local_decls[local];
@@ -320,14 +324,14 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// indirect.
 fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    fx: &FunctionCx<'a, 'tcx, Bx>,
+    fx: &mut FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
-    mir.args_iter().enumerate().map(|(arg_index, local)| {
+    let args = mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
 
         if Some(local) == mir.spread_arg {
@@ -423,7 +427,27 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             bx.store_fn_arg(arg, &mut llarg_idx, tmp);
             LocalRef::Place(tmp)
         }
-    }).collect()
+    }).collect::<Vec<_>>();
+
+    if fx.instance.def.requires_caller_location(bx.tcx()) {
+        assert_eq!(
+            fx.fn_abi.args.len(), args.len() + 1,
+            "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
+        );
+
+        let arg = fx.fn_abi.args.last().unwrap();
+        match arg.mode {
+            PassMode::Direct(_) => (),
+            _ => bug!("caller location must be PassMode::Direct, found {:?}", arg.mode),
+        }
+
+        fx.caller_location = Some(OperandRef {
+            val: OperandValue::Immediate(bx.get_param(llarg_idx)),
+            layout: arg.layout,
+        });
+    }
+
+    args
 }
 
 mod analyze;

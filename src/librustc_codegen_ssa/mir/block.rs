@@ -774,6 +774,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 &fn_abi.args[first_args.len()..])
         }
 
+        let needs_location =
+            instance.map_or(false, |i| i.def.requires_caller_location(self.cx.tcx()));
+        if needs_location {
+            assert_eq!(
+                fn_abi.args.len(), args.len() + 1,
+                "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
+            );
+            let location = self.get_caller_location(&mut bx, span);
+            let last_arg = fn_abi.args.last().unwrap();
+            self.codegen_argument(&mut bx, location, &mut llargs, last_arg);
+        }
+
         let fn_ptr = match (llfn, instance) {
             (Some(llfn), _) => llfn,
             (None, Some(instance)) => bx.get_fn_addr(instance),
@@ -1010,14 +1022,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         span: Span,
     ) -> OperandRef<'tcx, Bx::Value> {
-        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-        let caller = bx.tcx().sess.source_map().lookup_char_pos(topmost.lo());
-        let const_loc = bx.tcx().const_caller_location((
-            Symbol::intern(&caller.file.name.to_string()),
-            caller.line as u32,
-            caller.col_display as u32 + 1,
-        ));
-        OperandRef::from_const(bx, const_loc)
+        self.caller_location.unwrap_or_else(|| {
+            let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+            let caller = bx.tcx().sess.source_map().lookup_char_pos(topmost.lo());
+            let const_loc = bx.tcx().const_caller_location((
+                Symbol::intern(&caller.file.name.to_string()),
+                caller.line as u32,
+                caller.col_display as u32 + 1,
+            ));
+            OperandRef::from_const(bx, const_loc)
+        })
     }
 
     fn get_personality_slot(

@@ -112,6 +112,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // `src/librustc/ty/constness.rs`
         match intrinsic_name {
             sym::caller_location => {
+                let span = self.find_closest_untracked_caller_location().unwrap_or(span);
                 let location = self.alloc_caller_location_for_span(span);
                 self.write_scalar(location.ptr, dest)?;
             }
