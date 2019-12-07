@@ -53,7 +53,7 @@ fn large() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn subnormals() {
     test_literal!(5e-324);
     test_literal!(91e-324);
@@ -65,7 +65,7 @@ fn subnormals() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn infinity() {
     test_literal!(1e400);
     test_literal!(1e309);
