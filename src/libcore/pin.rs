@@ -415,11 +415,11 @@ where
     P::Target: PartialEq<Q::Target>,
 {
     fn eq(&self, other: &Pin<Q>) -> bool {
-        **self == **other
+        P::Target::eq(self, other)
     }
 
     fn ne(&self, other: &Pin<Q>) -> bool {
-        **self != **other
+        P::Target::ne(self, other)
     }
 }
 
@@ -432,37 +432,37 @@ where
     P::Target: PartialOrd<Q::Target>,
 {
     fn partial_cmp(&self, other: &Pin<Q>) -> Option<cmp::Ordering> {
-        (**self).partial_cmp(other)
+        P::Target::partial_cmp(self, other)
     }
 
     fn lt(&self, other: &Pin<Q>) -> bool {
-        **self < **other
+        P::Target::lt(self, other)
     }
 
     fn le(&self, other: &Pin<Q>) -> bool {
-        **self <= **other
+        P::Target::le(self, other)
     }
 
     fn gt(&self, other: &Pin<Q>) -> bool {
-        **self > **other
+        P::Target::gt(self, other)
     }
 
     fn ge(&self, other: &Pin<Q>) -> bool {
-        **self >= **other
+        P::Target::ge(self, other)
     }
 }
 
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
 impl<P: Deref<Target: Ord>> Ord for Pin<P> {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        (**self).cmp(other)
+        P::Target::cmp(self, other)
     }
 }
 
 #[stable(feature = "pin_trait_impls", since = "1.41.0")]
 impl<P: Deref<Target: Hash>> Hash for Pin<P> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (**self).hash(state);
+        P::Target::hash(self, state);
     }
 }
 
