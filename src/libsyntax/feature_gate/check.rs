@@ -573,7 +573,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
 
     fn visit_trait_item(&mut self, ti: &'a ast::AssocItem) {
         match ti.kind {
-            ast::AssocItemKind::Method(ref sig, ref block) => {
+            ast::AssocItemKind::Fn(ref sig, ref block) => {
                 if block.is_none() {
                     self.check_extern(sig.header.ext);
                 }
@@ -600,7 +600,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         }
 
         match ii.kind {
-            ast::AssocItemKind::Method(ref sig, _) => {
+            ast::AssocItemKind::Fn(ref sig, _) => {
                 if sig.decl.c_variadic() {
                     gate_feature_post!(
                         &self, c_variadic, ii.span,

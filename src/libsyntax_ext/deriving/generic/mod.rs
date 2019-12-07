@@ -958,7 +958,7 @@ impl<'a> MethodDef<'a> {
             vis: respan(trait_lo_sp, ast::VisibilityKind::Inherited),
             defaultness: ast::Defaultness::Final,
             ident: method_ident,
-            kind: ast::AssocItemKind::Method(sig, Some(body_block)),
+            kind: ast::AssocItemKind::Fn(sig, Some(body_block)),
             tokens: None,
         }
     }

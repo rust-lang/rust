@@ -481,7 +481,7 @@ impl<'a> LoweringContext<'a> {
                 self.lctx.allocate_hir_id_counter(item.id);
 
                 match item.kind {
-                    AssocItemKind::Method(_, None) => {
+                    AssocItemKind::Fn(_, None) => {
                         // Ignore patterns in trait methods without bodies
                         self.with_hir_id_owner(None, |this| {
                             visit::walk_trait_item(this, item)

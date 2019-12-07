@@ -1790,7 +1790,7 @@ impl<'a> Parser<'a> {
         })?;
         let sig = FnSig { header, decl };
         let body = self.parse_assoc_fn_body(at_end, attrs)?;
-        Ok((ident, AssocItemKind::Method(sig, body), generics))
+        Ok((ident, AssocItemKind::Fn(sig, body), generics))
     }
 
     /// Parse the "body" of a method in an associated item definition.

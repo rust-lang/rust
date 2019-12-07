@@ -1634,8 +1634,7 @@ pub enum AssocItemKind  {
     Const(P<Ty>, Option<P<Expr>>),
 
     /// An associated function.
-    /// FIXME(Centril): Rename to `Fn`.
-    Method(FnSig, Option<P<Block>>),
+    Fn(FnSig, Option<P<Block>>),
 
     /// An associated type.
     TyAlias(GenericBounds, Option<P<Ty>>),

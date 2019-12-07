@@ -1044,7 +1044,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     &trait_item.attrs,
                 );
             }
-            ast::AssocItemKind::Method(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref body) => {
                 self.process_method(
                     sig,
                     body.as_ref().map(|x| &**x),
@@ -1115,7 +1115,7 @@ impl<'l, 'tcx> DumpVisitor<'l, 'tcx> {
                     &impl_item.attrs,
                 );
             }
-            ast::AssocItemKind::Method(ref sig, ref body) => {
+            ast::AssocItemKind::Fn(ref sig, ref body) => {
                 self.process_method(
                     sig,
                     body.as_deref(),

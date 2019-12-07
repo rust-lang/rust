@@ -818,7 +818,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                     });
                                                 }
                                             }
-                                            AssocItemKind::Method(_, _) => {
+                                            AssocItemKind::Fn(_, _) => {
                                                 visit::walk_assoc_item(this, trait_item)
                                             }
                                             AssocItemKind::TyAlias(..) => {
@@ -1109,7 +1109,7 @@ impl<'a, 'b> LateResolutionVisitor<'a, '_> {
                                                     visit::walk_assoc_item(this, impl_item)
                                                 });
                                             }
-                                            AssocItemKind::Method(..) => {
+                                            AssocItemKind::Fn(..) => {
                                                 // If this is a trait impl, ensure the method
                                                 // exists in trait
                                                 this.check_trait_item(impl_item.ident,

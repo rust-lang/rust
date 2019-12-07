@@ -826,7 +826,7 @@ impl LoweringContext<'_> {
                         .map(|x| self.lower_const_body(i.span, Some(x))),
                 ),
             ),
-            AssocItemKind::Method(ref sig, None) => {
+            AssocItemKind::Fn(ref sig, None) => {
                 let names = self.lower_fn_params_to_names(&sig.decl);
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
@@ -837,7 +837,7 @@ impl LoweringContext<'_> {
                 );
                 (generics, hir::TraitItemKind::Method(sig, hir::TraitMethod::Required(names)))
             }
-            AssocItemKind::Method(ref sig, Some(ref body)) => {
+            AssocItemKind::Fn(ref sig, Some(ref body)) => {
                 let body_id = self.lower_fn_body_block(i.span, &sig.decl, Some(body));
                 let (generics, sig) = self.lower_method_sig(
                     &i.generics,
@@ -880,7 +880,7 @@ impl LoweringContext<'_> {
             AssocItemKind::TyAlias(_, ref default) => {
                 (hir::AssocItemKind::Type, default.is_some())
             }
-            AssocItemKind::Method(ref sig, ref default) => (
+            AssocItemKind::Fn(ref sig, ref default) => (
                 hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
@@ -913,7 +913,7 @@ impl LoweringContext<'_> {
                     self.lower_const_body(i.span, expr.as_deref()),
                 ),
             ),
-            AssocItemKind::Method(ref sig, ref body) => {
+            AssocItemKind::Fn(ref sig, ref body) => {
                 self.current_item = Some(i.span);
                 let body_id = self.lower_maybe_async_body(
                     i.span,
@@ -984,7 +984,7 @@ impl LoweringContext<'_> {
                     None => hir::AssocItemKind::Type,
                     Some(_) => hir::AssocItemKind::OpaqueTy,
                 },
-                AssocItemKind::Method(sig, _) => hir::AssocItemKind::Method {
+                AssocItemKind::Fn(sig, _) => hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
                 AssocItemKind::Macro(..) => unimplemented!(),

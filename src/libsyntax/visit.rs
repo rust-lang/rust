@@ -600,11 +600,11 @@ pub fn walk_assoc_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a AssocItem)
             visitor.visit_ty(ty);
             walk_list!(visitor, visit_expr, expr);
         }
-        AssocItemKind::Method(ref sig, None) => {
+        AssocItemKind::Fn(ref sig, None) => {
             visitor.visit_fn_header(&sig.header);
             walk_fn_decl(visitor, &sig.decl);
         }
-        AssocItemKind::Method(ref sig, Some(ref body)) => {
+        AssocItemKind::Fn(ref sig, Some(ref body)) => {
             visitor.visit_fn(FnKind::Method(item.ident, sig, &item.vis, body),
                              &sig.decl, item.span, item.id);
         }

@@ -214,11 +214,8 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_trait_item(&mut self, ti: &'a AssocItem) {
         let def_data = match ti.kind {
-            AssocItemKind::Method(..) | AssocItemKind::Const(..) =>
-                DefPathData::ValueNs(ti.ident.name),
-            AssocItemKind::TyAlias(..) => {
-                DefPathData::TypeNs(ti.ident.name)
-            },
+            AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(ti.ident.name),
+            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(ti.ident.name),
             AssocItemKind::Macro(..) => return self.visit_macro_invoc(ti.id),
         };
 
@@ -228,7 +225,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_impl_item(&mut self, ii: &'a AssocItem) {
         let def_data = match ii.kind {
-            AssocItemKind::Method(FnSig {
+            AssocItemKind::Fn(FnSig {
                 ref header,
                 ref decl,
             }, ref body) if header.asyncness.node.is_async() => {
@@ -242,7 +239,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                     body.as_deref(),
                 )
             }
-            AssocItemKind::Method(..) |
+            AssocItemKind::Fn(..) |
             AssocItemKind::Const(..) => DefPathData::ValueNs(ii.ident.name),
             AssocItemKind::TyAlias(..) => DefPathData::TypeNs(ii.ident.name),
             AssocItemKind::Macro(..) => return self.visit_macro_invoc(ii.id),

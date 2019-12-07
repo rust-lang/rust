@@ -544,7 +544,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 }
                 for impl_item in impl_items {
                     self.invalid_visibility(&impl_item.vis, None);
-                    if let AssocItemKind::Method(ref sig, _) = impl_item.kind {
+                    if let AssocItemKind::Fn(ref sig, _) = impl_item.kind {
                         self.check_trait_fn_not_const(sig.header.constness);
                         self.check_trait_fn_not_async(impl_item.span, sig.header.asyncness.node);
                     }
@@ -795,7 +795,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             AssocItemKind::Const(_, body) => {
                 self.check_impl_item_provided(ii.span, body, "constant", " = <expr>;");
             }
-            AssocItemKind::Method(sig, body) => {
+            AssocItemKind::Fn(sig, body) => {
                 self.check_impl_item_provided(ii.span, body, "function", " { <body> }");
                 self.check_fn_decl(&sig.decl);
             }
@@ -812,7 +812,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
         self.invalid_visibility(&ti.vis, None);
         self.check_defaultness(ti.span, ti.defaultness);
 
-        if let AssocItemKind::Method(sig, block) = &ti.kind {
+        if let AssocItemKind::Fn(sig, block) = &ti.kind {
             self.check_fn_decl(&sig.decl);
             self.check_trait_fn_not_async(ti.span, sig.header.asyncness.node);
             self.check_trait_fn_not_const(sig.header.constness);
@@ -838,7 +838,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
     }
 
     fn visit_assoc_item(&mut self, item: &'a AssocItem) {
-        if let AssocItemKind::Method(sig, _) = &item.kind {
+        if let AssocItemKind::Fn(sig, _) = &item.kind {
             self.check_c_varadic_type(&sig.decl);
         }
         visit::walk_assoc_item(self, item);

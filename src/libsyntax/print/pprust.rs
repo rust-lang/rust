@@ -1528,7 +1528,7 @@ impl<'a> State<'a> {
             ast::AssocItemKind::Const(ty, expr) => {
                 self.print_associated_const(item.ident, ty, expr.as_deref(), &item.vis);
             }
-            ast::AssocItemKind::Method(sig, body) => {
+            ast::AssocItemKind::Fn(sig, body) => {
                 if body.is_some() {
                     self.head("");
                 }

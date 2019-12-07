@@ -955,7 +955,7 @@ pub fn noop_flat_map_assoc_item<T: MutVisitor>(mut item: AssocItem, visitor: &mu
             visitor.visit_ty(ty);
             visit_opt(expr, |expr| visitor.visit_expr(expr));
         }
-        AssocItemKind::Method(sig, body) => {
+        AssocItemKind::Fn(sig, body) => {
             visit_fn_sig(sig, visitor);
             visit_opt(body, |body| visitor.visit_block(body));
         }
