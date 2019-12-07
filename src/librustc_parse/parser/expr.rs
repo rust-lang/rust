@@ -210,30 +210,12 @@ impl<'a> Parser<'a> {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue;
             } else if op == AssocOp::Colon {
-                let maybe_path = self.could_ascription_be_path(&lhs.kind);
-                self.last_type_ascription = Some((self.prev_span, maybe_path));
-
-                lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
-                self.sess.gated_spans.gate(sym::type_ascription, lhs.span);
+                lhs = self.parse_assoc_op_ascribe(lhs, lhs_span)?;
                 continue;
             } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
                 // If we didn’t have to handle `x..`/`x..=`, it would be pretty easy to
                 // generalise it to the Fixity::None code.
-                //
-                // We have 2 alternatives here: `x..y`/`x..=y` and `x..`/`x..=` The other
-                // two variants are handled with `parse_prefix_range_expr` call above.
-                let rhs = if self.is_at_start_of_range_notation_rhs() {
-                    Some(self.parse_assoc_expr_with(prec + 1, LhsExpr::NotYetParsed)?)
-                } else {
-                    None
-                };
-                let (lhs_span, rhs_span) =
-                    (lhs.span, if let Some(ref x) = rhs { x.span } else { cur_op_span });
-                let limits =
-                    if op == AssocOp::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
-
-                let r = self.mk_range(Some(lhs), rhs, limits)?;
-                lhs = self.mk_expr(lhs_span.to(rhs_span), r, AttrVec::new());
+                lhs = self.parse_range_expr(prec, lhs, op, cur_op_span)?;
                 break;
             }
 
@@ -391,6 +373,27 @@ impl<'a> Parser<'a> {
     fn expr_is_complete(&self, e: &Expr) -> bool {
         self.restrictions.contains(Restrictions::STMT_EXPR)
             && !classify::expr_requires_semi_to_be_stmt(e)
+    }
+
+    /// Parses `x..y`, `x..=y`, and `x..`/`x..=`.
+    /// The other two variants are handled in `parse_prefix_range_expr` below.
+    fn parse_range_expr(
+        &mut self,
+        prec: usize,
+        lhs: P<Expr>,
+        op: AssocOp,
+        cur_op_span: Span,
+    ) -> PResult<'a, P<Expr>> {
+        let rhs = if self.is_at_start_of_range_notation_rhs() {
+            Some(self.parse_assoc_expr_with(prec + 1, LhsExpr::NotYetParsed)?)
+        } else {
+            None
+        };
+        let rhs_span = rhs.as_ref().map_or(cur_op_span, |x| x.span);
+        let span = lhs.span.to(rhs_span);
+        let limits =
+            if op == AssocOp::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
+        Ok(self.mk_expr(span, self.mk_range(Some(lhs), rhs, limits)?, AttrVec::new()))
     }
 
     fn is_at_start_of_range_notation_rhs(&self) -> bool {
@@ -613,6 +616,14 @@ impl<'a> Parser<'a> {
                 }
             }
         }
+    }
+
+    fn parse_assoc_op_ascribe(&mut self, lhs: P<Expr>, lhs_span: Span) -> PResult<'a, P<Expr>> {
+        let maybe_path = self.could_ascription_be_path(&lhs.kind);
+        self.last_type_ascription = Some((self.prev_span, maybe_path));
+        let lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Type)?;
+        self.sess.gated_spans.gate(sym::type_ascription, lhs.span);
+        Ok(lhs)
     }
 
     /// Parse `& mut? <expr>` or `& raw [ const | mut ] <expr>`.
