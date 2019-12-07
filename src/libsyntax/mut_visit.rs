@@ -1053,7 +1053,7 @@ pub fn noop_flat_map_item<T: MutVisitor>(mut item: P<Item>, visitor: &mut T)
 pub fn noop_flat_map_foreign_item<T: MutVisitor>(mut item: ForeignItem, visitor: &mut T)
     -> SmallVec<[ForeignItem; 1]>
 {
-    let ForeignItem { ident, attrs, kind, id, span, vis } = &mut item;
+    let ForeignItem { ident, attrs, id, kind, vis, span, tokens: _ } = &mut item;
     visitor.visit_ident(ident);
     visit_attrs(attrs, visitor);
     match kind {
