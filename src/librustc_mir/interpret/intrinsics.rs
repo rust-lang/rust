@@ -392,7 +392,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             throw_panic!(Panic { msg, file, line, col })
         } else if Some(def_id) == self.tcx.lang_items().begin_panic_fn() {
             assert!(args.len() == 2);
-            // &'static str, &(&'static str, u32, u32)
+            // &'static str, &core::panic::Location { &'static str, u32, u32 }
             let msg = args[0];
             let place = self.deref_operand(args[1])?;
             let (file, line, col) = (

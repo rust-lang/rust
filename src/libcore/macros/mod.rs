@@ -1,19 +1,13 @@
 #[doc(include = "panic.md")]
 #[macro_export]
-#[allow_internal_unstable(core_panic,
-    // FIXME(anp, eddyb) `core_intrinsics` is used here to allow calling
-    // the `caller_location` intrinsic, but once  `#[track_caller]` is implemented,
-    // `panicking::{panic, panic_fmt}` can use that instead of a `Location` argument.
-    core_intrinsics,
-    const_caller_location,
-)]
+#[allow_internal_unstable(core_panic, track_caller)]
 #[stable(feature = "core", since = "1.6.0")]
 macro_rules! panic {
     () => (
         $crate::panic!("explicit panic")
     );
     ($msg:expr) => (
-        $crate::panicking::panic($msg, $crate::intrinsics::caller_location())
+        $crate::panicking::panic($msg)
     );
     ($msg:expr,) => (
         $crate::panic!($msg)
@@ -21,7 +15,7 @@ macro_rules! panic {
     ($fmt:expr, $($arg:tt)+) => (
         $crate::panicking::panic_fmt(
             $crate::format_args!($fmt, $($arg)+),
-            $crate::intrinsics::caller_location(),
+            $crate::panic::Location::caller(),
         )
     );
 }
