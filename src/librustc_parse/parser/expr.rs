@@ -406,10 +406,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses prefix-forms of range notation: `..expr`, `..`, `..=expr`.
-    fn parse_prefix_range_expr(
-        &mut self,
-        already_parsed_attrs: Option<AttrVec>,
-    ) -> PResult<'a, P<Expr>> {
+    fn parse_prefix_range_expr(&mut self, attrs: Option<AttrVec>) -> PResult<'a, P<Expr>> {
         // Check for deprecated `...` syntax.
         if self.token == token::DotDotDot {
             self.err_dotdotdot_syntax(self.token.span);
@@ -420,25 +417,23 @@ impl<'a> Parser<'a> {
             "parse_prefix_range_expr: token {:?} is not DotDot/DotDotEq",
             self.token
         );
-        let tok = self.token.clone();
-        let attrs = self.parse_or_use_outer_attributes(already_parsed_attrs)?;
-        let lo = self.token.span;
-        let mut hi = self.token.span;
-        self.bump();
-        let opt_end = if self.is_at_start_of_range_notation_rhs() {
-            // RHS must be parsed with more associativity than the dots.
-            let next_prec = AssocOp::from_token(&tok).unwrap().precedence() + 1;
-            Some(self.parse_assoc_expr_with(next_prec, LhsExpr::NotYetParsed).map(|x| {
-                hi = x.span;
-                x
-            })?)
-        } else {
-            None
-        };
-        let limits = if tok == token::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
 
-        let r = self.mk_range(None, opt_end, limits)?;
-        Ok(self.mk_expr(lo.to(hi), r, attrs))
+        let limits = match self.token.kind {
+            token::DotDot => RangeLimits::HalfOpen,
+            _ => RangeLimits::Closed,
+        };
+        let op = AssocOp::from_token(&self.token);
+        let attrs = self.parse_or_use_outer_attributes(attrs)?;
+        let lo = self.token.span;
+        self.bump();
+        let (span, opt_end) = if self.is_at_start_of_range_notation_rhs() {
+            // RHS must be parsed with more associativity than the dots.
+            self.parse_assoc_expr_with(op.unwrap().precedence() + 1, LhsExpr::NotYetParsed)
+                .map(|x| (lo.to(x.span), Some(x)))?
+        } else {
+            (lo, None)
+        };
+        Ok(self.mk_expr(span, self.mk_range(None, opt_end, limits)?, attrs))
     }
 
     /// Parses a prefix-unary-operator expr.
