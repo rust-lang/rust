@@ -4,12 +4,18 @@
 //! in rustc.
 use std::sync::Arc;
 
-use hir_expand::name::{self, AsName, Name};
-use ra_arena::Arena;
+use either::Either;
+use hir_expand::{
+    name::{self, AsName, Name},
+    InFile,
+};
+use ra_arena::{map::ArenaMap, Arena};
+use ra_db::FileId;
 use ra_syntax::ast::{self, NameOwner, TypeBoundsOwner, TypeParamsOwner};
 
 use crate::{
     db::DefDatabase,
+    src::HasChildSource,
     src::HasSource,
     type_ref::{TypeBound, TypeRef},
     AdtId, AstItemDef, GenericDefId, LocalGenericParamId, Lookup,
@@ -39,46 +45,81 @@ pub struct WherePredicate {
     pub bound: TypeBound,
 }
 
+type SourceMap = ArenaMap<LocalGenericParamId, Either<ast::TraitDef, ast::TypeParam>>;
+
 impl GenericParams {
     pub(crate) fn generic_params_query(
         db: &impl DefDatabase,
         def: GenericDefId,
     ) -> Arc<GenericParams> {
-        Arc::new(GenericParams::new(db, def.into()))
+        let (params, _source_map) = GenericParams::new(db, def.into());
+        Arc::new(params)
     }
 
-    fn new(db: &impl DefDatabase, def: GenericDefId) -> GenericParams {
+    fn new(db: &impl DefDatabase, def: GenericDefId) -> (GenericParams, InFile<SourceMap>) {
         let mut generics = GenericParams { params: Arena::default(), where_predicates: Vec::new() };
+        let mut sm = ArenaMap::default();
         // FIXME: add `: Sized` bound for everything except for `Self` in traits
-        match def {
-            GenericDefId::FunctionId(it) => generics.fill(&it.lookup(db).source(db).value),
-            GenericDefId::AdtId(AdtId::StructId(it)) => generics.fill(&it.source(db).value),
-            GenericDefId::AdtId(AdtId::UnionId(it)) => generics.fill(&it.source(db).value),
-            GenericDefId::AdtId(AdtId::EnumId(it)) => generics.fill(&it.source(db).value),
+        let file_id = match def {
+            GenericDefId::FunctionId(it) => {
+                let src = it.lookup(db).source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            GenericDefId::AdtId(AdtId::StructId(it)) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            GenericDefId::AdtId(AdtId::UnionId(it)) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            GenericDefId::AdtId(AdtId::EnumId(it)) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
             GenericDefId::TraitId(it) => {
+                let src = it.source(db);
+
                 // traits get the Self type as an implicit first type parameter
-                generics.params.alloc(GenericParamData { name: name::SELF_TYPE, default: None });
+                let self_param_id = generics
+                    .params
+                    .alloc(GenericParamData { name: name::SELF_TYPE, default: None });
+                sm.insert(self_param_id, Either::Left(src.value.clone()));
                 // add super traits as bounds on Self
                 // i.e., trait Foo: Bar is equivalent to trait Foo where Self: Bar
                 let self_param = TypeRef::Path(name::SELF_TYPE.into());
-                generics.fill_bounds(&it.source(db).value, self_param);
+                generics.fill_bounds(&src.value, self_param);
 
-                generics.fill(&it.source(db).value);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
             }
-            GenericDefId::TypeAliasId(it) => generics.fill(&it.lookup(db).source(db).value),
+            GenericDefId::TypeAliasId(it) => {
+                let src = it.lookup(db).source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
             // Note that we don't add `Self` here: in `impl`s, `Self` is not a
             // type-parameter, but rather is a type-alias for impl's target
             // type, so this is handled by the resolver.
-            GenericDefId::ImplId(it) => generics.fill(&it.source(db).value),
-            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => {}
-        }
+            GenericDefId::ImplId(it) => {
+                let src = it.source(db);
+                generics.fill(&mut sm, &src.value);
+                src.file_id
+            }
+            // We won't be using this ID anyway
+            GenericDefId::EnumVariantId(_) | GenericDefId::ConstId(_) => FileId(!0).into(),
+        };
 
-        generics
+        (generics, InFile::new(file_id, sm))
     }
 
-    fn fill(&mut self, node: &dyn TypeParamsOwner) {
+    fn fill(&mut self, sm: &mut SourceMap, node: &dyn TypeParamsOwner) {
         if let Some(params) = node.type_param_list() {
-            self.fill_params(params)
+            self.fill_params(sm, params)
         }
         if let Some(where_clause) = node.where_clause() {
             self.fill_where_predicates(where_clause);
@@ -93,13 +134,14 @@ impl GenericParams {
         }
     }
 
-    fn fill_params(&mut self, params: ast::TypeParamList) {
+    fn fill_params(&mut self, sm: &mut SourceMap, params: ast::TypeParamList) {
         for type_param in params.type_params() {
             let name = type_param.name().map_or_else(Name::missing, |it| it.as_name());
             // FIXME: Use `Path::from_src`
             let default = type_param.default_type().map(TypeRef::from_ast);
             let param = GenericParamData { name: name.clone(), default };
-            self.params.alloc(param);
+            let param_id = self.params.alloc(param);
+            sm.insert(param_id, Either::Right(type_param.clone()));
 
             let type_ref = TypeRef::Path(name.into());
             self.fill_bounds(&type_param, type_ref);
@@ -130,5 +172,14 @@ impl GenericParams {
 
     pub fn find_by_name(&self, name: &Name) -> Option<LocalGenericParamId> {
         self.params.iter().find_map(|(id, p)| if &p.name == name { Some(id) } else { None })
+    }
+}
+
+impl HasChildSource for GenericDefId {
+    type ChildId = LocalGenericParamId;
+    type Value = Either<ast::TraitDef, ast::TypeParam>;
+    fn child_source(&self, db: &impl DefDatabase) -> InFile<SourceMap> {
+        let (_, sm) = GenericParams::new(db, *self);
+        sm
     }
 }
