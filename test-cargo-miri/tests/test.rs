@@ -13,8 +13,8 @@ fn simple2() {
 }
 
 // A test that won't work on miri (tests disabling tests).
-#[cfg(not(miri))]
 #[test]
+#[cfg_attr(miri, ignore)]
 fn does_not_work_on_miri() {
     let x = 0u8;
     assert!(&x as *const _ as usize % 4 < 4);

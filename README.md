@@ -79,13 +79,13 @@ interpreted program or test suite after the second `--`.  For example, `cargo
 miri run -- -Zmiri-disable-validation` runs the program without validation of
 basic type invariants and without checking the aliasing of references.
 
-When running code via `cargo miri`, the `miri` config flag is set.  You can
-use this to exclude test cases that will fail under Miri because they do things
+When compiling code via `cargo miri`, the `miri` config flag is set.  You can
+use this to ignore test cases that will fail under Miri because they do things
 Miri does not support:
 
 ```rust
-#[cfg(not(miri))]
 #[test]
+#[cfg_attr(miri, ignore)]
 fn does_not_work_on_miri() {
     std::thread::spawn(|| println!("Hello Thread!"))
         .join()
