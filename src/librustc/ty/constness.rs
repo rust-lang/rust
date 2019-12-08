@@ -108,7 +108,9 @@ impl<'tcx> TyCtxt<'tcx> {
                         false
                     }
                 } else {
-                    // Unstable functions or internal functions need not conform to min const fn.
+                    // Internal functions need not conform to min const fn unless used inside stable
+                    // const fns. Annotate the internal function with a const stability attribute if
+                    // you need this.
                     false
                 },
                 // Everything else needs to conform, because it would be callable from
