@@ -1,0 +1,12 @@
+error: lifetime may not live long enough
+  --> $DIR/error-handling.rs:13:56
+   |
+LL | fn foo<'a, 'b, 'c>(x: &'static i32, mut y: &'a i32) -> E<'b, 'c> {
+   |        --  -- lifetime `'b` defined here               ^^^^^^^^^ opaque type requires that `'a` must outlive `'b`
+   |        |
+   |        lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'a: 'b`
+
+error: aborting due to previous error
+
