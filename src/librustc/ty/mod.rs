@@ -1305,7 +1305,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     }
 
     #[inline]
-    pub fn to_poly_trait_ref(&self, tcx: TyCtxt<'_>) -> PolyTraitRef<'tcx> {
+    pub fn to_poly_trait_ref(&self, tcx: TyCtxt<'tcx>) -> PolyTraitRef<'tcx> {
         // Note: unlike with `TraitRef::to_poly_trait_ref()`,
         // `self.0.trait_ref` is permitted to have escaping regions.
         // This is because here `self` has a `Binder` and so does our

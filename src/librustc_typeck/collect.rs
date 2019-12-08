@@ -224,10 +224,19 @@ impl AstConv<'tcx> for ItemCtxt<'tcx> {
         &self,
         span: Span,
         item_def_id: DefId,
+        item_segment: &hir::PathSegment,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
         if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
-            self.tcx().mk_projection(item_def_id, trait_ref.substs)
+            let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
+                self,
+                self.tcx,
+                span,
+                item_def_id,
+                item_segment,
+                trait_ref.substs,
+            );
+            self.tcx().mk_projection(item_def_id, item_substs)
         } else {
             // There are no late-bound regions; we can just ignore the binder.
             span_err!(

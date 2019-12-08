@@ -2613,6 +2613,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn projected_ty_from_poly_trait_ref(&self,
                                         span: Span,
                                         item_def_id: DefId,
+                                        item_segment: &hir::PathSegment,
                                         poly_trait_ref: ty::PolyTraitRef<'tcx>)
                                         -> Ty<'tcx>
     {
@@ -2622,7 +2623,16 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             &poly_trait_ref
         );
 
-        self.tcx().mk_projection(item_def_id, trait_ref.substs)
+        let item_substs = <dyn AstConv<'tcx>>::create_substs_for_associated_item(
+            self,
+            self.tcx,
+            span,
+            item_def_id,
+            item_segment,
+            trait_ref.substs,
+        );
+
+        self.tcx().mk_projection(item_def_id, item_substs)
     }
 
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
