@@ -310,8 +310,7 @@ impl Layout {
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutErr> {
         let new_size = self.size().checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
-        let layout = Layout::from_size_align(new_size, self.align())?;
-        Ok(layout)
+        Layout::from_size_align(new_size, self.align())
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
