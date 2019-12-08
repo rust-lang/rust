@@ -121,27 +121,7 @@ impl<'a> Parser<'a> {
             let (qself, path) = self.parse_qpath(PathStyle::Type)?;
             TyKind::Path(Some(qself), path)
         } else if self.token.is_path_start() {
-            // Simple path
-            let path = self.parse_path(PathStyle::Type)?;
-            if self.eat(&token::Not) {
-                // Macro invocation in type position
-                let args = self.parse_mac_args()?;
-                let mac = Mac {
-                    path,
-                    args,
-                    prior_type_ascription: self.last_type_ascription,
-                };
-                TyKind::Mac(mac)
-            } else {
-                // Just a type path or bound list (trait object type) starting with a trait.
-                //   `Type`
-                //   `Trait1 + Trait2 + 'a`
-                if allow_plus && self.check_plus() {
-                    self.parse_remaining_bounds(Vec::new(), path, lo, true)?
-                } else {
-                    TyKind::Path(None, path)
-                }
-            }
+            self.parse_path_start_ty(lo, allow_plus)?
         } else if self.eat(&token::DotDotDot) {
             if allow_c_variadic {
                 TyKind::CVarArgs
@@ -328,6 +308,31 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_generic_bounds(None)?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn))
+    }
+
+    /// Parses a type starting with a path.
+    ///
+    /// This can be:
+    /// 1. a type macro, `mac!(...)`,
+    /// 2. a bare trait object, `B0 + ... + Bn`,
+    /// 3. or a path, `path::to::MyType`.
+    fn parse_path_start_ty(&mut self, lo: Span, allow_plus: bool) -> PResult<'a, TyKind> {
+        // Simple path
+        let path = self.parse_path(PathStyle::Type)?;
+        if self.eat(&token::Not) {
+            // Macro invocation in type position
+            Ok(TyKind::Mac(Mac {
+                path,
+                args: self.parse_mac_args()?,
+                prior_type_ascription: self.last_type_ascription,
+            }))
+        } else if allow_plus && self.check_plus() {
+            // `Trait1 + Trait2 + 'a`
+            self.parse_remaining_bounds(Vec::new(), path, lo, true)
+        } else {
+            // Just a type path.
+            Ok(TyKind::Path(None, path))
+        }
     }
 
     pub(super) fn parse_generic_bounds(&mut self,
