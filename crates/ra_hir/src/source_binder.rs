@@ -427,7 +427,7 @@ impl SourceAnalyzer {
 
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
-    pub fn impls_future(&self, db: &impl HirDatabase, ty: Ty) -> bool {
+    pub fn impls_future(&self, db: &impl HirDatabase, ty: Type) -> bool {
         let std_future_path = known::std_future_future();
 
         let std_future_trait = match self.resolver.resolve_known_trait(db, &std_future_path) {
@@ -440,7 +440,7 @@ impl SourceAnalyzer {
             _ => return false,
         };
 
-        let canonical_ty = Canonical { value: ty, num_vars: 0 };
+        let canonical_ty = Canonical { value: ty.ty.value, num_vars: 0 };
         implements_trait(&canonical_ty, db, &self.resolver, krate.into(), std_future_trait)
     }
 

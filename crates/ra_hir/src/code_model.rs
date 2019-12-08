@@ -986,11 +986,6 @@ impl Type {
         None
     }
 
-    // FIXME: remove
-    pub fn into_ty(self) -> Ty {
-        self.ty.value
-    }
-
     pub fn as_adt(&self) -> Option<Adt> {
         let (adt, _subst) = self.ty.value.as_adt()?;
         Some(adt.into())
