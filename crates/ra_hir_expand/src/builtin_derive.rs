@@ -208,7 +208,7 @@ fn partial_ord_expand(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_db::TestDB, AstId, MacroCallKind, MacroCallLoc, MacroFileKind};
+    use crate::{test_db::TestDB, AstId, MacroCallKind, MacroCallLoc};
     use ra_db::{fixture::WithFixture, SourceDatabase};
 
     fn expand_builtin_derive(s: &str, expander: BuiltinDeriveExpander) -> String {
@@ -229,7 +229,7 @@ mod tests {
         };
 
         let id = db.intern_macro(loc);
-        let parsed = db.parse_or_expand(id.as_file(MacroFileKind::Items)).unwrap();
+        let parsed = db.parse_or_expand(id.as_file()).unwrap();
 
         // FIXME text() for syntax nodes parsed from token tree looks weird
         // because there's no whitespace, see below

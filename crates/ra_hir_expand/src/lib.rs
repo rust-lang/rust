@@ -117,14 +117,6 @@ impl HirFileId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroFile {
     macro_call_id: MacroCallId,
-    macro_file_kind: MacroFileKind,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroFileKind {
-    Items,
-    Expr,
-    Statements,
 }
 
 /// `MacroCallId` identifies a particular macro invocation, like
@@ -205,9 +197,8 @@ impl MacroCallKind {
 }
 
 impl MacroCallId {
-    pub fn as_file(self, kind: MacroFileKind) -> HirFileId {
-        let macro_file = MacroFile { macro_call_id: self, macro_file_kind: kind };
-        macro_file.into()
+    pub fn as_file(self) -> HirFileId {
+        MacroFile { macro_call_id: self }.into()
     }
 }
 

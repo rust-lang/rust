@@ -7,7 +7,7 @@ use hir_expand::{
     builtin_derive::find_builtin_derive,
     builtin_macro::find_builtin_macro,
     name::{self, AsName, Name},
-    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind, MacroFileKind,
+    HirFileId, MacroCallId, MacroCallKind, MacroDefId, MacroDefKind,
 };
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
@@ -545,7 +545,7 @@ where
         self.macro_stack_monitor.increase(macro_def_id);
 
         if !self.macro_stack_monitor.is_poison(macro_def_id) {
-            let file_id: HirFileId = macro_call_id.as_file(MacroFileKind::Items);
+            let file_id: HirFileId = macro_call_id.as_file();
             let raw_items = self.db.raw_items(file_id);
             let mod_dir = self.mod_dirs[&module_id].clone();
             ModCollector {
