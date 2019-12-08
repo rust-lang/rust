@@ -183,8 +183,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_remaining_bounds(&mut self, generic_params: Vec<GenericParam>, path: ast::Path,
-                              lo: Span, parse_plus: bool) -> PResult<'a, TyKind> {
+    fn parse_remaining_bounds(
+        &mut self,
+        generic_params: Vec<GenericParam>,
+        path: ast::Path,
+        lo: Span,
+        parse_plus: bool,
+    ) -> PResult<'a, TyKind> {
         let poly_trait_ref = PolyTraitRef::new(generic_params, path, lo.to(self.prev_span));
         let mut bounds = vec![GenericBound::Trait(poly_trait_ref, TraitBoundModifier::None)];
         if parse_plus {
@@ -338,8 +343,10 @@ impl<'a> Parser<'a> {
         .emit();
     }
 
-    pub(super) fn parse_generic_bounds(&mut self,
-                                  colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
+    pub(super) fn parse_generic_bounds(
+        &mut self,
+        colon_span: Option<Span>,
+    ) -> PResult<'a, GenericBounds> {
         self.parse_generic_bounds_common(true, colon_span)
     }
 
@@ -351,20 +358,24 @@ impl<'a> Parser<'a> {
     /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
     /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
     /// ```
-    fn parse_generic_bounds_common(&mut self,
-                                   allow_plus: bool,
-                                   colon_span: Option<Span>) -> PResult<'a, GenericBounds> {
+    fn parse_generic_bounds_common(
+        &mut self,
+        allow_plus: bool,
+        colon_span: Option<Span>,
+    ) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
         let mut last_plus_span = None;
         let mut was_negative = false;
         loop {
             // This needs to be synchronized with `TokenKind::can_begin_bound`.
-            let is_bound_start = self.check_path() || self.check_lifetime() ||
-                                 self.check(&token::Not) || // used for error reporting only
-                                 self.check(&token::Question) ||
-                                 self.check_keyword(kw::For) ||
-                                 self.check(&token::OpenDelim(token::Paren));
+            let is_bound_start = self.check_path()
+                || self.check_lifetime()
+                || self.check(&token::Not) // Used for error reporting only.
+                || self.check(&token::Question)
+                || self.check_keyword(kw::For)
+                || self.check(&token::OpenDelim(token::Paren));
+
             if is_bound_start {
                 let lo = self.token.span;
                 let has_parens = self.eat(&token::OpenDelim(token::Paren));
