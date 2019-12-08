@@ -216,8 +216,10 @@ impl Module {
             }
         }?;
 
-        let child_name = src.value.name()?;
-        parent_module.child(db, &child_name.as_name())
+        let child_name = src.value.name()?.as_name();
+        let def_map = db.crate_def_map(parent_module.id.krate);
+        let child_id = def_map[parent_module.id.local_id].children.get(&child_name)?;
+        Some(parent_module.with_module_id(*child_id))
     }
 
     pub fn from_definition(db: &impl DefDatabase, src: InFile<ModuleSource>) -> Option<Self> {

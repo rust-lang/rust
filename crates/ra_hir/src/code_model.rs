@@ -158,13 +158,6 @@ impl Module {
         self.with_module_id(def_map.root)
     }
 
-    /// Finds a child module with the specified name.
-    pub fn child(self, db: &impl DefDatabase, name: &Name) -> Option<Module> {
-        let def_map = db.crate_def_map(self.id.krate);
-        let child_id = def_map[self.id.local_id].children.get(name)?;
-        Some(self.with_module_id(*child_id))
-    }
-
     /// Iterates over all child modules.
     pub fn children(self, db: &impl DefDatabase) -> impl Iterator<Item = Module> {
         let def_map = db.crate_def_map(self.id.krate);
@@ -238,7 +231,7 @@ impl Module {
         def_map[self.id.local_id].impls.iter().copied().map(ImplBlock::from).collect()
     }
 
-    fn with_module_id(self, module_id: LocalModuleId) -> Module {
+    pub(crate) fn with_module_id(self, module_id: LocalModuleId) -> Module {
         Module::new(self.krate(), module_id)
     }
 }
@@ -303,21 +296,8 @@ impl Struct {
             .collect()
     }
 
-    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        db.struct_data(self.id.into())
-            .variant_data
-            .fields()
-            .iter()
-            .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField { parent: self.into(), id })
-    }
-
     pub fn ty(self, db: &impl HirDatabase) -> Type {
         Type::from_def(db, self.id.module(db).krate, self.id)
-    }
-
-    pub fn constructor_ty(self, db: &impl HirDatabase) -> Ty {
-        db.value_ty(self.id.into())
     }
 
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -352,15 +332,6 @@ impl Union {
             .collect()
     }
 
-    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        db.union_data(self.id)
-            .variant_data
-            .fields()
-            .iter()
-            .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField { parent: self.into(), id })
-    }
-
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
         db.union_data(self.id).variant_data.clone()
     }
@@ -392,11 +363,6 @@ impl Enum {
             .collect()
     }
 
-    pub fn variant(self, db: &impl DefDatabase, name: &Name) -> Option<EnumVariant> {
-        let id = db.enum_data(self.id).variant(name)?;
-        Some(EnumVariant { parent: self, id })
-    }
-
     pub fn ty(self, db: &impl HirDatabase) -> Type {
         Type::from_def(db, self.id.module(db).krate, self.id)
     }
@@ -426,14 +392,6 @@ impl EnumVariant {
             .iter()
             .map(|(id, _)| StructField { parent: self.into(), id })
             .collect()
-    }
-
-    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        self.variant_data(db)
-            .fields()
-            .iter()
-            .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField { parent: self.into(), id })
     }
 
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -559,10 +517,6 @@ impl Function {
 
     pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
         db.body(self.id.into())
-    }
-
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.value_ty(self.id.into())
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
