@@ -383,10 +383,7 @@ impl<'a> Parser<'a> {
                 let is_negative = self.eat(&token::Not);
                 let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
                 if self.token.is_lifetime() {
-                    if let Some(question_span) = question {
-                        self.span_err(question_span,
-                                      "`?` may only modify trait bounds, not lifetime bounds");
-                    }
+                    self.error_opt_out_lifetime(question);
                     bounds.push(GenericBound::Outlives(self.expect_lifetime()));
                     if has_parens {
                         let inner_span = inner_lo.to(self.prev_span);
@@ -471,6 +468,13 @@ impl<'a> Parser<'a> {
         }
 
         return Ok(bounds);
+    }
+
+    fn error_opt_out_lifetime(&self, question: Option<Span>) {
+        if let Some(span) = question {
+            self.struct_span_err(span, "`?` may only modify trait bounds, not lifetime bounds")
+                .emit();
+        }
     }
 
     pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
