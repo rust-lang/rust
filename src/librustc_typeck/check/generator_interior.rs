@@ -244,7 +244,13 @@ impl<'a, 'tcx> Visitor<'tcx> for InteriorVisitor<'a, 'tcx> {
         // can be reborrowed without needing to spill to a temporary.
         // If this were not the case, then we could conceivably have
         // to create intermediate temporaries.)
-        let ty = self.fcx.tables.borrow().expr_ty(expr);
-        self.record(ty, scope, Some(expr), expr.span);
+        //
+        // The type table might not have information for this expression
+        // if it is in a malformed scope. (#66387)
+        if let Some(ty) = self.fcx.tables.borrow().expr_ty_opt(expr) {
+            self.record(ty, scope, Some(expr), expr.span);
+        } else {
+            self.fcx.tcx.sess.delay_span_bug(expr.span, "no type for node");
+        }
     }
 }

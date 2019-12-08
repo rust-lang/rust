@@ -22,7 +22,7 @@ use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc::ty::layout::{
-    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
+    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout, Size,
 };
 
 use crate::interpret::{
@@ -33,6 +33,9 @@ use crate::interpret::{
 };
 use crate::const_eval::error_to_const_error;
 use crate::transform::{MirPass, MirSource};
+
+/// The maximum number of bytes that we'll allocate space for a return value.
+const MAX_ALLOC_LIMIT: u64 = 1024;
 
 pub struct ConstProp;
 
@@ -433,6 +436,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         place: &Place<'tcx>,
     ) -> Option<()> {
         let span = source_info.span;
+
+        // #66397: Don't try to eval into large places as that can cause an OOM
+        if place_layout.size >= Size::from_bytes(MAX_ALLOC_LIMIT) {
+            return None;
+        }
 
         let overflow_check = self.tcx.sess.overflow_checks();
 
