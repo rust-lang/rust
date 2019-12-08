@@ -1181,6 +1181,7 @@ impl<'a> Parser<'a> {
                         attrs,
                         vis: visibility,
                         kind: ForeignItemKind::Macro(mac),
+                        tokens: None,
                     }
                 )
             }
@@ -1211,6 +1212,7 @@ impl<'a> Parser<'a> {
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
             vis,
+            tokens: None,
         })
     }
 
@@ -1228,7 +1230,8 @@ impl<'a> Parser<'a> {
             kind: ForeignItemKind::Ty,
             id: DUMMY_NODE_ID,
             span: lo.to(hi),
-            vis
+            vis,
+            tokens: None,
         })
     }
 
@@ -1826,6 +1829,7 @@ impl<'a> Parser<'a> {
             id: DUMMY_NODE_ID,
             span,
             vis,
+            tokens: None,
         })
     }
 
