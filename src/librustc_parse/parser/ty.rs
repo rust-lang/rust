@@ -431,8 +431,6 @@ impl<'a> Parser<'a> {
     /// ```
     /// BOUND = TY_BOUND | LT_BOUND
     /// LT_BOUND = LIFETIME (e.g., `'a`)
-    /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
     /// ```
     fn parse_generic_bound(
         &mut self,
@@ -454,22 +452,11 @@ impl<'a> Parser<'a> {
             }
             Ok(Ok(bound))
         } else {
-            let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-            let path = self.parse_path(PathStyle::Type)?;
-            if has_parens {
-                self.expect(&token::CloseDelim(token::Paren))?;
-            }
-            let poly_span = lo.to(self.prev_span);
+            let (poly_span, bound) = self.parse_generic_ty_bound(lo, has_parens, question)?;
             if is_negative {
                 Ok(Err(last_plus_span.or(colon_span).map(|sp| sp.to(poly_span))))
             } else {
-                let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
-                let modifier = if question.is_some() {
-                    TraitBoundModifier::Maybe
-                } else {
-                    TraitBoundModifier::None
-                };
-                Ok(Ok(GenericBound::Trait(poly_trait, modifier)))
+                Ok(Ok(bound))
             }
         }
     }
@@ -499,6 +486,28 @@ impl<'a> Parser<'a> {
         }
         err.emit();
         Ok(())
+    }
+
+    /// Parses a type bound according to:
+    /// ```
+    /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
+    /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
+    /// ```
+    fn parse_generic_ty_bound(
+        &mut self,
+        lo: Span,
+        has_parens: bool,
+        question: Option<Span>,
+    ) -> PResult<'a, (Span, GenericBound)> {
+        let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+        let path = self.parse_path(PathStyle::Type)?;
+        if has_parens {
+            self.expect(&token::CloseDelim(token::Paren))?;
+        }
+        let poly_span = lo.to(self.prev_span);
+        let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
+        let modifier = question.map_or(TraitBoundModifier::None, |_| TraitBoundModifier::Maybe);
+        Ok((poly_span, GenericBound::Trait(poly_trait, modifier)))
     }
 
     pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
