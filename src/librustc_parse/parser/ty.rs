@@ -426,7 +426,7 @@ impl<'a> Parser<'a> {
         let has_parens = self.eat(&token::OpenDelim(token::Paren));
         let inner_lo = self.token.span;
         let is_negative = self.eat(&token::Not);
-        let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
+        let question = self.eat(&token::Question).then_some(self.prev_span);
         if self.token.is_lifetime() {
             Ok(Ok(self.parse_generic_lt_bound(lo, inner_lo, has_parens, question)?))
         } else {
