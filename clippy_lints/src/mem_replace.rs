@@ -1,10 +1,10 @@
 use crate::utils::{
-    match_def_path, match_qpath, paths, snippet_with_applicability, span_help_and_lint, span_lint_and_sugg,
+    in_macro, match_def_path, match_qpath, paths, snippet_with_applicability, span_help_and_lint, span_lint_and_sugg,
 };
 use if_chain::if_chain;
 use rustc::declare_lint_pass;
 use rustc::hir::{BorrowKind, Expr, ExprKind, HirVec, Mutability, QPath};
-use rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintPass};
 use rustc_errors::Applicability;
 use rustc_session::declare_tool_lint;
 
@@ -163,9 +163,9 @@ fn check_replace_with_uninit(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &Hi
 }
 
 fn check_replace_with_default(cx: &LateContext<'_, '_>, expr: &'_ Expr, args: &HirVec<Expr>) {
-    if let ExprKind::Call(ref repl_func, ref repl_args) = args[1].kind {
+    if let ExprKind::Call(ref repl_func, _) = args[1].kind {
         if_chain! {
-            if repl_args.is_empty();
+            if !in_macro(expr.span) && !in_external_macro(cx.tcx.sess, expr.span);
             if let ExprKind::Path(ref repl_func_qpath) = repl_func.kind;
             if let Some(repl_def_id) = cx.tables.qpath_res(repl_func_qpath, repl_func.hir_id).opt_def_id();
             if match_def_path(cx, repl_def_id, &paths::DEFAULT_TRAIT_METHOD);

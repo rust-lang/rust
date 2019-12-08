@@ -39,3 +39,10 @@ macro_rules! string_add {
         let z = y + "...";
     };
 }
+
+#[macro_export]
+macro_rules! take_external {
+    ($s:expr) => {
+        std::mem::replace($s, Default::default())
+    };
+}
