@@ -265,8 +265,10 @@ impl StructField {
         self.parent.variant_data(db).fields()[self.id].name.clone()
     }
 
-    pub fn ty(&self, db: &impl HirDatabase) -> Ty {
-        db.field_types(self.parent.into())[self.id].clone()
+    pub fn ty(&self, db: &impl HirDatabase) -> Type {
+        let var_id = self.parent.into();
+        let ty = db.field_types(var_id)[self.id].clone();
+        Type::new(db, self.parent.module(db).id.krate.into(), var_id, ty)
     }
 
     pub fn parent_def(&self, _db: &impl HirDatabase) -> VariantDef {
@@ -940,15 +942,19 @@ pub struct Type {
 }
 
 impl Type {
+    fn new(db: &impl HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
+        let resolver = lexical_env.resolver(db);
+        let environment = TraitEnvironment::lower(db, &resolver);
+        Type { krate, ty: InEnvironment { value: ty, environment } }
+    }
+
     fn from_def(
         db: &impl HirDatabase,
         krate: CrateId,
         def: impl HasResolver + Into<TyDefId>,
     ) -> Type {
-        let resolver = def.resolver(db);
-        let environment = TraitEnvironment::lower(db, &resolver);
         let ty = db.ty(def.into());
-        Type { krate, ty: InEnvironment { value: ty, environment } }
+        Type::new(db, krate, def, ty)
     }
 
     pub fn is_bool(&self) -> bool {
@@ -1039,11 +1045,16 @@ impl Type {
     ) -> Vec<(StructField, Type)> {
         // FIXME: check that ty and def match
         match &self.ty.value {
-            Ty::Apply(a_ty) => def
-                .fields(db)
-                .into_iter()
-                .map(|it| (it, self.derived(it.ty(db).subst(&a_ty.parameters))))
-                .collect(),
+            Ty::Apply(a_ty) => {
+                let field_types = db.field_types(def.into());
+                def.fields(db)
+                    .into_iter()
+                    .map(|it| {
+                        let ty = field_types[it.id].clone().subst(&a_ty.parameters);
+                        (it, self.derived(ty))
+                    })
+                    .collect()
+            }
             _ => Vec::new(),
         }
     }
