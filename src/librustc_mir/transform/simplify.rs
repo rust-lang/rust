@@ -29,7 +29,7 @@
 
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::visit::{MutVisitor, Visitor, PlaceContext, MutatingUseContext};
 use std::borrow::Cow;
@@ -367,9 +367,14 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
                 if let StatementKind::Assign(
                     box (p, Rvalue::Use(Operand::Constant(c)))
                 ) = &stmt.kind {
-                    if !p.is_indirect() {
-                        trace!("skipping store of const value {:?} to {:?}", c, p);
-                        return;
+                    match c.literal.val {
+                        // Keep assignments from unevaluated constants around, since the evaluation
+                        // may report errors, even if the use of the constant is dead code.
+                        ty::ConstKind::Unevaluated(..) => {}
+                        _ => if !p.is_indirect() {
+                            trace!("skipping store of const value {:?} to {:?}", c, p);
+                            return;
+                        },
                     }
                 }
             }
