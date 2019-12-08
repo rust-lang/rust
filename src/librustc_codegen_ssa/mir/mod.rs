@@ -21,7 +21,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: mir::ReadOnlyBodyCache<'tcx, 'tcx>,
+    mir: mir::ReadOnlyBodyAndCache<'tcx, 'tcx>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
@@ -159,7 +159,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }).collect();
 
     let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
-    let mir_body: &mir::Body<'_> = mir.body();
+    let mir_body: &mir::Body<'_> = *mir;
     let mut fx = FunctionCx {
         instance,
         mir,

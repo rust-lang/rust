@@ -23,17 +23,17 @@ macro_rules! arena_types {
             [] generics: rustc::ty::Generics,
             [] trait_def: rustc::ty::TraitDef,
             [] adt_def: rustc::ty::AdtDef,
-            [] steal_mir: rustc::ty::steal::Steal<rustc::mir::BodyCache<$tcx>>,
-            [] mir: rustc::mir::BodyCache<$tcx>,
+            [] steal_mir: rustc::ty::steal::Steal<rustc::mir::BodyAndCache<$tcx>>,
+            [] mir: rustc::mir::BodyAndCache<$tcx>,
             [] steal_promoted: rustc::ty::steal::Steal<
                 rustc_index::vec::IndexVec<
                     rustc::mir::Promoted,
-                    rustc::mir::BodyCache<$tcx>
+                    rustc::mir::BodyAndCache<$tcx>
                 >
             >,
             [] promoted: rustc_index::vec::IndexVec<
                 rustc::mir::Promoted,
-                rustc::mir::BodyCache<$tcx>
+                rustc::mir::BodyAndCache<$tcx>
             >,
             [] tables: rustc::ty::TypeckTables<$tcx>,
             [] const_allocs: rustc::mir::interpret::Allocation,

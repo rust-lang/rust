@@ -5,7 +5,7 @@ use crate::dataflow::indexes::BorrowIndex;
 use crate::dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
 use rustc::mir::visit::{PlaceContext, Visitor, NonUseContext, MutatingUseContext};
-use rustc::mir::{self, Location, Body, Local, ReadOnlyBodyCache};
+use rustc::mir::{self, Location, Body, Local, ReadOnlyBodyAndCache};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_index::vec::IndexVec;
@@ -90,7 +90,7 @@ crate enum LocalsStateAtExit {
 impl LocalsStateAtExit {
     fn build(
         locals_are_invalidated_at_exit: bool,
-        body: ReadOnlyBodyCache<'_, 'tcx>,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
         move_data: &MoveData<'tcx>
     ) -> Self {
         struct HasStorageDead(BitSet<Local>);
@@ -124,7 +124,7 @@ impl LocalsStateAtExit {
 impl<'tcx> BorrowSet<'tcx> {
     pub fn build(
         tcx: TyCtxt<'tcx>,
-        body: ReadOnlyBodyCache<'_, 'tcx>,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
         locals_are_invalidated_at_exit: bool,
         move_data: &MoveData<'tcx>,
     ) -> Self {

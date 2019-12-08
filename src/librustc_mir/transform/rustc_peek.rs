@@ -5,7 +5,7 @@ use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
-use rustc::mir::{self, Body, BodyCache, Location, Local};
+use rustc::mir::{self, Body, BodyAndCache, Location, Local};
 use rustc_index::bit_set::BitSet;
 use crate::transform::{MirPass, MirSource};
 
@@ -26,7 +26,7 @@ use crate::dataflow::has_rustc_mir_with;
 pub struct SanityCheck;
 
 impl<'tcx> MirPass<'tcx> for SanityCheck {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         let def_id = src.def_id();
         if !tcx.has_attr(def_id, sym::rustc_mir) {
             debug!("skipping rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));

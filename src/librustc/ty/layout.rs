@@ -2486,7 +2486,7 @@ where
                     'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
                         && !fat_pointer_layout.ty.is_region_ptr()
                     {
-                        'iter_fields: for i in 0..fat_pointer_layout.fields.count() {
+                        for i in 0..fat_pointer_layout.fields.count() {
                             let field_layout = fat_pointer_layout.field(cx, i);
 
                             if !field_layout.is_zst() {

@@ -117,8 +117,8 @@ mod relate_tys;
 pub(crate) fn type_check<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body: ReadOnlyBodyCache<'_, 'tcx>,
-    promoted: &IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     mir_def_id: DefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
@@ -196,8 +196,8 @@ fn type_check_internal<'a, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body: ReadOnlyBodyCache<'a, 'tcx>,
-    promoted: &'a IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>>,
+    body: ReadOnlyBodyAndCache<'a, 'tcx>,
+    promoted: &'a IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
@@ -206,7 +206,7 @@ fn type_check_internal<'a, 'tcx, R>(
 ) -> R {
     let mut checker = TypeChecker::new(
         infcx,
-        body.body(),
+        *body,
         mir_def_id,
         param_env,
         region_bound_pairs,
@@ -215,7 +215,7 @@ fn type_check_internal<'a, 'tcx, R>(
         universal_region_relations,
     );
     let errors_reported = {
-        let mut verifier = TypeVerifier::new(&mut checker, body.body(), promoted);
+        let mut verifier = TypeVerifier::new(&mut checker, *body, promoted);
         verifier.visit_body(body);
         verifier.errors_reported
     };
@@ -272,7 +272,7 @@ enum FieldAccessError {
 struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
-    promoted: &'b IndexVec<Promoted, ReadOnlyBodyCache<'b, 'tcx>>,
+    promoted: &'b IndexVec<Promoted, ReadOnlyBodyAndCache<'b, 'tcx>>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
@@ -396,7 +396,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_body(&mut self, body: ReadOnlyBodyCache<'_, 'tcx>) {
+    fn visit_body(&mut self, body: ReadOnlyBodyAndCache<'_, 'tcx>) {
         self.sanitize_type(&"return type", body.return_ty());
         for local_decl in &body.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
@@ -412,7 +412,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     fn new(
         cx: &'a mut TypeChecker<'b, 'tcx>,
         body: &'b Body<'tcx>,
-        promoted: &'b IndexVec<Promoted, ReadOnlyBodyCache<'b, 'tcx>>,
+        promoted: &'b IndexVec<Promoted, ReadOnlyBodyAndCache<'b, 'tcx>>,
     ) -> Self {
         TypeVerifier {
             body,
@@ -548,14 +548,14 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
     fn sanitize_promoted(
         &mut self,
-        promoted_body: ReadOnlyBodyCache<'b, 'tcx>,
+        promoted_body: ReadOnlyBodyAndCache<'b, 'tcx>,
         location: Location
     ) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
 
-        let parent_body = mem::replace(&mut self.body, promoted_body.body());
+        let parent_body = mem::replace(&mut self.body, *promoted_body);
 
         // Use new sets of constraints and closure bounds so that we can
         // modify their locations.
@@ -1378,7 +1378,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn check_stmt(
         &mut self,
-        body: ReadOnlyBodyCache<'_, 'tcx>,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
         stmt: &Statement<'tcx>,
         location: Location)
     {
@@ -1994,7 +1994,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn check_rvalue(
         &mut self,
-        body: ReadOnlyBodyCache<'_, 'tcx>,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
         rvalue: &Rvalue<'tcx>,
         location: Location)
     {
@@ -2766,7 +2766,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self, body: ReadOnlyBodyCache<'_, 'tcx>) {
+    fn typeck_mir(&mut self, body: ReadOnlyBodyAndCache<'_, 'tcx>) {
         self.last_span = body.span;
         debug!("run_on_mir: {:?}", body.span);
 

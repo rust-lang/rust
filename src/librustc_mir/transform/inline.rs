@@ -39,7 +39,7 @@ struct CallSite<'tcx> {
 
 impl<'tcx> MirPass<'tcx> for Inline {
     fn run_pass(
-        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
     ) {
         if tcx.sess.opts.debugging_opts.mir_opt_level >= 2 {
             Inliner { tcx, source }.run_pass(body);
@@ -53,7 +53,7 @@ struct Inliner<'tcx> {
 }
 
 impl Inliner<'tcx> {
-    fn run_pass(&self, caller_body: &mut BodyCache<'tcx>) {
+    fn run_pass(&self, caller_body: &mut BodyAndCache<'tcx>) {
         // Keep a queue of callsites to try inlining on. We take
         // advantage of the fact that queries detect cycles here to
         // allow us to try and fetch the fully optimized MIR of a
@@ -385,8 +385,8 @@ impl Inliner<'tcx> {
 
     fn inline_call(&self,
                    callsite: CallSite<'tcx>,
-                   caller_body: &mut BodyCache<'tcx>,
-                   mut callee_body: BodyCache<'tcx>) -> bool {
+                   caller_body: &mut BodyAndCache<'tcx>,
+                   mut callee_body: BodyAndCache<'tcx>) -> bool {
         let terminator = caller_body[callsite.bb].terminator.take().unwrap();
         match terminator.kind {
             // FIXME: Handle inlining of diverging calls
@@ -522,7 +522,7 @@ impl Inliner<'tcx> {
         &self,
         args: Vec<Operand<'tcx>>,
         callsite: &CallSite<'tcx>,
-        caller_body: &mut BodyCache<'tcx>,
+        caller_body: &mut BodyAndCache<'tcx>,
     ) -> Vec<Local> {
         let tcx = self.tcx;
 
@@ -595,7 +595,7 @@ impl Inliner<'tcx> {
         &self,
         arg: Operand<'tcx>,
         callsite: &CallSite<'tcx>,
-        caller_body: &mut BodyCache<'tcx>,
+        caller_body: &mut BodyAndCache<'tcx>,
     ) -> Local {
         // FIXME: Analysis of the usage of the arguments to avoid
         // unnecessary temporaries.

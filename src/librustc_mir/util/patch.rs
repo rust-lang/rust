@@ -127,7 +127,7 @@ impl<'tcx> MirPatch<'tcx> {
         self.make_nop.push(loc);
     }
 
-    pub fn apply(self, body: &mut BodyCache<'tcx>) {
+    pub fn apply(self, body: &mut BodyAndCache<'tcx>) {
         debug!("MirPatch: make nops at: {:?}", self.make_nop);
         for loc in self.make_nop {
             body.make_statement_nop(loc);

@@ -115,16 +115,16 @@ impl Cache {
 }
 
 #[derive(Clone, Debug, HashStable, RustcEncodable, RustcDecodable, TypeFoldable)]
-pub struct BodyCache<'tcx> {
-    cache: Cache,
+pub struct BodyAndCache<'tcx> {
     body: Body<'tcx>,
+    cache: Cache,
 }
 
-impl BodyCache<'tcx> {
+impl BodyAndCache<'tcx> {
     pub fn new(body: Body<'tcx>) -> Self {
         Self {
-            cache: Cache::new(),
             body,
+            cache: Cache::new(),
         }
     }
 }
@@ -139,7 +139,7 @@ macro_rules! read_only {
     };
 }
 
-impl BodyCache<'tcx> {
+impl BodyAndCache<'tcx> {
     pub fn ensure_predecessors(&mut self) {
         self.cache.ensure_predecessors(&self.body);
     }
@@ -148,8 +148,8 @@ impl BodyCache<'tcx> {
         self.cache.predecessors(&self.body)
     }
 
-    pub fn unwrap_read_only(&self) -> ReadOnlyBodyCache<'_, 'tcx> {
-        ReadOnlyBodyCache::new(&self.cache, &self.body)
+    pub fn unwrap_read_only(&self) -> ReadOnlyBodyAndCache<'_, 'tcx> {
+        ReadOnlyBodyAndCache::new(&self.body, &self.cache)
     }
 
     pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
@@ -163,7 +163,7 @@ impl BodyCache<'tcx> {
     }
 }
 
-impl<'tcx> Index<BasicBlock> for BodyCache<'tcx> {
+impl<'tcx> Index<BasicBlock> for BodyAndCache<'tcx> {
     type Output = BasicBlockData<'tcx>;
 
     fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
@@ -171,13 +171,13 @@ impl<'tcx> Index<BasicBlock> for BodyCache<'tcx> {
     }
 }
 
-impl<'tcx> IndexMut<BasicBlock> for BodyCache<'tcx> {
+impl<'tcx> IndexMut<BasicBlock> for BodyAndCache<'tcx> {
     fn index_mut(&mut self, index: BasicBlock) -> &mut Self::Output {
         &mut self.basic_blocks_mut()[index]
     }
 }
 
-impl<'tcx> Deref for BodyCache<'tcx> {
+impl<'tcx> Deref for BodyAndCache<'tcx> {
     type Target = Body<'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -185,26 +185,26 @@ impl<'tcx> Deref for BodyCache<'tcx> {
     }
 }
 
-impl<'tcx> DerefMut for BodyCache<'tcx> {
+impl<'tcx> DerefMut for BodyAndCache<'tcx> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.body
     }
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct ReadOnlyBodyCache<'a, 'tcx> {
-    cache: &'a Cache,
+pub struct ReadOnlyBodyAndCache<'a, 'tcx> {
     body: &'a Body<'tcx>,
+    cache: &'a Cache,
 }
 
-impl ReadOnlyBodyCache<'a, 'tcx> {
-    fn new(cache: &'a Cache, body: &'a Body<'tcx>) -> Self {
+impl ReadOnlyBodyAndCache<'a, 'tcx> {
+    fn new(body: &'a Body<'tcx>, cache: &'a Cache) -> Self {
         assert!(
             cache.predecessors.is_some(),
-            "Cannot construct ReadOnlyBodyCache without computed predecessors");
+            "Cannot construct ReadOnlyBodyAndCache without computed predecessors");
         Self {
-            cache,
             body,
+            cache,
         }
     }
 
@@ -220,10 +220,6 @@ impl ReadOnlyBodyCache<'a, 'tcx> {
         self.cache.unwrap_predecessor_locations(loc, self.body)
     }
 
-    pub fn body(&self) -> &'a Body<'tcx> {
-        self.body
-    }
-
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.body.basic_blocks
     }
@@ -233,16 +229,16 @@ impl ReadOnlyBodyCache<'a, 'tcx> {
     }
 }
 
-impl graph::DirectedGraph for ReadOnlyBodyCache<'a, 'tcx> {
+impl graph::DirectedGraph for ReadOnlyBodyAndCache<'a, 'tcx> {
     type Node = BasicBlock;
 }
 
-impl graph::GraphPredecessors<'graph> for ReadOnlyBodyCache<'a, 'tcx> {
+impl graph::GraphPredecessors<'graph> for ReadOnlyBodyAndCache<'a, 'tcx> {
     type Item = BasicBlock;
     type Iter = IntoIter<BasicBlock>;
 }
 
-impl graph::WithPredecessors for ReadOnlyBodyCache<'a, 'tcx> {
+impl graph::WithPredecessors for ReadOnlyBodyAndCache<'a, 'tcx> {
     fn predecessors(
         &self,
         node: Self::Node,
@@ -251,19 +247,19 @@ impl graph::WithPredecessors for ReadOnlyBodyCache<'a, 'tcx> {
     }
 }
 
-impl graph::WithNumNodes for ReadOnlyBodyCache<'a, 'tcx> {
+impl graph::WithNumNodes for ReadOnlyBodyAndCache<'a, 'tcx> {
     fn num_nodes(&self) -> usize {
         self.body.num_nodes()
     }
 }
 
-impl graph::WithStartNode for ReadOnlyBodyCache<'a, 'tcx> {
+impl graph::WithStartNode for ReadOnlyBodyAndCache<'a, 'tcx> {
     fn start_node(&self) -> Self::Node {
         self.body.start_node()
     }
 }
 
-impl graph::WithSuccessors for ReadOnlyBodyCache<'a, 'tcx> {
+impl graph::WithSuccessors for ReadOnlyBodyAndCache<'a, 'tcx> {
     fn successors(
         &self,
         node: Self::Node,
@@ -272,13 +268,13 @@ impl graph::WithSuccessors for ReadOnlyBodyCache<'a, 'tcx> {
     }
 }
 
-impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for ReadOnlyBodyCache<'a, 'tcx> {
+impl<'a, 'b, 'tcx> graph::GraphSuccessors<'b> for ReadOnlyBodyAndCache<'a, 'tcx> {
     type Item = BasicBlock;
     type Iter = iter::Cloned<Successors<'b>>;
 }
 
 
-impl Deref for ReadOnlyBodyCache<'a, 'tcx> {
+impl Deref for ReadOnlyBodyAndCache<'a, 'tcx> {
     type Target = &'a Body<'tcx>;
 
     fn deref(&self) -> &Self::Target {

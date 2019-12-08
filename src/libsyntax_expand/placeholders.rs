@@ -65,6 +65,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visi
             AstFragment::ForeignItems(smallvec![ast::ForeignItem {
                 id, span, ident, vis, attrs,
                 kind: ast::ForeignItemKind::Macro(mac_placeholder()),
+                tokens: None,
             }]),
         AstFragmentKind::Pat => AstFragment::Pat(P(ast::Pat {
             id, span, kind: ast::PatKind::Mac(mac_placeholder()),
