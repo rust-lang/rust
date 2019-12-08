@@ -37,7 +37,8 @@ $ cargo xtask install
 $ cargo xtask install --server
 ```
 
-For non-standard setup of VS Code and other editors, see [./docs/user](./docs/user).
+For non-standard setup of VS Code and other editors, or if the language server
+cannot start, see [./docs/user](./docs/user).
 
 ## Documentation
 

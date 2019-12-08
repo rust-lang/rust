@@ -12,7 +12,7 @@ use hir_expand::{
 use ra_cfg::CfgOptions;
 use ra_db::{CrateId, FileId};
 use ra_syntax::ast;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use test_utils::tested_by;
 
 use crate::{
@@ -63,40 +63,10 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         unexpanded_macros: Vec::new(),
         unexpanded_attribute_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
-        macro_stack_monitor: MacroStackMonitor::default(),
-        poison_macros: FxHashSet::default(),
         cfg_options,
     };
     collector.collect();
     collector.finish()
-}
-
-#[derive(Default)]
-struct MacroStackMonitor {
-    counts: FxHashMap<MacroDefId, u32>,
-
-    /// Mainly use for test
-    validator: Option<Box<dyn Fn(u32) -> bool>>,
-}
-
-impl MacroStackMonitor {
-    fn increase(&mut self, macro_def_id: MacroDefId) {
-        *self.counts.entry(macro_def_id).or_default() += 1;
-    }
-
-    fn decrease(&mut self, macro_def_id: MacroDefId) {
-        *self.counts.entry(macro_def_id).or_default() -= 1;
-    }
-
-    fn is_poison(&self, macro_def_id: MacroDefId) -> bool {
-        let cur = *self.counts.get(&macro_def_id).unwrap_or(&0);
-
-        if let Some(validator) = &self.validator {
-            validator(cur)
-        } else {
-            cur > 100
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -127,6 +97,14 @@ struct ImportDirective {
     status: PartialResolvedImport,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct MacroDirective {
+    module_id: LocalModuleId,
+    ast_id: AstId<ast::MacroCall>,
+    path: Path,
+    legacy: Option<MacroCallId>,
+}
+
 /// Walks the tree of module recursively
 struct DefCollector<'a, DB> {
     db: &'a DB,
@@ -134,25 +112,9 @@ struct DefCollector<'a, DB> {
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, LocalImportId)>>,
     unresolved_imports: Vec<ImportDirective>,
     resolved_imports: Vec<ImportDirective>,
-    unexpanded_macros: Vec<(LocalModuleId, AstId<ast::MacroCall>, Path)>,
+    unexpanded_macros: Vec<MacroDirective>,
     unexpanded_attribute_macros: Vec<(LocalModuleId, AstId<ast::ModuleItem>, Path)>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
-
-    /// Some macro use `$tt:tt which mean we have to handle the macro perfectly
-    /// To prevent stack overflow, we add a deep counter here for prevent that.
-    macro_stack_monitor: MacroStackMonitor,
-    /// Some macros are not well-behavior, which leads to infinite loop
-    /// e.g. macro_rules! foo { ($ty:ty) => { foo!($ty); } }
-    /// We mark it down and skip it in collector
-    ///
-    /// FIXME:
-    /// Right now it only handle a poison macro in a single crate,
-    /// such that if other crate try to call that macro,
-    /// the whole process will do again until it became poisoned in that crate.
-    /// We should handle this macro set globally
-    /// However, do we want to put it as a global variable?
-    poison_macros: FxHashSet<MacroDefId>,
-
     cfg_options: &'a CfgOptions,
 }
 
@@ -556,18 +518,24 @@ where
             std::mem::replace(&mut self.unexpanded_attribute_macros, Vec::new());
         let mut resolved = Vec::new();
         let mut res = ReachedFixedPoint::Yes;
-        macros.retain(|(module_id, ast_id, path)| {
+        macros.retain(|directive| {
+            if let Some(call_id) = directive.legacy {
+                res = ReachedFixedPoint::No;
+                resolved.push((directive.module_id, call_id));
+                return false;
+            }
+
             let resolved_res = self.def_map.resolve_path_fp_with_macro(
                 self.db,
                 ResolveMode::Other,
-                *module_id,
-                path,
+                directive.module_id,
+                &directive.path,
                 BuiltinShadowMode::Module,
             );
 
             if let Some(def) = resolved_res.resolved_def.take_macros() {
-                let call_id = def.as_call_id(self.db, MacroCallKind::FnLike(*ast_id));
-                resolved.push((*module_id, call_id, def));
+                let call_id = def.as_call_id(self.db, MacroCallKind::FnLike(directive.ast_id));
+                resolved.push((directive.module_id, call_id));
                 res = ReachedFixedPoint::No;
                 return false;
             }
@@ -579,7 +547,7 @@ where
 
             if let Some(def) = resolved_res {
                 let call_id = def.as_call_id(self.db, MacroCallKind::Attr(*ast_id));
-                resolved.push((*module_id, call_id, def));
+                resolved.push((*module_id, call_id));
                 res = ReachedFixedPoint::No;
                 return false;
             }
@@ -590,8 +558,8 @@ where
         self.unexpanded_macros = macros;
         self.unexpanded_attribute_macros = attribute_macros;
 
-        for (module_id, macro_call_id, macro_def_id) in resolved {
-            self.collect_macro_expansion(module_id, macro_call_id, macro_def_id);
+        for (module_id, macro_call_id) in resolved {
+            self.collect_macro_expansion(module_id, macro_call_id);
         }
 
         res
@@ -611,36 +579,18 @@ where
         None
     }
 
-    fn collect_macro_expansion(
-        &mut self,
-        module_id: LocalModuleId,
-        macro_call_id: MacroCallId,
-        macro_def_id: MacroDefId,
-    ) {
-        if self.poison_macros.contains(&macro_def_id) {
-            return;
+    fn collect_macro_expansion(&mut self, module_id: LocalModuleId, macro_call_id: MacroCallId) {
+        let file_id: HirFileId = macro_call_id.as_file();
+        let raw_items = self.db.raw_items(file_id);
+        let mod_dir = self.mod_dirs[&module_id].clone();
+        ModCollector {
+            def_collector: &mut *self,
+            file_id,
+            module_id,
+            raw_items: &raw_items,
+            mod_dir,
         }
-
-        self.macro_stack_monitor.increase(macro_def_id);
-
-        if !self.macro_stack_monitor.is_poison(macro_def_id) {
-            let file_id: HirFileId = macro_call_id.as_file();
-            let raw_items = self.db.raw_items(file_id);
-            let mod_dir = self.mod_dirs[&module_id].clone();
-            ModCollector {
-                def_collector: &mut *self,
-                file_id,
-                module_id,
-                raw_items: &raw_items,
-                mod_dir,
-            }
-            .collect(raw_items.items());
-        } else {
-            log::error!("Too deep macro expansion: {:?}", macro_call_id);
-            self.poison_macros.insert(macro_def_id);
-        }
-
-        self.macro_stack_monitor.decrease(macro_def_id);
+        .collect(raw_items.items());
     }
 
     fn finish(self) -> CrateDefMap {
@@ -908,15 +858,20 @@ where
             return;
         }
 
-        // Case 2: try to resolve in legacy scope and expand macro_rules, triggering
-        // recursive item collection.
+        // Case 2: try to resolve in legacy scope and expand macro_rules
         if let Some(macro_def) = mac.path.as_ident().and_then(|name| {
             self.def_collector.def_map[self.module_id].scope.get_legacy_macro(&name)
         }) {
             let macro_call_id =
                 macro_def.as_call_id(self.def_collector.db, MacroCallKind::FnLike(ast_id));
 
-            self.def_collector.collect_macro_expansion(self.module_id, macro_call_id, macro_def);
+            self.def_collector.unexpanded_macros.push(MacroDirective {
+                module_id: self.module_id,
+                path: mac.path.clone(),
+                ast_id,
+                legacy: Some(macro_call_id),
+            });
+
             return;
         }
 
@@ -926,7 +881,13 @@ where
         if path.is_ident() {
             path.kind = PathKind::Self_;
         }
-        self.def_collector.unexpanded_macros.push((self.module_id, ast_id, path));
+
+        self.def_collector.unexpanded_macros.push(MacroDirective {
+            module_id: self.module_id,
+            path,
+            ast_id,
+            legacy: None,
+        });
     }
 
     fn import_all_legacy_macros(&mut self, module_id: LocalModuleId) {
@@ -951,19 +912,13 @@ fn is_macro_rules(path: &Path) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use crate::{db::DefDatabase, test_db::TestDB};
     use ra_arena::Arena;
     use ra_db::{fixture::WithFixture, SourceDatabase};
-    use rustc_hash::FxHashSet;
-
-    use crate::{db::DefDatabase, test_db::TestDB};
 
     use super::*;
 
-    fn do_collect_defs(
-        db: &impl DefDatabase,
-        def_map: CrateDefMap,
-        monitor: MacroStackMonitor,
-    ) -> (CrateDefMap, FxHashSet<MacroDefId>) {
+    fn do_collect_defs(db: &impl DefDatabase, def_map: CrateDefMap) -> CrateDefMap {
         let mut collector = DefCollector {
             db,
             def_map,
@@ -973,19 +928,13 @@ mod tests {
             unexpanded_macros: Vec::new(),
             unexpanded_attribute_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
-            macro_stack_monitor: monitor,
-            poison_macros: FxHashSet::default(),
             cfg_options: &CfgOptions::default(),
         };
         collector.collect();
-        (collector.def_map, collector.poison_macros)
+        collector.def_map
     }
 
-    fn do_limited_resolve(
-        code: &str,
-        limit: u32,
-        poison_limit: u32,
-    ) -> (CrateDefMap, FxHashSet<MacroDefId>) {
+    fn do_resolve(code: &str) -> CrateDefMap {
         let (db, _file_id) = TestDB::with_single_file(&code);
         let krate = db.test_crate();
 
@@ -1003,59 +952,18 @@ mod tests {
                 diagnostics: Vec::new(),
             }
         };
-
-        let mut monitor = MacroStackMonitor::default();
-        monitor.validator = Some(Box::new(move |count| {
-            assert!(count < limit);
-            count >= poison_limit
-        }));
-
-        do_collect_defs(&db, def_map, monitor)
+        do_collect_defs(&db, def_map)
     }
 
     #[test]
-    fn test_macro_expand_limit_width() {
-        do_limited_resolve(
+    fn test_macro_expand_will_stop() {
+        do_resolve(
             r#"
         macro_rules! foo {
             ($($ty:ty)*) => { foo!($($ty)*, $($ty)*); }
         }
 foo!(KABOOM);
         "#,
-            16,
-            1000,
         );
-    }
-
-    #[test]
-    fn test_macro_expand_poisoned() {
-        let (_, poison_macros) = do_limited_resolve(
-            r#"
-        macro_rules! foo {
-            ($ty:ty) => { foo!($ty); }
-        }
-foo!(KABOOM);
-        "#,
-            100,
-            16,
-        );
-
-        assert_eq!(poison_macros.len(), 1);
-    }
-
-    #[test]
-    fn test_macro_expand_normal() {
-        let (_, poison_macros) = do_limited_resolve(
-            r#"
-        macro_rules! foo {
-            ($ident:ident) => { struct $ident {} }
-        }
-foo!(Bar);
-        "#,
-            16,
-            16,
-        );
-
-        assert_eq!(poison_macros.len(), 0);
     }
 }

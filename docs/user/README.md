@@ -204,4 +204,19 @@ Installation:
 
 * You can now invoke the command palette and type LSP enable to locally/globally enable the rust-analyzer LSP (type LSP enable, then choose either locally or globally, then select rust-analyzer)
 
-* Note that `ra_lsp_server` binary must be in `$PATH` for this to work. If it's not the case, you can specify full path to the binary, which is typically `.cargo/bin/ra_lsp_server`.
+### Setting up the `PATH` variable
+
+On Unix systems, `rustup` adds `~/.cargo/bin` to `PATH` by modifying the shell's
+startup file. Depending on your configuration, your Desktop Environment might not
+actually load it. If you find that `rust-analyzer` only runs when starting the
+editor from the terminal, you will have to set up your `PATH` variable manually.
+
+There are a couple of ways to do that:
+
+- for Code, set `rust-analyzer.raLspServerPath` to `~/.cargo/bin` (the `~` is
+  automatically resolved by the extension)
+- copy the binary to a location that is already in `PATH`, e.g. `/usr/local/bin`
+- on Linux, use PAM to configure the `PATH` variable, by e.g. putting
+  `PATH DEFAULT=/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin:@{HOME}/.cargo/bin:@{HOME}/.local/bin`
+  in your `~/.pam_environment` file; note that this might interfere with other
+  defaults set by the system administrator via `/etc/environment`.

@@ -14,7 +14,7 @@ import * as events from './events';
 import * as notifications from './notifications';
 import { Server } from './server';
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     function disposeOnDeactivation(disposable: vscode.Disposable) {
         context.subscriptions.push(disposable);
     }
@@ -159,7 +159,11 @@ export function activate(context: vscode.ExtensionContext) {
     });
 
     // Start the language server, finally!
-    startServer();
+    try {
+        await startServer();
+    } catch (e) {
+        vscode.window.showErrorMessage(e.message);
+    }
 
     if (Server.config.displayInlayHints) {
         const hintsUpdater = new HintsUpdater();
@@ -204,10 +208,10 @@ export function deactivate(): Thenable<void> {
     return Server.client.stop();
 }
 
-async function reloadServer(startServer: () => void) {
+async function reloadServer(startServer: () => Promise<void>) {
     if (Server.client != null) {
         vscode.window.showInformationMessage('Reloading rust-analyzer...');
         await Server.client.stop();
-        startServer();
+        await startServer();
     }
 }
