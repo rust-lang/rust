@@ -111,9 +111,8 @@ impl<'mir, 'tcx> InfiniteLoopDetector<'mir, 'tcx> {
         throw_exhaust!(InfiniteLoop)
     }
 
-    /// Returns `true` if the `InfiniteLoopDetector` has not yet been invoked.
-    pub fn is_empty(&self) -> bool {
-        self.hashes.is_empty()
+    pub fn has_been_invoked(&self) -> bool {
+        !self.hashes.is_empty()
     }
 }
 
