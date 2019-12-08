@@ -2055,12 +2055,13 @@ dependencies = [
 
 [[package]]
 name = "measureme"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd21b0e6e1af976b269ce062038fe5e1b9ca2f817ab7a3af09ec4210aebf0d30"
+checksum = "c420bbc064623934620b5ab2dc0cf96451b34163329e82f95e7fa1b7b99a6ac8"
 dependencies = [
  "byteorder",
  "memmap",
+ "parking_lot 0.9.0",
  "rustc-hash",
 ]
 
@@ -2072,9 +2073,9 @@ checksum = "2efc7bc57c883d4a4d6e3246905283d8dae951bb3bd32f49d6ef297f546e1c39"
 
 [[package]]
 name = "memmap"
-version = "0.6.2"
+version = "0.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2ffa2c986de11a9df78620c01eeaaf27d94d3ff02bf81bfcca953102dd0c6ff"
+checksum = "6585fd95e7bb50d6cc31e20d4cf9afb4e2ba16c5846fc76793f11218da9c475b"
 dependencies = [
  "libc",
  "winapi 0.3.8",
