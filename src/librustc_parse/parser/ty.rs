@@ -98,7 +98,6 @@ impl<'a> Parser<'a> {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
-            let lo = self.token.span;
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
             if self.token_is_bare_fn_keyword() {
                 self.parse_ty_bare_fn(lifetime_defs)?
@@ -108,10 +107,7 @@ impl<'a> Parser<'a> {
                 self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(kw::Impl) {
-            // Always parse bounds greedily for better error recovery.
-            let bounds = self.parse_generic_bounds(None)?;
-            impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
-            TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
+            self.parse_impl_ty(&mut impl_dyn_multi)?
         } else if self.check_keyword(kw::Dyn) &&
                   (self.token.span.rust_2018() ||
                    self.look_ahead(1, |t| t.can_begin_bound() &&
@@ -310,6 +306,14 @@ impl<'a> Parser<'a> {
             generic_params,
             decl,
         })))
+    }
+
+    /// Parses an `impl B0 + ... + Bn` type.
+    fn parse_impl_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
+        // Always parse bounds greedily for better error recovery.
+        let bounds = self.parse_generic_bounds(None)?;
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
+        Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
     }
 
     pub(super) fn parse_generic_bounds(&mut self,
