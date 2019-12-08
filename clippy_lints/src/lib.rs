@@ -735,6 +735,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &trait_bounds::TYPE_REPETITION_IN_BOUNDS,
         &transmute::CROSSPOINTER_TRANSMUTE,
         &transmute::TRANSMUTE_BYTES_TO_STR,
+        &transmute::TRANSMUTE_FLOAT_TO_INT,
         &transmute::TRANSMUTE_INT_TO_BOOL,
         &transmute::TRANSMUTE_INT_TO_CHAR,
         &transmute::TRANSMUTE_INT_TO_FLOAT,
@@ -1586,6 +1587,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         LintId::of(&mutex_atomic::MUTEX_INTEGER),
         LintId::of(&needless_borrow::NEEDLESS_BORROW),
         LintId::of(&path_buf_push_overwrite::PATH_BUF_PUSH_OVERWRITE),
+        LintId::of(&transmute::TRANSMUTE_FLOAT_TO_INT),
         LintId::of(&use_self::USE_SELF),
     ]);
 }

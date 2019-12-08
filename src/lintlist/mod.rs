@@ -6,7 +6,7 @@ pub use lint::Lint;
 pub use lint::LINT_LEVELS;
 
 // begin lint list, do not remove this comment, it’s used in `update_lints`
-pub const ALL_LINTS: [Lint; 339] = [
+pub const ALL_LINTS: [Lint; 340] = [
     Lint {
         name: "absurd_extreme_comparisons",
         group: "correctness",
@@ -1950,6 +1950,13 @@ pub const ALL_LINTS: [Lint; 339] = [
         name: "transmute_bytes_to_str",
         group: "complexity",
         desc: "transmutes from a `&[u8]` to a `&str`",
+        deprecation: None,
+        module: "transmute",
+    },
+    Lint {
+        name: "transmute_float_to_int",
+        group: "nursery",
+        desc: "transmutes from a float to an integer",
         deprecation: None,
         module: "transmute",
     },
