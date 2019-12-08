@@ -456,6 +456,90 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
 
  }
 
+ std::vector<AllocaInst*> toconvert;
+
+ for (inst_iterator I = inst_begin(*NewF), E = inst_end(*NewF); I != E; ++I) {
+    if (auto ai = dyn_cast<AllocaInst>(&*I)) {
+        std::vector<std::pair<Value*, User*>> todo;
+		for(auto a : ai->users()) todo.push_back(std::make_pair((Value*)ai, a));
+        std::set<User*> seen;
+        bool needToConvert = false;
+        while(todo.size() > 0) {
+            auto used = todo.back();
+            User* use = used.second;
+            todo.pop_back();
+
+
+            if (seen.find(use) != seen.end()) continue;
+            seen.insert(use);
+
+			llvm::errs() << " considering use: " << *use << " of ai: " <<*ai << "\n";
+
+            if (isa<LoadInst>(use) || isa<StoreInst>(use)) {
+                continue;
+            }
+
+            if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
+                for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
+                continue;
+            }
+            if (auto gep = dyn_cast<CastInst>(use)) {
+                for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
+                continue;
+            }
+
+            if (auto ci = dyn_cast<CallInst>(use)) {
+                for(unsigned i = 0; i<ci->getNumArgOperands(); i++) {
+                    if (ci->getArgOperand(i) == used.first) {
+                        if (ci->paramHasAttr(i, Attribute::NoCapture)) continue;
+                        else {
+                            needToConvert = true;
+                            goto end;
+                        }
+                    }
+                }
+                continue;
+            }
+			llvm::errs() << " newF: " << *NewF << "\n";
+			llvm::errs() << " use: " << *use << " ai: " << *ai << "\n";
+            llvm_unreachable("unknown inst use of alloca");
+        }
+
+        end:;
+		llvm::errs() << "ai: " << *ai << " needToConvert: " << needToConvert << "\n";
+        if (needToConvert) {
+            toconvert.push_back(ai);
+		}
+    }
+  }
+
+  Instruction* insertBefore = nullptr;
+  for(auto &inst : NewF->getEntryBlock()) {
+    if (!isa<AllocaInst>(&inst)) {
+        insertBefore = &inst;
+		break;
+    }
+  }
+  assert(insertBefore);
+
+  for(auto ai : toconvert) {
+	  auto nam = ai->getName();
+      ai->setName("");
+	
+      auto i64 = Type::getInt64Ty(NewF->getContext());
+	  auto rep = CallInst::CreateMalloc(insertBefore,
+                    i64,
+                    ai->getAllocatedType(),
+					ConstantInt::get(i64, NewF->getParent()->getDataLayout().getTypeAllocSizeInBits(ai->getAllocatedType())/8),
+                    IRBuilder<>(insertBefore).CreateZExtOrTrunc(ai->getArraySize(), i64),
+                    nullptr,
+                    nam
+                    );
+      assert(rep->getType() == ai->getType());
+	  ai->replaceAllUsesWith(rep);
+	  ai->eraseFromParent();
+  }
+
   if (enzyme_print)
       llvm::errs() << "after simplification :\n" << *NewF << "\n";
 

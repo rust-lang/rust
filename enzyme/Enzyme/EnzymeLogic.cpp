@@ -782,7 +782,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
 
                 auto argType = op->getArgOperand(i)->getType();
 
-                if (argType->isPointerTy() || argType->isIntegerTy()) {
+                if (!argType->isFPOrFPVectorTy()) {
                     argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
                     args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
 
@@ -888,6 +888,9 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                     gutils->addMalloc(BuilderZ, rv, getIndex(gutils->getOriginal(op), "self") );
                   }
                   gutils->replaceAWithB(op,rv);
+                  auto nm = op->getName();
+                  op->setName("");
+                  rv->setName(nm);
                 }
 
                 gutils->erase(op);
@@ -1541,6 +1544,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     modifyPrimal = true;
   }
 
+  if (called)
   for(unsigned i=0;i<op->getNumArgOperands(); i++) {
     args.push_back(gutils->lookupM(op->getArgOperand(i), Builder2));
     pre_args.push_back(op->getArgOperand(i));
@@ -1553,13 +1557,13 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
     auto argType = op->getArgOperand(i)->getType();
 
-    if ( (!argType->isFPOrFPVectorTy()) && !gutils->isConstantValue(op->getArgOperand(i)) ) {
+    if (!argType->isFPOrFPVectorTy()) {
       argsInverted.push_back(DIFFE_TYPE::DUP_ARG);
       args.push_back(gutils->invertPointerM(op->getArgOperand(i), Builder2));
       pre_args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
 
                 //TODO this check should consider whether this pointer has allocation/etc modifications and so on
-      if (called && ! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
+      if (! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
         //llvm::errs() << "augmented modified " << called->getName() << " modified via arg " << i << "\n";
         modifyPrimal = true;
       }
@@ -1816,6 +1820,11 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     bool subdifferentialreturn = (!gutils->isConstantValue(op)) && augmentedsubdifferet;
     if (topLevel) 
         subdata = &CreateAugmentedPrimal(cast<Function>(called), global_AA, subconstant_args, TLI, /*differentialReturns*/subdifferentialreturn, /*return is used*/augmentedsubretused, uncacheable_args);
+    if (!subdata) {
+        llvm::errs() << *gutils->oldFunc << "\n";
+        llvm::errs() << *gutils->newFunc << "\n";
+        llvm::errs() << *called << "\n";
+    }
     assert(subdata);
     const AugmentedReturn& fnandtapetype = *subdata;
     //sub_index_map = fnandtapetype.tapeIndices;
@@ -1965,6 +1974,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
         exit(1);
       }
   }
+  assert(newcalled);
   CallInst* diffes = Builder2.CreateCall(newcalled, args);
   diffes->setCallingConv(op->getCallingConv());
   diffes->setDebugLoc(op->getDebugLoc());
@@ -2232,9 +2242,9 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
       if (iter.second) {
         bool is_needed = is_value_needed_in_reverse(gutils, iter.first, topLevel);
         iter.second = is_needed;
-        llvm::errs() << "isneeded: " << is_needed << " gradient can_modref_map: " << *iter.first << " fn: " << gutils->oldFunc->getName() << "\n";
+        //llvm::errs() << "isneeded: " << is_needed << " gradient can_modref_map: " << *iter.first << " fn: " << gutils->oldFunc->getName() << "\n";
       } else {
-        llvm::errs() << "gradient can_modref_map: " << *iter.first << "\n";
+        //llvm::errs() << "gradient can_modref_map: " << *iter.first << "\n";
       }
     }
 
@@ -2816,7 +2826,7 @@ realcall:
       }
 
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
-      //llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
+      llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
       if (gutils->isConstantInstruction(inst)) continue;
 
       //TODO const
@@ -2824,16 +2834,19 @@ realcall:
       Value* tostore = op->getValueOperand();
       Type* tostoreType = tostore->getType();
       bool constantValue = gutils->isConstantValue(tostore);
-      //llvm::errs() << "considering store " << *op << " constantvalue " << constantValue << "\n";
+      llvm::errs() << "considering store " << *op << " constantvalue " << constantValue << "\n";
       if (constantValue && tostoreType->isIntegerTy()) {
-        //llvm::errs() << "secretfloat is " << isIntASecretFloat(tostore) << "\n";
+        llvm::errs() << "secretfloat is pointer: " << (isIntASecretFloat(tostore) == IntType::Pointer) << "\n";
       }
       if (! ( tostoreType->isPointerTy() || (tostoreType->isIntegerTy() && !constantValue && isIntASecretFloat(tostore) == IntType::Pointer ) ) ) {
           StoreInst* ts;
+          llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
           if (!gutils->isConstantValue(op->getValueOperand())) {
             auto dif1 = Builder2.CreateLoad(invertPointer(op->getPointerOperand()));
+            llvm::errs() << "    nonconst value considering adding to value:" << *op->getValueOperand() << " " << *op << " dif1: " << *dif1 << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
             ts = gutils->setPtrDiffe(op->getPointerOperand(), Constant::getNullValue(op->getValueOperand()->getType()), Builder2);
             addToDiffe(op->getValueOperand(), dif1);
+            llvm::errs() << "       from here: " << *ts->getParent() << "\n";
           } else {
             ts = gutils->setPtrDiffe(op->getPointerOperand(), Constant::getNullValue(op->getValueOperand()->getType()), Builder2);
           }
