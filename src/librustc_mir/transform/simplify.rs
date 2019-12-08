@@ -363,9 +363,14 @@ impl<'a, 'tcx> Visitor<'tcx> for DeclMarker<'a, 'tcx> {
             let stmt =
                 &self.body.basic_blocks()[location.block].statements[location.statement_index];
             if let StatementKind::Assign(box (p, Rvalue::Use(Operand::Constant(c)))) = &stmt.kind {
-                if p.as_local().is_some() {
-                    trace!("skipping store of const value {:?} to {:?}", c, local);
-                    return;
+                match c.literal.val {
+                    // Keep assignments from unevaluated constants around, since the evaluation
+                    // may report errors, even if the use of the constant is dead code.
+                    interpret::ConstValue::Unevaluated(..) => {}
+                    _ => if p.as_local().is_some() {
+                        trace!("skipping store of const value {:?} to {:?}", c, p);
+                        return;
+                    },
                 }
             }
         }

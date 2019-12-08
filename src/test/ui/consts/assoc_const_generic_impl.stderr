@@ -1,0 +1,8 @@
+error: erroneous constant encountered
+  --> $DIR/assoc_const_generic_impl.rs:11:18
+   |
+LL |         let () = Self::I_AM_ZERO_SIZED;
+   |                  ^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
