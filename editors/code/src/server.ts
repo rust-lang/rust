@@ -1,3 +1,4 @@
+import { lookpath } from 'lookpath';
 import { homedir } from 'os';
 import * as lc from 'vscode-languageclient';
 
@@ -17,7 +18,7 @@ export class Server {
     public static config = new Config();
     public static client: lc.LanguageClient;
 
-    public static start(
+    public static async start(
         notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>
     ) {
         // '.' Is the fallback if no folder is open
@@ -27,8 +28,14 @@ export class Server {
             folder = workspace.workspaceFolders[0].uri.fsPath.toString();
         }
 
+        const command = expandPathResolving(this.config.raLspServerPath);
+        if (!(await lookpath(command))) {
+            throw new Error(
+                `Cannot find rust-analyzer server \`${command}\` in PATH.`
+            );
+        }
         const run: lc.Executable = {
-            command: expandPathResolving(this.config.raLspServerPath),
+            command,
             options: { cwd: folder }
         };
         const serverOptions: lc.ServerOptions = {
