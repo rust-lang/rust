@@ -717,7 +717,7 @@ mod tests {
                 format!(\"{}\", fo<|>o())
             }
             ",
-            "foo FN_DEF FileId(1) [359; 376) [362; 365)",
+            "foo FN_DEF FileId(1) [398; 415) [401; 404)",
         );
     }
 
