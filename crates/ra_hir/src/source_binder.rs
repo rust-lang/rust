@@ -21,7 +21,6 @@ use hir_def::{
 };
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
-    MacroFileKind,
 };
 use ra_syntax::{
     ast::{self, AstNode},
@@ -142,7 +141,6 @@ pub struct ReferenceDescriptor {
 
 #[derive(Debug)]
 pub struct Expansion {
-    macro_file_kind: MacroFileKind,
     macro_call_id: MacroCallId,
 }
 
@@ -157,7 +155,7 @@ impl Expansion {
     }
 
     pub fn file_id(&self) -> HirFileId {
-        self.macro_call_id.as_file(self.macro_file_kind)
+        self.macro_call_id.as_file()
     }
 }
 
@@ -456,10 +454,7 @@ impl SourceAnalyzer {
             macro_call.file_id,
             db.ast_id_map(macro_call.file_id).ast_id(macro_call.value),
         );
-        Some(Expansion {
-            macro_call_id: def.as_call_id(db, MacroCallKind::FnLike(ast_id)),
-            macro_file_kind: to_macro_file_kind(macro_call.value),
-        })
+        Some(Expansion { macro_call_id: def.as_call_id(db, MacroCallKind::FnLike(ast_id)) })
     }
 }
 
@@ -542,36 +537,4 @@ fn adjust(
             }
         })
         .map(|(_ptr, scope)| *scope)
-}
-
-/// Given a `ast::MacroCall`, return what `MacroKindFile` it belongs to.
-/// FIXME: Not completed
-fn to_macro_file_kind(macro_call: &ast::MacroCall) -> MacroFileKind {
-    let syn = macro_call.syntax();
-    let parent = match syn.parent() {
-        Some(it) => it,
-        None => {
-            // FIXME:
-            // If it is root, which means the parent HirFile
-            // MacroKindFile must be non-items
-            // return expr now.
-            return MacroFileKind::Expr;
-        }
-    };
-
-    match parent.kind() {
-        MACRO_ITEMS | SOURCE_FILE => MacroFileKind::Items,
-        LET_STMT => {
-            // FIXME: Handle Pattern
-            MacroFileKind::Expr
-        }
-        EXPR_STMT => MacroFileKind::Statements,
-        BLOCK => MacroFileKind::Statements,
-        ARG_LIST => MacroFileKind::Expr,
-        TRY_EXPR => MacroFileKind::Expr,
-        _ => {
-            // Unknown , Just guess it is `Items`
-            MacroFileKind::Items
-        }
-    }
 }

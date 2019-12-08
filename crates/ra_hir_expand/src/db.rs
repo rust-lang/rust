@@ -6,11 +6,11 @@ use mbe::MacroRules;
 use ra_db::{salsa, SourceDatabase};
 use ra_parser::FragmentKind;
 use ra_prof::profile;
-use ra_syntax::{AstNode, Parse, SyntaxNode};
+use ra_syntax::{AstNode, Parse, SyntaxKind::*, SyntaxNode};
 
 use crate::{
     ast_id_map::AstIdMap, BuiltinDeriveExpander, BuiltinFnLikeExpander, HirFileId, HirFileIdRepr,
-    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile, MacroFileKind,
+    MacroCallId, MacroCallLoc, MacroDefId, MacroDefKind, MacroFile,
 };
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -155,11 +155,42 @@ pub(crate) fn parse_macro(
         })
         .ok()?;
 
-    let fragment_kind = match macro_file.macro_file_kind {
-        MacroFileKind::Items => FragmentKind::Items,
-        MacroFileKind::Expr => FragmentKind::Expr,
-        MacroFileKind::Statements => FragmentKind::Statements,
-    };
+    let fragment_kind = to_fragment_kind(db, macro_call_id);
+
     let (parse, rev_token_map) = mbe::token_tree_to_syntax_node(&tt, fragment_kind).ok()?;
     Some((parse, Arc::new(rev_token_map)))
+}
+
+/// Given a `MacroCallId`, return what `FragmentKind` it belongs to.
+/// FIXME: Not completed
+fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> FragmentKind {
+    let syn = db.lookup_intern_macro(macro_call_id).kind.node(db).value;
+
+    let parent = match syn.parent() {
+        Some(it) => it,
+        None => {
+            // FIXME:
+            // If it is root, which means the parent HirFile
+            // MacroKindFile must be non-items
+            // return expr now.
+            return FragmentKind::Expr;
+        }
+    };
+
+    match parent.kind() {
+        MACRO_ITEMS | SOURCE_FILE => FragmentKind::Items,
+        LET_STMT => {
+            // FIXME: Handle Pattern
+            FragmentKind::Expr
+        }
+        EXPR_STMT => FragmentKind::Statements,
+        BLOCK => FragmentKind::Statements,
+        ARG_LIST => FragmentKind::Expr,
+        TRY_EXPR => FragmentKind::Expr,
+        TUPLE_EXPR => FragmentKind::Expr,
+        _ => {
+            // Unknown , Just guess it is `Items`
+            FragmentKind::Items
+        }
+    }
 }
