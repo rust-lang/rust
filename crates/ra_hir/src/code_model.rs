@@ -7,7 +7,6 @@ use std::sync::Arc;
 use either::Either;
 use hir_def::{
     adt::VariantData,
-    body::{Body, BodySourceMap},
     builtin_type::BuiltinType,
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
@@ -509,14 +508,6 @@ impl Function {
 
     pub fn params(self, db: &impl HirDatabase) -> Vec<TypeRef> {
         db.function_data(self.id).params.clone()
-    }
-
-    pub fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self.id.into()).1
-    }
-
-    pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body(self.id.into())
     }
 
     /// The containing impl block, if this is a method.
