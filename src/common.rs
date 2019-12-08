@@ -80,21 +80,6 @@ pub fn has_ptr_meta<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-pub fn codegen_select(bcx: &mut FunctionBuilder, cond: Value, lhs: Value, rhs: Value) -> Value {
-    let lhs_ty = bcx.func.dfg.value_type(lhs);
-    let rhs_ty = bcx.func.dfg.value_type(rhs);
-    assert_eq!(lhs_ty, rhs_ty);
-    if lhs_ty == types::I8 || lhs_ty == types::I16 {
-        // FIXME workaround for missing encoding for select.i8
-        let lhs = bcx.ins().uextend(types::I32, lhs);
-        let rhs = bcx.ins().uextend(types::I32, rhs);
-        let res = bcx.ins().select(cond, lhs, rhs);
-        bcx.ins().ireduce(lhs_ty, res)
-    } else {
-        bcx.ins().select(cond, lhs, rhs)
-    }
-}
-
 pub fn codegen_icmp(
     fx: &mut FunctionCx<'_, '_, impl Backend>,
     intcc: IntCC,

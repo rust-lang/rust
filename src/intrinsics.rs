@@ -118,7 +118,7 @@ macro_rules! atomic_minmax {
 
         // Compare
         let is_eq = codegen_icmp($fx, IntCC::SignedGreaterThan, old, $src);
-        let new = codegen_select(&mut $fx.bcx, is_eq, old, $src);
+        let new = $fx.bcx.ins().select(is_eq, old, $src);
 
         // Write new
         $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
@@ -195,7 +195,7 @@ pub fn bool_to_zero_or_max_uint<'tcx>(
         .bcx
         .ins()
         .iconst(int_ty, (u64::max_value() >> (64 - int_ty.bits())) as i64);
-    let mut res = crate::common::codegen_select(&mut fx.bcx, val, max, zero);
+    let mut res = fx.bcx.ins().select(val, max, zero);
 
     if ty.is_float() {
         res = fx.bcx.ins().bitcast(ty, res);
@@ -553,19 +553,19 @@ pub fn codegen_intrinsic_call<'tcx>(
             let max = fx.bcx.ins().iconst(clif_ty, max);
 
             let val = match (intrinsic, signed) {
-                ("saturating_add", false) => codegen_select(&mut fx.bcx, has_overflow, max, val),
-                ("saturating_sub", false) => codegen_select(&mut fx.bcx, has_overflow, min, val),
+                ("saturating_add", false) => fx.bcx.ins().select(has_overflow, max, val),
+                ("saturating_sub", false) => fx.bcx.ins().select(has_overflow, min, val),
                 ("saturating_add", true) => {
                     let rhs = rhs.load_scalar(fx);
                     let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
-                    let sat_val = codegen_select(&mut fx.bcx, rhs_ge_zero, max, min);
-                    codegen_select(&mut fx.bcx, has_overflow, sat_val, val)
+                    let sat_val = fx.bcx.ins().select(rhs_ge_zero, max, min);
+                    fx.bcx.ins().select(has_overflow, sat_val, val)
                 }
                 ("saturating_sub", true) => {
                     let rhs = rhs.load_scalar(fx);
                     let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
-                    let sat_val = codegen_select(&mut fx.bcx, rhs_ge_zero, min, max);
-                    codegen_select(&mut fx.bcx, has_overflow, sat_val, val)
+                    let sat_val = fx.bcx.ins().select(rhs_ge_zero, min, max);
+                    fx.bcx.ins().select(has_overflow, sat_val, val)
                 }
                 _ => unreachable!(),
             };
@@ -703,28 +703,12 @@ pub fn codegen_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         };
         ctpop, <T> (v arg) {
-            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
-                let (lo, hi) = fx.bcx.ins().isplit(arg);
-                let lo_popcnt = fx.bcx.ins().popcnt(lo);
-                let hi_popcnt = fx.bcx.ins().popcnt(hi);
-                let popcnt = fx.bcx.ins().iadd(lo_popcnt, hi_popcnt);
-                crate::cast::clif_intcast(fx, popcnt, types::I128, false)
-            } else {
-                fx.bcx.ins().popcnt(arg)
-            };
+            let res = fx.bcx.ins().popcnt(arg);
             let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
         bitreverse, <T> (v arg) {
-            let res = if T == fx.tcx.types.u128 || T == fx.tcx.types.i128 {
-                let (lo, hi) = fx.bcx.ins().isplit(arg);
-                let lo_bitrev = fx.bcx.ins().bitrev(lo);
-                let hi_bitrev = fx.bcx.ins().bitrev(hi);
-                let bitrev = fx.bcx.ins().iconcat(hi_bitrev, lo_bitrev);
-                crate::cast::clif_intcast(fx, bitrev, types::I128, false)
-            } else {
-                fx.bcx.ins().bitrev(arg)
-            };
+            let res = fx.bcx.ins().bitrev(arg);
             let res = CValue::by_val(res, fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
@@ -881,7 +865,7 @@ pub fn codegen_intrinsic_call<'tcx>(
 
             // Compare
             let is_eq = codegen_icmp(fx, IntCC::Equal, old, test_old);
-            let new = crate::common::codegen_select(&mut fx.bcx, is_eq, new, old); // Keep old if not equal to test_old
+            let new = fx.bcx.ins().select(is_eq, new, old); // Keep old if not equal to test_old
 
             // Write new
             fx.bcx.ins().store(MemFlags::new(), new, ptr, 0);
