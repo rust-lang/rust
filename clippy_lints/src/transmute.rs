@@ -191,6 +191,28 @@ declare_clippy_lint! {
 }
 
 declare_clippy_lint! {
+    /// **What it does:** Checks for transmutes from a float to an integer.
+    ///
+    /// **Why is this bad?** Transmutes are dangerous and error-prone, whereas `to_bits` is intuitive
+    /// and safe.
+    ///
+    /// **Known problems:** None.
+    ///
+    /// **Example:**
+    /// ```rust
+    /// unsafe {
+    ///     let _: u32 = std::mem::transmute(1f32);
+    /// }
+    ///
+    /// // should be:
+    /// let _: u32 = 1f32.to_bits();
+    /// ```
+    pub TRANSMUTE_FLOAT_TO_INT,
+    nursery,
+    "transmutes from a float to an integer"
+}
+
+declare_clippy_lint! {
     /// **What it does:** Checks for transmutes from a pointer to a pointer, or
     /// from a reference to a reference.
     ///
@@ -254,6 +276,7 @@ declare_lint_pass!(Transmute => [
     TRANSMUTE_BYTES_TO_STR,
     TRANSMUTE_INT_TO_BOOL,
     TRANSMUTE_INT_TO_FLOAT,
+    TRANSMUTE_FLOAT_TO_INT,
     UNSOUND_COLLECTION_TRANSMUTE,
 ]);
 
@@ -516,6 +539,50 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Transmute {
                                 e.span,
                                 "consider using",
                                 format!("{}::from_bits({})", to_ty, arg.to_string()),
+                                Applicability::Unspecified,
+                            );
+                        },
+                    ),
+                    (&ty::Float(float_ty), &ty::Int(_)) | (&ty::Float(float_ty), &ty::Uint(_)) => span_lint_and_then(
+                        cx,
+                        TRANSMUTE_FLOAT_TO_INT,
+                        e.span,
+                        &format!("transmute from a `{}` to a `{}`", from_ty, to_ty),
+                        |db| {
+                            let mut expr = &args[0];
+                            let mut arg = sugg::Sugg::hir(cx, expr, "..");
+
+                            if let ExprKind::Unary(UnOp::UnNeg, inner_expr) = &expr.kind {
+                                expr = &inner_expr;
+                            }
+
+                            if_chain! {
+                                // if the expression is a float literal and it is unsuffixed then
+                                // add a suffix so the suggestion is valid and unambiguous
+                                let op = format!("{}{}", arg, float_ty.name_str()).into();
+                                if let ExprKind::Lit(lit) = &expr.kind;
+                                if let ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) = lit.node;
+                                then {
+                                    match arg {
+                                        sugg::Sugg::MaybeParen(_) => arg = sugg::Sugg::MaybeParen(op),
+                                        _ => arg = sugg::Sugg::NonParen(op)
+                                    }
+                                }
+                            }
+
+                            arg = sugg::Sugg::NonParen(format!("{}.to_bits()", arg.maybe_par()).into());
+
+                            // cast the result of `to_bits` if `to_ty` is signed
+                            arg = if let ty::Int(int_ty) = to_ty.kind {
+                                arg.as_ty(int_ty.name_str().to_string())
+                            } else {
+                                arg
+                            };
+
+                            db.span_suggestion(
+                                e.span,
+                                "consider using",
+                                arg.to_string(),
                                 Applicability::Unspecified,
                             );
                         },
