@@ -427,10 +427,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses a bound according to the grammar:
-    ///
     /// ```
     /// BOUND = TY_BOUND | LT_BOUND
-    /// LT_BOUND = LIFETIME (e.g., `'a`)
     /// ```
     fn parse_generic_bound(
         &mut self,
@@ -443,14 +441,7 @@ impl<'a> Parser<'a> {
         let is_negative = self.eat(&token::Not);
         let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
         if self.token.is_lifetime() {
-            self.error_opt_out_lifetime(question);
-            let bound = GenericBound::Outlives(self.expect_lifetime());
-            if has_parens {
-                // FIXME(Centril): Consider not erroring here and accepting `('lt)` instead,
-                // possibly introducing `GenericBound::Paren(P<GenericBound>)`?
-                self.recover_paren_lifetime(lo, inner_lo)?;
-            }
-            Ok(Ok(bound))
+            Ok(Ok(self.parse_generic_lt_bound(lo, inner_lo, has_parens, question)?))
         } else {
             let (poly_span, bound) = self.parse_generic_ty_bound(lo, has_parens, question)?;
             if is_negative {
@@ -459,6 +450,27 @@ impl<'a> Parser<'a> {
                 Ok(Ok(bound))
             }
         }
+    }
+
+    /// Parses a lifetime ("outlives") bound, e.g. `'a`, according to:
+    /// ```
+    /// LT_BOUND = LIFETIME
+    /// ```
+    fn parse_generic_lt_bound(
+        &mut self,
+        lo: Span,
+        inner_lo: Span,
+        has_parens: bool,
+        question: Option<Span>,
+    ) -> PResult<'a, GenericBound> {
+        self.error_opt_out_lifetime(question);
+        let bound = GenericBound::Outlives(self.expect_lifetime());
+        if has_parens {
+            // FIXME(Centril): Consider not erroring here and accepting `('lt)` instead,
+            // possibly introducing `GenericBound::Paren(P<GenericBound>)`?
+            self.recover_paren_lifetime(lo, inner_lo)?;
+        }
+        Ok(bound)
     }
 
     fn error_opt_out_lifetime(&self, question: Option<Span>) {
