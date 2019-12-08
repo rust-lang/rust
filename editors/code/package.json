@@ -48,6 +48,7 @@
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0",
         "rollup-plugin-typescript": "^1.0.1",
+        "rollup-plugin-sourcemaps": "^0.4.2",
         "shx": "^0.3.1",
         "tslint": "^5.20.1",
         "tslint-config-prettier": "^1.18.0",
