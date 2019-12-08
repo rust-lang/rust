@@ -1,3 +1,5 @@
+// run-pass
+
 #![feature(type_alias_impl_trait)]
 
 trait UnwrapItemsExt {
@@ -11,11 +13,8 @@ where
     E: std::fmt::Debug,
 {
     type Iter = impl Iterator<Item = T>;
-    //~^ ERROR: could not find defining uses
 
     fn unwrap_items(self) -> Self::Iter {
-    //~^ ERROR: type parameter `T` is part of concrete type
-    //~| ERROR: type parameter `E` is part of concrete type
         self.map(|x| x.unwrap())
     }
 }

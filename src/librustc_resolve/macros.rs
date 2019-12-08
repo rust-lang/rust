@@ -3,26 +3,27 @@
 
 use crate::{AmbiguityError, AmbiguityKind, AmbiguityErrorMisc, Determinacy};
 use crate::{CrateLint, Resolver, ResolutionError, Scope, ScopeSet, ParentScope, Weak};
-use crate::{ModuleKind, NameBinding, PathResult, Segment, ToNameBinding};
-use crate::{ModuleOrUniformRoot, KNOWN_TOOLS};
+use crate::{ModuleKind, ModuleOrUniformRoot, NameBinding, PathResult, Segment, ToNameBinding};
 use crate::Namespace::*;
 use crate::resolve_imports::ImportResolver;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
 use rustc::hir::def_id;
 use rustc::middle::stability;
+use rustc::session::Session;
+use rustc::util::nodemap::FxHashSet;
 use rustc::{ty, lint, span_bug};
+use rustc_feature::is_builtin_attr_name;
 use syntax::ast::{self, NodeId, Ident};
-use syntax::attr::StabilityLevel;
+use syntax::attr::{self, StabilityLevel};
 use syntax::edition::Edition;
-use syntax::feature_gate::{emit_feature_err, is_builtin_attr_name};
-use syntax::feature_gate::GateIssue;
+use syntax::feature_gate::feature_err;
 use syntax::print::pprust;
-use syntax::symbol::{Symbol, kw, sym};
 use syntax_expand::base::{self, InvocationRes, Indeterminate};
 use syntax_expand::base::SyntaxExtension;
 use syntax_expand::expand::{AstFragment, AstFragmentKind, Invocation, InvocationKind};
 use syntax_expand::compile_declarative_macro;
 use syntax_pos::hygiene::{self, ExpnId, ExpnData, ExpnKind};
+use syntax_pos::symbol::{Symbol, kw, sym};
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::{mem, ptr};
@@ -91,6 +92,46 @@ fn fast_print_path(path: &ast::Path) -> Symbol {
         }
         Symbol::intern(&path_str)
     }
+}
+
+/// The code common between processing `#![register_tool]` and `#![register_attr]`.
+fn registered_idents(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+    attr_name: Symbol,
+    descr: &str,
+) -> FxHashSet<Ident> {
+    let mut registered = FxHashSet::default();
+    for attr in attr::filter_by_name(attrs, attr_name) {
+        for nested_meta in attr.meta_item_list().unwrap_or_default() {
+            match nested_meta.ident() {
+                Some(ident) => if let Some(old_ident) = registered.replace(ident) {
+                    let msg = format!("{} `{}` was already registered", descr, ident);
+                    sess.struct_span_err(ident.span, &msg)
+                        .span_label(old_ident.span, "already registered here").emit();
+                }
+                None => {
+                    let msg = format!("`{}` only accepts identifiers", attr_name);
+                    let span = nested_meta.span();
+                    sess.struct_span_err(span, &msg).span_label(span, "not an identifier").emit();
+                }
+            }
+        }
+    }
+    registered
+}
+
+crate fn registered_attrs_and_tools(
+    sess: &Session,
+    attrs: &[ast::Attribute],
+) -> (FxHashSet<Ident>, FxHashSet<Ident>) {
+    let registered_attrs = registered_idents(sess, attrs, sym::register_attr, "attribute");
+    let mut registered_tools = registered_idents(sess, attrs, sym::register_tool, "tool");
+    // We implicitly add `rustfmt` and `clippy` to known tools,
+    // but it's not an error to register them explicitly.
+    let predefined_tools = [sym::clippy, sym::rustfmt];
+    registered_tools.extend(predefined_tools.iter().cloned().map(Ident::with_dummy_span));
+    (registered_attrs, registered_tools)
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -196,15 +237,26 @@ impl<'a> base::Resolver for Resolver<'a> {
                 // - Derives in the container need to know whether one of them is a built-in `Copy`.
                 // FIXME: Try to avoid repeated resolutions for derives here and in expansion.
                 let mut exts = Vec::new();
+                let mut helper_attrs = Vec::new();
                 for path in derives {
                     exts.push(match self.resolve_macro_path(
                         path, Some(MacroKind::Derive), &parent_scope, true, force
                     ) {
-                        Ok((Some(ext), _)) => ext,
+                        Ok((Some(ext), _)) => {
+                            let span = path.segments.last().unwrap().ident.span.modern();
+                            helper_attrs.extend(
+                                ext.helper_attrs.iter().map(|name| Ident::new(*name, span))
+                            );
+                            if ext.is_derive_copy {
+                                self.add_derive_copy(invoc_id);
+                            }
+                            ext
+                        }
                         Ok(_) | Err(Determinacy::Determined) => self.dummy_ext(MacroKind::Derive),
                         Err(Determinacy::Undetermined) => return Err(Indeterminate),
                     })
                 }
+                self.helper_attrs.insert(invoc_id, helper_attrs);
                 return Ok(InvocationRes::DeriveContainer(exts));
             }
         };
@@ -294,13 +346,8 @@ impl<'a> Resolver<'a> {
                segment.ident.as_str().starts_with("rustc") {
                 let msg =
                     "attributes starting with `rustc` are reserved for use by the `rustc` compiler";
-                emit_feature_err(
-                    &self.session.parse_sess,
-                    sym::rustc_attrs,
-                    segment.ident.span,
-                    GateIssue::Language,
-                    msg,
-                );
+                feature_err(&self.session.parse_sess, sym::rustc_attrs, segment.ident.span, msg)
+                    .emit();
             }
         }
 
@@ -414,12 +461,12 @@ impl<'a> Resolver<'a> {
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         bitflags::bitflags! {
             struct Flags: u8 {
-                const MACRO_RULES        = 1 << 0;
-                const MODULE             = 1 << 1;
-                const PRELUDE            = 1 << 2;
-                const MISC_SUGGEST_CRATE = 1 << 3;
-                const MISC_SUGGEST_SELF  = 1 << 4;
-                const MISC_FROM_PRELUDE  = 1 << 5;
+                const MACRO_RULES          = 1 << 0;
+                const MODULE               = 1 << 1;
+                const DERIVE_HELPER_COMPAT = 1 << 2;
+                const MISC_SUGGEST_CRATE   = 1 << 3;
+                const MISC_SUGGEST_SELF    = 1 << 4;
+                const MISC_FROM_PRELUDE    = 1 << 5;
             }
         }
 
@@ -453,8 +500,24 @@ impl<'a> Resolver<'a> {
         // Go through all the scopes and try to resolve the name.
         let break_result = self.visit_scopes(scope_set, parent_scope, orig_ident,
                                              |this, scope, use_prelude, ident| {
+            let ok = |res, span, arenas| Ok((
+                (res, ty::Visibility::Public, span, ExpnId::root()).to_name_binding(arenas),
+                Flags::empty(),
+            ));
             let result = match scope {
-                Scope::DeriveHelpers => {
+                Scope::DeriveHelpers(expn_id) => {
+                    if let Some(attr) = this.helper_attrs.get(&expn_id).and_then(|attrs| {
+                        attrs.iter().rfind(|i| ident == **i)
+                    }) {
+                        let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
+                                       ty::Visibility::Public, attr.span, expn_id)
+                                       .to_name_binding(this.arenas);
+                        Ok((binding, Flags::empty()))
+                    } else {
+                        Err(Determinacy::Determined)
+                    }
+                }
+                Scope::DeriveHelpersCompat => {
                     let mut result = Err(Determinacy::Determined);
                     for derive in parent_scope.derives {
                         let parent_scope = &ParentScope { derives: &[], ..*parent_scope };
@@ -464,7 +527,7 @@ impl<'a> Resolver<'a> {
                                 let binding = (Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
                                                ty::Visibility::Public, derive.span, ExpnId::root())
                                                .to_name_binding(this.arenas);
-                                result = Ok((binding, Flags::empty()));
+                                result = Ok((binding, Flags::DERIVE_HELPER_COMPAT));
                                 break;
                             }
                             Ok(_) | Err(Determinacy::Determined) => {}
@@ -531,41 +594,32 @@ impl<'a> Resolver<'a> {
                         Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                     }
                 }
+                Scope::RegisteredAttrs => match this.registered_attrs.get(&ident).cloned() {
+                    Some(ident) => ok(
+                        Res::NonMacroAttr(NonMacroAttrKind::Registered), ident.span, this.arenas
+                    ),
+                    None => Err(Determinacy::Determined)
+                }
                 Scope::MacroUsePrelude => match this.macro_use_prelude.get(&ident.name).cloned() {
-                    Some(binding) => Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
+                    Some(binding) => Ok((binding, Flags::MISC_FROM_PRELUDE)),
                     None => Err(Determinacy::determined(
                         this.graph_root.unexpanded_invocations.borrow().is_empty()
                     ))
                 }
                 Scope::BuiltinAttrs => if is_builtin_attr_name(ident.name) {
-                    let binding = (Res::NonMacroAttr(NonMacroAttrKind::Builtin),
-                                   ty::Visibility::Public, DUMMY_SP, ExpnId::root())
-                                   .to_name_binding(this.arenas);
-                    Ok((binding, Flags::PRELUDE))
-                } else {
-                    Err(Determinacy::Determined)
-                }
-                Scope::LegacyPluginHelpers => if this.session.plugin_attributes.borrow().iter()
-                                                     .any(|(name, _)| ident.name == *name) {
-                    let binding = (Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
-                                   ty::Visibility::Public, DUMMY_SP, ExpnId::root())
-                                   .to_name_binding(this.arenas);
-                    Ok((binding, Flags::PRELUDE))
+                    ok(Res::NonMacroAttr(NonMacroAttrKind::Builtin), DUMMY_SP, this.arenas)
                 } else {
                     Err(Determinacy::Determined)
                 }
                 Scope::ExternPrelude => match this.extern_prelude_get(ident, !record_used) {
-                    Some(binding) => Ok((binding, Flags::PRELUDE)),
+                    Some(binding) => Ok((binding, Flags::empty())),
                     None => Err(Determinacy::determined(
                         this.graph_root.unexpanded_invocations.borrow().is_empty()
                     )),
                 }
-                Scope::ToolPrelude => if KNOWN_TOOLS.contains(&ident.name) {
-                    let binding = (Res::ToolMod, ty::Visibility::Public, DUMMY_SP, ExpnId::root())
-                                   .to_name_binding(this.arenas);
-                    Ok((binding, Flags::PRELUDE))
-                } else {
-                    Err(Determinacy::Determined)
+                Scope::ToolPrelude => match this.registered_tools.get(&ident).cloned() {
+                    Some(ident) => ok(Res::ToolMod, ident.span, this.arenas),
+                    None => Err(Determinacy::Determined)
                 }
                 Scope::StdLibPrelude => {
                     let mut result = Err(Determinacy::Determined);
@@ -579,7 +633,7 @@ impl<'a> Resolver<'a> {
                             path_span,
                         ) {
                             if use_prelude || this.is_builtin_macro(binding.res()) {
-                                result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
+                                result = Ok((binding, Flags::MISC_FROM_PRELUDE));
                             }
                         }
                     }
@@ -587,11 +641,7 @@ impl<'a> Resolver<'a> {
                 }
                 Scope::BuiltinTypes => match this.primitive_type_table.primitive_types
                                                  .get(&ident.name).cloned() {
-                    Some(prim_ty) => {
-                        let binding = (Res::PrimTy(prim_ty), ty::Visibility::Public,
-                                       DUMMY_SP, ExpnId::root()).to_name_binding(this.arenas);
-                        Ok((binding, Flags::PRELUDE))
-                    }
+                    Some(prim_ty) => ok(Res::PrimTy(prim_ty), DUMMY_SP, this.arenas),
                     None => Err(Determinacy::Determined)
                 }
             };
@@ -607,21 +657,18 @@ impl<'a> Resolver<'a> {
                         let (res, innermost_res) = (binding.res(), innermost_binding.res());
                         if res != innermost_res {
                             let builtin = Res::NonMacroAttr(NonMacroAttrKind::Builtin);
-                            let derive_helper = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
-                            let legacy_helper =
-                                Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
+                            let is_derive_helper_compat = |res, flags: Flags| {
+                                res == Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper) &&
+                                flags.contains(Flags::DERIVE_HELPER_COMPAT)
+                            };
 
                             let ambiguity_error_kind = if is_import {
                                 Some(AmbiguityKind::Import)
                             } else if innermost_res == builtin || res == builtin {
                                 Some(AmbiguityKind::BuiltinAttr)
-                            } else if innermost_res == derive_helper || res == derive_helper {
+                            } else if is_derive_helper_compat(innermost_res, innermost_flags) ||
+                                      is_derive_helper_compat(res, flags) {
                                 Some(AmbiguityKind::DeriveHelper)
-                            } else if innermost_res == legacy_helper &&
-                                      flags.contains(Flags::PRELUDE) ||
-                                      res == legacy_helper &&
-                                      innermost_flags.contains(Flags::PRELUDE) {
-                                Some(AmbiguityKind::LegacyHelperVsPrelude)
                             } else if innermost_flags.contains(Flags::MACRO_RULES) &&
                                       flags.contains(Flags::MODULE) &&
                                       !this.disambiguate_legacy_vs_modern(innermost_binding,
@@ -681,20 +728,7 @@ impl<'a> Resolver<'a> {
             return Ok(binding);
         }
 
-        let determinacy = Determinacy::determined(determinacy == Determinacy::Determined || force);
-        if determinacy == Determinacy::Determined && macro_kind == Some(MacroKind::Attr) &&
-           self.session.features_untracked().custom_attribute {
-            // For single-segment attributes interpret determinate "no resolution" as a custom
-            // attribute. (Lexical resolution implies the first segment and attr kind should imply
-            // the last segment, so we are certainly working with a single-segment attribute here.)
-            assert!(ns == MacroNS);
-            let binding = (Res::NonMacroAttr(NonMacroAttrKind::Custom),
-                           ty::Visibility::Public, orig_ident.span, ExpnId::root())
-                           .to_name_binding(self.arenas);
-            Ok(binding)
-        } else {
-            Err(determinacy)
-        }
+        Err(Determinacy::determined(determinacy == Determinacy::Determined || force))
     }
 
     crate fn finalize_macro_resolutions(&mut self) {
@@ -705,16 +739,7 @@ impl<'a> Resolver<'a> {
                     // Make sure compilation does not succeed if preferred macro resolution
                     // has changed after the macro had been expanded. In theory all such
                     // situations should be reported as ambiguity errors, so this is a bug.
-                    if initial_res == Res::NonMacroAttr(NonMacroAttrKind::Custom) {
-                        // Yeah, legacy custom attributes are implemented using forced resolution
-                        // (which is a best effort error recovery tool, basically), so we can't
-                        // promise their resolution won't change later.
-                        let msg = format!("inconsistent resolution for a macro: first {}, then {}",
-                                          initial_res.descr(), res.descr());
-                        this.session.span_err(span, &msg);
-                    } else {
-                        span_bug!(span, "inconsistent resolution for a macro");
-                    }
+                    span_bug!(span, "inconsistent resolution for a macro");
                 }
             } else {
                 // It's possible that the macro was unresolved (indeterminate) and silently
@@ -826,7 +851,8 @@ impl<'a> Resolver<'a> {
                                          res: Option<Res>, span: Span) {
         if let Some(Res::NonMacroAttr(kind)) = res {
             if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
-                let msg = format!("cannot use a {} through an import", kind.descr());
+                let msg =
+                    format!("cannot use {} {} through an import", kind.article(), kind.descr());
                 let mut err = self.session.struct_span_err(span, &msg);
                 if let Some(binding) = binding {
                     err.span_note(binding.span, &format!("the {} imported here", kind.descr()));
@@ -849,8 +875,8 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Compile the macro into a `SyntaxExtension` and possibly replace it with a pre-defined
-    /// extension partially or entirely for built-in macros and legacy plugin macros.
+    /// Compile the macro into a `SyntaxExtension` and possibly replace
+    /// its expander to a pre-defined one for built-in macros.
     crate fn compile_macro(&mut self, item: &ast::Item, edition: Edition) -> SyntaxExtension {
         let mut result = compile_declarative_macro(
             &self.session.parse_sess, self.session.features_untracked(), item, edition
@@ -859,14 +885,9 @@ impl<'a> Resolver<'a> {
         if result.is_builtin {
             // The macro was marked with `#[rustc_builtin_macro]`.
             if let Some(ext) = self.builtin_macros.remove(&item.ident.name) {
-                if ext.is_builtin {
-                    // The macro is a built-in, replace only the expander function.
-                    result.kind = ext.kind;
-                } else {
-                    // The macro is from a plugin, the in-source definition is dummy,
-                    // take all the data from the resolver.
-                    result = ext;
-                }
+                // The macro is a built-in, replace its expander function
+                // while still taking everything else from the source code.
+                result.kind = ext.kind;
             } else {
                 let msg = format!("cannot find a built-in macro with name `{}`", item.ident);
                 self.session.span_err(item.span, &msg);

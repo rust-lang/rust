@@ -5,9 +5,6 @@ LL |     match (S { a: 1 }) {
    |           ------------ this match expression has type `S`
 LL |         E::C(_) => (),
    |         ^^^^^^^ expected struct `S`, found enum `E`
-   |
-   = note: expected type `S`
-              found type `E`
 
 error: aborting due to previous error
 

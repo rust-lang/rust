@@ -1074,17 +1074,22 @@ impl<T: ?Sized> *const T {
     /// operation because the returned value could be pointing to invalid
     /// memory.
     ///
-    /// When calling this method, you have to ensure that if the pointer is
-    /// non-NULL, then it is properly aligned, dereferencable (for the whole
-    /// size of `T`) and points to an initialized instance of `T`. This applies
-    /// even if the result of this method is unused!
+    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// all of the following is true:
+    /// - it is properly aligned
+    /// - it must point to an initialized instance of T; in particular, the pointer must be
+    ///   "dereferencable" in the sense defined [here].
+    ///
+    /// This applies even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
     /// it is, the only safe approach is to ensure that they are indeed initialized.)
     ///
     /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
-    /// not necessarily reflect the actual lifetime of the data. It is up to the
-    /// caller to ensure that for the duration of this lifetime, the memory this
-    /// pointer points to does not get written to outside of `UnsafeCell<U>`.
+    /// not necessarily reflect the actual lifetime of the data. *You* must enforce
+    /// Rust's aliasing rules. In particular, for the duration of this lifetime,
+    /// the memory the pointer points to must not get mutated (except inside `UnsafeCell`).
+    ///
+    /// [here]: crate::ptr#safety
     ///
     /// # Examples
     ///
@@ -1301,7 +1306,6 @@ impl<T: ?Sized> *const T {
     /// }
     /// ```
     #[unstable(feature = "ptr_offset_from", issue = "41079")]
-    #[cfg(not(bootstrap))]
     #[rustc_const_unstable(feature = "const_ptr_offset_from")]
     #[inline]
     pub const unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
@@ -1311,21 +1315,6 @@ impl<T: ?Sized> *const T {
         // FIXME: do this with a real assert at some point
         [()][(!ok) as usize];
         intrinsics::ptr_offset_from(self, origin)
-    }
-
-    #[unstable(feature = "ptr_offset_from", issue = "41079")]
-    #[inline]
-    #[cfg(bootstrap)]
-    /// bootstrap
-    pub unsafe fn offset_from(self, origin: *const T) -> isize where T: Sized {
-        let pointee_size = mem::size_of::<T>();
-        assert!(0 < pointee_size && pointee_size <= isize::max_value() as usize);
-
-        // This is the same sequence that Clang emits for pointer subtraction.
-        // It can be neither `nsw` nor `nuw` because the input is treated as
-        // unsigned but then the output is treated as signed, so neither works.
-        let d = isize::wrapping_sub(self as _, origin as _);
-        intrinsics::exact_div(d, pointee_size as _)
     }
 
     /// Calculates the distance between two pointers. The returned value is in
@@ -1945,18 +1934,23 @@ impl<T: ?Sized> *mut T {
     /// of the returned pointer, nor can it ensure that the lifetime `'a`
     /// returned is indeed a valid lifetime for the contained data.
     ///
-    /// When calling this method, you have to ensure that if the pointer is
-    /// non-NULL, then it is properly aligned, dereferencable (for the whole
-    /// size of `T`) and points to an initialized instance of `T`. This applies
-    /// even if the result of this method is unused!
+    /// When calling this method, you have to ensure that *either* the pointer is NULL *or*
+    /// all of the following is true:
+    /// - it is properly aligned
+    /// - it must point to an initialized instance of T; in particular, the pointer must be
+    ///   "dereferencable" in the sense defined [here].
+    ///
+    /// This applies even if the result of this method is unused!
     /// (The part about being initialized is not yet fully decided, but until
     /// it is the only safe approach is to ensure that they are indeed initialized.)
     ///
     /// Additionally, the lifetime `'a` returned is arbitrarily chosen and does
-    /// not necessarily reflect the actual lifetime of the data. It is up to the
-    /// caller to ensure that for the duration of this lifetime, the memory this
-    /// pointer points to does not get accessed through any other pointer.
+    /// not necessarily reflect the actual lifetime of the data. *You* must enforce
+    /// Rust's aliasing rules. In particular, for the duration of this lifetime,
+    /// the memory this pointer points to must not get accessed (read or written)
+    /// through any other pointer.
     ///
+    /// [here]: crate::ptr#safety
     /// [`as_ref`]: #method.as_ref
     ///
     /// # Examples

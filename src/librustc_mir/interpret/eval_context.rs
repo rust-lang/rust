@@ -3,6 +3,7 @@ use std::fmt::Write;
 use std::mem;
 
 use syntax::source_map::{self, Span, DUMMY_SP};
+use rustc::ich::StableHashingContext;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::DefKind;
 use rustc::mir;
@@ -18,10 +19,12 @@ use rustc::mir::interpret::{
     InterpResult, truncate, sign_extend,
 };
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable;
 
 use super::{
     Immediate, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
-    Memory, Machine
+    Memory, Machine, StackPopInfo
 };
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
@@ -60,6 +63,9 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     /// The span of the call site.
     pub span: source_map::Span,
 
+    /// Extra data for the machine.
+    pub extra: Extra,
+
     ////////////////////////////////////////////////////////////////////////////////
     // Return place and locals
     ////////////////////////////////////////////////////////////////////////////////
@@ -82,21 +88,22 @@ pub struct Frame<'mir, 'tcx, Tag=(), Extra=()> {
     ////////////////////////////////////////////////////////////////////////////////
     /// The block that is currently executed (or will be executed after the above call stacks
     /// return).
-    pub block: mir::BasicBlock,
+    /// If this is `None`, we are unwinding and this function doesn't need any clean-up.
+    /// Just continue the same as with `Resume`.
+    pub block: Option<mir::BasicBlock>,
 
     /// The index of the currently evaluated statement.
     pub stmt: usize,
-
-    /// Extra data for the machine.
-    pub extra: Extra,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)] // Miri debug-prints these
+#[derive(Clone, Eq, PartialEq, Debug, HashStable)] // Miri debug-prints these
 pub enum StackPopCleanup {
     /// Jump to the next block in the caller, or cause UB if None (that's a function
     /// that may never return). Also store layout of return place so
     /// we can validate it at that layout.
-    Goto(Option<mir::BasicBlock>),
+    /// `ret` stores the block we jump to on a normal return, while 'unwind'
+    /// stores the block used for cleanup during unwinding
+    Goto { ret: Option<mir::BasicBlock>, unwind: Option<mir::BasicBlock> },
     /// Just do nohing: Used by Main and for the box_alloc hook in miri.
     /// `cleanup` says whether locals are deallocated. Static computation
     /// wants them leaked to intern what they need (and just throw away
@@ -105,15 +112,16 @@ pub enum StackPopCleanup {
 }
 
 /// State of a local variable including a memoized layout
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, HashStable)]
 pub struct LocalState<'tcx, Tag=(), Id=AllocId> {
     pub value: LocalValue<Tag, Id>,
     /// Don't modify if `Some`, this is only used to prevent computing the layout twice
+    #[stable_hasher(ignore)]
     pub layout: Cell<Option<TyLayout<'tcx>>>,
 }
 
 /// Current value of a local variable
-#[derive(Clone, PartialEq, Eq, Debug)] // Miri debug-prints these
+#[derive(Clone, PartialEq, Eq, Debug, HashStable)] // Miri debug-prints these
 pub enum LocalValue<Tag=(), Id=AllocId> {
     /// This local is not currently alive, and cannot be used at all.
     Dead,
@@ -153,6 +161,20 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
                 Ok(Ok(local))
             }
         }
+    }
+}
+
+impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
+    /// Return the `SourceInfo` of the current instruction.
+    pub fn current_source_info(&self) -> Option<mir::SourceInfo> {
+        self.block.map(|block| {
+            let block = &self.body.basic_blocks()[block];
+            if self.stmt < block.statements.len() {
+                block.statements[self.stmt].source_info
+            } else {
+                block.terminator().source_info
+            }
+        })
     }
 }
 
@@ -228,6 +250,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.memory.force_bits(scalar, size)
     }
 
+    /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
+    /// the *canonical* machine pointer to the allocation.  Must never be used
+    /// for any other pointers!
+    ///
+    /// This represents a *direct* access to that memory, as opposed to access
+    /// through a pointer that was created by the program.
     #[inline(always)]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
         self.memory.tag_static_base_pointer(ptr)
@@ -284,7 +312,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
-    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
+    ) -> InterpResult<'tcx, mir::ReadOnlyBodyAndCache<'tcx, 'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
         if did.is_local()
@@ -295,11 +323,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+            return Ok(self.tcx.promoted_mir(did)[promoted].unwrap_read_only());
         }
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
-                Ok(self.tcx.optimized_mir(did))
+                Ok(self.tcx.optimized_mir(did).unwrap_read_only())
             } else {
                 throw_unsup!(NoMirFor(self.tcx.def_path_str(def_id)))
             },
@@ -489,7 +517,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let extra = M::stack_push(self)?;
         self.stack.push(Frame {
             body,
-            block: mir::START_BLOCK,
+            block: Some(mir::START_BLOCK),
             return_to_block,
             return_place,
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -540,67 +568,153 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
-        if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
+        if self.stack.len() > *self.tcx.sess.recursion_limit.get() {
             throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(())
         }
     }
 
-    pub(super) fn pop_stack_frame(&mut self) -> InterpResult<'tcx> {
-        info!("LEAVING({}) {}", self.cur_frame(), self.frame().instance);
+    /// Jump to the given block.
+    #[inline]
+    pub fn go_to_block(&mut self, target: mir::BasicBlock) {
+        let frame = self.frame_mut();
+        frame.block = Some(target);
+        frame.stmt = 0;
+    }
+
+    /// *Return* to the given `target` basic block.
+    /// Do *not* use for unwinding! Use `unwind_to_block` instead.
+    ///
+    /// If `target` is `None`, that indicates the function cannot return, so we raise UB.
+    pub fn return_to_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
+        if let Some(target) = target {
+            Ok(self.go_to_block(target))
+        } else {
+            throw_ub!(Unreachable)
+        }
+    }
+
+    /// *Unwind* to the given `target` basic block.
+    /// Do *not* use for returning! Use `return_to_block` instead.
+    ///
+    /// If `target` is `None`, that indicates the function does not need cleanup during
+    /// unwinding, and we will just keep propagating that upwards.
+    pub fn unwind_to_block(&mut self, target: Option<mir::BasicBlock>) {
+        let frame = self.frame_mut();
+        frame.block = target;
+        frame.stmt = 0;
+    }
+
+    /// Pops the current frame from the stack, deallocating the
+    /// memory for allocated locals.
+    ///
+    /// If `unwinding` is `false`, then we are performing a normal return
+    /// from a function. In this case, we jump back into the frame of the caller,
+    /// and continue execution as normal.
+    ///
+    /// If `unwinding` is `true`, then we are in the middle of a panic,
+    /// and need to unwind this frame. In this case, we jump to the
+    /// `cleanup` block for the function, which is responsible for running
+    /// `Drop` impls for any locals that have been initialized at this point.
+    /// The cleanup block ends with a special `Resume` terminator, which will
+    /// cause us to continue unwinding.
+    pub(super) fn pop_stack_frame(
+        &mut self,
+        unwinding: bool
+    ) -> InterpResult<'tcx> {
+        info!("LEAVING({}) {} (unwinding = {})",
+            self.cur_frame(), self.frame().instance, unwinding);
+
+        // Sanity check `unwinding`.
+        assert_eq!(
+            unwinding,
+            match self.frame().block {
+                None => true,
+                Some(block) => self.body().basic_blocks()[block].is_cleanup
+            }
+        );
+
         ::log_settings::settings().indentation -= 1;
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
-        M::stack_pop(self, frame.extra)?;
-        // Abort early if we do not want to clean up: We also avoid validation in that case,
-        // because this is CTFE and the final value will be thoroughly validated anyway.
-        match frame.return_to_block {
-            StackPopCleanup::Goto(_) => {},
-            StackPopCleanup::None { cleanup } => {
-                if !cleanup {
-                    assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
-                    // Leak the locals, skip validation.
-                    return Ok(());
-                }
-            }
+        let stack_pop_info = M::stack_pop(self, frame.extra, unwinding)?;
+        if let (false, StackPopInfo::StopUnwinding) = (unwinding, stack_pop_info) {
+            bug!("Attempted to stop unwinding while there is no unwinding!");
         }
-        // Deallocate all locals that are backed by an allocation.
+
+        // Now where do we jump next?
+
+        // Determine if we leave this function normally or via unwinding.
+        let cur_unwinding = if let StackPopInfo::StopUnwinding = stack_pop_info {
+            false
+        } else {
+            unwinding
+        };
+
+        // Usually we want to clean up (deallocate locals), but in a few rare cases we don't.
+        // In that case, we return early. We also avoid validation in that case,
+        // because this is CTFE and the final value will be thoroughly validated anyway.
+        let (cleanup, next_block) = match frame.return_to_block {
+            StackPopCleanup::Goto { ret, unwind } => {
+                (true, Some(if cur_unwinding { unwind } else { ret }))
+            },
+            StackPopCleanup::None { cleanup, .. } => (cleanup, None)
+        };
+
+        if !cleanup {
+            assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
+            assert!(next_block.is_none(), "tried to skip cleanup when we have a next block!");
+            // Leak the locals, skip validation.
+            return Ok(());
+        }
+
+        // Cleanup: deallocate all locals that are backed by an allocation.
         for local in frame.locals {
             self.deallocate_local(local.value)?;
         }
-        // Validate the return value. Do this after deallocating so that we catch dangling
-        // references.
-        if let Some(return_place) = frame.return_place {
-            if M::enforce_validity(self) {
-                // Data got changed, better make sure it matches the type!
-                // It is still possible that the return place held invalid data while
-                // the function is running, but that's okay because nobody could have
-                // accessed that same data from the "outside" to observe any broken
-                // invariant -- that is, unless a function somehow has a ptr to
-                // its return place... but the way MIR is currently generated, the
-                // return place is always a local and then this cannot happen.
-                self.validate_operand(
-                    self.place_to_op(return_place)?,
-                    vec![],
-                    None,
-                )?;
-            }
+
+
+        trace!("StackPopCleanup: {:?} StackPopInfo: {:?} cur_unwinding = {:?}",
+               frame.return_to_block, stack_pop_info, cur_unwinding);
+        if cur_unwinding {
+            // Follow the unwind edge.
+            let unwind = next_block.expect("Encounted StackPopCleanup::None when unwinding!");
+            self.unwind_to_block(unwind);
         } else {
-            // Uh, that shouldn't happen... the function did not intend to return
-            throw_ub!(Unreachable)
-        }
-        // Jump to new block -- *after* validation so that the spans make more sense.
-        match frame.return_to_block {
-            StackPopCleanup::Goto(block) => {
-                self.goto_block(block)?;
+            // Follow the normal return edge.
+            // Validate the return value. Do this after deallocating so that we catch dangling
+            // references.
+            if let Some(return_place) = frame.return_place {
+                if M::enforce_validity(self) {
+                    // Data got changed, better make sure it matches the type!
+                    // It is still possible that the return place held invalid data while
+                    // the function is running, but that's okay because nobody could have
+                    // accessed that same data from the "outside" to observe any broken
+                    // invariant -- that is, unless a function somehow has a ptr to
+                    // its return place... but the way MIR is currently generated, the
+                    // return place is always a local and then this cannot happen.
+                    self.validate_operand(
+                        self.place_to_op(return_place)?,
+                        vec![],
+                        None,
+                    )?;
+                }
+            } else {
+                // Uh, that shouldn't happen... the function did not intend to return
+                throw_ub!(Unreachable);
             }
-            StackPopCleanup::None { .. } => {}
+
+            // Jump to new block -- *after* validation so that the spans make more sense.
+            if let Some(ret) = next_block {
+                self.return_to_block(ret)?;
+            }
         }
 
         if self.stack.len() > 0 {
-            info!("CONTINUING({}) {}", self.cur_frame(), self.frame().instance);
+            info!("CONTINUING({}) {} (unwinding = {})",
+                self.cur_frame(), self.frame().instance, cur_unwinding);
         }
 
         Ok(())
@@ -639,7 +753,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
-            self.memory.dump_alloc(ptr.alloc_id);
+            if log_enabled!(::log::Level::Trace) {
+                self.memory.dump_alloc(ptr.alloc_id);
+            }
             self.memory.deallocate_local(ptr)?;
         };
         Ok(())
@@ -732,32 +848,48 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
         let mut last_span = None;
         let mut frames = Vec::new();
-        for &Frame { instance, span, body, block, stmt, .. } in self.stack().iter().rev() {
+        for frame in self.stack().iter().rev() {
             // make sure we don't emit frames that are duplicates of the previous
-            if explicit_span == Some(span) {
-                last_span = Some(span);
+            if explicit_span == Some(frame.span) {
+                last_span = Some(frame.span);
                 continue;
             }
             if let Some(last) = last_span {
-                if last == span {
+                if last == frame.span {
                     continue;
                 }
             } else {
-                last_span = Some(span);
+                last_span = Some(frame.span);
             }
-            let block = &body.basic_blocks()[block];
-            let source_info = if stmt < block.statements.len() {
-                block.statements[stmt].source_info
-            } else {
-                block.terminator().source_info
-            };
-            let lint_root = match body.source_scope_local_data {
-                mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
-                mir::ClearCrossCrate::Clear => None,
-            };
-            frames.push(FrameInfo { call_site: span, instance, lint_root });
+
+            let lint_root = frame.current_source_info().and_then(|source_info| {
+                match &frame.body.source_scopes[source_info.scope].local_data {
+                    mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
+                    mir::ClearCrossCrate::Clear => None,
+                }
+            });
+
+            frames.push(FrameInfo { call_site: frame.span, instance: frame.instance, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames
+    }
+}
+
+impl<'ctx, 'mir, 'tcx, Tag, Extra> HashStable<StableHashingContext<'ctx>>
+for Frame<'mir, 'tcx, Tag, Extra>
+    where Extra: HashStable<StableHashingContext<'ctx>>,
+          Tag:   HashStable<StableHashingContext<'ctx>>
+{
+    fn hash_stable(&self, hcx: &mut StableHashingContext<'ctx>, hasher: &mut StableHasher) {
+        self.body.hash_stable(hcx, hasher);
+        self.instance.hash_stable(hcx, hasher);
+        self.span.hash_stable(hcx, hasher);
+        self.return_to_block.hash_stable(hcx, hasher);
+        self.return_place.as_ref().map(|r| &**r).hash_stable(hcx, hasher);
+        self.locals.hash_stable(hcx, hasher);
+        self.block.hash_stable(hcx, hasher);
+        self.stmt.hash_stable(hcx, hasher);
+        self.extra.hash_stable(hcx, hasher);
     }
 }

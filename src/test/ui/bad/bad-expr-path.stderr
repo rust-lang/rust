@@ -22,8 +22,8 @@ error[E0580]: main function has wrong type
 LL | fn main(arguments: Vec<String>) {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ incorrect number of function parameters
    |
-   = note: expected type `fn()`
-              found type `fn(std::vec::Vec<std::string::String>)`
+   = note: expected fn pointer `fn()`
+              found fn pointer `fn(std::vec::Vec<std::string::String>)`
 
 error: aborting due to 4 previous errors
 

@@ -11,11 +11,11 @@ fn test_union() {
 }
 
 fn test_if_2() {
-    let _ = r#if; //~ ERROR cannot find value `if` in this scope
+    let _ = r#if; //~ ERROR cannot find value `r#if` in this scope
 }
 
 fn test_struct_2() {
-    let _ = r#struct; //~ ERROR cannot find value `struct` in this scope
+    let _ = r#struct; //~ ERROR cannot find value `r#struct` in this scope
 }
 
 fn test_union_2() {

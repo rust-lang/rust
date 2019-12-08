@@ -1,0 +1,16 @@
+More than one `deprecated` attribute has been put on an item.
+
+Erroneous code example:
+
+```compile_fail,E0550
+#[deprecated(note = "because why not?")]
+#[deprecated(note = "right?")] // error!
+fn the_banished() {}
+```
+
+The `deprecated` attribute can only be present **once** on an item.
+
+```
+#[deprecated(note = "because why not, right?")]
+fn the_banished() {} // ok!
+```

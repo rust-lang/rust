@@ -1,11 +1,11 @@
 // compile-fail
 
 pub const unsafe fn fake_type<T>() -> T {
-    hint_unreachable() //~ ERROR any use of this value will cause an error
+    hint_unreachable()
 }
 
 pub const unsafe fn hint_unreachable() -> ! {
-    fake_type()
+    fake_type() //~ ERROR cycle detected when const-evaluating `hint_unreachable` [E0391]
 }
 
 trait Const {
@@ -15,5 +15,5 @@ trait Const {
 impl <T> Const for T {}
 
 pub fn main() -> () {
-    dbg!(i32::CONSTANT); //~ ERROR erroneous constant used
+    dbg!(i32::CONSTANT);
 }

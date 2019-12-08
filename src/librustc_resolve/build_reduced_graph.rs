@@ -5,6 +5,7 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
+use crate::def_collector::collect_definitions;
 use crate::macros::{LegacyBinding, LegacyScope};
 use crate::resolve_imports::ImportDirective;
 use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
@@ -16,10 +17,9 @@ use crate::{ResolutionError, Determinacy, PathResult, CrateLint};
 use rustc::bug;
 use rustc::hir::def::{self, *};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
-use rustc::hir::map::DefCollector;
 use rustc::ty;
 use rustc::middle::cstore::CrateStore;
-use rustc_metadata::cstore::LoadedMacro;
+use rustc_metadata::creader::LoadedMacro;
 
 use std::cell::Cell;
 use std::ptr;
@@ -29,10 +29,8 @@ use errors::Applicability;
 
 use syntax::ast::{Name, Ident};
 use syntax::attr;
-
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
-use syntax::feature_gate::is_builtin_attr;
 use syntax::token::{self, Token};
 use syntax::print::pprust;
 use syntax::{span_err, struct_span_err};
@@ -45,6 +43,8 @@ use syntax_pos::hygiene::{MacroKind, ExpnId};
 use syntax_pos::{Span, DUMMY_SP};
 
 use log::debug;
+
+use rustc_error_codes::*;
 
 type Res = def::Res<NodeId>;
 
@@ -141,8 +141,7 @@ impl<'a> Resolver<'a> {
     crate fn get_macro(&mut self, res: Res) -> Option<Lrc<SyntaxExtension>> {
         match res {
             Res::Def(DefKind::Macro(..), def_id) => self.get_macro_by_def_id(def_id),
-            Res::NonMacroAttr(attr_kind) =>
-                Some(self.non_macro_attr(attr_kind == NonMacroAttrKind::Tool)),
+            Res::NonMacroAttr(attr_kind) => Some(self.non_macro_attr(attr_kind.is_used())),
             _ => None,
         }
     }
@@ -166,8 +165,7 @@ impl<'a> Resolver<'a> {
         fragment: &AstFragment,
         parent_scope: ParentScope<'a>,
     ) -> LegacyScope<'a> {
-        let mut def_collector = DefCollector::new(&mut self.definitions, parent_scope.expansion);
-        fragment.visit_with(&mut def_collector);
+        collect_definitions(&mut self.definitions, fragment, parent_scope.expansion);
         let mut visitor = BuildReducedGraphVisitor { r: self, parent_scope };
         fragment.visit_with(&mut visitor);
         visitor.parent_scope.legacy
@@ -700,13 +698,12 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in the type namespace.
-            ItemKind::TyAlias(..) => {
-                let res = Res::Def(DefKind::TyAlias, self.r.definitions.local_def_id(item.id));
-                self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
-            }
-
-            ItemKind::OpaqueTy(_, _) => {
-                let res = Res::Def(DefKind::OpaqueTy, self.r.definitions.local_def_id(item.id));
+            ItemKind::TyAlias(ref ty, _) => {
+                let def_kind = match ty.kind.opaque_top_hack() {
+                    None => DefKind::TyAlias,
+                    Some(_) => DefKind::OpaqueTy,
+                };
+                let res = Res::Def(def_kind, self.r.definitions.local_def_id(item.id));
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
             }
 
@@ -747,6 +744,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
 
                 // Record field names for error reporting.
                 let field_names = struct_def.fields().iter().map(|field| {
+                    // NOTE: The field may be an expansion placeholder, but expansion sets correct
+                    // visibilities for unnamed field placeholders specifically, so the constructor
+                    // visibility should still be determined correctly.
                     let field_vis = self.resolve_visibility(&field.vis);
                     if ctor_vis.is_at_least(field_vis, &*self.r) {
                         ctor_vis = field_vis;
@@ -1229,7 +1229,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
     }
 
     fn visit_attribute(&mut self, attr: &'b ast::Attribute) {
-        if !attr.is_doc_comment() && is_builtin_attr(attr) {
+        if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
             self.r.builtin_attrs.push(
                 (attr.get_normal_item().path.segments[0].ident, self.parent_scope)
             );

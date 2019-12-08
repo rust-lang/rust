@@ -3,14 +3,16 @@
 use crate::collections::BTreeMap;
 use crate::ptr;
 use crate::sync::atomic::{AtomicUsize, Ordering};
+use crate::sys_common::mutex::Mutex;
 
 pub type Key = usize;
 
-type Dtor = unsafe extern fn(*mut u8);
+type Dtor = unsafe extern "C" fn(*mut u8);
 
 static NEXT_KEY: AtomicUsize = AtomicUsize::new(0);
 
 static mut KEYS: *mut BTreeMap<Key, Option<Dtor>> = ptr::null_mut();
+static KEYS_LOCK: Mutex = Mutex::new();
 
 #[thread_local]
 static mut LOCALS: *mut BTreeMap<Key, *mut u8> = ptr::null_mut();
@@ -32,17 +34,14 @@ unsafe fn locals() -> &'static mut BTreeMap<Key, *mut u8> {
 #[inline]
 pub unsafe fn create(dtor: Option<Dtor>) -> Key {
     let key = NEXT_KEY.fetch_add(1, Ordering::SeqCst);
+    let _guard = KEYS_LOCK.lock();
     keys().insert(key, dtor);
     key
 }
 
 #[inline]
 pub unsafe fn get(key: Key) -> *mut u8 {
-    if let Some(&entry) = locals().get(&key) {
-        entry
-    } else {
-        ptr::null_mut()
-    }
+    if let Some(&entry) = locals().get(&key) { entry } else { ptr::null_mut() }
 }
 
 #[inline]

@@ -15,11 +15,11 @@ use Level::*;
 
 use emitter::{Emitter, EmitterWriter, is_case_difference};
 use registry::Registry;
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
 use rustc_data_structures::sync::{self, Lrc, Lock};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hasher::StableHasher;
+use syntax_pos::source_map::SourceMap;
+use syntax_pos::{Loc, Span, MultiSpan};
 
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -37,24 +37,15 @@ mod snippet;
 pub mod registry;
 mod styled_buffer;
 mod lock;
-
-use syntax_pos::{
-    BytePos,
-    FileLinesResult,
-    FileName,
-    Loc,
-    MultiSpan,
-    SourceFile,
-    Span,
-    SpanSnippetError,
-};
+pub mod json;
+pub use snippet::Style;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
 // `PResult` is used a lot. Make sure it doesn't unintentionally get bigger.
 // (See also the comment on `DiagnosticBuilderInner`.)
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(PResult<'_, bool>, 16);
+rustc_data_structures::static_assert_size!(PResult<'_, bool>, 16);
 
 /// Indicates the confidence in the correctness of a suggestion.
 ///
@@ -152,26 +143,12 @@ pub struct SubstitutionPart {
     pub snippet: String,
 }
 
-pub type SourceMapperDyn = dyn SourceMapper + sync::Send + sync::Sync;
-
-pub trait SourceMapper {
-    fn lookup_char_pos(&self, pos: BytePos) -> Loc;
-    fn span_to_lines(&self, sp: Span) -> FileLinesResult;
-    fn span_to_string(&self, sp: Span) -> String;
-    fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError>;
-    fn span_to_filename(&self, sp: Span) -> FileName;
-    fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
-    fn call_span_if_macro(&self, sp: Span) -> Span;
-    fn ensure_source_file_source_present(&self, source_file: Lrc<SourceFile>) -> bool;
-    fn doctest_offset_line(&self, file: &FileName, line: usize) -> usize;
-}
-
 impl CodeSuggestion {
     /// Returns the assembled code suggestions, whether they should be shown with an underline
     /// and whether the substitution only differs in capitalization.
     pub fn splice_lines(
         &self,
-        cm: &SourceMapperDyn,
+        cm: &SourceMap,
     ) -> Vec<(String, Vec<SubstitutionPart>, bool)> {
         use syntax_pos::{CharPos, Pos};
 
@@ -261,36 +238,7 @@ impl CodeSuggestion {
     }
 }
 
-/// Used as a return value to signify a fatal error occurred. (It is also
-/// used as the argument to panic at the moment, but that will eventually
-/// not be true.)
-#[derive(Copy, Clone, Debug)]
-#[must_use]
-pub struct FatalError;
-
-pub struct FatalErrorMarker;
-
-// Don't implement Send on FatalError. This makes it impossible to panic!(FatalError).
-// We don't want to invoke the panic handler and print a backtrace for fatal errors.
-impl !Send for FatalError {}
-
-impl FatalError {
-    pub fn raise(self) -> ! {
-        panic::resume_unwind(Box::new(FatalErrorMarker))
-    }
-}
-
-impl fmt::Display for FatalError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "parser fatal error")
-    }
-}
-
-impl error::Error for FatalError {
-    fn description(&self) -> &str {
-        "The parser has encountered a fatal error"
-    }
-}
+pub use syntax_pos::fatal_error::{FatalError, FatalErrorMarker};
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
@@ -407,7 +355,7 @@ impl Handler {
         color_config: ColorConfig,
         can_emit_warnings: bool,
         treat_err_as_bug: Option<usize>,
-        cm: Option<Lrc<SourceMapperDyn>>,
+        cm: Option<Lrc<SourceMap>>,
     ) -> Self {
         Self::with_tty_emitter_and_flags(
             color_config,
@@ -422,7 +370,7 @@ impl Handler {
 
     pub fn with_tty_emitter_and_flags(
         color_config: ColorConfig,
-        cm: Option<Lrc<SourceMapperDyn>>,
+        cm: Option<Lrc<SourceMap>>,
         flags: HandlerFlags,
     ) -> Self {
         let emitter = Box::new(EmitterWriter::stderr(
@@ -625,6 +573,11 @@ impl Handler {
     /// Construct a builder at the `Error` level with the `msg`.
     pub fn struct_fatal(&self, msg: &str) -> DiagnosticBuilder<'_> {
         DiagnosticBuilder::new(self, Level::Fatal, msg)
+    }
+
+    /// Construct a builder at the `Help` level with the `msg`.
+    pub fn struct_help(&self, msg: &str) -> DiagnosticBuilder<'_> {
+        DiagnosticBuilder::new(self, Level::Help, msg)
     }
 
     pub fn span_fatal(&self, span: impl Into<MultiSpan>, msg: &str) -> FatalError {
@@ -1040,3 +993,10 @@ macro_rules! pluralize {
         if $x != 1 { "s" } else { "" }
     };
 }
+
+// Useful type to use with `Result<>` indicate that an error has already
+// been reported to the user, so no need to continue checking.
+#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, Hash, PartialEq, Eq)]
+pub struct ErrorReported;
+
+rustc_data_structures::impl_stable_hash_via_hash!(ErrorReported);

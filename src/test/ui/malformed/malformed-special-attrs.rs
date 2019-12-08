@@ -1,7 +1,7 @@
 #[cfg_attr] //~ ERROR malformed `cfg_attr` attribute
 struct S1;
 
-#[cfg_attr = ""] //~ ERROR expected `(`, found `=`
+#[cfg_attr = ""] //~ ERROR malformed `cfg_attr` attribute
 struct S2;
 
 #[derive] //~ ERROR malformed `derive` attribute

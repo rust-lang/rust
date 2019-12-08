@@ -1,0 +1,15 @@
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/issue-62272.rs:7:17
+   |
+LL | const FOO: () = loop { break; };
+   |                 ^^^^^^^^^^^^^^^
+
+error[E0744]: `loop` is not allowed in a `const`
+  --> $DIR/issue-62272.rs:10:20
+   |
+LL |     [FOO; { let x; loop { x = 5; break; } x }];
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0744`.

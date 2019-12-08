@@ -1,16 +1,23 @@
 //! Parsing and validation of builtin attributes
 
+use super::{mark_used, MetaItemKind};
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
-use crate::early_buffered_lints::BufferedEarlyLintId;
-use crate::feature_gate::{Features, GatedCfg};
+use crate::feature_gate::feature_err;
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
 use errors::{Applicability, Handler};
+use std::num::NonZeroU32;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
+use rustc_feature::{Features, find_gated_cfg, GatedCfg, is_builtin_attr_name};
+use rustc_macros::HashStable_Generic;
 
-use super::{mark_used, MetaItemKind};
+use rustc_error_codes::*;
+
+pub fn is_builtin_attr(attr: &Attribute) -> bool {
+    attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
+}
 
 enum AttrError {
     MultipleItem(String),
@@ -19,31 +26,6 @@ enum AttrError {
     MissingFeature,
     MultipleStabilityLevels,
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
-}
-
-/// A template that the attribute input must match.
-/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
-#[derive(Clone, Copy)]
-pub struct AttributeTemplate {
-    crate word: bool,
-    crate list: Option<&'static str>,
-    crate name_value_str: Option<&'static str>,
-}
-
-impl AttributeTemplate {
-    pub fn only_word() -> Self {
-        Self { word: true, list: None, name_value_str: None }
-    }
-
-    /// Checks that the given meta-item is compatible with this template.
-    fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
-        match meta_item_kind {
-            ast::MetaItemKind::Word => self.word,
-            ast::MetaItemKind::List(..) => self.list.is_some(),
-            ast::MetaItemKind::NameValue(lit) if lit.kind.is_str() => self.name_value_str.is_some(),
-            ast::MetaItemKind::NameValue(..) => false,
-        }
-    }
 }
 
 fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
@@ -139,7 +121,8 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
 }
 
 /// Represents the #[stable], #[unstable], #[rustc_{deprecated,const_unstable}] attributes.
-#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug,
+         PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -155,10 +138,11 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd,
+         Copy, Clone, Debug, Eq, Hash, HashStable_Generic)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
-    Unstable { reason: Option<Symbol>, issue: u32, is_soft: bool },
+    Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
     Stable { since: Symbol },
 }
 
@@ -179,7 +163,8 @@ impl StabilityLevel {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd,
+         Copy, Clone, Debug, Eq, Hash, HashStable_Generic)]
 pub struct RustcDeprecation {
     pub since: Symbol,
     pub reason: Symbol,
@@ -395,18 +380,28 @@ fn find_stability_generic<'a, I>(sess: &ParseSess,
 
                     match (feature, reason, issue) {
                         (Some(feature), reason, Some(issue)) => {
+                            let issue = match &*issue.as_str() {
+                                // FIXME(rossmacarthur): remove "0" because "none" should be used
+                                // See #41260
+                                "none" | "0" => None,
+                                issue => {
+                                    if let Ok(num) = issue.parse() {
+                                        NonZeroU32::new(num)
+                                    } else {
+                                        span_err!(
+                                            diagnostic,
+                                            attr.span,
+                                            E0545,
+                                            "incorrect 'issue'"
+                                        );
+                                        continue
+                                    }
+                                }
+                            };
                             stab = Some(Stability {
                                 level: Unstable {
                                     reason,
-                                    issue: {
-                                        if let Ok(issue) = issue.as_str().parse() {
-                                            issue
-                                        } else {
-                                            span_err!(diagnostic, attr.span, E0545,
-                                                      "incorrect 'issue'");
-                                            continue
-                                        }
-                                    },
+                                    issue,
                                     is_soft,
                                 },
                                 feature,
@@ -539,8 +534,9 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
     eval_condition(cfg, sess, &mut |cfg| {
-        if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
-            gated_cfg.check_and_emit(sess, feats);
+        let gate = find_gated_cfg(|sym| cfg.check_name(sym));
+        if let (Some(feats), Some(gated_cfg)) = (features, gate) {
+            gate_cfg(&gated_cfg, cfg.span, sess, feats);
         }
         let error = |span, msg| { sess.span_diagnostic.span_err(span, msg); true };
         if cfg.path.segments.len() != 1 {
@@ -569,12 +565,21 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
     })
 }
 
+fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &Features) {
+    let (cfg, feature, has_feature) = gated_cfg;
+    if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
+        let explain = format!("`cfg({})` is experimental and subject to change", cfg);
+        feature_err(sess, *feature, cfg_span, &explain).emit()
+    }
+}
+
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
-pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
-                         -> bool
-    where F: FnMut(&ast::MetaItem) -> bool
-{
+pub fn eval_condition(
+    cfg: &ast::MetaItem,
+    sess: &ParseSess,
+    eval: &mut impl FnMut(&ast::MetaItem) -> bool,
+) -> bool {
     match cfg.kind {
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
@@ -624,7 +629,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(RustcEncodable, RustcDecodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     pub note: Option<Symbol>,
@@ -655,7 +660,10 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
             break
         }
 
-        let meta = attr.meta().unwrap();
+        let meta = match attr.meta() {
+            Some(meta) => meta,
+            None => continue,
+        };
         depr = match &meta.kind {
             MetaItemKind::Word => Some(Deprecation { since: None, note: None }),
             MetaItemKind::NameValue(..) => {
@@ -748,7 +756,7 @@ pub enum ReprAttr {
     ReprAlign(u32),
 }
 
-#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone, HashStable_Generic)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)
@@ -937,70 +945,4 @@ pub fn find_transparency(
     }
     let fallback = if is_legacy { Transparency::SemiTransparent } else { Transparency::Opaque };
     (transparency.map_or(fallback, |t| t.0), error)
-}
-
-pub fn check_builtin_attribute(
-    sess: &ParseSess, attr: &ast::Attribute, name: Symbol, template: AttributeTemplate
-) {
-    // Some special attributes like `cfg` must be checked
-    // before the generic check, so we skip them here.
-    let should_skip = |name| name == sym::cfg;
-    // Some of previously accepted forms were used in practice,
-    // report them as warnings for now.
-    let should_warn = |name| name == sym::doc || name == sym::ignore ||
-                             name == sym::inline || name == sym::link ||
-                             name == sym::test || name == sym::bench;
-
-    match attr.parse_meta(sess) {
-        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.kind) {
-            let error_msg = format!("malformed `{}` attribute input", name);
-            let mut msg = "attribute must be of the form ".to_owned();
-            let mut suggestions = vec![];
-            let mut first = true;
-            if template.word {
-                first = false;
-                let code = format!("#[{}]", name);
-                msg.push_str(&format!("`{}`", &code));
-                suggestions.push(code);
-            }
-            if let Some(descr) = template.list {
-                if !first {
-                    msg.push_str(" or ");
-                }
-                first = false;
-                let code = format!("#[{}({})]", name, descr);
-                msg.push_str(&format!("`{}`", &code));
-                suggestions.push(code);
-            }
-            if let Some(descr) = template.name_value_str {
-                if !first {
-                    msg.push_str(" or ");
-                }
-                let code = format!("#[{} = \"{}\"]", name, descr);
-                msg.push_str(&format!("`{}`", &code));
-                suggestions.push(code);
-            }
-            if should_warn(name) {
-                sess.buffer_lint(
-                    BufferedEarlyLintId::IllFormedAttributeInput,
-                    meta.span,
-                    ast::CRATE_NODE_ID,
-                    &msg,
-                );
-            } else {
-                sess.span_diagnostic.struct_span_err(meta.span, &error_msg)
-                    .span_suggestions(
-                        meta.span,
-                        if suggestions.len() == 1 {
-                            "must be of the form"
-                        } else {
-                            "the following are the possible correct uses"
-                        },
-                        suggestions.into_iter(),
-                        Applicability::HasPlaceholders,
-                    ).emit();
-            }
-        }
-        Err(mut err) => err.emit(),
-    }
 }

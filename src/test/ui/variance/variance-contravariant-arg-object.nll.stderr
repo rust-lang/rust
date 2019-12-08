@@ -8,6 +8,8 @@ LL | fn get_min_from_max<'min, 'max>(v: Box<dyn Get<&'max i32>>)
 ...
 LL |     v
    |     ^ returning this value requires that `'min` must outlive `'max`
+   |
+   = help: consider adding the following bound: `'min: 'max`
 
 error: lifetime may not live long enough
   --> $DIR/variance-contravariant-arg-object.rs:22:5
@@ -19,6 +21,8 @@ LL | fn get_max_from_min<'min, 'max, G>(v: Box<dyn Get<&'min i32>>)
 ...
 LL |     v
    |     ^ returning this value requires that `'min` must outlive `'max`
+   |
+   = help: consider adding the following bound: `'min: 'max`
 
 error: aborting due to 2 previous errors
 

@@ -15,10 +15,12 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+use syntax::expand::allocator::AllocatorKind;
 use rustc_target::spec::Target;
 use rustc_data_structures::sync::{self, MetadataRef};
 use rustc_macros::HashStable;
 
+pub use rustc_session::utils::NativeLibraryKind;
 pub use self::NativeLibraryKind::*;
 
 // lonely orphan structs and enums looking for a better home
@@ -93,21 +95,6 @@ pub enum LinkagePreference {
     RequireStatic,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, HashStable)]
-pub enum NativeLibraryKind {
-    /// native static library (.a archive)
-    NativeStatic,
-    /// native static library, which doesn't get bundled into .rlibs
-    NativeStaticNobundle,
-    /// macOS-specific
-    NativeFramework,
-    /// Windows dynamic library without import library.
-    NativeRawDylib,
-    /// default way to specify a dynamic library
-    NativeUnknown,
-}
-
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
 pub struct NativeLibrary {
     pub kind: NativeLibraryKind,
@@ -144,6 +131,13 @@ impl ExternCrate {
     /// of the crate.
     pub fn is_direct(&self) -> bool {
         self.dependency_of == LOCAL_CRATE
+    }
+
+    pub fn rank(&self) -> impl PartialOrd {
+        // Prefer:
+        // - direct extern crate to indirect
+        // - shorter paths to longer
+        (self.is_direct(), !self.path_len)
     }
 }
 
@@ -203,7 +197,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// (it'd break incremental compilation) and should only be called pre-HIR (e.g.
 /// during resolve)
 pub trait CrateStore {
-    fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any;
+    fn as_any(&self) -> &dyn Any;
 
     // resolve
     fn def_key(&self, def: DefId) -> DefKey;
@@ -216,9 +210,7 @@ pub trait CrateStore {
     fn crate_is_private_dep_untracked(&self, cnum: CrateNum) -> bool;
     fn crate_disambiguator_untracked(&self, cnum: CrateNum) -> CrateDisambiguator;
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh;
-    fn crate_host_hash_untracked(&self, cnum: CrateNum) -> Option<Svh>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
-    fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.
@@ -227,6 +219,7 @@ pub trait CrateStore {
     // utility functions
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
+    fn allocator_kind(&self) -> Option<AllocatorKind>;
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;

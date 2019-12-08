@@ -1,4 +1,3 @@
-use crate::attributes;
 use crate::llvm;
 use crate::llvm_util;
 use crate::abi::{Abi, FnAbi, LlvmType, PassMode};
@@ -14,7 +13,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
+use rustc::ty::layout::{self, FnAbiExt, LayoutOf, HasTyCtxt, Primitive};
 use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
@@ -152,7 +151,7 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         match scalar.value {
                             Primitive::Int(..) => {
                                 if self.cx().size_of(ret_ty).bytes() < 4 {
-                                    // va_arg should not be called on a integer type
+                                    // `va_arg` should not be called on a integer type
                                     // less than 4 bytes in length. If it is, promote
                                     // the integer to a `i32` and truncate the result
                                     // back to the smaller type.
@@ -442,32 +441,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 let is_left = name == "rotate_left";
                                 let val = args[0].immediate();
                                 let raw_shift = args[1].immediate();
-                                if llvm_util::get_major_version() >= 7 {
-                                    // rotate = funnel shift with first two args the same
-                                    let llvm_name = &format!("llvm.fsh{}.i{}",
-                                                            if is_left { 'l' } else { 'r' }, width);
-                                    let llfn = self.get_intrinsic(llvm_name);
-                                    self.call(llfn, &[val, val, raw_shift], None)
-                                } else {
-                                    // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
-                                    // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                                    let width = self.const_uint(
-                                        self.type_ix(width),
-                                        width,
-                                    );
-                                    let shift = self.urem(raw_shift, width);
-                                    let width_minus_raw_shift = self.sub(width, raw_shift);
-                                    let inv_shift = self.urem(width_minus_raw_shift, width);
-                                    let shift1 = self.shl(
-                                        val,
-                                        if is_left { shift } else { inv_shift },
-                                    );
-                                    let shift2 = self.lshr(
-                                        val,
-                                        if !is_left { shift } else { inv_shift },
-                                    );
-                                    self.or(shift1, shift2)
-                                }
+                                // rotate = funnel shift with first two args the same
+                                let llvm_name = &format!("llvm.fsh{}.i{}",
+                                                        if is_left { 'l' } else { 'r' }, width);
+                                let llfn = self.get_intrinsic(llvm_name);
+                                self.call(llfn, &[val, val, raw_shift], None)
                             },
                             "saturating_add" | "saturating_sub" => {
                                 let is_add = name == "saturating_add";
@@ -538,8 +516,35 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         return;
                     }
                 }
-
             },
+
+            "float_to_int_approx_unchecked" => {
+                if float_type_width(arg_tys[0]).is_none() {
+                    span_invalid_monomorphization_error(
+                        tcx.sess, span,
+                        &format!("invalid monomorphization of `float_to_int_approx_unchecked` \
+                                  intrinsic: expected basic float type, \
+                                  found `{}`", arg_tys[0]));
+                    return;
+                }
+                match int_type_width_signed(ret_ty, self.cx) {
+                    Some((width, signed)) => {
+                        if signed {
+                            self.fptosi(args[0].immediate(), self.cx.type_ix(width))
+                        } else {
+                            self.fptoui(args[0].immediate(), self.cx.type_ix(width))
+                        }
+                    }
+                    None => {
+                        span_invalid_monomorphization_error(
+                            tcx.sess, span,
+                            &format!("invalid monomorphization of `float_to_int_approx_unchecked` \
+                                      intrinsic:  expected basic integer type, \
+                                      found `{}`", ret_ty));
+                        return;
+                    }
+                }
+            }
 
             "discriminant_value" => {
                 args[0].deref(self.cx()).codegen_get_discr(self, ret_ty)
@@ -1013,8 +1018,10 @@ fn gen_fn<'ll, 'tcx>(
         hir::Unsafety::Unsafe,
         Abi::Rust
     ));
-    let llfn = cx.define_internal_fn(name, rust_fn_sig);
-    attributes::from_fn_attrs(cx, llfn, None, rust_fn_sig);
+    let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
+    let llfn = cx.declare_fn(name, &fn_abi);
+    // FIXME(eddyb) find a nicer way to do this.
+    unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);
     llfn
@@ -1105,8 +1112,8 @@ fn generic_simd_intrinsic(
         let m_len = match in_ty.kind {
             // Note that this `.unwrap()` crashes for isize/usize, that's sort
             // of intentional as there's not currently a use case for that.
-            ty::Int(i) => i.bit_width().unwrap(),
-            ty::Uint(i) => i.bit_width().unwrap(),
+            ty::Int(i) => i.bit_width().unwrap() as u64,
+            ty::Uint(i) => i.bit_width().unwrap() as u64,
             _ => return_error!("`{}` is not an integral type", in_ty),
         };
         require_simd!(arg_tys[1], "argument");
@@ -1116,7 +1123,7 @@ fn generic_simd_intrinsic(
                  m_len, v_len
         );
         let i1 = bx.type_i1();
-        let i1xn = bx.type_vector(i1, m_len as u64);
+        let i1xn = bx.type_vector(i1, m_len);
         let m_i1s = bx.bitcast(args[0].immediate(), i1xn);
         return Ok(bx.select(m_i1s, args[1].immediate(), args[2].immediate()));
     }
@@ -1160,7 +1167,7 @@ fn generic_simd_intrinsic(
     }
 
     if name.starts_with("simd_shuffle") {
-        let n: usize = name["simd_shuffle".len()..].parse().unwrap_or_else(|_|
+        let n: u64 = name["simd_shuffle".len()..].parse().unwrap_or_else(|_|
             span_bug!(span, "bad `simd_shuffle` instruction only caught in codegen?"));
 
         require_simd!(ret_ty, "return");
@@ -1175,7 +1182,7 @@ fn generic_simd_intrinsic(
                  in_elem, in_ty,
                  ret_ty, ret_ty.simd_type(tcx));
 
-        let total_len = in_len as u128 * 2;
+        let total_len = u128::from(in_len) * 2;
 
         let vector = args[2].immediate();
 
@@ -1251,7 +1258,7 @@ fn generic_simd_intrinsic(
         // trailing bits.
         let expected_int_bits = in_len.max(8);
         match ret_ty.kind {
-           ty::Uint(i) if i.bit_width() == Some(expected_int_bits) => (),
+           ty::Uint(i) if i.bit_width() == Some(expected_int_bits as usize) => (),
             _ => return_error!(
                 "bitmask `{}`, expected `u{}`",
                 ret_ty, expected_int_bits
@@ -1276,7 +1283,8 @@ fn generic_simd_intrinsic(
 
         // Shift the MSB to the right by "in_elem_bitwidth - 1" into the first bit position.
         let shift_indices = vec![
-            bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _); in_len
+            bx.cx.const_int(bx.type_ix(in_elem_bitwidth as _), (in_elem_bitwidth - 1) as _);
+            in_len as _
         ];
         let i_xn_msb = bx.lshr(i_xn, bx.const_vector(shift_indices.as_slice()));
         // Truncate vector to an <i1 x N>
@@ -1291,7 +1299,7 @@ fn generic_simd_intrinsic(
         name: &str,
         in_elem: &::rustc::ty::TyS<'_>,
         in_ty: &::rustc::ty::TyS<'_>,
-        in_len: usize,
+        in_len: u64,
         bx: &mut Builder<'a, 'll, 'tcx>,
         span: Span,
         args: &[OperandRef<'tcx, &'ll Value>],
@@ -1400,7 +1408,7 @@ fn generic_simd_intrinsic(
     // FIXME: use:
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Function.h#L182
     //  https://github.com/llvm-mirror/llvm/blob/master/include/llvm/IR/Intrinsics.h#L81
-    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: usize, no_pointers: usize) -> String {
+    fn llvm_vector_str(elem_ty: Ty<'_>, vec_len: u64, no_pointers: usize) -> String {
         let p0s: String = "p0".repeat(no_pointers);
         match elem_ty.kind {
             ty::Int(v) => format!("v{}{}i{}", vec_len, p0s, v.bit_width().unwrap()),
@@ -1410,7 +1418,7 @@ fn generic_simd_intrinsic(
         }
     }
 
-    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: usize,
+    fn llvm_vector_ty(cx: &CodegenCx<'ll, '_>, elem_ty: Ty<'_>, vec_len: u64,
                       mut no_pointers: usize) -> &'ll Type {
         // FIXME: use cx.layout_of(ty).llvm_type() ?
         let mut elem_ty = match elem_ty.kind {
@@ -1423,7 +1431,7 @@ fn generic_simd_intrinsic(
             elem_ty = cx.type_ptr_to(elem_ty);
             no_pointers -= 1;
         }
-        cx.type_vector(elem_ty, vec_len as u64)
+        cx.type_vector(elem_ty, vec_len)
     }
 
 
@@ -1506,7 +1514,7 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = bx.type_i1();
-            let i1xn = bx.type_vector(i1, in_len as u64);
+            let i1xn = bx.type_vector(i1, in_len);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
@@ -1573,7 +1581,7 @@ fn generic_simd_intrinsic(
         // The second argument must be a simd vector with an element type that's a pointer
         // to the element type of the first argument
         let (pointer_count, underlying_ty) = match arg_tys[1].simd_type(tcx).kind {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::MutMutable
+            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mutable
                 => (ptr_count(arg_tys[1].simd_type(tcx)),
                     non_ptr(arg_tys[1].simd_type(tcx))),
             _ => {
@@ -1606,7 +1614,7 @@ fn generic_simd_intrinsic(
         // Truncate the mask vector to a vector of i1s:
         let (mask, mask_ty) = {
             let i1 = bx.type_i1();
-            let i1xn = bx.type_vector(i1, in_len as u64);
+            let i1xn = bx.type_vector(i1, in_len);
             (bx.trunc(args[2].immediate(), i1xn), i1xn)
         };
 
@@ -1925,7 +1933,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
     match ty.kind {
         ty::Int(t) => Some((match t {
-            ast::IntTy::Isize => cx.tcx.sess.target.isize_ty.bit_width().unwrap() as u64,
+            ast::IntTy::Isize => cx.tcx.sess.target.ptr_width as u64,
             ast::IntTy::I8 => 8,
             ast::IntTy::I16 => 16,
             ast::IntTy::I32 => 32,
@@ -1933,7 +1941,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
             ast::IntTy::I128 => 128,
         }, true)),
         ty::Uint(t) => Some((match t {
-            ast::UintTy::Usize => cx.tcx.sess.target.usize_ty.bit_width().unwrap() as u64,
+            ast::UintTy::Usize => cx.tcx.sess.target.ptr_width as u64,
             ast::UintTy::U8 => 8,
             ast::UintTy::U16 => 16,
             ast::UintTy::U32 => 32,

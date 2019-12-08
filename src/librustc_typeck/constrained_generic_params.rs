@@ -1,7 +1,6 @@
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc::util::nodemap::FxHashSet;
-use rustc::mir::interpret::ConstValue;
 use syntax::source_map::Span;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -77,7 +76,7 @@ impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     }
 
     fn visit_const(&mut self, c: &'tcx ty::Const<'tcx>) -> bool {
-        if let ConstValue::Param(data) = c.val {
+        if let ty::ConstKind::Param(data) = c.val {
             self.parameters.push(Parameter::from(data));
         }
         false

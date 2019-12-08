@@ -1,6 +1,6 @@
 use std::cmp::Reverse;
 
-use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
+use errors::{Applicability, DiagnosticBuilder};
 use log::debug;
 use rustc::bug;
 use rustc::hir::def::{self, DefKind, NonMacroAttrKind};
@@ -9,8 +9,8 @@ use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::session::Session;
 use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
+use rustc_feature::BUILTIN_ATTRIBUTES;
 use syntax::ast::{self, Ident, Path};
-use syntax::feature_gate::BUILTIN_ATTRIBUTES;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw};
@@ -19,9 +19,11 @@ use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{BytePos, Span, MultiSpan};
 
 use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportResolver};
-use crate::{path_names_to_string, KNOWN_TOOLS};
+use crate::path_names_to_string;
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
+
+use rustc_error_codes::*;
 
 type Res = def::Res<ast::NodeId>;
 
@@ -205,11 +207,11 @@ impl<'a> Resolver<'a> {
                 let origin_sp = origin.iter().copied().collect::<Vec<_>>();
 
                 let msp = MultiSpan::from_spans(target_sp.clone());
-                let msg = format!("variable `{}` is not bound in all patterns", name);
-                let mut err = self.session.struct_span_err_with_code(
+                let mut err = struct_span_err!(
+                    self.session,
                     msp,
-                    &msg,
-                    DiagnosticId::Error("E0408".into()),
+                    E0408,
+                    "variable `{}` is not bound in all patterns", name,
                 );
                 for sp in target_sp {
                     err.span_label(sp, format!("pattern doesn't bind `{}`", name));
@@ -366,7 +368,16 @@ impl<'a> Resolver<'a> {
         let mut suggestions = Vec::new();
         self.visit_scopes(scope_set, parent_scope, ident, |this, scope, use_prelude, _| {
             match scope {
-                Scope::DeriveHelpers => {
+                Scope::DeriveHelpers(expn_id) => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+                    if filter_fn(res) {
+                        suggestions.extend(this.helper_attrs.get(&expn_id)
+                                               .into_iter().flatten().map(|ident| {
+                            TypoSuggestion::from_res(ident.name, res)
+                        }));
+                    }
+                }
+                Scope::DeriveHelpersCompat => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
                     if filter_fn(res) {
                         for derive in parent_scope.derives {
@@ -400,14 +411,18 @@ impl<'a> Resolver<'a> {
                 Scope::Module(module) => {
                     this.add_module_candidates(module, &mut suggestions, filter_fn);
                 }
+                Scope::RegisteredAttrs => {
+                    let res = Res::NonMacroAttr(NonMacroAttrKind::Registered);
+                    if filter_fn(res) {
+                        suggestions.extend(this.registered_attrs.iter().map(|ident| {
+                            TypoSuggestion::from_res(ident.name, res)
+                        }));
+                    }
+                }
                 Scope::MacroUsePrelude => {
                     suggestions.extend(this.macro_use_prelude.iter().filter_map(|(name, binding)| {
                         let res = binding.res();
-                        if filter_fn(res) {
-                            Some(TypoSuggestion::from_res(*name, res))
-                        } else {
-                            None
-                        }
+                        filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
                     }));
                 }
                 Scope::BuiltinAttrs => {
@@ -418,29 +433,16 @@ impl<'a> Resolver<'a> {
                         }));
                     }
                 }
-                Scope::LegacyPluginHelpers => {
-                    let res = Res::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
-                    if filter_fn(res) {
-                        let plugin_attributes = this.session.plugin_attributes.borrow();
-                        suggestions.extend(plugin_attributes.iter().map(|(name, _)| {
-                            TypoSuggestion::from_res(*name, res)
-                        }));
-                    }
-                }
                 Scope::ExternPrelude => {
                     suggestions.extend(this.extern_prelude.iter().filter_map(|(ident, _)| {
                         let res = Res::Def(DefKind::Mod, DefId::local(CRATE_DEF_INDEX));
-                        if filter_fn(res) {
-                            Some(TypoSuggestion::from_res(ident.name, res))
-                        } else {
-                            None
-                        }
+                        filter_fn(res).then_some(TypoSuggestion::from_res(ident.name, res))
                     }));
                 }
                 Scope::ToolPrelude => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
-                    suggestions.extend(KNOWN_TOOLS.iter().map(|name| {
-                        TypoSuggestion::from_res(*name, res)
+                    suggestions.extend(this.registered_tools.iter().map(|ident| {
+                        TypoSuggestion::from_res(ident.name, res)
                     }));
                 }
                 Scope::StdLibPrelude => {
@@ -457,11 +459,7 @@ impl<'a> Resolver<'a> {
                     suggestions.extend(
                         primitive_types.iter().flat_map(|(name, prim_ty)| {
                             let res = Res::PrimTy(*prim_ty);
-                            if filter_fn(res) {
-                                Some(TypoSuggestion::from_res(*name, res))
-                            } else {
-                                None
-                            }
+                            filter_fn(res).then_some(TypoSuggestion::from_res(*name, res))
                         })
                     )
                 }

@@ -46,6 +46,8 @@ use syntax::ast;
 use syntax_pos::Span;
 use crate::util::common::ErrorReported;
 
+use rustc_error_codes::*;
+
 /// Reifies a cast check to be checked once we have full type information for
 /// a function context.
 pub struct CastCheck<'tcx> {
@@ -627,7 +629,8 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     ) -> Result<CastKind, CastError> {
         // array-ptr-cast.
 
-        if m_expr.mutbl == hir::MutImmutable && m_cast.mutbl == hir::MutImmutable {
+        if m_expr.mutbl == hir::Mutability::Immutable &&
+            m_cast.mutbl == hir::Mutability::Immutable {
             if let ty::Array(ety, _) = m_expr.ty.kind {
                 // Due to the limitations of LLVM global constants,
                 // region pointers end up pointing at copies of

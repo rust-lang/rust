@@ -66,11 +66,8 @@ fn test_swap_front_back_remove() {
         let final_len = usable_cap / 2;
 
         for len in 0..final_len {
-            let expected: VecDeque<_> = if back {
-                (0..len).collect()
-            } else {
-                (0..len).rev().collect()
-            };
+            let expected: VecDeque<_> =
+                if back { (0..len).collect() } else { (0..len).rev().collect() };
             for tail_pos in 0..usable_cap {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
@@ -110,7 +107,6 @@ fn test_insert() {
     // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
     // this test isn't covering what it wants to
     let cap = tester.capacity();
-
 
     // len is the length *after* insertion
     for len in 1..cap {
@@ -198,9 +194,7 @@ fn test_drain() {
                     assert!(tester.head < tester.cap());
 
                     // We should see the correct values in the VecDeque
-                    let expected: VecDeque<_> = (0..drain_start)
-                        .chain(drain_end..len)
-                        .collect();
+                    let expected: VecDeque<_> = (0..drain_start).chain(drain_end..len).collect();
                     assert_eq!(expected, tester);
                 }
             }
@@ -380,6 +374,41 @@ fn test_clone_from() {
                 v.clone_from(&u);
                 assert_eq!(&v, &u);
             }
+        }
+    }
+}
+
+#[test]
+fn test_vec_deque_truncate_drop() {
+    static mut DROPS: u32 = 0;
+    #[derive(Clone)]
+    struct Elem(i32);
+    impl Drop for Elem {
+        fn drop(&mut self) {
+            unsafe {
+                DROPS += 1;
+            }
+        }
+    }
+
+    let v = vec![Elem(1), Elem(2), Elem(3), Elem(4), Elem(5)];
+    for push_front in 0..=v.len() {
+        let v = v.clone();
+        let mut tester = VecDeque::with_capacity(5);
+        for (index, elem) in v.into_iter().enumerate() {
+            if index < push_front {
+                tester.push_front(elem);
+            } else {
+                tester.push_back(elem);
+            }
+        }
+        assert_eq!(unsafe { DROPS }, 0);
+        tester.truncate(3);
+        assert_eq!(unsafe { DROPS }, 2);
+        tester.truncate(0);
+        assert_eq!(unsafe { DROPS }, 5);
+        unsafe {
+            DROPS = 0;
         }
     }
 }

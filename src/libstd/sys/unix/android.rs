@@ -21,8 +21,8 @@
 use libc::{c_int, c_void, sighandler_t, size_t, ssize_t};
 use libc::{ftruncate, pread, pwrite};
 
-use crate::io;
 use super::{cvt, cvt_r};
+use crate::io;
 
 // The `log2` and `log2f` functions apparently appeared in android-18, or at
 // least you can see they're not present in the android-17 header [1] and they
@@ -96,8 +96,7 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
             Some(f) => cvt_r(|| f(fd, size as i64)).map(|_| ()),
             None => {
                 if size > i32::max_value() as u64 {
-                    Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                       "cannot truncate >2GB"))
+                    Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot truncate >2GB"))
                 } else {
                     cvt_r(|| ftruncate(fd, size as i32)).map(|_| ())
                 }
@@ -108,53 +107,61 @@ pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
 
 #[cfg(target_pointer_width = "64")]
 pub fn ftruncate64(fd: c_int, size: u64) -> io::Result<()> {
-    unsafe {
-        cvt_r(|| ftruncate(fd, size as i64)).map(|_| ())
-    }
+    unsafe { cvt_r(|| ftruncate(fd, size as i64)).map(|_| ()) }
 }
 
 #[cfg(target_pointer_width = "32")]
-pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i64)
-    -> io::Result<ssize_t>
-{
+pub unsafe fn cvt_pread64(
+    fd: c_int,
+    buf: *mut c_void,
+    count: size_t,
+    offset: i64,
+) -> io::Result<ssize_t> {
     use crate::convert::TryInto;
     weak!(fn pread64(c_int, *mut c_void, size_t, i64) -> ssize_t);
     pread64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
         if let Ok(o) = offset.try_into() {
             cvt(pread(fd, buf, count, o))
         } else {
-            Err(io::Error::new(io::ErrorKind::InvalidInput,
-                               "cannot pread >2GB"))
+            Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot pread >2GB"))
         }
     })
 }
 
 #[cfg(target_pointer_width = "32")]
-pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset: i64)
-    -> io::Result<ssize_t>
-{
+pub unsafe fn cvt_pwrite64(
+    fd: c_int,
+    buf: *const c_void,
+    count: size_t,
+    offset: i64,
+) -> io::Result<ssize_t> {
     use crate::convert::TryInto;
     weak!(fn pwrite64(c_int, *const c_void, size_t, i64) -> ssize_t);
     pwrite64.get().map(|f| cvt(f(fd, buf, count, offset))).unwrap_or_else(|| {
         if let Ok(o) = offset.try_into() {
             cvt(pwrite(fd, buf, count, o))
         } else {
-            Err(io::Error::new(io::ErrorKind::InvalidInput,
-                               "cannot pwrite >2GB"))
+            Err(io::Error::new(io::ErrorKind::InvalidInput, "cannot pwrite >2GB"))
         }
     })
 }
 
 #[cfg(target_pointer_width = "64")]
-pub unsafe fn cvt_pread64(fd: c_int, buf: *mut c_void, count: size_t, offset: i64)
-    -> io::Result<ssize_t>
-{
+pub unsafe fn cvt_pread64(
+    fd: c_int,
+    buf: *mut c_void,
+    count: size_t,
+    offset: i64,
+) -> io::Result<ssize_t> {
     cvt(pread(fd, buf, count, offset))
 }
 
 #[cfg(target_pointer_width = "64")]
-pub unsafe fn cvt_pwrite64(fd: c_int, buf: *const c_void, count: size_t, offset: i64)
-    -> io::Result<ssize_t>
-{
+pub unsafe fn cvt_pwrite64(
+    fd: c_int,
+    buf: *const c_void,
+    count: size_t,
+    offset: i64,
+) -> io::Result<ssize_t> {
     cvt(pwrite(fd, buf, count, offset))
 }

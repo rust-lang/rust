@@ -3,22 +3,34 @@
 //! After a const evaluation has computed a value, before we destroy the const evaluator's session
 //! memory, we need to extract all memory allocations to the global memory pool so they stay around.
 
-use rustc::ty::{Ty, self};
-use rustc::mir::interpret::{InterpResult, ErrorHandled};
-use rustc::hir;
 use super::validity::RefTracking;
-use rustc_data_structures::fx::FxHashSet;
+use rustc::hir;
+use rustc::mir::interpret::{ErrorHandled, InterpResult};
+use rustc::ty::{self, Ty};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 
 use syntax::ast::Mutability;
 
 use super::{
-    ValueVisitor, MemoryKind, AllocId, MPlaceTy, Scalar,
+    AllocId, Allocation, InterpCx, Machine, MemoryKind, MPlaceTy, Scalar, ValueVisitor,
 };
-use crate::const_eval::{CompileTimeInterpreter, CompileTimeEvalContext};
 
-struct InternVisitor<'rt, 'mir, 'tcx> {
+pub trait CompileTimeMachine<'mir, 'tcx> =
+    Machine<
+        'mir,
+        'tcx,
+        MemoryKinds = !,
+        PointerTag = (),
+        ExtraFnVal = !,
+        FrameExtra = (),
+        MemoryExtra = (),
+        AllocExtra = (),
+        MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>,
+    >;
+
+struct InternVisitor<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> {
     /// The ectx from which we intern.
-    ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
+    ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     /// Previously encountered safe references.
     ref_tracking: &'rt mut RefTracking<(MPlaceTy<'tcx>, Mutability, InternMode)>,
     /// A list of all encountered allocations. After type-based interning, we traverse this list to
@@ -58,18 +70,15 @@ struct IsStaticOrFn;
 /// `immutable` things might become mutable if `ty` is not frozen.
 /// `ty` can be `None` if there is no potential interior mutability
 /// to account for (e.g. for vtables).
-fn intern_shallow<'rt, 'mir, 'tcx>(
-    ecx: &'rt mut CompileTimeEvalContext<'mir, 'tcx>,
+fn intern_shallow<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>(
+    ecx: &'rt mut InterpCx<'mir, 'tcx, M>,
     leftover_allocations: &'rt mut FxHashSet<AllocId>,
     mode: InternMode,
     alloc_id: AllocId,
     mutability: Mutability,
     ty: Option<Ty<'tcx>>,
 ) -> InterpResult<'tcx, Option<IsStaticOrFn>> {
-    trace!(
-        "InternVisitor::intern {:?} with {:?}",
-        alloc_id, mutability,
-    );
+    trace!("InternVisitor::intern {:?} with {:?}", alloc_id, mutability,);
     // remove allocation
     let tcx = ecx.tcx;
     let (kind, mut alloc) = match ecx.memory.alloc_map.remove(&alloc_id) {
@@ -91,7 +100,7 @@ fn intern_shallow<'rt, 'mir, 'tcx>(
     // This match is just a canary for future changes to `MemoryKind`, which most likely need
     // changes in this function.
     match kind {
-        MemoryKind::Stack | MemoryKind::Vtable => {},
+        MemoryKind::Stack | MemoryKind::Vtable | MemoryKind::CallerLocation => {},
     }
     // Set allocation mutability as appropriate. This is used by LLVM to put things into
     // read-only memory, and also by Miri when evluating other constants/statics that
@@ -130,7 +139,7 @@ fn intern_shallow<'rt, 'mir, 'tcx>(
     Ok(None)
 }
 
-impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
+impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>> InternVisitor<'rt, 'mir, 'tcx, M> {
     fn intern_shallow(
         &mut self,
         alloc_id: AllocId,
@@ -148,15 +157,15 @@ impl<'rt, 'mir, 'tcx> InternVisitor<'rt, 'mir, 'tcx> {
     }
 }
 
-impl<'rt, 'mir, 'tcx>
-    ValueVisitor<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>
+impl<'rt, 'mir, 'tcx, M: CompileTimeMachine<'mir, 'tcx>>
+    ValueVisitor<'mir, 'tcx, M>
 for
-    InternVisitor<'rt, 'mir, 'tcx>
+    InternVisitor<'rt, 'mir, 'tcx, M>
 {
     type V = MPlaceTy<'tcx>;
 
     #[inline(always)]
-    fn ecx(&self) -> &CompileTimeEvalContext<'mir, 'tcx> {
+    fn ecx(&self) -> &InterpCx<'mir, 'tcx, M> {
         &self.ecx
     }
 
@@ -214,16 +223,16 @@ for
                 // const qualification enforces it. We can lift it in the future.
                 match (self.mode, mutability) {
                     // immutable references are fine everywhere
-                    (_, hir::Mutability::MutImmutable) => {},
+                    (_, hir::Mutability::Immutable) => {},
                     // all is "good and well" in the unsoundness of `static mut`
 
                     // mutable references are ok in `static`. Either they are treated as immutable
                     // because they are behind an immutable one, or they are behind an `UnsafeCell`
                     // and thus ok.
-                    (InternMode::Static, hir::Mutability::MutMutable) => {},
+                    (InternMode::Static, hir::Mutability::Mutable) => {},
                     // we statically prevent `&mut T` via `const_qualif` and double check this here
-                    (InternMode::ConstBase, hir::Mutability::MutMutable) |
-                    (InternMode::Const, hir::Mutability::MutMutable) => {
+                    (InternMode::ConstBase, hir::Mutability::Mutable) |
+                    (InternMode::Const, hir::Mutability::Mutable) => {
                         match referenced_ty.kind {
                             ty::Array(_, n)
                                 if n.eval_usize(self.ecx.tcx.tcx, self.ecx.param_env) == 0 => {}
@@ -241,7 +250,7 @@ for
                     // If there's an immutable reference or we are inside a static, then our
                     // mutable reference is equivalent to an immutable one. As an example:
                     // `&&mut Foo` is semantically equivalent to `&&Foo`
-                    (Mutability::Mutable, hir::Mutability::MutMutable) => Mutability::Mutable,
+                    (Mutability::Mutable, hir::Mutability::Mutable) => Mutability::Mutable,
                     _ => Mutability::Immutable,
                 };
                 // Recursing behind references changes the intern mode for constants in order to
@@ -265,17 +274,17 @@ for
     }
 }
 
-pub fn intern_const_alloc_recursive(
-    ecx: &mut CompileTimeEvalContext<'mir, 'tcx>,
+pub fn intern_const_alloc_recursive<M: CompileTimeMachine<'mir, 'tcx>>(
+    ecx: &mut InterpCx<'mir, 'tcx, M>,
     // The `mutability` of the place, ignoring the type.
     place_mut: Option<hir::Mutability>,
     ret: MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
     let tcx = ecx.tcx;
     let (base_mutability, base_intern_mode) = match place_mut {
-        Some(hir::Mutability::MutImmutable) => (Mutability::Immutable, InternMode::Static),
+        Some(hir::Mutability::Immutable) => (Mutability::Immutable, InternMode::Static),
         // `static mut` doesn't care about interior mutability, it's mutable anyway
-        Some(hir::Mutability::MutMutable) => (Mutability::Mutable, InternMode::Static),
+        Some(hir::Mutability::Mutable) => (Mutability::Mutable, InternMode::Static),
         // consts, promoteds. FIXME: what about array lengths, array initializers?
         None => (Mutability::Immutable, InternMode::ConstBase),
     };

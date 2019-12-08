@@ -8,6 +8,7 @@ use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
 use crate::middle;
+use crate::middle::lang_items::PanicLocationLangItem;
 use crate::hir::{self, TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
 use crate::hir::def::{Res, DefKind, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
@@ -22,7 +23,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{BodyAndCache, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -46,11 +47,11 @@ use crate::ty::CanonicalPolyFnSig;
 use crate::util::common::ErrorReported;
 use crate::util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap, ItemLocalSet, NodeMap};
 use crate::util::nodemap::{FxHashMap, FxHashSet};
-use crate::util::profiling::SelfProfilerRef;
 
 use errors::DiagnosticBuilder;
 use arena::SyncDroplessArena;
 use smallvec::SmallVec;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::stable_hasher::{
     HashStable, StableHasher, StableVec, hash_stable_hashmap,
 };
@@ -72,9 +73,9 @@ use rustc_macros::HashStable;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
-use syntax::feature_gate;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
+use syntax::expand::allocator::AllocatorKind;
 
 pub struct AllArenas {
     pub interner: SyncDroplessArena,
@@ -306,7 +307,8 @@ pub struct ResolvedOpaqueTy<'tcx> {
 ///
 /// Here, we would store the type `T`, the span of the value `x`, and the "scope-span" for
 /// the scope that contains `x`.
-#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, HashStable, PartialEq)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug, Eq, Hash, PartialEq)]
+#[derive(HashStable, TypeFoldable)]
 pub struct GeneratorInteriorTypeCause<'tcx> {
     /// Type of the captured binding.
     pub ty: Ty<'tcx>,
@@ -314,12 +316,6 @@ pub struct GeneratorInteriorTypeCause<'tcx> {
     pub span: Span,
     /// Span of the scope of the captured binding.
     pub scope_span: Option<Span>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for GeneratorInteriorTypeCause<'tcx> {
-        ty, span, scope_span
-    }
 }
 
 #[derive(RustcEncodable, RustcDecodable, Debug)]
@@ -830,24 +826,11 @@ rustc_index::newtype_index! {
 pub type CanonicalUserTypeAnnotations<'tcx> =
     IndexVec<UserTypeAnnotationIndex, CanonicalUserTypeAnnotation<'tcx>>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable, Lift)]
 pub struct CanonicalUserTypeAnnotation<'tcx> {
     pub user_ty: CanonicalUserType<'tcx>,
     pub span: Span,
     pub inferred_ty: Ty<'tcx>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for CanonicalUserTypeAnnotation<'tcx> {
-        user_ty, span, inferred_ty
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for CanonicalUserTypeAnnotation<'a> {
-        type Lifted = CanonicalUserTypeAnnotation<'tcx>;
-        user_ty, span, inferred_ty
-    }
 }
 
 /// Canonicalized user type annotation.
@@ -885,7 +868,7 @@ impl CanonicalUserType<'tcx> {
                         },
 
                         GenericArgKind::Const(ct) => match ct.val {
-                            ConstValue::Bound(debruijn, b) => {
+                            ty::ConstKind::Bound(debruijn, b) => {
                                 // We only allow a `ty::INNERMOST` index in substitutions.
                                 assert_eq!(debruijn, ty::INNERMOST);
                                 cvar == b
@@ -902,28 +885,14 @@ impl CanonicalUserType<'tcx> {
 /// A user-given type annotation attached to a constant. These arise
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable, Lift)]
 pub enum UserType<'tcx> {
     Ty(Ty<'tcx>),
 
     /// The canonical type is the result of `type_of(def_id)` with the
     /// given substitutions applied.
     TypeOf(DefId, UserSubsts<'tcx>),
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserType<'tcx> {
-        (UserType::Ty)(ty),
-        (UserType::TypeOf)(def, substs),
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for UserType<'a> {
-        type Lifted = UserType<'tcx>;
-        (UserType::Ty)(ty),
-        (UserType::TypeOf)(def, substs),
-    }
 }
 
 impl<'tcx> CommonTypes<'tcx> {
@@ -986,7 +955,7 @@ impl<'tcx> CommonConsts<'tcx> {
 
         CommonConsts {
             err: mk_const(ty::Const {
-                val: ConstValue::Scalar(Scalar::zst()),
+                val: ty::ConstKind::Value(ConstValue::Scalar(Scalar::zst())),
                 ty: types.err,
             }),
         }
@@ -1026,7 +995,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 }
 
 pub struct GlobalCtxt<'tcx> {
-    pub arena: WorkerLocal<Arena<'tcx>>,
+    pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
 
     interners: CtxtInterners<'tcx>,
 
@@ -1115,17 +1084,17 @@ impl<'tcx> TyCtxt<'tcx> {
         &self.hir_map
     }
 
-    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
+    pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }
 
-    pub fn alloc_steal_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
-        &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
+    pub fn alloc_steal_promoted(self, promoted: IndexVec<Promoted, BodyAndCache<'tcx>>) ->
+        &'tcx Steal<IndexVec<Promoted, BodyAndCache<'tcx>>> {
         self.arena.alloc(Steal::new(promoted))
     }
 
-    pub fn intern_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
-        &'tcx IndexVec<Promoted, Body<'tcx>> {
+    pub fn intern_promoted(self, promoted: IndexVec<Promoted, BodyAndCache<'tcx>>) ->
+        &'tcx IndexVec<Promoted, BodyAndCache<'tcx>> {
         self.arena.alloc(promoted)
     }
 
@@ -1201,6 +1170,7 @@ impl<'tcx> TyCtxt<'tcx> {
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
+        arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
@@ -1256,7 +1226,7 @@ impl<'tcx> TyCtxt<'tcx> {
             sess: s,
             lint_store,
             cstore,
-            arena: WorkerLocal::new(|_| Arena::default()),
+            arena,
             interners,
             dep_graph,
             prof: s.prof.clone(),
@@ -1338,7 +1308,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.all_crate_nums(LOCAL_CRATE)
     }
 
-    pub fn features(self) -> &'tcx feature_gate::Features {
+    pub fn allocator_kind(self) -> Option<AllocatorKind> {
+        self.cstore.allocator_kind()
+    }
+
+    pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(LOCAL_CRATE)
     }
 
@@ -1414,8 +1388,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
-    pub fn crate_data_as_any(self, cnum: CrateNum) -> &'tcx dyn Any {
-        self.cstore.crate_data_as_any(cnum)
+    pub fn cstore_as_any(self) -> &'tcx dyn Any {
+        self.cstore.as_any()
     }
 
     #[inline(always)]
@@ -1552,14 +1526,14 @@ impl<'tcx> TyCtxt<'tcx> {
         return Some(FreeRegionInfo {
             def_id: suitable_region_binding_scope,
             boundregion: bound_region,
-            is_impl_item: is_impl_item,
+            is_impl_item,
         });
     }
 
     pub fn return_type_impl_trait(
         &self,
         scope_def_id: DefId,
-    ) -> Option<Ty<'tcx>> {
+    ) -> Option<(Ty<'tcx>, Span)> {
         // HACK: `type_of_def_id()` will fail on these (#55796), so return `None`.
         let hir_id = self.hir().as_local_hir_id(scope_def_id).unwrap();
         match self.hir().get(hir_id) {
@@ -1580,7 +1554,8 @@ impl<'tcx> TyCtxt<'tcx> {
                 let sig = ret_ty.fn_sig(*self);
                 let output = self.erase_late_bound_regions(&sig.output());
                 if output.is_impl_trait() {
-                    Some(output)
+                    let fn_decl = self.hir().fn_decl_by_hir_id(hir_id).unwrap();
+                    Some((output, fn_decl.output.span()))
                 } else {
                     None
                 }
@@ -1613,6 +1588,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(&self) -> bool {
         self.sess.target.target.arch.contains("nvptx")
+    }
+
+    /// Returns `&'static core::panic::Location<'static>`.
+    pub fn caller_location_ty(&self) -> Ty<'tcx> {
+        self.mk_imm_ref(
+            self.lifetimes.re_static,
+            self.type_of(self.require_lang_item(PanicLocationLangItem, None))
+                .subst(*self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
+        )
     }
 }
 
@@ -2410,22 +2394,22 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutMutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Mutable})
     }
 
     #[inline]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
+        self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::Mutability::Immutable})
     }
 
     #[inline]
     pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutMutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Mutable})
     }
 
     #[inline]
     pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
+        self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::Mutability::Immutable})
     }
 
     #[inline]
@@ -2463,10 +2447,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
-        if self.features().never_type {
+        if self.features().never_type_fallback {
             self.types.never
         } else {
-            self.intern_tup(&[])
+            self.types.unit
         }
     }
 
@@ -2516,7 +2500,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn mk_generator(self,
                         id: DefId,
                         generator_substs: SubstsRef<'tcx>,
-                        movability: hir::GeneratorMovability)
+                        movability: hir::Movability)
                         -> Ty<'tcx> {
         self.mk_ty(Generator(id, generator_substs, movability))
     }
@@ -2534,7 +2518,7 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline]
     pub fn mk_const_var(self, v: ConstVid<'tcx>, ty: Ty<'tcx>) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {
-            val: ConstValue::Infer(InferConst::Var(v)),
+            val: ty::ConstKind::Infer(InferConst::Var(v)),
             ty,
         })
     }
@@ -2561,7 +2545,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>,
     ) -> &'tcx ty::Const<'tcx> {
         self.mk_const(ty::Const {
-            val: ConstValue::Infer(ic),
+            val: ty::ConstKind::Infer(ic),
             ty,
         })
     }
@@ -2579,7 +2563,7 @@ impl<'tcx> TyCtxt<'tcx> {
         ty: Ty<'tcx>
     ) -> &'tcx Const<'tcx> {
         self.mk_const(ty::Const {
-            val: ConstValue::Param(ParamConst { index, name }),
+            val: ty::ConstKind::Param(ParamConst { index, name }),
             ty,
         })
     }
@@ -3020,14 +3004,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.all_crate_nums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())
-    };
-    providers.crate_host_hash = |tcx, cnum| {
-        assert_ne!(cnum, LOCAL_CRATE);
-        tcx.cstore.crate_host_hash_untracked(cnum)
-    };
-    providers.postorder_cnums = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc_slice(&tcx.cstore.postorder_cnums_untracked())
     };
     providers.output_filenames = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

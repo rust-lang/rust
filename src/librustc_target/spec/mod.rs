@@ -42,6 +42,8 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use crate::spec::abi::{Abi, lookup as lookup_abi};
 
+use rustc_macros::HashStable_Generic;
+
 pub mod abi;
 mod android_base;
 mod apple_base;
@@ -52,6 +54,7 @@ mod dragonfly_base;
 mod freebsd_base;
 mod haiku_base;
 mod hermit_base;
+mod hermit_kernel_base;
 mod linux_base;
 mod linux_kernel_base;
 mod linux_musl_base;
@@ -153,7 +156,7 @@ flavor_mappings! {
     ((LinkerFlavor::Lld(LldFlavor::Link)), "lld-link"),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum PanicStrategy {
     Unwind,
     Abort,
@@ -479,12 +482,14 @@ supported_targets! {
 
     ("aarch64-unknown-hermit", aarch64_unknown_hermit),
     ("x86_64-unknown-hermit", x86_64_unknown_hermit),
+    ("x86_64-unknown-hermit-kernel", x86_64_unknown_hermit_kernel),
 
     ("riscv32i-unknown-none-elf", riscv32i_unknown_none_elf),
     ("riscv32imc-unknown-none-elf", riscv32imc_unknown_none_elf),
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
     ("riscv64imac-unknown-none-elf", riscv64imac_unknown_none_elf),
     ("riscv64gc-unknown-none-elf", riscv64gc_unknown_none_elf),
+    ("riscv64gc-unknown-linux-gnu", riscv64gc_unknown_linux_gnu),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
     ("aarch64-unknown-none-softfloat", aarch64_unknown_none_softfloat),
@@ -798,6 +803,9 @@ pub struct TargetOptions {
 
     /// LLVM ABI name, corresponds to the '-mabi' parameter available in multilib C compilers
     pub llvm_abiname: String,
+
+    /// Whether or not RelaxElfRelocation flag will be passed to the linker
+    pub relax_elf_relocations: bool,
 }
 
 impl Default for TargetOptions {
@@ -885,6 +893,7 @@ impl Default for TargetOptions {
             merge_functions: MergeFunctions::Aliases,
             target_mcount: "mcount".to_string(),
             llvm_abiname: "".to_string(),
+            relax_elf_relocations: false,
         }
     }
 }
@@ -1202,6 +1211,7 @@ impl Target {
         key!(merge_functions, MergeFunctions)?;
         key!(target_mcount);
         key!(llvm_abiname);
+        key!(relax_elf_relocations, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1421,6 +1431,7 @@ impl ToJson for Target {
         target_option_val!(merge_functions);
         target_option_val!(target_mcount);
         target_option_val!(llvm_abiname);
+        target_option_val!(relax_elf_relocations);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

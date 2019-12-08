@@ -1,4 +1,4 @@
-error: defining opaque type use does not fully define opaque type
+error: defining opaque type use does not fully define opaque type: generic parameter `V` is specified as concrete type `<T as TraitWithAssoc>::Assoc`
   --> $DIR/bound_reduction2.rs:17:1
    |
 LL | / fn foo_desugared<T: TraitWithAssoc>(_: T) -> Foo<T::Assoc> {

@@ -4,21 +4,15 @@ error[E0308]: mismatched types
 LL |   pub fn get_enum_struct_variant() -> () {
    |                                       -- expected `()` because of return type
 LL |     Enum::EnumStructVariant { x: 1, y: 2, z: 3 }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found enum `a::Enum`
-   |
-   = note: expected type `()`
-              found type `a::Enum`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found enum `a::Enum`
 
 error[E0308]: mismatched types
-  --> $DIR/issue-13624.rs:22:9
+  --> $DIR/issue-13624.rs:20:9
    |
 LL |       match enum_struct_variant {
    |             ------------------- this match expression has type `()`
 LL |         a::Enum::EnumStructVariant { x, y, z } => {
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected (), found enum `a::Enum`
-   |
-   = note: expected type `()`
-              found type `a::Enum`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `()`, found enum `a::Enum`
 
 error: aborting due to 2 previous errors
 

@@ -2,10 +2,10 @@ error[E0029]: only char and numeric types are allowed in range patterns
   --> $DIR/E0029.rs:5:9
    |
 LL |         "hello" ..= "world" => {}
-   |         ^^^^^^^^^^^^^^^^^^^ ranges require char or numeric types
-   |
-   = note: start type: &'static str
-   = note: end type: &'static str
+   |         -------^^^^^-------
+   |         |           |
+   |         |           this is of type `&'static str` but it should be `char` or numeric
+   |         this is of type `&'static str` but it should be `char` or numeric
 
 error: aborting due to previous error
 

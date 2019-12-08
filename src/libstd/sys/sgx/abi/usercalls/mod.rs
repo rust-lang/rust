@@ -1,5 +1,5 @@
 use crate::cmp;
-use crate::io::{Error as IoError, Result as IoResult, IoSlice, IoSliceMut};
+use crate::io::{Error as IoError, IoSlice, IoSliceMut, Result as IoResult};
 use crate::time::Duration;
 
 pub(crate) mod alloc;
@@ -26,7 +26,7 @@ pub fn read(fd: Fd, bufs: &mut [IoSliceMut<'_>]) -> IoResult<usize> {
                 userbuf[index..end].copy_to_enclave(&mut buf[..buflen]);
                 index += buf.len();
             } else {
-                break
+                break;
             }
         }
         Ok(userbuf.len())
@@ -60,7 +60,7 @@ pub fn write(fd: Fd, bufs: &[IoSlice<'_>]) -> IoResult<usize> {
                 userbuf[index..end].copy_from_enclave(&buf[..buflen]);
                 index += buf.len();
             } else {
-                break
+                break;
             }
         }
         raw::write(fd, userbuf.as_ptr(), userbuf.len()).from_sgx_result()
@@ -90,11 +90,8 @@ pub fn bind_stream(addr: &str) -> IoResult<(Fd, String)> {
     unsafe {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
         let mut local = alloc::User::<ByteBuffer>::uninitialized();
-        let fd = raw::bind_stream(
-            addr_user.as_ptr(),
-            addr_user.len(),
-            local.as_raw_mut_ptr()
-        ).from_sgx_result()?;
+        let fd = raw::bind_stream(addr_user.as_ptr(), addr_user.len(), local.as_raw_mut_ptr())
+            .from_sgx_result()?;
         let local = string_from_bytebuffer(&local, "bind_stream", "local_addr");
         Ok((fd, local))
     }
@@ -106,13 +103,10 @@ pub fn accept_stream(fd: Fd) -> IoResult<(Fd, String, String)> {
     unsafe {
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
         let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
-                                                               // without forcing coercion?
+        // without forcing coercion?
         let (local, peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
-        let fd = raw::accept_stream(
-            fd,
-            local.as_raw_mut_ptr(),
-            peer.as_raw_mut_ptr()
-        ).from_sgx_result()?;
+        let fd = raw::accept_stream(fd, local.as_raw_mut_ptr(), peer.as_raw_mut_ptr())
+            .from_sgx_result()?;
         let local = string_from_bytebuffer(&local, "accept_stream", "local_addr");
         let peer = string_from_bytebuffer(&peer, "accept_stream", "peer_addr");
         Ok((fd, local, peer))
@@ -126,14 +120,15 @@ pub fn connect_stream(addr: &str) -> IoResult<(Fd, String, String)> {
         let addr_user = alloc::User::new_from_enclave(addr.as_bytes());
         let mut bufs = alloc::User::<[ByteBuffer; 2]>::uninitialized();
         let mut buf_it = alloc::UserRef::iter_mut(&mut *bufs); // FIXME: can this be done
-                                                               // without forcing coercion?
+        // without forcing coercion?
         let (local, peer) = (buf_it.next().unwrap(), buf_it.next().unwrap());
         let fd = raw::connect_stream(
             addr_user.as_ptr(),
             addr_user.len(),
             local.as_raw_mut_ptr(),
-            peer.as_raw_mut_ptr()
-        ).from_sgx_result()?;
+            peer.as_raw_mut_ptr(),
+        )
+        .from_sgx_result()?;
         let local = string_from_bytebuffer(&local, "connect_stream", "local_addr");
         let peer = string_from_bytebuffer(&peer, "connect_stream", "peer_addr");
         Ok((fd, local, peer))
@@ -183,25 +178,25 @@ pub use self::raw::free;
 
 fn check_os_error(err: Result) -> i32 {
     // FIXME: not sure how to make sure all variants of Error are covered
-    if err == Error::NotFound as _ ||
-       err == Error::PermissionDenied as _ ||
-       err == Error::ConnectionRefused as _ ||
-       err == Error::ConnectionReset as _ ||
-       err == Error::ConnectionAborted as _ ||
-       err == Error::NotConnected as _ ||
-       err == Error::AddrInUse as _ ||
-       err == Error::AddrNotAvailable as _ ||
-       err == Error::BrokenPipe as _ ||
-       err == Error::AlreadyExists as _ ||
-       err == Error::WouldBlock as _ ||
-       err == Error::InvalidInput as _ ||
-       err == Error::InvalidData as _ ||
-       err == Error::TimedOut as _ ||
-       err == Error::WriteZero as _ ||
-       err == Error::Interrupted as _ ||
-       err == Error::Other as _ ||
-       err == Error::UnexpectedEof as _ ||
-       ((Error::UserRangeStart as _)..=(Error::UserRangeEnd as _)).contains(&err)
+    if err == Error::NotFound as _
+        || err == Error::PermissionDenied as _
+        || err == Error::ConnectionRefused as _
+        || err == Error::ConnectionReset as _
+        || err == Error::ConnectionAborted as _
+        || err == Error::NotConnected as _
+        || err == Error::AddrInUse as _
+        || err == Error::AddrNotAvailable as _
+        || err == Error::BrokenPipe as _
+        || err == Error::AlreadyExists as _
+        || err == Error::WouldBlock as _
+        || err == Error::InvalidInput as _
+        || err == Error::InvalidData as _
+        || err == Error::TimedOut as _
+        || err == Error::WriteZero as _
+        || err == Error::Interrupted as _
+        || err == Error::Other as _
+        || err == Error::UnexpectedEof as _
+        || ((Error::UserRangeStart as _)..=(Error::UserRangeEnd as _)).contains(&err)
     {
         err
     } else {

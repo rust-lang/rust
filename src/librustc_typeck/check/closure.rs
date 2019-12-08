@@ -36,10 +36,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn check_expr_closure(
         &self,
         expr: &hir::Expr,
-        _capture: hir::CaptureClause,
+        _capture: hir::CaptureBy,
         decl: &'tcx hir::FnDecl,
         body_id: hir::BodyId,
-        gen: Option<hir::GeneratorMovability>,
+        gen: Option<hir::Movability>,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         debug!(
@@ -64,7 +64,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         opt_kind: Option<ty::ClosureKind>,
         decl: &'tcx hir::FnDecl,
         body: &'tcx hir::Body,
-        gen: Option<hir::GeneratorMovability>,
+        gen: Option<hir::Movability>,
         expected_sig: Option<ExpectedSig<'tcx>>,
     ) -> Ty<'tcx> {
         debug!(

@@ -29,6 +29,7 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(arbitrary_self_types)]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
@@ -36,12 +37,11 @@
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![cfg_attr(windows, feature(libc))]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(exhaustive_patterns)]
 #![feature(overlapping_marker_traits)]
 #![feature(extern_types)]
 #![feature(nll)]
-#![cfg_attr(bootstrap, feature(non_exhaustive))]
 #![feature(optin_builtin_traits)]
 #![feature(option_expect_none)]
 #![feature(range_is_empty)]
@@ -57,15 +57,14 @@
 #![feature(test)]
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
-#![cfg_attr(bootstrap, feature(proc_macro_hygiene))]
 #![feature(log_syntax)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
+#![feature(hash_raw_entry)]
 
 #![recursion_limit="512"]
 
 #[macro_use] extern crate bitflags;
-extern crate getopts;
 #[macro_use] extern crate scoped_tls;
 #[cfg(windows)]
 extern crate libc;
@@ -75,17 +74,11 @@ extern crate libc;
 #[macro_use] extern crate syntax;
 #[macro_use] extern crate smallvec;
 
-// Use the test crate here so we depend on getopts through it. This allow tools to link to both
-// librustc_driver and libtest.
-extern crate test as _;
-
 #[cfg(test)]
 mod tests;
 
 #[macro_use]
 mod macros;
-
-pub mod error_codes;
 
 #[macro_use]
 pub mod query;
@@ -99,7 +92,6 @@ pub mod infer;
 pub mod lint;
 
 pub mod middle {
-    pub mod expr_use_visitor;
     pub mod cstore;
     pub mod dependency_format;
     pub mod diagnostic_items;
@@ -107,7 +99,6 @@ pub mod middle {
     pub mod free_region;
     pub mod lib_features;
     pub mod lang_items;
-    pub mod mem_categorization;
     pub mod privacy;
     pub mod reachable;
     pub mod region;
@@ -118,7 +109,7 @@ pub mod middle {
 }
 
 pub mod mir;
-pub mod session;
+pub use rustc_session as session;
 pub mod traits;
 pub mod ty;
 
@@ -126,7 +117,6 @@ pub mod util {
     pub mod captures;
     pub mod common;
     pub mod nodemap;
-    pub mod profiling;
     pub mod bug;
 }
 

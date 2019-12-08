@@ -1,16 +1,16 @@
+use super::{InterpCx, Machine, MemoryKind, FnVal};
+
 use rustc::ty::{self, Ty, Instance, TypeFoldable};
 use rustc::ty::layout::{Size, Align, LayoutOf, HasDataLayout};
 use rustc::mir::interpret::{Scalar, Pointer, InterpResult, PointerArithmetic,};
-
-use super::{InterpCx, Machine, MemoryKind, FnVal};
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Creates a dynamic vtable for the given type and vtable origin. This is used only for
     /// objects.
     ///
-    /// The `trait_ref` encodes the erased self type. Hence if we are
+    /// The `trait_ref` encodes the erased self type. Hence, if we are
     /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
-    /// `trait_ref` would map `T:Trait`.
+    /// `trait_ref` would map `T: Trait`.
     pub fn get_vtable(
         &mut self,
         ty: Ty<'tcx>,
@@ -51,7 +51,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         let ptr_align = self.tcx.data_layout.pointer_align.abi;
         // /////////////////////////////////////////////////////////////////////////////////////////
         // If you touch this code, be sure to also make the corresponding changes to
-        // `get_vtable` in rust_codegen_llvm/meth.rs
+        // `get_vtable` in `rust_codegen_llvm/meth.rs`.
         // /////////////////////////////////////////////////////////////////////////////////////////
         let vtable = self.memory.allocate(
             ptr_size * (3 + methods.len() as u64),
@@ -67,7 +67,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // allocation is correctly aligned as we created it above. Also we're only offsetting by
         // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
         let vtable_alloc = self.memory.get_raw_mut(vtable.alloc_id)?;
-        vtable_alloc.write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
+        vtable_alloc.write_ptr_sized(tcx, vtable, drop.into())?;
 
         let size_ptr = vtable.offset(ptr_size, tcx)?;
         vtable_alloc.write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
@@ -87,7 +87,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // We cannot use `vtable_allic` as we are creating fn ptrs in this loop.
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), tcx)?;
                 self.memory.get_raw_mut(vtable.alloc_id)?
-                    .write_ptr_sized(tcx, method_ptr, Scalar::Ptr(fn_ptr).into())?;
+                    .write_ptr_sized(tcx, method_ptr, fn_ptr.into())?;
             }
         }
 
@@ -97,12 +97,33 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(vtable)
     }
 
-    /// Returns the drop fn instance as well as the actual dynamic type
+    /// Resolves the function at the specified slot in the provided
+    /// vtable. An index of '0' corresponds to the first method
+    /// declared in the trait of the provided vtable.
+    pub fn get_vtable_slot(
+        &self,
+        vtable: Scalar<M::PointerTag>,
+        idx: usize
+    ) -> InterpResult<'tcx, FnVal<'tcx, M::ExtraFnVal>> {
+        let ptr_size = self.pointer_size();
+        // Skip over the 'drop_ptr', 'size', and 'align' fields.
+        let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
+        let vtable_slot = self.memory.check_ptr_access(
+            vtable_slot,
+            ptr_size,
+            self.tcx.data_layout.pointer_align.abi,
+        )?.expect("cannot be a ZST");
+        let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
+            .read_ptr_sized(self, vtable_slot)?.not_undef()?;
+        Ok(self.memory.get_fn(fn_ptr)?)
+    }
+
+    /// Returns the drop fn instance as well as the actual dynamic type.
     pub fn read_drop_type_from_vtable(
         &self,
         vtable: Scalar<M::PointerTag>,
     ) -> InterpResult<'tcx, (ty::Instance<'tcx>, Ty<'tcx>)> {
-        // we don't care about the pointee type, we just want a pointer
+        // We don't care about the pointee type; we just want a pointer.
         let vtable = self.memory.check_ptr_access(
             vtable,
             self.tcx.data_layout.pointer_size,
@@ -128,7 +149,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         vtable: Scalar<M::PointerTag>,
     ) -> InterpResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
-        // We check for size = 3*ptr_size, that covers the drop fn (unused here),
+        // We check for `size = 3 * ptr_size`, which covers the drop fn (unused here),
         // the size, and the align (which we read below).
         let vtable = self.memory.check_ptr_access(
             vtable,

@@ -25,7 +25,7 @@ fn main() {
     let mut dylib_path = bootstrap::util::dylib_path();
     dylib_path.insert(0, PathBuf::from(libdir.clone()));
 
-    //FIXME(misdreavus): once stdsimd uses cfg(rustdoc) instead of cfg(dox), remove the `--cfg dox`
+    //FIXME(misdreavus): once stdsimd uses cfg(doc) instead of cfg(dox), remove the `--cfg dox`
     //arguments here
     let mut cmd = Command::new(rustdoc);
     cmd.args(&args)

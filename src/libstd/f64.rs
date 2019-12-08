@@ -14,15 +14,15 @@ use crate::intrinsics;
 use crate::sys::cmath;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{MIN_EXP, MAX_EXP, MIN_10_EXP};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::f64::{MIN, MIN_POSITIVE, MAX};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::consts;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{DIGITS, EPSILON, MANTISSA_DIGITS, RADIX};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{INFINITY, MAX_10_EXP, NAN, NEG_INFINITY};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{MAX, MIN, MIN_POSITIVE};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::f64::{MAX_EXP, MIN_10_EXP, MIN_EXP};
 
 #[cfg(not(test))]
 #[lang = "f64_runtime"]
@@ -120,7 +120,9 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn fract(self) -> f64 { self - self.trunc() }
+    pub fn fract(self) -> f64 {
+        self - self.trunc()
+    }
 
     /// Computes the absolute value of `self`. Returns `NAN` if the
     /// number is `NAN`.
@@ -170,11 +172,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn signum(self) -> f64 {
-        if self.is_nan() {
-            NAN
-        } else {
-            1.0_f64.copysign(self)
-        }
+        if self.is_nan() { NAN } else { 1.0_f64.copysign(self) }
     }
 
     /// Returns a number composed of the magnitude of `self` and the sign of
@@ -286,11 +284,7 @@ impl f64 {
     #[stable(feature = "euclidean_division", since = "1.38.0")]
     pub fn rem_euclid(self, rhs: f64) -> f64 {
         let r = self % rhs;
-        if r < 0.0 {
-            r + rhs.abs()
-        } else {
-            r
-        }
+        if r < 0.0 { r + rhs.abs() } else { r }
     }
 
     /// Raises a number to an integer power.
@@ -348,11 +342,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f64 {
-        if self < 0.0 {
-            NAN
-        } else {
-            unsafe { intrinsics::sqrtf64(self) }
-        }
+        if self < 0.0 { NAN } else { unsafe { intrinsics::sqrtf64(self) } }
     }
 
     /// Returns `e^(self)`, (the exponential function).
@@ -413,7 +403,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
-        self.log_wrapper(|n| { unsafe { intrinsics::logf64(n) } })
+        self.log_wrapper(|n| unsafe { intrinsics::logf64(n) })
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -435,7 +425,9 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn log(self, base: f64) -> f64 { self.ln() / base.ln() }
+    pub fn log(self, base: f64) -> f64 {
+        self.ln() / base.ln()
+    }
 
     /// Returns the base 2 logarithm of the number.
     ///
@@ -455,9 +447,9 @@ impl f64 {
     pub fn log2(self) -> f64 {
         self.log_wrapper(|n| {
             #[cfg(target_os = "android")]
-                return crate::sys::android::log2f64(n);
+            return crate::sys::android::log2f64(n);
             #[cfg(not(target_os = "android"))]
-                return unsafe { intrinsics::log2f64(n) };
+            return unsafe { intrinsics::log2f64(n) };
         })
     }
 
@@ -477,7 +469,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
-        self.log_wrapper(|n| { unsafe { intrinsics::log10f64(n) } })
+        self.log_wrapper(|n| unsafe { intrinsics::log10f64(n) })
     }
 
     /// The positive difference of two numbers.
@@ -500,14 +492,16 @@ impl f64 {
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_deprecated(since = "1.10.0",
-    reason = "you probably meant `(self - other).abs()`: \
-                                 this operation is `(self - other).max(0.0)` \
-                                 except that `abs_sub` also propagates NaNs (also \
-                                 known as `fdim` in C). If you truly need the positive \
-                                 difference, consider using that expression or the C function \
-                                 `fdim`, depending on how you wish to handle NaN (please consider \
-                                 filing an issue describing your use-case too).")]
+    #[rustc_deprecated(
+        since = "1.10.0",
+        reason = "you probably meant `(self - other).abs()`: \
+                  this operation is `(self - other).max(0.0)` \
+                  except that `abs_sub` also propagates NaNs (also \
+                  known as `fdim` in C). If you truly need the positive \
+                  difference, consider using that expression or the C function \
+                  `fdim`, depending on how you wish to handle NaN (please consider \
+                  filing an issue describing your use-case too)."
+    )]
     pub fn abs_sub(self, other: f64) -> f64 {
         unsafe { cmath::fdim(self, other) }
     }
@@ -888,11 +882,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn acosh(self) -> f64 {
-        if self < 1.0 {
-            NAN
-        } else {
-            (self + ((self * self) - 1.0).sqrt()).ln()
-        }
+        if self < 1.0 { NAN } else { (self + ((self * self) - 1.0).sqrt()).ln() }
     }
 
     /// Inverse hyperbolic tangent function.
@@ -943,8 +933,12 @@ impl f64 {
     pub fn clamp(self, min: f64, max: f64) -> f64 {
         assert!(min <= max);
         let mut x = self;
-        if x < min { x = min; }
-        if x > max { x = max; }
+        if x < min {
+            x = min;
+        }
+        if x > max {
+            x = max;
+        }
         x
     }
 
@@ -978,8 +972,8 @@ impl f64 {
 mod tests {
     use crate::f64;
     use crate::f64::*;
-    use crate::num::*;
     use crate::num::FpCategory as Fp;
+    use crate::num::*;
 
     #[test]
     fn test_num_f64() {

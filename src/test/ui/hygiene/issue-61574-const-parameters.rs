@@ -3,7 +3,7 @@
 
 // check-pass
 
-#![feature(const_generics)]
+#![feature(const_generics)] //~ WARNING `const_generics` is incomplete
 
 use std::ops::Add;
 

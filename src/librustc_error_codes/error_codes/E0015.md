@@ -1,0 +1,33 @@
+A constant item was initialized with something that is not a constant
+expression.
+
+Erroneous code example:
+
+```compile_fail,E0015
+fn create_some() -> Option<u8> {
+    Some(1)
+}
+
+const FOO: Option<u8> = create_some(); // error!
+```
+
+The only functions that can be called in static or constant expressions are
+`const` functions, and struct/enum constructors.
+
+To fix this error, you can declare `create_some` as a constant function:
+
+```
+const fn create_some() -> Option<u8> { // declared as a const function
+    Some(1)
+}
+
+const FOO: Option<u8> = create_some(); // ok!
+
+// These are also working:
+struct Bar {
+    x: u8,
+}
+
+const OTHER_FOO: Option<u8> = Some(1);
+const BAR: Bar = Bar {x: 1};
+```

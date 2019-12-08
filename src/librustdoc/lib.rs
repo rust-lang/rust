@@ -14,7 +14,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]
@@ -23,12 +23,15 @@ extern crate getopts;
 extern crate env_logger;
 extern crate rustc;
 extern crate rustc_data_structures;
-extern crate rustc_index;
 extern crate rustc_driver;
+extern crate rustc_feature;
+extern crate rustc_error_codes;
+extern crate rustc_index;
 extern crate rustc_resolve;
 extern crate rustc_lint;
 extern crate rustc_interface;
 extern crate rustc_metadata;
+extern crate rustc_parse;
 extern crate rustc_target;
 extern crate rustc_typeck;
 extern crate rustc_lexer;
@@ -142,6 +145,10 @@ fn opts() -> Vec<RustcOptGroup> {
         stable("extern", |o| {
             o.optmulti("", "extern", "pass an --extern to rustc", "NAME[=PATH]")
         }),
+        unstable("extern-private", |o| {
+            o.optmulti("", "extern-private",
+                       "pass an --extern to rustc (compatibility only)", "NAME=PATH")
+        }),
         unstable("extern-html-root-url", |o| {
             o.optmulti("", "extern-html-root-url",
                        "base URL to use for dependencies", "NAME=URL")
@@ -246,13 +253,13 @@ fn opts() -> Vec<RustcOptGroup> {
             o.optflag("", "sort-modules-by-appearance", "sort modules by where they appear in the \
                                                          program, rather than alphabetically")
         }),
-        unstable("themes", |o| {
-            o.optmulti("", "themes",
+        stable("theme", |o| {
+            o.optmulti("", "theme",
                        "additional themes which will be added to the generated docs",
                        "FILES")
         }),
-        unstable("theme-checker", |o| {
-            o.optmulti("", "theme-checker",
+        stable("check-theme", |o| {
+            o.optmulti("", "check-theme",
                        "check if given theme is valid",
                        "FILES")
         }),

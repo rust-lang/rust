@@ -22,7 +22,7 @@ pub fn custom_coerce_unsize_info<'tcx>(
             tcx.coerce_unsized_info(impl_def_id).custom_kind.unwrap()
         }
         vtable => {
-            bug!("invalid CoerceUnsized vtable: {:?}", vtable);
+            bug!("invalid `CoerceUnsized` vtable: {:?}", vtable);
         }
     }
 }

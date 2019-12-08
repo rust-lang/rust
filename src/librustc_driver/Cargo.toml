@@ -19,12 +19,14 @@ rustc_target = { path = "../librustc_target" }
 rustc_lint = { path = "../librustc_lint" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 errors = { path = "../librustc_errors", package = "rustc_errors" }
+rustc_feature = { path = "../librustc_feature" }
 rustc_metadata = { path = "../librustc_metadata" }
 rustc_mir = { path = "../librustc_mir" }
-rustc_plugin = { path = "../librustc_plugin/deprecated" } # To get this in the sysroot
-rustc_plugin_impl = { path = "../librustc_plugin" }
+rustc_parse = { path = "../librustc_parse" }
+rustc_plugin_impl = { path = "../librustc_plugin_impl" }
 rustc_save_analysis = { path = "../librustc_save_analysis" }
 rustc_codegen_utils = { path = "../librustc_codegen_utils" }
+rustc_error_codes = { path = "../librustc_error_codes" }
 rustc_interface = { path = "../librustc_interface" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 rustc_resolve = { path = "../librustc_resolve" }

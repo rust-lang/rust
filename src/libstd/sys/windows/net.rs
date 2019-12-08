@@ -100,7 +100,7 @@ impl Socket {
                                 c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT) {
                 c::INVALID_SOCKET => {
                     match c::WSAGetLastError() {
-                        c::WSAEPROTOTYPE => {
+                        c::WSAEPROTOTYPE | c::WSAEINVAL => {
                             match c::WSASocketW(fam, ty, 0, ptr::null_mut(), 0,
                                                 c::WSA_FLAG_OVERLAPPED) {
                                 c::INVALID_SOCKET => Err(last_error()),
@@ -199,7 +199,7 @@ impl Socket {
                                 c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT) {
                 c::INVALID_SOCKET => {
                     match c::WSAGetLastError() {
-                        c::WSAEPROTOTYPE => {
+                        c::WSAEPROTOTYPE | c::WSAEINVAL => {
                             match c::WSASocketW(info.iAddressFamily,
                                                 info.iSocketType,
                                                 info.iProtocol,

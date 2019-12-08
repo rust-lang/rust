@@ -76,9 +76,9 @@ use TokenTreeOrTokenTreeSlice::*;
 
 use crate::mbe::{self, TokenTree};
 
+use rustc_parse::Directory;
+use rustc_parse::parser::{Parser, PathStyle, FollowedByType};
 use syntax::ast::{Ident, Name};
-use syntax::parse::Directory;
-use syntax::parse::parser::{Parser, PathStyle};
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::symbol::{kw, sym, Symbol};
@@ -652,7 +652,7 @@ pub(super) fn parse(
         directory,
         recurse_into_modules,
         true,
-        syntax::MACRO_ARGUMENTS,
+        rustc_parse::MACRO_ARGUMENTS,
     );
 
     // A queue of possible matcher positions. We initialize it with the matcher position in which
@@ -933,7 +933,7 @@ fn parse_nt_inner<'a>(p: &mut Parser<'a>, sp: Span, name: Symbol) -> PResult<'a,
         }
         sym::path => token::NtPath(p.parse_path(PathStyle::Type)?),
         sym::meta => token::NtMeta(p.parse_attr_item()?),
-        sym::vis => token::NtVis(p.parse_visibility(true)?),
+        sym::vis => token::NtVis(p.parse_visibility(FollowedByType::Yes)?),
         sym::lifetime => if p.check_lifetime() {
             token::NtLifetime(p.expect_lifetime().ident)
         } else {

@@ -697,7 +697,6 @@ extern "rust-intrinsic" {
     pub fn panic_if_uninhabited<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
-    #[cfg(not(bootstrap))]
     pub fn caller_location() -> &'static crate::panic::Location<'static>;
 
     /// Creates a value initialized to zero.
@@ -940,6 +939,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_transmute")]
     pub fn transmute<T, U>(e: T) -> U;
 
     /// Returns `true` if the actual type given as `T` requires drop
@@ -1144,6 +1144,11 @@ extern "rust-intrinsic" {
     /// May assume inputs are finite.
     pub fn frem_fast<T>(a: T, b: T) -> T;
 
+    /// Convert with LLVM’s fptoui/fptosi, which may return undef for values out of range
+    /// https://github.com/rust-lang/rust/issues/10184
+    #[cfg(not(bootstrap))]
+    pub fn float_to_int_approx_unchecked<Float, Int>(value: Float) -> Int;
+
 
     /// Returns the number of bits set in an integer type `T`
     pub fn ctpop<T>(x: T) -> T;
@@ -1280,7 +1285,7 @@ extern "rust-intrinsic" {
     /// undefined behavior when `x + y > T::max_value()` or `x + y < T::min_value()`.
     pub fn unchecked_add<T>(x: T, y: T) -> T;
 
-    /// Returns the result of an unchecked substraction, resulting in
+    /// Returns the result of an unchecked subtraction, resulting in
     /// undefined behavior when `x - y > T::max_value()` or `x - y < T::min_value()`.
     pub fn unchecked_sub<T>(x: T, y: T) -> T;
 
@@ -1346,8 +1351,14 @@ extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);
 
     /// See documentation of `<*const T>::offset_from` for details.
-    #[cfg(not(bootstrap))]
     pub fn ptr_offset_from<T>(ptr: *const T, base: *const T) -> isize;
+
+    /// Internal hook used by Miri to implement unwinding.
+    /// Compiles to a NOP during non-Miri codegen.
+    ///
+    /// Perma-unstable: do not use
+    #[cfg(not(bootstrap))]
+    pub fn miri_start_panic(data: *mut (dyn crate::any::Any + crate::marker::Send)) -> ();
 }
 
 // Some functions are defined here because they accidentally got made

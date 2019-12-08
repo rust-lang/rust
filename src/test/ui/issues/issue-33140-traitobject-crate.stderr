@@ -15,10 +15,11 @@ LL | #![warn(order_dependent_trait_objects)]
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 warning: conflicting implementations of trait `Trait` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/issue-33140-traitobject-crate.rs:86:1
+  --> $DIR/issue-33140-traitobject-crate.rs:88:1
    |
 LL | unsafe impl Trait for dyn (::std::marker::Send) + Send + Sync { }
    | ------------------------------------------------------------- first implementation here
+...
 LL | unsafe impl Trait for dyn (::std::marker::Sync) + Send { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |
@@ -26,11 +27,11 @@ LL | unsafe impl Trait for dyn (::std::marker::Sync) + Send { }
    = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 warning: conflicting implementations of trait `Trait` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
-  --> $DIR/issue-33140-traitobject-crate.rs:88:1
+  --> $DIR/issue-33140-traitobject-crate.rs:92:1
    |
 LL | unsafe impl Trait for dyn (::std::marker::Sync) + Send { }
    | ------------------------------------------------------ first implementation here
-LL | unsafe impl Trait for dyn (::std::marker::Sync) + Sync { }
+...
 LL | unsafe impl Trait for dyn (::std::marker::Sync) + Send + Sync { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |

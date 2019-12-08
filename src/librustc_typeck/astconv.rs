@@ -18,13 +18,12 @@ use rustc::ty::{self, DefIdTree, Ty, TyCtxt, Const, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{self, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
-use rustc::mir::interpret::ConstValue;
 use rustc_target::spec::abi;
 use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
 use syntax::ast;
 use syntax::errors::pluralize;
-use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::feature_gate::feature_err;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::symbol::sym;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
@@ -36,6 +35,8 @@ use std::iter;
 use std::slice;
 
 use rustc_data_structures::fx::FxHashSet;
+
+use rustc_error_codes::*;
 
 #[derive(Debug)]
 pub struct PathSeg(pub DefId, pub usize);
@@ -913,8 +914,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             } else {
                 "parenthetical notation is only stable when used with `Fn`-family traits"
             };
-            emit_feature_err(&self.tcx().sess.parse_sess, sym::unboxed_closures,
-                             span, GateIssue::Language, msg);
+            feature_err(&self.tcx().sess.parse_sess, sym::unboxed_closures, span, msg).emit();
         }
 
         self.create_substs_for_ast_path(span,
@@ -1148,8 +1148,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let candidates = traits::supertraits(tcx, trait_ref).filter(|r| {
                 self.trait_defines_associated_type_named(r.def_id(), binding.item_name)
             });
-            self.one_bound_for_assoc_type(candidates, &trait_ref.to_string(),
-                                          binding.item_name, binding.span)
+            self.one_bound_for_assoc_type(
+                candidates,
+                &trait_ref.print_only_trait_path().to_string(),
+                binding.item_name,
+                binding.span
+            )
         }?;
 
         let (assoc_ident, def_scope) =
@@ -1221,16 +1225,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             span,
             self.tcx().at(span).type_of(did).subst(self.tcx(), substs)
         )
-    }
-
-    /// Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
-    /// removing the dummy `Self` type (`trait_object_dummy_self`).
-    fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
-                                -> ty::ExistentialTraitRef<'tcx> {
-        if trait_ref.self_ty() != self.tcx().types.trait_object_dummy_self {
-            bug!("trait_ref_to_existential called on {:?} with non-dummy Self", trait_ref);
-        }
-        ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
 
     fn conv_object_ty_poly_trait_ref(&self,
@@ -1414,13 +1408,30 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         debug!("regular_traits: {:?}", regular_traits);
         debug!("auto_traits: {:?}", auto_traits);
 
+        // Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
+        // removing the dummy `Self` type (`trait_object_dummy_self`).
+        let trait_ref_to_existential = |trait_ref: ty::TraitRef<'tcx>| {
+            if trait_ref.self_ty() != dummy_self {
+                // FIXME: There appears to be a missing filter on top of `expand_trait_aliases`,
+                // which picks up non-supertraits where clauses - but also, the object safety
+                // completely ignores trait aliases, which could be object safety hazards. We
+                // `delay_span_bug` here to avoid an ICE in stable even when the feature is
+                // disabled. (#66420)
+                tcx.sess.delay_span_bug(DUMMY_SP, &format!(
+                    "trait_ref_to_existential called on {:?} with non-dummy Self",
+                    trait_ref,
+                ));
+            }
+            ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref)
+        };
+
         // Erase the `dummy_self` (`trait_object_dummy_self`) used above.
         let existential_trait_refs = regular_traits.iter().map(|i| {
-            i.trait_ref().map_bound(|trait_ref| self.trait_ref_to_existential(trait_ref))
+            i.trait_ref().map_bound(|trait_ref| trait_ref_to_existential(trait_ref))
         });
         let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|b| {
-                let trait_ref = self.trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
+                let trait_ref = trait_ref_to_existential(b.projection_ty.trait_ref(tcx));
                 ty::ExistentialProjection {
                     ty: b.ty,
                     item_def_id: b.projection_ty.item_def_id,
@@ -1581,12 +1592,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 if let Some(span) = bound_span {
                     err.span_label(span, format!("ambiguous `{}` from `{}`",
                                                  assoc_name,
-                                                 bound));
+                                                 bound.print_only_trait_path()));
                 } else {
                     span_note!(&mut err, span,
                                "associated type `{}` could derive from `{}`",
                                ty_param_name,
-                               bound);
+                               bound.print_only_trait_path());
                 }
             }
             err.emit();
@@ -2226,7 +2237,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let def_id = tcx.hir().local_def_id(ast_const.hir_id);
 
         let mut const_ = ty::Const {
-            val: ConstValue::Unevaluated(
+            val: ty::ConstKind::Unevaluated(
                 def_id,
                 InternalSubsts::identity_for_item(tcx, def_id),
             ),
@@ -2243,7 +2254,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let generics = tcx.generics_of(item_def_id);
             let index = generics.param_def_id_to_index[&tcx.hir().local_def_id(hir_id)];
             let name = tcx.hir().name(hir_id);
-            const_.val = ConstValue::Param(ty::ParamConst::new(index, name));
+            const_.val = ty::ConstKind::Param(ty::ParamConst::new(index, name));
         }
 
         tcx.mk_const(const_)

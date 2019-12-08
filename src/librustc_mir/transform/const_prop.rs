@@ -7,9 +7,10 @@ use std::cell::Cell;
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
 use rustc::mir::{
-    AggregateKind, Constant, Location, Place, PlaceBase, Body, Operand, Rvalue, Local, UnOp,
-    StatementKind, Statement, LocalKind, TerminatorKind, Terminator,  ClearCrossCrate, SourceInfo,
-    BinOp, SourceScope, SourceScopeLocalData, LocalDecl, BasicBlock, RETURN_PLACE,
+    AggregateKind, Constant, Location, Place, PlaceBase, Body, BodyAndCache, Operand, Local, UnOp,
+    Rvalue, StatementKind, Statement, LocalKind, TerminatorKind, Terminator, ClearCrossCrate,
+    SourceInfo, BinOp, SourceScope, SourceScopeData, LocalDecl, BasicBlock, ReadOnlyBodyAndCache,
+    read_only, RETURN_PLACE
 };
 use rustc::mir::visit::{
     Visitor, PlaceContext, MutatingUseContext, MutVisitor, NonMutatingUseContext,
@@ -22,7 +23,7 @@ use rustc::ty::subst::InternalSubsts;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
 use rustc::ty::layout::{
-    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout,
+    LayoutOf, TyLayout, LayoutError, HasTyCtxt, TargetDataLayout, HasDataLayout, Size,
 };
 
 use crate::rustc::ty::subst::Subst;
@@ -30,15 +31,20 @@ use crate::interpret::{
     self, InterpCx, ScalarMaybeUndef, Immediate, OpTy,
     StackPopCleanup, LocalValue, LocalState, AllocId, Frame,
     Allocation, MemoryKind, ImmTy, Pointer, Memory, PlaceTy,
-    Operand as InterpOperand,
+    Operand as InterpOperand, intern_const_alloc_recursive,
 };
 use crate::const_eval::error_to_const_error;
 use crate::transform::{MirPass, MirSource};
 
+/// The maximum number of bytes that we'll allocate space for a return value.
+const MAX_ALLOC_LIMIT: u64 = 1024;
+
 pub struct ConstProp;
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
+    ) {
         // will be evaluated by miri and produce its errors there
         if source.promoted.is_some() {
             return;
@@ -71,24 +77,17 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
 
         trace!("ConstProp starting for {:?}", source.def_id());
 
-        // Steal some data we need from `body`.
-        let source_scope_local_data = std::mem::replace(
-            &mut body.source_scope_local_data,
-            ClearCrossCrate::Clear
-        );
-
         let dummy_body =
             &Body::new(
                 body.basic_blocks().clone(),
-                Default::default(),
-                ClearCrossCrate::Clear,
-                None,
+                body.source_scopes.clone(),
                 body.local_decls.clone(),
                 Default::default(),
                 body.arg_count,
                 Default::default(),
                 tcx.def_span(source.def_id()),
                 Default::default(),
+                body.generator_kind,
             );
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
@@ -96,20 +95,12 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // That would require an uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
         let mut optimization_finder = ConstPropagator::new(
-            body,
+            read_only!(body),
             dummy_body,
-            source_scope_local_data,
             tcx,
             source
         );
         optimization_finder.visit_body(body);
-
-        // put back the data we stole from `mir`
-        let source_scope_local_data = optimization_finder.release_stolen_data();
-        std::mem::replace(
-            &mut body.source_scope_local_data,
-            source_scope_local_data
-        );
 
         trace!("ConstProp done for {:?}", source.def_id());
     }
@@ -137,12 +128,12 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         false
     }
 
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
-        _dest: Option<PlaceTy<'tcx>>,
-        _ret: Option<BasicBlock>,
+        _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
+        _unwind: Option<BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir Body<'tcx>>> {
         Ok(None)
     }
@@ -151,8 +142,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: !,
         _args: &[OpTy<'tcx>],
-        _dest: Option<PlaceTy<'tcx>>,
-        _ret: Option<BasicBlock>,
+        _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
+        _unwind: Option<BasicBlock>
     ) -> InterpResult<'tcx> {
         match fn_val {}
     }
@@ -162,16 +153,26 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _span: Span,
         _instance: ty::Instance<'tcx>,
         _args: &[OpTy<'tcx>],
-        _dest: PlaceTy<'tcx>,
+        _ret: Option<(PlaceTy<'tcx>, BasicBlock)>,
+        _unwind: Option<BasicBlock>
     ) -> InterpResult<'tcx> {
-        throw_unsup_format!("calling intrinsics isn't supported in ConstProp");
+        throw_unsup!(ConstPropUnsupported("calling intrinsics isn't supported in ConstProp"));
+    }
+
+    fn assert_panic(
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _span: Span,
+        _msg: &rustc::mir::interpret::AssertMessage<'tcx>,
+        _unwind: Option<rustc::mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        bug!("panics terminators are not evaluated in ConstProp");
     }
 
     fn ptr_to_int(
         _mem: &Memory<'mir, 'tcx, Self>,
         _ptr: Pointer,
     ) -> InterpResult<'tcx, u64> {
-        throw_unsup_format!("ptr-to-int casts aren't supported in ConstProp");
+        throw_unsup!(ConstPropUnsupported("ptr-to-int casts aren't supported in ConstProp"));
     }
 
     fn binary_ptr_op(
@@ -181,7 +182,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _right: ImmTy<'tcx>,
     ) -> InterpResult<'tcx, (Scalar, bool, Ty<'tcx>)> {
         // We can't do this because aliasing of memory can differ between const eval and llvm
-        throw_unsup_format!("pointer arithmetic or comparisons aren't supported in ConstProp");
+        throw_unsup!(ConstPropUnsupported("pointer arithmetic or comparisons aren't supported \
+            in ConstProp"));
     }
 
     fn find_foreign_static(
@@ -192,7 +194,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     }
 
     #[inline(always)]
-    fn tag_allocation<'b>(
+    fn init_allocation_extra<'b>(
         _memory_extra: &(),
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
@@ -214,7 +216,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         _dest: PlaceTy<'tcx>,
     ) -> InterpResult<'tcx> {
-        throw_unsup_format!("can't const prop `box` keyword");
+        throw_unsup!(ConstPropUnsupported("can't const prop `box` keyword"));
     }
 
     fn access_local(
@@ -225,7 +227,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         let l = &frame.locals[local];
 
         if l.value == LocalValue::Uninitialized {
-            throw_unsup_format!("tried to access an uninitialized local");
+            throw_unsup!(ConstPropUnsupported("tried to access an uninitialized local"));
         }
 
         l.access()
@@ -237,7 +239,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
         // if the static allocation is mutable or if it has relocations (it may be legal to mutate
         // the memory behind that in the future), then we can't const prop it
         if allocation.mutability == Mutability::Mutable || allocation.relocations().len() > 0 {
-            throw_unsup_format!("can't eval mutable statics in ConstProp");
+            throw_unsup!(ConstPropUnsupported("can't eval mutable statics in ConstProp"));
         }
 
         Ok(())
@@ -251,12 +253,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine {
     fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
-
-    /// Called immediately before a stack frame gets popped.
-    #[inline(always)]
-    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
-        Ok(())
-    }
 }
 
 type Const<'tcx> = OpTy<'tcx>;
@@ -268,7 +264,9 @@ struct ConstPropagator<'mir, 'tcx> {
     source: MirSource<'tcx>,
     can_const_prop: IndexVec<Local, bool>,
     param_env: ParamEnv<'tcx>,
-    source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
+    // FIXME(eddyb) avoid cloning these two fields more than once,
+    // by accessing them through `ecx` instead.
+    source_scopes: IndexVec<SourceScope, SourceScopeData>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     ret: Option<OpTy<'tcx, ()>>,
 }
@@ -298,9 +296,8 @@ impl<'mir, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'mir, 'tcx> {
 
 impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     fn new(
-        body: &Body<'tcx>,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
         dummy_body: &'mir Body<'tcx>,
-        source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
         tcx: TyCtxt<'tcx>,
         source: MirSource<'tcx>,
     ) -> ConstPropagator<'mir, 'tcx> {
@@ -316,8 +313,10 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             ecx
                 .layout_of(body.return_ty().subst(tcx, substs))
                 .ok()
-                // Don't bother allocating memory for ZST types which have no values.
-                .filter(|ret_layout| !ret_layout.is_zst())
+                // Don't bother allocating memory for ZST types which have no values
+                // or for large values.
+                .filter(|ret_layout| !ret_layout.is_zst() &&
+                                     ret_layout.size < Size::from_bytes(MAX_ALLOC_LIMIT))
                 .map(|ret_layout| ecx.allocate(ret_layout, MemoryKind::Stack));
 
         ecx.push_stack_frame(
@@ -336,15 +335,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             source,
             param_env,
             can_const_prop,
-            source_scope_local_data,
+            // FIXME(eddyb) avoid cloning these two fields more than once,
+            // by accessing them through `ecx` instead.
+            source_scopes: body.source_scopes.clone(),
             //FIXME(wesleywiser) we can't steal this because `Visitor::super_visit_body()` needs it
             local_decls: body.local_decls.clone(),
             ret: ret.map(Into::into),
         }
-    }
-
-    fn release_stolen_data(self) -> ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>> {
-        self.source_scope_local_data
     }
 
     fn get_const(&self, local: Local) -> Option<Const<'tcx>> {
@@ -376,22 +373,36 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         F: FnOnce(&mut Self) -> InterpResult<'tcx, T>,
     {
         self.ecx.tcx.span = source_info.span;
-        let lint_root = match self.source_scope_local_data {
-            ClearCrossCrate::Set(ref ivs) => {
-                //FIXME(#51314): remove this check
-                if source_info.scope.index() >= ivs.len() {
-                    return None;
-                }
-                ivs[source_info.scope].lint_root
-            },
+        // FIXME(eddyb) move this to the `Panic(_)` error case, so that
+        // `f(self)` is always called, and that the only difference when the
+        // scope's `local_data` is missing, is that the lint isn't emitted.
+        let lint_root = match &self.source_scopes[source_info.scope].local_data {
+            ClearCrossCrate::Set(data) => data.lint_root,
             ClearCrossCrate::Clear => return None,
         };
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
-                use rustc::mir::interpret::InterpError::*;
+                use rustc::mir::interpret::{
+                    UnsupportedOpInfo,
+                    UndefinedBehaviorInfo,
+                    InterpError::*
+                };
                 match error.kind {
-                    Exit(_) => bug!("the CTFE program cannot exit"),
+                    MachineStop(_) => bug!("ConstProp does not stop"),
+
+                    // Some error shouldn't come up because creating them causes
+                    // an allocation, which we should avoid. When that happens,
+                    // dedicated error variants should be introduced instead.
+                    // Only test this in debug builds though to avoid disruptions.
+                    Unsupported(UnsupportedOpInfo::Unsupported(_))
+                    | Unsupported(UnsupportedOpInfo::ValidationFailure(_))
+                    | UndefinedBehavior(UndefinedBehaviorInfo::Ub(_))
+                    | UndefinedBehavior(UndefinedBehaviorInfo::UbExperimental(_))
+                      if cfg!(debug_assertions) => {
+                        bug!("const-prop encountered allocating error: {:?}", error.kind);
+                    }
+
                     Unsupported(_)
                     | UndefinedBehavior(_)
                     | InvalidProgram(_)
@@ -456,6 +467,11 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
     ) -> Option<()> {
         let span = source_info.span;
 
+        // #66397: Don't try to eval into large places as that can cause an OOM
+        if place_layout.size >= Size::from_bytes(MAX_ALLOC_LIMIT) {
+            return None;
+        }
+
         let overflow_check = self.tcx.sess.overflow_checks();
 
         // Perform any special handling for specific Rvalue types.
@@ -502,8 +518,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     let right_size = r.layout.size;
                     let r_bits = r.to_scalar().and_then(|r| r.to_bits(right_size));
                     if r_bits.ok().map_or(false, |b| b >= left_bits as u128) {
-                        let source_scope_local_data = match self.source_scope_local_data {
-                            ClearCrossCrate::Set(ref data) => data,
+                        let lint_root = match &self.source_scopes[source_info.scope].local_data {
+                            ClearCrossCrate::Set(data) => data.lint_root,
                             ClearCrossCrate::Clear => return None,
                         };
                         let dir = if *op == BinOp::Shr {
@@ -511,10 +527,9 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                         } else {
                             "left"
                         };
-                        let hir_id = source_scope_local_data[source_info.scope].lint_root;
                         self.tcx.lint_hir(
                             ::rustc::lint::builtin::EXCEEDING_BITSHIFTS,
-                            hir_id,
+                            lint_root,
                             span,
                             &format!("attempt to shift {} with overflow", dir));
                         return None;
@@ -641,8 +656,29 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         }
     }
 
-    fn should_const_prop(&self) -> bool {
-        self.tcx.sess.opts.debugging_opts.mir_opt_level >= 2
+    fn should_const_prop(&mut self, op: OpTy<'tcx>) -> bool {
+        let mir_opt_level = self.tcx.sess.opts.debugging_opts.mir_opt_level;
+
+        if mir_opt_level == 0 {
+            return false;
+        }
+
+        match *op {
+            interpret::Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Scalar(s))) =>
+                s.is_bits(),
+            interpret::Operand::Immediate(Immediate::ScalarPair(ScalarMaybeUndef::Scalar(l),
+                                                                ScalarMaybeUndef::Scalar(r))) =>
+                l.is_bits() && r.is_bits(),
+            interpret::Operand::Indirect(_) if mir_opt_level >= 2 => {
+                intern_const_alloc_recursive(
+                    &mut self.ecx,
+                    None,
+                    op.assert_mem_place()
+                ).expect("failed to intern alloc");
+                true
+            },
+            _ => false
+        }
     }
 }
 
@@ -654,7 +690,7 @@ struct CanConstProp {
 
 impl CanConstProp {
     /// returns true if `local` can be propagated
-    fn check(body: &Body<'_>) -> IndexVec<Local, bool> {
+    fn check(body: ReadOnlyBodyAndCache<'_, '_>) -> IndexVec<Local, bool> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(true, &body.local_decls),
             found_assignment: IndexVec::from_elem(false, &body.local_decls),
@@ -742,15 +778,15 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         if self.can_const_prop[local] {
                             trace!("propagated into {:?}", local);
 
-                            if self.should_const_prop() {
-                                let value =
-                                    self.get_const(local).expect("local was dead/uninitialized");
-                                trace!("replacing {:?} with {:?}", rval, value);
-                                self.replace_with_const(
-                                    rval,
-                                    value,
-                                    statement.source_info,
-                                );
+                            if let Some(value) = self.get_const(local) {
+                                if self.should_const_prop(value) {
+                                    trace!("replacing {:?} with {:?}", rval, value);
+                                    self.replace_with_const(
+                                        rval,
+                                        value,
+                                        statement.source_info,
+                                    );
+                                }
                             }
                         } else {
                             trace!("can't propagate into {:?}", local);
@@ -852,7 +888,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                             &msg,
                         );
                     } else {
-                        if self.should_const_prop() {
+                        if self.should_const_prop(value) {
                             if let ScalarMaybeUndef::Scalar(scalar) = value_const {
                                 *cond = self.operand_from_scalar(
                                     scalar,
@@ -865,8 +901,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                 }
             },
             TerminatorKind::SwitchInt { ref mut discr, switch_ty, .. } => {
-                if self.should_const_prop() {
-                    if let Some(value) = self.eval_operand(&discr, source_info) {
+                if let Some(value) = self.eval_operand(&discr, source_info) {
+                    if self.should_const_prop(value) {
                         if let ScalarMaybeUndef::Scalar(scalar) =
                                 self.ecx.read_scalar(value).unwrap() {
                             *discr = self.operand_from_scalar(scalar, switch_ty, source_info.span);

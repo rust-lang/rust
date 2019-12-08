@@ -987,8 +987,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         opt_expr.map_or(succ, |expr| self.propagate_through_expr(expr, succ))
     }
 
-    fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode)
-                              -> LiveNode {
+    fn propagate_through_expr(&mut self, expr: &Expr, succ: LiveNode) -> LiveNode {
         debug!("propagate_through_expr: {}", self.ir.tcx.hir().hir_to_pretty_string(expr.hir_id));
 
         match expr.kind {
@@ -1074,7 +1073,15 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
                 match target {
                     Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
-                    None => span_bug!(expr.span, "break to unknown label")
+                    None => {
+                        // FIXME: This should have been checked earlier. Once this is fixed,
+                        // replace with `delay_span_bug`. (#62480)
+                        self.ir.tcx.sess.struct_span_err(
+                            expr.span,
+                            "`break` to unknown label",
+                        ).emit();
+                        errors::FatalError.raise()
+                    }
                 }
             }
 
@@ -1167,7 +1174,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
 
             hir::ExprKind::Box(ref e) |
-            hir::ExprKind::AddrOf(_, ref e) |
+            hir::ExprKind::AddrOf(_, _, ref e) |
             hir::ExprKind::Cast(ref e, _) |
             hir::ExprKind::Type(ref e, _) |
             hir::ExprKind::DropTemps(ref e) |
@@ -1177,17 +1184,21 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 self.propagate_through_expr(&e, succ)
             }
 
-            hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
+            hir::ExprKind::InlineAsm(ref asm) => {
+                let ia = &asm.inner;
+                let outputs = &asm.outputs_exprs;
+                let inputs = &asm.inputs_exprs;
                 let succ = ia.outputs.iter().zip(outputs).rev().fold(succ, |succ, (o, output)| {
-                // see comment on places
-                // in propagate_through_place_components()
-                if o.is_indirect {
-                    self.propagate_through_expr(output, succ)
-                } else {
-                    let acc = if o.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
-                    let succ = self.write_place(output, succ, acc);
-                    self.propagate_through_place_components(output, succ)
-                }});
+                    // see comment on places
+                    // in propagate_through_place_components()
+                    if o.is_indirect {
+                        self.propagate_through_expr(output, succ)
+                    } else {
+                        let acc = if o.is_rw { ACC_WRITE|ACC_READ } else { ACC_WRITE };
+                        let succ = self.write_place(output, succ, acc);
+                        self.propagate_through_place_components(output, succ)
+                    }
+                });
 
                 // Inputs are executed first. Propagate last because of rev order
                 self.propagate_through_exprs(inputs, succ)
@@ -1388,13 +1399,13 @@ fn check_expr<'tcx>(this: &mut Liveness<'_, 'tcx>, expr: &'tcx Expr) {
             }
         }
 
-        hir::ExprKind::InlineAsm(ref ia, ref outputs, ref inputs) => {
-            for input in inputs {
+        hir::ExprKind::InlineAsm(ref asm) => {
+            for input in &asm.inputs_exprs {
                 this.visit_expr(input);
             }
 
             // Output operands must be places
-            for (o, output) in ia.outputs.iter().zip(outputs) {
+            for (o, output) in asm.inner.outputs.iter().zip(&asm.outputs_exprs) {
                 if !o.is_indirect {
                     this.check_place(output);
                 }

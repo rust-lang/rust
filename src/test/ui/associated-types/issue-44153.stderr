@@ -5,10 +5,8 @@ LL |     fn visit() {}
    |     ---------- required by `Visit::visit`
 ...
 LL |     <() as Visit>::visit();
-   |     ^^^^^^^^^^^^^^^^^^^^ expected (), found &()
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&()`
    |
-   = note: expected type `()`
-              found type `&()`
    = note: required because of the requirements on the impl of `Visit` for `()`
 
 error: aborting due to previous error

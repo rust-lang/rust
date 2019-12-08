@@ -1,5 +1,6 @@
 // run-pass
 #![allow(unreachable_code)]
+#![allow(unused_labels)]
 
 // Test that labels injected by macros do not break hygiene.  This
 // checks cases where the macros invocations are under the rhs of a
@@ -13,6 +14,10 @@ macro_rules! loop_x {
     ($e: expr) => {
         // $e shouldn't be able to interact with this 'x
         'x: loop { $e }
+        //~^ WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
     }
 }
 
@@ -20,6 +25,11 @@ macro_rules! while_true {
     ($e: expr) => {
         // $e shouldn't be able to interact with this 'x
         'x: while 1 + 1 == 2 { $e }
+        //~^ WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
     }
 }
 
@@ -27,6 +37,13 @@ macro_rules! run_once {
     ($e: expr) => {
         // ditto
         'x: for _ in 0..1 { $e }
+        //~^ WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
+        //~| WARNING shadows a label name that is already in scope
     }
 }
 
@@ -45,6 +62,8 @@ pub fn main() {
 
     let k: isize = {
         'x: for _ in 0..1 {
+            //~^ WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
             // ditto
             loop_x!(break 'x);
             i += 1;
@@ -55,6 +74,10 @@ pub fn main() {
 
     let l: isize = {
         'x: for _ in 0..1 {
+            //~^ WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
             // ditto
             while_true!(break 'x);
             i += 1;
@@ -65,6 +88,12 @@ pub fn main() {
 
     let n: isize = {
         'x: for _ in 0..1 {
+            //~^ WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
+            //~| WARNING shadows a label name that is already in scope
             // ditto
             run_once!(continue 'x);
             i += 1;

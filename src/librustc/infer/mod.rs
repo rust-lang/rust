@@ -14,7 +14,6 @@ use crate::infer::unify_key::{ConstVarValue, ConstVariableValue};
 use crate::middle::free_region::RegionRelations;
 use crate::middle::lang_items;
 use crate::middle::region;
-use crate::mir::interpret::ConstValue;
 use crate::session::config::BorrowckMode;
 use crate::traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use crate::ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
@@ -233,7 +232,7 @@ pub struct InferCtxt<'a, 'tcx> {
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See the `error_reporting` module for more details.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, TypeFoldable)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
     Regions(ExpectedFound<ty::Region<'tcx>>),
@@ -1293,7 +1292,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     }
 
     pub fn trait_ref_to_string(&self, t: &ty::TraitRef<'tcx>) -> String {
-        self.resolve_vars_if_possible(t).to_string()
+        self.resolve_vars_if_possible(t).print_only_trait_path().to_string()
     }
 
     /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
@@ -1662,7 +1661,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for ShallowResolver<'a, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: &'tcx ty::Const<'tcx>) -> &'tcx ty::Const<'tcx> {
-        if let ty::Const { val: ConstValue::Infer(InferConst::Var(vid)), .. } = ct {
+        if let ty::Const { val: ty::ConstKind::Infer(InferConst::Var(vid)), .. } = ct {
                 self.infcx.const_unification_table
                     .borrow_mut()
                     .probe_value(*vid)
@@ -1779,16 +1778,6 @@ impl RegionVariableOrigin {
             UpvarRegion(_, a) => a,
             NLL(..) => bug!("NLL variable used with `span`"),
         }
-    }
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ValuePairs<'tcx> {
-        (ValuePairs::Types)(a),
-        (ValuePairs::Regions)(a),
-        (ValuePairs::Consts)(a),
-        (ValuePairs::TraitRefs)(a),
-        (ValuePairs::PolyTraitRefs)(a),
     }
 }
 

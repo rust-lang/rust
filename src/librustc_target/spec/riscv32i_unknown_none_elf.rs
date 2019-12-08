@@ -17,7 +17,7 @@ pub fn target() -> TargetResult {
         options: TargetOptions {
             linker: Some("rust-lld".to_string()),
             cpu: "generic-rv32".to_string(),
-            max_atomic_width: None,
+            max_atomic_width: Some(0),
             atomic_cas: false,
             features: String::new(),
             executables: true,

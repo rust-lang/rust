@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/pptypedef.rs:4:37
    |
 LL |     let_in(3u32, |i| { assert!(i == 3i32); });
-   |                                     ^^^^ expected u32, found i32
+   |                                     ^^^^ expected `u32`, found `i32`
    |
 help: change the type of the numeric literal from `i32` to `u32`
    |
@@ -13,7 +13,7 @@ error[E0308]: mismatched types
   --> $DIR/pptypedef.rs:8:37
    |
 LL |     let_in(3i32, |i| { assert!(i == 3u32); });
-   |                                     ^^^^ expected i32, found u32
+   |                                     ^^^^ expected `i32`, found `u32`
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |

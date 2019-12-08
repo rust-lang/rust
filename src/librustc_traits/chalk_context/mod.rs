@@ -37,8 +37,8 @@ use rustc::ty::{self, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{GenericArg, GenericArgKind};
-use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
+use rustc_macros::{TypeFoldable, Lift};
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
@@ -66,16 +66,10 @@ crate struct UniverseMap;
 
 crate type RegionConstraint<'tcx> = ty::OutlivesPredicate<GenericArg<'tcx>, ty::Region<'tcx>>;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, Lift)]
 crate struct ConstrainedSubst<'tcx> {
     subst: CanonicalVarValues<'tcx>,
     constraints: Vec<RegionConstraint<'tcx>>,
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ConstrainedSubst<'tcx> {
-        subst, constraints
-    }
 }
 
 impl context::Context for ChalkArenas<'tcx> {
@@ -286,7 +280,7 @@ impl context::ContextOps<ChalkArenas<'tcx>> for ChalkContext<'tcx> {
                     _ => false,
                 },
                 GenericArgKind::Const(ct) => match ct.val {
-                    ConstValue::Bound(debruijn, bound_ct) => {
+                    ty::ConstKind::Bound(debruijn, bound_ct) => {
                         debug_assert_eq!(debruijn, ty::INNERMOST);
                         cvar == bound_ct
                     }
@@ -584,14 +578,6 @@ impl ExClauseFold<'tcx> for ChalkArenas<'tcx> {
             || delayed_literals.visit_with(visitor)
             || constraints.visit_with(visitor)
             || subgoals.visit_with(visitor)
-    }
-}
-
-BraceStructLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for ConstrainedSubst<'a> {
-        type Lifted = ConstrainedSubst<'tcx>;
-
-        subst, constraints
     }
 }
 

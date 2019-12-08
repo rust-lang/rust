@@ -1,5 +1,5 @@
 error[E0658]: attributes starting with `rustc` are reserved for use by the `rustc` compiler
-  --> $DIR/expand-to-unstable-2.rs:8:10
+  --> $DIR/expand-to-unstable-2.rs:10:10
    |
 LL | #[derive(Unstable)]
    |          ^^^^^^^^

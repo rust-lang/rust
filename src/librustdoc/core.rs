@@ -1,5 +1,6 @@
 use rustc_lint;
 use rustc::session::{self, config};
+use rustc::hir::def::Namespace::TypeNS;
 use rustc::hir::def_id::{DefId, DefIndex, CrateNum, LOCAL_CRATE};
 use rustc::hir::HirId;
 use rustc::middle::cstore::CrateStore;
@@ -11,14 +12,15 @@ use rustc::session::DiagnosticOutput;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_interface::interface;
 use rustc_driver::abort_on_err;
+use rustc_feature::UnstableFeatures;
 use rustc_resolve as resolve;
 
+use syntax::ast::CRATE_NODE_ID;
 use syntax::source_map;
 use syntax::attr;
-use syntax::feature_gate::UnstableFeatures;
-use syntax::json::JsonEmitter;
+use errors::json::JsonEmitter;
 use syntax::symbol::sym;
-use errors;
+use syntax_pos::DUMMY_SP;
 use errors::emitter::{Emitter, EmitterWriter};
 
 use std::cell::RefCell;
@@ -246,8 +248,10 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         ..
     } = options;
 
-    // Add the rustdoc cfg into the doc build.
-    cfgs.push("rustdoc".to_string());
+    let extern_names: Vec<String> = externs.iter().map(|(s,_)| s).cloned().collect();
+
+    // Add the doc cfg into the doc build.
+    cfgs.push("doc".to_string());
 
     let cpath = Some(input.clone());
     let input = Input::File(input);
@@ -335,21 +339,42 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         crate_name,
         lint_caps,
         register_lints: None,
+        override_queries: None,
+        registry: rustc_driver::diagnostics_registry(),
     };
 
-    interface::run_compiler_in_existing_thread_pool(config, |compiler| {
+    interface::run_compiler_in_existing_thread_pool(config, |compiler| compiler.enter(|queries| {
         let sess = compiler.session();
 
         // We need to hold on to the complete resolver, so we cause everything to be
         // cloned for the analysis passes to use. Suboptimal, but necessary in the
         // current architecture.
-        let resolver = abort_on_err(compiler.expansion(), sess).peek().1.borrow().clone();
+        let resolver = {
+            let parts = abort_on_err(queries.expansion(), sess).peek();
+            let resolver = parts.1.borrow();
+
+            // Before we actually clone it, let's force all the extern'd crates to
+            // actually be loaded, just in case they're only referred to inside
+            // intra-doc-links
+            resolver.borrow_mut().access(|resolver| {
+                for extern_name in &extern_names {
+                    resolver.resolve_str_path_error(
+                        DUMMY_SP, extern_name, TypeNS, CRATE_NODE_ID
+                    ).unwrap_or_else(
+                        |()| panic!("Unable to resolve external crate {}", extern_name)
+                    );
+                }
+            });
+
+            // Now we're good to clone the resolver because everything should be loaded
+            resolver.clone()
+        };
 
         if sess.has_errors() {
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
-        let mut global_ctxt = abort_on_err(compiler.global_ctxt(), sess).take();
+        let mut global_ctxt = abort_on_err(queries.global_ctxt(), sess).take();
 
         global_ctxt.enter(|tcx| {
             tcx.analysis(LOCAL_CRATE).ok();
@@ -423,8 +448,8 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                         },
                         sym::plugins => {
                             report_deprecated_attr("plugins = \"...\"", diag);
-                            eprintln!("WARNING: `#![doc(plugins = \"...\")]` no longer functions; \
-                                      see CVE-2018-1000622");
+                            eprintln!("WARNING: `#![doc(plugins = \"...\")]` \
+                                      no longer functions; see CVE-2018-1000622");
                             continue
                         },
                         _ => continue,
@@ -462,7 +487,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
 
             (krate, ctxt.renderinfo.into_inner(), render_options)
         })
-    })
+    }))
 }
 
 /// `DefId` or parameter index (`ty::ParamTy.index`) of a synthetic type parameter

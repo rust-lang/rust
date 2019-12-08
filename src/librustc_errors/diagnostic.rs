@@ -6,7 +6,7 @@ use crate::Applicability;
 use crate::Level;
 use crate::snippet::Style;
 use std::fmt;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span, DUMMY_SP};
 
 #[must_use]
 #[derive(Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
@@ -17,6 +17,11 @@ pub struct Diagnostic {
     pub span: MultiSpan,
     pub children: Vec<SubDiagnostic>,
     pub suggestions: Vec<CodeSuggestion>,
+
+    /// This is not used for highlighting or rendering any error message.  Rather, it can be used
+    /// as a sort key to sort a buffer of diagnostics.  By default, it is the primary span of
+    /// `span` if there is one.  Otherwise, it is `DUMMY_SP`.
+    pub sort_span: Span,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -46,6 +51,13 @@ impl DiagnosticStyledString {
     }
     pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
         self.0.push(StringPart::Highlighted(t.into()));
+    }
+    pub fn push<S: Into<String>>(&mut self, t: S, highlight: bool) {
+        if highlight {
+            self.push_highlighted(t);
+        } else {
+            self.push_normal(t);
+        }
     }
     pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
         DiagnosticStyledString(vec![StringPart::Normal(t.into())])
@@ -87,6 +99,7 @@ impl Diagnostic {
             span: MultiSpan::new(),
             children: vec![],
             suggestions: vec![],
+            sort_span: DUMMY_SP,
         }
     }
 
@@ -118,6 +131,11 @@ impl Diagnostic {
         self.level == Level::Cancelled
     }
 
+    /// Set the sorting span.
+    pub fn set_sort_span(&mut self, sp: Span) {
+        self.sort_span = sp;
+    }
+
     /// Adds a span/label to be included in the resulting snippet.
     /// This label will be shown together with the original span/label used when creating the
     /// diagnostic, *not* a span added by one of the `span_*` methods.
@@ -143,20 +161,21 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_expected_found(&mut self,
-                               label: &dyn fmt::Display,
-                               expected: DiagnosticStyledString,
-                               found: DiagnosticStyledString)
-                               -> &mut Self
-    {
-        self.note_expected_found_extra(label, expected, found, &"", &"")
+    pub fn note_expected_found(
+        &mut self,
+        expected_label: &dyn fmt::Display,
+        expected: DiagnosticStyledString,
+        found_label: &dyn fmt::Display,
+        found: DiagnosticStyledString,
+    ) -> &mut Self {
+        self.note_expected_found_extra(expected_label, expected, found_label, found, &"", &"")
     }
 
-    pub fn note_unsuccessfull_coercion(&mut self,
-                                       expected: DiagnosticStyledString,
-                                       found: DiagnosticStyledString)
-                                       -> &mut Self
-    {
+    pub fn note_unsuccessfull_coercion(
+        &mut self,
+        expected: DiagnosticStyledString,
+        found: DiagnosticStyledString,
+    ) -> &mut Self {
         let mut msg: Vec<_> =
             vec![(format!("required when trying to coerce from type `"),
                   Style::NoStyle)];
@@ -178,30 +197,41 @@ impl Diagnostic {
         self
     }
 
-    pub fn note_expected_found_extra(&mut self,
-                                     label: &dyn fmt::Display,
-                                     expected: DiagnosticStyledString,
-                                     found: DiagnosticStyledString,
-                                     expected_extra: &dyn fmt::Display,
-                                     found_extra: &dyn fmt::Display)
-                                     -> &mut Self
-    {
-        let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
+    pub fn note_expected_found_extra(
+        &mut self,
+        expected_label: &dyn fmt::Display,
+        expected: DiagnosticStyledString,
+        found_label: &dyn fmt::Display,
+        found: DiagnosticStyledString,
+        expected_extra: &dyn fmt::Display,
+        found_extra: &dyn fmt::Display,
+    ) -> &mut Self {
+        let expected_label = format!("expected {}", expected_label);
+        let found_label = format!("found {}", found_label);
+        let (found_padding, expected_padding) = if expected_label.len() > found_label.len() {
+            (expected_label.len() - found_label.len(), 0)
+        } else {
+            (0, found_label.len() - expected_label.len())
+        };
+        let mut msg: Vec<_> = vec![(
+            format!("{}{} `", " ".repeat(expected_padding), expected_label),
+            Style::NoStyle,
+        )];
         msg.extend(expected.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
+            .map(|x| match *x {
+                StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+            }));
         msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
-        msg.push((format!("   found {} `", label), Style::NoStyle));
+        msg.push((format!("{}{} `", " ".repeat(found_padding), found_label), Style::NoStyle));
         msg.extend(found.0.iter()
-                   .map(|x| match *x {
-                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
-                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
-                   }));
+            .map(|x| match *x {
+                StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+            }));
         msg.push((format!("`{}", found_extra), Style::NoStyle));
 
-        // For now, just attach these as notes
+        // For now, just attach these as notes.
         self.highlighted_note(msg);
         self
     }
@@ -457,6 +487,9 @@ impl Diagnostic {
 
     pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self {
         self.span = sp.into();
+        if let Some(span) = self.span.primary_span() {
+            self.sort_span = span;
+        }
         self
     }
 

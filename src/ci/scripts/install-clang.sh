@@ -17,7 +17,7 @@ if isMacOS; then
     # Configure `AR` specifically so rustbuild doesn't try to infer it as
     # `clang-ar` by accident.
     ciCommandSetEnv AR "ar"
-elif isWindows && [[ -z ${MINGW_URL+x} ]]; then
+elif isWindows && [[ ${CUSTOM_MINGW-0} -ne 1 ]]; then
     # If we're compiling for MSVC then we, like most other distribution builders,
     # switch to clang as the compiler. This'll allow us eventually to enable LTO
     # amongst LLVM and rustc. Note that we only do this on MSVC as I don't think

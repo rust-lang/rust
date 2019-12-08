@@ -20,14 +20,8 @@
 
 fn foo(x: Box<[i32]>) {
     box *x;
-    //[migrate]~^ ERROR E0161
-    //[nll]~^^ ERROR E0161
-    //[zflags]~^^^ ERROR E0161
-    //[edition]~^^^^ ERROR E0161
-    //[migrateul]~^^^^^ ERROR E0161
-    //[nllul]~^^^^^^ ERROR E0161
-    //[zflagsul]~^^^^^^^ ERROR E0161
-    //[editionul]~^^^^^^^^ ERROR E0161
+    //[migrate,nll,zflags,edition]~^ ERROR E0161
+    //[migrateul,nllul,zflagsul,editionul]~^^ ERROR E0161
 }
 
 fn main() {}

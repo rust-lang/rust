@@ -89,3 +89,4 @@ LL |     trace_macros!(invalid);
 
 error: aborting due to 14 previous errors
 
+For more information about this error, try `rustc --explain E0665`.

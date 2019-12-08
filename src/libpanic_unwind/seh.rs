@@ -98,9 +98,6 @@ use libc::{c_int, c_uint, c_void};
 mod imp {
     pub type ptr_t = *mut u8;
 
-    #[cfg(bootstrap)]
-    pub const NAME1: [u8; 7] = [b'.', b'P', b'A', b'_', b'K', 0, 0];
-
     macro_rules! ptr {
         (0) => (core::ptr::null_mut());
         ($e:expr) => ($e as *mut u8);
@@ -111,9 +108,6 @@ mod imp {
 #[macro_use]
 mod imp {
     pub type ptr_t = u32;
-
-    #[cfg(bootstrap)]
-    pub const NAME1: [u8; 7] = [b'.', b'P', b'E', b'A', b'_', b'K', 0];
 
     extern "C" {
         pub static __ImageBase: u8;
@@ -161,17 +155,11 @@ pub struct _PMD {
 pub struct _TypeDescriptor {
     pub pVFTable: *const u8,
     pub spare: *mut u8,
-    #[cfg(bootstrap)]
-    pub name: [u8; 7],
-    #[cfg(not(bootstrap))]
     pub name: [u8; 11],
 }
 
 // Note that we intentionally ignore name mangling rules here: we don't want C++
 // to be able to catch Rust panics by simply declaring a `struct rust_panic`.
-#[cfg(bootstrap)]
-use imp::NAME1 as TYPE_NAME;
-#[cfg(not(bootstrap))]
 const TYPE_NAME: [u8; 11] = *b"rust_panic\0";
 
 static mut THROW_INFO: _ThrowInfo = _ThrowInfo {
@@ -194,9 +182,6 @@ static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
         pdisp: -1,
         vdisp: 0,
     },
-    #[cfg(bootstrap)]
-    sizeOrOffset: mem::size_of::<*mut u64>() as c_int,
-    #[cfg(not(bootstrap))]
     sizeOrOffset: mem::size_of::<[u64; 2]>() as c_int,
     copy_function: ptr!(0),
 };
@@ -218,8 +203,7 @@ extern "C" {
 // an argument to the C++ personality function.
 //
 // Again, I'm not entirely sure what this is describing, it just seems to work.
-#[cfg_attr(bootstrap, lang = "msvc_try_filter")]
-#[cfg_attr(not(any(test, bootstrap)), lang = "eh_catch_typeinfo")]
+#[cfg_attr(not(test), lang = "eh_catch_typeinfo")]
 static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     pVFTable: unsafe { &TYPE_INFO_VTABLE } as *const _ as *const _,
     spare: core::ptr::null_mut(),
@@ -238,12 +222,8 @@ pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     // exception (constructed above).
     let ptrs = mem::transmute::<_, raw::TraitObject>(data);
     let mut ptrs = [ptrs.data as u64, ptrs.vtable as u64];
-    let mut ptrs_ptr = ptrs.as_mut_ptr();
-    let throw_ptr = if cfg!(bootstrap) {
-        &mut ptrs_ptr as *mut _ as *mut _
-    } else {
-        ptrs_ptr as *mut _
-    };
+    let ptrs_ptr = ptrs.as_mut_ptr();
+    let throw_ptr = ptrs_ptr as *mut _;
 
     // This... may seems surprising, and justifiably so. On 32-bit MSVC the
     // pointers between these structure are just that, pointers. On 64-bit MSVC,

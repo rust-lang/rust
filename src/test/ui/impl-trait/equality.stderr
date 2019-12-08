@@ -8,10 +8,7 @@ LL |         return 1_i32;
    |                ----- ...is found to be `i32` here
 LL |     }
 LL |     0_u32
-   |     ^^^^^ expected i32, found u32
-   |
-   = note: expected type `i32`
-              found type `u32`
+   |     ^^^^^ expected `i32`, found `u32`
 
 error[E0277]: cannot add `impl Foo` to `u32`
   --> $DIR/equality.rs:24:11

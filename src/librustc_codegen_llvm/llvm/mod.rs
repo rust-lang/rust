@@ -87,7 +87,6 @@ pub struct RustString {
 }
 
 /// Appending to a Rust string -- used by RawRustStringOstream.
-#[allow(improper_ctypes)]
 #[no_mangle]
 pub unsafe extern "C" fn LLVMRustStringWriteImpl(sr: &RustString,
                                                  ptr: *const c_char,
@@ -116,7 +115,8 @@ pub fn SetFunctionCallConv(fn_: &'a Value, cc: CallConv) {
 // For more details on COMDAT sections see e.g., http://www.airs.com/blog/archives/52
 pub fn SetUniqueComdat(llmod: &Module, val: &'a Value) {
     unsafe {
-        LLVMRustSetComdat(llmod, val, LLVMGetValueName(val));
+        let name = get_value_name(val);
+        LLVMRustSetComdat(llmod, val, name.as_ptr().cast(), name.len());
     }
 }
 
@@ -215,6 +215,23 @@ pub fn get_param(llfn: &'a Value, index: c_uint) -> &'a Value {
         assert!(index < LLVMCountParams(llfn),
             "out of bounds argument access: {} out of {} arguments", index, LLVMCountParams(llfn));
         LLVMGetParam(llfn, index)
+    }
+}
+
+/// Safe wrapper for `LLVMGetValueName2` into a byte slice
+pub fn get_value_name(value: &'a Value) -> &'a [u8] {
+    unsafe {
+        let mut len = 0;
+        let data = LLVMGetValueName2(value, &mut len);
+        std::slice::from_raw_parts(data.cast(), len)
+    }
+}
+
+/// Safe wrapper for `LLVMSetValueName2` from a byte slice
+pub fn set_value_name(value: &Value, name: &[u8]) {
+    unsafe {
+        let data = name.as_ptr().cast();
+        LLVMSetValueName2(value, data, name.len());
     }
 }
 

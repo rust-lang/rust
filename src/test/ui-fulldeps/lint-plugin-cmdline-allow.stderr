@@ -1,21 +1,8 @@
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
-  --> $DIR/lint-plugin-cmdline-allow.rs:8:1
+  --> $DIR/lint-plugin-cmdline-allow.rs:7:1
    |
 LL | #![plugin(lint_plugin_test)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version
    |
    = note: `#[warn(deprecated)]` on by default
-
-warning: function is never used: `lintme`
-  --> $DIR/lint-plugin-cmdline-allow.rs:10:4
-   |
-LL | fn lintme() { }
-   |    ^^^^^^
-   |
-note: lint level defined here
-  --> $DIR/lint-plugin-cmdline-allow.rs:7:9
-   |
-LL | #![warn(unused)]
-   |         ^^^^^^
-   = note: `#[warn(dead_code)]` implied by `#[warn(unused)]`
 

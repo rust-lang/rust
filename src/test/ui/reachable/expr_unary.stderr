@@ -1,11 +1,11 @@
 error[E0600]: cannot apply unary operator `!` to type `!`
-  --> $DIR/expr_unary.rs:8:16
+  --> $DIR/expr_unary.rs:7:16
    |
 LL |     let x: ! = ! { return; };
    |                ^^^^^^^^^^^^^ cannot apply unary operator `!`
 
 error: unreachable expression
-  --> $DIR/expr_unary.rs:8:16
+  --> $DIR/expr_unary.rs:7:16
    |
 LL |     let x: ! = ! { return; };
    |                ^^^^------^^^
@@ -14,7 +14,7 @@ LL |     let x: ! = ! { return; };
    |                unreachable expression
    |
 note: lint level defined here
-  --> $DIR/expr_unary.rs:5:9
+  --> $DIR/expr_unary.rs:4:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^

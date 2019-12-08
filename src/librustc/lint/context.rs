@@ -35,19 +35,19 @@ use crate::util::common::time;
 use errors::DiagnosticBuilder;
 use std::slice;
 use rustc_data_structures::sync::{self, ParallelIterator, join, par_iter};
-use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use syntax::ast;
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax::visit as ast_visit;
 use syntax_pos::{MultiSpan, Span, symbol::Symbol};
+
+use rustc_error_codes::*;
 
 /// Information about the registered lints.
 ///
 /// This is basically the subset of `Context` that we can
 /// build early in the compile pipeline.
 pub struct LintStore {
-    /// Registered lints. The bool is true if the lint was
-    /// added by a plugin.
+    /// Registered lints.
     lints: Vec<&'static Lint>,
 
     /// Constructor functions for each variety of lint pass.
@@ -71,7 +71,7 @@ pub struct LintStore {
 
 /// Lints that are buffered up early on in the `Session` before the
 /// `LintLevels` is calculated
-#[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
+#[derive(PartialEq, Debug)]
 pub struct BufferedEarlyLint {
     pub lint_id: LintId,
     pub ast_id: ast::NodeId,
@@ -799,8 +799,13 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
                 // This shouldn't ever be needed, but just in case:
                 path.push(match trait_ref {
                     Some(trait_ref) => {
-                        Symbol::intern(&format!("<impl {} for {}>", trait_ref,
-                                                    self_ty))
+                        Symbol::intern(
+                            &format!(
+                                "<impl {} for {}>",
+                                trait_ref.print_only_trait_path(),
+                                self_ty
+                            )
+                        )
                     },
                     None => Symbol::intern(&format!("<impl {}>", self_ty)),
                 });
@@ -1572,29 +1577,5 @@ pub fn check_ast_crate<T: EarlyLintPass>(
                 sess.delay_span_bug(early_lint.span, "failed to process buffered lint here");
             }
         }
-    }
-}
-
-impl Encodable for LintId {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.lint.name.to_lowercase())
-    }
-}
-
-impl Decodable for LintId {
-    #[inline]
-    fn decode<D: Decoder>(d: &mut D) -> Result<LintId, D::Error> {
-        let s = d.read_str()?;
-        ty::tls::with(|tcx| {
-            match tcx.lint_store.find_lints(&s) {
-                Ok(ids) => {
-                    if ids.len() != 0 {
-                        panic!("invalid lint-id `{}`", s);
-                    }
-                    Ok(ids[0])
-                }
-                Err(_) => panic!("invalid lint-id `{}`", s),
-            }
-        })
     }
 }

@@ -15,6 +15,22 @@ use errors::{Applicability, DiagnosticBuilder};
 use super::method::probe;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+
+    pub fn emit_coerce_suggestions(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        expr: &hir::Expr,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>
+    ) {
+        self.annotate_expected_due_to_let_ty(err, expr);
+        self.suggest_compatible_variants(err, expr, expected, expr_ty);
+        self.suggest_ref_or_into(err, expr, expected, expr_ty);
+        self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty);
+        self.suggest_missing_await(err, expr, expected, expr_ty);
+    }
+
+
     // Requires that the two types unify, and prints an error message if
     // they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
@@ -65,13 +81,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn demand_eqtype_pat(
+    pub fn demand_eqtype_pat_diag(
         &self,
         cause_span: Span,
         expected: Ty<'tcx>,
         actual: Ty<'tcx>,
         match_expr_span: Option<Span>,
-    ) {
+    ) -> Option<DiagnosticBuilder<'tcx>> {
         let cause = if let Some(span) = match_expr_span {
             self.cause(
                 cause_span,
@@ -80,9 +96,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             self.misc(cause_span)
         };
-        self.demand_eqtype_with_origin(&cause, expected, actual).map(|mut err| err.emit());
+        self.demand_eqtype_with_origin(&cause, expected, actual)
     }
 
+    pub fn demand_eqtype_pat(
+        &self,
+        cause_span: Span,
+        expected: Ty<'tcx>,
+        actual: Ty<'tcx>,
+        match_expr_span: Option<Span>,
+    ) {
+        self.demand_eqtype_pat_diag(cause_span, expected, actual, match_expr_span)
+            .map(|mut err| err.emit());
+    }
 
     pub fn demand_coerce(&self,
                          expr: &hir::Expr,
@@ -102,12 +128,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     // N.B., this code relies on `self.diverges` to be accurate. In
     // particular, assignments to `!` will be permitted if the
     // diverges flag is currently "always".
-    pub fn demand_coerce_diag(&self,
-                              expr: &hir::Expr,
-                              checked_ty: Ty<'tcx>,
-                              expected: Ty<'tcx>,
-                              allow_two_phase: AllowTwoPhase)
-                              -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
+    pub fn demand_coerce_diag(
+        &self,
+        expr: &hir::Expr,
+        checked_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+        allow_two_phase: AllowTwoPhase,
+    ) -> (Ty<'tcx>, Option<DiagnosticBuilder<'tcx>>) {
         let expected = self.resolve_vars_with_obligations(expected);
 
         let e = match self.try_coerce(expr, checked_ty, expected, allow_two_phase) {
@@ -126,12 +153,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return (expected, None)
         }
 
-        self.suggest_compatible_variants(&mut err, expr, expected, expr_ty);
-        self.suggest_ref_or_into(&mut err, expr, expected, expr_ty);
-        self.suggest_boxing_when_appropriate(&mut err, expr, expected, expr_ty);
-        self.suggest_missing_await(&mut err, expr, expected, expr_ty);
+        self.emit_coerce_suggestions(&mut err, expr, expr_ty, expected);
 
         (expected, Some(err))
+    }
+
+    fn annotate_expected_due_to_let_ty(&self, err: &mut DiagnosticBuilder<'_>, expr: &hir::Expr) {
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        if let Some(hir::Node::Local(hir::Local {
+            ty: Some(ty),
+            init: Some(init),
+            ..
+        })) = self.tcx.hir().find(parent) {
+            if init.hir_id == expr.hir_id {
+                // Point at `let` assignment type.
+                err.span_label(ty.span, "expected due to this");
+            }
+        }
     }
 
     /// Returns whether the expected type is `bool` and the expression is `x = y`.
@@ -398,10 +436,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // bar(&x); // error, expected &mut
                 // ```
                 let ref_ty = match mutability {
-                    hir::Mutability::MutMutable => {
+                    hir::Mutability::Mutable => {
                         self.tcx.mk_mut_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
                     }
-                    hir::Mutability::MutImmutable => {
+                    hir::Mutability::Immutable => {
                         self.tcx.mk_imm_ref(self.tcx.mk_region(ty::ReStatic), checked_ty)
                     }
                 };
@@ -418,7 +456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             segment.ident.name,
                         ) {
                             // If this expression had a clone call when suggesting borrowing
-                            // we want to suggest removing it because it'd now be unecessary.
+                            // we want to suggest removing it because it'd now be unnecessary.
                             sugg_sp = arg.span;
                         }
                     }
@@ -451,7 +489,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         })) = self.tcx.hir().find(
                             self.tcx.hir().get_parent_node(expr.hir_id),
                         ) {
-                            if mutability == hir::Mutability::MutMutable {
+                            if mutability == hir::Mutability::Mutable {
                                 // Found the following case:
                                 // fn foo(opt: &mut Option<String>){ opt = None }
                                 //                                   ---   ^^^^
@@ -470,12 +508,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
 
                         return Some(match mutability {
-                            hir::Mutability::MutMutable => (
+                            hir::Mutability::Mutable => (
                                 sp,
                                 "consider mutably borrowing here",
                                 format!("{}&mut {}", field_name, sugg_expr),
                             ),
-                            hir::Mutability::MutImmutable => (
+                            hir::Mutability::Immutable => (
                                 sp,
                                 "consider borrowing here",
                                 format!("{}&{}", field_name, sugg_expr),
@@ -484,7 +522,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             },
-            (hir::ExprKind::AddrOf(_, ref expr), _, &ty::Ref(_, checked, _)) if {
+            (
+                hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, ref expr),
+                _,
+                &ty::Ref(_, checked, _)
+            ) if {
                 self.infcx.can_sub(self.param_env, checked, &expected).is_ok() && !is_macro
             } => {
                 // We have `&T`, check if what was expected was `T`. If so,

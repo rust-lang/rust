@@ -2,13 +2,13 @@
 
 use log::debug;
 use smallvec::{smallvec, SmallVec};
+use rustc_feature::Features;
 use rustc_target::spec::PanicStrategy;
 use syntax::ast::{self, Ident};
 use syntax::attr;
 use syntax::entry::{self, EntryPointType};
 use syntax_expand::base::{ExtCtxt, Resolver};
 use syntax_expand::expand::{AstFragment, ExpansionConfig};
-use syntax::feature_gate::Features;
 use syntax::mut_visit::{*, ExpectOne};
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
@@ -67,7 +67,8 @@ pub fn inject(
                 PanicStrategy::Unwind
             }
             (PanicStrategy::Abort, false) => {
-                span_diagnostic.err("building tests with panic=abort is not yet supported");
+                span_diagnostic.err("building tests with panic=abort is not supported \
+                                     without `-Zpanic_abort_tests`");
                 PanicStrategy::Unwind
             }
             (PanicStrategy::Unwind, _) => PanicStrategy::Unwind,

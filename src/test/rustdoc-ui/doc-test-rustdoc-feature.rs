@@ -4,11 +4,11 @@
 
 #![feature(doc_cfg)]
 
-// Make sure `cfg(rustdoc)` is set when finding doctests but not inside the doctests.
+// Make sure `cfg(doc)` is set when finding doctests but not inside the doctests.
 
 /// ```
 /// #![feature(doc_cfg)]
-/// assert!(!cfg!(rustdoc));
+/// assert!(!cfg!(doc));
 /// ```
-#[cfg(rustdoc)]
+#[cfg(doc)]
 pub struct Foo;

@@ -201,12 +201,13 @@ pub trait Iterator {
 
     /// Consumes the iterator, counting the number of iterations and returning it.
     ///
-    /// This method will evaluate the iterator until its [`next`] returns
-    /// [`None`]. Once [`None`] is encountered, `count()` returns the number of
-    /// times it called [`next`].
+    /// This method will call [`next`] repeatedly until [`None`] is encountered,
+    /// returning the number of times it saw [`Some`]. Note that [`next`] has to be
+    /// called at least once even if the iterator does not have any elements.
     ///
     /// [`next`]: #tymethod.next
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`Some`]: ../../std/option/enum.Option.html#variant.Some
     ///
     /// # Overflow Behavior
     ///
@@ -1254,7 +1255,7 @@ pub trait Iterator {
         Fuse::new(self)
     }
 
-    /// Do something with each element of an iterator, passing the value on.
+    /// Does something with each element of an iterator, passing the value on.
     ///
     /// When using iterators, you'll often chain several of them together.
     /// While working on such code, you might want to check out what's
@@ -1547,7 +1548,7 @@ pub trait Iterator {
         (left, right)
     }
 
-    /// Reorder the elements of this iterator *in-place* according to the given predicate,
+    /// Reorders the elements of this iterator *in-place* according to the given predicate,
     /// such that all those that return `true` precede all those that return `false`.
     /// Returns the number of `true` elements found.
     ///

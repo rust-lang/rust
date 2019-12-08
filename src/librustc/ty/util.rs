@@ -12,7 +12,6 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef, GenericArgKind};
 use crate::ty::query::TyCtxtAt;
 use crate::ty::TyKind::*;
 use crate::ty::layout::{Integer, IntegerExt};
-use crate::mir::interpret::ConstValue;
 use crate::util::common::ErrorReported;
 use crate::middle::lang_items;
 
@@ -184,7 +183,7 @@ impl<'tcx> ty::ParamEnv<'tcx> {
                 // Now libcore provides that impl.
                 ty::Uint(_) | ty::Int(_) | ty::Bool | ty::Float(_) |
                 ty::Char | ty::RawPtr(..) | ty::Never |
-                ty::Ref(_, _, hir::MutImmutable) => return Ok(()),
+                ty::Ref(_, _, hir::Mutability::Immutable) => return Ok(()),
 
                 ty::Adt(adt, substs) => (adt, substs),
 
@@ -334,14 +333,14 @@ impl<'tcx> TyCtxt<'tcx> {
         ty
     }
 
-    /// Same as applying struct_tail on `source` and `target`, but only
+    /// Same as applying `struct_tail` on `source` and `target`, but only
     /// keeps going as long as the two types are instances of the same
     /// structure definitions.
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
     /// whereas struct_tail produces `T`, and `Trait`, respectively.
     ///
     /// Should only be called if the types have no inference variables and do
-    /// not need their lifetimes preserved (e.g. as part of codegen); otherwise
+    /// not need their lifetimes preserved (e.g., as part of codegen); otherwise,
     /// normalization attempt may cause compiler bugs.
     pub fn struct_lockstep_tails_erasing_lifetimes(self,
                                                    source: Ty<'tcx>,
@@ -354,7 +353,7 @@ impl<'tcx> TyCtxt<'tcx> {
             source, target, |ty| tcx.normalize_erasing_regions(param_env, ty))
     }
 
-    /// Same as applying struct_tail on `source` and `target`, but only
+    /// Same as applying `struct_tail` on `source` and `target`, but only
     /// keeps going as long as the two types are instances of the same
     /// structure definitions.
     /// For `(Foo<Foo<T>>, Foo<dyn Trait>)`, the result will be `(Foo<T>, Trait)`,
@@ -566,7 +565,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         !impl_generics.type_param(pt, self).pure_wrt_drop
                     }
                     GenericArgKind::Const(&ty::Const {
-                        val: ConstValue::Param(ref pc),
+                        val: ty::ConstKind::Param(ref pc),
                         ..
                     }) => {
                         !impl_generics.const_param(pc, self).pure_wrt_drop
@@ -680,7 +679,24 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Returns `true` if the node pointed to by `def_id` is a mutable `static` item.
     pub fn is_mutable_static(&self, def_id: DefId) -> bool {
-        self.static_mutability(def_id) == Some(hir::MutMutable)
+        self.static_mutability(def_id) == Some(hir::Mutability::Mutable)
+    }
+
+    /// Get the type of the pointer to the static that we use in MIR.
+    pub fn static_ptr_ty(&self, def_id: DefId) -> Ty<'tcx> {
+        // Make sure that any constants in the static's type are evaluated.
+        let static_ty = self.normalize_erasing_regions(
+            ty::ParamEnv::empty(),
+            self.type_of(def_id),
+        );
+
+        if self.is_mutable_static(def_id) {
+            self.mk_mut_ptr(static_ty)
+        } else if self.is_foreign_item(def_id) {
+            self.mk_imm_ptr(static_ty)
+        } else {
+            self.mk_imm_ref(self.lifetimes.re_erased, static_ty)
+        }
     }
 
     /// Expands the given impl trait type, stopping if the type is recursive.

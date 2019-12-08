@@ -67,7 +67,7 @@ mod lock {
             //
             //     unsafe {
             //         let r = core::arch::wasm32::i32_atomic_wait(
-            //             &LOCKED as *const AtomicI32 as *mut i32,
+            //             LOCKED.as_mut_ptr(),
             //             1,  //     expected value
             //             -1, //     timeout
             //         );
@@ -143,7 +143,7 @@ mod lock {
             //
             //     unsafe {
             //         core::arch::wasm32::atomic_notify(
-            //             &LOCKED as *const AtomicI32 as *mut i32,
+            //             LOCKED.as_mut_ptr(),
             //             1, //     only one thread
             //         );
             //     }

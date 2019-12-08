@@ -1,0 +1,9 @@
+[package]
+authors = ["The Rust Project Developers"]
+name = "rustc_error_codes"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+name = "rustc_error_codes"
+path = "lib.rs"

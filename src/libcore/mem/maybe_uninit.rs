@@ -1,3 +1,5 @@
+use crate::any::type_name;
+use crate::fmt;
 use crate::intrinsics;
 use crate::mem::ManuallyDrop;
 
@@ -229,6 +231,13 @@ impl<T: Copy> Clone for MaybeUninit<T> {
     fn clone(&self) -> Self {
         // Not calling `T::clone()`, we cannot know if we are initialized enough for that.
         *self
+    }
+}
+
+#[stable(feature = "maybe_uninit_debug", since = "1.41.0")]
+impl<T> fmt::Debug for MaybeUninit<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.pad(type_name::<Self>())
     }
 }
 

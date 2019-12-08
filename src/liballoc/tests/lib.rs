@@ -2,6 +2,7 @@
 #![feature(box_syntax)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
+#![feature(map_first_last)]
 #![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(trusted_len)]

@@ -1,17 +1,17 @@
 use crate::base::ExtCtxt;
 
+use rustc_parse::{parse_stream_from_source_str, nt_to_tokenstream};
 use syntax::ast;
-use syntax::parse;
 use syntax::util::comments;
 use syntax::print::pprust;
 use syntax::sess::ParseSess;
 use syntax::token;
 use syntax::tokenstream::{self, DelimSpan, IsJoint::*, TokenStream, TreeAndJoint};
+use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
+use syntax_pos::symbol::{kw, sym, Symbol};
 
 use errors::Diagnostic;
 use rustc_data_structures::sync::Lrc;
-use syntax_pos::{BytePos, FileName, MultiSpan, Pos, SourceFile, Span};
-use syntax_pos::symbol::{kw, sym, Symbol};
 
 use pm::{Delimiter, Level, LineColumn, Spacing};
 use pm::bridge::{server, TokenTree};
@@ -178,7 +178,7 @@ impl FromInternal<(TreeAndJoint, &'_ ParseSess, &'_ mut Vec<Self>)>
             }
 
             Interpolated(nt) => {
-                let stream = parse::nt_to_tokenstream(&nt, sess, span);
+                let stream = nt_to_tokenstream(&nt, sess, span);
                 TokenTree::Group(Group {
                     delimiter: Delimiter::None,
                     stream,
@@ -402,7 +402,7 @@ impl server::TokenStream for Rustc<'_> {
         stream.is_empty()
     }
     fn from_str(&mut self, src: &str) -> Self::TokenStream {
-        parse::parse_stream_from_source_str(
+        parse_stream_from_source_str(
             FileName::proc_macro_source_code(src),
             src.to_string(),
             self.sess,

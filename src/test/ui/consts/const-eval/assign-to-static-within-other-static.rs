@@ -7,7 +7,8 @@ use std::cell::UnsafeCell;
 
 static mut FOO: u32 = 42;
 static BOO: () = unsafe {
-    FOO = 5; //~ ERROR cannot mutate statics in the initializer of another static
+    FOO = 5;
+    //~^ could not evaluate static initializer [E0080]
 };
 
 fn main() {}

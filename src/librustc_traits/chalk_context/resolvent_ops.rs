@@ -19,7 +19,6 @@ use rustc::traits::{
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::GenericArg;
 use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
 
 use super::{ChalkInferenceContext, ChalkArenas, ChalkExClause, ConstrainedSubst};
@@ -287,7 +286,7 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
         a: &'tcx ty::Const<'tcx>,
         b: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        if let ty::Const { val: ConstValue::Bound(debruijn, bound_ct), .. } = a {
+        if let ty::Const { val: ty::ConstKind::Bound(debruijn, bound_ct), .. } = a {
             if *debruijn == self.binder_index {
                 self.unify_free_answer_var(*bound_ct, b.into())?;
                 return Ok(b);
@@ -296,8 +295,8 @@ impl TypeRelation<'tcx> for AnswerSubstitutor<'cx, 'tcx> {
 
         match (a, b) {
             (
-                ty::Const { val: ConstValue::Bound(a_debruijn, a_bound), .. },
-                ty::Const { val: ConstValue::Bound(b_debruijn, b_bound), .. },
+                ty::Const { val: ty::ConstKind::Bound(a_debruijn, a_bound), .. },
+                ty::Const { val: ty::ConstKind::Bound(b_debruijn, b_bound), .. },
             ) => {
                 assert_eq!(a_debruijn, b_debruijn);
                 assert_eq!(a_bound, b_bound);

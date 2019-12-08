@@ -4,7 +4,7 @@
 #![warn(unused_attributes)]
 
 #[macro_use]
-#[macro_use()]
+#[macro_use()] //~ WARNING unused attribute
 extern crate two_macros_rpass;
 
 pub fn main() {

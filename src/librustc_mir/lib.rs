@@ -8,6 +8,7 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(in_band_lifetimes)]
 #![feature(inner_deref)]
 #![feature(slice_patterns)]
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -16,7 +17,8 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(decl_macro)]
 #![feature(drain_filter)]
 #![feature(exhaustive_patterns)]
-#![feature(never_type)]
+#![feature(iter_order_by)]
+#![cfg_attr(bootstrap, feature(never_type))]
 #![feature(specialization)]
 #![feature(try_trait)]
 #![feature(unicode_internals)]
@@ -26,16 +28,14 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(associated_type_bounds)]
 #![feature(range_is_empty)]
 #![feature(stmt_expr_attributes)]
-#![feature(bool_to_option)]
+#![feature(trait_alias)]
+#![feature(matches_macro)]
 
 #![recursion_limit="256"]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate rustc;
-#[macro_use] extern crate rustc_data_structures;
 #[macro_use] extern crate syntax;
-
-pub mod error_codes;
 
 mod borrow_check;
 mod build;

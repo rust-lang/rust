@@ -1,8 +1,6 @@
 // This test ensures that attributes on formals in generic parameter
 // lists are included when we are checking for unstable attributes.
 
-// gate-test-custom_attribute
-
 struct StLt<#[lt_struct] 'a>(&'a u32);
 //~^ ERROR cannot find attribute `lt_struct` in this scope
 struct StTy<#[ty_struct] I>(I);

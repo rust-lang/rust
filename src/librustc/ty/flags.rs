@@ -1,6 +1,5 @@
 use crate::ty::subst::{SubstsRef, GenericArgKind};
 use crate::ty::{self, Ty, TypeFlags, InferConst};
-use crate::mir::interpret::ConstValue;
 
 #[derive(Debug)]
 pub struct FlagComputation {
@@ -232,29 +231,27 @@ impl FlagComputation {
     fn add_const(&mut self, c: &ty::Const<'_>) {
         self.add_ty(c.ty);
         match c.val {
-            ConstValue::Unevaluated(_, substs) => {
+            ty::ConstKind::Unevaluated(_, substs) => {
                 self.add_substs(substs);
                 self.add_flags(TypeFlags::HAS_PROJECTION);
             },
-            ConstValue::Infer(infer) => {
+            ty::ConstKind::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES | TypeFlags::HAS_CT_INFER);
                 match infer {
                     InferConst::Fresh(_) => {}
                     InferConst::Var(_) => self.add_flags(TypeFlags::KEEP_IN_LOCAL_TCX),
                 }
             }
-            ConstValue::Bound(debruijn, _) => self.add_binder(debruijn),
-            ConstValue::Param(_) => {
+            ty::ConstKind::Bound(debruijn, _) => self.add_binder(debruijn),
+            ty::ConstKind::Param(_) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_flags(TypeFlags::HAS_PARAMS);
             }
-            ConstValue::Placeholder(_) => {
+            ty::ConstKind::Placeholder(_) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES);
                 self.add_flags(TypeFlags::HAS_CT_PLACEHOLDER);
             }
-            ConstValue::Scalar(_) => {}
-            ConstValue::Slice { .. } => {}
-            ConstValue::ByRef { .. } => {}
+            ty::ConstKind::Value(_) => {}
         }
     }
 

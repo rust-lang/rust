@@ -4,8 +4,8 @@
 //! description of [`TryIntoRawFd`](trait.TryIntoRawFd.html) for more details.
 #![unstable(feature = "sgx_platform", issue = "56975")]
 
-pub use crate::sys::abi::usercalls::raw::Fd as RawFd;
 use crate::net;
+pub use crate::sys::abi::usercalls::raw::Fd as RawFd;
 use crate::sys::{self, AsInner, FromInner, IntoInner, TryIntoInner};
 
 /// A trait to extract the raw SGX file descriptor from an underlying
@@ -60,11 +60,15 @@ pub trait TryIntoRawFd: Sized {
 }
 
 impl AsRawFd for net::TcpStream {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().as_inner().as_inner().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().as_inner().as_inner().as_inner()
+    }
 }
 
 impl AsRawFd for net::TcpListener {
-    fn as_raw_fd(&self) -> RawFd { *self.as_inner().as_inner().as_inner().as_inner() }
+    fn as_raw_fd(&self) -> RawFd {
+        *self.as_inner().as_inner().as_inner().as_inner()
+    }
 }
 
 impl FromRawFd for net::TcpStream {

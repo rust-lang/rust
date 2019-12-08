@@ -1,7 +1,7 @@
 #[macro_export]
 macro_rules! diagnostic_used {
     ($code:ident) => (
-        let _ = crate::error_codes::$code;
+        let _ = $code;
     )
 }
 
@@ -166,26 +166,4 @@ macro_rules! help {
     ($err:expr, $($message:tt)*) => ({
         ($err).help(&format!($($message)*));
     })
-}
-
-#[macro_export]
-macro_rules! register_diagnostics {
-    ($($ecode:ident: $message:expr,)*) => (
-        $crate::register_diagnostics!{$($ecode:$message,)* ;}
-    );
-
-    ($($ecode:ident: $message:expr,)* ; $($code:ident,)*) => (
-        pub static DIAGNOSTICS: &[(&str, &str)] = &[
-            $( (stringify!($ecode), $message), )*
-        ];
-
-        $(
-            #[deny(unused)]
-            pub(crate) const $ecode: &str = $message;
-        )*
-        $(
-            #[deny(unused)]
-            pub(crate) const $code: () = ();
-        )*
-    )
 }

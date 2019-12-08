@@ -24,7 +24,7 @@ use crate::util::nodemap::{DefIdMap, FxHashMap};
 ///   parents of a given specializing impl, which is needed for extracting
 ///   default items amongst other things. In the simple "chain" rule, every impl
 ///   has at most one parent.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub struct Graph {
     // All impls have a parent; the "root" impls have as their parent the `def_id`
     // of the trait.
@@ -146,7 +146,7 @@ impl<'tcx> Children {
                 let self_ty = trait_ref.self_ty();
                 OverlapError {
                     with_impl: possible_sibling,
-                    trait_desc: trait_ref.to_string(),
+                    trait_desc: trait_ref.print_only_trait_path().to_string(),
                     // Only report the `Self` type if it has at least
                     // some outer concrete shell; otherwise, it's
                     // not adding much information.
@@ -535,8 +535,3 @@ impl<'a> HashStable<StableHashingContext<'a>> for Children {
         ich::hash_stable_trait_impls(hcx, hasher, blanket_impls, nonblanket_impls);
     }
 }
-
-impl_stable_hash_for!(struct self::Graph {
-    parent,
-    children
-});

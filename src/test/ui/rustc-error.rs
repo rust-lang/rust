@@ -2,5 +2,5 @@
 
 #[rustc_error]
 fn main() {
-    //~^ ERROR compilation successful
+    //~^ ERROR fatal error triggered by #[rustc_error]
 }

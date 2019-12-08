@@ -2,13 +2,18 @@ error[E0308]: try expression alternatives have incompatible types
   --> $DIR/issue-51632-try-desugar-incompatible-types.rs:8:5
    |
 LL |     missing_discourses()?
-   |     ^^^^^^^^^^^^^^^^^^^^-
-   |     |                   |
-   |     |                   help: try removing this `?`
-   |     expected enum `std::result::Result`, found isize
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found `isize`
    |
-   = note: expected type `std::result::Result<isize, ()>`
+   = note: expected enum `std::result::Result<isize, ()>`
               found type `isize`
+help: try removing this `?`
+   |
+LL |     missing_discourses()
+   |                        --
+help: try using a variant of the expected enum
+   |
+LL |     Ok(missing_discourses()?)
+   |
 
 error: aborting due to previous error
 

@@ -7,56 +7,64 @@
 #![allow(missing_docs)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::num::{FpCategory, ParseIntError, ParseFloatError, TryFromIntError};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use core::num::Wrapping;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use core::num::{FpCategory, ParseFloatError, ParseIntError, TryFromIntError};
 
-#[stable(feature = "nonzero", since = "1.28.0")]
-pub use core::num::{NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU128, NonZeroUsize};
 #[stable(feature = "signed_nonzero", since = "1.34.0")]
-pub use core::num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI128, NonZeroIsize};
+pub use core::num::{NonZeroI128, NonZeroI16, NonZeroI32, NonZeroI64, NonZeroI8, NonZeroIsize};
+#[stable(feature = "nonzero", since = "1.28.0")]
+pub use core::num::{NonZeroU128, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroU8, NonZeroUsize};
 
-#[unstable(feature = "int_error_matching",
-           reason = "it can be useful to match errors when making error messages \
-                     for integer parsing",
-           issue = "22639")]
+#[unstable(
+    feature = "int_error_matching",
+    reason = "it can be useful to match errors when making error messages \
+              for integer parsing",
+    issue = "22639"
+)]
 pub use core::num::IntErrorKind;
 
-#[cfg(test)] use crate::fmt;
-#[cfg(test)] use crate::ops::{Add, Sub, Mul, Div, Rem};
+#[cfg(test)]
+use crate::fmt;
+#[cfg(test)]
+use crate::ops::{Add, Div, Mul, Rem, Sub};
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
-pub fn test_num<T>(ten: T, two: T) where
+pub fn test_num<T>(ten: T, two: T)
+where
     T: PartialEq
-     + Add<Output=T> + Sub<Output=T>
-     + Mul<Output=T> + Div<Output=T>
-     + Rem<Output=T> + fmt::Debug
-     + Copy
+        + Add<Output = T>
+        + Sub<Output = T>
+        + Mul<Output = T>
+        + Div<Output = T>
+        + Rem<Output = T>
+        + fmt::Debug
+        + Copy,
 {
-    assert_eq!(ten.add(two),  ten + two);
-    assert_eq!(ten.sub(two),  ten - two);
-    assert_eq!(ten.mul(two),  ten * two);
-    assert_eq!(ten.div(two),  ten / two);
-    assert_eq!(ten.rem(two),  ten % two);
+    assert_eq!(ten.add(two), ten + two);
+    assert_eq!(ten.sub(two), ten - two);
+    assert_eq!(ten.mul(two), ten * two);
+    assert_eq!(ten.div(two), ten / two);
+    assert_eq!(ten.rem(two), ten % two);
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::u8;
+    use crate::ops::Mul;
     use crate::u16;
     use crate::u32;
     use crate::u64;
+    use crate::u8;
     use crate::usize;
-    use crate::ops::Mul;
 
     #[test]
     fn test_saturating_add_uint() {
         use crate::usize::MAX;
         assert_eq!(3_usize.saturating_add(5_usize), 8_usize);
-        assert_eq!(3_usize.saturating_add(MAX-1), MAX);
+        assert_eq!(3_usize.saturating_add(MAX - 1), MAX);
         assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX-2).saturating_add(1), MAX-1);
+        assert_eq!((MAX - 2).saturating_add(1), MAX - 1);
     }
 
     #[test]
@@ -65,16 +73,16 @@ mod tests {
         assert_eq!(5_usize.saturating_sub(3_usize), 2_usize);
         assert_eq!(3_usize.saturating_sub(5_usize), 0_usize);
         assert_eq!(0_usize.saturating_sub(1_usize), 0_usize);
-        assert_eq!((MAX-1).saturating_sub(MAX), 0);
+        assert_eq!((MAX - 1).saturating_sub(MAX), 0);
     }
 
     #[test]
     fn test_saturating_add_int() {
-        use crate::isize::{MIN,MAX};
+        use crate::isize::{MAX, MIN};
         assert_eq!(3i32.saturating_add(5), 8);
-        assert_eq!(3isize.saturating_add(MAX-1), MAX);
+        assert_eq!(3isize.saturating_add(MAX - 1), MAX);
         assert_eq!(MAX.saturating_add(MAX), MAX);
-        assert_eq!((MAX-2).saturating_add(1), MAX-1);
+        assert_eq!((MAX - 2).saturating_add(1), MAX - 1);
         assert_eq!(3i32.saturating_add(-5), -2);
         assert_eq!(MIN.saturating_add(-1), MIN);
         assert_eq!((-2isize).saturating_add(-MAX), MIN);
@@ -82,14 +90,14 @@ mod tests {
 
     #[test]
     fn test_saturating_sub_int() {
-        use crate::isize::{MIN,MAX};
+        use crate::isize::{MAX, MIN};
         assert_eq!(3i32.saturating_sub(5), -2);
         assert_eq!(MIN.saturating_sub(1), MIN);
         assert_eq!((-2isize).saturating_sub(MAX), MIN);
         assert_eq!(3i32.saturating_sub(-5), 8);
-        assert_eq!(3isize.saturating_sub(-(MAX-1)), MAX);
+        assert_eq!(3isize.saturating_sub(-(MAX - 1)), MAX);
         assert_eq!(MAX.saturating_sub(-MAX), MAX);
-        assert_eq!((MAX-2).saturating_sub(-1), MAX-1);
+        assert_eq!((MAX - 2).saturating_sub(-1), MAX - 1);
     }
 
     #[test]
@@ -128,7 +136,7 @@ mod tests {
     }
 
     macro_rules! test_is_power_of_two {
-        ($test_name:ident, $T:ident) => (
+        ($test_name:ident, $T:ident) => {
             fn $test_name() {
                 #![test]
                 assert_eq!((0 as $T).is_power_of_two(), false);
@@ -139,27 +147,29 @@ mod tests {
                 assert_eq!((5 as $T).is_power_of_two(), false);
                 assert_eq!(($T::MAX / 2 + 1).is_power_of_two(), true);
             }
-        )
+        };
     }
 
-    test_is_power_of_two!{ test_is_power_of_two_u8, u8 }
-    test_is_power_of_two!{ test_is_power_of_two_u16, u16 }
-    test_is_power_of_two!{ test_is_power_of_two_u32, u32 }
-    test_is_power_of_two!{ test_is_power_of_two_u64, u64 }
-    test_is_power_of_two!{ test_is_power_of_two_uint, usize }
+    test_is_power_of_two! { test_is_power_of_two_u8, u8 }
+    test_is_power_of_two! { test_is_power_of_two_u16, u16 }
+    test_is_power_of_two! { test_is_power_of_two_u32, u32 }
+    test_is_power_of_two! { test_is_power_of_two_u64, u64 }
+    test_is_power_of_two! { test_is_power_of_two_uint, usize }
 
     macro_rules! test_next_power_of_two {
-        ($test_name:ident, $T:ident) => (
+        ($test_name:ident, $T:ident) => {
             fn $test_name() {
                 #![test]
                 assert_eq!((0 as $T).next_power_of_two(), 1);
                 let mut next_power = 1;
                 for i in 1 as $T..40 {
-                     assert_eq!(i.next_power_of_two(), next_power);
-                     if i == next_power { next_power *= 2 }
+                    assert_eq!(i.next_power_of_two(), next_power);
+                    if i == next_power {
+                        next_power *= 2
+                    }
                 }
             }
-        )
+        };
     }
 
     test_next_power_of_two! { test_next_power_of_two_u8, u8 }
@@ -169,23 +179,25 @@ mod tests {
     test_next_power_of_two! { test_next_power_of_two_uint, usize }
 
     macro_rules! test_checked_next_power_of_two {
-        ($test_name:ident, $T:ident) => (
+        ($test_name:ident, $T:ident) => {
             fn $test_name() {
                 #![test]
                 assert_eq!((0 as $T).checked_next_power_of_two(), Some(1));
                 let smax = $T::MAX >> 1;
-                assert_eq!(smax.checked_next_power_of_two(), Some(smax+1));
+                assert_eq!(smax.checked_next_power_of_two(), Some(smax + 1));
                 assert_eq!((smax + 1).checked_next_power_of_two(), Some(smax + 1));
                 assert_eq!((smax + 2).checked_next_power_of_two(), None);
                 assert_eq!(($T::MAX - 1).checked_next_power_of_two(), None);
                 assert_eq!($T::MAX.checked_next_power_of_two(), None);
                 let mut next_power = 1;
                 for i in 1 as $T..40 {
-                     assert_eq!(i.checked_next_power_of_two(), Some(next_power));
-                     if i == next_power { next_power *= 2 }
+                    assert_eq!(i.checked_next_power_of_two(), Some(next_power));
+                    if i == next_power {
+                        next_power *= 2
+                    }
                 }
             }
-        )
+        };
     }
 
     test_checked_next_power_of_two! { test_checked_next_power_of_two_u8, u8 }
@@ -196,7 +208,7 @@ mod tests {
 
     #[test]
     fn test_pow() {
-        fn naive_pow<T: Mul<Output=T> + Copy>(one: T, base: T, exp: usize) -> T {
+        fn naive_pow<T: Mul<Output = T> + Copy>(one: T, base: T, exp: usize) -> T {
             (0..exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow {
@@ -204,7 +216,7 @@ mod tests {
                 let result = $num.pow($exp);
                 assert_eq!(result, $expected);
                 assert_eq!(result, naive_pow(1, $num, $exp));
-            }}
+            }};
         }
         assert_pow!((3u32,     0 ) => 1);
         assert_pow!((5u32,     1 ) => 5);
@@ -280,7 +292,6 @@ mod tests {
     }
 }
 
-
 #[cfg(test)]
 mod bench {
     use test::Bencher;
@@ -288,6 +299,8 @@ mod bench {
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
         let v = (0..1024).collect::<Vec<u32>>();
-        b.iter(|| {v.iter().fold(0u32, |old, new| old.pow(*new as u32));});
+        b.iter(|| {
+            v.iter().fold(0u32, |old, new| old.pow(*new as u32));
+        });
     }
 }

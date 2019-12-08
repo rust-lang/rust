@@ -1,8 +1,13 @@
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/try-on-option-diagnostics.rs:7:5
    |
-LL |     x?;
-   |     ^^ cannot use the `?` operator in a function that returns `u32`
+LL | / fn a_function() -> u32 {
+LL | |     let x: Option<u32> = None;
+LL | |     x?;
+   | |     ^^ cannot use the `?` operator in a function that returns `u32`
+LL | |     22
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `u32`
    = note: required by `std::ops::Try::from_error`
@@ -10,8 +15,14 @@ LL |     x?;
 error[E0277]: the `?` operator can only be used in a closure that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/try-on-option-diagnostics.rs:14:9
    |
-LL |         x?;
-   |         ^^ cannot use the `?` operator in a closure that returns `{integer}`
+LL |       let a_closure = || {
+   |  _____________________-
+LL | |         let x: Option<u32> = None;
+LL | |         x?;
+   | |         ^^ cannot use the `?` operator in a closure that returns `{integer}`
+LL | |         22
+LL | |     };
+   | |_____- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `{integer}`
    = note: required by `std::ops::Try::from_error`

@@ -2,10 +2,7 @@ error[E0326]: implemented const `CONST` has an incompatible type for trait
   --> $DIR/issue-41549.rs:9:18
    |
 LL |     const CONST: () = ();
-   |                  ^^ expected u32, found ()
-   |
-   = note: expected type `u32`
-              found type `()`
+   |                  ^^ expected `u32`, found `()`
 
 error: aborting due to previous error
 

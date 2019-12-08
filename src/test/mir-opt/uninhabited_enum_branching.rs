@@ -34,12 +34,12 @@ fn main() {
 // let _1: &str;
 // let mut _2: Test1;
 // let mut _3: isize;
-// let mut _4: &str;
-// let mut _5: &str;
+// let _4: &str;
+// let _5: &str;
 // let _6: &str;
 // let mut _7: Test2;
 // let mut _8: isize;
-// let mut _9: &str;
+// let _9: &str;
 // bb0: {
 //   StorageLive(_1);
 //   StorageLive(_2);
@@ -103,12 +103,12 @@ fn main() {
 // let _1: &str;
 // let mut _2: Test1;
 // let mut _3: isize;
-// let mut _4: &str;
-// let mut _5: &str;
+// let _4: &str;
+// let _5: &str;
 // let _6: &str;
 // let mut _7: Test2;
 // let mut _8: isize;
-// let mut _9: &str;
+// let _9: &str;
 // bb0: {
 //   StorageLive(_1);
 //   StorageLive(_2);
@@ -172,12 +172,12 @@ fn main() {
 // let _1: &str;
 // let mut _2: Test1;
 // let mut _3: isize;
-// let mut _4: &str;
-// let mut _5: &str;
+// let _4: &str;
+// let _5: &str;
 // let _6: &str;
 // let mut _7: Test2;
 // let mut _8: isize;
-// let mut _9: &str;
+// let _9: &str;
 // bb0: {
 //   StorageLive(_1);
 //   StorageLive(_2);

@@ -13,6 +13,7 @@ doctest = false
 arena = { path = "../libarena" }
 either = "1.5.0"
 dot = { path = "../libgraphviz", package = "graphviz" }
+itertools = "0.8"
 log = "0.4"
 log_settings = "0.1.1"
 polonius-engine  = "0.10.0"
@@ -22,8 +23,10 @@ rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_index = { path = "../librustc_index" }
 rustc_errors = { path = "../librustc_errors" }
 rustc_lexer = { path = "../librustc_lexer" }
+rustc_macros = { path = "../librustc_macros" }
 rustc_serialize = { path = "../libserialize", package = "serialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_apfloat = { path = "../librustc_apfloat" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
+rustc_error_codes = { path = "../librustc_error_codes" }

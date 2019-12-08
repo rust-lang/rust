@@ -246,11 +246,13 @@ fn place_components_conflict<'tcx>(
                     debug!("borrow_conflicts_with_place: shallow access behind ptr");
                     return false;
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::MutImmutable), _) => {
+                (ProjectionElem::Deref, ty::Ref(_, _, hir::Mutability::Immutable), _) => {
                     // Shouldn't be tracked
                     bug!("Tracking borrow behind shared reference.");
                 }
-                (ProjectionElem::Deref, ty::Ref(_, _, hir::MutMutable), AccessDepth::Drop) => {
+                (ProjectionElem::Deref,
+                 ty::Ref(_, _, hir::Mutability::Mutable),
+                 AccessDepth::Drop) => {
                     // Values behind a mutable reference are not access either by dropping a
                     // value, or by StorageDead
                     debug!("borrow_conflicts_with_place: drop access behind ptr");

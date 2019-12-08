@@ -16,15 +16,12 @@
 use crate::token::{self, DelimToken, Token, TokenKind};
 
 use syntax_pos::{Span, DUMMY_SP};
-#[cfg(target_arch = "x86_64")]
-use rustc_data_structures::static_assert_size;
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable_Generic;
 use rustc_data_structures::sync::Lrc;
 use smallvec::{SmallVec, smallvec};
 
 use std::{iter, mem};
-
-#[cfg(test)]
-mod tests;
 
 /// When the main rust parser encounters a syntax-extension invocation, it
 /// parses the arguments to the invocation as a token-tree. This is a very
@@ -38,7 +35,7 @@ mod tests;
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token
     Token(Token),
@@ -120,6 +117,16 @@ impl TokenTree {
     }
 }
 
+impl<CTX> HashStable<CTX> for TokenStream
+    where CTX: crate::HashStableContext
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        for sub_tt in self.trees() {
+            sub_tt.hash_stable(hcx, hasher);
+        }
+    }
+}
+
 /// A `TokenStream` is an abstract sequence of tokens, organized into `TokenTree`s.
 ///
 /// The goal is for procedural macros to work with `TokenStream`s and `TokenTree`s
@@ -132,7 +139,7 @@ pub type TreeAndJoint = (TokenTree, IsJoint);
 
 // `TokenStream` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(TokenStream, 8);
+rustc_data_structures::static_assert_size!(TokenStream, 8);
 
 #[derive(Clone, Copy, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum IsJoint {
@@ -218,7 +225,15 @@ impl TokenStream {
         self.0.len()
     }
 
-    pub(crate) fn from_streams(mut streams: SmallVec<[TokenStream; 2]>) -> TokenStream {
+    pub fn span(&self) -> Option<Span> {
+        match &**self.0 {
+            [] => None,
+            [(tt, _)] => Some(tt.span()),
+            [(tt_start, _), .., (tt_end, _)] => Some(tt_start.span().to(tt_end.span())),
+        }
+    }
+
+    pub fn from_streams(mut streams: SmallVec<[TokenStream; 2]>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::default(),
             1 => streams.pop().unwrap(),
@@ -449,7 +464,7 @@ impl Cursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,

@@ -1,3 +1,15 @@
+error: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:9:1
+   |
+LL | #[proc_macro_derive]
+   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
+
+error: malformed `proc_macro_derive` attribute input
+  --> $DIR/attribute.rs:12:1
+   |
+LL | #[proc_macro_derive = ""]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
+
 error: attribute must have either one or two arguments
   --> $DIR/attribute.rs:15:1
    |
@@ -87,18 +99,6 @@ error: `self` cannot be a name of derive helper attribute
    |
 LL | #[proc_macro_derive(d17, attributes(self))]
    |                                     ^^^^
-
-error: malformed `proc_macro_derive` attribute input
-  --> $DIR/attribute.rs:9:1
-   |
-LL | #[proc_macro_derive]
-   | ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
-
-error: malformed `proc_macro_derive` attribute input
-  --> $DIR/attribute.rs:12:1
-   |
-LL | #[proc_macro_derive = ""]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[proc_macro_derive(TraitName, /*opt*/ attributes(name1, name2, ...))]`
 
 error: aborting due to 17 previous errors
 

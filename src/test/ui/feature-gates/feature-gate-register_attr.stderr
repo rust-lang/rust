@@ -1,0 +1,12 @@
+error[E0658]: the `#[register_attr]` attribute is an experimental feature
+  --> $DIR/feature-gate-register_attr.rs:1:1
+   |
+LL | #![register_attr(attr)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/66080
+   = help: add `#![feature(register_attr)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

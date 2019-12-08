@@ -551,7 +551,7 @@ impl<T, S> HashSet<T, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
-        if self.len() <= other.len() {
+        if self.len() >= other.len() {
             Union {
                 iter: self.iter().chain(other.difference(self)),
             }

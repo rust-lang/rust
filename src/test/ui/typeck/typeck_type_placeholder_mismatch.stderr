@@ -2,19 +2,23 @@ error[E0308]: mismatched types
   --> $DIR/typeck_type_placeholder_mismatch.rs:13:21
    |
 LL |     let x: Foo<_> = Bar::<usize>(PhantomData);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found struct `Bar`
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found struct `Bar`
+   |            |
+   |            expected due to this
    |
-   = note: expected type `Foo<_>`
-              found type `Bar<usize>`
+   = note: expected struct `Foo<_>`
+              found struct `Bar<usize>`
 
 error[E0308]: mismatched types
   --> $DIR/typeck_type_placeholder_mismatch.rs:22:21
    |
 LL |     let x: Foo<_> = Bar::<usize>(PhantomData);
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found struct `Bar`
+   |            ------   ^^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Foo`, found struct `Bar`
+   |            |
+   |            expected due to this
    |
-   = note: expected type `Foo<_>`
-              found type `Bar<usize>`
+   = note: expected struct `Foo<_>`
+              found struct `Bar<usize>`
 
 error: aborting due to 2 previous errors
 

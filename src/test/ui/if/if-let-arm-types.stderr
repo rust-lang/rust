@@ -8,12 +8,9 @@ LL | |         ()
 LL | |
 LL | |     } else {
 LL | |         1
-   | |         ^ expected (), found integer
+   | |         ^ expected `()`, found integer
 LL | |     };
    | |_____- if and else have incompatible types
-   |
-   = note: expected type `()`
-              found type `{integer}`
 
 error: aborting due to previous error
 

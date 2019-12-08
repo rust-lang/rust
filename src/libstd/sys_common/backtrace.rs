@@ -66,7 +66,14 @@ unsafe fn _print(w: &mut dyn Write, format: PrintFmt) -> io::Result<()> {
 }
 
 unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::Result {
-    let cwd = env::current_dir().ok();
+    // Always 'fail' to get the cwd when running under Miri -
+    // this allows Miri to display backtraces in isolation mode
+    let cwd = if !cfg!(miri) {
+        env::current_dir().ok()
+    } else {
+        None
+    };
+
     let mut print_path = move |fmt: &mut fmt::Formatter<'_>, bows: BytesOrWideString<'_>| {
         output_filename(fmt, bows, print_fmt, cwd.as_ref())
     };

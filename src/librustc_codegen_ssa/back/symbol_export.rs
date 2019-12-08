@@ -85,11 +85,7 @@ fn reachable_non_generics_provider(
             match tcx.hir().get(hir_id) {
                 Node::ForeignItem(..) => {
                     let def_id = tcx.hir().local_def_id(hir_id);
-                    if tcx.is_statically_included_foreign_item(def_id) {
-                        Some(def_id)
-                    } else {
-                        None
-                    }
+                    tcx.is_statically_included_foreign_item(def_id).then_some(def_id)
                 }
 
                 // Only consider nodes that actually have exported symbols.
@@ -194,7 +190,7 @@ fn exported_symbols_provider_local(
         symbols.push((exported_symbol, SymbolExportLevel::C));
     }
 
-    if tcx.sess.allocator_kind.get().is_some() {
+    if tcx.allocator_kind().is_some() {
         for method in ALLOCATOR_METHODS {
             let symbol_name = format!("__rust_{}", method.name);
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(&symbol_name));

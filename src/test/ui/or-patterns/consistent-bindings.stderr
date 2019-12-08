@@ -10,10 +10,7 @@ error[E0308]: mismatched types
   --> $DIR/consistent-bindings.rs:44:9
    |
 LL |     let () = 0;
-   |         ^^ expected integer, found ()
-   |
-   = note: expected type `{integer}`
-              found type `()`
+   |         ^^ expected integer, found `()`
 
 error: aborting due to previous error
 

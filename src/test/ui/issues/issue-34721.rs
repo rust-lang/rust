@@ -1,3 +1,5 @@
+// run-rustfix
+
 pub trait Foo {
     fn zero(self) -> Self;
 }

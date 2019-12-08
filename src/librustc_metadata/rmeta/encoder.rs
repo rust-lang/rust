@@ -1,5 +1,5 @@
 use crate::rmeta::*;
-use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
+use crate::rmeta::table::FixedSizeEncoding;
 
 use rustc::middle::cstore::{LinkagePreference, NativeLibrary,
                             EncodedMetadata, ForeignModule};
@@ -8,7 +8,7 @@ use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LocalDefId,
 use rustc::hir::{GenericParamKind, AnonConst};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_index::vec::IndexVec;
+use rustc_index::vec::Idx;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::exported_symbols::{ExportedSymbol, SymbolExportLevel,
                                       metadata_symbol_name};
@@ -47,7 +47,7 @@ struct EncodeContext<'tcx> {
     opaque: opaque::Encoder,
     tcx: TyCtxt<'tcx>,
 
-    per_def: PerDefTables<'tcx>,
+    per_def: PerDefTableBuilders<'tcx>,
 
     lazy_state: LazyState,
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
@@ -58,30 +58,6 @@ struct EncodeContext<'tcx> {
 
     // This is used to speed up Span encoding.
     source_file_cache: Lrc<SourceFile>,
-}
-
-#[derive(Default)]
-struct PerDefTables<'tcx> {
-    kind: PerDefTable<Lazy<EntryKind<'tcx>>>,
-    visibility: PerDefTable<Lazy<ty::Visibility>>,
-    span: PerDefTable<Lazy<Span>>,
-    attributes: PerDefTable<Lazy<[ast::Attribute]>>,
-    children: PerDefTable<Lazy<[DefIndex]>>,
-    stability: PerDefTable<Lazy<attr::Stability>>,
-    deprecation: PerDefTable<Lazy<attr::Deprecation>>,
-
-    ty: PerDefTable<Lazy<Ty<'tcx>>>,
-    fn_sig: PerDefTable<Lazy<ty::PolyFnSig<'tcx>>>,
-    impl_trait_ref: PerDefTable<Lazy<ty::TraitRef<'tcx>>>,
-    inherent_impls: PerDefTable<Lazy<[DefIndex]>>,
-    variances: PerDefTable<Lazy<[ty::Variance]>>,
-    generics: PerDefTable<Lazy<ty::Generics>>,
-    explicit_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
-    inferred_outlives: PerDefTable<Lazy<&'tcx [(ty::Predicate<'tcx>, Span)]>>,
-    super_predicates: PerDefTable<Lazy<ty::GenericPredicates<'tcx>>>,
-
-    mir: PerDefTable<Lazy<mir::Body<'tcx>>>,
-    promoted_mir: PerDefTable<Lazy<IndexVec<mir::Promoted, mir::Body<'tcx>>>>,
 }
 
 macro_rules! encoder_methods {
@@ -122,13 +98,13 @@ impl<'tcx> Encoder for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
+impl<'tcx, T> SpecializedEncoder<Lazy<T>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<T>) -> Result<(), Self::Error> {
         self.emit_lazy_distance(*lazy)
     }
 }
 
-impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
+impl<'tcx, T> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     fn specialized_encode(&mut self, lazy: &Lazy<[T]>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         if lazy.meta == 0 {
@@ -138,10 +114,10 @@ impl<'tcx, T: Encodable> SpecializedEncoder<Lazy<[T]>> for EncodeContext<'tcx> {
     }
 }
 
-impl<'tcx, T> SpecializedEncoder<Lazy<PerDefTable<T>>> for EncodeContext<'tcx>
+impl<'tcx, I: Idx, T> SpecializedEncoder<Lazy<Table<I, T>>> for EncodeContext<'tcx>
     where Option<T>: FixedSizeEncoding,
 {
-    fn specialized_encode(&mut self, lazy: &Lazy<PerDefTable<T>>) -> Result<(), Self::Error> {
+    fn specialized_encode(&mut self, lazy: &Lazy<Table<I, T>>) -> Result<(), Self::Error> {
         self.emit_usize(lazy.meta)?;
         self.emit_lazy_distance(*lazy)
     }
@@ -307,14 +283,14 @@ impl<I, T: Encodable> EncodeContentsForLazy<[T]> for I
     }
 }
 
-// Shorthand for `$self.$tables.$table.set($key, $self.lazy($value))`, which would
+// Shorthand for `$self.$tables.$table.set($def_id.index, $self.lazy($value))`, which would
 // normally need extra variables to avoid errors about multiple mutable borrows.
 macro_rules! record {
-    ($self:ident.$tables:ident.$table:ident[$key:expr] <- $value:expr) => {{
+    ($self:ident.$tables:ident.$table:ident[$def_id:expr] <- $value:expr) => {{
         {
             let value = $value;
             let lazy = $self.lazy(value);
-            $self.$tables.$table.set($key, lazy);
+            $self.$tables.$table.set($def_id.index, lazy);
         }
     }}
 }
@@ -509,28 +485,7 @@ impl<'tcx> EncodeContext<'tcx> {
 
 
         i = self.position();
-        let per_def = LazyPerDefTables {
-            kind: self.per_def.kind.encode(&mut self.opaque),
-            visibility: self.per_def.visibility.encode(&mut self.opaque),
-            span: self.per_def.span.encode(&mut self.opaque),
-            attributes: self.per_def.attributes.encode(&mut self.opaque),
-            children: self.per_def.children.encode(&mut self.opaque),
-            stability: self.per_def.stability.encode(&mut self.opaque),
-            deprecation: self.per_def.deprecation.encode(&mut self.opaque),
-
-            ty: self.per_def.ty.encode(&mut self.opaque),
-            fn_sig: self.per_def.fn_sig.encode(&mut self.opaque),
-            impl_trait_ref: self.per_def.impl_trait_ref.encode(&mut self.opaque),
-            inherent_impls: self.per_def.inherent_impls.encode(&mut self.opaque),
-            variances: self.per_def.variances.encode(&mut self.opaque),
-            generics: self.per_def.generics.encode(&mut self.opaque),
-            explicit_predicates: self.per_def.explicit_predicates.encode(&mut self.opaque),
-            inferred_outlives: self.per_def.inferred_outlives.encode(&mut self.opaque),
-            super_predicates: self.per_def.super_predicates.encode(&mut self.opaque),
-
-            mir: self.per_def.mir.encode(&mut self.opaque),
-            promoted_mir: self.per_def.promoted_mir.encode(&mut self.opaque),
-        };
+        let per_def = self.per_def.encode(&mut self.opaque);
         let per_def_bytes = self.position() - i;
 
         // Encode the proc macro data
@@ -541,7 +496,6 @@ impl<'tcx> EncodeContext<'tcx> {
 
         let attrs = tcx.hir().krate_attrs();
         let has_default_lib_allocator = attr::contains_name(&attrs, sym::default_lib_allocator);
-        let has_global_allocator = *tcx.sess.has_global_allocator.get();
 
         let root = self.lazy(CrateRoot {
             name: tcx.crate_name(LOCAL_CRATE),
@@ -551,7 +505,7 @@ impl<'tcx> EncodeContext<'tcx> {
             disambiguator: tcx.sess.local_crate_disambiguator(),
             panic_strategy: tcx.sess.panic_strategy(),
             edition: tcx.sess.edition(),
-            has_global_allocator: has_global_allocator,
+            has_global_allocator: tcx.has_global_allocator(LOCAL_CRATE),
             has_panic_handler: tcx.has_panic_handler(LOCAL_CRATE),
             has_default_lib_allocator: has_default_lib_allocator,
             plugin_registrar_fn: tcx.plugin_registrar_fn(LOCAL_CRATE).map(|id| id.index),
@@ -875,7 +829,11 @@ impl EncodeContext<'tcx> {
                     hir::print::to_string(self.tcx.hir(), |s| s.print_trait_item(ast_item));
                 let rendered_const = self.lazy(RenderedConst(rendered));
 
-                EntryKind::AssocConst(container, ConstQualif { mir: 0 }, rendered_const)
+                EntryKind::AssocConst(
+                    container,
+                    Default::default(),
+                    rendered_const,
+                )
             }
             ty::AssocKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(m_sig, m) = &ast_item.kind {
@@ -955,10 +913,11 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.kind[def_id] <- match impl_item.kind {
             ty::AssocKind::Const => {
                 if let hir::ImplItemKind::Const(_, body_id) = ast_item.kind {
-                    let mir = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
+                    let qualifs = self.tcx.at(ast_item.span).mir_const_qualif(def_id);
 
-                    EntryKind::AssocConst(container,
-                        ConstQualif { mir },
+                    EntryKind::AssocConst(
+                        container,
+                        qualifs,
                         self.encode_rendered_const_for_body(body_id))
                 } else {
                     bug!()
@@ -1086,12 +1045,12 @@ impl EncodeContext<'tcx> {
         debug!("EncodeContext::encode_info_for_item({:?})", def_id);
 
         record!(self.per_def.kind[def_id] <- match item.kind {
-            hir::ItemKind::Static(_, hir::MutMutable, _) => EntryKind::MutStatic,
-            hir::ItemKind::Static(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
+            hir::ItemKind::Static(_, hir::Mutability::Mutable, _) => EntryKind::MutStatic,
+            hir::ItemKind::Static(_, hir::Mutability::Immutable, _) => EntryKind::ImmStatic,
             hir::ItemKind::Const(_, body_id) => {
-                let mir = self.tcx.at(item.span).mir_const_qualif(def_id);
+                let qualifs = self.tcx.at(item.span).mir_const_qualif(def_id);
                 EntryKind::Const(
-                    ConstQualif { mir },
+                    qualifs,
                     self.encode_rendered_const_for_body(body_id)
                 )
             }
@@ -1368,9 +1327,9 @@ impl EncodeContext<'tcx> {
         let id = self.tcx.hir().as_local_hir_id(def_id).unwrap();
         let body_id = self.tcx.hir().body_owned_by(id);
         let const_data = self.encode_rendered_const_for_body(body_id);
-        let mir = self.tcx.mir_const_qualif(def_id);
+        let qualifs = self.tcx.mir_const_qualif(def_id);
 
-        record!(self.per_def.kind[def_id] <- EntryKind::Const(ConstQualif { mir }, const_data));
+        record!(self.per_def.kind[def_id] <- EntryKind::Const(qualifs, const_data));
         record!(self.per_def.visibility[def_id] <- ty::Visibility::Public);
         record!(self.per_def.span[def_id] <- self.tcx.def_span(def_id));
         self.encode_item_type(def_id);
@@ -1566,13 +1525,19 @@ impl EncodeContext<'tcx> {
             hir::ForeignItemKind::Fn(_, ref names, _) => {
                 let data = FnData {
                     asyncness: hir::IsAsync::NotAsync,
-                    constness: hir::Constness::NotConst,
+                    constness: if self.tcx.is_const_fn_raw(def_id) {
+                        hir::Constness::Const
+                    } else {
+                        hir::Constness::NotConst
+                    },
                     param_names: self.encode_fn_param_names(names),
                 };
                 EntryKind::ForeignFn(self.lazy(data))
             }
-            hir::ForeignItemKind::Static(_, hir::MutMutable) => EntryKind::ForeignMutStatic,
-            hir::ForeignItemKind::Static(_, hir::MutImmutable) => EntryKind::ForeignImmStatic,
+            hir::ForeignItemKind::Static(_, hir::Mutability::Mutable) =>
+                EntryKind::ForeignMutStatic,
+            hir::ForeignItemKind::Static(_, hir::Mutability::Immutable) =>
+                EntryKind::ForeignImmStatic,
             hir::ForeignItemKind::Type => EntryKind::ForeignType,
         });
         record!(self.per_def.visibility[def_id] <-

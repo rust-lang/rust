@@ -8,6 +8,8 @@ LL | fn call_bigger_region<'x, 'y>(a: Inv<'x>, b: Inv<'y>) {
 LL |     // Here the value provided for 'y is 'y, and hence 'y:'x does not hold.
 LL |     a.bigger_region(b)
    |     ^^^^^^^^^^^^^^^^^^ argument requires that `'y` must outlive `'x`
+   |
+   = help: consider adding the following bound: `'y: 'x`
 
 error: aborting due to previous error
 

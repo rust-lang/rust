@@ -26,7 +26,9 @@ use rustc_index::vec::Idx;
 use std::cmp::Ordering;
 use std::fmt;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
+
+use rustc_error_codes::*;
 
 #[derive(Clone, Debug)]
 pub enum PatternError {
@@ -55,6 +57,11 @@ pub struct Pat<'tcx> {
     pub kind: Box<PatKind<'tcx>>,
 }
 
+impl<'tcx> Pat<'tcx> {
+    pub(crate) fn wildcard_from_ty(ty: Ty<'tcx>) -> Self {
+        Pat { ty, span: DUMMY_SP, kind: Box::new(PatKind::Wild) }
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PatTyProj<'tcx> {
@@ -591,14 +598,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let bm = *self.tables.pat_binding_modes().get(pat.hir_id)
                                                          .expect("missing binding mode");
                 let (mutability, mode) = match bm {
-                    ty::BindByValue(hir::MutMutable) =>
+                    ty::BindByValue(hir::Mutability::Mutable) =>
                         (Mutability::Mut, BindingMode::ByValue),
-                    ty::BindByValue(hir::MutImmutable) =>
+                    ty::BindByValue(hir::Mutability::Immutable) =>
                         (Mutability::Not, BindingMode::ByValue),
-                    ty::BindByReference(hir::MutMutable) =>
+                    ty::BindByReference(hir::Mutability::Mutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             BorrowKind::Mut { allow_two_phase_borrow: false })),
-                    ty::BindByReference(hir::MutImmutable) =>
+                    ty::BindByReference(hir::Mutability::Immutable) =>
                         (Mutability::Not, BindingMode::ByRef(
                             BorrowKind::Shared)),
                 };
@@ -1147,13 +1154,7 @@ pub fn compare_const_vals<'tcx>(
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
 
-    let from_bool = |v: bool| {
-        if v {
-            Some(Ordering::Equal)
-        } else {
-            None
-        }
-    };
+    let from_bool = |v: bool| v.then_some(Ordering::Equal);
 
     let fallback = || from_bool(a == b);
 
@@ -1192,9 +1193,10 @@ pub fn compare_const_vals<'tcx>(
 
     if let ty::Str = ty.kind {
         match (a.val, b.val) {
-            (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
-                let a_bytes = get_slice_bytes(&tcx, a.val);
-                let b_bytes = get_slice_bytes(&tcx, b.val);
+            (ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
+             ty::ConstKind::Value(b_val @ ConstValue::Slice { .. })) => {
+                let a_bytes = get_slice_bytes(&tcx, a_val);
+                let b_bytes = get_slice_bytes(&tcx, b_val);
                 return from_bool(a_bytes == b_bytes);
             }
             _ => (),

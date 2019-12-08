@@ -261,49 +261,54 @@
 
 use crate::cmp;
 use crate::fmt;
-use crate::slice;
-use crate::str;
 use crate::memchr;
 use crate::ops::{Deref, DerefMut};
 use crate::ptr;
+use crate::slice;
+use crate::str;
 use crate::sys;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::buffered::{BufReader, BufWriter, LineWriter};
-#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::buffered::IntoInnerError;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::buffered::{BufReader, BufWriter, LineWriter};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::cursor::Cursor;
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::error::{Result, Error, ErrorKind};
+pub use self::error::{Error, ErrorKind, Result};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
+pub use self::stdio::{stderr, stdin, stdout, Stderr, Stdin, Stdout};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
+pub use self::stdio::{StderrLock, StdinLock, StdoutLock};
 #[unstable(feature = "print_internals", issue = "0")]
-pub use self::stdio::{_print, _eprint};
+pub use self::stdio::{_eprint, _print};
 #[unstable(feature = "libstd_io_internals", issue = "42788")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_panic, set_print};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::util::{copy, empty, repeat, sink, Empty, Repeat, Sink};
 
-pub mod prelude;
 mod buffered;
 mod cursor;
 mod error;
 mod impls;
 mod lazy;
-mod util;
+pub mod prelude;
 mod stdio;
+mod util;
 
 const DEFAULT_BUF_SIZE: usize = crate::sys_common::io::DEFAULT_BUF_SIZE;
 
-struct Guard<'a> { buf: &'a mut Vec<u8>, len: usize }
+struct Guard<'a> {
+    buf: &'a mut Vec<u8>,
+    len: usize,
+}
 
 impl Drop for Guard<'_> {
     fn drop(&mut self) {
-        unsafe { self.buf.set_len(self.len); }
+        unsafe {
+            self.buf.set_len(self.len);
+        }
     }
 }
 
@@ -326,15 +331,15 @@ impl Drop for Guard<'_> {
 //    the function only *appends* bytes to the buffer. We'll get undefined
 //    behavior if existing bytes are overwritten to have non-UTF-8 data.
 fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
-    where F: FnOnce(&mut Vec<u8>) -> Result<usize>
+where
+    F: FnOnce(&mut Vec<u8>) -> Result<usize>,
 {
     unsafe {
         let mut g = Guard { len: buf.len(), buf: buf.as_mut_vec() };
         let ret = f(g.buf);
         if str::from_utf8(&g.buf[g.len..]).is_err() {
             ret.and_then(|_| {
-                Err(Error::new(ErrorKind::InvalidData,
-                               "stream did not contain valid UTF-8"))
+                Err(Error::new(ErrorKind::InvalidData, "stream did not contain valid UTF-8"))
             })
         } else {
             g.len = g.buf.len();
@@ -405,23 +410,17 @@ where
 
 pub(crate) fn default_read_vectored<F>(read: F, bufs: &mut [IoSliceMut<'_>]) -> Result<usize>
 where
-    F: FnOnce(&mut [u8]) -> Result<usize>
+    F: FnOnce(&mut [u8]) -> Result<usize>,
 {
-    let buf = bufs
-        .iter_mut()
-        .find(|b| !b.is_empty())
-        .map_or(&mut [][..], |b| &mut **b);
+    let buf = bufs.iter_mut().find(|b| !b.is_empty()).map_or(&mut [][..], |b| &mut **b);
     read(buf)
 }
 
 pub(crate) fn default_write_vectored<F>(write: F, bufs: &[IoSlice<'_>]) -> Result<usize>
 where
-    F: FnOnce(&[u8]) -> Result<usize>
+    F: FnOnce(&[u8]) -> Result<usize>,
 {
-    let buf = bufs
-        .iter()
-        .find(|b| !b.is_empty())
-        .map_or(&[][..], |b| &**b);
+    let buf = bufs.iter().find(|b| !b.is_empty()).map_or(&[][..], |b| &**b);
     write(buf)
 }
 
@@ -767,14 +766,16 @@ pub trait Read {
         while !buf.is_empty() {
             match self.read(buf) {
                 Ok(0) => break,
-                Ok(n) => { let tmp = buf; buf = &mut tmp[n..]; }
+                Ok(n) => {
+                    let tmp = buf;
+                    buf = &mut tmp[n..];
+                }
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
             }
         }
         if !buf.is_empty() {
-            Err(Error::new(ErrorKind::UnexpectedEof,
-                           "failed to fill whole buffer"))
+            Err(Error::new(ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
         } else {
             Ok(())
         }
@@ -815,7 +816,12 @@ pub trait Read {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
+    fn by_ref(&mut self) -> &mut Self
+    where
+        Self: Sized,
+    {
+        self
+    }
 
     /// Transforms this `Read` instance to an [`Iterator`] over its bytes.
     ///
@@ -852,7 +858,10 @@ pub trait Read {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn bytes(self) -> Bytes<Self> where Self: Sized {
+    fn bytes(self) -> Bytes<Self>
+    where
+        Self: Sized,
+    {
         Bytes { inner: self }
     }
 
@@ -887,7 +896,10 @@ pub trait Read {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn chain<R: Read>(self, next: R) -> Chain<Self, R> where Self: Sized {
+    fn chain<R: Read>(self, next: R) -> Chain<Self, R>
+    where
+        Self: Sized,
+    {
         Chain { first: self, second: next, done_first: false }
     }
 
@@ -923,7 +935,10 @@ pub trait Read {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn take(self, limit: u64) -> Take<Self> where Self: Sized {
+    fn take(self, limit: u64) -> Take<Self>
+    where
+        Self: Sized,
+    {
         Take { inner: self, limit: limit }
     }
 }
@@ -972,7 +987,6 @@ impl<'a> IoSliceMut<'a> {
     /// #![feature(io_slice_advance)]
     ///
     /// use std::io::IoSliceMut;
-    /// use std::mem;
     /// use std::ops::Deref;
     ///
     /// let mut buf1 = [1; 8];
@@ -985,7 +999,7 @@ impl<'a> IoSliceMut<'a> {
     /// ][..];
     ///
     /// // Mark 10 bytes as read.
-    /// bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// bufs = IoSliceMut::advance(bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     /// ```
@@ -1075,20 +1089,19 @@ impl<'a> IoSlice<'a> {
     /// #![feature(io_slice_advance)]
     ///
     /// use std::io::IoSlice;
-    /// use std::mem;
     /// use std::ops::Deref;
     ///
-    /// let mut buf1 = [1; 8];
-    /// let mut buf2 = [2; 16];
-    /// let mut buf3 = [3; 8];
+    /// let buf1 = [1; 8];
+    /// let buf2 = [2; 16];
+    /// let buf3 = [3; 8];
     /// let mut bufs = &mut [
-    ///     IoSlice::new(&mut buf1),
-    ///     IoSlice::new(&mut buf2),
-    ///     IoSlice::new(&mut buf3),
+    ///     IoSlice::new(&buf1),
+    ///     IoSlice::new(&buf2),
+    ///     IoSlice::new(&buf3),
     /// ][..];
     ///
     /// // Mark 10 bytes as written.
-    /// bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 10);
+    /// bufs = IoSlice::advance(bufs, 10);
     /// assert_eq!(bufs[0].deref(), [2; 14].as_ref());
     /// assert_eq!(bufs[1].deref(), [3; 8].as_ref());
     #[unstable(feature = "io_slice_advance", issue = "62726")]
@@ -1339,8 +1352,9 @@ pub trait Write {
     fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
         while !buf.is_empty() {
             match self.write(buf) {
-                Ok(0) => return Err(Error::new(ErrorKind::WriteZero,
-                                               "failed to write whole buffer")),
+                Ok(0) => {
+                    return Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"));
+                }
                 Ok(n) => buf = &buf[n..],
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
@@ -1444,7 +1458,12 @@ pub trait Write {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
+    fn by_ref(&mut self) -> &mut Self
+    where
+        Self: Sized,
+    {
+        self
+    }
 }
 
 /// The `Seek` trait provides a cursor which can be moved within a stream of
@@ -1601,15 +1620,14 @@ pub enum SeekFrom {
     Current(#[stable(feature = "rust1", since = "1.0.0")] i64),
 }
 
-fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
-                                   -> Result<usize> {
+fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> Result<usize> {
     let mut read = 0;
     loop {
         let (done, used) = {
             let available = match r.fill_buf() {
                 Ok(n) => n,
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
-                Err(e) => return Err(e)
+                Err(e) => return Err(e),
             };
             match memchr::memchr(delim, available) {
                 Some(i) => {
@@ -1900,7 +1918,10 @@ pub trait BufRead: Read {
     /// assert_eq!(split_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn split(self, byte: u8) -> Split<Self> where Self: Sized {
+    fn split(self, byte: u8) -> Split<Self>
+    where
+        Self: Sized,
+    {
         Split { buf: self, delim: byte }
     }
 
@@ -1939,7 +1960,10 @@ pub trait BufRead: Read {
     ///
     /// [`BufRead::read_line`]: trait.BufRead.html#method.read_line
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn lines(self) -> Lines<Self> where Self: Sized {
+    fn lines(self) -> Lines<Self>
+    where
+        Self: Sized,
+    {
         Lines { buf: self }
     }
 }
@@ -2035,10 +2059,7 @@ impl<T, U> Chain<T, U> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Chain")
-            .field("t", &self.first)
-            .field("u", &self.second)
-            .finish()
+        f.debug_struct("Chain").field("t", &self.first).field("u", &self.second).finish()
     }
 }
 
@@ -2066,11 +2087,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
 
     unsafe fn initializer(&self) -> Initializer {
         let initializer = self.first.initializer();
-        if initializer.should_initialize() {
-            initializer
-        } else {
-            self.second.initializer()
-        }
+        if initializer.should_initialize() { initializer } else { self.second.initializer() }
     }
 }
 
@@ -2079,7 +2096,9 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     fn fill_buf(&mut self) -> Result<&[u8]> {
         if !self.done_first {
             match self.first.fill_buf()? {
-                buf if buf.is_empty() => { self.done_first = true; }
+                buf if buf.is_empty() => {
+                    self.done_first = true;
+                }
                 buf => return Ok(buf),
             }
         }
@@ -2087,11 +2106,7 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
     }
 
     fn consume(&mut self, amt: usize) {
-        if !self.done_first {
-            self.first.consume(amt)
-        } else {
-            self.second.consume(amt)
-        }
+        if !self.done_first { self.first.consume(amt) } else { self.second.consume(amt) }
     }
 }
 
@@ -2137,7 +2152,9 @@ impl<T> Take<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn limit(&self) -> u64 { self.limit }
+    pub fn limit(&self) -> u64 {
+        self.limit
+    }
 
     /// Sets the number of bytes that can be read before this instance will
     /// return EOF. This is the same as constructing a new `Take` instance, so
@@ -2351,7 +2368,7 @@ impl<B: BufRead> Iterator for Split<B> {
                 }
                 Some(Ok(buf))
             }
-            Err(e) => Some(Err(e))
+            Err(e) => Some(Err(e)),
         }
     }
 }
@@ -2385,18 +2402,17 @@ impl<B: BufRead> Iterator for Lines<B> {
                 }
                 Some(Ok(buf))
             }
-            Err(e) => Some(Err(e))
+            Err(e) => Some(Err(e)),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{repeat, Cursor, SeekFrom};
     use crate::cmp;
     use crate::io::prelude::*;
-    use super::{Cursor, SeekFrom, repeat};
     use crate::io::{self, IoSlice, IoSliceMut};
-    use crate::mem;
     use crate::ops::Deref;
 
     #[test]
@@ -2509,16 +2525,14 @@ mod tests {
         let mut buf = [0; 4];
 
         let mut c = Cursor::new(&b""[..]);
-        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEof);
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
 
         let mut c = Cursor::new(&b"123"[..]).chain(Cursor::new(&b"456789"[..]));
         c.read_exact(&mut buf).unwrap();
         assert_eq!(&buf, b"1234");
         c.read_exact(&mut buf).unwrap();
         assert_eq!(&buf, b"5678");
-        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEof);
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
     }
 
     #[test]
@@ -2526,12 +2540,10 @@ mod tests {
         let mut buf = [0; 4];
 
         let mut c = &b""[..];
-        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEof);
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
 
         let mut c = &b"123"[..];
-        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(),
-                   io::ErrorKind::UnexpectedEof);
+        assert_eq!(c.read_exact(&mut buf).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
         // make sure the optimized (early returning) method is being used
         assert_eq!(&buf, &[0; 4]);
 
@@ -2558,7 +2570,7 @@ mod tests {
             fn fill_buf(&mut self) -> io::Result<&[u8]> {
                 Err(io::Error::new(io::ErrorKind::Other, ""))
             }
-            fn consume(&mut self, _amt: usize) { }
+            fn consume(&mut self, _amt: usize) {}
         }
 
         let mut buf = [0; 1];
@@ -2591,11 +2603,9 @@ mod tests {
     #[test]
     fn chain_bufread() {
         let testdata = b"ABCDEFGHIJKL";
-        let chain1 = (&testdata[..3]).chain(&testdata[3..6])
-                                     .chain(&testdata[6..9])
-                                     .chain(&testdata[9..]);
-        let chain2 = (&testdata[..4]).chain(&testdata[4..8])
-                                     .chain(&testdata[8..]);
+        let chain1 =
+            (&testdata[..3]).chain(&testdata[3..6]).chain(&testdata[6..9]).chain(&testdata[9..]);
+        let chain2 = (&testdata[..4]).chain(&testdata[4..8]).chain(&testdata[8..]);
         cmp_bufread(chain1, chain2, &testdata[..]);
     }
 
@@ -2651,7 +2661,6 @@ mod tests {
         assert_eq!(c.stream_position()?, 15);
         assert_eq!(c.stream_position()?, 15);
 
-
         c.seek(SeekFrom::Start(7))?;
         c.seek(SeekFrom::Current(2))?;
         assert_eq!(c.stream_position()?, 9);
@@ -2700,9 +2709,7 @@ mod tests {
         // that will not allocate when the limit has already been reached. In
         // this case, vec2 never grows.
         let mut vec2 = Vec::with_capacity(input.len());
-        ExampleSliceReader { slice: input }
-            .take(input.len() as u64)
-            .read_to_end(&mut vec2)?;
+        ExampleSliceReader { slice: input }.take(input.len() as u64).read_to_end(&mut vec2)?;
         assert_eq!(vec2.len(), input.len());
         assert_eq!(vec2.capacity(), input.len(), "did not allocate more");
 
@@ -2721,26 +2728,26 @@ mod tests {
         ][..];
 
         // Only in a single buffer..
-        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 1);
+        bufs = IoSliceMut::advance(bufs, 1);
         assert_eq!(bufs[0].deref(), [1; 7].as_ref());
         assert_eq!(bufs[1].deref(), [2; 16].as_ref());
         assert_eq!(bufs[2].deref(), [3; 8].as_ref());
 
         // Removing a buffer, leaving others as is.
-        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 7);
+        bufs = IoSliceMut::advance(bufs, 7);
         assert_eq!(bufs[0].deref(), [2; 16].as_ref());
         assert_eq!(bufs[1].deref(), [3; 8].as_ref());
 
         // Removing a buffer and removing from the next buffer.
-        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 18);
+        bufs = IoSliceMut::advance(bufs, 18);
         assert_eq!(bufs[0].deref(), [3; 6].as_ref());
     }
 
     #[test]
     fn io_slice_mut_advance_empty_slice() {
-        let mut empty_bufs = &mut [][..];
+        let empty_bufs = &mut [][..];
         // Shouldn't panic.
-        IoSliceMut::advance(&mut empty_bufs, 1);
+        IoSliceMut::advance(empty_bufs, 1);
     }
 
     #[test]
@@ -2749,48 +2756,48 @@ mod tests {
         let mut bufs = &mut [IoSliceMut::new(&mut buf1)][..];
 
         // Going beyond the total length should be ok.
-        bufs = IoSliceMut::advance(mem::replace(&mut bufs, &mut []), 9);
+        bufs = IoSliceMut::advance(bufs, 9);
         assert!(bufs.is_empty());
     }
 
     #[test]
     fn io_slice_advance() {
-        let mut buf1 = [1; 8];
-        let mut buf2 = [2; 16];
-        let mut buf3 = [3; 8];
+        let buf1 = [1; 8];
+        let buf2 = [2; 16];
+        let buf3 = [3; 8];
         let mut bufs =
-            &mut [IoSlice::new(&mut buf1), IoSlice::new(&mut buf2), IoSlice::new(&mut buf3)][..];
+            &mut [IoSlice::new(&buf1), IoSlice::new(&buf2), IoSlice::new(&buf3)][..];
 
         // Only in a single buffer..
-        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 1);
+        bufs = IoSlice::advance(bufs, 1);
         assert_eq!(bufs[0].deref(), [1; 7].as_ref());
         assert_eq!(bufs[1].deref(), [2; 16].as_ref());
         assert_eq!(bufs[2].deref(), [3; 8].as_ref());
 
         // Removing a buffer, leaving others as is.
-        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 7);
+        bufs = IoSlice::advance(bufs, 7);
         assert_eq!(bufs[0].deref(), [2; 16].as_ref());
         assert_eq!(bufs[1].deref(), [3; 8].as_ref());
 
         // Removing a buffer and removing from the next buffer.
-        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 18);
+        bufs = IoSlice::advance(bufs, 18);
         assert_eq!(bufs[0].deref(), [3; 6].as_ref());
     }
 
     #[test]
     fn io_slice_advance_empty_slice() {
-        let mut empty_bufs = &mut [][..];
+        let empty_bufs = &mut [][..];
         // Shouldn't panic.
-        IoSlice::advance(&mut empty_bufs, 1);
+        IoSlice::advance(empty_bufs, 1);
     }
 
     #[test]
     fn io_slice_advance_beyond_total_length() {
-        let mut buf1 = [1; 8];
-        let mut bufs = &mut [IoSlice::new(&mut buf1)][..];
+        let buf1 = [1; 8];
+        let mut bufs = &mut [IoSlice::new(&buf1)][..];
 
         // Going beyond the total length should be ok.
-        bufs = IoSlice::advance(mem::replace(&mut bufs, &mut []), 9);
+        bufs = IoSlice::advance(bufs, 9);
         assert!(bufs.is_empty());
     }
 }

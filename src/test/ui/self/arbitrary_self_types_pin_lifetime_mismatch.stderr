@@ -24,3 +24,4 @@ LL |     fn bar<'a>(self: Alias<&Self>, arg: &'a ()) -> &() { arg }
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0623`.

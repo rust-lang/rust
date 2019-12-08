@@ -1,7 +1,7 @@
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::io::{self, SeekFrom, IoSlice, IoSliceMut};
+use crate::io::{self, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::{unsupported, Void};
@@ -15,14 +15,14 @@ pub struct ReadDir(Void);
 pub struct DirEntry(Void);
 
 #[derive(Clone, Debug)]
-pub struct OpenOptions { }
+pub struct OpenOptions {}
 
 pub struct FilePermissions(Void);
 
 pub struct FileType(Void);
 
 #[derive(Debug)]
-pub struct DirBuilder { }
+pub struct DirBuilder {}
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
@@ -78,8 +78,7 @@ impl PartialEq for FilePermissions {
     }
 }
 
-impl Eq for FilePermissions {
-}
+impl Eq for FilePermissions {}
 
 impl fmt::Debug for FilePermissions {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -115,8 +114,7 @@ impl PartialEq for FileType {
     }
 }
 
-impl Eq for FileType {
-}
+impl Eq for FileType {}
 
 impl Hash for FileType {
     fn hash<H: Hasher>(&self, _h: &mut H) {
@@ -164,15 +162,15 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions { }
+        OpenOptions {}
     }
 
-    pub fn read(&mut self, _read: bool) { }
-    pub fn write(&mut self, _write: bool) { }
-    pub fn append(&mut self, _append: bool) { }
-    pub fn truncate(&mut self, _truncate: bool) { }
-    pub fn create(&mut self, _create: bool) { }
-    pub fn create_new(&mut self, _create_new: bool) { }
+    pub fn read(&mut self, _read: bool) {}
+    pub fn write(&mut self, _write: bool) {}
+    pub fn append(&mut self, _append: bool) {}
+    pub fn truncate(&mut self, _truncate: bool) {}
+    pub fn create(&mut self, _create: bool) {}
+    pub fn create_new(&mut self, _create_new: bool) {}
 }
 
 impl File {
@@ -235,7 +233,7 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder { }
+        DirBuilder {}
     }
 
     pub fn mkdir(&self, _p: &Path) -> io::Result<()> {

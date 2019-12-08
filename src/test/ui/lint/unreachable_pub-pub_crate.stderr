@@ -1,5 +1,5 @@
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub-pub_crate.rs:15:5
+  --> $DIR/unreachable_pub-pub_crate.rs:14:5
    |
 LL |     pub use std::fmt;
    |     ---^^^^^^^^^^^^^^
@@ -7,14 +7,14 @@ LL |     pub use std::fmt;
    |     help: consider restricting its visibility: `pub(crate)`
    |
 note: lint level defined here
-  --> $DIR/unreachable_pub-pub_crate.rs:11:9
+  --> $DIR/unreachable_pub-pub_crate.rs:10:9
    |
 LL | #![warn(unreachable_pub)]
    |         ^^^^^^^^^^^^^^^
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub-pub_crate.rs:16:24
+  --> $DIR/unreachable_pub-pub_crate.rs:15:24
    |
 LL |     pub use std::env::{Args}; // braced-use has different item spans than unbraced
    |     ---                ^^^^
@@ -124,7 +124,7 @@ warning: unreachable `pub` item
    |
 LL |         ($visibility: vis, $name: ident) => { $visibility struct $name {} }
    |                                               ^^^^^^^^^^^^^^^^^^^^^^^^
-LL |     }
+...
 LL |     define_empty_struct_with_visibility!(pub, Fluorine);
    |     ----------------------------------------------------
    |     |                                    |
@@ -134,7 +134,7 @@ LL |     define_empty_struct_with_visibility!(pub, Fluorine);
    = help: or consider exporting it for use by other crates
 
 warning: unreachable `pub` item
-  --> $DIR/unreachable_pub-pub_crate.rs:44:9
+  --> $DIR/unreachable_pub-pub_crate.rs:45:9
    |
 LL |         pub fn catalyze() -> bool;
    |         ---^^^^^^^^^^^^^^^^^^^^^^^

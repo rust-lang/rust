@@ -1,5 +1,5 @@
 const fn foo() {
-    loop {} //~ ERROR loops are not allowed in const fn
+    loop {} //~ ERROR `loop` is not allowed in a `const fn`
 }
 
 fn main() {}

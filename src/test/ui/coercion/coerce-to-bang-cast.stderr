@@ -1,5 +1,5 @@
 error[E0605]: non-primitive cast: `i32` as `!`
-  --> $DIR/coerce-to-bang-cast.rs:6:13
+  --> $DIR/coerce-to-bang-cast.rs:4:13
    |
 LL |     let y = {return; 22} as !;
    |             ^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let y = {return; 22} as !;
    = note: an `as` expression can only be used to convert between primitive types. Consider using the `From` trait
 
 error[E0605]: non-primitive cast: `i32` as `!`
-  --> $DIR/coerce-to-bang-cast.rs:11:13
+  --> $DIR/coerce-to-bang-cast.rs:9:13
    |
 LL |     let y = 22 as !;
    |             ^^^^^^^

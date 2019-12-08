@@ -106,11 +106,11 @@ item, it will be accompanied by a banner explaining that the item is only availa
 platforms.
 
 For Rustdoc to document an item, it needs to see it, regardless of what platform it's currently
-running on. To aid this, Rustdoc sets the flag `#[cfg(rustdoc)]` when running on your crate.
+running on. To aid this, Rustdoc sets the flag `#[cfg(doc)]` when running on your crate.
 Combining this with the target platform of a given item allows it to appear when building your crate
 normally on that platform, as well as when building documentation anywhere.
 
-For example, `#[cfg(any(windows, rustdoc))]` will preserve the item either on Windows or during the
+For example, `#[cfg(any(windows, doc))]` will preserve the item either on Windows or during the
 documentation process. Then, adding a new attribute `#[doc(cfg(windows))]` will tell Rustdoc that
 the item is supposed to be used on Windows. For example:
 
@@ -118,12 +118,12 @@ the item is supposed to be used on Windows. For example:
 #![feature(doc_cfg)]
 
 /// Token struct that can only be used on Windows.
-#[cfg(any(windows, rustdoc))]
+#[cfg(any(windows, doc))]
 #[doc(cfg(windows))]
 pub struct WindowsToken;
 
 /// Token struct that can only be used on Unix.
-#[cfg(any(unix, rustdoc))]
+#[cfg(any(unix, doc))]
 #[doc(cfg(unix))]
 pub struct UnixToken;
 ```
@@ -293,30 +293,6 @@ Ordinarily, when `rustdoc` prints items in module pages, it will sort them alpha
 some consideration for their stability, and names that end in a number). Giving this flag to
 `rustdoc` will disable this sorting and instead make it print the items in the order they appear in
 the source.
-
-### `--themes`: provide additional themes
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc src/lib.rs -Z unstable-options --themes theme.css
-```
-
-Giving this flag to `rustdoc` will make it copy your theme into the generated crate docs and enable
-it in the theme selector. Note that `rustdoc` will reject your theme file if it doesn't style
-everything the "light" theme does. See `--theme-checker` below for details.
-
-### `--theme-checker`: verify theme CSS for validity
-
-Using this flag looks like this:
-
-```bash
-$ rustdoc -Z unstable-options --theme-checker theme.css
-```
-
-Before including your theme in crate docs, `rustdoc` will compare all the CSS rules it contains
-against the "light" theme included by default. Using this flag will allow you to see which rules are
-missing if `rustdoc` rejects your theme.
 
 ### `--resource-suffix`: modifying the name of CSS/JavaScript in crate docs
 

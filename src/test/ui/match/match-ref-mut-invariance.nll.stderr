@@ -7,6 +7,8 @@ LL |     fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
    |            -- lifetime `'a` defined here
 LL |         match self.0 { ref mut x => x }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: aborting due to previous error
 

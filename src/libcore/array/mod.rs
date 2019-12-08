@@ -1,5 +1,5 @@
 //! Implementations of things like `Eq` for fixed-length arrays
-//! up to a certain length. Eventually we should able to generalize
+//! up to a certain length. Eventually, we should be able to generalize
 //! to all lengths.
 //!
 //! *[See also the array primitive type](../../std/primitive.array.html).*
@@ -14,10 +14,8 @@ use crate::hash::{Hash, self};
 use crate::marker::Unsize;
 use crate::slice::{Iter, IterMut};
 
-#[cfg(not(bootstrap))]
 mod iter;
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "array_value_iter", issue = "65798")]
 pub use iter::IntoIter;
 

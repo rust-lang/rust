@@ -35,7 +35,7 @@ talk about later in this section.
 ## warn
 
 The 'warn' lint level will produce a warning if you violate the lint. For example,
-this code runs afoul of the `unused_variable` lint:
+this code runs afoul of the `unused_variables` lint:
 
 ```rust
 pub fn foo() {

@@ -4,33 +4,6 @@ use std::default::Default;
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = LinkArgs::new();
     pre_link_args.insert(LinkerFlavor::Gcc, vec![
-            // And here, we see obscure linker flags #45. On windows, it has been
-            // found to be necessary to have this flag to compile liblibc.
-            //
-            // First a bit of background. On Windows, the file format is not ELF,
-            // but COFF (at least according to LLVM). COFF doesn't officially allow
-            // for section names over 8 characters, apparently. Our metadata
-            // section, ".note.rustc", you'll note is over 8 characters.
-            //
-            // On more recent versions of gcc on mingw, apparently the section name
-            // is *not* truncated, but rather stored elsewhere in a separate lookup
-            // table. On older versions of gcc, they apparently always truncated th
-            // section names (at least in some cases). Truncating the section name
-            // actually creates "invalid" objects [1] [2], but only for some
-            // introspection tools, not in terms of whether it can be loaded.
-            //
-            // Long story short, passing this flag forces the linker to *not*
-            // truncate section names (so we can find the metadata section after
-            // it's compiled). The real kicker is that rust compiled just fine on
-            // windows for quite a long time *without* this flag, so I have no idea
-            // why it suddenly started failing for liblibc. Regardless, we
-            // definitely don't want section name truncation, so we're keeping this
-            // flag for windows.
-            //
-            // [1] - https://sourceware.org/bugzilla/show_bug.cgi?id=13130
-            // [2] - https://code.google.com/p/go/issues/detail?id=2139
-            "-Wl,--enable-long-section-names".to_string(),
-
             // Tell GCC to avoid linker plugins, because we are not bundling
             // them with Windows installer, and Rust does its own LTO anyways.
             "-fno-use-linker-plugin".to_string(),

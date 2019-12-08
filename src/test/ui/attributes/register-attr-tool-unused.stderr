@@ -1,0 +1,33 @@
+error: unused attribute
+  --> $DIR/register-attr-tool-unused.rs:6:1
+   |
+LL | #[register_attr(attr)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/register-attr-tool-unused.rs:1:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_attributes)]` implied by `#[deny(unused)]`
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
+  --> $DIR/register-attr-tool-unused.rs:6:1
+   |
+LL | #[register_attr(attr)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: unused attribute
+  --> $DIR/register-attr-tool-unused.rs:8:1
+   |
+LL | #[register_tool(tool)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![foo]`
+  --> $DIR/register-attr-tool-unused.rs:8:1
+   |
+LL | #[register_tool(tool)]
+   | ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+

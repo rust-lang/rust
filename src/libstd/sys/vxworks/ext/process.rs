@@ -3,10 +3,10 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::io;
-use crate::sys::vxworks::ext::io::{FromRawFd, RawFd, AsRawFd, IntoRawFd};
 use crate::process;
 use crate::sys;
-use crate::sys_common::{AsInnerMut, AsInner, FromInner, IntoInner};
+use crate::sys::vxworks::ext::io::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
+use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
 /// Unix-specific extensions to the [`process::Command`] builder.
 ///
@@ -55,7 +55,8 @@ pub trait CommandExt {
     /// locations may not appear where intended.
     #[stable(feature = "process_pre_exec", since = "1.34.0")]
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
-        where F: FnMut() -> io::Result<()> + Send + Sync + 'static;
+    where
+        F: FnMut() -> io::Result<()> + Send + Sync + 'static;
 
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
@@ -67,7 +68,8 @@ pub trait CommandExt {
     #[stable(feature = "process_exec", since = "1.15.0")]
     #[rustc_deprecated(since = "1.37.0", reason = "should be unsafe, use `pre_exec` instead")]
     fn before_exec<F>(&mut self, f: F) -> &mut process::Command
-        where F: FnMut() -> io::Result<()> + Send + Sync + 'static
+    where
+        F: FnMut() -> io::Result<()> + Send + Sync + 'static,
     {
         unsafe { self.pre_exec(f) }
     }
@@ -118,7 +120,8 @@ impl CommandExt for process::Command {
     }
 
     unsafe fn pre_exec<F>(&mut self, f: F) -> &mut process::Command
-        where F: FnMut() -> io::Result<()> + Send + Sync + 'static
+    where
+        F: FnMut() -> io::Result<()> + Send + Sync + 'static,
     {
         self.as_inner_mut().pre_exec(Box::new(f));
         self

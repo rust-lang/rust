@@ -1,5 +1,5 @@
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
-  --> $DIR/issue-15778-pass.rs:8:1
+  --> $DIR/issue-15778-pass.rs:16:1
    |
 LL | #![plugin(lint_for_crate_rpass)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: may be removed in a future compiler version

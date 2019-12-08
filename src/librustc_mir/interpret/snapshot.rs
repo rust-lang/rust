@@ -19,6 +19,7 @@ use rustc::ty::layout::{Align, Size};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable;
 use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
@@ -197,21 +198,12 @@ impl_snapshot_for!(enum ScalarMaybeUndef {
     Undef,
 });
 
-impl_stable_hash_for!(struct crate::interpret::MemPlace {
-    ptr,
-    align,
-    meta,
-});
 impl_snapshot_for!(struct MemPlace {
     ptr,
     meta,
     align -> *align, // just copy alignment verbatim
 });
 
-impl_stable_hash_for!(enum crate::interpret::Place {
-    Ptr(mem_place),
-    Local { frame, local },
-});
 impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     where Ctx: SnapshotContext<'a>,
 {
@@ -229,29 +221,16 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     }
 }
 
-impl_stable_hash_for!(enum crate::interpret::Immediate {
-    Scalar(x),
-    ScalarPair(x, y),
-});
 impl_snapshot_for!(enum Immediate {
     Scalar(s),
     ScalarPair(s, t),
 });
 
-impl_stable_hash_for!(enum crate::interpret::Operand {
-    Immediate(x),
-    Indirect(x),
-});
 impl_snapshot_for!(enum Operand {
     Immediate(v),
     Indirect(m),
 });
 
-impl_stable_hash_for!(enum crate::interpret::LocalValue {
-    Dead,
-    Uninitialized,
-    Live(x),
-});
 impl_snapshot_for!(enum LocalValue {
     Dead,
     Uninitialized,
@@ -314,11 +293,6 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for &'a Allocation
     }
 }
 
-impl_stable_hash_for!(enum crate::interpret::eval_context::StackPopCleanup {
-    Goto(block),
-    None { cleanup },
-});
-
 #[derive(Eq, PartialEq)]
 struct FrameSnapshot<'a, 'tcx> {
     instance: ty::Instance<'tcx>,
@@ -326,21 +300,9 @@ struct FrameSnapshot<'a, 'tcx> {
     return_to_block: &'a StackPopCleanup,
     return_place: Option<Place<(), AllocIdSnapshot<'a>>>,
     locals: IndexVec<mir::Local, LocalValue<(), AllocIdSnapshot<'a>>>,
-    block: &'a mir::BasicBlock,
+    block: Option<mir::BasicBlock>,
     stmt: usize,
 }
-
-impl_stable_hash_for!(impl<> for struct Frame<'mir, 'tcx> {
-    body,
-    instance,
-    span,
-    return_to_block,
-    return_place -> (return_place.as_ref().map(|r| &**r)),
-    locals,
-    block,
-    stmt,
-    extra,
-});
 
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
     where Ctx: SnapshotContext<'a>,
@@ -364,7 +326,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
             instance: *instance,
             span: *span,
             return_to_block,
-            block,
+            block: *block,
             stmt: *stmt,
             return_place: return_place.map(|r| r.snapshot(ctx)),
             locals: locals.iter().map(|local| local.snapshot(ctx)).collect(),
@@ -383,11 +345,6 @@ impl<'a, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a LocalState<'tcx>
     }
 }
 
-impl_stable_hash_for!(struct LocalState<'tcx> {
-    value,
-    layout -> _,
-});
-
 impl<'b, 'mir, 'tcx> SnapshotContext<'b>
     for Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>
 {
@@ -399,7 +356,10 @@ impl<'b, 'mir, 'tcx> SnapshotContext<'b>
 /// The virtual machine state during const-evaluation at a given point in time.
 /// We assume the `CompileTimeInterpreter` has no interesting extra state that
 /// is worth considering here.
+#[derive(HashStable)]
 struct InterpSnapshot<'mir, 'tcx> {
+    // Not hashing memory: Avoid hashing memory all the time during execution
+    #[stable_hasher(ignore)]
     memory: Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>,
     stack: Vec<Frame<'mir, 'tcx>>,
 }
@@ -433,12 +393,6 @@ impl<'mir, 'tcx> Hash for InterpSnapshot<'mir, 'tcx> {
         hasher.finish::<u64>().hash(state)
     }
 }
-
-impl_stable_hash_for!(impl<> for struct InterpSnapshot<'mir, 'tcx> {
-    // Not hashing memory: Avoid hashing memory all the time during execution
-    memory -> _,
-    stack,
-});
 
 impl<'mir, 'tcx> Eq for InterpSnapshot<'mir, 'tcx> {}
 

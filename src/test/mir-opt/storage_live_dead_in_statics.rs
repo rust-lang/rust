@@ -36,11 +36,11 @@ fn main() {
 // END RUST SOURCE
 // START rustc.XXX.mir_map.0.mir
 //    let mut _0: &'static Foo;
-//    let mut _1: &'static Foo;
+//    let _1: &'static Foo;
 //    let _2: Foo;
 //    let mut _3: &'static [(u32, u32)];
 //    let mut _4: &'static [(u32, u32); 42];
-//    let mut _5: &'static [(u32, u32); 42];
+//    let _5: &'static [(u32, u32); 42];
 //    let _6: [(u32, u32); 42];
 //    let mut _7: (u32, u32);
 //    let mut _8: (u32, u32);

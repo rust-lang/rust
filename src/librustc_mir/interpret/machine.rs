@@ -11,10 +11,25 @@ use rustc::ty::{self, Ty, TyCtxt};
 use syntax_pos::Span;
 
 use super::{
-    Allocation, AllocId, InterpResult, Scalar, AllocationExtra,
+    Allocation, AllocId, InterpResult, Scalar, AllocationExtra, AssertMessage,
     InterpCx, PlaceTy, OpTy, ImmTy, MemoryKind, Pointer, Memory,
     Frame, Operand,
 };
+
+/// Data returned by Machine::stack_pop,
+/// to provide further control over the popping of the stack frame
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub enum StackPopInfo {
+    /// Indicates that no special handling should be
+    /// done - we'll either return normally or unwind
+    /// based on the terminator for the function
+    /// we're leaving.
+    Normal,
+
+    /// Indicates that we should stop unwinding,
+    /// as we've reached a catch frame
+    StopUnwinding
+}
 
 /// Whether this kind of memory is allowed to leak
 pub trait MayLeak: Copy {
@@ -80,7 +95,7 @@ pub trait Machine<'mir, 'tcx>: Sized {
     type PointerTag: ::std::fmt::Debug + Copy + Eq + Hash + 'static;
 
     /// Machines can define extra (non-instance) things that represent values of function pointers.
-    /// For example, Miri uses this to return a fucntion pointer from `dlsym`
+    /// For example, Miri uses this to return a function pointer from `dlsym`
     /// that can later be called to execute the right thing.
     type ExtraFnVal: ::std::fmt::Debug + Copy;
 
@@ -126,37 +141,46 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// Returns either the mir to use for the call, or `None` if execution should
     /// just proceed (which usually means this hook did all the work that the
     /// called function should usually have done). In the latter case, it is
-    /// this hook's responsibility to call `goto_block(ret)` to advance the instruction pointer!
+    /// this hook's responsibility to advance the instruction pointer!
     /// (This is to support functions like `__rust_maybe_catch_panic` that neither find a MIR
     /// nor just jump to `ret`, but instead push their own stack frame.)
     /// Passing `dest`and `ret` in the same `Option` proved very annoying when only one of them
     /// was used.
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>>;
 
-    /// Execute `fn_val`.  it is the hook's responsibility to advance the instruction
+    /// Execute `fn_val`.  It is the hook's responsibility to advance the instruction
     /// pointer as appropriate.
     fn call_extra_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: Self::ExtraFnVal,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: Option<PlaceTy<'tcx, Self::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
-    /// Directly process an intrinsic without pushing a stack frame.
-    /// If this returns successfully, the engine will take care of jumping to the next block.
+    /// Directly process an intrinsic without pushing a stack frame. It is the hook's
+    /// responsibility to advance the instruction pointer as appropriate.
     fn call_intrinsic(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx, Self::PointerTag>],
-        dest: PlaceTy<'tcx, Self::PointerTag>,
+        ret: Option<(PlaceTy<'tcx, Self::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx>;
+
+    /// Called to evaluate `Assert` MIR terminators that trigger a panic.
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        span: Span,
+        msg: &AssertMessage<'tcx>,
+        unwind: Option<mir::BasicBlock>,
     ) -> InterpResult<'tcx>;
 
     /// Called for read access to a foreign static item.
@@ -217,20 +241,19 @@ pub trait Machine<'mir, 'tcx>: Sized {
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     ///
-    /// For static allocations, the tag returned must be the same as the one returned by
-    /// `tag_static_base_pointer`.
-    fn tag_allocation<'b>(
+    /// Also return the "base" tag to use for this allocation: the one that is used for direct
+    /// accesses to this allocation. If `kind == STATIC_KIND`, this tag must be consistent
+    /// with `tag_static_base_pointer`.
+    fn init_allocation_extra<'b>(
         memory_extra: &Self::MemoryExtra,
         id: AllocId,
         alloc: Cow<'b, Allocation>,
         kind: Option<MemoryKind<Self::MemoryKinds>>,
     ) -> (Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>, Self::PointerTag);
 
-    /// Return the "base" tag for the given static allocation: the one that is used for direct
-    /// accesses to this static/const/fn allocation.
-    ///
-    /// Be aware that requesting the `Allocation` for that `id` will lead to cycles
-    /// for cyclic statics!
+    /// Return the "base" tag for the given *static* allocation: the one that is used for direct
+    /// accesses to this static/const/fn allocation. If `id` is not a static allocation,
+    /// this will return an unusable tag (i.e., accesses will be UB)!
     fn tag_static_base_pointer(
         memory_extra: &Self::MemoryExtra,
         id: AllocId,
@@ -251,9 +274,13 @@ pub trait Machine<'mir, 'tcx>: Sized {
 
     /// Called immediately after a stack frame gets popped
     fn stack_pop(
-        ecx: &mut InterpCx<'mir, 'tcx, Self>,
-        extra: Self::FrameExtra,
-    ) -> InterpResult<'tcx>;
+        _ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _extra: Self::FrameExtra,
+        _unwinding: bool
+    ) -> InterpResult<'tcx, StackPopInfo> {
+        // By default, we do not support unwinding from panics
+        Ok(StackPopInfo::Normal)
+    }
 
     fn int_to_ptr(
         _mem: &Memory<'mir, 'tcx, Self>,

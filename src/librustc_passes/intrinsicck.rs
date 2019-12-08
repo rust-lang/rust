@@ -10,6 +10,8 @@ use syntax_pos::{Span, sym};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 fn check_mod_intrinsics(tcx: TyCtxt<'_>, module_def_id: DefId) {
     tcx.hir().visit_item_likes_in_module(
         module_def_id,

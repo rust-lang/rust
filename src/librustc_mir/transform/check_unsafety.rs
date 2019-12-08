@@ -1,6 +1,4 @@
 use rustc_data_structures::fx::FxHashSet;
-use rustc_index::vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
 
 use rustc::ty::query::Providers;
 use rustc::ty::{self, TyCtxt};
@@ -18,11 +16,12 @@ use std::ops::Bound;
 
 use crate::util;
 
+use rustc_error_codes::*;
+
 pub struct UnsafetyChecker<'a, 'tcx> {
     body: &'a Body<'tcx>,
     const_context: bool,
     min_const_fn: bool,
-    source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
     violations: Vec<UnsafetyViolation>,
     source_info: SourceInfo,
     tcx: TyCtxt<'tcx>,
@@ -37,7 +36,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         const_context: bool,
         min_const_fn: bool,
         body: &'a Body<'tcx>,
-        source_scope_local_data: &'a IndexVec<SourceScope, SourceScopeLocalData>,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> Self {
@@ -49,7 +47,6 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             body,
             const_context,
             min_const_fn,
-            source_scope_local_data,
             violations: vec![],
             source_info: SourceInfo {
                 span: body.span,
@@ -204,25 +201,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 // Locals are safe.
             }
             PlaceBase::Static(box Static { kind: StaticKind::Promoted(_, _), .. }) => {
-                bug!("unsafety checking should happen before promotion")
+                bug!("unsafety checking should happen before promotion");
             }
-            PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }) => {
-                if self.tcx.is_mutable_static(def_id) {
-                    self.require_unsafe(
-                        "use of mutable static",
-                        "mutable statics can be mutated by multiple threads: aliasing \
-                        violations or data races will cause undefined behavior",
-                        UnsafetyViolationKind::General,
-                    );
-                } else if self.tcx.is_foreign_item(def_id) {
-                    self.require_unsafe(
-                        "use of extern static",
-                        "extern statics are not controlled by the Rust type system: \
-                        invalid data, aliasing violations or data races will cause \
-                        undefined behavior",
-                        UnsafetyViolationKind::General,
-                    );
-                }
+            PlaceBase::Static(box Static { kind: StaticKind::Static, .. }) => {
+                bug!("StaticKind::Static should not exist");
             }
         }
 
@@ -232,8 +214,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             if context.is_borrow() {
                 if util::is_disaligned(self.tcx, self.body, self.param_env, place) {
                     let source_info = self.source_info;
-                    let lint_root =
-                        self.source_scope_local_data[source_info.scope].lint_root;
+                    let lint_root = self.body.source_scopes[source_info.scope]
+                        .local_data
+                        .as_ref()
+                        .assert_crate_local()
+                        .lint_root;
                     self.register_violations(&[UnsafetyViolation {
                         source_info,
                         description: Symbol::intern("borrow of packed field"),
@@ -262,11 +247,31 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             }
             let old_source_info = self.source_info;
             if let (PlaceBase::Local(local), []) = (&place.base, proj_base) {
-                if self.body.local_decls[*local].internal {
+                let decl = &self.body.local_decls[*local];
+                if decl.internal {
                     // Internal locals are used in the `move_val_init` desugaring.
                     // We want to check unsafety against the source info of the
                     // desugaring, rather than the source info of the RHS.
                     self.source_info = self.body.local_decls[*local].source_info;
+                } else if let LocalInfo::StaticRef { def_id, .. } = decl.local_info {
+                    if self.tcx.is_mutable_static(def_id) {
+                        self.require_unsafe(
+                            "use of mutable static",
+                            "mutable statics can be mutated by multiple threads: aliasing \
+                        violations or data races will cause undefined behavior",
+                            UnsafetyViolationKind::General,
+                        );
+                        return;
+                    } else if self.tcx.is_foreign_item(def_id) {
+                        self.require_unsafe(
+                            "use of extern static",
+                            "extern statics are not controlled by the Rust type system: \
+                        invalid data, aliasing violations or data races will cause \
+                        undefined behavior",
+                            UnsafetyViolationKind::General,
+                        );
+                        return;
+                    }
                 }
             }
             let base_ty = Place::ty_from(&place.base, proj_base, self.body, self.tcx).ty;
@@ -339,7 +344,11 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(hir::HirId, bool)]) {
-        let safety = self.source_scope_local_data[self.source_info.scope].safety;
+        let safety = self.body.source_scopes[self.source_info.scope]
+            .local_data
+            .as_ref()
+            .assert_crate_local()
+            .safety;
         let within_unsafe = match safety {
             // `unsafe` blocks are required in safe code
             Safety::Safe => {
@@ -509,17 +518,6 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
     // `mir_built` force this.
     let body = &tcx.mir_built(def_id).borrow();
 
-    let source_scope_local_data = match body.source_scope_local_data {
-        ClearCrossCrate::Set(ref data) => data,
-        ClearCrossCrate::Clear => {
-            debug!("unsafety_violations: {:?} - remote, skipping", def_id);
-            return UnsafetyCheckResult {
-                violations: Lrc::new([]),
-                unsafe_blocks: Lrc::new([])
-            }
-        }
-    };
-
     let param_env = tcx.param_env(def_id);
 
     let id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -529,9 +527,10 @@ fn unsafety_check_result(tcx: TyCtxt<'_>, def_id: DefId) -> UnsafetyCheckResult 
         hir::BodyOwnerKind::Const |
         hir::BodyOwnerKind::Static(_) => (true, false),
     };
-    let mut checker = UnsafetyChecker::new(
-        const_context, min_const_fn,
-        body, source_scope_local_data, tcx, param_env);
+    let mut checker = UnsafetyChecker::new(const_context, min_const_fn, body, tcx, param_env);
+    // mir_built ensures that body has a computed cache, so we don't (and can't) attempt to
+    // recompute it here.
+    let body = body.unwrap_read_only();
     checker.visit_body(body);
 
     check_unused_unsafe(tcx, def_id, &checker.used_unsafe, &mut checker.inherited_blocks);
@@ -659,7 +658,7 @@ pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: DefId) {
     let mut unsafe_blocks: Vec<_> = unsafe_blocks.into_iter().collect();
     unsafe_blocks.sort_by_cached_key(|(hir_id, _)| tcx.hir().hir_to_node_id(*hir_id));
     let used_unsafe: FxHashSet<_> = unsafe_blocks.iter()
-        .flat_map(|&&(id, used)| if used { Some(id) } else { None })
+        .flat_map(|&&(id, used)| used.then_some(id))
         .collect();
     for &(block_id, is_used) in unsafe_blocks {
         if !is_used {

@@ -1,8 +1,0 @@
-warning: `#[inline]` is ignored on function prototypes
-  --> $DIR/issue-52057.rs:10:5
-   |
-LL |     #[inline(always)]
-   |     ^^^^^^^^^^^^^^^^^
-   |
-   = note: `#[warn(unused_attributes)]` on by default
-

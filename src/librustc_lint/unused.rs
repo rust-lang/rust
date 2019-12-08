@@ -1,3 +1,4 @@
+use rustc::hir;
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
@@ -7,18 +8,16 @@ use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
+use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::{Applicability, pluralize};
-use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
 use syntax::symbol::Symbol;
 use syntax::util::parser;
 use syntax_pos::{Span, BytePos};
-
-use rustc::hir;
 
 use log::debug;
 
@@ -309,29 +308,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             }
         }
 
-        let plugin_attributes = cx.sess().plugin_attributes.borrow();
-        for &(name, ty) in plugin_attributes.iter() {
-            if ty == AttributeType::Whitelisted && attr.check_name(name) {
-                debug!("{:?} (plugin attr) is whitelisted with ty {:?}", name, ty);
-                break;
-            }
-        }
-
-        let name = attr.name_or_empty();
         if !attr::is_used(attr) {
             debug!("emitting warning for: {:?}", attr);
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
-            let known_crate = attr_info.map(|&&(_, ty, ..)| {
-                    ty == AttributeType::CrateLevel
-            }).unwrap_or(false);
-
-            // Has a plugin registered this attribute as one that must be used at
-            // the crate level?
-            let plugin_crate = plugin_attributes.iter()
-                .find(|&&(x, t)| name == x && AttributeType::CrateLevel == t)
-                .is_some();
-            if known_crate || plugin_crate {
+            if attr_info.map_or(false, |(_, ty, ..)| ty == &AttributeType::CrateLevel) {
                 let msg = match attr.style {
                     ast::AttrStyle::Outer => {
                         "crate-level attribute should be an inner attribute: add an exclamation \

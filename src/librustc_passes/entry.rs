@@ -11,6 +11,8 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 
+use rustc_error_codes::*;
+
 struct EntryContext<'a, 'tcx> {
     session: &'a Session,
 

@@ -7,8 +7,8 @@ LL |     fn jumbo(&self, x: &usize) -> usize;
 LL |     unsafe fn jumbo(&self, x: &usize) { *self + *x; }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected normal fn, found unsafe fn
    |
-   = note: expected type `fn(&usize, &usize) -> usize`
-              found type `unsafe fn(&usize, &usize)`
+   = note: expected fn pointer `fn(&usize, &usize) -> usize`
+              found fn pointer `unsafe fn(&usize, &usize)`
 
 error: aborting due to previous error
 

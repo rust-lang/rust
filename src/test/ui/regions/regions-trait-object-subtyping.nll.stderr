@@ -8,6 +8,8 @@ LL | fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
 LL |     // Without knowing 'a:'b, we can't coerce
 LL |     x
    |     ^ returning this value requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/regions-trait-object-subtyping.rs:22:5
@@ -19,6 +21,8 @@ LL | fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dum
 LL |     // We can't coerce because it is packed in `Wrapper`
 LL |     x
    |     ^ returning this value requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to 2 previous errors
 

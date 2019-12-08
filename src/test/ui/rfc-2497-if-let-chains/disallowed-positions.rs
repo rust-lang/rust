@@ -216,20 +216,17 @@ fn inside_const_generic_arguments() {
 
     if let A::<{
         true && let 1 = 1 //~ ERROR `let` expressions are not supported here
-        //~^ ERROR constant contains unimplemented expression type
-        //~| ERROR constant contains unimplemented expression type
+        //~| ERROR `match` is not allowed in a `const`
     }>::O = 5 {}
 
     while let A::<{
         true && let 1 = 1 //~ ERROR `let` expressions are not supported here
-        //~^ ERROR constant contains unimplemented expression type
-        //~| ERROR constant contains unimplemented expression type
+        //~| ERROR `match` is not allowed in a `const`
     }>::O = 5 {}
 
     if A::<{
         true && let 1 = 1 //~ ERROR `let` expressions are not supported here
-        //~^ ERROR constant contains unimplemented expression type
-        //~| ERROR constant contains unimplemented expression type
+        //~| ERROR `match` is not allowed in a `const`
     }>::O == 5 {}
 
     // In the cases above we have `ExprKind::Block` to help us out.

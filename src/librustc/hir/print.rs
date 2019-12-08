@@ -294,16 +294,12 @@ impl<'a> State<'a> {
             }
             hir::TyKind::Ptr(ref mt) => {
                 self.s.word("*");
-                match mt.mutbl {
-                    hir::MutMutable => self.word_nbsp("mut"),
-                    hir::MutImmutable => self.word_nbsp("const"),
-                }
-                self.print_type(&mt.ty);
+                self.print_mt(mt, true);
             }
             hir::TyKind::Rptr(ref lifetime, ref mt) => {
                 self.s.word("&");
                 self.print_opt_lifetime(lifetime);
-                self.print_mt(mt);
+                self.print_mt(mt, false);
             }
             hir::TyKind::Never => {
                 self.s.word("!");
@@ -390,7 +386,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(ref t, m) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::MutMutable {
+                if m == hir::Mutability::Mutable {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -506,7 +502,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Static(ref ty, m, expr) => {
                 self.head(visibility_qualified(&item.vis, "static"));
-                if m == hir::MutMutable {
+                if m == hir::Mutability::Mutable {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -1178,11 +1174,18 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_addr_of(&mut self,
+                          kind: hir::BorrowKind,
                           mutability: hir::Mutability,
                           expr: &hir::Expr)
-                          {
+    {
         self.s.word("&");
-        self.print_mutability(mutability);
+        match kind {
+            hir::BorrowKind::Ref => self.print_mutability(mutability, false),
+            hir::BorrowKind::Raw => {
+                self.word_nbsp("raw");
+                self.print_mutability(mutability, true);
+            }
+        }
         self.print_expr_maybe_paren(expr, parser::PREC_PREFIX)
     }
 
@@ -1225,8 +1228,8 @@ impl<'a> State<'a> {
             hir::ExprKind::Unary(op, ref expr) => {
                 self.print_expr_unary(op, &expr);
             }
-            hir::ExprKind::AddrOf(m, ref expr) => {
-                self.print_expr_addr_of(m, &expr);
+            hir::ExprKind::AddrOf(k, m, ref expr) => {
+                self.print_expr_addr_of(k, m, &expr);
             }
             hir::ExprKind::Lit(ref lit) => {
                 self.print_literal(&lit);
@@ -1365,14 +1368,15 @@ impl<'a> State<'a> {
                     self.print_expr_maybe_paren(&expr, parser::PREC_JUMP);
                 }
             }
-            hir::ExprKind::InlineAsm(ref a, ref outputs, ref inputs) => {
+            hir::ExprKind::InlineAsm(ref a) => {
+                let i = &a.inner;
                 self.s.word("asm!");
                 self.popen();
-                self.print_string(&a.asm.as_str(), a.asm_str_style);
+                self.print_string(&i.asm.as_str(), i.asm_str_style);
                 self.word_space(":");
 
                 let mut out_idx = 0;
-                self.commasep(Inconsistent, &a.outputs, |s, out| {
+                self.commasep(Inconsistent, &i.outputs, |s, out| {
                     let constraint = out.constraint.as_str();
                     let mut ch = constraint.chars();
                     match ch.next() {
@@ -1383,7 +1387,7 @@ impl<'a> State<'a> {
                         _ => s.print_string(&constraint, ast::StrStyle::Cooked),
                     }
                     s.popen();
-                    s.print_expr(&outputs[out_idx]);
+                    s.print_expr(&a.outputs_exprs[out_idx]);
                     s.pclose();
                     out_idx += 1;
                 });
@@ -1391,28 +1395,28 @@ impl<'a> State<'a> {
                 self.word_space(":");
 
                 let mut in_idx = 0;
-                self.commasep(Inconsistent, &a.inputs, |s, co| {
+                self.commasep(Inconsistent, &i.inputs, |s, co| {
                     s.print_string(&co.as_str(), ast::StrStyle::Cooked);
                     s.popen();
-                    s.print_expr(&inputs[in_idx]);
+                    s.print_expr(&a.inputs_exprs[in_idx]);
                     s.pclose();
                     in_idx += 1;
                 });
                 self.s.space();
                 self.word_space(":");
 
-                self.commasep(Inconsistent, &a.clobbers, |s, co| {
+                self.commasep(Inconsistent, &i.clobbers, |s, co| {
                     s.print_string(&co.as_str(), ast::StrStyle::Cooked);
                 });
 
                 let mut options = vec![];
-                if a.volatile {
+                if i.volatile {
                     options.push("volatile");
                 }
-                if a.alignstack {
+                if i.alignstack {
                     options.push("alignstack");
                 }
-                if a.dialect == ast::AsmDialect::Intel {
+                if i.dialect == ast::AsmDialect::Intel {
                     options.push("intel");
                 }
 
@@ -1628,11 +1632,11 @@ impl<'a> State<'a> {
                 match binding_mode {
                     hir::BindingAnnotation::Ref => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::MutImmutable);
+                        self.print_mutability(hir::Mutability::Immutable, false);
                     }
                     hir::BindingAnnotation::RefMut => {
                         self.word_nbsp("ref");
-                        self.print_mutability(hir::MutMutable);
+                        self.print_mutability(hir::Mutability::Mutable, false);
                     }
                     hir::BindingAnnotation::Unannotated => {}
                     hir::BindingAnnotation::Mutable => {
@@ -1909,10 +1913,10 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureClause) {
+    pub fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
-            hir::CaptureByValue => self.word_space("move"),
-            hir::CaptureByRef => {},
+            hir::CaptureBy::Value => self.word_space("move"),
+            hir::CaptureBy::Ref => {},
         }
     }
 
@@ -2059,15 +2063,15 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_mutability(&mut self, mutbl: hir::Mutability) {
+    pub fn print_mutability(&mut self, mutbl: hir::Mutability, print_const: bool) {
         match mutbl {
-            hir::MutMutable => self.word_nbsp("mut"),
-            hir::MutImmutable => {},
+            hir::Mutability::Mutable => self.word_nbsp("mut"),
+            hir::Mutability::Immutable => if print_const { self.word_nbsp("const") },
         }
     }
 
-    pub fn print_mt(&mut self, mt: &hir::MutTy) {
-        self.print_mutability(mt.mutbl);
+    pub fn print_mt(&mut self, mt: &hir::MutTy, print_const: bool) {
+        self.print_mutability(mt.mutbl, print_const);
         self.print_type(&mt.ty)
     }
 

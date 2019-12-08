@@ -58,15 +58,35 @@ fn test_basic_large() {
 fn test_basic_small() {
     let mut map = BTreeMap::new();
     assert_eq!(map.remove(&1), None);
+    assert_eq!(map.len(), 0);
+    assert_eq!(map.first_key_value(), None);
+    assert_eq!(map.last_key_value(), None);
     assert_eq!(map.get(&1), None);
     assert_eq!(map.insert(1, 1), None);
+    assert_eq!(map.len(), 1);
     assert_eq!(map.get(&1), Some(&1));
+    assert_eq!(map.first_key_value(), Some((&1, &1)));
+    assert_eq!(map.last_key_value(), Some((&1, &1)));
     assert_eq!(map.insert(1, 2), Some(1));
+    assert_eq!(map.len(), 1);
     assert_eq!(map.get(&1), Some(&2));
+    assert_eq!(map.first_key_value(), Some((&1, &2)));
+    assert_eq!(map.last_key_value(), Some((&1, &2)));
     assert_eq!(map.insert(2, 4), None);
+    assert_eq!(map.len(), 2);
     assert_eq!(map.get(&2), Some(&4));
+    assert_eq!(map.first_key_value(), Some((&1, &2)));
+    assert_eq!(map.last_key_value(), Some((&2, &4)));
     assert_eq!(map.remove(&1), Some(2));
+    assert_eq!(map.len(), 1);
+    assert_eq!(map.get(&1), None);
+    assert_eq!(map.get(&2), Some(&4));
+    assert_eq!(map.first_key_value(), Some((&2, &4)));
+    assert_eq!(map.last_key_value(), Some((&2, &4)));
     assert_eq!(map.remove(&2), Some(4));
+    assert_eq!(map.len(), 0);
+    assert_eq!(map.first_key_value(), None);
+    assert_eq!(map.last_key_value(), None);
     assert_eq!(map.remove(&1), None);
 }
 
@@ -604,6 +624,31 @@ fn test_vacant_entry_key() {
     assert_eq!(a.len(), 1);
     assert_eq!(a[key], value);
 }
+
+#[test]
+fn test_first_last_entry() {
+    let mut a = BTreeMap::new();
+    assert!(a.first_entry().is_none());
+    assert!(a.last_entry().is_none());
+    a.insert(1, 42);
+    assert_eq!(a.first_entry().unwrap().key(), &1);
+    assert_eq!(a.last_entry().unwrap().key(), &1);
+    a.insert(2, 24);
+    assert_eq!(a.first_entry().unwrap().key(), &1);
+    assert_eq!(a.last_entry().unwrap().key(), &2);
+    a.insert(0, 6);
+    assert_eq!(a.first_entry().unwrap().key(), &0);
+    assert_eq!(a.last_entry().unwrap().key(), &2);
+    let (k1, v1) = a.first_entry().unwrap().remove_entry();
+    assert_eq!(k1, 0);
+    assert_eq!(v1, 6);
+    let (k2, v2) = a.last_entry().unwrap().remove_entry();
+    assert_eq!(k2, 2);
+    assert_eq!(v2, 24);
+    assert_eq!(a.first_entry().unwrap().key(), &1);
+    assert_eq!(a.last_entry().unwrap().key(), &1);
+}
+
 
 macro_rules! create_append_test {
     ($name:ident, $len:expr) => {

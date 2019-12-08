@@ -8,7 +8,6 @@ use std::iter::once;
 use syntax::symbol::{kw, Ident};
 use syntax_pos::Span;
 use crate::middle::lang_items;
-use crate::mir::interpret::ConstValue;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -210,7 +209,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     //   LL | impl Bar for Foo {
                     //      | ---------------- in this `impl` item
                     //   LL |     type Ok = ();
-                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //      |     ^^^^^^^^^^^^^ expected `u32`, found `()`
                     //      |
                     //      = note: expected type `u32`
                     //                 found type `()`
@@ -229,7 +228,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
                     //   LL | impl Bar for Foo {
                     //      | ---------------- in this `impl` item
                     //   LL |     type Ok = ();
-                    //      |     ^^^^^^^^^^^^^ expected u32, found ()
+                    //      |     ^^^^^^^^^^^^^ expected `u32`, found `()`
                     //   ...
                     //   LL | impl Bar2 for Foo2 {
                     //      | ---------------- in this `impl` item
@@ -363,7 +362,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
     /// Pushes the obligations required for an array length to be WF
     /// into `self.out`.
     fn compute_array_len(&mut self, constant: ty::Const<'tcx>) {
-        if let ConstValue::Unevaluated(def_id, substs) = constant.val {
+        if let ty::ConstKind::Unevaluated(def_id, substs) = constant.val {
             let obligations = self.nominal_obligations(def_id, substs);
             self.out.extend(obligations);
 

@@ -24,7 +24,7 @@
 use std::fmt::Write;
 
 use rustc::hir::def::{Res, DefKind};
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, layout::VariantIdx};
 use rustc::{lint, util};
 use rustc::lint::FutureIncompatibleInfo;
@@ -34,15 +34,15 @@ use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass, EarlyLintPass, EarlyContext};
 
 use rustc::util::nodemap::FxHashSet;
+use rustc_feature::{AttributeGate, AttributeTemplate, AttributeType, deprecated_attributes};
+use rustc_feature::Stability;
 
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast::{self, Expr};
 use syntax::ptr::P;
-use syntax::attr::{self, HasAttrs, AttributeTemplate};
+use syntax::attr::{self, HasAttrs};
 use syntax::source_map::Spanned;
 use syntax::edition::Edition;
-use syntax::feature_gate::{self, AttributeGate, AttributeType};
-use syntax::feature_gate::{Stability, deprecated_attributes};
 use syntax_pos::{BytePos, Span};
 use syntax::symbol::{Symbol, kw, sym};
 use syntax::errors::{Applicability, DiagnosticBuilder};
@@ -801,45 +801,6 @@ impl EarlyLintPass for UnusedDocComment {
 }
 
 declare_lint! {
-    PLUGIN_AS_LIBRARY,
-    Warn,
-    "compiler plugin used as ordinary library in non-plugin crate"
-}
-
-declare_lint_pass!(PluginAsLibrary => [PLUGIN_AS_LIBRARY]);
-
-impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PluginAsLibrary {
-    fn check_item(&mut self, cx: &LateContext<'_, '_>, it: &hir::Item) {
-        if cx.tcx.plugin_registrar_fn(LOCAL_CRATE).is_some() {
-            // We're compiling a plugin; it's fine to link other plugins.
-            return;
-        }
-
-        match it.kind {
-            hir::ItemKind::ExternCrate(..) => (),
-            _ => return,
-        };
-
-        let def_id = cx.tcx.hir().local_def_id(it.hir_id);
-        let prfn = match cx.tcx.extern_mod_stmt_cnum(def_id) {
-            Some(cnum) => cx.tcx.plugin_registrar_fn(cnum),
-            None => {
-                // Probably means we aren't linking the crate for some reason.
-                //
-                // Not sure if / when this could happen.
-                return;
-            }
-        };
-
-        if prfn.is_some() {
-            cx.span_lint(PLUGIN_AS_LIBRARY,
-                         it.span,
-                         "compiler plugin used as an ordinary library");
-        }
-    }
-}
-
-declare_lint! {
     NO_MANGLE_CONST_ITEMS,
     Deny,
     "const items will not have their symbols exported"
@@ -926,8 +887,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                    consider instead using an UnsafeCell";
         match get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (&ty1.kind, &ty2.kind)) {
             Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) => {
-                if to_mt == hir::Mutability::MutMutable &&
-                   from_mt == hir::Mutability::MutImmutable {
+                if to_mt == hir::Mutability::Mutable &&
+                   from_mt == hir::Mutability::Immutable {
                     cx.span_lint(MUTABLE_TRANSMUTES, expr.span, msg);
                 }
             }
@@ -1268,7 +1229,6 @@ declare_lint_pass!(
         MISSING_DEBUG_IMPLEMENTATIONS,
         ANONYMOUS_PARAMETERS,
         UNUSED_DOC_COMMENTS,
-        PLUGIN_AS_LIBRARY,
         NO_MANGLE_CONST_ITEMS,
         NO_MANGLE_GENERIC_ITEMS,
         MUTABLE_TRANSMUTES,
@@ -1490,10 +1450,10 @@ impl KeywordIdents {
 
 impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef, _id: ast::NodeId) {
-        self.check_tokens(cx, mac_def.stream());
+        self.check_tokens(cx, mac_def.body.inner_tokens());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::Mac) {
-        self.check_tokens(cx, mac.tts.clone().into());
+        self.check_tokens(cx, mac.args.inner_tokens());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: ast::Ident) {
         self.check_ident_token(cx, UnderMacro(false), ident);
@@ -1531,11 +1491,7 @@ impl ExplicitOutlivesRequirements {
             match pred {
                 ty::Predicate::TypeOutlives(outlives) => {
                     let outlives = outlives.skip_binder();
-                    if outlives.0.is_param(index) {
-                        Some(outlives.1)
-                    } else {
-                        None
-                    }
+                    outlives.0.is_param(index).then_some(outlives.1)
                 }
                 _ => None
             }
@@ -1594,11 +1550,7 @@ impl ExplicitOutlivesRequirements {
                             }),
                         _ => false,
                     };
-                    if is_inferred {
-                        Some((i, bound.span()))
-                    } else {
-                        None
-                    }
+                    is_inferred.then_some((i, bound.span()))
                 } else {
                     None
                 }
@@ -1850,7 +1802,7 @@ impl EarlyLintPass for IncompleteFeatures {
         features.declared_lang_features
             .iter().map(|(name, span, _)| (name, span))
             .chain(features.declared_lib_features.iter().map(|(name, span)| (name, span)))
-            .filter(|(name, _)| feature_gate::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
+            .filter(|(name, _)| rustc_feature::INCOMPLETE_FEATURES.iter().any(|f| name == &f))
             .for_each(|(name, &span)| {
                 cx.struct_span_lint(
                     INCOMPLETE_FEATURES,

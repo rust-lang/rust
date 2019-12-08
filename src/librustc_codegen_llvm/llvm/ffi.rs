@@ -701,8 +701,8 @@ extern "C" {
 
     // Operations on all values
     pub fn LLVMTypeOf(Val: &Value) -> &Type;
-    pub fn LLVMGetValueName(Val: &Value) -> *const c_char;
-    pub fn LLVMSetValueName(Val: &Value, Name: *const c_char);
+    pub fn LLVMGetValueName2(Val: &Value, Length: *mut size_t) -> *const c_char;
+    pub fn LLVMSetValueName2(Val: &Value, Name: *const c_char, NameLen: size_t);
     pub fn LLVMReplaceAllUsesWith(OldVal: &'a Value, NewVal: &'a Value);
     pub fn LLVMSetMetadata(Val: &'a Value, KindID: c_uint, Node: &'a Value);
 
@@ -774,7 +774,8 @@ extern "C" {
     pub fn LLVMIsAGlobalVariable(GlobalVar: &Value) -> Option<&Value>;
     pub fn LLVMAddGlobal(M: &'a Module, Ty: &'a Type, Name: *const c_char) -> &'a Value;
     pub fn LLVMGetNamedGlobal(M: &Module, Name: *const c_char) -> Option<&Value>;
-    pub fn LLVMRustGetOrInsertGlobal(M: &'a Module, Name: *const c_char, T: &'a Type) -> &'a Value;
+    pub fn LLVMRustGetOrInsertGlobal(M: &'a Module, Name: *const c_char, NameLen: size_t,
+                                     T: &'a Type) -> &'a Value;
     pub fn LLVMRustInsertPrivateGlobal(M: &'a Module, T: &'a Type) -> &'a Value;
     pub fn LLVMGetFirstGlobal(M: &Module) -> Option<&Value>;
     pub fn LLVMGetNextGlobal(GlobalVar: &Value) -> Option<&Value>;
@@ -1341,6 +1342,8 @@ extern "C" {
 
     pub fn LLVMInitializePasses();
 
+    pub fn LLVMAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>);
+
     pub fn LLVMPassManagerBuilderCreate() -> &'static mut PassManagerBuilder;
     pub fn LLVMPassManagerBuilderDispose(PMB: &'static mut PassManagerBuilder);
     pub fn LLVMPassManagerBuilderSetSizeLevel(PMB: &PassManagerBuilder, Value: Bool);
@@ -1670,6 +1673,11 @@ extern "C" {
 
     pub fn LLVMRustPassKind(Pass: &Pass) -> PassKind;
     pub fn LLVMRustFindAndCreatePass(Pass: *const c_char) -> Option<&'static mut Pass>;
+    pub fn LLVMRustCreateAddressSanitizerFunctionPass(Recover: bool) -> &'static mut Pass;
+    pub fn LLVMRustCreateModuleAddressSanitizerPass(Recover: bool) -> &'static mut Pass;
+    pub fn LLVMRustCreateMemorySanitizerPass(TrackOrigins: c_int,
+                                             Recover: bool) -> &'static mut Pass;
+    pub fn LLVMRustCreateThreadSanitizerPass() -> &'static mut Pass;
     pub fn LLVMRustAddPass(PM: &PassManager<'_>, Pass: &'static mut Pass);
     pub fn LLVMRustAddLastExtensionPasses(PMB: &PassManagerBuilder,
                                           Passes: *const &'static mut Pass,
@@ -1695,10 +1703,10 @@ extern "C" {
                                        TrapUnreachable: bool,
                                        Singlethread: bool,
                                        AsmComments: bool,
-                                       EmitStackSizeSection: bool)
+                                       EmitStackSizeSection: bool,
+                                       RelaxELFRelocations: bool)
                                        -> Option<&'static mut TargetMachine>;
     pub fn LLVMRustDisposeTargetMachine(T: &'static mut TargetMachine);
-    pub fn LLVMRustAddAnalysisPasses(T: &'a TargetMachine, PM: &PassManager<'a>, M: &'a Module);
     pub fn LLVMRustAddBuilderLibraryInfo(PMB: &'a PassManagerBuilder,
                                          M: &'a Module,
                                          DisableSimplifyLibCalls: bool);
@@ -1720,8 +1728,7 @@ extern "C" {
                                    Output: *const c_char,
                                    FileType: FileType)
                                    -> LLVMRustResult;
-    pub fn LLVMRustPrintModule(PM: &PassManager<'a>,
-                               M: &'a Module,
+    pub fn LLVMRustPrintModule(M: &'a Module,
                                Output: *const c_char,
                                Demangle: extern fn(*const c_char,
                                                    size_t,
@@ -1805,7 +1812,7 @@ extern "C" {
 
     pub fn LLVMRustPositionBuilderAtStart(B: &Builder<'a>, BB: &'a BasicBlock);
 
-    pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char);
+    pub fn LLVMRustSetComdat(M: &'a Module, V: &'a Value, Name: *const c_char, NameLen: size_t);
     pub fn LLVMRustUnsetComdat(V: &Value);
     pub fn LLVMRustSetModulePICLevel(M: &Module);
     pub fn LLVMRustSetModulePIELevel(M: &Module);

@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |         (1, 2, 3, 4) => {}
    |         ^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
    |
-   = note: expected type `({integer}, {integer}, {integer})`
-              found type `(_, _, _, _)`
+   = note: expected tuple `({integer}, {integer}, {integer})`
+              found tuple `(_, _, _, _)`
 
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-overfield.rs:6:9
@@ -13,8 +13,8 @@ error[E0308]: mismatched types
 LL |         (1, 2, .., 3, 4) => {}
    |         ^^^^^^^^^^^^^^^^ expected a tuple with 3 elements, found one with 4 elements
    |
-   = note: expected type `({integer}, {integer}, {integer})`
-              found type `(_, _, _, _)`
+   = note: expected tuple `({integer}, {integer}, {integer})`
+              found tuple `(_, _, _, _)`
 
 error[E0023]: this pattern has 4 fields, but the corresponding tuple struct has 3 fields
   --> $DIR/pat-tuple-overfield.rs:10:9

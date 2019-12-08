@@ -25,7 +25,7 @@ pub fn debug_fmt_bytestring(slice: &[u8], f: &mut Formatter<'_>) -> Result {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fmt::{Formatter, Result, Debug};
+    use crate::fmt::{Debug, Formatter, Result};
 
     #[test]
     fn smoke() {
@@ -37,7 +37,7 @@ mod tests {
             }
         }
 
-        let input =      b"\xF0hello,\tworld";
+        let input = b"\xF0hello,\tworld";
         let expected = r#""\xF0hello,\tworld""#;
         let output = format!("{:?}", Helper(input));
 

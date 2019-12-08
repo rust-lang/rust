@@ -294,11 +294,11 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
     let mut parts = version.split('.').take(2)
         .filter_map(|s| s.parse::<u32>().ok());
     if let (Some(major), Some(_minor)) = (parts.next(), parts.next()) {
-        if major >= 6 {
+        if major >= 7 {
             return
         }
     }
-    panic!("\n\nbad LLVM version: {}, need >=6.0\n\n", version)
+    panic!("\n\nbad LLVM version: {}, need >=7.0\n\n", version)
 }
 
 fn configure_cmake(builder: &Builder<'_>,

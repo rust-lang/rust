@@ -1,8 +1,8 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/issue-36537.rs:5:9
+  --> $DIR/issue-36537.rs:5:13
    |
 LL |         p = &a;
-   |         ^^^^^^ borrowed value does not live long enough
+   |             ^^ borrowed value does not live long enough
 ...
 LL |     }
    |     - `a` dropped here while still borrowed

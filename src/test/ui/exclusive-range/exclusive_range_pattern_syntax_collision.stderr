@@ -12,8 +12,8 @@ LL |     match [5..4, 99..105, 43..44] {
 LL |         [_, 99.., _] => {},
    |             ^^^^ expected struct `std::ops::Range`, found integer
    |
-   = note: expected type `std::ops::Range<{integer}>`
-              found type `{integer}`
+   = note: expected struct `std::ops::Range<{integer}>`
+                found type `{integer}`
 
 error: aborting due to 2 previous errors
 

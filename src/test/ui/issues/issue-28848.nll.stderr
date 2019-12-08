@@ -7,6 +7,8 @@ LL | pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
    |            lifetime `'a` defined here
 LL |     Foo::<'a, 'b>::xmute(u)
    |     ^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to previous error
 

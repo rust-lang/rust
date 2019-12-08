@@ -11,10 +11,10 @@ use std::fmt::Display;
 use std::io;
 use std::io::prelude::*;
 
-use syntax::source_map::SourceMap;
-use syntax::parse::lexer;
+use rustc_parse::lexer;
 use syntax::token::{self, Token};
 use syntax::sess::ParseSess;
+use syntax::source_map::SourceMap;
 use syntax::symbol::{kw, sym};
 use syntax_pos::{Span, FileName};
 

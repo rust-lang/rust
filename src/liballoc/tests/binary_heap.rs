@@ -347,7 +347,7 @@ fn assert_covariance() {
 // Destructors must be called exactly once per element.
 // FIXME: re-enable emscripten once it can unwind again
 #[test]
-#[cfg(not(any(miri, target_os = "emscripten")))] // Miri does not support catching panics
+#[cfg(not(target_os = "emscripten"))]
 fn panic_safe() {
     use std::cmp;
     use std::panic::{self, AssertUnwindSafe};
@@ -376,7 +376,10 @@ fn panic_safe() {
     }
     let mut rng = thread_rng();
     const DATASZ: usize = 32;
+    #[cfg(not(miri))] // Miri is too slow
     const NTEST: usize = 10;
+    #[cfg(miri)]
+    const NTEST: usize = 1;
 
     // don't use 0 in the data -- we want to catch the zeroed-out case.
     let data = (1..=DATASZ).collect::<Vec<_>>();

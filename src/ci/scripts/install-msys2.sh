@@ -12,8 +12,8 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isWindows; then
-    choco install msys2 --params="/InstallDir:${SYSTEM_WORKFOLDER}/msys2 /NoPath" -y --no-progress
-    mkdir -p "${SYSTEM_WORKFOLDER}/msys2/home/${USERNAME}"
+    choco install msys2 --params="/InstallDir:$(ciCheckoutPath)/msys2 /NoPath" -y --no-progress
+    mkdir -p "$(ciCheckoutPath)/msys2/home/${USERNAME}"
 
-    ciCommandAddPath "${SYSTEM_WORKFOLDER}/msys2/usr/bin"
+    ciCommandAddPath "$(ciCheckoutPath)/msys2/usr/bin"
 fi

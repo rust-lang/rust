@@ -45,19 +45,13 @@ error[E0308]: mismatched types
   --> $DIR/require-parens-for-chained-comparison.rs:8:14
    |
 LL |     false == 0 < 2;
-   |              ^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
+   |              ^ expected `bool`, found integer
 
 error[E0308]: mismatched types
   --> $DIR/require-parens-for-chained-comparison.rs:8:18
    |
 LL |     false == 0 < 2;
-   |                  ^ expected bool, found integer
-   |
-   = note: expected type `bool`
-              found type `{integer}`
+   |                  ^ expected `bool`, found integer
 
 error: aborting due to 7 previous errors
 

@@ -97,10 +97,6 @@ const fn foo30_2(x: *mut u32) -> usize { x as usize }
 //~^ ERROR casting pointers to ints is unstable
 const fn foo30_2_with_unsafe(x: *mut u32) -> usize { unsafe { x as usize } }
 //~^ ERROR casting pointers to ints is unstable
-const fn foo30_4(b: bool) -> usize { if b { 1 } else { 42 } }
-//~^ ERROR loops and conditional expressions are not stable in const fn
-const fn foo30_5(b: bool) { while b { } }
-//~^ ERROR loops are not allowed in const fn
 const fn foo30_6() -> bool { let x = true; x }
 const fn foo36(a: bool, b: bool) -> bool { a && b }
 //~^ ERROR loops and conditional expressions are not stable in const fn

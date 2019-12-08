@@ -1,6 +1,6 @@
-// aux-build:attr-plugin-test.rs
+// aux-build:empty-plugin.rs
 
-#![plugin(attr_plugin_test)]
+#![plugin(empty_plugin)]
 //~^ ERROR compiler plugins are deprecated
 //~| WARN use of deprecated attribute `plugin`: compiler plugins are deprecated
 

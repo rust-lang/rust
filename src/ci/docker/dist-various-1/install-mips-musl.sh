@@ -5,7 +5,7 @@ mkdir /usr/local/mips-linux-musl
 # originally from
 # https://downloads.openwrt.org/snapshots/trunk/ar71xx/generic/
 # OpenWrt-Toolchain-ar71xx-generic_gcc-5.3.0_musl-1.1.16.Linux-x86_64.tar.bz2
-URL="https://rust-lang-ci-mirrors.s3-us-west-1.amazonaws.com/rustc"
+URL="https://ci-mirrors.rust-lang.org/rustc"
 FILE="OpenWrt-Toolchain-ar71xx-generic_gcc-5.3.0_musl-1.1.16.Linux-x86_64.tar.bz2"
 curl -L "$URL/$FILE" | tar xjf - -C /usr/local/mips-linux-musl --strip-components=2
 

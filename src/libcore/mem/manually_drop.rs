@@ -1,5 +1,5 @@
-use crate::ptr;
 use crate::ops::{Deref, DerefMut};
+use crate::ptr;
 
 /// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
 ///

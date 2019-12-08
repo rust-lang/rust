@@ -84,10 +84,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 }
             }
 
+            PatKind::Or { .. } => {
+                self.hir.tcx().sess.span_fatal(
+                    match_pair.pattern.span,
+                    "or-patterns are not fully implemented yet"
+                )
+            }
+
             PatKind::AscribeUserType { .. } |
             PatKind::Array { .. } |
             PatKind::Wild |
-            PatKind::Or { .. } |
             PatKind::Binding { .. } |
             PatKind::Leaf { .. } |
             PatKind::Deref { .. } => {
@@ -488,7 +494,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Given that we are performing `test` against `test_place`, this job
     /// sorts out what the status of `candidate` will be after the test. See
     /// `test_candidates` for the usage of this function. The returned index is
-    /// the index that this candiate should be placed in the
+    /// the index that this candidate should be placed in the
     /// `target_candidates` vec. The candidate may be modified to update its
     /// `match_pairs`.
     ///
@@ -674,7 +680,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     }
                 })();
 
-                if no_overlap == Some(true) {
+                if let Some(true) = no_overlap {
                     // Testing range does not overlap with pattern range,
                     // so the pattern can be matched only if this test fails.
                     Some(1)
@@ -684,7 +690,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             (&TestKind::Range(range), &PatKind::Constant { value }) => {
-                if self.const_range_contains(range, value) == Some(false) {
+                if let Some(false) = self.const_range_contains(range, value) {
                     // `value` is not contained in the testing range,
                     // so `value` can be matched only if this test fails.
                     Some(1)

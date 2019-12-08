@@ -1,16 +1,18 @@
 macro_rules! unimpl {
-    () => (return Err(io::Error::new(io::ErrorKind::Other, "No networking available on L4Re."));)
+    () => {
+        return Err(io::Error::new(io::ErrorKind::Other, "No networking available on L4Re."));
+    };
 }
 
 pub mod net {
     #![allow(warnings)]
+    use crate::convert::TryFrom;
     use crate::fmt;
     use crate::io::{self, IoSlice, IoSliceMut};
-    use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr};
-    use crate::sys_common::{AsInner, FromInner, IntoInner};
+    use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
     use crate::sys::fd::FileDesc;
+    use crate::sys_common::{AsInner, FromInner, IntoInner};
     use crate::time::Duration;
-    use crate::convert::TryFrom;
 
     #[allow(unused_extern_crates)]
     pub extern crate libc as netc;
@@ -33,8 +35,11 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn accept(&self, _: *mut libc::sockaddr, _: *mut libc::socklen_t)
-                  -> io::Result<Socket> {
+        pub fn accept(
+            &self,
+            _: *mut libc::sockaddr,
+            _: *mut libc::socklen_t,
+        ) -> io::Result<Socket> {
             unimpl!();
         }
 
@@ -100,15 +105,21 @@ pub mod net {
     }
 
     impl AsInner<libc::c_int> for Socket {
-        fn as_inner(&self) -> &libc::c_int { self.0.as_inner() }
+        fn as_inner(&self) -> &libc::c_int {
+            self.0.as_inner()
+        }
     }
 
     impl FromInner<libc::c_int> for Socket {
-        fn from_inner(fd: libc::c_int) -> Socket { Socket(FileDesc::new(fd)) }
+        fn from_inner(fd: libc::c_int) -> Socket {
+            Socket(FileDesc::new(fd))
+        }
     }
 
     impl IntoInner<libc::c_int> for Socket {
-        fn into_inner(self) -> libc::c_int { self.0.into_raw() }
+        fn into_inner(self) -> libc::c_int {
+            self.0.into_raw()
+        }
     }
 
     pub struct TcpStream {
@@ -124,9 +135,13 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn socket(&self) -> &Socket { &self.inner }
+        pub fn socket(&self) -> &Socket {
+            &self.inner
+        }
 
-        pub fn into_socket(self) -> Socket { self.inner }
+        pub fn into_socket(self) -> Socket {
+            self.inner
+        }
 
         pub fn set_read_timeout(&self, _: Option<Duration>) -> io::Result<()> {
             unimpl!();
@@ -226,9 +241,13 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn socket(&self) -> &Socket { &self.inner }
+        pub fn socket(&self) -> &Socket {
+            &self.inner
+        }
 
-        pub fn into_socket(self) -> Socket { self.inner }
+        pub fn into_socket(self) -> Socket {
+            self.inner
+        }
 
         pub fn socket_addr(&self) -> io::Result<SocketAddr> {
             unimpl!();
@@ -288,9 +307,13 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn socket(&self) -> &Socket { &self.inner }
+        pub fn socket(&self) -> &Socket {
+            &self.inner
+        }
 
-        pub fn into_socket(self) -> Socket { self.inner }
+        pub fn into_socket(self) -> Socket {
+            self.inner
+        }
 
         pub fn peer_addr(&self) -> io::Result<SocketAddr> {
             unimpl!();
@@ -364,24 +387,20 @@ pub mod net {
             unimpl!();
         }
 
-        pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr)
-                             -> io::Result<()> {
-                                 unimpl!();
+        pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
+            unimpl!();
         }
 
-        pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32)
-                             -> io::Result<()> {
-                                 unimpl!();
+        pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
+            unimpl!();
         }
 
-        pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr)
-                              -> io::Result<()> {
-                                  unimpl!();
+        pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
+            unimpl!();
         }
 
-        pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32)
-                              -> io::Result<()> {
-                                  unimpl!();
+        pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
+            unimpl!();
         }
 
         pub fn set_ttl(&self, _: u32) -> io::Result<()> {
@@ -449,7 +468,6 @@ pub mod net {
 
     unsafe impl Sync for LookupHost {}
     unsafe impl Send for LookupHost {}
-
 
     impl TryFrom<&str> for LookupHost {
         type Error = io::Error;

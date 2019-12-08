@@ -2,14 +2,14 @@
 
 #![allow(rustc::usage_of_ty_tykind)]
 
+use self::InferTy::*;
+use self::TyKind::*;
+
 use crate::hir;
 use crate::hir::def_id::DefId;
 use crate::infer::canonical::Canonical;
 use crate::mir::interpret::ConstValue;
 use crate::middle::region;
-use polonius_engine::Atom;
-use rustc_index::vec::Idx;
-use rustc_macros::HashStable;
 use crate::ty::subst::{InternalSubsts, Subst, SubstsRef, GenericArg, GenericArgKind};
 use crate::ty::{self, AdtDef, Discr, DefIdTree, TypeFlags, Ty, TyCtxt, TypeFoldable};
 use crate::ty::{List, TyS, ParamEnvAnd, ParamEnv};
@@ -17,27 +17,30 @@ use crate::ty::layout::VariantIdx;
 use crate::util::captures::Captures;
 use crate::mir::interpret::{Scalar, GlobalId};
 
+use polonius_engine::Atom;
+use rustc_index::vec::Idx;
+use rustc_macros::HashStable;
+use rustc_target::spec::abi;
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::marker::PhantomData;
 use std::ops::Range;
-use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{kw, Symbol};
 
-use self::InferTy::*;
-use self::TyKind::*;
-
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord,
-         Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(
+    Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable,
+    HashStable, TypeFoldable, Lift,
+)]
 pub struct TypeAndMut<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: hir::Mutability,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Copy, HashStable)]
+#[derive(
+    Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable, RustcDecodable, Copy, HashStable,
+)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -45,8 +48,9 @@ pub struct FreeRegion {
     pub bound_region: BoundRegion,
 }
 
-#[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-         RustcEncodable, RustcDecodable, Copy, HashStable)]
+#[derive(
+    Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable, RustcDecodable, Copy, HashStable,
+)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -65,7 +69,7 @@ pub enum BoundRegion {
 impl BoundRegion {
     pub fn is_named(&self) -> bool {
         match *self {
-            BoundRegion::BrNamed(..) => true,
+            BoundRegion::BrNamed(_, name) => name != kw::UnderscoreLifetime,
             _ => false,
         }
     }
@@ -162,7 +166,7 @@ pub enum TyKind<'tcx> {
 
     /// The anonymous type of a generator. Used to represent the type of
     /// `|a| yield a`.
-    Generator(DefId, SubstsRef<'tcx>, hir::GeneratorMovability),
+    Generator(DefId, SubstsRef<'tcx>, hir::Movability),
 
     /// A type representin the types stored inside a generator.
     /// This should only appear in GeneratorInteriors.
@@ -304,7 +308,7 @@ static_assert_size!(TyKind<'_>, 24);
 /// type parameters is similar, but the role of CK and CS are
 /// different. CK represents the "yield type" and CS represents the
 /// "return type" of the generator.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct ClosureSubsts<'tcx> {
     /// Lifetime and type parameters from the enclosing function,
     /// concatenated with the types of the upvars.
@@ -391,7 +395,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
 }
 
 /// Similar to `ClosureSubsts`; see the above documentation for more.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct GeneratorSubsts<'tcx> {
     pub substs: SubstsRef<'tcx>,
 }
@@ -471,18 +475,18 @@ impl<'tcx> GeneratorSubsts<'tcx> {
 }
 
 impl<'tcx> GeneratorSubsts<'tcx> {
-    /// Generator have not been resumed yet
+    /// Generator has not been resumed yet.
     pub const UNRESUMED: usize = 0;
-    /// Generator has returned / is completed
+    /// Generator has returned or is completed.
     pub const RETURNED: usize = 1;
-    /// Generator has been poisoned
+    /// Generator has been poisoned.
     pub const POISONED: usize = 2;
 
     const UNRESUMED_NAME: &'static str = "Unresumed";
     const RETURNED_NAME: &'static str = "Returned";
     const POISONED_NAME: &'static str = "Panicked";
 
-    /// The valid variant indices of this Generator.
+    /// The valid variant indices of this generator.
     #[inline]
     pub fn variant_range(&self, def_id: DefId, tcx: TyCtxt<'tcx>) -> Range<VariantIdx> {
         // FIXME requires optimized MIR
@@ -490,7 +494,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         (VariantIdx::new(0)..VariantIdx::new(num_variants))
     }
 
-    /// The discriminant for the given variant. Panics if the variant_index is
+    /// The discriminant for the given variant. Panics if the `variant_index` is
     /// out of range.
     #[inline]
     pub fn discriminant_for_variant(
@@ -505,7 +509,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         Discr { val: variant_index.as_usize() as u128, ty: self.discr_ty(tcx) }
     }
 
-    /// The set of all discriminants for the Generator, enumerated with their
+    /// The set of all discriminants for the generator, enumerated with their
     /// variant indices.
     #[inline]
     pub fn discriminants(
@@ -591,8 +595,8 @@ impl<'tcx> UpvarSubsts<'tcx> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Ord, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub enum ExistentialPredicate<'tcx> {
     /// E.g., `Iterator`.
     Trait(ExistentialTraitRef<'tcx>),
@@ -670,12 +674,12 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
         match self[0] {
             ExistentialPredicate::Trait(tr) => Some(tr),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn principal_def_id(&self) -> Option<DefId> {
-        self.principal().map(|d| d.def_id)
+        self.principal().map(|trait_ref| trait_ref.def_id)
     }
 
     #[inline]
@@ -684,7 +688,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     {
         self.iter().filter_map(|predicate| {
             match *predicate {
-                ExistentialPredicate::Projection(p) => Some(p),
+                ExistentialPredicate::Projection(projection) => Some(projection),
                 _ => None,
             }
         })
@@ -694,8 +698,8 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
-                ExistentialPredicate::AutoTrait(d) => Some(d),
-                _ => None
+                ExistentialPredicate::AutoTrait(did) => Some(did),
+                _ => None,
             }
         })
     }
@@ -722,7 +726,8 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     }
 
     pub fn iter<'a>(&'a self)
-        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
+        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx
+    {
         self.skip_binder().iter().cloned().map(Binder::bind)
     }
 }
@@ -742,7 +747,8 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 /// Note that a `TraitRef` introduces a level of region binding, to
 /// account for higher-ranked trait bounds like `T: for<'a> Foo<&'a U>`
 /// or higher-ranked object types.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -750,7 +756,7 @@ pub struct TraitRef<'tcx> {
 
 impl<'tcx> TraitRef<'tcx> {
     pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
-        TraitRef { def_id: def_id, substs: substs }
+        TraitRef { def_id, substs }
     }
 
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
@@ -813,15 +819,15 @@ impl<'tcx> PolyTraitRef<'tcx> {
 ///
 /// The substitutions don't include the erased `Self`, only trait
 /// type and lifetime parameters (`[X, Y]` and `['a, 'b]` above).
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash,
-         RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct ExistentialTraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
 }
 
 impl<'tcx> ExistentialTraitRef<'tcx> {
-    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'b {
+    pub fn input_types<'b>(&'b self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'b {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
@@ -985,8 +991,8 @@ impl<T> Binder<T> {
 
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord,
-         Hash, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
     pub substs: SubstsRef<'tcx>,
@@ -1033,7 +1039,7 @@ impl<'tcx> ProjectionTy<'tcx> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, TypeFoldable)]
 pub struct GenSig<'tcx> {
     pub yield_ty: Ty<'tcx>,
     pub return_ty: Ty<'tcx>,
@@ -1056,8 +1062,8 @@ impl<'tcx> PolyGenSig<'tcx> {
 /// - `inputs`: is the list of arguments and their modes.
 /// - `output`: is the return type.
 /// - `c_variadic`: indicates whether this is a C-variadic function.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord,
-         Hash, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct FnSig<'tcx> {
     pub inputs_and_output: &'tcx List<Ty<'tcx>>,
     pub c_variadic: bool,
@@ -1203,6 +1209,7 @@ rustc_index::newtype_index! {
     /// is the outer fn.
     ///
     /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
+    #[derive(HashStable)]
     pub struct DebruijnIndex {
         DEBUG_FORMAT = "DebruijnIndex({})",
         const INNERMOST = 0,
@@ -1294,7 +1301,7 @@ pub enum RegionKind {
     /// A region variable. Should not exist after typeck.
     ReVar(RegionVid),
 
-    /// A placeholder region - basically the higher-ranked version of ReFree.
+    /// A placeholder region -- basically, the higher-ranked version of `ReFree`.
     /// Should not exist after typeck.
     RePlaceholder(ty::PlaceholderRegion),
 
@@ -1378,20 +1385,19 @@ rustc_index::newtype_index! {
     pub struct BoundVar { .. }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub struct BoundTy {
     pub var: BoundVar,
     pub kind: BoundTyKind,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
+         RustcEncodable, RustcDecodable, HashStable)]
 pub enum BoundTyKind {
     Anon,
     Param(Symbol),
 }
-
-impl_stable_hash_for!(struct BoundTy { var, kind });
-impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
 impl From<BoundVar> for BoundTy {
     fn from(var: BoundVar) -> Self {
@@ -1403,8 +1409,8 @@ impl From<BoundVar> for BoundTy {
 }
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash,
-         Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, TypeFoldable)]
 pub struct ExistentialProjection<'tcx> {
     pub item_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -1516,8 +1522,6 @@ impl DebruijnIndex {
         self.shifted_out(to_binder.as_u32() - INNERMOST.as_u32())
     }
 }
-
-impl_stable_hash_for!(struct DebruijnIndex { private });
 
 /// Region utilities
 impl RegionKind {
@@ -1808,23 +1812,33 @@ impl<'tcx> TyS<'tcx> {
         match self.kind {
             Array(ty, _) | Slice(ty) => ty,
             Str => tcx.mk_mach_uint(ast::UintTy::U8),
-            _ => bug!("sequence_element_type called on non-sequence value: {}", self),
+            _ => bug!("`sequence_element_type` called on non-sequence value: {}", self),
         }
     }
 
     pub fn simd_type(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind {
-            Adt(def, substs) => {
-                def.non_enum_variant().fields[0].ty(tcx, substs)
-            }
-            _ => bug!("simd_type called on invalid type")
+            Adt(def, substs) => def.non_enum_variant().fields[0].ty(tcx, substs),
+            _ => bug!("`simd_type` called on invalid type"),
         }
     }
 
-    pub fn simd_size(&self, _cx: TyCtxt<'_>) -> usize {
+    pub fn simd_size(&self, _tcx: TyCtxt<'tcx>) -> u64 {
+        // Parameter currently unused, but probably needed in the future to
+        // allow `#[repr(simd)] struct Simd<T, const N: usize>([T; N]);`.
         match self.kind {
-            Adt(def, _) => def.non_enum_variant().fields.len(),
-            _ => bug!("simd_size called on invalid type")
+            Adt(def, _) => def.non_enum_variant().fields.len() as u64,
+            _ => bug!("`simd_size` called on invalid type"),
+        }
+    }
+
+    pub fn simd_size_and_type(&self, tcx: TyCtxt<'tcx>) -> (u64, Ty<'tcx>) {
+        match self.kind {
+            Adt(def, substs) => {
+                let variant = def.non_enum_variant();
+                (variant.fields.len() as u64, variant.fields[0].ty(tcx, substs))
+            }
+            _ => bug!("`simd_size_and_type` called on invalid type"),
         }
     }
 
@@ -1839,8 +1853,8 @@ impl<'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_mutable_ptr(&self) -> bool {
         match self.kind {
-            RawPtr(TypeAndMut { mutbl: hir::Mutability::MutMutable, .. }) |
-            Ref(_, _, hir::Mutability::MutMutable) => true,
+            RawPtr(TypeAndMut { mutbl: hir::Mutability::Mutable, .. }) |
+            Ref(_, _, hir::Mutability::Mutable) => true,
             _ => false
         }
     }
@@ -1885,7 +1899,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    /// panics if called on any type other than `Box<T>`
+    /// Panics if called on any type other than `Box<T>`.
     pub fn boxed_ty(&self) -> Ty<'tcx> {
         match self.kind {
             Adt(def, substs) if def.is_box() => substs.type_at(0),
@@ -2030,7 +2044,7 @@ impl<'tcx> TyS<'tcx> {
             Adt(def, _) if def.is_box() => {
                 Some(TypeAndMut {
                     ty: self.boxed_ty(),
-                    mutbl: hir::MutImmutable,
+                    mutbl: hir::Mutability::Immutable,
                 })
             },
             Ref(_, ty, mutbl) => Some(TypeAndMut { ty, mutbl }),
@@ -2105,7 +2119,8 @@ impl<'tcx> TyS<'tcx> {
     }
 
     /// If the type contains variants, returns the valid range of variant indices.
-    /// FIXME This requires the optimized MIR in the case of generators.
+    //
+    // FIXME: This requires the optimized MIR in the case of generators.
     #[inline]
     pub fn variant_range(&self, tcx: TyCtxt<'tcx>) -> Option<Range<VariantIdx>> {
         match self.kind {
@@ -2118,7 +2133,8 @@ impl<'tcx> TyS<'tcx> {
 
     /// If the type contains variants, returns the variant for `variant_index`.
     /// Panics if `variant_index` is out of range.
-    /// FIXME This requires the optimized MIR in the case of generators.
+    //
+    // FIXME: This requires the optimized MIR in the case of generators.
     #[inline]
     pub fn discriminant_for_variant(
         &self,
@@ -2133,7 +2149,7 @@ impl<'tcx> TyS<'tcx> {
         }
     }
 
-    /// Push onto `out` the regions directly referenced from this type (but not
+    /// Pushes onto `out` the regions directly referenced from this type (but not
     /// types reachable from this type via `walk_tys`). This ignores late-bound
     /// regions binders.
     pub fn push_regions(&self, out: &mut SmallVec<[ty::Region<'tcx>; 4]>) {
@@ -2246,7 +2262,7 @@ impl<'tcx> TyS<'tcx> {
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
             ty::Infer(ty::FreshFloatTy(_)) =>
-                bug!("is_trivially_sized applied to unexpected type: {:?}", self),
+                bug!("`is_trivially_sized` applied to unexpected type: {:?}", self),
         }
     }
 }
@@ -2257,17 +2273,17 @@ impl<'tcx> TyS<'tcx> {
 pub struct Const<'tcx> {
     pub ty: Ty<'tcx>,
 
-    pub val: ConstValue<'tcx>,
+    pub val: ConstKind<'tcx>,
 }
 
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Const<'_>, 40);
+static_assert_size!(Const<'_>, 48);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
     pub fn from_scalar(tcx: TyCtxt<'tcx>, val: Scalar, ty: Ty<'tcx>) -> &'tcx Self {
         tcx.mk_const(Self {
-            val: ConstValue::Scalar(val),
+            val: ConstKind::Value(ConstValue::Scalar(val)),
             ty,
         })
     }
@@ -2314,22 +2330,43 @@ impl<'tcx> Const<'tcx> {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
     ) -> &Const<'tcx> {
-        // FIXME(const_generics): this doesn't work right now,
-        // because it tries to relate an `Infer` to a `Param`.
+        let try_const_eval = |did, param_env: ParamEnv<'tcx>, substs| {
+            let param_env_and_substs = param_env.with_reveal_all().and(substs);
+
+            // Avoid querying `tcx.const_eval(...)` with any e.g. inference vars.
+            if param_env_and_substs.has_local_value() {
+                return None;
+            }
+
+            let (param_env, substs) = param_env_and_substs.into_parts();
+
+            // try to resolve e.g. associated constants to their definition on an impl
+            let instance = ty::Instance::resolve(tcx, param_env, did, substs)?;
+            let gid = GlobalId {
+                instance,
+                promoted: None,
+            };
+            tcx.const_eval(param_env.and(gid)).ok()
+        };
+
         match self.val {
-            ConstValue::Unevaluated(did, substs) => {
-                // if `substs` has no unresolved components, use and empty param_env
-                let (param_env, substs) = param_env.with_reveal_all().and(substs).into_parts();
-                // try to resolve e.g. associated constants to their definition on an impl
-                let instance = match ty::Instance::resolve(tcx, param_env, did, substs) {
-                    Some(instance) => instance,
-                    None => return self,
-                };
-                let gid = GlobalId {
-                    instance,
-                    promoted: None,
-                };
-                tcx.const_eval(param_env.and(gid)).unwrap_or(self)
+            ConstKind::Unevaluated(did, substs) => {
+                // HACK(eddyb) when substs contain e.g. inference variables,
+                // attempt using identity substs instead, that will succeed
+                // when the expression doesn't depend on any parameters.
+                // FIXME(eddyb) make `const_eval` a canonical query instead,
+                // that would properly handle inference variables in `substs`.
+                if substs.has_local_value() {
+                    let identity_substs = InternalSubsts::identity_for_item(tcx, did);
+                    // The `ParamEnv` needs to match the `identity_substs`.
+                    let identity_param_env = tcx.param_env(did);
+                    match try_const_eval(did, identity_param_env, identity_substs) {
+                        Some(ct) => ct.subst(tcx, substs),
+                        None => self,
+                    }
+                } else {
+                    try_const_eval(did, param_env, substs).unwrap_or(self)
+                }
             },
             _ => self,
         }
@@ -2362,6 +2399,49 @@ impl<'tcx> Const<'tcx> {
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
+
+/// Represents a constant in Rust.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord,
+         RustcEncodable, RustcDecodable, Hash, HashStable)]
+pub enum ConstKind<'tcx> {
+    /// A const generic parameter.
+    Param(ParamConst),
+
+    /// Infer the value of the const.
+    Infer(InferConst<'tcx>),
+
+    /// Bound const variable, used only when preparing a trait query.
+    Bound(DebruijnIndex, BoundVar),
+
+    /// A placeholder const - universally quantified higher-ranked const.
+    Placeholder(ty::PlaceholderConst),
+
+    /// Used in the HIR by using `Unevaluated` everywhere and later normalizing to one of the other
+    /// variants when the code is monomorphic enough for that.
+    Unevaluated(DefId, SubstsRef<'tcx>),
+
+    /// Used to hold computed value.
+    Value(ConstValue<'tcx>),
+}
+
+#[cfg(target_arch = "x86_64")]
+static_assert_size!(ConstKind<'_>, 40);
+
+impl<'tcx> ConstKind<'tcx> {
+    #[inline]
+    pub fn try_to_scalar(&self) -> Option<Scalar> {
+        if let ConstKind::Value(val) = self {
+            val.try_to_scalar()
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    pub fn try_to_bits(&self, size: ty::layout::Size) -> Option<u128> {
+        self.try_to_scalar()?.to_bits(size).ok()
+    }
+}
 
 /// An inference variable for a const, for use in const generics.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd,

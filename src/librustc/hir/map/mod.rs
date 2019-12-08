@@ -1,5 +1,4 @@
 use self::collector::NodeCollector;
-pub use self::def_collector::DefCollector;
 pub use self::definitions::{
     Definitions, DefKey, DefPath, DefPathData, DisambiguatedDefPathData, DefPathHash
 };
@@ -25,7 +24,6 @@ use syntax_pos::{Span, DUMMY_SP};
 
 pub mod blocks;
 mod collector;
-mod def_collector;
 pub mod definitions;
 mod hir_id_validator;
 
@@ -71,6 +69,33 @@ impl<'hir> Entry<'hir> {
             Node::Expr(ref expr) => {
                 match expr.kind {
                     ExprKind::Closure(_, ref fn_decl, ..) => Some(fn_decl),
+                    _ => None,
+                }
+            }
+
+            _ => None,
+        }
+    }
+
+    fn fn_sig(&self) -> Option<&'hir FnSig> {
+        match &self.node {
+            Node::Item(item) => {
+                match &item.kind {
+                    ItemKind::Fn(sig, _, _) => Some(sig),
+                    _ => None,
+                }
+            }
+
+            Node::TraitItem(item) => {
+                match &item.kind {
+                    TraitItemKind::Method(sig, _) => Some(sig),
+                    _ => None
+                }
+            }
+
+            Node::ImplItem(item) => {
+                match &item.kind {
+                    ImplItemKind::Method(sig, _) => Some(sig),
                     _ => None,
                 }
             }
@@ -175,7 +200,7 @@ pub struct Map<'hir> {
 
     map: HirEntryMap<'hir>,
 
-    definitions: &'hir Definitions,
+    definitions: Definitions,
 
     /// The reverse mapping of `node_to_hir_id`.
     hir_to_node_id: FxHashMap<HirId, NodeId>,
@@ -242,8 +267,8 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub fn definitions(&self) -> &'hir Definitions {
-        self.definitions
+    pub fn definitions(&self) -> &Definitions {
+        &self.definitions
     }
 
     pub fn def_key(&self, def_id: DefId) -> DefKey {
@@ -445,6 +470,14 @@ impl<'hir> Map<'hir> {
     pub fn fn_decl_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnDecl> {
         if let Some(entry) = self.find_entry(hir_id) {
             entry.fn_decl()
+        } else {
+            bug!("no entry for hir_id `{}`", hir_id)
+        }
+    }
+
+    pub fn fn_sig_by_hir_id(&self, hir_id: HirId) -> Option<&'hir FnSig> {
+        if let Some(entry) = self.find_entry(hir_id) {
+            entry.fn_sig()
         } else {
             bug!("no entry for hir_id `{}`", hir_id)
         }
@@ -1218,7 +1251,7 @@ impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 pub fn map_crate<'hir>(sess: &crate::session::Session,
                        cstore: &CrateStoreDyn,
                        forest: &'hir Forest,
-                       definitions: &'hir Definitions)
+                       definitions: Definitions)
                        -> Map<'hir> {
     let _prof_timer = sess.prof.generic_activity("build_hir_map");
 
@@ -1227,7 +1260,7 @@ pub fn map_crate<'hir>(sess: &crate::session::Session,
         .map(|(node_id, &hir_id)| (hir_id, node_id)).collect();
 
     let (map, crate_hash) = {
-        let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, definitions, cstore);
+        let hcx = crate::ich::StableHashingContext::new(sess, &forest.krate, &definitions, cstore);
 
         let mut collector = NodeCollector::root(sess,
                                                 &forest.krate,

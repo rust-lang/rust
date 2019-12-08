@@ -3,6 +3,8 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::TyCtxt;
 use syntax::symbol::sym;
 
+use rustc_error_codes::*;
+
 pub fn test_inferred_outlives(tcx: TyCtxt<'_>) {
     tcx.hir()
        .krate()

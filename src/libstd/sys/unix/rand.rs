@@ -4,20 +4,21 @@ use crate::slice;
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut v = (0, 0);
     unsafe {
-        let view = slice::from_raw_parts_mut(&mut v as *mut _ as *mut u8,
-                                             mem::size_of_val(&v));
+        let view = slice::from_raw_parts_mut(&mut v as *mut _ as *mut u8, mem::size_of_val(&v));
         imp::fill_bytes(view);
     }
     v
 }
 
-#[cfg(all(unix,
-          not(target_os = "ios"),
-          not(target_os = "openbsd"),
-          not(target_os = "freebsd"),
-          not(target_os = "netbsd"),
-          not(target_os = "fuchsia"),
-          not(target_os = "redox")))]
+#[cfg(all(
+    unix,
+    not(target_os = "ios"),
+    not(target_os = "openbsd"),
+    not(target_os = "freebsd"),
+    not(target_os = "netbsd"),
+    not(target_os = "fuchsia"),
+    not(target_os = "redox")
+))]
 mod imp {
     use crate::fs::File;
     use crate::io::Read;
@@ -30,7 +31,9 @@ mod imp {
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
-    fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool { false }
+    fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool {
+        false
+    }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
@@ -96,9 +99,7 @@ mod imp {
     pub fn fill_bytes(v: &mut [u8]) {
         // getentropy(2) permits a maximum buffer size of 256 bytes
         for s in v.chunks_mut(256) {
-            let ret = unsafe {
-                libc::getentropy(s.as_mut_ptr() as *mut libc::c_void, s.len())
-            };
+            let ret = unsafe { libc::getentropy(s.as_mut_ptr() as *mut libc::c_void, s.len()) };
             if ret == -1 {
                 panic!("unexpected getentropy error: {}", errno());
             }
@@ -124,21 +125,14 @@ mod imp {
     #[allow(non_upper_case_globals)]
     const kSecRandomDefault: *const SecRandom = ptr::null();
 
-    extern {
-        fn SecRandomCopyBytes(rnd: *const SecRandom,
-                              count: size_t,
-                              bytes: *mut u8) -> c_int;
+    extern "C" {
+        fn SecRandomCopyBytes(rnd: *const SecRandom, count: size_t, bytes: *mut u8) -> c_int;
     }
 
     pub fn fill_bytes(v: &mut [u8]) {
-        let ret = unsafe {
-            SecRandomCopyBytes(kSecRandomDefault,
-                               v.len(),
-                               v.as_mut_ptr())
-        };
+        let ret = unsafe { SecRandomCopyBytes(kSecRandomDefault, v.len(), v.as_mut_ptr()) };
         if ret == -1 {
-            panic!("couldn't generate random bytes: {}",
-                   io::Error::last_os_error());
+            panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
         }
     }
 }
@@ -153,13 +147,22 @@ mod imp {
         for s in v.chunks_mut(256) {
             let mut s_len = s.len();
             let ret = unsafe {
-                libc::sysctl(mib.as_ptr(), mib.len() as libc::c_uint,
-                             s.as_mut_ptr() as *mut _, &mut s_len,
-                             ptr::null(), 0)
+                libc::sysctl(
+                    mib.as_ptr(),
+                    mib.len() as libc::c_uint,
+                    s.as_mut_ptr() as *mut _,
+                    &mut s_len,
+                    ptr::null(),
+                    0,
+                )
             };
             if ret == -1 || s_len != s.len() {
-                panic!("kern.arandom sysctl failed! (returned {}, s.len() {}, oldlenp {})",
-                       ret, s.len(), s_len);
+                panic!(
+                    "kern.arandom sysctl failed! (returned {}, s.len() {}, oldlenp {})",
+                    ret,
+                    s.len(),
+                    s_len
+                );
             }
         }
     }
@@ -168,7 +171,7 @@ mod imp {
 #[cfg(target_os = "fuchsia")]
 mod imp {
     #[link(name = "zircon")]
-    extern {
+    extern "C" {
         fn zx_cprng_draw(buffer: *mut u8, len: usize);
     }
 

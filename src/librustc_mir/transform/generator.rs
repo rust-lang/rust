@@ -62,7 +62,6 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_index::bit_set::{BitSet, BitMatrix};
 use std::borrow::Cow;
 use std::iter;
-use std::mem;
 use crate::transform::{MirPass, MirSource};
 use crate::transform::simplify;
 use crate::transform::no_landing_pads::no_landing_pads;
@@ -369,7 +368,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                 VariantIdx::new(RETURNED) // state for returned
             };
             data.statements.push(self.set_discr(state, source_info));
-            data.terminator.as_mut().unwrap().kind = TerminatorKind::Return;
+            data.terminator_mut().kind = TerminatorKind::Return;
         }
 
         self.super_basic_block_data(block, data);
@@ -379,7 +378,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
 fn make_generator_state_argument_indirect<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
-    body: &mut Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
 ) {
     let gen_ty = body.local_decls.raw[1].ty;
 
@@ -392,7 +391,7 @@ fn make_generator_state_argument_indirect<'tcx>(
 
     let ref_gen_ty = tcx.mk_ref(region, ty::TypeAndMut {
         ty: gen_ty,
-        mutbl: hir::MutMutable
+        mutbl: hir::Mutability::Mutable
     });
 
     // Replace the by value generator argument
@@ -402,7 +401,7 @@ fn make_generator_state_argument_indirect<'tcx>(
     DerefArgVisitor { tcx }.visit_body(body);
 }
 
-fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut BodyAndCache<'tcx>) {
     let ref_gen_ty = body.local_decls.raw[1].ty;
 
     let pin_did = tcx.lang_items().pin_type().unwrap();
@@ -419,7 +418,7 @@ fn make_generator_state_argument_pinned<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body
 
 fn replace_result_variable<'tcx>(
     ret_ty: Ty<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     tcx: TyCtxt<'tcx>,
 ) -> Local {
     let source_info = source_info(body);
@@ -427,12 +426,10 @@ fn replace_result_variable<'tcx>(
         mutability: Mutability::Mut,
         ty: ret_ty,
         user_ty: UserTypeProjections::none(),
-        name: None,
         source_info,
-        visibility_scope: source_info.scope,
         internal: false,
         is_block_tail: None,
-        is_user_variable: None,
+        local_info: LocalInfo::Other
     };
     let new_ret_local = Local::new(body.local_decls.len());
     body.local_decls.push(new_ret);
@@ -484,20 +481,21 @@ struct LivenessInfo {
 
 fn locals_live_across_suspend_points(
     tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
     source: MirSource<'tcx>,
     movable: bool,
 ) -> LivenessInfo {
     let dead_unwinds = BitSet::new_empty(body.basic_blocks().len());
     let def_id = source.def_id();
+    let body_ref: &Body<'_> = &body;
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
-    let storage_live_analysis = MaybeStorageLive::new(body);
+    let storage_live_analysis = MaybeStorageLive::new(body_ref);
     let storage_live_results =
-        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, storage_live_analysis,
+        do_dataflow(tcx, body_ref, def_id, &[], &dead_unwinds, storage_live_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-    let mut storage_live_cursor = DataflowResultsCursor::new(&storage_live_results, body);
+    let mut storage_live_cursor = DataflowResultsCursor::new(&storage_live_results, body_ref);
 
     // Find the MIR locals which do not use StorageLive/StorageDead statements.
     // The storage of these locals are always live.
@@ -506,19 +504,20 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body);
+    let borrowed_locals_analysis = HaveBeenBorrowedLocals::new(body_ref);
     let borrowed_locals_results =
-        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
+        do_dataflow(tcx, body_ref, def_id, &[], &dead_unwinds, borrowed_locals_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-    let mut borrowed_locals_cursor = DataflowResultsCursor::new(&borrowed_locals_results, body);
+    let mut borrowed_locals_cursor = DataflowResultsCursor::new(&borrowed_locals_results, body_ref);
 
     // Calculate the MIR locals that we actually need to keep storage around
     // for.
     let requires_storage_analysis = RequiresStorage::new(body, &borrowed_locals_results);
     let requires_storage_results =
-        do_dataflow(tcx, body, def_id, &[], &dead_unwinds, requires_storage_analysis,
+        do_dataflow(tcx, body_ref, def_id, &[], &dead_unwinds, requires_storage_analysis,
                     |bd, p| DebugFormatted::new(&bd.body().local_decls[p]));
-    let mut requires_storage_cursor = DataflowResultsCursor::new(&requires_storage_results, body);
+    let mut requires_storage_cursor
+        = DataflowResultsCursor::new(&requires_storage_results, body_ref);
 
     // Calculate the liveness of MIR locals ignoring borrows.
     let mut live_locals = liveness::LiveVarSet::new_empty(body.local_decls.len());
@@ -529,7 +528,7 @@ fn locals_live_across_suspend_points(
         tcx,
         "generator_liveness",
         source,
-        body,
+        body_ref,
         &liveness,
     );
 
@@ -596,7 +595,7 @@ fn locals_live_across_suspend_points(
         .collect();
 
     let storage_conflicts = compute_storage_conflicts(
-        body,
+        body_ref,
         &live_locals,
         &ignored,
         requires_storage_results);
@@ -752,7 +751,7 @@ fn compute_layout<'tcx>(
     upvars: &Vec<Ty<'tcx>>,
     interior: Ty<'tcx>,
     movable: bool,
-    body: &mut Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
 ) -> (
     FxHashMap<Local, (Ty<'tcx>, VariantIdx, usize)>,
     GeneratorLayout<'tcx>,
@@ -761,7 +760,7 @@ fn compute_layout<'tcx>(
     // Use a liveness analysis to compute locals which are live across a suspension point
     let LivenessInfo {
         live_locals, live_locals_at_suspension_points, storage_conflicts, storage_liveness
-    } = locals_live_across_suspend_points(tcx, body, source, movable);
+    } = locals_live_across_suspend_points(tcx, read_only!(body), source, movable);
 
     // Erase regions from the types passed in from typeck so we can compare them with
     // MIR types
@@ -788,18 +787,12 @@ fn compute_layout<'tcx>(
         }
     }
 
-    let dummy_local = LocalDecl::new_internal(tcx.mk_unit(), body.span);
-
-    // Gather live locals and their indices replacing values in body.local_decls
-    // with a dummy to avoid changing local indices.
+    // Gather live local types and their indices.
     let mut locals = IndexVec::<GeneratorSavedLocal, _>::new();
     let mut tys = IndexVec::<GeneratorSavedLocal, _>::new();
-    let mut decls = IndexVec::<GeneratorSavedLocal, _>::new();
     for (idx, local) in live_locals.iter().enumerate() {
-        let var = mem::replace(&mut body.local_decls[local], dummy_local.clone());
         locals.push(local);
-        tys.push(var.ty);
-        decls.push(var);
+        tys.push(body.local_decls[local].ty);
         debug!("generator saved local {:?} => {:?}", GeneratorSavedLocal::from(idx), local);
     }
 
@@ -831,14 +824,13 @@ fn compute_layout<'tcx>(
         field_tys: tys,
         variant_fields,
         storage_conflicts,
-        __local_debuginfo_codegen_only_do_not_use: decls,
     };
 
     (remap, layout, storage_liveness)
 }
 
 fn insert_switch<'tcx>(
-    body: &mut Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     cases: Vec<(usize, BasicBlock)>,
     transform: &TransformVisitor<'tcx>,
     default: TerminatorKind<'tcx>,
@@ -869,7 +861,9 @@ fn insert_switch<'tcx>(
     }
 }
 
-fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut Body<'tcx>) {
+fn elaborate_generator_drops<'tcx>(
+    tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut BodyAndCache<'tcx>
+) {
     use crate::util::elaborate_drops::{elaborate_drop, Unwind};
     use crate::util::patch::MirPatch;
     use crate::shim::DropShimElaborator;
@@ -882,7 +876,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, body: &mut 
     let gen = self_arg();
 
     let mut elaborator = DropShimElaborator {
-        body: body,
+        body,
         patch: MirPatch::new(body),
         tcx,
         param_env
@@ -934,9 +928,9 @@ fn create_generator_drop_shim<'tcx>(
     def_id: DefId,
     source: MirSource<'tcx>,
     gen_ty: Ty<'tcx>,
-    body: &Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     drop_clean: BasicBlock,
-) -> Body<'tcx> {
+) -> BodyAndCache<'tcx> {
     let mut body = body.clone();
 
     let source_info = source_info(&body);
@@ -962,12 +956,10 @@ fn create_generator_drop_shim<'tcx>(
         mutability: Mutability::Mut,
         ty: tcx.mk_unit(),
         user_ty: UserTypeProjections::none(),
-        name: None,
         source_info,
-        visibility_scope: source_info.scope,
         internal: false,
         is_block_tail: None,
-        is_user_variable: None,
+        local_info: LocalInfo::Other
     };
 
     make_generator_state_argument_indirect(tcx, def_id, &mut body);
@@ -977,15 +969,13 @@ fn create_generator_drop_shim<'tcx>(
         mutability: Mutability::Mut,
         ty: tcx.mk_ptr(ty::TypeAndMut {
             ty: gen_ty,
-            mutbl: hir::Mutability::MutMutable,
+            mutbl: hir::Mutability::Mutable,
         }),
         user_ty: UserTypeProjections::none(),
-        name: None,
         source_info,
-        visibility_scope: source_info.scope,
         internal: false,
         is_block_tail: None,
-        is_user_variable: None,
+        local_info: LocalInfo::Other
     };
     if tcx.sess.opts.debugging_opts.mir_emit_retag {
         // Alias tracking must know we changed the type
@@ -1006,7 +996,9 @@ fn create_generator_drop_shim<'tcx>(
     body
 }
 
-fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) -> BasicBlock {
+fn insert_term_block<'tcx>(
+    body: &mut BodyAndCache<'tcx>, kind: TerminatorKind<'tcx>
+) -> BasicBlock {
     let term_block = BasicBlock::new(body.basic_blocks().len());
     let source_info = source_info(body);
     body.basic_blocks_mut().push(BasicBlockData {
@@ -1022,7 +1014,7 @@ fn insert_term_block<'tcx>(body: &mut Body<'tcx>, kind: TerminatorKind<'tcx>) ->
 
 fn insert_panic_block<'tcx>(
     tcx: TyCtxt<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
     let assert_block = BasicBlock::new(body.basic_blocks().len());
@@ -1056,7 +1048,7 @@ fn create_generator_resume_function<'tcx>(
     transform: TransformVisitor<'tcx>,
     def_id: DefId,
     source: MirSource<'tcx>,
-    body: &mut Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
 ) {
     // Poison the generator when it unwinds
     for block in body.basic_blocks_mut() {
@@ -1070,16 +1062,23 @@ fn create_generator_resume_function<'tcx>(
     let mut cases = create_cases(body, &transform, |point| Some(point.resume));
 
     use rustc::mir::interpret::PanicInfo::{
-        GeneratorResumedAfterPanic,
-        GeneratorResumedAfterReturn,
+        ResumedAfterPanic,
+        ResumedAfterReturn,
     };
 
     // Jump to the entry point on the unresumed
     cases.insert(0, (UNRESUMED, BasicBlock::new(0)));
-    // Panic when resumed on the returned state
-    cases.insert(1, (RETURNED, insert_panic_block(tcx, body, GeneratorResumedAfterReturn)));
-    // Panic when resumed on the poisoned state
-    cases.insert(2, (POISONED, insert_panic_block(tcx, body, GeneratorResumedAfterPanic)));
+
+    // Panic when resumed on the returned or poisoned state
+    let generator_kind = body.generator_kind.unwrap();
+    cases.insert(1, (RETURNED, insert_panic_block(
+        tcx,
+        body,
+        ResumedAfterReturn(generator_kind))));
+    cases.insert(2, (POISONED, insert_panic_block(
+        tcx,
+        body,
+        ResumedAfterPanic(generator_kind))));
 
     insert_switch(body, cases, &transform, TerminatorKind::Unreachable);
 
@@ -1102,7 +1101,7 @@ fn source_info(body: &Body<'_>) -> SourceInfo {
     }
 }
 
-fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
+fn insert_clean_drop(body: &mut BodyAndCache<'_>) -> BasicBlock {
     let return_block = insert_term_block(body, TerminatorKind::Return);
 
     // Create a block to destroy an unresumed generators. This can only destroy upvars.
@@ -1126,7 +1125,7 @@ fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
 }
 
 fn create_cases<'tcx, F>(
-    body: &mut Body<'tcx>,
+    body: &mut BodyAndCache<'tcx>,
     transform: &TransformVisitor<'tcx>,
     target: F,
 ) -> Vec<(usize, BasicBlock)>
@@ -1170,7 +1169,9 @@ where
 }
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
+    ) {
         let yield_ty = if let Some(yield_ty) = body.yield_ty {
             yield_ty
         } else {
@@ -1192,7 +1193,7 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
                 (substs.upvar_tys(def_id, tcx).collect(),
                  substs.witness(def_id, tcx),
                  substs.discr_ty(tcx),
-                 movability == hir::GeneratorMovability::Movable)
+                 movability == hir::Movability::Movable)
             }
             _ => bug!(),
         };
@@ -1259,12 +1260,12 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
 
         // Create a copy of our MIR and use it to create the drop shim for the generator
         let drop_shim = create_generator_drop_shim(tcx,
-            &transform,
-            def_id,
-            source,
-            gen_ty,
-            &body,
-            drop_clean);
+                                                   &transform,
+                                                   def_id,
+                                                   source,
+                                                   gen_ty,
+                                                   body,
+                                                   drop_clean);
 
         body.generator_drop = Some(box drop_shim);
 

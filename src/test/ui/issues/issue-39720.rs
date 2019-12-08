@@ -5,12 +5,12 @@
 
 #![feature(repr_simd, platform_intrinsics)]
 
-#[repr(C)]
+#[repr(C)] //~ WARNING conflicting representation hints
 #[repr(simd)]
 #[derive(Copy, Clone, Debug)]
 pub struct char3(pub i8, pub i8, pub i8);
 
-#[repr(C)]
+#[repr(C)]  //~ WARNING conflicting representation hints
 #[repr(simd)]
 #[derive(Copy, Clone, Debug)]
 pub struct short3(pub i16, pub i16, pub i16);

@@ -1,7 +1,7 @@
 use crate::ty::{self, Lift, TyCtxt, Region};
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, Default, HashStable)]
 pub struct FreeRegionMap<'tcx> {
     // Stores the relation `a < b`, where `a` and `b` are regions.
     //
@@ -88,10 +88,6 @@ fn is_free_or_static(r: Region<'_>) -> bool {
         _ => is_free(r),
     }
 }
-
-impl_stable_hash_for!(struct FreeRegionMap<'tcx> {
-    relation
-});
 
 impl<'a, 'tcx> Lift<'tcx> for FreeRegionMap<'a> {
     type Lifted = FreeRegionMap<'tcx>;

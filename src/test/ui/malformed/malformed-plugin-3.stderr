@@ -1,8 +1,8 @@
 error[E0498]: malformed `plugin` attribute
-  --> $DIR/malformed-plugin-3.rs:2:1
+  --> $DIR/malformed-plugin-3.rs:2:11
    |
 LL | #![plugin(foo="bleh")]
-   | ^^^^^^^^^^^^^^^^^^^^^^ malformed attribute
+   |           ^^^^^^^^^^ malformed attribute
 
 warning: use of deprecated attribute `plugin`: compiler plugins are deprecated. See https://github.com/rust-lang/rust/pull/64675
   --> $DIR/malformed-plugin-3.rs:2:1

@@ -13,8 +13,8 @@ LL | |         _ => None
 LL | |     }
    | |_____- `match` arms have incompatible types
    |
-   = note: expected type `RoomDirection`
-              found type `std::option::Option<_>`
+   = note: expected enum `RoomDirection`
+              found enum `std::option::Option<_>`
 
 error: aborting due to previous error
 

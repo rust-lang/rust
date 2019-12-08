@@ -80,7 +80,7 @@ impl<T: AsRef<ty::Predicate<'tcx>>> Extend<T> for PredicateSet<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 
 /// "Elaboration" is the process of identifying all the predicates that
-/// are implied by a source predicate. Currently this basically means
+/// are implied by a source predicate. Currently, this basically means
 /// walking the "supertraits" and other similar assumptions. For example,
 /// if we know that `T: Ord`, the elaborator would deduce that `T: PartialOrd`
 /// holds as well. Similarly, if we have `trait Foo: 'static`, and we know that

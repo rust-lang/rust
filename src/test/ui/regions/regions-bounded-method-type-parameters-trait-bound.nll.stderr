@@ -8,6 +8,8 @@ LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
 LL |     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
 LL |     f.method(b);
    |     ^^^^^^^^^^^ `b` escapes the function body here
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to previous error
 

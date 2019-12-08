@@ -11,3 +11,4 @@ LL |     let z: I::A = if cond { x } else { y };
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0623`.

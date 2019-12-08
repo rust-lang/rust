@@ -7,11 +7,13 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
+#![feature(matches_macro)]
 #![feature(nll)]
 #![feature(try_trait)]
 #![feature(slice_patterns)]
@@ -25,11 +27,6 @@ use rustc_index::bit_set::GrowableBitSet;
 pub use rustc_data_structures::thin_vec::ThinVec;
 use ast::AttrId;
 use syntax_pos::edition::Edition;
-
-#[cfg(test)]
-mod tests;
-
-pub const MACRO_ARGUMENTS: Option<&'static str> = Some("macro arguments");
 
 #[macro_export]
 macro_rules! unwrap_or {
@@ -82,34 +79,31 @@ pub mod diagnostics {
     pub mod macros;
 }
 
-pub mod error_codes;
-
 pub mod util {
-    crate mod classify;
+    pub mod classify;
     pub mod comments;
     pub mod lev_distance;
-    crate mod literal;
+    pub mod literal;
     pub mod node_count;
     pub mod parser;
     pub mod map_in_place;
 }
 
-pub mod json;
-
 pub mod ast;
 pub mod attr;
 pub mod expand;
-pub mod source_map;
-#[macro_use] pub mod config;
+pub use syntax_pos::source_map;
 pub mod entry;
-pub mod feature_gate;
+pub mod feature_gate {
+    mod check;
+    pub use check::{check_crate, check_attribute, get_features, feature_err, feature_err_issue};
+}
 pub mod mut_visit;
-pub mod parse;
 pub mod ptr;
 pub mod show_span;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
-pub mod sess;
+pub use rustc_session::parse as sess;
 pub mod token;
 pub mod tokenstream;
 pub mod visit;
@@ -121,3 +115,8 @@ pub mod print {
 }
 
 pub mod early_buffered_lints;
+
+/// Requirements for a `StableHashingContext` to be used in this crate.
+/// This is a hack to allow using the `HashStable_Generic` derive macro
+/// instead of implementing everything in librustc.
+pub trait HashStableContext: syntax_pos::HashStableContext {}

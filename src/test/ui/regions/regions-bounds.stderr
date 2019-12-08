@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     return e;
    |            ^ lifetime mismatch
    |
-   = note: expected type `TupleStruct<'b>`
-              found type `TupleStruct<'a>`
+   = note: expected struct `TupleStruct<'b>`
+              found struct `TupleStruct<'a>`
 note: the lifetime `'a` as defined on the function body at 8:10...
   --> $DIR/regions-bounds.rs:8:10
    |
@@ -23,8 +23,8 @@ error[E0308]: mismatched types
 LL |     return e;
    |            ^ lifetime mismatch
    |
-   = note: expected type `Struct<'b>`
-              found type `Struct<'a>`
+   = note: expected struct `Struct<'b>`
+              found struct `Struct<'a>`
 note: the lifetime `'a` as defined on the function body at 12:10...
   --> $DIR/regions-bounds.rs:12:10
    |

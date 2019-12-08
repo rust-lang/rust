@@ -23,6 +23,8 @@ use rustc_macros::HashStable;
 use crate::hir::itemlikevisit::ItemLikeVisitor;
 use crate::hir;
 
+use rustc_error_codes::*;
+
 // The actual lang items defined come at the end of this file in one handy table.
 // So you probably just want to nip down to the end.
 macro_rules! language_item_table {
@@ -356,7 +358,6 @@ language_item_table! {
     // Don't be fooled by the naming here: this lang item denotes `PartialEq`, not `Eq`.
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;
-    OrdTraitLangItem,            "ord",                ord_trait,               Target::Trait;
 
     // A number of panic-related lang items. The `panic` item corresponds to
     // divide-by-zero and various panic cases with `match`. The

@@ -30,7 +30,7 @@ use syntax_pos::Span;
 use std::{cmp, fmt, mem};
 use std::marker::PhantomData;
 
-pub mod error_codes;
+use rustc_error_codes::*;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Generic infrastructure used to implement specific visitors below.
@@ -84,7 +84,7 @@ where
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> bool {
         let TraitRef { def_id, substs } = trait_ref;
-        self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref) ||
+        self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref.print_only_trait_path()) ||
         (!self.def_id_visitor.shallow() && substs.visit_with(self))
     }
 

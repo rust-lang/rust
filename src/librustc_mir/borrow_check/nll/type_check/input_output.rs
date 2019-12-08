@@ -134,15 +134,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         };
 
         // If the user explicitly annotated the output types, enforce those.
+        // Note that this only happens for closures.
         if let Some(user_provided_sig) = user_provided_sig {
             let user_provided_output_ty = user_provided_sig.output();
             let user_provided_output_ty =
                 self.normalize(user_provided_output_ty, Locations::All(output_span));
-            self.equate_normalized_input_or_output(
-                user_provided_output_ty,
+            if let Err(err) = self.eq_opaque_type_and_type(
                 mir_output_ty,
-                output_span,
-            );
+                user_provided_output_ty,
+                self.mir_def_id,
+                Locations::All(output_span),
+                ConstraintCategory::BoringNoLocation
+            ) {
+                span_mirbug!(
+                    self,
+                    Location::START,
+                    "equate_inputs_and_outputs: `{:?}=={:?}` failed with `{:?}`",
+                    mir_output_ty,
+                    user_provided_output_ty,
+                    err
+                );
+            }
         }
     }
 

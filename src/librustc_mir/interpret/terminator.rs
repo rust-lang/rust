@@ -7,22 +7,11 @@ use syntax::source_map::Span;
 use rustc_target::spec::abi::Abi;
 
 use super::{
-    InterpResult, PointerArithmetic,
-    InterpCx, Machine, OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
+    GlobalId, InterpResult, InterpCx, Machine,
+    OpTy, ImmTy, PlaceTy, MPlaceTy, StackPopCleanup, FnVal,
 };
 
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    #[inline]
-    pub fn goto_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
-        if let Some(target) = target {
-            self.frame_mut().block = target;
-            self.frame_mut().stmt = 0;
-            Ok(())
-        } else {
-            throw_ub!(Unreachable)
-        }
-    }
-
     pub(super) fn eval_terminator(
         &mut self,
         terminator: &mir::Terminator<'tcx>,
@@ -31,10 +20,10 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         match terminator.kind {
             Return => {
                 self.frame().return_place.map(|r| self.dump_place(*r));
-                self.pop_stack_frame()?
+                self.pop_stack_frame(/* unwinding */ false)?
             }
 
-            Goto { target } => self.goto_block(Some(target))?,
+            Goto { target } => self.go_to_block(target),
 
             SwitchInt {
                 ref discr,
@@ -60,20 +49,16 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
 
-                self.goto_block(Some(target_block))?;
+                self.go_to_block(target_block);
             }
 
             Call {
                 ref func,
                 ref args,
                 ref destination,
+                ref cleanup,
                 ..
             } => {
-                let (dest, ret) = match *destination {
-                    Some((ref lv, target)) => (Some(self.eval_place(lv)?), Some(target)),
-                    None => (None, None),
-                };
-
                 let func = self.eval_operand(func, None)?;
                 let (fn_val, abi) = match func.layout.ty.kind {
                     ty::FnPtr(sig) => {
@@ -91,20 +76,24 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 };
                 let args = self.eval_operands(args)?;
+                let ret = match destination {
+                    Some((dest, ret)) => Some((self.eval_place(dest)?, *ret)),
+                    None => None,
+                };
                 self.eval_fn_call(
                     fn_val,
                     terminator.source_info.span,
                     abi,
                     &args[..],
-                    dest,
                     ret,
+                    *cleanup
                 )?;
             }
 
             Drop {
                 ref location,
                 target,
-                ..
+                unwind,
             } => {
                 // FIXME(CTFE): forbid drop in const eval
                 let place = self.eval_place(location)?;
@@ -117,6 +106,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     instance,
                     terminator.source_info.span,
                     target,
+                    unwind
                 )?;
             }
 
@@ -125,51 +115,44 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 expected,
                 ref msg,
                 target,
-                ..
+                cleanup,
             } => {
                 let cond_val = self.read_immediate(self.eval_operand(cond, None)?)?
                     .to_scalar()?.to_bool()?;
                 if expected == cond_val {
-                    self.goto_block(Some(target))?;
+                    self.go_to_block(target);
                 } else {
-                    // Compute error message
-                    use rustc::mir::interpret::PanicInfo::*;
-                    return Err(match msg {
-                        BoundsCheck { ref len, ref index } => {
-                            let len = self
-                                .read_immediate(self.eval_operand(len, None)?)
-                                .expect("can't eval len")
-                                .to_scalar()?
-                                .to_bits(self.memory.pointer_size())? as u64;
-                            let index = self
-                                .read_immediate(self.eval_operand(index, None)?)
-                                .expect("can't eval index")
-                                .to_scalar()?
-                                .to_bits(self.memory.pointer_size())? as u64;
-                            err_panic!(BoundsCheck { len, index })
-                        }
-                        Overflow(op) => err_panic!(Overflow(*op)),
-                        OverflowNeg => err_panic!(OverflowNeg),
-                        DivisionByZero => err_panic!(DivisionByZero),
-                        RemainderByZero => err_panic!(RemainderByZero),
-                        GeneratorResumedAfterReturn => err_panic!(GeneratorResumedAfterReturn),
-                        GeneratorResumedAfterPanic => err_panic!(GeneratorResumedAfterPanic),
-                        Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
-                    }
-                    .into());
+                    M::assert_panic(self, terminator.source_info.span, msg, cleanup)?;
                 }
             }
 
+
+            // When we encounter Resume, we've finished unwinding
+            // cleanup for the current stack frame. We pop it in order
+            // to continue unwinding the next frame
+            Resume => {
+                trace!("unwinding: resuming from cleanup");
+                // By definition, a Resume terminator means
+                // that we're unwinding
+                self.pop_stack_frame(/* unwinding */ true)?;
+                return Ok(())
+            },
+
+            // It is UB to ever encounter this.
+            Unreachable => throw_ub!(Unreachable),
+
+            // These should never occur for MIR we actually run.
+            DropAndReplace { .. } |
+            FalseEdges { .. } |
+            FalseUnwind { .. } =>
+                bug!("{:#?} should have been eliminated by MIR pass", terminator.kind),
+
+            // These are not (yet) supported. It is unclear if they even can occur in
+            // MIR that we actually run.
             Yield { .. } |
             GeneratorDrop |
-            DropAndReplace { .. } |
-            Resume |
-            Abort => unimplemented!("{:#?}", terminator.kind),
-            FalseEdges { .. } => bug!("should have been eliminated by\
-                                      `simplify_branches` mir pass"),
-            FalseUnwind { .. } => bug!("should have been eliminated by\
-                                       `simplify_branches` mir pass"),
-            Unreachable => throw_ub!(Unreachable),
+            Abort =>
+                throw_unsup_format!("Unsupported terminator kind: {:#?}", terminator.kind),
         }
 
         Ok(())
@@ -235,32 +218,46 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         span: Span,
         caller_abi: Abi,
         args: &[OpTy<'tcx, M::PointerTag>],
-        dest: Option<PlaceTy<'tcx, M::PointerTag>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+        unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         trace!("eval_fn_call: {:#?}", fn_val);
 
         let instance = match fn_val {
             FnVal::Instance(instance) => instance,
             FnVal::Other(extra) => {
-                return M::call_extra_fn(self, extra, args, dest, ret);
+                return M::call_extra_fn(self, extra, args, ret, unwind);
             }
         };
 
+        // ABI check
+        {
+            let callee_abi = {
+                let instance_ty = instance.ty(*self.tcx);
+                match instance_ty.kind {
+                    ty::FnDef(..) =>
+                        instance_ty.fn_sig(*self.tcx).abi(),
+                    ty::Closure(..) => Abi::RustCall,
+                    ty::Generator(..) => Abi::Rust,
+                    _ => bug!("unexpected callee ty: {:?}", instance_ty),
+                }
+            };
+            let normalize_abi = |abi| match abi {
+                Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
+                    // These are all the same ABI, really.
+                    Abi::Rust,
+                abi =>
+                    abi,
+            };
+            if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
+                throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
+            }
+        }
+
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                // The intrinsic itself cannot diverge, so if we got here without a return
-                // place... (can happen e.g., for transmute returning `!`)
-                let dest = match dest {
-                    Some(dest) => dest,
-                    None => throw_ub!(Unreachable)
-                };
-                M::call_intrinsic(self, span, instance, args, dest)?;
-                // No stack frame gets pushed, the main loop will just act as if the
-                // call completed.
-                self.goto_block(ret)?;
-                self.dump_place(*dest);
-                Ok(())
+                assert!(caller_abi == Abi::RustIntrinsic || caller_abi == Abi::PlatformIntrinsic);
+                return M::call_intrinsic(self, span, instance, args, ret, unwind);
             }
             ty::InstanceDef::VtableShim(..) |
             ty::InstanceDef::ReifyShim(..) |
@@ -269,32 +266,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::InstanceDef::DropGlue(..) |
             ty::InstanceDef::CloneShim(..) |
             ty::InstanceDef::Item(_) => {
-                // ABI check
-                {
-                    let callee_abi = {
-                        let instance_ty = instance.ty(*self.tcx);
-                        match instance_ty.kind {
-                            ty::FnDef(..) =>
-                                instance_ty.fn_sig(*self.tcx).abi(),
-                            ty::Closure(..) => Abi::RustCall,
-                            ty::Generator(..) => Abi::Rust,
-                            _ => bug!("unexpected callee ty: {:?}", instance_ty),
-                        }
-                    };
-                    let normalize_abi = |abi| match abi {
-                        Abi::Rust | Abi::RustCall | Abi::RustIntrinsic | Abi::PlatformIntrinsic =>
-                            // These are all the same ABI, really.
-                            Abi::Rust,
-                        abi =>
-                            abi,
-                    };
-                    if normalize_abi(caller_abi) != normalize_abi(callee_abi) {
-                        throw_unsup!(FunctionAbiMismatch(caller_abi, callee_abi))
-                    }
-                }
-
                 // We need MIR for this fn
-                let body = match M::find_fn(self, instance, args, dest, ret)? {
+                let body = match M::find_mir_or_eval_fn(self, instance, args, ret, unwind)? {
                     Some(body) => body,
                     None => return Ok(()),
                 };
@@ -303,8 +276,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     instance,
                     span,
                     body,
-                    dest,
-                    StackPopCleanup::Goto(ret),
+                    ret.map(|p| p.0),
+                    StackPopCleanup::Goto { ret: ret.map(|p| p.1), unwind }
                 )?;
 
                 // We want to pop this frame again in case there was an error, to put
@@ -387,7 +360,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         throw_unsup!(FunctionArgCountMismatch)
                     }
                     // Don't forget to check the return type!
-                    if let Some(caller_ret) = dest {
+                    if let Some((caller_ret, _)) = ret {
                         let callee_ret = self.eval_place(
                             &mir::Place::return_place()
                         )?;
@@ -422,7 +395,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let mut args = args.to_vec();
-                let ptr_size = self.pointer_size();
                 // We have to implement all "object safe receivers".  Currently we
                 // support built-in pointers (&, &mut, Box) as well as unsized-self.  We do
                 // not yet support custom self types.
@@ -439,15 +411,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 };
                 // Find and consult vtable
                 let vtable = receiver_place.vtable();
-                let vtable_slot = vtable.ptr_offset(ptr_size * (idx as u64 + 3), self)?;
-                let vtable_slot = self.memory.check_ptr_access(
-                    vtable_slot,
-                    ptr_size,
-                    self.tcx.data_layout.pointer_align.abi,
-                )?.expect("cannot be a ZST");
-                let fn_ptr = self.memory.get_raw(vtable_slot.alloc_id)?
-                    .read_ptr_sized(self, vtable_slot)?.not_undef()?;
-                let drop_fn = self.memory.get_fn(fn_ptr)?;
+                let drop_fn = self.get_vtable_slot(vtable, idx)?;
 
                 // `*mut receiver_place.layout.ty` is almost the layout that we
                 // want for args[0]: We have to project to field 0 because we want
@@ -462,9 +426,29 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 });
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
-                self.eval_fn_call(drop_fn, span, caller_abi, &args, dest, ret)
+                self.eval_fn_call(drop_fn, span, caller_abi, &args, ret, unwind)
             }
         }
+    }
+
+    /// Evaluate a const function where all arguments (if any) are zero-sized types.
+    /// The evaluation is memoized thanks to the query system.
+    // FIXME: Consider moving this to `const_eval.rs`.
+    pub (crate) fn eval_const_fn_call(
+        &mut self,
+        gid: GlobalId<'tcx>,
+        ret: Option<(PlaceTy<'tcx, M::PointerTag>, mir::BasicBlock)>,
+    ) -> InterpResult<'tcx> {
+        trace!("eval_const_fn_call: {:?}", gid);
+
+        let place = self.const_eval_raw(gid)?;
+        let dest = ret.ok_or_else(|| err_ub!(Unreachable))?.0;
+
+        self.copy_op(place.into(), dest)?;
+
+        self.return_to_block(ret.map(|r| r.1))?;
+        self.dump_place(*dest);
+        return Ok(())
     }
 
     fn drop_in_place(
@@ -473,6 +457,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         instance: ty::Instance<'tcx>,
         span: Span,
         target: mir::BasicBlock,
+        unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         trace!("drop_in_place: {:?},\n  {:?}, {:?}", *place, place.layout.ty, instance);
         // We take the address of the object.  This may well be unaligned, which is fine
@@ -501,8 +486,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             span,
             Abi::Rust,
             &[arg.into()],
-            Some(dest.into()),
-            Some(target),
+            Some((dest.into(), target)),
+            unwind
         )
     }
 }

@@ -1,4 +1,5 @@
 use rustc_data_structures::sync::Lrc;
+use rustc_feature::UnstableFeatures;
 use rustc_interface::interface;
 use rustc_target::spec::TargetTriple;
 use rustc::hir;
@@ -9,7 +10,6 @@ use syntax::ast;
 use syntax::with_globals;
 use syntax::source_map::SourceMap;
 use syntax::edition::Edition;
-use syntax::feature_gate::UnstableFeatures;
 use std::env;
 use std::io::{self, Write};
 use std::panic;
@@ -63,7 +63,7 @@ pub fn run(options: Options) -> i32 {
     };
 
     let mut cfgs = options.cfgs.clone();
-    cfgs.push("rustdoc".to_owned());
+    cfgs.push("doc".to_owned());
     cfgs.push("doctest".to_owned());
     let config = interface::Config {
         opts: sessopts,
@@ -78,19 +78,21 @@ pub fn run(options: Options) -> i32 {
         crate_name: options.crate_name.clone(),
         lint_caps: Default::default(),
         register_lints: None,
+        override_queries: None,
+        registry: rustc_driver::diagnostics_registry(),
     };
 
     let mut test_args = options.test_args.clone();
     let display_warnings = options.display_warnings;
 
-    let tests = interface::run_compiler(config, |compiler| -> Result<_, ErrorReported> {
-        let lower_to_hir = compiler.lower_to_hir()?;
+    let tests = interface::run_compiler(config, |compiler| compiler.enter(|queries| {
+        let lower_to_hir = queries.lower_to_hir()?;
 
-        let mut opts = scrape_test_config(lower_to_hir.peek().0.borrow().krate());
+        let mut opts = scrape_test_config(lower_to_hir.peek().0.krate());
         opts.display_warnings |= options.display_warnings;
         let enable_per_target_ignores = options.enable_per_target_ignores;
         let mut collector = Collector::new(
-            compiler.crate_name()?.peek().to_string(),
+            queries.crate_name()?.peek().to_string(),
             options,
             false,
             opts,
@@ -99,7 +101,8 @@ pub fn run(options: Options) -> i32 {
             enable_per_target_ignores,
         );
 
-        let mut global_ctxt = compiler.global_ctxt()?.take();
+        let mut global_ctxt = queries.global_ctxt()?.take();
+
         global_ctxt.enter(|tcx| {
             let krate = tcx.hir().krate();
             let mut hir_collector = HirCollector {
@@ -114,8 +117,9 @@ pub fn run(options: Options) -> i32 {
             });
         });
 
-        Ok(collector.tests)
-    }).expect("compiler aborted in rustdoc!");
+        let ret : Result<_, ErrorReported> = Ok(collector.tests);
+        ret
+    })).expect("compiler aborted in rustdoc!");
 
     test_args.insert(0, "rustdoctest".to_string());
 
@@ -398,7 +402,8 @@ pub fn make_test(s: &str,
     // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
     // crate already is included.
     let (already_has_main, already_has_extern_crate, found_macro) = with_globals(edition, || {
-        use crate::syntax::{parse, sess::ParseSess, source_map::FilePathMapping};
+        use crate::syntax::{sess::ParseSess, source_map::FilePathMapping};
+        use rustc_parse::maybe_new_parser_from_source_str;
         use errors::emitter::EmitterWriter;
         use errors::Handler;
 
@@ -417,7 +422,7 @@ pub fn make_test(s: &str,
         let mut found_extern_crate = cratename.is_none();
         let mut found_macro = false;
 
-        let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
+        let mut parser = match maybe_new_parser_from_source_str(&sess, filename, source) {
             Ok(p) => p,
             Err(errs) => {
                 for mut err in errs {

@@ -69,7 +69,6 @@ mod dwarf;
 // hairy and tightly coupled, for more information see the compiler's
 // implementation of this.
 #[no_mangle]
-#[allow(improper_ctypes)]
 pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
                                                   data: *mut u8,
                                                   data_ptr: *mut usize,
@@ -92,5 +91,14 @@ pub unsafe extern "C" fn __rust_maybe_catch_panic(f: fn(*mut u8),
 #[unwind(allowed)]
 pub unsafe extern "C" fn __rust_start_panic(payload: usize) -> u32 {
     let payload = payload as *mut &mut dyn BoxMeUp;
-    imp::panic(Box::from_raw((*payload).box_me_up()))
+    let payload = (*payload).take_box();
+
+    // Miri panic support: cfg'd out of normal builds just to be sure.
+    // When going through normal codegen, `miri_start_panic` is a NOP, so the
+    // Miri-enabled sysroot still supports normal unwinding. But when executed in
+    // Miri, this line initiates unwinding.
+    #[cfg(miri)]
+    core::intrinsics::miri_start_panic(payload);
+
+    imp::panic(Box::from_raw(payload))
 }

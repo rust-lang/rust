@@ -24,6 +24,7 @@ mod test {
 }
 
 use test::Unused;   // This is really unused, so warning is OK
+                    //~^ WARNING unused import
 use test::A;        // This is used by the test2::func() through import of super::*
 use test::B;        // This is used by the test2::func() through import of super::*
 

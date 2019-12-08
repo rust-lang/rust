@@ -16,4 +16,5 @@ LL |     to_fn_once(move|| { s.read_to_end(&mut Vec::new()); });
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0596`.
+Some errors have detailed explanations: E0594, E0596.
+For more information about an error, try `rustc --explain E0594`.

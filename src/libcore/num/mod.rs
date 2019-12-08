@@ -4,7 +4,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::convert::{TryFrom, Infallible};
 use crate::fmt;
 use crate::intrinsics;
 use crate::mem;
@@ -132,7 +131,7 @@ macro_rules! from_str_radix_nzint_impl {
 }
 
 from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
-                             NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
+NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -163,8 +162,7 @@ from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(transparent)]
-pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")]
-                       pub T);
+pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Wrapping<T> {
@@ -209,33 +207,35 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
 }
 
 // All these modules are technically private and only exposed for coretests:
-pub mod flt2dec;
-pub mod dec2flt;
 pub mod bignum;
+pub mod dec2flt;
 pub mod diy_float;
+pub mod flt2dec;
 
 mod wrapping;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
-    () => {"
+    () => {
+        "
 
 **Note**: This function returns an array of length 2, 4 or 8 bytes
 depending on the target pointer size.
 
-"}
+"
+    };
 }
 
-
 macro_rules! usize_isize_from_xe_bytes_doc {
-    () => {"
+    () => {
+        "
 
 **Note**: This function takes an array of length 2, 4 or 8 bytes
 depending on the target pointer size.
 
-"}
+"
+    };
 }
 
-// `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
     ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr, $Min:expr, $Max:expr, $Feature:expr,
      $EndFeature:expr, $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
@@ -2240,70 +2240,69 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 #[lang = "i8"]
 impl i8 {
     int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
-        "[0x12]", "[0x12]", "", "" }
+    "[0x12]", "[0x12]", "", "" }
 }
 
 #[lang = "i16"]
 impl i16 {
     int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
-        "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
+    "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "i32"]
 impl i32 {
     int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
-        "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78]", "", "" }
+    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "i64"]
 impl i64 {
     int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "", 12,
-         "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
-         "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
+    "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
+    "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
 }
 
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
-        170141183460469231731687303715884105727, "", "", 16,
-        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
-        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
-        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "" }
+    170141183460469231731687303715884105727, "", "", 16,
+    "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+    "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+    "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "" }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
-        "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
-        "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "",
-        12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
-         "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-         usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
+     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
-// `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
     ($SelfT:ty, $ActualT:ty, $BITS:expr, $MaxV:expr, $Feature:expr, $EndFeature:expr,
         $rot:expr, $rot_op:expr, $rot_result:expr, $swap_op:expr, $swapped:expr,
@@ -4063,8 +4062,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
-        "[0x12]", "", "" }
-
+    "[0x12]", "", "" }
 
     /// Checks if the value is within the ASCII range.
     ///
@@ -4230,7 +4228,7 @@ impl u8 {
     pub fn is_ascii_alphabetic(&self) -> bool {
         match *self {
             b'A'..=b'Z' | b'a'..=b'z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4265,7 +4263,7 @@ impl u8 {
     pub fn is_ascii_uppercase(&self) -> bool {
         match *self {
             b'A'..=b'Z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4300,7 +4298,7 @@ impl u8 {
     pub fn is_ascii_lowercase(&self) -> bool {
         match *self {
             b'a'..=b'z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4338,7 +4336,7 @@ impl u8 {
     pub fn is_ascii_alphanumeric(&self) -> bool {
         match *self {
             b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4373,7 +4371,7 @@ impl u8 {
     pub fn is_ascii_digit(&self) -> bool {
         match *self {
             b'0'..=b'9' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4411,7 +4409,7 @@ impl u8 {
     pub fn is_ascii_hexdigit(&self) -> bool {
         match *self {
             b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4450,7 +4448,7 @@ impl u8 {
     pub fn is_ascii_punctuation(&self) -> bool {
         match *self {
             b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4485,7 +4483,7 @@ impl u8 {
     pub fn is_ascii_graphic(&self) -> bool {
         match *self {
             b'!'..=b'~' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4537,7 +4535,7 @@ impl u8 {
     pub fn is_ascii_whitespace(&self) -> bool {
         match *self {
             b'\t' | b'\n' | b'\x0C' | b'\r' | b' ' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4574,7 +4572,7 @@ impl u8 {
     pub fn is_ascii_control(&self) -> bool {
         match *self {
             b'\0'..=b'\x1F' | b'\x7F' => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -4582,59 +4580,59 @@ impl u8 {
 #[lang = "u16"]
 impl u16 {
     uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
-        "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
+    "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "u32"]
 impl u32 {
     uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
-        "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
+    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "u64"]
 impl u64 {
     uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
-        "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
-        "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-        "", ""}
+    "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
+    "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+    "", ""}
 }
 
 #[lang = "u128"]
 impl u128 {
     uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
-        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
-        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
-        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
-         "", ""}
+    "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+    "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+    "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
+     "", ""}
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
-        "[0x34, 0x12]", "[0x12, 0x34]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "[0x34, 0x12]", "[0x12, 0x34]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
-        "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
-        "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
-        "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
+    "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 /// A classification of floating point numbers.
@@ -4703,13 +4701,15 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 /// The error type returned when a checked integral type conversion fails.
 #[stable(feature = "try_from", since = "1.34.0")]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct TryFromIntError(());
+pub struct TryFromIntError(pub(crate) ());
 
 impl TryFromIntError {
-    #[unstable(feature = "int_error_internals",
-               reason = "available through Error trait and this method should \
-                         not be exposed publicly",
-               issue = "0")]
+    #[unstable(
+        feature = "int_error_internals",
+        reason = "available through Error trait and this method should \
+                  not be exposed publicly",
+        issue = "0"
+    )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         "out of range integral type conversion attempted"
@@ -4724,220 +4724,10 @@ impl fmt::Display for TryFromIntError {
 }
 
 #[stable(feature = "try_from", since = "1.34.0")]
-impl From<Infallible> for TryFromIntError {
-    fn from(x: Infallible) -> TryFromIntError {
-        match x {}
-    }
-}
-
-#[unstable(feature = "never_type", issue = "35121")]
 impl From<!> for TryFromIntError {
     fn from(never: !) -> TryFromIntError {
-        // Match rather than coerce to make sure that code like
-        // `From<Infallible> for TryFromIntError` above will keep working
-        // when `Infallible` becomes an alias to `!`.
         match never {}
     }
-}
-
-// no possible bounds violation
-macro_rules! try_from_unbounded {
-    ($source:ty, $($target:ty),*) => {$(
-        #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
-            type Error = TryFromIntError;
-
-            /// Try to create the target number type from a source
-            /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
-            #[inline]
-            fn try_from(value: $source) -> Result<Self, Self::Error> {
-                Ok(value as $target)
-            }
-        }
-    )*}
-}
-
-// only negative bounds
-macro_rules! try_from_lower_bounded {
-    ($source:ty, $($target:ty),*) => {$(
-        #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
-            type Error = TryFromIntError;
-
-            /// Try to create the target number type from a source
-            /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
-            #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                if u >= 0 {
-                    Ok(u as $target)
-                } else {
-                    Err(TryFromIntError(()))
-                }
-            }
-        }
-    )*}
-}
-
-// unsigned to signed (only positive bound)
-macro_rules! try_from_upper_bounded {
-    ($source:ty, $($target:ty),*) => {$(
-        #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
-            type Error = TryFromIntError;
-
-            /// Try to create the target number type from a source
-            /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
-            #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                if u > (<$target>::max_value() as $source) {
-                    Err(TryFromIntError(()))
-                } else {
-                    Ok(u as $target)
-                }
-            }
-        }
-    )*}
-}
-
-// all other cases
-macro_rules! try_from_both_bounded {
-    ($source:ty, $($target:ty),*) => {$(
-        #[stable(feature = "try_from", since = "1.34.0")]
-        impl TryFrom<$source> for $target {
-            type Error = TryFromIntError;
-
-            /// Try to create the target number type from a source
-            /// number type. This returns an error if the source value
-            /// is outside of the range of the target type.
-            #[inline]
-            fn try_from(u: $source) -> Result<$target, TryFromIntError> {
-                let min = <$target>::min_value() as $source;
-                let max = <$target>::max_value() as $source;
-                if u < min || u > max {
-                    Err(TryFromIntError(()))
-                } else {
-                    Ok(u as $target)
-                }
-            }
-        }
-    )*}
-}
-
-macro_rules! rev {
-    ($mac:ident, $source:ty, $($target:ty),*) => {$(
-        $mac!($target, $source);
-    )*}
-}
-
-// intra-sign conversions
-try_from_upper_bounded!(u16, u8);
-try_from_upper_bounded!(u32, u16, u8);
-try_from_upper_bounded!(u64, u32, u16, u8);
-try_from_upper_bounded!(u128, u64, u32, u16, u8);
-
-try_from_both_bounded!(i16, i8);
-try_from_both_bounded!(i32, i16, i8);
-try_from_both_bounded!(i64, i32, i16, i8);
-try_from_both_bounded!(i128, i64, i32, i16, i8);
-
-// unsigned-to-signed
-try_from_upper_bounded!(u8, i8);
-try_from_upper_bounded!(u16, i8, i16);
-try_from_upper_bounded!(u32, i8, i16, i32);
-try_from_upper_bounded!(u64, i8, i16, i32, i64);
-try_from_upper_bounded!(u128, i8, i16, i32, i64, i128);
-
-// signed-to-unsigned
-try_from_lower_bounded!(i8, u8, u16, u32, u64, u128);
-try_from_lower_bounded!(i16, u16, u32, u64, u128);
-try_from_lower_bounded!(i32, u32, u64, u128);
-try_from_lower_bounded!(i64, u64, u128);
-try_from_lower_bounded!(i128, u128);
-try_from_both_bounded!(i16, u8);
-try_from_both_bounded!(i32, u16, u8);
-try_from_both_bounded!(i64, u32, u16, u8);
-try_from_both_bounded!(i128, u64, u32, u16, u8);
-
-// usize/isize
-try_from_upper_bounded!(usize, isize);
-try_from_lower_bounded!(isize, usize);
-
-#[cfg(target_pointer_width = "16")]
-mod ptr_try_from_impls {
-    use super::TryFromIntError;
-    use crate::convert::TryFrom;
-
-    try_from_upper_bounded!(usize, u8);
-    try_from_unbounded!(usize, u16, u32, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16);
-    try_from_unbounded!(usize, i32, i64, i128);
-
-    try_from_both_bounded!(isize, u8);
-    try_from_lower_bounded!(isize, u16, u32, u64, u128);
-    try_from_both_bounded!(isize, i8);
-    try_from_unbounded!(isize, i16, i32, i64, i128);
-
-    rev!(try_from_upper_bounded, usize, u32, u64, u128);
-    rev!(try_from_lower_bounded, usize, i8, i16);
-    rev!(try_from_both_bounded, usize, i32, i64, i128);
-
-    rev!(try_from_upper_bounded, isize, u16, u32, u64, u128);
-    rev!(try_from_both_bounded, isize, i32, i64, i128);
-}
-
-#[cfg(target_pointer_width = "32")]
-mod ptr_try_from_impls {
-    use super::TryFromIntError;
-    use crate::convert::TryFrom;
-
-    try_from_upper_bounded!(usize, u8, u16);
-    try_from_unbounded!(usize, u32, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16, i32);
-    try_from_unbounded!(usize, i64, i128);
-
-    try_from_both_bounded!(isize, u8, u16);
-    try_from_lower_bounded!(isize, u32, u64, u128);
-    try_from_both_bounded!(isize, i8, i16);
-    try_from_unbounded!(isize, i32, i64, i128);
-
-    rev!(try_from_unbounded, usize, u32);
-    rev!(try_from_upper_bounded, usize, u64, u128);
-    rev!(try_from_lower_bounded, usize, i8, i16, i32);
-    rev!(try_from_both_bounded, usize, i64, i128);
-
-    rev!(try_from_unbounded, isize, u16);
-    rev!(try_from_upper_bounded, isize, u32, u64, u128);
-    rev!(try_from_unbounded, isize, i32);
-    rev!(try_from_both_bounded, isize, i64, i128);
-}
-
-#[cfg(target_pointer_width = "64")]
-mod ptr_try_from_impls {
-    use super::TryFromIntError;
-    use crate::convert::TryFrom;
-
-    try_from_upper_bounded!(usize, u8, u16, u32);
-    try_from_unbounded!(usize, u64, u128);
-    try_from_upper_bounded!(usize, i8, i16, i32, i64);
-    try_from_unbounded!(usize, i128);
-
-    try_from_both_bounded!(isize, u8, u16, u32);
-    try_from_lower_bounded!(isize, u64, u128);
-    try_from_both_bounded!(isize, i8, i16, i32);
-    try_from_unbounded!(isize, i64, i128);
-
-    rev!(try_from_unbounded, usize, u32, u64);
-    rev!(try_from_upper_bounded, usize, u128);
-    rev!(try_from_lower_bounded, usize, i8, i16, i32, i64);
-    rev!(try_from_both_bounded, usize, i128);
-
-    rev!(try_from_unbounded, isize, u16, u32);
-    rev!(try_from_upper_bounded, isize, u64, u128);
-    rev!(try_from_unbounded, isize, i32, i64);
-    rev!(try_from_both_bounded, isize, i128);
 }
 
 #[doc(hidden)]
@@ -4978,9 +4768,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
 
-    assert!(radix >= 2 && radix <= 36,
-           "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
-           radix);
+    assert!(
+        radix >= 2 && radix <= 36,
+        "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
+        radix
+    );
 
     if src.is_empty() {
         return Err(PIE { kind: Empty });
@@ -5061,10 +4853,12 @@ pub struct ParseIntError {
 }
 
 /// Enum to store the various types of errors that can cause parsing an integer to fail.
-#[unstable(feature = "int_error_matching",
-           reason = "it can be useful to match errors when making error messages \
-                     for integer parsing",
-           issue = "22639")]
+#[unstable(
+    feature = "int_error_matching",
+    reason = "it can be useful to match errors when making error messages \
+              for integer parsing",
+    issue = "22639"
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
@@ -5090,17 +4884,21 @@ pub enum IntErrorKind {
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
-    #[unstable(feature = "int_error_matching",
-               reason = "it can be useful to match errors when making error messages \
-                         for integer parsing",
-               issue = "22639")]
+    #[unstable(
+        feature = "int_error_matching",
+        reason = "it can be useful to match errors when making error messages \
+                  for integer parsing",
+        issue = "22639"
+    )]
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
-    #[unstable(feature = "int_error_internals",
-               reason = "available through Error trait and this method should \
-                         not be exposed publicly",
-               issue = "0")]
+    #[unstable(
+        feature = "int_error_internals",
+        reason = "available through Error trait and this method should \
+                  not be exposed publicly",
+        issue = "0"
+    )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         match self.kind {
@@ -5122,199 +4920,3 @@ impl fmt::Display for ParseIntError {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::num::dec2flt::ParseFloatError;
-
-// Conversion traits for primitive integer and float types
-// Conversions T -> T are covered by a blanket impl and therefore excluded
-// Some conversions from and to usize/isize are not implemented due to portability concerns
-macro_rules! impl_from {
-    ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
-        #[$attr]
-        #[doc = $doc]
-        impl From<$Small> for $Large {
-            #[inline]
-            fn from(small: $Small) -> $Large {
-                small as $Large
-            }
-        }
-    };
-    ($Small: ty, $Large: ty, #[$attr:meta]) => {
-        impl_from!($Small,
-                   $Large,
-                   #[$attr],
-                   concat!("Converts `",
-                           stringify!($Small),
-                           "` to `",
-                           stringify!($Large),
-                           "` losslessly."));
-    }
-}
-
-macro_rules! impl_from_bool {
-    ($target: ty, #[$attr:meta]) => {
-        impl_from!(bool, $target, #[$attr], concat!("Converts a `bool` to a `",
-            stringify!($target), "`. The resulting value is `0` for `false` and `1` for `true`
-values.
-
-# Examples
-
-```
-assert_eq!(", stringify!($target), "::from(true), 1);
-assert_eq!(", stringify!($target), "::from(false), 0);
-```"));
-    };
-}
-
-// Bool -> Any
-impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { u128, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { usize, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { i8, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { i16, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { i32, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { i64, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { i128, #[stable(feature = "from_bool", since = "1.28.0")] }
-impl_from_bool! { isize, #[stable(feature = "from_bool", since = "1.28.0")] }
-
-// Unsigned -> Unsigned
-impl_from! { u8, u16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, u128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { u8, usize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, u32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, u128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { u32, u64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u32, u128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { u64, u128, #[stable(feature = "i128", since = "1.26.0")] }
-
-// Signed -> Signed
-impl_from! { i8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i8, i128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { i8, isize, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i16, i128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { i32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { i32, i128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { i64, i128, #[stable(feature = "i128", since = "1.26.0")] }
-
-// Unsigned -> Signed
-impl_from! { u8, i16, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u8, i128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { u16, i32, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u16, i128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { u32, i64, #[stable(feature = "lossless_int_conv", since = "1.5.0")] }
-impl_from! { u32, i128, #[stable(feature = "i128", since = "1.26.0")] }
-impl_from! { u64, i128, #[stable(feature = "i128", since = "1.26.0")] }
-
-// The C99 standard defines bounds on INTPTR_MIN, INTPTR_MAX, and UINTPTR_MAX
-// which imply that pointer-sized integers must be at least 16 bits:
-// https://port70.net/~nsz/c/c99/n1256.html#7.18.2.4
-impl_from! { u16, usize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
-impl_from! { u8, isize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
-impl_from! { i16, isize, #[stable(feature = "lossless_iusize_conv", since = "1.26.0")] }
-
-// RISC-V defines the possibility of a 128-bit address space (RV128).
-
-// CHERI proposes 256-bit “capabilities”. Unclear if this would be relevant to usize/isize.
-// https://www.cl.cam.ac.uk/research/security/ctsrd/pdfs/20171017a-cheri-poster.pdf
-// http://www.csl.sri.com/users/neumann/2012resolve-cheri.pdf
-
-
-// Note: integers can only be represented with full precision in a float if
-// they fit in the significand, which is 24 bits in f32 and 53 bits in f64.
-// Lossy float conversions are not implemented at this time.
-
-// Signed -> Float
-impl_from! { i8, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { i8, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { i16, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { i16, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { i32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-
-// Unsigned -> Float
-impl_from! { u8, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { u8, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { u16, f32, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { u16, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-impl_from! { u32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-
-// Float -> Float
-impl_from! { f32, f64, #[stable(feature = "lossless_float_conv", since = "1.6.0")] }
-
-// Conversion traits for non-zero integer types
-macro_rules! nzint_impl_from {
-    ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
-        #[$attr]
-        #[doc = $doc]
-        impl From<$Small> for $Large {
-            #[inline]
-            fn from(small: $Small) -> $Large {
-                // SAFETY: input type guarantees the value is non-zero
-                unsafe {
-                    <$Large>::new_unchecked(small.get().into())
-                }
-            }
-        }
-    };
-    ($Small: ty, $Large: ty, #[$attr:meta]) => {
-        nzint_impl_from!($Small,
-                   $Large,
-                   #[$attr],
-                   concat!("Converts `",
-                           stringify!($Small),
-                           "` to `",
-                           stringify!($Large),
-                           "` losslessly."));
-    }
-}
-
-// Non-zero Unsigned -> Non-zero Unsigned
-nzint_impl_from! { NonZeroU8, NonZeroU16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroU32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroUsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU16, NonZeroU32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU16, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU16, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU16, NonZeroUsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU32, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU32, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU64, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-
-// Non-zero Signed -> Non-zero Signed
-nzint_impl_from! { NonZeroI8, NonZeroI16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI8, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI8, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI8, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI8, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI16, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI16, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI16, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI16, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroI64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-
-// NonZero UnSigned -> Non-zero Signed
-nzint_impl_from! { NonZeroU8, NonZeroI16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU8, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU16, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU16, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU16, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
-nzint_impl_from! { NonZeroU64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }

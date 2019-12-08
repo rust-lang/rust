@@ -470,6 +470,34 @@ fn test_append() {
     assert_eq!(a.contains(&5), true);
 }
 
+#[test]
+fn test_first_last() {
+    let mut a = BTreeSet::new();
+    assert_eq!(a.first(), None);
+    assert_eq!(a.last(), None);
+    a.insert(1);
+    assert_eq!(a.first(), Some(&1));
+    assert_eq!(a.last(), Some(&1));
+    a.insert(2);
+    assert_eq!(a.first(), Some(&1));
+    assert_eq!(a.last(), Some(&2));
+    a.insert(3);
+    assert_eq!(a.first(), Some(&1));
+    assert_eq!(a.last(), Some(&3));
+
+    assert_eq!(a.len(), 3);
+    assert_eq!(a.pop_first(), Some(1));
+    assert_eq!(a.len(), 2);
+    assert_eq!(a.pop_last(), Some(3));
+    assert_eq!(a.len(), 1);
+    assert_eq!(a.pop_first(), Some(2));
+    assert_eq!(a.len(), 0);
+    assert_eq!(a.pop_last(), None);
+    assert_eq!(a.len(), 0);
+    assert_eq!(a.pop_first(), None);
+    assert_eq!(a.len(), 0);
+}
+
 fn rand_data(len: usize) -> Vec<u32> {
     let mut rng = DeterministicRng::new();
     Vec::from_iter((0..len).map(|_| rng.next()))

@@ -182,7 +182,7 @@ use std::iter;
 use std::vec;
 
 use rustc_data_structures::thin_vec::ThinVec;
-use syntax::ast::{self, Abi, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
+use syntax::ast::{self, BinOpKind, EnumDef, Expr, Generics, Ident, PatKind};
 use syntax::ast::{VariantData, GenericParamKind, GenericArg};
 use syntax::attr;
 use syntax::source_map::respan;
@@ -340,14 +340,12 @@ pub fn combine_substructure(f: CombineSubstructureFunc<'_>)
 fn find_type_parameters(
     ty: &ast::Ty,
     ty_param_names: &[ast::Name],
-    span: Span,
     cx: &ExtCtxt<'_>,
 ) -> Vec<P<ast::Ty>> {
     use syntax::visit;
 
     struct Visitor<'a, 'b> {
         cx: &'a ExtCtxt<'b>,
-        span: Span,
         ty_param_names: &'a [ast::Name],
         types: Vec<P<ast::Ty>>,
     }
@@ -366,18 +364,11 @@ fn find_type_parameters(
         }
 
         fn visit_mac(&mut self, mac: &ast::Mac) {
-            let span = mac.span.with_ctxt(self.span.ctxt());
-            self.cx.span_err(span, "`derive` cannot be used on items with type macros");
+            self.cx.span_err(mac.span(), "`derive` cannot be used on items with type macros");
         }
     }
 
-    let mut visitor = Visitor {
-        ty_param_names,
-        types: Vec::new(),
-        span,
-        cx,
-    };
-
+    let mut visitor = Visitor { cx, ty_param_names, types: Vec::new() };
     visit::Visitor::visit_ty(&mut visitor, ty);
 
     visitor.types
@@ -605,7 +596,7 @@ impl<'a> TraitDef<'a> {
                     .collect();
 
                 for field_ty in field_tys {
-                    let tys = find_type_parameters(&field_ty, &ty_param_names, self.span, cx);
+                    let tys = find_type_parameters(&field_ty, &ty_param_names, cx);
 
                     for ty in tys {
                         // if we have already handled this type, skip it
@@ -737,7 +728,6 @@ impl<'a> TraitDef<'a> {
                                          self,
                                          type_ident,
                                          generics,
-                                         sym::Rust,
                                          explicit_self,
                                          tys,
                                          body)
@@ -792,7 +782,6 @@ impl<'a> TraitDef<'a> {
                                          self,
                                          type_ident,
                                          generics,
-                                         sym::Rust,
                                          explicit_self,
                                          tys,
                                          body)
@@ -918,7 +907,6 @@ impl<'a> MethodDef<'a> {
                      trait_: &TraitDef<'_>,
                      type_ident: Ident,
                      generics: &Generics,
-                     abi: Symbol,
                      explicit_self: Option<ast::ExplicitSelf>,
                      arg_types: Vec<(Ident, P<ast::Ty>)>,
                      body: P<Expr>)
@@ -953,7 +941,7 @@ impl<'a> MethodDef<'a> {
         let sig = ast::FnSig {
             header: ast::FnHeader {
                 unsafety,
-                abi: Abi::new(abi, trait_lo_sp),
+                ext: ast::Extern::None,
                 ..ast::FnHeader::default()
             },
             decl: fn_decl,

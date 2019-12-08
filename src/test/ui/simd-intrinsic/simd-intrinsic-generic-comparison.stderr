@@ -108,3 +108,4 @@ LL |         simd_ge::<_, i16x8>(x, x);
 
 error: aborting due to 18 previous errors
 
+For more information about this error, try `rustc --explain E0511`.

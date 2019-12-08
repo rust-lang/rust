@@ -1,5 +1,6 @@
+use crate::collections::HashMap;
 use crate::error::Error as StdError;
-use crate::ffi::{CStr, OsString, OsStr};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
@@ -7,12 +8,11 @@ use crate::memchr;
 use crate::path::{self, PathBuf};
 use crate::ptr;
 use crate::str;
-use crate::sys::{unsupported, Void};
-use crate::collections::HashMap;
-use crate::vec;
 use crate::sync::Mutex;
-use crate::sys_common::os_str_bytes::*;
 use crate::sys::hermit::abi;
+use crate::sys::{unsupported, Void};
+use crate::sys_common::os_str_bytes::*;
+use crate::vec;
 
 pub fn errno() -> i32 {
     0
@@ -47,7 +47,9 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsRef<OsStr>
+where
+    I: Iterator<Item = T>,
+    T: AsRef<OsStr>,
 {
     Err(JoinPathsError)
 }
@@ -77,7 +79,7 @@ pub fn init_environment(env: *const *const i8) {
         let mut guard = ENV.as_ref().unwrap().lock().unwrap();
         let mut environ = env;
         while environ != ptr::null() && *environ != ptr::null() {
-            if let Some((key,value)) = parse(CStr::from_ptr(*environ).to_bytes()) {
+            if let Some((key, value)) = parse(CStr::from_ptr(*environ).to_bytes()) {
                 guard.insert(key, value);
             }
             environ = environ.offset(1);
@@ -93,10 +95,12 @@ pub fn init_environment(env: *const *const i8) {
             return None;
         }
         let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
-        pos.map(|p| (
-            OsStringExt::from_vec(input[..p].to_vec()),
-            OsStringExt::from_vec(input[p+1..].to_vec()),
-        ))
+        pos.map(|p| {
+            (
+                OsStringExt::from_vec(input[..p].to_vec()),
+                OsStringExt::from_vec(input[p + 1..].to_vec()),
+            )
+        })
     }
 }
 
@@ -107,14 +111,18 @@ pub struct Env {
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> { self.iter.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        self.iter.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
-   unsafe {
+    unsafe {
         let guard = ENV.as_ref().unwrap().lock().unwrap();
         let mut result = Vec::new();
 
@@ -122,18 +130,15 @@ pub fn env() -> Env {
             result.push((key.clone(), value.clone()));
         }
 
-        return Env {
-            iter: result.into_iter(),
-            _dont_send_or_sync_me: PhantomData,
-        }
+        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
     }
 }
 
 pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     unsafe {
         match ENV.as_ref().unwrap().lock().unwrap().get_mut(k) {
-            Some(value) => { Ok(Some(value.clone())) },
-            None => { Ok(None) },
+            Some(value) => Ok(Some(value.clone())),
+            None => Ok(None),
         }
     }
 }
@@ -168,7 +173,5 @@ pub fn exit(code: i32) -> ! {
 }
 
 pub fn getpid() -> u32 {
-    unsafe {
-        abi::getpid()
-    }
+    unsafe { abi::getpid() }
 }

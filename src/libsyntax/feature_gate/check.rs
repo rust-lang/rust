@@ -1,35 +1,23 @@
-use super::{active::{ACTIVE_FEATURES, Features}, Feature, State as FeatureState};
-use super::accepted::ACCEPTED_FEATURES;
-use super::removed::{REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
-use super::builtin_attrs::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{ACCEPTED_FEATURES, ACTIVE_FEATURES, REMOVED_FEATURES, STABLE_REMOVED_FEATURES};
+use rustc_feature::{AttributeGate, BUILTIN_ATTRIBUTE_MAP};
+use rustc_feature::{Features, Feature, State as FeatureState, UnstableFeatures};
+use rustc_feature::{find_feature_issue, GateIssue};
 
-use crate::ast::{
-    self, AssocTyConstraint, AssocTyConstraintKind, NodeId, GenericParam, GenericParamKind,
-    PatKind, RangeEnd, VariantData,
-};
-use crate::attr::{self, check_builtin_attribute};
+use crate::ast::{self, AssocTyConstraint, AssocTyConstraintKind, NodeId};
+use crate::ast::{GenericParam, GenericParamKind, PatKind, RangeEnd, VariantData};
+use crate::attr;
 use crate::source_map::Spanned;
 use crate::edition::{ALL_EDITIONS, Edition};
 use crate::visit::{self, FnKind, Visitor};
-use crate::token;
 use crate::sess::ParseSess;
 use crate::symbol::{Symbol, sym};
-use crate::tokenstream::TokenTree;
 
 use errors::{Applicability, DiagnosticBuilder, Handler};
 use rustc_data_structures::fx::FxHashMap;
 use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use log::debug;
 
-use std::env;
-
-#[derive(Copy, Clone, Debug)]
-pub enum Stability {
-    Unstable,
-    // First argument is tracking issue link; second argument is an optional
-    // help message, which defaults to "remove this attribute"
-    Deprecated(&'static str, Option<&'static str>),
-}
+use rustc_error_codes::*;
 
 macro_rules! gate_feature_fn {
     ($cx: expr, $has_feature: expr, $span: expr, $name: expr, $explain: expr, $level: expr) => {{
@@ -59,27 +47,6 @@ pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: 
     PostExpansionVisitor { parse_sess, features }.visit_attribute(attr)
 }
 
-fn find_lang_feature_issue(feature: Symbol) -> Option<u32> {
-    if let Some(info) = ACTIVE_FEATURES.iter().find(|t| t.name == feature) {
-        // FIXME (#28244): enforce that active features have issue numbers
-        // assert!(info.issue.is_some())
-        info.issue
-    } else {
-        // search in Accepted, Removed, or Stable Removed features
-        let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
-            .find(|t| t.name == feature);
-        match found {
-            Some(&Feature { issue, .. }) => issue,
-            None => panic!("Feature `{}` is not declared anywhere", feature),
-        }
-    }
-}
-
-pub enum GateIssue {
-    Language,
-    Library(Option<u32>)
-}
-
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum GateStrength {
     /// A hard error. (Most feature gates should use this.)
@@ -88,40 +55,34 @@ pub enum GateStrength {
     Soft,
 }
 
-pub fn emit_feature_err(
-    sess: &ParseSess,
-    feature: Symbol,
-    span: Span,
-    issue: GateIssue,
-    explain: &str,
-) {
-    feature_err(sess, feature, span, issue, explain).emit();
-}
-
-pub fn feature_err<'a, S: Into<MultiSpan>>(
+pub fn feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: S,
+    span: impl Into<MultiSpan>,
+    explain: &str,
+) -> DiagnosticBuilder<'a> {
+    feature_err_issue(sess, feature, span, GateIssue::Language, explain)
+}
+
+pub fn feature_err_issue<'a>(
+    sess: &'a ParseSess,
+    feature: Symbol,
+    span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
 ) -> DiagnosticBuilder<'a> {
     leveled_feature_err(sess, feature, span, issue, explain, GateStrength::Hard)
 }
 
-fn leveled_feature_err<'a, S: Into<MultiSpan>>(
+fn leveled_feature_err<'a>(
     sess: &'a ParseSess,
     feature: Symbol,
-    span: S,
+    span: impl Into<MultiSpan>,
     issue: GateIssue,
     explain: &str,
     level: GateStrength,
 ) -> DiagnosticBuilder<'a> {
     let diag = &sess.span_diagnostic;
-
-    let issue = match issue {
-        GateIssue::Language => find_lang_feature_issue(feature),
-        GateIssue::Library(lib) => lib,
-    };
 
     let mut err = match level {
         GateStrength::Hard => {
@@ -130,14 +91,11 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
         GateStrength::Soft => diag.struct_span_warn(span, explain),
     };
 
-    match issue {
-        None | Some(0) => {}  // We still accept `0` as a stand-in for backwards compatibility
-        Some(n) => {
-            err.note(&format!(
-                "for more information, see https://github.com/rust-lang/rust/issues/{}",
-                n,
-            ));
-        }
+    if let Some(n) = find_feature_issue(feature, issue) {
+        err.note(&format!(
+            "for more information, see https://github.com/rust-lang/rust/issues/{}",
+            n,
+        ));
     }
 
     // #23973: do not suggest `#![feature(...)]` if we are in beta/stable
@@ -155,20 +113,6 @@ fn leveled_feature_err<'a, S: Into<MultiSpan>>(
     err
 
 }
-
-const EXPLAIN_BOX_SYNTAX: &str =
-    "box expression syntax is experimental; you can call `Box::new` instead";
-
-pub const EXPLAIN_STMT_ATTR_SYNTAX: &str =
-    "attributes on expressions are experimental";
-
-pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &str =
-    "allow_internal_unstable side-steps feature gating and stability checks";
-pub const EXPLAIN_ALLOW_INTERNAL_UNSAFE: &str =
-    "allow_internal_unsafe side-steps the unsafe_code lint";
-
-pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &str =
-    "unsized tuple coercion is not stable enough for use and is subject to change";
 
 struct PostExpansionVisitor<'a> {
     parse_sess: &'a ParseSess,
@@ -191,10 +135,10 @@ macro_rules! gate_feature_post {
 }
 
 impl<'a> PostExpansionVisitor<'a> {
-    fn check_abi(&self, abi: ast::Abi) {
-        let ast::Abi { symbol, span } = abi;
+    fn check_abi(&self, abi: ast::StrLit) {
+        let ast::StrLit { symbol_unescaped, span, .. } = abi;
 
-        match &*symbol.as_str() {
+        match &*symbol_unescaped.as_str() {
             // Stable
             "Rust" |
             "C" |
@@ -258,6 +202,12 @@ impl<'a> PostExpansionVisitor<'a> {
         }
     }
 
+    fn check_extern(&self, ext: ast::Extern) {
+        if let ast::Extern::Explicit(abi) = ext {
+            self.check_abi(abi);
+        }
+    }
+
     fn maybe_report_invalid_custom_discriminants(&self, variants: &[ast::Variant]) {
         let has_fields = variants.iter().any(|variant| match variant.data {
             VariantData::Tuple(..) | VariantData::Struct(..) => true,
@@ -276,7 +226,6 @@ impl<'a> PostExpansionVisitor<'a> {
                 self.parse_sess,
                 sym::arbitrary_enum_discriminant,
                 discriminant_spans.clone(),
-                crate::feature_gate::GateIssue::Language,
                 "custom discriminant values are not allowed in enums with tuple or struct variants",
             );
             for sp in discriminant_spans {
@@ -321,6 +270,27 @@ impl<'a> PostExpansionVisitor<'a> {
             );
         }
     }
+
+    /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
+    fn check_impl_trait(&self, ty: &ast::Ty) {
+        struct ImplTraitVisitor<'a> {
+            vis: &'a PostExpansionVisitor<'a>,
+        }
+        impl Visitor<'_> for ImplTraitVisitor<'_> {
+            fn visit_ty(&mut self, ty: &ast::Ty) {
+                if let ast::TyKind::ImplTrait(..) = ty.kind {
+                    gate_feature_post!(
+                        &self.vis,
+                        type_alias_impl_trait,
+                        ty.span,
+                        "`impl Trait` in type aliases is unstable"
+                    );
+                }
+                visit::walk_ty(self, ty);
+            }
+        }
+        ImplTraitVisitor { vis: self }.visit_ty(ty);
+    }
 }
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
@@ -330,19 +300,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         // Check feature gates for built-in attributes.
         if let Some((.., AttributeGate::Gated(_, name, descr, has_feature))) = attr_info {
             gate_feature_fn!(self, has_feature, attr.span, name, descr, GateStrength::Hard);
-        }
-        // Check input tokens for built-in and key-value attributes.
-        match attr_info {
-            // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
-            Some((name, _, template, _)) if name != sym::rustc_dummy =>
-                check_builtin_attribute(self.parse_sess, attr, name, template),
-            _ => if let Some(TokenTree::Token(token)) =
-                    attr.get_normal_item().tokens.trees().next() {
-                if token == token::Eq {
-                    // All key-value attributes are restricted to meta-item syntax.
-                    attr.parse_meta(self.parse_sess).map_err(|mut err| err.emit()).ok();
-                }
-            }
         }
         // Check unstable flavors of the `#[doc]` attribute.
         if attr.check_name(sym::doc) {
@@ -380,7 +337,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_item(&mut self, i: &'a ast::Item) {
         match i.kind {
             ast::ItemKind::ForeignMod(ref foreign_module) => {
-                self.check_abi(foreign_module.abi);
+                if let Some(abi) = foreign_module.abi {
+                    self.check_abi(abi);
+                }
             }
 
             ast::ItemKind::Fn(..) => {
@@ -468,14 +427,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::OpaqueTy(..) => {
-                gate_feature_post!(
-                    &self,
-                    type_alias_impl_trait,
-                    i.span,
-                    "`impl Trait` in type aliases is unstable"
-                );
-            }
+            ast::ItemKind::TyAlias(ref ty, ..) => self.check_impl_trait(&ty),
 
             _ => {}
         }
@@ -510,31 +462,20 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
         match ty.kind {
             ast::TyKind::BareFn(ref bare_fn_ty) => {
-                self.check_abi(bare_fn_ty.abi);
-            }
-            ast::TyKind::Never => {
-                gate_feature_post!(&self, never_type, ty.span,
-                                   "The `!` type is experimental");
+                self.check_extern(bare_fn_ty.ext);
             }
             _ => {}
         }
         visit::walk_ty(self, ty)
     }
 
-    fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FunctionRetTy) {
-        if let ast::FunctionRetTy::Ty(ref output_ty) = *ret_ty {
-            if let ast::TyKind::Never = output_ty.kind {
-                // Do nothing.
-            } else {
-                self.visit_ty(output_ty)
-            }
-        }
-    }
-
     fn visit_expr(&mut self, e: &'a ast::Expr) {
         match e.kind {
             ast::ExprKind::Box(_) => {
-                gate_feature_post!(&self, box_syntax, e.span, EXPLAIN_BOX_SYNTAX);
+                gate_feature_post!(
+                    &self, box_syntax, e.span,
+                    "box expression syntax is experimental; you can call `Box::new` instead"
+                );
             }
             ast::ExprKind::Type(..) => {
                 // To avoid noise about type ascription in common syntax errors, only emit if it
@@ -556,10 +497,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_expr(self, e)
-    }
-
-    fn visit_arm(&mut self, arm: &'a ast::Arm) {
-        visit::walk_arm(self, arm)
     }
 
     fn visit_pat(&mut self, pattern: &'a ast::Pat) {
@@ -604,7 +541,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             // Stability of const fn methods are covered in
             // `visit_trait_item` and `visit_impl_item` below; this is
             // because default methods don't pass through this point.
-            self.check_abi(header.abi);
+            self.check_extern(header.ext);
         }
 
         if fn_decl.c_variadic() {
@@ -638,7 +575,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
         match ti.kind {
             ast::TraitItemKind::Method(ref sig, ref block) => {
                 if block.is_none() {
-                    self.check_abi(sig.header.abi);
+                    self.check_extern(sig.header.ext);
                 }
                 if sig.decl.c_variadic() {
                     gate_feature_post!(&self, c_variadic, ti.span,
@@ -649,9 +586,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
             ast::TraitItemKind::Type(_, ref default) => {
-                // We use three if statements instead of something like match guards so that all
-                // of these errors can be emitted if all cases apply.
-                if default.is_some() {
+                if let Some(ty) = default {
+                    self.check_impl_trait(ty);
                     gate_feature_post!(&self, associated_type_defaults, ti.span,
                                        "associated type defaults are unstable");
                 }
@@ -676,15 +612,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                        "C-variadic functions are unstable");
                 }
             }
-            ast::ImplItemKind::OpaqueTy(..) => {
-                gate_feature_post!(
-                    &self,
-                    type_alias_impl_trait,
-                    ii.span,
-                    "`impl Trait` in type aliases is unstable"
-                );
-            }
-            ast::ImplItemKind::TyAlias(_) => {
+            ast::ImplItemKind::TyAlias(ref ty) => {
+                self.check_impl_trait(ty);
                 self.check_gat(&ii.generics, ii.span);
             }
             _ => {}
@@ -705,15 +634,14 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute],
                     crate_edition: Edition, allow_features: &Option<Vec<String>>) -> Features {
     fn feature_removed(span_handler: &Handler, span: Span, reason: Option<&str>) {
         let mut err = struct_span_err!(span_handler, span, E0557, "feature has been removed");
+        err.span_label(span, "feature has been removed");
         if let Some(reason) = reason {
-            err.span_note(span, reason);
-        } else {
-            err.span_label(span, "feature has been removed");
+            err.note(reason);
         }
         err.emit();
     }
 
-    let mut features = Features::new();
+    let mut features = Features::default();
     let mut edition_enabled_features = FxHashMap::default();
 
     for &edition in ALL_EDITIONS {
@@ -883,6 +811,7 @@ pub fn check_crate(krate: &ast::Crate,
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(or_patterns, "or-patterns syntax is experimental");
     gate_all!(const_extern_fn, "`const extern fn` definitions are unstable");
+    gate_all!(raw_ref_op, "raw address of syntax is experimental");
 
     // All uses of `gate_all!` below this point were added in #65742,
     // and subsequently disabled (with the non-early gating readded).
@@ -915,40 +844,6 @@ pub fn check_crate(krate: &ast::Crate,
     }
 
     visit::walk_crate(&mut visitor, krate);
-}
-
-#[derive(Clone, Copy, Hash)]
-pub enum UnstableFeatures {
-    /// Hard errors for unstable features are active, as on beta/stable channels.
-    Disallow,
-    /// Allow features to be activated, as on nightly.
-    Allow,
-    /// Errors are bypassed for bootstrapping. This is required any time
-    /// during the build that feature-related lints are set to warn or above
-    /// because the build turns on warnings-as-errors and uses lots of unstable
-    /// features. As a result, this is always required for building Rust itself.
-    Cheat
-}
-
-impl UnstableFeatures {
-    pub fn from_environment() -> UnstableFeatures {
-        // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
-        let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-        // `true` if we should enable unstable features for bootstrapping.
-        let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
-        match (disable_unstable_features, bootstrap) {
-            (_, true) => UnstableFeatures::Cheat,
-            (true, _) => UnstableFeatures::Disallow,
-            (false, _) => UnstableFeatures::Allow
-        }
-    }
-
-    pub fn is_nightly_build(&self) -> bool {
-        match *self {
-            UnstableFeatures::Allow | UnstableFeatures::Cheat => true,
-            UnstableFeatures::Disallow => false,
-        }
-    }
 }
 
 fn maybe_stage_features(span_handler: &Handler, krate: &ast::Crate, unstable: UnstableFeatures) {

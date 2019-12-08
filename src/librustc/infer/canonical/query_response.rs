@@ -16,7 +16,6 @@ use crate::infer::canonical::{
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::InferCtxtBuilder;
 use crate::infer::{InferCtxt, InferOk, InferResult};
-use crate::mir::interpret::ConstValue;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use std::fmt::Debug;
@@ -493,7 +492,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                     }
                 }
                 GenericArgKind::Const(result_value) => {
-                    if let ty::Const { val: ConstValue::Bound(debrujin, b), .. } = result_value {
+                    if let ty::Const { val: ty::ConstKind::Bound(debrujin, b), .. } = result_value {
                         // ...in which case we would set `canonical_vars[0]` to `Some(const X)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.

@@ -3,7 +3,6 @@ use crate::expand::{AstFragment, AstFragmentKind};
 
 use syntax::ast;
 use syntax::source_map::{DUMMY_SP, dummy_spanned};
-use syntax::tokenstream::TokenStream;
 use syntax::mut_visit::*;
 use syntax::ptr::P;
 use syntax::ThinVec;
@@ -12,13 +11,12 @@ use smallvec::{smallvec, SmallVec};
 
 use rustc_data_structures::fx::FxHashMap;
 
-pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
+pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId, vis: Option<ast::Visibility>)
+                   -> AstFragment {
     fn mac_placeholder() -> ast::Mac {
         ast::Mac {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
-            tts: TokenStream::default().into(),
-            delim: ast::MacDelimiter::Brace,
-            span: DUMMY_SP,
+            args: P(ast::MacArgs::Empty),
             prior_type_ascription: None,
         }
     }
@@ -26,7 +24,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
     let ident = ast::Ident::invalid();
     let attrs = Vec::new();
     let generics = ast::Generics::default();
-    let vis = dummy_spanned(ast::VisibilityKind::Inherited);
+    let vis = vis.unwrap_or_else(|| dummy_spanned(ast::VisibilityKind::Inherited));
     let span = DUMMY_SP;
     let expr_placeholder = || P(ast::Expr {
         id, span,
@@ -53,7 +51,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
             tokens: None,
         })]),
         AstFragmentKind::TraitItems => AstFragment::TraitItems(smallvec![ast::TraitItem {
-            id, span, ident, attrs, generics,
+            id, span, ident, vis, attrs, generics,
             kind: ast::TraitItemKind::Macro(mac_placeholder()),
             tokens: None,
         }]),
@@ -67,6 +65,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
             AstFragment::ForeignItems(smallvec![ast::ForeignItem {
                 id, span, ident, vis, attrs,
                 kind: ast::ForeignItemKind::Macro(mac_placeholder()),
+                tokens: None,
             }]),
         AstFragmentKind::Pat => AstFragment::Pat(P(ast::Pat {
             id, span, kind: ast::PatKind::Mac(mac_placeholder()),
@@ -150,6 +149,7 @@ pub fn placeholder(kind: AstFragmentKind, id: ast::NodeId) -> AstFragment {
                 id,
                 ident,
                 span,
+                vis,
                 is_placeholder: true,
             }
         ])

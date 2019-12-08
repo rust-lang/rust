@@ -7,20 +7,22 @@
 // or type checking or some other kind of complex analysis.
 
 use std::mem;
-use syntax::print::pprust;
 use rustc::lint;
 use rustc::session::Session;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_parse::validate_attr;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::feature_gate::is_builtin_attr;
+use syntax::print::pprust;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
 use syntax::{span_err, struct_span_err, walk_list};
-use syntax_pos::{Span, MultiSpan};
+use syntax_pos::Span;
 use errors::{Applicability, FatalError};
+
+use rustc_error_codes::*;
 
 struct AstValidator<'a> {
     session: &'a Session,
@@ -170,8 +172,11 @@ impl<'a> AstValidator<'a> {
 
     fn check_trait_fn_not_async(&self, span: Span, asyncness: IsAsync) {
         if asyncness.is_async() {
-            struct_span_err!(self.session, span, E0706,
-                             "trait fns cannot be declared `async`").emit()
+            struct_span_err!(self.session, span, E0706, "trait fns cannot be declared `async`")
+                .note("`async` trait functions are not currently supported")
+                .note("consider using the `async-trait` crate: \
+                       https://crates.io/crates/async-trait")
+                .emit();
         }
     }
 
@@ -251,7 +256,7 @@ impl<'a> AstValidator<'a> {
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| {
                 let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
-                !arr.contains(&attr.name_or_empty()) && is_builtin_attr(attr)
+                !arr.contains(&attr.name_or_empty()) && attr::is_builtin_attr(attr)
             })
             .for_each(|attr| if attr.is_doc_comment() {
                 let mut err = self.err_handler().struct_span_err(
@@ -369,6 +374,10 @@ fn validate_generics_order<'a>(
 }
 
 impl<'a> Visitor<'a> for AstValidator<'a> {
+    fn visit_attribute(&mut self, attr: &Attribute) {
+        validate_attr::check_meta(&self.session.parse_sess, attr);
+    }
+
     fn visit_expr(&mut self, expr: &'a Expr) {
         match &expr.kind {
             ExprKind::Closure(_, _, _, fn_decl, _, _) => {
@@ -519,6 +528,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             }
             ItemKind::Enum(ref def, _) => {
                 for variant in &def.variants {
+                    self.invalid_visibility(&variant.vis, None);
                     for field in variant.data.fields() {
                         self.invalid_visibility(&field.vis, None);
                     }
@@ -577,14 +587,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if vdata.fields().is_empty() {
                     self.err_handler().span_err(item.span,
                                                 "unions cannot have zero fields");
-                }
-            }
-            ItemKind::OpaqueTy(ref bounds, _) => {
-                if !bounds.iter()
-                          .any(|b| if let GenericBound::Trait(..) = *b { true } else { false }) {
-                    let msp = MultiSpan::from_spans(bounds.iter()
-                        .map(|bound| bound.span()).collect());
-                    self.err_handler().span_err(msp, "at least one trait must be specified");
                 }
             }
             _ => {}
@@ -735,19 +737,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
     }
 
-    fn visit_mac(&mut self, mac: &Mac) {
-        // when a new macro kind is added but the author forgets to set it up for expansion
-        // because that's the only part that won't cause a compiler error
-        self.session.diagnostic()
-            .span_bug(mac.span, "macro invocation missed in expansion; did you forget to override \
-                                 the relevant `fold_*()` method in `PlaceholderExpander`?");
-    }
-
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {
         if let ImplItemKind::Method(ref sig, _) = ii.kind {
             self.check_fn_decl(&sig.decl);
         }
         visit::walk_impl_item(self, ii);
+    }
+
+    fn visit_trait_item(&mut self, ti: &'a TraitItem) {
+        self.invalid_visibility(&ti.vis, None);
+        visit::walk_trait_item(self, ti);
     }
 }
 

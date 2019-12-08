@@ -1,5 +1,5 @@
 error: unreachable expression
-  --> $DIR/unwarned-match-on-never.rs:10:5
+  --> $DIR/unwarned-match-on-never.rs:8:5
    |
 LL |     match x {}
    |           - any code following this expression is unreachable
@@ -14,7 +14,7 @@ LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable arm
-  --> $DIR/unwarned-match-on-never.rs:15:15
+  --> $DIR/unwarned-match-on-never.rs:13:15
    |
 LL |     match (return) {
    |           -------- any code following this expression is unreachable
@@ -22,7 +22,7 @@ LL |         () => ()
    |               ^^ unreachable arm
 
 error: unreachable expression
-  --> $DIR/unwarned-match-on-never.rs:21:5
+  --> $DIR/unwarned-match-on-never.rs:19:5
    |
 LL |       return;
    |       ------ any code following this expression is unreachable

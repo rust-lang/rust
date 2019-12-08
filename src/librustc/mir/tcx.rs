@@ -10,7 +10,7 @@ use crate::ty::layout::VariantIdx;
 use crate::hir;
 use crate::ty::util::IntTypeExt;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Downcast to a particular variant of an enum, if included.
@@ -81,7 +81,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 let ty = self.ty
                              .builtin_deref(true)
                              .unwrap_or_else(|| {
-                                 bug!("deref projection of non-dereferencable ty {:?}", self)
+                                 bug!("deref projection of non-dereferenceable ty {:?}", self)
                              })
                              .ty;
                 PlaceTy::from_ty(ty)
@@ -108,13 +108,6 @@ impl<'tcx> PlaceTy<'tcx> {
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
-        ty,
-        variant_index,
     }
 }
 
@@ -276,17 +269,17 @@ impl<'tcx> BinOp {
 impl BorrowKind {
     pub fn to_mutbl_lossy(self) -> hir::Mutability {
         match self {
-            BorrowKind::Mut { .. } => hir::MutMutable,
-            BorrowKind::Shared => hir::MutImmutable,
+            BorrowKind::Mut { .. } => hir::Mutability::Mutable,
+            BorrowKind::Shared => hir::Mutability::Immutable,
 
             // We have no type corresponding to a unique imm borrow, so
             // use `&mut`. It gives all the capabilities of an `&uniq`
             // and hence is a safe "over approximation".
-            BorrowKind::Unique => hir::MutMutable,
+            BorrowKind::Unique => hir::Mutability::Mutable,
 
             // We have no type corresponding to a shallow borrow, so use
             // `&` as an approximation.
-            BorrowKind::Shallow => hir::MutImmutable,
+            BorrowKind::Shallow => hir::Mutability::Immutable,
         }
     }
 }

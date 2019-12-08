@@ -1,55 +1,59 @@
 //! This pass type-checks the MIR to ensure it is not broken.
 
+use std::{fmt, iter, mem};
+use std::rc::Rc;
+
+use either::Either;
+
+use rustc::hir;
+use rustc::hir::def_id::DefId;
+use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
+use rustc::infer::canonical::QueryRegionConstraints;
+use rustc::infer::outlives::env::RegionBoundPairs;
+use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc::mir::*;
+use rustc::mir::interpret::PanicInfo;
+use rustc::mir::tcx::PlaceTy;
+use rustc::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
+use rustc::traits::{self, ObligationCause, PredicateObligations};
+use rustc::traits::query::{Fallible, NoSolution};
+use rustc::traits::query::type_op;
+use rustc::traits::query::type_op::custom::CustomTypeOp;
+use rustc::ty::{
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, RegionVid, ToPolyTraitRef, Ty,
+    TyCtxt, UserType,
+    UserTypeAnnotationIndex,
+};
+use rustc::ty::adjustment::PointerCast;
+use rustc::ty::cast::CastTy;
+use rustc::ty::fold::TypeFoldable;
+use rustc::ty::layout::VariantIdx;
+use rustc::ty::subst::{GenericArgKind, Subst, SubstsRef, UserSubsts};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_error_codes::*;
+use rustc_index::vec::{Idx, IndexVec};
+use syntax_pos::{DUMMY_SP, Span};
+
 use crate::borrow_check::borrow_set::BorrowSet;
 use crate::borrow_check::location::LocationTable;
-use crate::borrow_check::nll::constraints::{OutlivesConstraintSet, OutlivesConstraint};
-use crate::borrow_check::nll::member_constraints::MemberConstraintSet;
+use crate::borrow_check::nll::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::borrow_check::nll::facts::AllFacts;
+use crate::borrow_check::nll::member_constraints::MemberConstraintSet;
+use crate::borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use crate::borrow_check::nll::region_infer::values::LivenessValues;
 use crate::borrow_check::nll::region_infer::values::PlaceholderIndex;
 use crate::borrow_check::nll::region_infer::values::PlaceholderIndices;
 use crate::borrow_check::nll::region_infer::values::RegionValueElements;
-use crate::borrow_check::nll::region_infer::{ClosureRegionRequirementsExt, TypeTest};
 use crate::borrow_check::nll::renumber;
+use crate::borrow_check::nll::ToRegionVid;
 use crate::borrow_check::nll::type_check::free_region_relations::{
     CreateResult, UniversalRegionRelations,
 };
 use crate::borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
-use crate::borrow_check::nll::ToRegionVid;
-use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
-use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
-use either::Either;
-use rustc::hir;
-use rustc::hir::def_id::DefId;
-use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::infer::outlives::env::RegionBoundPairs;
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime, NLLRegionVariableOrigin};
-use rustc::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc::mir::interpret::{ConstValue, PanicInfo};
-use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{PlaceContext, Visitor, NonMutatingUseContext};
-use rustc::mir::*;
-use rustc::traits::query::type_op;
-use rustc::traits::query::type_op::custom::CustomTypeOp;
-use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{self, ObligationCause, PredicateObligations};
-use rustc::ty::adjustment::{PointerCast};
-use rustc::ty::cast::CastTy;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, SubstsRef, GenericArgKind, UserSubsts};
-use rustc::ty::{
-    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, UserType,
-    CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    UserTypeAnnotationIndex,
-};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_index::vec::{IndexVec, Idx};
-use rustc::ty::layout::VariantIdx;
-use std::rc::Rc;
-use std::{fmt, iter, mem};
-use syntax_pos::{Span, DUMMY_SP};
+use crate::dataflow::move_paths::MoveData;
+use crate::transform::promote_consts::should_suggest_const_in_array_repeat_expressions_attribute;
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -113,8 +117,8 @@ mod relate_tys;
 pub(crate) fn type_check<'tcx>(
     infcx: &InferCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    body: &Body<'tcx>,
-    promoted: &IndexVec<Promoted, Body<'tcx>>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     mir_def_id: DefId,
     universal_regions: &Rc<UniversalRegions<'tcx>>,
     location_table: &LocationTable,
@@ -166,8 +170,17 @@ pub(crate) fn type_check<'tcx>(
         &mut borrowck_context,
         &universal_region_relations,
         |mut cx| {
-            cx.equate_inputs_and_outputs(body, universal_regions, &normalized_inputs_and_output);
-            liveness::generate(&mut cx, body, elements, flow_inits, move_data, location_table);
+            cx.equate_inputs_and_outputs(
+                &body,
+                universal_regions,
+                &normalized_inputs_and_output);
+            liveness::generate(
+                &mut cx,
+                body,
+                elements,
+                flow_inits,
+                move_data,
+                location_table);
 
             translate_outlives_facts(cx.borrowck_context);
         },
@@ -183,17 +196,17 @@ fn type_check_internal<'a, 'tcx, R>(
     infcx: &'a InferCtxt<'a, 'tcx>,
     mir_def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body: &'a Body<'tcx>,
-    promoted: &'a IndexVec<Promoted, Body<'tcx>>,
+    body: ReadOnlyBodyAndCache<'a, 'tcx>,
+    promoted: &'a IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
     implicit_region_bound: ty::Region<'tcx>,
     borrowck_context: &'a mut BorrowCheckContext<'a, 'tcx>,
     universal_region_relations: &'a UniversalRegionRelations<'tcx>,
     mut extra: impl FnMut(&mut TypeChecker<'a, 'tcx>) -> R,
-) -> R where {
+) -> R {
     let mut checker = TypeChecker::new(
         infcx,
-        body,
+        *body,
         mir_def_id,
         param_env,
         region_bound_pairs,
@@ -202,7 +215,7 @@ fn type_check_internal<'a, 'tcx, R>(
         universal_region_relations,
     );
     let errors_reported = {
-        let mut verifier = TypeVerifier::new(&mut checker, body, promoted);
+        let mut verifier = TypeVerifier::new(&mut checker, *body, promoted);
         verifier.visit_body(body);
         verifier.errors_reported
     };
@@ -259,7 +272,7 @@ enum FieldAccessError {
 struct TypeVerifier<'a, 'b, 'tcx> {
     cx: &'a mut TypeChecker<'b, 'tcx>,
     body: &'b Body<'tcx>,
-    promoted: &'b IndexVec<Promoted, Body<'tcx>>,
+    promoted: &'b IndexVec<Promoted, ReadOnlyBodyAndCache<'b, 'tcx>>,
     last_span: Span,
     mir_def_id: DefId,
     errors_reported: bool,
@@ -309,7 +322,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
                 );
             }
         } else {
-            if let ConstValue::Unevaluated(def_id, substs) = constant.literal.val {
+            if let ty::ConstKind::Unevaluated(def_id, substs) = constant.literal.val {
                 if let Err(terr) = self.cx.fully_perform_op(
                     location.to_locations(),
                     ConstraintCategory::Boring,
@@ -383,7 +396,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
-    fn visit_body(&mut self, body: &Body<'tcx>) {
+    fn visit_body(&mut self, body: ReadOnlyBodyAndCache<'_, 'tcx>) {
         self.sanitize_type(&"return type", body.return_ty());
         for local_decl in &body.local_decls {
             self.sanitize_type(local_decl, local_decl.ty);
@@ -399,7 +412,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     fn new(
         cx: &'a mut TypeChecker<'b, 'tcx>,
         body: &'b Body<'tcx>,
-        promoted: &'b IndexVec<Promoted, Body<'tcx>>,
+        promoted: &'b IndexVec<Promoted, ReadOnlyBodyAndCache<'b, 'tcx>>,
     ) -> Self {
         TypeVerifier {
             body,
@@ -462,10 +475,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                 match kind {
                     StaticKind::Promoted(promoted, _) => {
                         if !self.errors_reported {
-                            let promoted_body = &self.promoted[*promoted];
-                            self.sanitize_promoted(promoted_body, location);
+                            let promoted_body_cache = self.promoted[*promoted];
+                            self.sanitize_promoted(promoted_body_cache, location);
 
-                            let promoted_ty = promoted_body.return_ty();
+                            let promoted_ty = promoted_body_cache.return_ty();
                             check_err(self, place, promoted_ty, san_ty);
                         }
                     }
@@ -533,12 +546,16 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         place_ty
     }
 
-    fn sanitize_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
+    fn sanitize_promoted(
+        &mut self,
+        promoted_body: ReadOnlyBodyAndCache<'b, 'tcx>,
+        location: Location
+    ) {
         // Determine the constraints from the promoted MIR by running the type
         // checker on the promoted MIR, then transfer the constraints back to
         // the main MIR, changing the locations to the provided location.
 
-        let parent_body = mem::replace(&mut self.body, promoted_body);
+        let parent_body = mem::replace(&mut self.body, *promoted_body);
 
         // Use new sets of constraints and closure bounds so that we can
         // modify their locations.
@@ -546,7 +563,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
         let mut constraints = Default::default();
         let mut closure_bounds = Default::default();
         let mut liveness_constraints = LivenessValues::new(
-            Rc::new(RegionValueElements::new(promoted_body)),
+            Rc::new(RegionValueElements::new(&promoted_body)),
         );
         // Don't try to add borrow_region facts for the promoted MIR
 
@@ -1359,7 +1376,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
+    fn check_stmt(
+        &mut self,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
+        stmt: &Statement<'tcx>,
+        location: Location)
+    {
         debug!("check_stmt: {:?}", stmt);
         let tcx = self.tcx();
         match stmt.kind {
@@ -1385,15 +1407,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     } else {
                         ConstraintCategory::Return
                     },
-                    Some(l) if !body.local_decls[l].is_user_variable.is_some() => {
+                    Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
                 };
 
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(*body, tcx).ty;
                 let place_ty = self.normalize(place_ty, location);
-                let rv_ty = rv.ty(body, tcx);
+                let rv_ty = rv.ty(*body, tcx);
                 let rv_ty = self.normalize(rv_ty, location);
                 if let Err(terr) =
                     self.sub_types_or_anon(rv_ty, place_ty, location.to_locations(), category)
@@ -1445,7 +1467,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ref place,
                 variant_index,
             } => {
-                let place_type = place.ty(body, tcx).ty;
+                let place_type = place.ty(*body, tcx).ty;
                 let adt = match place_type.kind {
                     ty::Adt(adt, _) if adt.is_enum() => adt,
                     _ => {
@@ -1467,7 +1489,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 };
             }
             StatementKind::AscribeUserType(box(ref place, ref projection), variance) => {
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(*body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
                     variance,
@@ -1691,7 +1713,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ConstraintCategory::Return
                         }
                     }
-                    Some(l) if !body.local_decls[l].is_user_variable.is_some() => {
+                    Some(l) if !body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -1970,12 +1992,17 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+    fn check_rvalue(
+        &mut self,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>,
+        rvalue: &Rvalue<'tcx>,
+        location: Location)
+    {
         let tcx = self.tcx();
 
         match rvalue {
             Rvalue::Aggregate(ak, ops) => {
-                self.check_aggregate_rvalue(body, rvalue, ak, ops, location)
+                self.check_aggregate_rvalue(&body, rvalue, ak, ops, location)
             }
 
             Rvalue::Repeat(operand, len) => if *len > 1 {
@@ -1983,9 +2010,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // While this is located in `nll::typeck` this error is not an NLL error, it's
                     // a required check to make sure that repeated elements implement `Copy`.
                     let span = body.source_info(location).span;
-                    let ty = operand.ty(body, tcx);
+                    let ty = operand.ty(*body, tcx);
                     if !self.infcx.type_is_copy_modulo_regions(self.param_env, ty, span) {
-                        // To determine if `const_in_array_repeat_expression` feature gate should
+                        // To determine if `const_in_array_repeat_expressions` feature gate should
                         // be mentioned, need to check if the rvalue is promotable.
                         let should_suggest =
                             should_suggest_const_in_array_repeat_expressions_attribute(
@@ -2037,7 +2064,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             Rvalue::Cast(cast_kind, op, ty) => {
                 match cast_kind {
                     CastKind::Pointer(PointerCast::ReifyFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(*body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2066,7 +2093,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ClosureFnPointer(unsafety)) => {
-                        let sig = match op.ty(body, tcx).kind {
+                        let sig = match op.ty(*body, tcx).kind {
                             ty::Closure(def_id, substs) => {
                                 substs.as_closure().sig_ty(def_id, tcx).fn_sig(tcx)
                             }
@@ -2092,7 +2119,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::UnsafeFnPointer) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(*body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -2124,7 +2151,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef {
                             def_id: tcx.lang_items().coerce_unsized_trait().unwrap(),
-                            substs: tcx.mk_substs_trait(op.ty(body, tcx), &[ty.into()]),
+                            substs: tcx.mk_substs_trait(op.ty(*body, tcx), &[ty.into()]),
                         };
 
                         self.prove_trait_ref(
@@ -2135,10 +2162,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::MutToConstPointer) => {
-                        let ty_from = match op.ty(body, tcx).kind {
+                        let ty_from = match op.ty(*body, tcx).kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_from,
-                                mutbl: hir::MutMutable,
+                                mutbl: hir::Mutability::Mutable,
                             }) => ty_from,
                             _ => {
                                 span_mirbug!(
@@ -2153,7 +2180,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let ty_to = match ty.kind {
                             ty::RawPtr(ty::TypeAndMut {
                                 ty: ty_to,
-                                mutbl: hir::MutImmutable,
+                                mutbl: hir::Mutability::Immutable,
                             }) => ty_to,
                             _ => {
                                 span_mirbug!(
@@ -2183,11 +2210,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Pointer(PointerCast::ArrayToPointer)  => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(*body, tcx);
 
                         let opt_ty_elem = match ty_from.kind {
                             ty::RawPtr(
-                                ty::TypeAndMut { mutbl: hir::MutImmutable, ty: array_ty }
+                                ty::TypeAndMut { mutbl: hir::Mutability::Immutable, ty: array_ty }
                             ) => {
                                 match array_ty.kind {
                                     ty::Array(ty_elem, _) => Some(ty_elem),
@@ -2212,7 +2239,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
                         let ty_to = match ty.kind {
                             ty::RawPtr(
-                                ty::TypeAndMut { mutbl: hir::MutImmutable, ty: ty_to }
+                                ty::TypeAndMut { mutbl: hir::Mutability::Immutable, ty: ty_to }
                             ) => {
                                 ty_to
                             }
@@ -2245,12 +2272,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::Misc => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(*body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(ty);
                         match (cast_ty_from, cast_ty_to) {
                             (Some(CastTy::RPtr(ref_tm)), Some(CastTy::Ptr(ptr_tm))) => {
-                                if let hir::MutMutable = ptr_tm.mutbl {
+                                if let hir::Mutability::Mutable = ptr_tm.mutbl {
                                     if let Err(terr) = self.eq_types(
                                         ref_tm.ty,
                                         ptr_tm.ty,
@@ -2303,7 +2330,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(body, location, region, borrowed_place);
+                self.add_reborrow_constraint(&body, location, region, borrowed_place);
             }
 
             Rvalue::BinaryOp(BinOp::Eq, left, right)
@@ -2312,9 +2339,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             | Rvalue::BinaryOp(BinOp::Le, left, right)
             | Rvalue::BinaryOp(BinOp::Gt, left, right)
             | Rvalue::BinaryOp(BinOp::Ge, left, right) => {
-                let ty_left = left.ty(body, tcx);
+                let ty_left = left.ty(*body, tcx);
                 if let ty::RawPtr(_) | ty::FnPtr(_) = ty_left.kind {
-                    let ty_right = right.ty(body, tcx);
+                    let ty_right = right.ty(*body, tcx);
                     let common_ty = self.infcx.next_ty_var(
                         TypeVariableOrigin {
                             kind: TypeVariableOriginKind::MiscVariable,
@@ -2504,13 +2531,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             });
 
                             match mutbl {
-                                hir::Mutability::MutImmutable => {
+                                hir::Mutability::Immutable => {
                                     // Immutable reference. We don't need the base
                                     // to be valid for the entire lifetime of
                                     // the borrow.
                                     break;
                                 }
-                                hir::Mutability::MutMutable => {
+                                hir::Mutability::Mutable => {
                                     // Mutable reference. We *do* need the base
                                     // to be valid, because after the base becomes
                                     // invalid, someone else can use our mutable deref.
@@ -2739,12 +2766,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         })
     }
 
-    fn typeck_mir(&mut self, body: &Body<'tcx>) {
+    fn typeck_mir(&mut self, body: ReadOnlyBodyAndCache<'_, 'tcx>) {
         self.last_span = body.span;
         debug!("run_on_mir: {:?}", body.span);
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
-            self.check_local(body, local, local_decl);
+            self.check_local(&body, local, local_decl);
         }
 
         for (block, block_data) in body.basic_blocks().iter_enumerated() {
@@ -2760,8 +2787,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 location.statement_index += 1;
             }
 
-            self.check_terminator(body, block_data.terminator(), location);
-            self.check_iscleanup(body, block_data);
+            self.check_terminator(&body, block_data.terminator(), location);
+            self.check_iscleanup(&body, block_data);
         }
     }
 

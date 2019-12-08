@@ -55,7 +55,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                         ).ok_or_else(|| err_inval!(TooGeneric))?;
 
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                        self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
+                        self.write_scalar(fn_ptr, dest)?;
                     }
                     _ => bug!("reify fn pointer on {:?}", src.layout.ty),
                 }
@@ -88,8 +88,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                             ty::ClosureKind::FnOnce,
                         );
                         let fn_ptr = self.memory.create_fn_alloc(FnVal::Instance(instance));
-                        let val = Immediate::Scalar(Scalar::Ptr(fn_ptr.into()).into());
-                        self.write_immediate(val, dest)?;
+                        self.write_scalar(fn_ptr, dest)?;
                     }
                     _ => bug!("closure fn pointer on {:?}", src.layout.ty),
                 }

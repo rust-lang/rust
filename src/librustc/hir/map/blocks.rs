@@ -147,13 +147,7 @@ impl<'a> FnLikeNode<'a> {
             map::Node::Expr(e) => e.is_fn_like(),
             _ => false
         };
-        if fn_like {
-            Some(FnLikeNode {
-                node,
-            })
-        } else {
-            None
-        }
+        fn_like.then_some(FnLikeNode { node })
     }
 
     pub fn body(self) -> ast::BodyId {

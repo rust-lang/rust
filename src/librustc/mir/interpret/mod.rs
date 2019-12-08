@@ -90,6 +90,13 @@ macro_rules! throw_exhaust {
     ($($tt:tt)*) => { return Err(err_exhaust!($($tt)*).into()) };
 }
 
+#[macro_export]
+macro_rules! throw_machine_stop {
+    ($($tt:tt)*) => {
+        return Err($crate::mir::interpret::InterpError::MachineStop(Box::new($($tt)*)).into())
+    };
+}
+
 mod error;
 mod value;
 mod allocation;
@@ -123,8 +130,12 @@ use rustc_data_structures::tiny_list::TinyList;
 use rustc_macros::HashStable;
 use byteorder::{WriteBytesExt, ReadBytesExt, LittleEndian, BigEndian};
 
-/// Uniquely identifies a specific constant or static.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable, HashStable)]
+/// Uniquely identifies one of the following:
+/// - A constant
+/// - A static
+/// - A const fn where all arguments (if any) are zero-sized types
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(HashStable, Lift)]
 pub struct GlobalId<'tcx> {
     /// For a constant or static, the `Instance` of the item itself.
     /// For a promoted global, the `Instance` of the function they belong to.

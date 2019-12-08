@@ -167,13 +167,67 @@ impl fmt::Display for PanicInfo<'_> {
 ///
 /// panic!("Normal panic");
 /// ```
-#[cfg_attr(not(bootstrap), lang = "panic_location")]
+#[lang = "panic_location"]
 #[derive(Debug)]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 pub struct Location<'a> {
     file: &'a str,
     line: u32,
     col: u32,
+}
+
+impl<'a> Location<'a> {
+    /// Returns the source location of the caller of this function. If that function's caller is
+    /// annotated then its call location will be returned, and so on up the stack to the first call
+    /// within a non-tracked function body.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(track_caller)]
+    /// use core::panic::Location;
+    ///
+    /// /// Returns the [`Location`] at which it is called.
+    /// #[track_caller]
+    /// fn get_caller_location() -> &'static Location<'static> {
+    ///     Location::caller()
+    /// }
+    ///
+    /// /// Returns a [`Location`] from within this function's definition.
+    /// fn get_just_one_location() -> &'static Location<'static> {
+    ///     get_caller_location()
+    /// }
+    ///
+    /// let fixed_location = get_just_one_location();
+    /// assert_eq!(fixed_location.file(), file!());
+    /// assert_eq!(fixed_location.line(), 15);
+    /// assert_eq!(fixed_location.column(), 5);
+    ///
+    /// // running the same untracked function in a different location gives us the same result
+    /// let second_fixed_location = get_just_one_location();
+    /// assert_eq!(fixed_location.file(), second_fixed_location.file());
+    /// assert_eq!(fixed_location.line(), second_fixed_location.line());
+    /// assert_eq!(fixed_location.column(), second_fixed_location.column());
+    ///
+    /// let this_location = get_caller_location();
+    /// assert_eq!(this_location.file(), file!());
+    /// assert_eq!(this_location.line(), 29);
+    /// assert_eq!(this_location.column(), 21);
+    ///
+    /// // running the tracked function in a different location produces a different value
+    /// let another_location = get_caller_location();
+    /// assert_eq!(this_location.file(), another_location.file());
+    /// assert_ne!(this_location.line(), another_location.line());
+    /// assert_ne!(this_location.column(), another_location.column());
+    /// ```
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "track_caller",
+               reason = "uses #[track_caller] which is not yet stable",
+               issue = "47809")]
+    #[track_caller]
+    pub const fn caller() -> &'static Location<'static> {
+        crate::intrinsics::caller_location()
+    }
 }
 
 impl<'a> Location<'a> {
@@ -266,6 +320,16 @@ impl fmt::Display for Location<'_> {
 #[unstable(feature = "std_internals", issue = "0")]
 #[doc(hidden)]
 pub unsafe trait BoxMeUp {
-    fn box_me_up(&mut self) -> *mut (dyn Any + Send);
+    /// Take full ownership of the contents.
+    /// The return type is actually `Box<dyn Any + Send>`, but we cannot use `Box` in libcore.
+    ///
+    /// After this method got called, only some dummy default value is left in `self`.
+    /// Calling this method twice, or calling `get` after calling this method, is an error.
+    ///
+    /// The argument is borrowed because the panic runtime (`__rust_start_panic`) only
+    /// gets a borrowed `dyn BoxMeUp`.
+    fn take_box(&mut self) -> *mut (dyn Any + Send);
+
+    /// Just borrow the contents.
     fn get(&mut self) -> &(dyn Any + Send);
 }

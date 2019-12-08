@@ -143,10 +143,8 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 #[must_use = "if unused the Mutex will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
-    // funny underscores due to how Deref/DerefMut currently work (they
-    // disregard field privacy).
-    __lock: &'a Mutex<T>,
-    __poison: poison::Guard,
+    lock: &'a Mutex<T>,
+    poison: poison::Guard,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -417,8 +415,8 @@ impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             MutexGuard {
-                __lock: lock,
-                __poison: guard,
+                lock: lock,
+                poison: guard,
             }
         })
     }
@@ -429,14 +427,14 @@ impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        unsafe { &*self.lock.data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.__lock.data.get() }
+        unsafe { &mut *self.lock.data.get() }
     }
 }
 
@@ -445,8 +443,8 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     #[inline]
     fn drop(&mut self) {
         unsafe {
-            self.__lock.poison.done(&self.__poison);
-            self.__lock.inner.raw_unlock();
+            self.lock.poison.done(&self.poison);
+            self.lock.inner.raw_unlock();
         }
     }
 }
@@ -466,11 +464,11 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
 }
 
 pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
-    &guard.__lock.inner
+    &guard.lock.inner
 }
 
 pub fn guard_poison<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a poison::Flag {
-    &guard.__lock.poison
+    &guard.lock.poison
 }
 
 #[cfg(all(test, not(target_os = "emscripten")))]

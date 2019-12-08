@@ -1,4 +1,3 @@
-use std::prelude::v1::*;
 use std::{str, i16, f32, f64, fmt};
 
 use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};

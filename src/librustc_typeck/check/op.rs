@@ -11,6 +11,8 @@ use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
     pub fn check_binop_assign(
@@ -31,7 +33,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_ty
         };
 
-        if !lhs_expr.is_place_expr() {
+        if !lhs_expr.is_syntactic_place_expr() {
             struct_span_err!(
                 self.tcx.sess, lhs_expr.span,
                 E0067, "invalid left-hand side expression")
@@ -204,8 +206,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if is_assign == IsAssign::Yes || by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[0].kind {
                         let mutbl = match mutbl {
-                            hir::MutImmutable => AutoBorrowMutability::Immutable,
-                            hir::MutMutable => AutoBorrowMutability::Mutable {
+                            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
+                            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,
@@ -221,8 +223,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if by_ref_binop {
                     if let ty::Ref(region, _, mutbl) = method.sig.inputs()[1].kind {
                         let mutbl = match mutbl {
-                            hir::MutImmutable => AutoBorrowMutability::Immutable,
-                            hir::MutMutable => AutoBorrowMutability::Mutable {
+                            hir::Mutability::Immutable => AutoBorrowMutability::Immutable,
+                            hir::Mutability::Mutable => AutoBorrowMutability::Mutable {
                                 // Allow two-phase borrows for binops in initial deployment
                                 // since they desugar to methods
                                 allow_two_phase_borrow: AllowTwoPhase::Yes,

@@ -285,7 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //    ||         ----- expected because of this
             // LL ||     } else {
             // LL ||         10u32
-            //    ||         ^^^^^ expected i32, found u32
+            //    ||         ^^^^^ expected `i32`, found `u32`
             // LL ||     };
             //    ||_____- if and else have incompatible types
             // ```
@@ -294,7 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // The entire expression is in one line, only point at the arms
             // ```
             // LL |     let x = if true { 10i32 } else { 10u32 };
-            //    |                       -----          ^^^^^ expected i32, found u32
+            //    |                       -----          ^^^^^ expected `i32`, found `u32`
             //    |                       |
             //    |                       expected because of this
             // ```
@@ -323,7 +323,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //   | ||     ^
                 //   | ||_____|
                 //   | |______if and else have incompatible types
-                //   |        expected integer, found ()
+                //   |        expected integer, found `()`
                 // ```
                 // by not pointing at the entire expression:
                 // ```
@@ -335,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //   |  ____________^
                 // 5 | |
                 // 6 | |     };
-                //   | |_____^ expected integer, found ()
+                //   | |_____^ expected integer, found `()`
                 // ```
                 if outer_sp.is_some() {
                     outer_sp = Some(self.tcx.sess.source_map().def_span(span));
@@ -430,8 +430,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let contains_ref_bindings = arms.iter()
             .filter_map(|a| a.pat.contains_explicit_ref_binding())
             .max_by_key(|m| match *m {
-                hir::MutMutable => 1,
-                hir::MutImmutable => 0,
+                hir::Mutability::Mutable => 1,
+                hir::Mutability::Immutable => 0,
             });
 
         if let Some(m) = contains_ref_bindings {

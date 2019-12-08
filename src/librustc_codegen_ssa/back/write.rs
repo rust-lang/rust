@@ -10,7 +10,7 @@ use crate::traits::*;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir,
                         in_incr_comp_dir, in_incr_comp_dir_sess};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
-use rustc::dep_graph::cgu_reuse_tracker::CguReuseTracker;
+use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Lto,
                              Sanitizer, SwitchWithOptPath};
@@ -19,11 +19,12 @@ use rustc::util::nodemap::FxHashMap;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};
-use rustc::util::profiling::SelfProfilerRef;
+use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_fs_util::link_or_copy;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Handler, Level, FatalError, DiagnosticId, SourceMapperDyn};
+use rustc_errors::{Handler, Level, FatalError, DiagnosticId};
+use syntax_pos::source_map::SourceMap;
 use rustc_errors::emitter::{Emitter};
 use rustc_target::spec::MergeFunctions;
 use syntax::attr;
@@ -57,6 +58,10 @@ pub struct ModuleConfig {
 
     pub pgo_gen: SwitchWithOptPath,
     pub pgo_use: Option<PathBuf>,
+
+    pub sanitizer: Option<Sanitizer>,
+    pub sanitizer_recover: Vec<Sanitizer>,
+    pub sanitizer_memory_track_origins: usize,
 
     // Flags indicating which outputs to produce.
     pub emit_pre_lto_bc: bool,
@@ -95,6 +100,10 @@ impl ModuleConfig {
 
             pgo_gen: SwitchWithOptPath::Disabled,
             pgo_use: None,
+
+            sanitizer: None,
+            sanitizer_recover: Default::default(),
+            sanitizer_memory_track_origins: 0,
 
             emit_no_opt_bc: false,
             emit_pre_lto_bc: false,
@@ -222,8 +231,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub total_cgus: usize,
     // Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
-    // LLVM passes added by plugins.
-    pub plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
     // Worker thread number
@@ -344,29 +351,16 @@ pub fn start_async_codegen<B: ExtraBackendMethods>(
     let mut metadata_config = ModuleConfig::new(vec![]);
     let mut allocator_config = ModuleConfig::new(vec![]);
 
-    if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
-        match *sanitizer {
-            Sanitizer::Address => {
-                modules_config.passes.push("asan".to_owned());
-                modules_config.passes.push("asan-module".to_owned());
-            }
-            Sanitizer::Memory => {
-                modules_config.passes.push("msan".to_owned())
-            }
-            Sanitizer::Thread => {
-                modules_config.passes.push("tsan".to_owned())
-            }
-            _ => {}
-        }
-    }
-
     if sess.opts.debugging_opts.profile {
         modules_config.passes.push("insert-gcov-profiling".to_owned())
     }
 
     modules_config.pgo_gen = sess.opts.cg.profile_generate.clone();
     modules_config.pgo_use = sess.opts.cg.profile_use.clone();
-
+    modules_config.sanitizer = sess.opts.debugging_opts.sanitizer.clone();
+    modules_config.sanitizer_recover = sess.opts.debugging_opts.sanitizer_recover.clone();
+    modules_config.sanitizer_memory_track_origins =
+        sess.opts.debugging_opts.sanitizer_memory_track_origins;
     modules_config.opt_level = Some(sess.opts.optimize);
     modules_config.opt_size = Some(sess.opts.optimize);
 
@@ -1032,7 +1026,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         time_passes: sess.time_extended(),
         prof: sess.prof.clone(),
         exported_symbols,
-        plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
         remark: sess.opts.cg.remark.clone(),
         worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
@@ -1679,7 +1672,7 @@ impl Emitter for SharedEmitter {
         }
         drop(self.sender.send(SharedEmitterMessage::AbortIfErrors));
     }
-    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         None
     }
 }
@@ -1759,7 +1752,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             }
         };
 
-        sess.cgu_reuse_tracker.check_expected_reuse(sess);
+        sess.cgu_reuse_tracker.check_expected_reuse(sess.diagnostic());
 
         sess.abort_if_errors();
 

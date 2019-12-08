@@ -1,6 +1,6 @@
 use crate::alloc::{GlobalAlloc, Layout, System};
 use crate::sys::c;
-use crate::sys_common::alloc::{MIN_ALIGN, realloc_fallback};
+use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
 
 #[repr(C)]
 struct Header(*mut u8);
@@ -18,16 +18,12 @@ unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
 #[inline]
 unsafe fn allocate_with_flags(layout: Layout, flags: c::DWORD) -> *mut u8 {
     if layout.align() <= MIN_ALIGN {
-        return c::HeapAlloc(c::GetProcessHeap(), flags, layout.size()) as *mut u8
+        return c::HeapAlloc(c::GetProcessHeap(), flags, layout.size()) as *mut u8;
     }
 
     let size = layout.size() + layout.align();
     let ptr = c::HeapAlloc(c::GetProcessHeap(), flags, size);
-    if ptr.is_null() {
-        ptr as *mut u8
-    } else {
-        align_ptr(ptr as *mut u8, layout.align())
-    }
+    if ptr.is_null() { ptr as *mut u8 } else { align_ptr(ptr as *mut u8, layout.align()) }
 }
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
@@ -46,13 +42,11 @@ unsafe impl GlobalAlloc for System {
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         if layout.align() <= MIN_ALIGN {
             let err = c::HeapFree(c::GetProcessHeap(), 0, ptr as c::LPVOID);
-            debug_assert!(err != 0, "Failed to free heap memory: {}",
-                          c::GetLastError());
+            debug_assert!(err != 0, "Failed to free heap memory: {}", c::GetLastError());
         } else {
             let header = get_header(ptr);
             let err = c::HeapFree(c::GetProcessHeap(), 0, header.0 as c::LPVOID);
-            debug_assert!(err != 0, "Failed to free heap memory: {}",
-                          c::GetLastError());
+            debug_assert!(err != 0, "Failed to free heap memory: {}", c::GetLastError());
         }
     }
 

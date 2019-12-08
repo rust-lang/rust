@@ -25,9 +25,11 @@ enum E {
 // fn main() -> () {
 //     let mut _0: ();
 //     scope 1 {
-//         let _1: E; // `e`
+//         let _1: E;
+//         debug e => _1;
 //         scope 2 {
 //             let _6: K;
+//             debug _k => _6;
 //         }
 //     }
 //     let mut _2: bool;

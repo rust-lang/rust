@@ -810,6 +810,7 @@ impl Build {
                   !target.contains("emscripten") &&
                   !target.contains("wasm32") &&
                   !target.contains("nvptx") &&
+                  !target.contains("fortanix") &&
                   !target.contains("fuchsia") {
             Some(self.cc(target))
         } else {

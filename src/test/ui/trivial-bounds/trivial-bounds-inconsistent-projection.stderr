@@ -31,13 +31,13 @@ LL |     B: A<X = i32> + A
    |                     ^
 
 warning: Trait bound B: A does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent-projection.rs:49:8
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:51:8
    |
 LL |     B: A<X = u8> + A
    |        ^^^^^^^^^
 
 warning: Trait bound B: A does not depend on any type or lifetime parameters
-  --> $DIR/trivial-bounds-inconsistent-projection.rs:49:20
+  --> $DIR/trivial-bounds-inconsistent-projection.rs:51:20
    |
 LL |     B: A<X = u8> + A
    |                    ^

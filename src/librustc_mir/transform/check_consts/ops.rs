@@ -1,14 +1,15 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use rustc::hir::def_id::DefId;
-use rustc::mir::BorrowKind;
 use rustc::session::config::nightly_options;
 use rustc::ty::TyCtxt;
-use syntax::feature_gate::{emit_feature_err, GateIssue};
+use syntax::feature_gate::feature_err;
 use syntax::symbol::sym;
 use syntax_pos::{Span, Symbol};
 
 use super::{ConstKind, Item};
+
+use rustc_error_codes::*;
 
 /// An operation that is not *always* allowed in a const context.
 pub trait NonConstOp: std::fmt::Debug {
@@ -50,7 +51,11 @@ pub trait NonConstOp: std::fmt::Debug {
 /// A `Downcast` projection.
 #[derive(Debug)]
 pub struct Downcast;
-impl NonConstOp for Downcast {}
+impl NonConstOp for Downcast {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_if_match)
+    }
+}
 
 /// A function call where the callee is a pointer.
 #[derive(Debug)]
@@ -136,7 +141,19 @@ impl NonConstOp for HeapAllocation {
 
 #[derive(Debug)]
 pub struct IfOrMatch;
-impl NonConstOp for IfOrMatch {}
+impl NonConstOp for IfOrMatch {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_if_match)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        // This should be caught by the HIR const-checker.
+        item.tcx.sess.delay_span_bug(
+            span,
+            "complex control flow is forbidden in a const context",
+        );
+    }
+}
 
 #[derive(Debug)]
 pub struct LiveDrop;
@@ -152,41 +169,64 @@ impl NonConstOp for LiveDrop {
 
 #[derive(Debug)]
 pub struct Loop;
-impl NonConstOp for Loop {}
+impl NonConstOp for Loop {
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        // This should be caught by the HIR const-checker.
+        item.tcx.sess.delay_span_bug(
+            span,
+            "complex control flow is forbidden in a const context",
+        );
+    }
+}
 
 #[derive(Debug)]
-pub struct MutBorrow(pub BorrowKind);
-impl NonConstOp for MutBorrow {
+pub struct CellBorrow;
+impl NonConstOp for CellBorrow {
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        let kind = self.0;
-        if let BorrowKind::Mut { .. } = kind {
-            let mut err = struct_span_err!(item.tcx.sess, span, E0017,
-                                           "references in {}s may only refer \
-                                            to immutable values", item.const_kind());
-            err.span_label(span, format!("{}s require immutable values",
-                                                item.const_kind()));
-            if item.tcx.sess.teach(&err.get_code().unwrap()) {
-                err.note("References in statics and constants may only refer \
-                          to immutable values.\n\n\
-                          Statics are shared everywhere, and if they refer to \
-                          mutable data one might violate memory safety since \
-                          holding multiple mutable references to shared data \
-                          is not allowed.\n\n\
-                          If you really want global mutable state, try using \
-                          static mut or a global UnsafeCell.");
-            }
-            err.emit();
-        } else {
-            span_err!(item.tcx.sess, span, E0492,
-                      "cannot borrow a constant which may contain \
-                       interior mutability, create a static instead");
+        span_err!(item.tcx.sess, span, E0492,
+            "cannot borrow a constant which may contain \
+            interior mutability, create a static instead");
+    }
+}
+
+#[derive(Debug)]
+pub struct MutBorrow;
+impl NonConstOp for MutBorrow {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_mut_refs)
+    }
+
+    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
+        let mut err = feature_err(
+            &item.tcx.sess.parse_sess,
+            sym::const_mut_refs,
+            span,
+            &format!("references in {}s may only refer \
+                      to immutable values", item.const_kind())
+        );
+        err.span_label(span, format!("{}s require immutable values",
+                                            item.const_kind()));
+        if item.tcx.sess.teach(&err.get_code().unwrap()) {
+            err.note("References in statics and constants may only refer \
+                      to immutable values.\n\n\
+                      Statics are shared everywhere, and if they refer to \
+                      mutable data one might violate memory safety since \
+                      holding multiple mutable references to shared data \
+                      is not allowed.\n\n\
+                      If you really want global mutable state, try using \
+                      static mut or a global UnsafeCell.");
         }
+        err.emit();
     }
 }
 
 #[derive(Debug)]
 pub struct MutDeref;
-impl NonConstOp for MutDeref {}
+impl NonConstOp for MutDeref {
+    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
+        Some(tcx.features().const_mut_refs)
+    }
+}
 
 #[derive(Debug)]
 pub struct Panic;
@@ -196,13 +236,13 @@ impl NonConstOp for Panic {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
+        feature_err(
             &item.tcx.sess.parse_sess,
             sym::const_panic,
             span,
-            GateIssue::Language,
             &format!("panicking in {}s is unstable", item.const_kind()),
-        );
+        )
+        .emit();
     }
 }
 
@@ -214,13 +254,13 @@ impl NonConstOp for RawPtrComparison {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
+        feature_err(
             &item.tcx.sess.parse_sess,
             sym::const_compare_raw_pointers,
             span,
-            GateIssue::Language,
             &format!("comparing raw pointers inside {}", item.const_kind()),
-        );
+        )
+        .emit();
     }
 }
 
@@ -232,14 +272,14 @@ impl NonConstOp for RawPtrDeref {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_raw_ptr_deref,
-            span, GateIssue::Language,
+        feature_err(
+            &item.tcx.sess.parse_sess, sym::const_raw_ptr_deref, span,
             &format!(
                 "dereferencing raw pointers in {}s is unstable",
                 item.const_kind(),
             ),
-        );
+        )
+        .emit();
     }
 }
 
@@ -251,14 +291,14 @@ impl NonConstOp for RawPtrToIntCast {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_raw_ptr_to_usize_cast,
-            span, GateIssue::Language,
+        feature_err(
+            &item.tcx.sess.parse_sess, sym::const_raw_ptr_to_usize_cast, span,
             &format!(
                 "casting pointers to integers in {}s is unstable",
                 item.const_kind(),
             ),
-        );
+        )
+        .emit();
     }
 }
 
@@ -301,22 +341,6 @@ impl NonConstOp for ThreadLocalAccess {
 }
 
 #[derive(Debug)]
-pub struct Transmute;
-impl NonConstOp for Transmute {
-    fn feature_gate(tcx: TyCtxt<'_>) -> Option<bool> {
-        Some(tcx.features().const_transmute)
-    }
-
-    fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_transmute,
-            span, GateIssue::Language,
-            &format!("The use of std::mem::transmute() \
-            is gated in {}s", item.const_kind()));
-    }
-}
-
-#[derive(Debug)]
 pub struct UnionAccess;
 impl NonConstOp for UnionAccess {
     fn is_allowed_in_item(&self, item: &Item<'_, '_>) -> bool {
@@ -329,10 +353,10 @@ impl NonConstOp for UnionAccess {
     }
 
     fn emit_error(&self, item: &Item<'_, '_>, span: Span) {
-        emit_feature_err(
-            &item.tcx.sess.parse_sess, sym::const_fn_union,
-            span, GateIssue::Language,
+        feature_err(
+            &item.tcx.sess.parse_sess, sym::const_fn_union, span,
             "unions in const fn are unstable",
-        );
+        )
+        .emit();
     }
 }

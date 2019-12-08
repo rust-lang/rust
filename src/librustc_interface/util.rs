@@ -14,12 +14,7 @@ use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use rustc_errors::registry::Registry;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
-use rustc_mir;
-use rustc_passes;
-use rustc_plugin;
-use rustc_privacy;
 use rustc_resolve::{self, Resolver};
-use rustc_typeck;
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::io::{self, Write};
@@ -39,23 +34,6 @@ use syntax::{self, ast, attr};
 use syntax_pos::edition::Edition;
 #[cfg(not(parallel_compiler))]
 use std::{thread, panic};
-
-pub fn diagnostics_registry() -> Registry {
-    let mut all_errors = Vec::new();
-    all_errors.extend_from_slice(&rustc::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_typeck::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_resolve::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_privacy::error_codes::DIAGNOSTICS);
-    // FIXME: need to figure out a way to get these back in here
-    // all_errors.extend_from_slice(get_codegen_backend(sess).diagnostics());
-    all_errors.extend_from_slice(&rustc_metadata::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_passes::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_plugin::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&rustc_mir::error_codes::DIAGNOSTICS);
-    all_errors.extend_from_slice(&syntax::error_codes::DIAGNOSTICS);
-
-    Registry::new(&all_errors)
-}
 
 /// Adds `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
@@ -88,9 +66,8 @@ pub fn create_session(
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
+    descriptions: Registry,
 ) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>, Lrc<SourceMap>) {
-    let descriptions = diagnostics_registry();
-
     let loader = file_loader.unwrap_or(box RealFileLoader);
     let source_map = Lrc::new(SourceMap::with_file_loader(
         loader,
@@ -104,6 +81,10 @@ pub fn create_session(
         diagnostic_output,
         lint_caps,
     );
+
+    sess.prof.register_queries(|profiler| {
+        rustc::ty::query::QueryName::register_with_profiler(&profiler);
+    });
 
     let codegen_backend = get_codegen_backend(&sess);
 
@@ -126,11 +107,7 @@ const STACK_SIZE: usize = 16 * 1024 * 1024;
 fn get_stack_size() -> Option<usize> {
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
-    if env::var_os("RUST_MIN_STACK").is_none() {
-        Some(STACK_SIZE)
-    } else {
-        None
-    }
+    env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
 struct Sink(Arc<Mutex<Vec<u8>>>);
@@ -304,11 +281,7 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
             } else {
                 "rustc"
             });
-            if candidate.exists() {
-                Some(candidate)
-            } else {
-                None
-            }
+            candidate.exists().then_some(candidate)
         })
         .next()
 }

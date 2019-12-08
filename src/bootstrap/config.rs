@@ -647,6 +647,20 @@ impl Config {
         config
     }
 
+    /// Try to find the relative path of `bindir`, otherwise return it in full.
+    pub fn bindir_relative(&self) -> &Path {
+        let bindir = &self.bindir;
+        if bindir.is_absolute() {
+            // Try to make it relative to the prefix.
+            if let Some(prefix) = &self.prefix {
+                if let Ok(stripped) = bindir.strip_prefix(prefix) {
+                    return stripped;
+                }
+            }
+        }
+        bindir
+    }
+
     /// Try to find the relative path of `libdir`.
     pub fn libdir_relative(&self) -> Option<&Path> {
         let libdir = self.libdir.as_ref()?;

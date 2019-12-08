@@ -8,7 +8,7 @@ use rustc::session::config::{build_configuration, build_session_options, to_crat
 use rustc::session::config::{LtoCli, LinkerPluginLto, SwitchWithOptPath, ExternEntry};
 use rustc::session::config::{Externs, OutputType, OutputTypes, SymbolManglingVersion};
 use rustc::session::config::{rustc_optgroups, Options, ErrorOutputType, Passes};
-use rustc::session::build_session;
+use rustc::session::{build_session, Session};
 use rustc::session::search_paths::SearchPath;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
@@ -20,13 +20,19 @@ use syntax;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{ColorConfig, emitter::HumanReadableErrorType, registry};
 
-pub fn build_session_options_and_crate_config(
-    matches: &getopts::Matches,
-) -> (Options, FxHashSet<(String, Option<String>)>) {
-    (
-        build_session_options(matches),
-        parse_cfgspecs(matches.opt_strs("cfg")),
-    )
+type CfgSpecs = FxHashSet<(String, Option<String>)>;
+
+fn build_session_options_and_crate_config(matches: getopts::Matches) -> (Options, CfgSpecs) {
+    let sessopts = build_session_options(&matches);
+    let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
+    (sessopts, cfg)
+}
+
+fn mk_session(matches: getopts::Matches) -> (Session, CfgSpecs) {
+    let registry = registry::Registry::new(&[]);
+    let (sessopts, cfg) = build_session_options_and_crate_config(matches);
+    let sess = build_session(sessopts, None, registry);
+    (sess, cfg)
 }
 
 fn new_public_extern_entry<S, I>(locations: I) -> ExternEntry
@@ -59,31 +65,19 @@ fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V> {
 #[test]
 fn test_switch_implies_cfg_test() {
     syntax::with_default_globals(|| {
-        let matches = &match optgroups().parse(&["--test".to_string()]) {
-            Ok(m) => m,
-            Err(f) => panic!("test_switch_implies_cfg_test: {}", f),
-        };
-        let registry = registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, None, registry);
+        let matches = optgroups().parse(&["--test".to_string()]).unwrap();
+        let (sess, cfg) = mk_session(matches);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
         assert!(cfg.contains(&(sym::test, None)));
     });
 }
 
-// When the user supplies --test and --cfg test, don't implicitly add
-// another --cfg test
+// When the user supplies --test and --cfg test, don't implicitly add another --cfg test
 #[test]
 fn test_switch_implies_cfg_test_unless_cfg_test() {
     syntax::with_default_globals(|| {
-        let matches = &match optgroups().parse(&["--test".to_string(),
-                                                 "--cfg=test".to_string()]) {
-            Ok(m) => m,
-            Err(f) => panic!("test_switch_implies_cfg_test_unless_cfg_test: {}", f),
-        };
-        let registry = registry::Registry::new(&[]);
-        let (sessopts, cfg) = build_session_options_and_crate_config(matches);
-        let sess = build_session(sessopts, None, registry);
+        let matches = optgroups().parse(&["--test".to_string(), "--cfg=test".to_string()]).unwrap();
+        let (sess, cfg) = mk_session(matches);
         let cfg = build_configuration(&sess, to_crate_config(cfg));
         let mut test_items = cfg.iter().filter(|&&(name, _)| name == sym::test);
         assert!(test_items.next().is_some());
@@ -95,9 +89,7 @@ fn test_switch_implies_cfg_test_unless_cfg_test() {
 fn test_can_print_warnings() {
     syntax::with_default_globals(|| {
         let matches = optgroups().parse(&["-Awarnings".to_string()]).unwrap();
-        let registry = registry::Registry::new(&[]);
-        let (sessopts, _) = build_session_options_and_crate_config(&matches);
-        let sess = build_session(sessopts, None, registry);
+        let (sess, _) = mk_session(matches);
         assert!(!sess.diagnostic().can_emit_warnings());
     });
 
@@ -105,17 +97,13 @@ fn test_can_print_warnings() {
         let matches = optgroups()
             .parse(&["-Awarnings".to_string(), "-Dwarnings".to_string()])
             .unwrap();
-        let registry = registry::Registry::new(&[]);
-        let (sessopts, _) = build_session_options_and_crate_config(&matches);
-        let sess = build_session(sessopts, None, registry);
+        let (sess, _) = mk_session(matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
 
     syntax::with_default_globals(|| {
         let matches = optgroups().parse(&["-Adead_code".to_string()]).unwrap();
-        let registry = registry::Registry::new(&[]);
-        let (sessopts, _) = build_session_options_and_crate_config(&matches);
-        let sess = build_session(sessopts, None, registry);
+        let (sess, _) = mk_session(matches);
         assert!(sess.diagnostic().can_emit_warnings());
     });
 }
@@ -663,10 +651,6 @@ fn test_debugging_options_tracking_hash() {
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
     opts = reference.clone();
-    opts.debugging_opts.extra_plugins = vec![String::from("plugin1"), String::from("plugin2")];
-    assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
-
-    opts = reference.clone();
     opts.debugging_opts.force_overflow_checks = Some(true);
     assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
@@ -704,6 +688,6 @@ fn test_edition_parsing() {
     let matches = optgroups()
         .parse(&["--edition=2018".to_string()])
         .unwrap();
-    let (sessopts, _) = build_session_options_and_crate_config(&matches);
+    let (sessopts, _) = build_session_options_and_crate_config(matches);
     assert!(sessopts.edition == Edition::Edition2018)
 }

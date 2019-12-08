@@ -10,14 +10,11 @@ LL | |         Some(2) => true,
    | |                    ---- this is found to be of type `bool`
 LL | |
 LL | |         None    => (),
-   | |                    ^^ expected bool, found ()
+   | |                    ^^ expected `bool`, found `()`
 ...  |
 LL | |         _       => true
 LL | |     }
    | |_____- `match` arms have incompatible types
-   |
-   = note: expected type `bool`
-              found type `()`
 
 error: aborting due to previous error
 

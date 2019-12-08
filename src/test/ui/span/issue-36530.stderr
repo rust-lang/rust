@@ -1,5 +1,5 @@
 error[E0658]: non-builtin inner attributes are unstable
-  --> $DIR/issue-36530.rs:7:5
+  --> $DIR/issue-36530.rs:9:5
    |
 LL |     #![foo]
    |     ^^^^^^^

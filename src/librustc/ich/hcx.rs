@@ -2,26 +2,23 @@ use crate::hir;
 use crate::hir::def_id::{DefId, DefIndex};
 use crate::hir::map::DefPathHash;
 use crate::hir::map::definitions::Definitions;
-use crate::ich::{self, CachingSourceMapView, Fingerprint};
+use crate::ich::{self, CachingSourceMapView};
 use crate::middle::cstore::CrateStore;
 use crate::ty::{TyCtxt, fast_reject};
 use crate::session::Session;
 
 use std::cmp::Ord;
-use std::hash as std_hash;
-use std::cell::RefCell;
 
 use syntax::ast;
 use syntax::source_map::SourceMap;
 use syntax::symbol::Symbol;
-use syntax::tokenstream::DelimSpan;
-use syntax_pos::{Span, DUMMY_SP};
-use syntax_pos::hygiene::{self, SyntaxContext};
+use syntax_pos::{SourceFile, BytePos};
 
 use rustc_data_structures::stable_hasher::{
     HashStable, StableHasher, ToStableHashKey,
 };
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_data_structures::sync::Lrc;
 use smallvec::SmallVec;
 
 fn compute_ignored_attr_names() -> FxHashSet<Symbol> {
@@ -281,93 +278,15 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for ast::NodeId {
     }
 }
 
-impl<'a> HashStable<StableHashingContext<'a>> for Span {
-    /// Hashes a span in a stable way. We can't directly hash the span's `BytePos`
-    /// fields (that would be similar to hashing pointers, since those are just
-    /// offsets into the `SourceMap`). Instead, we hash the (file name, line, column)
-    /// triple, which stays the same even if the containing `SourceFile` has moved
-    /// within the `SourceMap`.
-    /// Also note that we are hashing byte offsets for the column, not unicode
-    /// codepoint offsets. For the purpose of the hash that's sufficient.
-    /// Also, hashing filenames is expensive so we avoid doing it twice when the
-    /// span starts and ends in the same file, which is almost always the case.
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        const TAG_VALID_SPAN: u8 = 0;
-        const TAG_INVALID_SPAN: u8 = 1;
-        const TAG_EXPANSION: u8 = 0;
-        const TAG_NO_EXPANSION: u8 = 1;
-
-        if !hcx.hash_spans {
-            return
-        }
-
-        if *self == DUMMY_SP {
-            return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
-        }
-
-        // If this is not an empty or invalid span, we want to hash the last
-        // position that belongs to it, as opposed to hashing the first
-        // position past it.
-        let span = self.data();
-        let (file_lo, line_lo, col_lo) = match hcx.source_map()
-                                                  .byte_pos_to_line_and_col(span.lo) {
-            Some(pos) => pos,
-            None => {
-                return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
-            }
-        };
-
-        if !file_lo.contains(span.hi) {
-            return std_hash::Hash::hash(&TAG_INVALID_SPAN, hasher);
-        }
-
-        std_hash::Hash::hash(&TAG_VALID_SPAN, hasher);
-        // We truncate the stable ID hash and line and column numbers. The chances
-        // of causing a collision this way should be minimal.
-        std_hash::Hash::hash(&(file_lo.name_hash as u64), hasher);
-
-        let col = (col_lo.0 as u64) & 0xFF;
-        let line = ((line_lo as u64) & 0xFF_FF_FF) << 8;
-        let len = ((span.hi - span.lo).0 as u64) << 32;
-        let line_col_len = col | line | len;
-        std_hash::Hash::hash(&line_col_len, hasher);
-
-        if span.ctxt == SyntaxContext::root() {
-            TAG_NO_EXPANSION.hash_stable(hcx, hasher);
-        } else {
-            TAG_EXPANSION.hash_stable(hcx, hasher);
-
-            // Since the same expansion context is usually referenced many
-            // times, we cache a stable hash of it and hash that instead of
-            // recursing every time.
-            thread_local! {
-                static CACHE: RefCell<FxHashMap<hygiene::ExpnId, u64>> = Default::default();
-            }
-
-            let sub_hash: u64 = CACHE.with(|cache| {
-                let expn_id = span.ctxt.outer_expn();
-
-                if let Some(&sub_hash) = cache.borrow().get(&expn_id) {
-                    return sub_hash;
-                }
-
-                let mut hasher = StableHasher::new();
-                expn_id.expn_data().hash_stable(hcx, &mut hasher);
-                let sub_hash: Fingerprint = hasher.finish();
-                let sub_hash = sub_hash.to_smaller_hash();
-                cache.borrow_mut().insert(expn_id, sub_hash);
-                sub_hash
-            });
-
-            sub_hash.hash_stable(hcx, hasher);
-        }
+impl<'a> syntax_pos::HashStableContext for StableHashingContext<'a> {
+    fn hash_spans(&self) -> bool {
+        self.hash_spans
     }
-}
 
-impl<'a> HashStable<StableHashingContext<'a>> for DelimSpan {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.open.hash_stable(hcx, hasher);
-        self.close.hash_stable(hcx, hasher);
+    fn byte_pos_to_line_and_col(&mut self, byte: BytePos)
+        -> Option<(Lrc<SourceFile>, usize, BytePos)>
+    {
+        self.source_map().byte_pos_to_line_and_col(byte)
     }
 }
 

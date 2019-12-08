@@ -56,7 +56,7 @@ cfg_if::cfg_if! {
 // then later used in the `std::os` module when documenting, for example,
 // Windows when we're compiling for Linux.
 
-#[cfg(rustdoc)]
+#[cfg(doc)]
 cfg_if::cfg_if! {
     if #[cfg(unix)] {
         // On unix we'll document what's already available
@@ -80,7 +80,7 @@ cfg_if::cfg_if! {
     }
 }
 
-#[cfg(rustdoc)]
+#[cfg(doc)]
 cfg_if::cfg_if! {
     if #[cfg(windows)] {
         // On windows we'll just be documenting what's already available

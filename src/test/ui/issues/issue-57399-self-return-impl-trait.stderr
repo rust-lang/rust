@@ -1,8 +1,0 @@
-warning: field is never used: `a`
-  --> $DIR/issue-57399-self-return-impl-trait.rs:12:5
-   |
-LL |     a: A,
-   |     ^^^^
-   |
-   = note: `#[warn(dead_code)]` on by default
-

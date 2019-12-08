@@ -10,10 +10,7 @@ error[E0308]: mismatched types
 LL | fn foo() {
    |          - help: try adding a return type: `-> &'static str`
 LL |     "bar            boo"
-   |     ^^^^^^^^^^^^^^^^^^^^ expected (), found reference
-   |
-   = note: expected type `()`
-              found type `&'static str`
+   |     ^^^^^^^^^^^^^^^^^^^^ expected `()`, found `&str`
 
 error: aborting due to 2 previous errors
 

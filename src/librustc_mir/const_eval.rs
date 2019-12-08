@@ -9,11 +9,10 @@ use std::convert::TryInto;
 
 use rustc::hir::def::DefKind;
 use rustc::hir::def_id::DefId;
-use rustc::middle::lang_items::PanicLocationLangItem;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled, ScalarMaybeUndef};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, subst::Subst};
-use rustc::ty::layout::{self, LayoutOf, VariantIdx};
+use rustc::ty::layout::{self, HasTyCtxt, LayoutOf, VariantIdx};
 use rustc::traits::Reveal;
 use rustc_data_structures::fx::FxHashMap;
 use crate::interpret::eval_nullary_intrinsic;
@@ -23,7 +22,7 @@ use syntax::{source_map::{Span, DUMMY_SP}, symbol::Symbol};
 use crate::interpret::{self,
     PlaceTy, MPlaceTy, OpTy, ImmTy, Immediate, Scalar, Pointer,
     RawConst, ConstValue, Machine,
-    InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup,
+    InterpResult, InterpErrorInfo, GlobalId, InterpCx, StackPopCleanup, AssertMessage,
     Allocation, AllocId, MemoryKind, Memory,
     snapshot, RefTracking, intern_const_alloc_recursive,
 };
@@ -55,7 +54,7 @@ fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, 'tcx>,
     op: OpTy<'tcx>,
 ) -> &'tcx ty::Const<'tcx> {
-    // We do not have value optmizations for everything.
+    // We do not have value optimizations for everything.
     // Only scalars and slices, since they are very common.
     // Note that further down we turn scalars of undefined bits back to `ByRef`. These can result
     // from scalar unions that are initialized with one of their zero sized variants. We could
@@ -128,7 +127,7 @@ fn op_to_const<'tcx>(
             }
         },
     };
-    ecx.tcx.mk_const(ty::Const { val, ty: op.layout.ty })
+    ecx.tcx.mk_const(ty::Const { val: ty::ConstKind::Value(val), ty: op.layout.ty })
 }
 
 // Returns a pointer to where the result lives
@@ -146,7 +145,16 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     let name = ty::tls::with(|tcx| tcx.def_path_str(cid.instance.def_id()));
     let prom = cid.promoted.map_or(String::new(), |p| format!("::promoted[{:?}]", p));
     trace!("eval_body_using_ecx: pushing stack frame for global: {}{}", name, prom);
-    assert!(body.arg_count == 0);
+
+    // Assert all args (if any) are zero-sized types; `eval_body_using_ecx` doesn't
+    // make sense if the body is expecting nontrivial arguments.
+    // (The alternative would be to use `eval_fn_call` with an args slice.)
+    for arg in body.args_iter() {
+        let decl = body.local_decls.get(arg).expect("arg missing from local_decls");
+        let layout = ecx.layout_of(decl.ty.subst(tcx, cid.instance.substs))?;
+        assert!(layout.is_zst())
+    };
+
     ecx.push_stack_frame(
         cid.instance,
         body.span,
@@ -319,25 +327,40 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         false // for now, we don't enforce validity
     }
 
-    fn find_fn(
+    fn find_mir_or_eval_fn(
         ecx: &mut InterpCx<'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
-        ret: Option<mir::BasicBlock>,
+        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        _unwind: Option<mir::BasicBlock> // unwinding is not supported in consts
     ) -> InterpResult<'tcx, Option<&'mir mir::Body<'tcx>>> {
-        debug!("eval_fn_call: {:?}", instance);
+        debug!("find_mir_or_eval_fn: {:?}", instance);
+
         // Only check non-glue functions
         if let ty::InstanceDef::Item(def_id) = instance.def {
             // Execution might have wandered off into other crates, so we cannot do a stability-
             // sensitive check here.  But we can at least rule out functions that are not const
             // at all.
-            if !ecx.tcx.is_const_fn_raw(def_id) {
+            if ecx.tcx.is_const_fn_raw(def_id) {
+                // If this function is a `const fn` then as an optimization we can query this
+                // evaluation immediately.
+                //
+                // For the moment we only do this for functions which take no arguments
+                // (or all arguments are ZSTs) so that we don't memoize too much.
+                //
+                // Because `#[track_caller]` adds an implicit non-ZST argument, we also cannot
+                // perform this optimization on items tagged with it.
+                let no_implicit_args = !instance.def.requires_caller_location(ecx.tcx());
+                if args.iter().all(|a| a.layout.is_zst()) && no_implicit_args {
+                    let gid = GlobalId { instance, promoted: None };
+                    ecx.eval_const_fn_call(gid, ret)?;
+                    return Ok(None);
+                }
+            } else {
                 // Some functions we support even if they are non-const -- but avoid testing
                 // that for const fn!  We certainly do *not* want to actually call the fn
                 // though, so be sure we return here.
-                return if ecx.hook_fn(instance, args, dest)? {
-                    ecx.goto_block(ret)?; // fully evaluated and done
+                return if ecx.hook_panic_fn(instance, args, ret)? {
                     Ok(None)
                 } else {
                     throw_unsup_format!("calling non-const function `{}`", instance)
@@ -346,7 +369,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
         // This is a const fn. Call it.
         Ok(Some(match ecx.load_mir(instance.def, None) {
-            Ok(body) => body,
+            Ok(body) => *body,
             Err(err) => {
                 if let err_unsup!(NoMirFor(ref path)) = err.kind {
                     return Err(
@@ -363,8 +386,8 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         _ecx: &mut InterpCx<'mir, 'tcx, Self>,
         fn_val: !,
         _args: &[OpTy<'tcx>],
-        _dest: Option<PlaceTy<'tcx>>,
-        _ret: Option<mir::BasicBlock>,
+        _ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
         match fn_val {}
     }
@@ -374,9 +397,10 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         span: Span,
         instance: ty::Instance<'tcx>,
         args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        ret: Option<(PlaceTy<'tcx>, mir::BasicBlock)>,
+        _unwind: Option<mir::BasicBlock>
     ) -> InterpResult<'tcx> {
-        if ecx.emulate_intrinsic(span, instance, args, dest)? {
+        if ecx.emulate_intrinsic(span, instance, args, ret)? {
             return Ok(());
         }
         // An intrinsic that we do not support
@@ -384,6 +408,40 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         Err(
             ConstEvalError::NeedsRfc(format!("calling intrinsic `{}`", intrinsic_name)).into()
         )
+    }
+
+    fn assert_panic(
+        ecx: &mut InterpCx<'mir, 'tcx, Self>,
+        _span: Span,
+        msg: &AssertMessage<'tcx>,
+        _unwind: Option<mir::BasicBlock>,
+    ) -> InterpResult<'tcx> {
+        use rustc::mir::interpret::PanicInfo::*;
+        Err(match msg {
+            BoundsCheck { ref len, ref index } => {
+                let len = ecx
+                    .read_immediate(ecx.eval_operand(len, None)?)
+                    .expect("can't eval len")
+                    .to_scalar()?
+                    .to_machine_usize(&*ecx)?;
+                let index = ecx
+                    .read_immediate(ecx.eval_operand(index, None)?)
+                    .expect("can't eval index")
+                    .to_scalar()?
+                    .to_machine_usize(&*ecx)?;
+                err_panic!(BoundsCheck { len, index })
+            }
+            Overflow(op) => err_panic!(Overflow(*op)),
+            OverflowNeg => err_panic!(OverflowNeg),
+            DivisionByZero => err_panic!(DivisionByZero),
+            RemainderByZero => err_panic!(RemainderByZero),
+            ResumedAfterReturn(generator_kind)
+                => err_panic!(ResumedAfterReturn(*generator_kind)),
+            ResumedAfterPanic(generator_kind)
+                => err_panic!(ResumedAfterPanic(*generator_kind)),
+            Panic { .. } => bug!("`Panic` variant cannot occur in MIR"),
+        }
+        .into())
     }
 
     fn ptr_to_int(
@@ -414,7 +472,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     #[inline(always)]
-    fn tag_allocation<'b>(
+    fn init_allocation_extra<'b>(
         _memory_extra: &(),
         _id: AllocId,
         alloc: Cow<'b, Allocation>,
@@ -469,12 +527,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     fn stack_push(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         Ok(())
     }
-
-    /// Called immediately before a stack frame gets popped.
-    #[inline(always)]
-    fn stack_pop(_ecx: &mut InterpCx<'mir, 'tcx, Self>, _extra: ()) -> InterpResult<'tcx> {
-        Ok(())
-    }
 }
 
 /// Extracts a field of a (variant of a) const.
@@ -510,16 +562,12 @@ pub fn const_caller_location<'tcx>(
     trace!("const_caller_location: {}:{}:{}", file, line, col);
     let mut ecx = mk_eval_cx(tcx, DUMMY_SP, ty::ParamEnv::reveal_all());
 
-    let loc_ty = tcx.mk_imm_ref(
-        tcx.lifetimes.re_static,
-        tcx.type_of(tcx.require_lang_item(PanicLocationLangItem, None))
-            .subst(tcx, tcx.mk_substs([tcx.lifetimes.re_static.into()].iter())),
-    );
-    let loc_place = ecx.alloc_caller_location(file, line, col).unwrap();
+    let loc_ty = tcx.caller_location_ty();
+    let loc_place = ecx.alloc_caller_location(file, line, col);
     intern_const_alloc_recursive(&mut ecx, None, loc_place).unwrap();
     let loc_const = ty::Const {
         ty: loc_ty,
-        val: ConstValue::Scalar(loc_place.ptr.into()),
+        val: ty::ConstKind::Value(ConstValue::Scalar(loc_place.ptr.into())),
     };
 
     tcx.mk_const(loc_const)
@@ -580,10 +628,10 @@ fn validate_and_turn_into_const<'tcx>(
         if tcx.is_static(def_id) || cid.promoted.is_some() {
             let ptr = mplace.ptr.to_ptr()?;
             Ok(tcx.mk_const(ty::Const {
-                val: ConstValue::ByRef {
+                val: ty::ConstKind::Value(ConstValue::ByRef {
                     alloc: ecx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id),
                     offset: ptr.offset,
-                },
+                }),
                 ty: mplace.layout.ty,
             }))
         } else {
@@ -694,7 +742,7 @@ pub fn const_eval_raw_provider<'tcx>(
 
     let res = ecx.load_mir(cid.instance.def, cid.promoted);
     res.and_then(
-        |body| eval_body_using_ecx(&mut ecx, cid, body)
+        |body| eval_body_using_ecx(&mut ecx, cid, *body)
     ).and_then(|place| {
         Ok(RawConst {
             alloc_id: place.ptr.assert_ptr().alloc_id,

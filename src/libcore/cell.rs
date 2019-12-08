@@ -1545,8 +1545,45 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]
+        // #[repr(transparent)]. This exploits libstd's special status, there is
+        // no guarantee for user code that this will work in future versions of the compiler!
         self as *const UnsafeCell<T> as *const T as *mut T
+    }
+
+    /// Gets a mutable pointer to the wrapped value.
+    /// The difference to [`get`] is that this function accepts a raw pointer,
+    /// which is useful to avoid the creation of temporary references.
+    ///
+    /// The result can be cast to a pointer of any kind.
+    /// Ensure that the access is unique (no active references, mutable or not)
+    /// when casting to `&mut T`, and ensure that there are no mutations
+    /// or mutable aliases going on when casting to `&T`.
+    ///
+    /// [`get`]: #method.get
+    ///
+    /// # Examples
+    ///
+    /// Gradual initialization of an `UnsafeCell` requires `raw_get`, as
+    /// calling `get` would require creating a reference to uninitialized data:
+    ///
+    /// ```
+    /// #![feature(unsafe_cell_raw_get)]
+    /// use std::cell::UnsafeCell;
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let m = MaybeUninit::<UnsafeCell<i32>>::uninit();
+    /// unsafe { UnsafeCell::raw_get(m.as_ptr()).write(5); }
+    /// let uc = unsafe { m.assume_init() };
+    ///
+    /// assert_eq!(uc.into_inner(), 5);
+    /// ```
+    #[inline]
+    #[unstable(feature = "unsafe_cell_raw_get", issue = "66358")]
+    pub const fn raw_get(this: *const Self) -> *mut T {
+        // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
+        // #[repr(transparent)]. This exploits libstd's special status, there is
+        // no guarantee for user code that this will work in future versions of the compiler!
+        this as *const T as *mut T
     }
 }
 

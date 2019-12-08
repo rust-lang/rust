@@ -77,7 +77,7 @@ fn label_break_mixed(v: u32) -> u32 {
         }
         // Labeled breaking an outer loop still works
         'd: loop {
-            'e: {
+            {
                 if v == r {
                     break 'b;
                 }

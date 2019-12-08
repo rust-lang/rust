@@ -7,10 +7,12 @@ use rustc::ty::TyCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::Map;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir::{self, Node, Destination, GeneratorMovability};
+use rustc::hir::{self, Node, Destination, Movability};
 use syntax::struct_span_err;
 use syntax_pos::Span;
 use errors::Applicability;
+
+use rustc_error_codes::*;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Context {
@@ -59,7 +61,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(Loop(source), |v| v.visit_block(&b));
             }
             hir::ExprKind::Closure(_, ref function_decl, b, span, movability) => {
-                let cx = if let Some(GeneratorMovability::Static) = movability {
+                let cx = if let Some(Movability::Static) = movability {
                     AsyncClosure(span)
                 } else {
                     Closure(span)
@@ -142,8 +144,8 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                                             "`continue` pointing to a labeled block")
                                 .span_label(e.span,
                                             "labeled blocks cannot be `continue`'d")
-                                .span_note(block.span,
-                                            "labeled block the continue points to")
+                                .span_label(block.span,
+                                            "labeled block the `continue` points to")
                                 .emit();
                         }
                     }
