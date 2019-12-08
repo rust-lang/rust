@@ -1,5 +1,5 @@
 import { lookpath } from 'lookpath';
-import { homedir } from 'os';
+import { homedir, platform } from 'os';
 import * as lc from 'vscode-languageclient';
 
 import { window, workspace } from 'vscode';
@@ -29,10 +29,14 @@ export class Server {
         }
 
         const command = expandPathResolving(this.config.raLspServerPath);
-        if (!(await lookpath(command))) {
-            throw new Error(
-                `Cannot find rust-analyzer server \`${command}\` in PATH.`
-            );
+        // FIXME: remove check when the following issue is fixed:
+        // https://github.com/otiai10/lookpath/issues/4
+        if (platform() !== 'win32') {
+            if (!(await lookpath(command))) {
+                throw new Error(
+                    `Cannot find rust-analyzer server \`${command}\` in PATH.`
+                );
+            }
         }
         const run: lc.Executable = {
             command,
