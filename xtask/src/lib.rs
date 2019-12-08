@@ -79,7 +79,7 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
 }
 
 pub fn install_rustfmt() -> Result<()> {
-    run(&format!("rustup install {}", TOOLCHAIN), ".")?;
+    run(&format!("rustup toolchain install {}", TOOLCHAIN), ".")?;
     run(&format!("rustup component add rustfmt --toolchain {}", TOOLCHAIN), ".")
 }
 
@@ -125,7 +125,7 @@ pub fn run_clippy() -> Result<()> {
 }
 
 pub fn install_clippy() -> Result<()> {
-    run(&format!("rustup install {}", TOOLCHAIN), ".")?;
+    run(&format!("rustup toolchain install {}", TOOLCHAIN), ".")?;
     run(&format!("rustup component add clippy --toolchain {}", TOOLCHAIN), ".")
 }
 
