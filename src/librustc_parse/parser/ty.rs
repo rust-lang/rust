@@ -360,36 +360,24 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericBounds> {
         let mut bounds = Vec::new();
         let mut negative_bounds = Vec::new();
-        let mut last_plus_span = None;
-        let mut was_negative = false;
         while self.can_begin_bound() {
-            match self.parse_generic_bound(colon_span, last_plus_span)? {
+            match self.parse_generic_bound()? {
                 Ok(bound) => bounds.push(bound),
-                Err(neg_sp) => {
-                    was_negative = true;
-                    if let Some(neg_sp) = neg_sp {
-                        negative_bounds.push(neg_sp);
-                    }
-                }
+                Err(neg_sp) => negative_bounds.push(neg_sp),
             }
-
             if !allow_plus || !self.eat_plus() {
                 break
-            } else {
-                last_plus_span = Some(self.prev_span);
             }
         }
 
-        if !negative_bounds.is_empty() || was_negative {
+        if !negative_bounds.is_empty() {
             let negative_bounds_len = negative_bounds.len();
-            let last_span = negative_bounds.last().map(|sp| *sp);
+            let last_span = *negative_bounds.last().unwrap();
             let mut err = self.struct_span_err(
                 negative_bounds,
                 "negative trait bounds are not supported",
             );
-            if let Some(sp) = last_span {
-                err.span_label(sp, "negative trait bounds are not supported");
-            }
+            err.span_label(last_span, "negative trait bounds are not supported");
             if let Some(bound_list) = colon_span {
                 let bound_list = bound_list.to(self.prev_span);
                 let mut new_bound_list = String::new();
@@ -432,9 +420,8 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_generic_bound(
         &mut self,
-        colon_span: Option<Span>,
-        last_plus_span: Option<Span>,
-    ) -> PResult<'a, Result<GenericBound, Option<Span>>> {
+    ) -> PResult<'a, Result<GenericBound, Span>> {
+        let anchor_lo = self.prev_span;
         let lo = self.token.span;
         let has_parens = self.eat(&token::OpenDelim(token::Paren));
         let inner_lo = self.token.span;
@@ -445,7 +432,7 @@ impl<'a> Parser<'a> {
         } else {
             let (poly_span, bound) = self.parse_generic_ty_bound(lo, has_parens, question)?;
             if is_negative {
-                Ok(Err(last_plus_span.or(colon_span).map(|sp| sp.to(poly_span))))
+                Ok(Err(anchor_lo.to(poly_span)))
             } else {
                 Ok(Ok(bound))
             }
