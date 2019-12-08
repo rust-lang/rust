@@ -31,7 +31,7 @@ use ra_syntax::ast;
 use crate::{
     db::{DefDatabase, HirDatabase},
     ty::display::HirFormatter,
-    ty::{self, InEnvironment, InferenceResult, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk},
+    ty::{self, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk},
     CallableDef, HirDisplay, InFile, Name,
 };
 
@@ -519,10 +519,6 @@ impl Function {
         db.body(self.id.into())
     }
 
-    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.id.into())
-    }
-
     /// The containing impl block, if this is a method.
     pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
         match self.container(db) {
@@ -548,7 +544,7 @@ impl Function {
     }
 
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
-        let infer = self.infer(db);
+        let infer = db.infer(self.id.into());
         infer.add_diagnostics(db, self.id, sink);
         let mut validator = ExprValidator::new(self.id, infer, sink);
         validator.validate_body(db);
@@ -571,10 +567,6 @@ impl Const {
 
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
         db.const_data(self.id).name.clone()
-    }
-
-    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.id.into())
     }
 
     /// The containing impl block, if this is a type alias.
@@ -614,10 +606,6 @@ impl Static {
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
         Some(self.module(db).krate())
-    }
-
-    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.id.into())
     }
 }
 
