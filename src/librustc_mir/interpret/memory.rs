@@ -950,3 +950,56 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 }
+
+/// A depth-first search over the allocation graph.
+///
+/// This is based on the DFS in `rustc_data_structures`, which we cannot use directly because
+/// `AllocId` does not implement `Idx`.
+pub struct DepthFirstSearch<'mem, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
+    memory: &'mem Memory<'mir, 'tcx, M>,
+    visited: FxHashSet<AllocId>,
+    stack: Vec<AllocId>,
+}
+
+impl<M: Machine<'mir, 'tcx>> DepthFirstSearch<'mem, 'mir, 'tcx, M> {
+    /// Returns a new DFS iterator that will traverse all allocations reachable from the given
+    /// `AllocId`s.
+    ///
+    /// The first node in `roots` will be the first node visited by the DFS.
+    pub fn with_roots(
+        memory: &'mem Memory<'mir, 'tcx, M>,
+        roots: impl IntoIterator<Item = AllocId>,
+    ) -> Self {
+        let mut stack: Vec<_> = roots.into_iter().collect();
+        stack.reverse();
+
+        DepthFirstSearch {
+            memory,
+            visited: stack.iter().copied().collect(),
+            stack,
+        }
+    }
+}
+
+impl<M: Machine<'mir, 'tcx>> Iterator for DepthFirstSearch<'mem, 'mir, 'tcx, M> {
+    type Item = (AllocId, InterpResult<'tcx, &'mem Allocation<M::PointerTag, M::AllocExtra>>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let DepthFirstSearch { stack, visited, memory } = self;
+
+        let id = stack.pop()?;
+        let alloc = memory.get_raw(id);
+
+        if let Ok(alloc) = alloc {
+            let new_pointers = alloc
+                .relocations()
+                .values()
+                .map(|&(_, id)| id)
+                .filter(|id| visited.insert(*id));
+
+            stack.extend(new_pointers);
+        }
+
+        Some((id, alloc))
+    }
+}
