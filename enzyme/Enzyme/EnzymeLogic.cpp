@@ -336,7 +336,7 @@ std::string to_string(const std::set<unsigned>& us) {
     return s + "}";
 }
 
-// Determine if a load is needed in the reverse pass. We only use this logic in the top level function right now.
+// Determine if a value is needed in the reverse pass. We only use this logic in the top level function right now.
 bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLevel, std::map<Value*, bool> seen = {}) {
   if (seen.find(inst) != seen.end()) return seen[inst];
 
@@ -354,7 +354,7 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
     if (!topLevel) {
         //Proving that none of the uses (or uses' uses) are used in control flow allows us to safely not do this load
         
-        if (isa<BranchInst>(use) || isa<SwitchInst>(use)) {
+        if (isa<BranchInst>(use) || isa<SwitchInst>(use) || isa<CallInst>(use)) {
             //llvm::errs() << " had to use in reverse since used in branch/switch " << *inst << " use: " << *use << "\n";
             return seen[inst] = true;
         }
@@ -371,28 +371,32 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
     // A pointer is only needed in the reverse pass if its non-store uses are needed in the reverse pass
     //   Moreover, when considering a load of, the value a need for loaded by the pointer means this value must be cessary for the reverse pass if the load itself is not necessary for the reverse
     //      (in order to perform that load again)
-    if (inst->getType()->isPointerTy()) {
+    if (!inst->getType()->isFPOrFPVectorTy()) {
         //continue;
         bool unknown = true;
         for (auto zu : inst->users()) {
-            if (isa<LoadInst>(zu) && is_value_needed_in_reverse(gutils, zu, topLevel, seen)) {
-                //llvm::errs() << " had to use in reverse since load use " << *zu << " of " << *inst << "\n";
-                return seen[inst] = true;
+            if (isa<LoadInst>(zu) || isa<CastInst>(zu) || isa<PHINode>(zu)) {
+                if (is_value_needed_in_reverse(gutils, zu, topLevel, seen)) {
+                    //llvm::errs() << " had to use in reverse since sub use " << *zu << " of " << *inst << "\n";
+                    return seen[inst] = true;
+                }
+                continue;
             }
             if (auto si = dyn_cast<StoreInst>(zu)) {
                 if (si->getPointerOperand() == inst)
                     continue;
             }
+            if (auto ci = dyn_cast<CallInst>(zu)) {
+                //llvm::errs() << " had to use in reverse since call use " << *zu << " of " << *inst << "\n";
+                return seen[inst] = true;
+            }
+            //TODO add handling of call and allow interprocedural
+            //llvm::errs() << " unknown pointer use " << *zu << " of " << *inst << "\n";
             unknown = true;
         }
         if (!unknown)
           continue;
           //return seen[inst] = false;
-    }
-
-    if (gutils->isConstantInstruction(gutils->getNewFromOriginal(user))) {
-        //llvm::errs() << " skipping constant use : " << *user << " of " <<  *inst << "\n";
-        continue;
     }
 
     if (auto op = dyn_cast<BinaryOperator>(user)) {
@@ -410,6 +414,13 @@ bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLeve
         /*|| isa<StoreInst>(use)*/){
       continue;
     }
+    
+    //! Note it is important that return check comes before this as it may not have a new instruction
+    if (gutils->isConstantInstruction(gutils->getNewFromOriginal(user))) {
+        //llvm::errs() << " skipping constant use : " << *user << " of " <<  *inst << "\n";
+        continue;
+    }
+
     //llvm::errs() << " + must have in reverse from considering use : " << *user << " of " <<  *inst << "\n";
     return seen[inst] = true;
   }
@@ -721,8 +732,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                 continue;
 
             if (called && (called->getName()=="malloc" || called->getName()=="_Znwm")) {
-                //TODO enable this if we need to free the memory
-                if (false && op->getNumUses() != 0) {
+                if (is_value_needed_in_reverse(gutils, gutils->getOriginal(op), /*topLevel*/false)) {
                     IRBuilder<> BuilderZ(op);
                     gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
                 }
@@ -887,10 +897,13 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
                   if (hasNonReturnUse) {
                     gutils->addMalloc(BuilderZ, rv, getIndex(gutils->getOriginal(op), "self") );
                   }
+                  gutils->originalToNewFn[gutils->getOriginal(op)] = rv;
                   gutils->replaceAWithB(op,rv);
-                  auto nm = op->getName();
+                  std::string nm = op->getName().str();
                   op->setName("");
                   rv->setName(nm);
+                } else {
+                  gutils->originalToNewFn[gutils->getOriginal(op)] = augmentcall;
                 }
 
                 gutils->erase(op);
@@ -1443,13 +1456,14 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
 
     //TODO enable this if we need to free the memory
     // NOTE THAT TOPLEVEL IS THERE SIMPLY BECAUSE THAT WAS PREVIOUS ATTITUTE TO FREE'ing
-    if (topLevel) {
       Instruction* inst = op;
       if (!topLevel && subretused) {
         IRBuilder<> BuilderZ(op);
         inst = gutils->addMalloc(BuilderZ, op, getIndex(gutils->getOriginal(op), "self") );
         inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), constval ? "const" : "active")}));
       }
+    
+    if (topLevel) {
       freeKnownAllocation(Builder2, gutils->lookupM(inst, Builder2), *called, TLI);
     }
     return;
@@ -2301,6 +2315,10 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
 
   }
 
+  //! Ficticious values with TBAA to use for constant detection algos until everything is made fully ahead of time
+  //   Note that we need to delete the tbaa tags from these values once we finish / before verification
+  std::vector<Instruction*> fakeTBAA;
+
   for(BasicBlock* BB: gutils->originalBlocks) {
     if(ReturnInst* op = dyn_cast<ReturnInst>(BB->getTerminator())) {
       Value* retval = op->getReturnValue();
@@ -2747,6 +2765,7 @@ realcall:
       if (dif1) addToDiffe(op->getOperand(1), dif1);
       if (dif2) addToDiffe(op->getOperand(2), dif2);
     } else if(auto op = dyn_cast<LoadInst>(inst)) {
+      //llvm::errs() << "considering load " << *op << " constantinst " << gutils->isConstantInstruction(inst) << " constantval: " << gutils->isConstantValue(op) << "\n";
       Value* op_operand = op->getPointerOperand(); 
       Type* op_type = op->getType();
       bool op_valconstant = gutils->isConstantValue(op);
@@ -2760,6 +2779,7 @@ realcall:
  
       if (can_modref_map.find(gutils->getOriginal(inst))->second) {
         IRBuilder<> BuilderZ(op->getNextNode());
+        auto tbaa = inst->getMetadata(LLVMContext::MD_tbaa);
         inst = cast<Instruction>(gutils->addMalloc(BuilderZ, inst, getIndex(op_orig, "self")));
 	  	if (!op_type->isEmptyTy() && !op_type->isFPOrFPVectorTy()) {
           PHINode* placeholder = cast<PHINode>(gutils->invertedPointers[inst]);
@@ -2787,6 +2807,10 @@ realcall:
             gutils->nonconstant.insert(inst);
           }
           inst->setMetadata("enzyme_activity_value", MDNode::get(inst->getContext(), {MDString::get(inst->getContext(), op_valconstant ? "const" : "active")}));
+          if (tbaa) {
+              inst->setMetadata(LLVMContext::MD_tbaa, tbaa);
+              fakeTBAA.push_back(inst);
+          }
           gutils->originalInstructions.insert(inst);
 
           assert(inst->getType() == op_type);
@@ -2821,12 +2845,13 @@ realcall:
       if (!op_type->isPointerTy()) {
         auto prediff = diffe(inst);
         setDiffe(inst, Constant::getNullValue(op_type));
+        //llvm::errs() << "  + doing load propagation: op_orig:" << *op_orig << " inst:" << *inst << " prediff: " << *prediff << " inverted_operand: " << *inverted_operand << "\n";
         assert(inverted_operand);
         gutils->addToInvertedPtrDiffe(inverted_operand, prediff, Builder2);
       }
 
     } else if(auto op = dyn_cast<StoreInst>(inst)) {
-      llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
+      //llvm::errs() << "considering store " << *op << " constantinst " << gutils->isConstantInstruction(inst) << "\n";
       if (gutils->isConstantInstruction(inst)) continue;
 
       //TODO const
@@ -2834,19 +2859,19 @@ realcall:
       Value* tostore = op->getValueOperand();
       Type* tostoreType = tostore->getType();
       bool constantValue = gutils->isConstantValue(tostore);
-      llvm::errs() << "considering store " << *op << " constantvalue " << constantValue << "\n";
+      //llvm::errs() << "considering store " << *op << " constantvalue " << constantValue << "\n";
       if (constantValue && tostoreType->isIntegerTy()) {
-        llvm::errs() << "secretfloat is pointer: " << (isIntASecretFloat(tostore) == IntType::Pointer) << "\n";
+        //llvm::errs() << "secretfloat is pointer: " << (isIntASecretFloat(tostore) == IntType::Pointer) << "\n";
       }
       if (! ( tostoreType->isPointerTy() || (tostoreType->isIntegerTy() && !constantValue && isIntASecretFloat(tostore) == IntType::Pointer ) ) ) {
           StoreInst* ts;
-          llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
+          //llvm::errs() << "  considering adding to value:" << *op->getValueOperand() << " " << *op << " " << gutils->isConstantValue(op->getValueOperand()) << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
           if (!gutils->isConstantValue(op->getValueOperand())) {
             auto dif1 = Builder2.CreateLoad(invertPointer(op->getPointerOperand()));
-            llvm::errs() << "    nonconst value considering adding to value:" << *op->getValueOperand() << " " << *op << " dif1: " << *dif1 << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
+            //llvm::errs() << "    nonconst value considering adding to value:" << *op->getValueOperand() << " " << *op << " dif1: " << *dif1 << "\n"; //secretfloat is " << isIntASecretFloat(tostore) << "\n";
             ts = gutils->setPtrDiffe(op->getPointerOperand(), Constant::getNullValue(op->getValueOperand()->getType()), Builder2);
             addToDiffe(op->getValueOperand(), dif1);
-            llvm::errs() << "       from here: " << *ts->getParent() << "\n";
+            //llvm::errs() << "       from here: " << *ts->getParent() << "\n";
           } else {
             ts = gutils->setPtrDiffe(op->getPointerOperand(), Constant::getNullValue(op->getValueOperand()->getType()), Builder2);
           }
@@ -2976,6 +3001,10 @@ realcall:
 
   if (!topLevel)
     gutils->eraseStructuralStoresAndCalls();
+
+  for(auto inst: fakeTBAA) {
+      inst->setMetadata(LLVMContext::MD_tbaa, nullptr);
+  }
           
 
   while(gutils->inversionAllocs->size() > 0) {

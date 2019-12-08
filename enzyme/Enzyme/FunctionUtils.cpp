@@ -473,7 +473,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
             if (seen.find(use) != seen.end()) continue;
             seen.insert(use);
 
-			llvm::errs() << " considering use: " << *use << " of ai: " <<*ai << "\n";
+			//llvm::errs() << " considering use: " << *use << " of ai: " <<*ai << "\n";
 
             if (isa<LoadInst>(use) || isa<StoreInst>(use)) {
                 continue;
@@ -484,6 +484,10 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
                 continue;
             }
             if (auto gep = dyn_cast<CastInst>(use)) {
+                for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
+                continue;
+            }
+            if (auto gep = dyn_cast<PHINode>(use)) {
                 for(auto a : gep->users()) { todo.push_back(std::make_pair((Value*)use, a)); }
                 continue;
             }
@@ -506,7 +510,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
         }
 
         end:;
-		llvm::errs() << "ai: " << *ai << " needToConvert: " << needToConvert << "\n";
+		//llvm::errs() << "ai: " << *ai << " needToConvert: " << needToConvert << "\n";
         if (needToConvert) {
             toconvert.push_back(ai);
 		}
@@ -523,7 +527,7 @@ Function* preprocessForClone(Function *F, AAResults &AA, TargetLibraryInfo &TLI)
   assert(insertBefore);
 
   for(auto ai : toconvert) {
-	  auto nam = ai->getName();
+	  std::string nam = ai->getName().str();
       ai->setName("");
 	
       auto i64 = Type::getInt64Ty(NewF->getContext());
