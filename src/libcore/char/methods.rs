@@ -1251,7 +1251,7 @@ impl char {
         if self.is_digit() {
             return true;
         }
-        let code = (self as u8) & !0xDF; // 0x20 is the case bit
+        let code = (self as u8) & !0x20; // 0x20 is the case bit
         code >= b'A' && code <= b'F'
     }
 
