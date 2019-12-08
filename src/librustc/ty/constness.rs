@@ -108,10 +108,13 @@ impl<'tcx> TyCtxt<'tcx> {
                         false
                     }
                 } else {
-                    // Internal functions need not conform to min const fn unless used inside stable
-                    // const fns. Annotate the internal function with a const stability attribute if
-                    // you need this.
-                    false
+                    // Internal functions are forced to conform to min const fn.
+                    // Annotate the internal function with a const stability attribute if
+                    // you need to use unstable features.
+                    // Note: this is an arbitrary choice that does not affect stability or const
+                    // safety or anything, it just changes whether we need to annotate some
+                    // internal functions with `rustc_const_stable` or with `rustc_const_unstable`
+                    true
                 },
                 // Everything else needs to conform, because it would be callable from
                 // other `min_const_fn` functions.
