@@ -49,7 +49,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         }
 
         // Otherwise, load the MIR.
-        Ok(Some(this.load_mir(instance.def, None)?.body()))
+        Ok(Some(&*this.load_mir(instance.def, None)?))
     }
 
     fn align_offset(

@@ -131,7 +131,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriEvalContextExt<'mir, 'tcx
         let this = self.eval_context_mut();
 
         // Push frame.
-        let mir = this.load_mir(f.def, None)?.body();
+        let mir = &*this.load_mir(f.def, None)?;
         let span = this.stack().last()
             .and_then(Frame::current_source_info)
             .map(|si| si.span)
