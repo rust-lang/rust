@@ -126,16 +126,6 @@ fn int_to_float() {
     let _: f32 = unsafe { std::mem::transmute(0_i32) };
 }
 
-#[warn(clippy::transmute_float_to_int)]
-fn float_to_int() {
-    let _: u32 = unsafe { std::mem::transmute(1f32) };
-    let _: i32 = unsafe { std::mem::transmute(1f32) };
-    let _: u64 = unsafe { std::mem::transmute(1f64) };
-    let _: i64 = unsafe { std::mem::transmute(1f64) };
-    let _: u64 = unsafe { std::mem::transmute(1.0) };
-    let _: u64 = unsafe { std::mem::transmute(-1.0) };
-}
-
 fn bytes_to_str(b: &[u8], mb: &mut [u8]) {
     let _: &str = unsafe { std::mem::transmute(b) };
     let _: &mut str = unsafe { std::mem::transmute(mb) };
