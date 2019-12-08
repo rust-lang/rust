@@ -1,9 +1,6 @@
+#![allow(incomplete_features)]
 #![feature(generic_associated_types)]
-//~^ WARNING the feature `generic_associated_types` is incomplete
 #![feature(associated_type_defaults)]
-
-// FIXME(#44265): "lifetime arguments are not allowed for this type" errors will be addressed in a
-// follow-up PR.
 
 // A Collection trait and collection families. Based on
 // http://smallcultfollowing.com/babysteps/blog/2016/11/03/
@@ -15,18 +12,18 @@ trait Collection<T> {
     // Test associated type defaults with parameters
     type Sibling<U>: Collection<U> =
         <<Self as Collection<T>>::Family as CollectionFamily>::Member<U>;
-    //~^ ERROR type arguments are not allowed for this type [E0109]
+    //~^^ ERROR type-generic associated types are not yet implemented
 
     fn empty() -> Self;
 
     fn add(&mut self, value: T);
 
     fn iterate<'iter>(&'iter self) -> Self::Iter<'iter>;
-    //~^ ERROR lifetime arguments are not allowed for this type [E0109]
 }
 
 trait CollectionFamily {
     type Member<T>: Collection<T, Family = Self>;
+    //~^ ERROR type-generic associated types are not yet implemented
 }
 
 struct VecFamily;
@@ -48,13 +45,11 @@ impl<T> Collection<T> for Vec<T> {
     }
 
     fn iterate<'iter>(&'iter self) -> Self::Iter<'iter> {
-    //~^ ERROR lifetime arguments are not allowed for this type [E0109]
         self.iter()
     }
 }
 
 fn floatify<C>(ints: &C) -> <<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>
-//~^ ERROR type arguments are not allowed for this type [E0109]
 where
     C: Collection<i32>,
 {
@@ -66,7 +61,6 @@ where
 }
 
 fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
-//~^ ERROR type arguments are not allowed for this type [E0109]
 where
     C: Collection<i32>,
 {

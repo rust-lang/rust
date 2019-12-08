@@ -19,4 +19,5 @@ impl X {
     //~| ERROR associated types are not yet supported in inherent impls
     type W where Self: Eq;
     //~^ ERROR associated type in `impl` without body
+    //~| ERROR associated types are not yet supported in inherent impls
 }
