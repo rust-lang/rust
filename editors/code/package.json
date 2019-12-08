@@ -13,7 +13,7 @@
         "Other"
     ],
     "engines": {
-        "vscode": "^1.37.0"
+        "vscode": "^1.40.0"
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -32,28 +32,28 @@
     },
     "dependencies": {
         "lookpath": "^1.0.3",
-        "seedrandom": "^3.0.1",
-        "vscode-languageclient": "^5.3.0-next.4"
+        "seedrandom": "^3.0.5",
+        "vscode-languageclient": "^6.0.0-next.8"
     },
     "devDependencies": {
         "@types/glob": "^7.1.1",
         "@types/mocha": "^5.2.7",
-        "@types/node": "^10.14.13",
+        "@types/node": "^10.17.6",
         "@types/seedrandom": "^2.4.28",
-        "@types/vscode": "^1.37.0",
-        "glob": "^7.1.4",
-        "mocha": "^6.2.0",
-        "prettier": "^1.18.2",
-        "rollup": "^1.23.1",
+        "@types/vscode": "^1.40.0",
+        "glob": "^7.1.6",
+        "mocha": "^6.2.2",
+        "prettier": "^1.19.1",
+        "rollup": "^1.27.9",
         "rollup-plugin-commonjs": "^10.1.0",
         "rollup-plugin-node-resolve": "^5.2.0",
         "rollup-plugin-typescript": "^1.0.1",
         "shx": "^0.3.1",
-        "tslint": "^5.18.0",
+        "tslint": "^5.20.1",
         "tslint-config-prettier": "^1.18.0",
-        "typescript": "^3.5.3",
-        "vsce": "^1.67.0",
-        "vscode-test": "^1.2.0"
+        "typescript": "^3.7.3",
+        "vsce": "^1.70.0",
+        "vscode-test": "^1.2.3"
     },
     "activationEvents": [
         "onLanguage:rust",

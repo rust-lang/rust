@@ -40,9 +40,10 @@ export class Highlighter {
             return [tag, decor];
         };
 
-        const decorations: Iterable<
-            [string, vscode.TextEditorDecorationType]
-        > = [
+        const decorations: Iterable<[
+            string,
+            vscode.TextEditorDecorationType
+        ]> = [
             decoration('comment'),
             decoration('string'),
             decoration('keyword'),
