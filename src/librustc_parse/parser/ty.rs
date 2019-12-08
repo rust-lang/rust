@@ -514,6 +514,7 @@ impl<'a> Parser<'a> {
         Ok(GenericBound::Trait(poly_trait, modifier))
     }
 
+    /// Optionally parses `for<$generic_params>`.
     pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
         if self.eat_keyword(kw::For) {
             self.expect_lt()?;
