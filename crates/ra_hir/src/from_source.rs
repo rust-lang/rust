@@ -95,7 +95,7 @@ impl FromSource for MacroDef {
 
         let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
         let module = Module::from_definition(db, InFile::new(src.file_id, module_src))?;
-        let krate = Some(module.krate().crate_id());
+        let krate = Some(module.krate().id);
 
         let ast_id = Some(AstId::new(src.file_id, db.ast_id_map(src.file_id).ast_id(&src.value)));
 

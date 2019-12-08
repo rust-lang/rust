@@ -25,7 +25,7 @@ use hir_expand::{
     MacroDefId,
 };
 use hir_ty::expr::ExprValidator;
-use ra_db::{CrateId, Edition};
+use ra_db::{CrateId, Edition, FileId};
 use ra_syntax::ast;
 
 use crate::{
@@ -40,7 +40,7 @@ use crate::{
 /// root module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Crate {
-    pub(crate) crate_id: CrateId,
+    pub(crate) id: CrateId,
 }
 
 #[derive(Debug)]
@@ -50,33 +50,47 @@ pub struct CrateDependency {
 }
 
 impl Crate {
-    pub fn crate_id(self) -> CrateId {
-        self.crate_id
-    }
-
     pub fn dependencies(self, db: &impl DefDatabase) -> Vec<CrateDependency> {
         db.crate_graph()
-            .dependencies(self.crate_id)
+            .dependencies(self.id)
             .map(|dep| {
-                let krate = Crate { crate_id: dep.crate_id() };
+                let krate = Crate { id: dep.crate_id() };
                 let name = dep.as_name();
                 CrateDependency { krate, name }
             })
             .collect()
     }
 
+    // FIXME: add `transitive_reverse_dependencies`.
+    pub fn reverse_dependencies(self, db: &impl DefDatabase) -> Vec<Crate> {
+        let crate_graph = db.crate_graph();
+        crate_graph
+            .iter()
+            .filter(|&krate| crate_graph.dependencies(krate).any(|it| it.crate_id == self.id))
+            .map(|id| Crate { id })
+            .collect()
+    }
+
     pub fn root_module(self, db: &impl DefDatabase) -> Option<Module> {
-        let module_id = db.crate_def_map(self.crate_id).root;
+        let module_id = db.crate_def_map(self.id).root;
         Some(Module::new(self, module_id))
+    }
+
+    pub fn root_file(self, db: &impl DefDatabase) -> FileId {
+        db.crate_graph().crate_root(self.id)
     }
 
     pub fn edition(self, db: &impl DefDatabase) -> Edition {
         let crate_graph = db.crate_graph();
-        crate_graph.edition(self.crate_id)
+        crate_graph.edition(self.id)
     }
 
     pub fn all(db: &impl DefDatabase) -> Vec<Crate> {
-        db.crate_graph().iter().map(|crate_id| Crate { crate_id }).collect()
+        db.crate_graph().iter().map(|id| Crate { id }).collect()
+    }
+
+    pub fn crate_id(self) -> CrateId {
+        self.id
     }
 }
 
@@ -115,7 +129,7 @@ pub use hir_def::attr::Attrs;
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
-        Module { id: ModuleId { krate: krate.crate_id, local_id: crate_module_id } }
+        Module { id: ModuleId { krate: krate.id, local_id: crate_module_id } }
     }
 
     /// Name of this module.
@@ -133,7 +147,7 @@ impl Module {
 
     /// Returns the crate this module is part of.
     pub fn krate(self) -> Crate {
-        Crate { crate_id: self.id.krate }
+        Crate { id: self.id.krate }
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
@@ -878,11 +892,11 @@ pub struct ImplBlock {
 
 impl ImplBlock {
     pub fn all_in_crate(db: &impl HirDatabase, krate: Crate) -> Vec<ImplBlock> {
-        let impls = db.impls_in_crate(krate.crate_id);
+        let impls = db.impls_in_crate(krate.id);
         impls.all_impls().map(Self::from).collect()
     }
     pub fn for_trait(db: &impl HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplBlock> {
-        let impls = db.impls_in_crate(krate.crate_id);
+        let impls = db.impls_in_crate(krate.id);
         impls.lookup_impl_blocks_for_trait(trait_.id).map(Self::from).collect()
     }
 
@@ -915,7 +929,7 @@ impl ImplBlock {
     }
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {
-        Crate { crate_id: self.module(db).id.krate }
+        Crate { id: self.module(db).id.krate }
     }
 }
 
@@ -1053,7 +1067,7 @@ impl Type {
         krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        for krate in self.ty.value.def_crates(db, krate.crate_id)? {
+        for krate in self.ty.value.def_crates(db, krate.id)? {
             let impls = db.impls_in_crate(krate);
 
             for impl_block in impls.lookup_impl_blocks(&self.ty.value) {
