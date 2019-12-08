@@ -2213,6 +2213,7 @@ dependencies = [
  "rand 0.7.0",
  "rustc-workspace-hack",
  "rustc_version",
+ "serde",
  "shell-escape",
  "vergen",
 ]
