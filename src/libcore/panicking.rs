@@ -22,10 +22,12 @@
 // ignore-tidy-undocumented-unsafe
 
 #![allow(dead_code, missing_docs)]
-#![unstable(feature = "core_panic",
-            reason = "internal details of the implementation of the `panic!` \
-                      and related macros",
-            issue = "0")]
+#![unstable(
+    feature = "core_panic",
+    reason = "internal details of the implementation of the `panic!` \
+              and related macros",
+    issue = "0"
+)]
 
 use crate::fmt;
 use crate::panic::{Location, PanicInfo};
@@ -33,7 +35,7 @@ use crate::panic::{Location, PanicInfo};
 #[cold]
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
-#[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
 pub fn panic(expr: &str, location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
@@ -50,7 +52,7 @@ pub fn panic(expr: &str, location: &Location<'_>) -> ! {
 }
 
 #[cold]
-#[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
 #[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
 fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
@@ -59,13 +61,13 @@ fn panic_bounds_check(location: &Location<'_>, index: usize, len: usize) -> ! {
 
     panic_fmt(
         format_args!("index out of bounds: the len is {} but the index is {}", len, index),
-        location
+        location,
     )
 }
 
 #[cold]
-#[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
-#[cfg_attr(    feature="panic_immediate_abort" ,inline)]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 pub fn panic_fmt(fmt: fmt::Arguments<'_>, location: &Location<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         unsafe { super::intrinsics::abort() }

@@ -1,8 +1,8 @@
+use core::num::dec2flt::rawfp::RawFloat;
+use core::num::dec2flt::rawfp::{fp_to_float, next_float, prev_float, round_normal};
+use core::num::diy_float::Fp;
 use std::f32;
 use std::f64;
-use core::num::diy_float::Fp;
-use core::num::dec2flt::rawfp::{fp_to_float, prev_float, next_float, round_normal};
-use core::num::dec2flt::rawfp::RawFloat;
 
 fn integer_decode(f: f64) -> (u64, i16, i8) {
     RawFloat::integer_decode(f)
@@ -53,16 +53,23 @@ fn integers_to_f64() {
     assert_eq!(fp_to_float::<f64>(Fp { f: 4, e: -3 }), 0.5);
 }
 
-const SOME_FLOATS: [f64; 9] =
-    [0.1f64, 33.568, 42.1e-5, 777.0e9, 1.1111, 0.347997,
-     9843579834.35892, 12456.0e-150, 54389573.0e-150];
-
+const SOME_FLOATS: [f64; 9] = [
+    0.1f64,
+    33.568,
+    42.1e-5,
+    777.0e9,
+    1.1111,
+    0.347997,
+    9843579834.35892,
+    12456.0e-150,
+    54389573.0e-150,
+];
 
 #[test]
 fn human_f64_roundtrip() {
     for &x in &SOME_FLOATS {
         let (f, e, _) = integer_decode(x);
-        let fp = Fp { f: f, e: e};
+        let fp = Fp { f: f, e: e };
         assert_eq!(fp_to_float::<f64>(fp), x);
     }
 }
