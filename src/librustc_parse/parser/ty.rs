@@ -73,8 +73,8 @@ impl<'a> Parser<'a> {
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
-        let kind = if self.eat(&token::OpenDelim(token::Paren)) {
-            self.parse_ty_tuple_or_parens(allow_plus)?
+        let kind = if self.check(&token::OpenDelim(token::Paren)) {
+            self.parse_ty_tuple_or_parens(lo, allow_plus)?
         } else if self.eat(&token::Not) {
             // Never type `!`
             TyKind::Never
@@ -208,34 +208,26 @@ impl<'a> Parser<'a> {
     /// Parses either:
     /// - `(TYPE)`, a parenthesized type.
     /// - `(TYPE,)`, a tuple with a single field of type TYPE.
-    fn parse_ty_tuple_or_parens(&mut self, allow_plus: bool) -> PResult<'a, TyKind> {
-        let lo = self.token.span;
-        let mut ts = vec![];
-        let mut last_comma = false;
-        while self.token != token::CloseDelim(token::Paren) {
-            ts.push(self.parse_ty()?);
-            if self.eat(&token::Comma) {
-                last_comma = true;
-            } else {
-                last_comma = false;
-                break;
-            }
-        }
-        let trailing_plus = self.prev_token_kind == PrevTokenKind::Plus;
-        self.expect(&token::CloseDelim(token::Paren))?;
+    fn parse_ty_tuple_or_parens(&mut self, lo: Span, allow_plus: bool) -> PResult<'a, TyKind> {
+        let mut trailing_plus = false;
+        let (ts, trailing) = self.parse_paren_comma_seq(|p| {
+            let ty = p.parse_ty()?;
+            trailing_plus = p.prev_token_kind == PrevTokenKind::Plus;
+            Ok(ty)
+        })?;
 
-        if ts.len() == 1 && !last_comma {
+        if ts.len() == 1 && !trailing {
             let ty = ts.into_iter().nth(0).unwrap().into_inner();
             let maybe_bounds = allow_plus && self.token.is_like_plus();
             match ty.kind {
                 // `(TY_BOUND_NOPAREN) + BOUND + ...`.
-                TyKind::Path(None, ref path) if maybe_bounds => {
-                    self.parse_remaining_bounds(Vec::new(), path.clone(), lo, true)
+                TyKind::Path(None, path) if maybe_bounds => {
+                    self.parse_remaining_bounds(Vec::new(), path, lo, true)
                 }
-                TyKind::TraitObject(ref bounds, TraitObjectSyntax::None)
-                        if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
-                    let path = match bounds[0] {
-                        GenericBound::Trait(ref pt, ..) => pt.trait_ref.path.clone(),
+                TyKind::TraitObject(mut bounds, TraitObjectSyntax::None)
+                if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
+                    let path = match bounds.remove(0) {
+                        GenericBound::Trait(pt, ..) => pt.trait_ref.path,
                         GenericBound::Outlives(..) => self.bug("unexpected lifetime bound"),
                     };
                     self.parse_remaining_bounds(Vec::new(), path, lo, true)
