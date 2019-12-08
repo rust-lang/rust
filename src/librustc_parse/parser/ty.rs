@@ -250,20 +250,15 @@ impl<'a> Parser<'a> {
             self.check_keyword(kw::Extern)
     }
 
-    /// Parses a `TyKind::BareFn` type.
+    /// Parses a function pointer type (`TyKind::BareFn`).
+    /// ```
+    /// [unsafe] [extern "ABI"] fn (S) -> T
+    ///  ^~~~~^          ^~~~^     ^~^    ^
+    ///    |               |        |     |
+    ///    |               |        |   Return type
+    /// Function Style    ABI  Parameter types
+    /// ```
     fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>) -> PResult<'a, TyKind> {
-        /*
-
-        [unsafe] [extern "ABI"] fn (S) -> T
-         ^~~~^           ^~~~^     ^~^    ^
-           |               |        |     |
-           |               |        |   Return type
-           |               |      Argument types
-           |               |
-           |              ABI
-        Function Style
-        */
-
         let unsafety = self.parse_unsafety();
         let ext = self.parse_extern()?;
         self.expect_keyword(kw::Fn)?;
