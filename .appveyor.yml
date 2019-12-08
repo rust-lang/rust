@@ -27,7 +27,7 @@ install:
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain stable --profile minimal
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
     - rustup default stable
-    - rustup uninstall beta
+    - rustup toolchain uninstall beta
     - rustup update
     # Install "master" toolchain
     - cargo install rustup-toolchain-install-master & exit 0
