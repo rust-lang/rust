@@ -8,7 +8,7 @@ use rustc_error_codes::*;
 use syntax::ptr::P;
 use syntax::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
 use syntax::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
-use syntax::ast::{Mutability, AnonConst, Mac};
+use syntax::ast::{Mutability, Mac};
 use syntax::token::{self, Token};
 use syntax::struct_span_err;
 use syntax_pos::source_map::Span;
@@ -81,18 +81,7 @@ impl<'a> Parser<'a> {
         } else if self.eat(&token::BinOp(token::Star)) {
             self.parse_ty_ptr()?
         } else if self.eat(&token::OpenDelim(token::Bracket)) {
-            // Array or slice
-            let t = self.parse_ty()?;
-            // Parse optional `; EXPR` in `[TYPE; EXPR]`
-            let t = match self.maybe_parse_fixed_length_of_vec()? {
-                None => TyKind::Slice(t),
-                Some(length) => TyKind::Array(t, AnonConst {
-                    id: ast::DUMMY_NODE_ID,
-                    value: length,
-                }),
-            };
-            self.expect(&token::CloseDelim(token::Bracket))?;
-            t
+            self.parse_array_or_slice_ty()?
         } else if self.check(&token::BinOp(token::And)) || self.check(&token::AndAnd) {
             // Reference
             self.expect_and()?;
@@ -101,12 +90,9 @@ impl<'a> Parser<'a> {
             // `typeof(EXPR)`
             // In order to not be ambiguous, the type must be surrounded by parens.
             self.expect(&token::OpenDelim(token::Paren))?;
-            let e = AnonConst {
-                id: ast::DUMMY_NODE_ID,
-                value: self.parse_expr()?,
-            };
+            let expr = self.parse_anon_const_expr()?;
             self.expect(&token::CloseDelim(token::Paren))?;
-            TyKind::Typeof(e)
+            TyKind::Typeof(expr)
         } else if self.eat_keyword(kw::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -265,12 +251,17 @@ impl<'a> Parser<'a> {
         Ok(TyKind::Ptr(MutTy { ty, mutbl }))
     }
 
-    fn maybe_parse_fixed_length_of_vec(&mut self) -> PResult<'a, Option<P<ast::Expr>>> {
-        if self.eat(&token::Semi) {
-            Ok(Some(self.parse_expr()?))
+    /// Parses an array (`[TYPE; EXPR]`) or slice (`[TYPE]`) type.
+    /// The opening `[` bracket is already eaten.
+    fn parse_array_or_slice_ty(&mut self) -> PResult<'a, TyKind> {
+        let elt_ty = self.parse_ty()?;
+        let ty = if self.eat(&token::Semi) {
+            TyKind::Array(elt_ty, self.parse_anon_const_expr()?)
         } else {
-            Ok(None)
-        }
+            TyKind::Slice(elt_ty)
+        };
+        self.expect(&token::CloseDelim(token::Bracket))?;
+        Ok(ty)
     }
 
     fn parse_borrowed_pointee(&mut self) -> PResult<'a, TyKind> {
