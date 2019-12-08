@@ -26,8 +26,6 @@ macro_rules! impl_froms {
     }
 }
 
-pub mod debug;
-
 pub mod db;
 pub mod source_binder;
 
