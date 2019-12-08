@@ -320,6 +320,8 @@ public:
     cast<CallInst>(anti)->setDebugLoc(call->getDebugLoc());    
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NoAlias);
     cast<CallInst>(anti)->addAttribute(AttributeList::ReturnIndex, Attribute::NonNull);
+    cast<CallInst>(anti)->setMetadata("enzyme_activity_inst", MDNode::get(placeholder->getContext(), MDString::get(placeholder->getContext(), "active")));
+    cast<CallInst>(anti)->setMetadata("enzyme_activity_value", MDNode::get(placeholder->getContext(), MDString::get(placeholder->getContext(), "active")));
 
     invertedPointers[call] = anti;
     assert(placeholder != anti);
@@ -410,8 +412,9 @@ public:
             if (MDNode* md = inst->getMetadata("enzyme_activity_value")) {
                 ret->setMetadata("enzyme_activity_value", md);
             }
-            //llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
             ret->setMetadata("enzyme_activity_inst", MDNode::get(ret->getContext(), {MDString::get(ret->getContext(), "const")}));
+            //llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
+            originalInstructions.insert(ret);
         }
 
 
@@ -479,6 +482,7 @@ public:
                         ret->setMetadata("enzyme_activity_value", md);
                     }
                     ret->setMetadata("enzyme_activity_inst", MDNode::get(ret->getContext(), {MDString::get(ret->getContext(), "const")}));
+                    originalInstructions.insert(inst);
                 }
             }
             scopeMap[v] = cache;
@@ -811,7 +815,7 @@ public:
 
           if (originalInstructions.find(inst) == originalInstructions.end()) continue;
 
-          if (!(isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && this->isConstantInstruction(inst)) {
+          if (!(isa<SwitchInst>(inst) || isa<BranchInst>(inst) || isa<ReturnInst>(inst)) && isConstantInstruction(inst) && isConstantValue(inst) ) {
             if (inst->getNumUses() == 0) {
                 erase(inst);
 			    continue;
@@ -950,7 +954,9 @@ public:
           if (isa<LoadInst>(inst)) {
               IRBuilder<> BuilderZ(getNextNonDebugInstruction(inst));
               BuilderZ.setFastMathFlags(getFast());
-              this->invertedPointers[inst] = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
+              PHINode* anti = BuilderZ.CreatePHI(inst->getType(), 1, inst->getName() + "'il_phi");
+              anti->setMetadata("enzyme_activity_value", MDNode::get(anti->getContext(), MDString::get(anti->getContext(), "active")));
+              invertedPointers[inst] = anti;
               continue;
           }
 
@@ -981,10 +987,12 @@ public:
 
             IRBuilder<> BuilderZ(getNextNonDebugInstruction(op));
             BuilderZ.setFastMathFlags(getFast());
-            this->invertedPointers[op] = BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
+            PHINode* anti = BuilderZ.CreatePHI(op->getType(), 1, op->getName() + "'ip_phi");
+            anti->setMetadata("enzyme_activity_value", MDNode::get(anti->getContext(), MDString::get(anti->getContext(), "active")));
+            invertedPointers[op] = anti;
 
 			if ( called && (called->getName() == "malloc" || called->getName() == "_Znwm")) {
-				this->invertedPointers[op]->setName(op->getName()+"'mi");
+				invertedPointers[op]->setName(op->getName()+"'mi");
 			}
         }
       }
