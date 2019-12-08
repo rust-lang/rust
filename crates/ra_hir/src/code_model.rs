@@ -507,30 +507,6 @@ impl Function {
         db.function_data(self.id).params.clone()
     }
 
-    /// The containing impl block, if this is a method.
-    pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        match self.container(db) {
-            Some(Container::ImplBlock(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    /// The containing trait, if this is a trait method definition.
-    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        match self.container(db) {
-            Some(Container::Trait(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        match self.id.lookup(db).container {
-            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
-            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
-            ContainerId::ModuleId(_) => None,
-        }
-    }
-
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
         let infer = db.infer(self.id.into());
         infer.add_diagnostics(db, self.id, sink);
@@ -708,15 +684,6 @@ impl AssocItem {
             AssocItem::Const(c) => c.module(db),
             AssocItem::TypeAlias(t) => t.module(db),
         }
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Container {
-        match self {
-            AssocItem::Function(f) => f.container(db),
-            AssocItem::Const(c) => c.container(db),
-            AssocItem::TypeAlias(t) => t.container(db),
-        }
-        .expect("AssocItem without container")
     }
 }
 
