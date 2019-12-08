@@ -133,7 +133,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let msg = format!("expected type, found {}", self.this_token_descr());
-            let mut err = self.fatal(&msg);
+            let mut err = self.struct_span_err(self.token.span, &msg);
             err.span_label(self.token.span, "expected type");
             self.maybe_annotate_with_ascription(&mut err, true);
             return Err(err);
