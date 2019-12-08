@@ -79,8 +79,7 @@ impl<'a> Parser<'a> {
             // Never type `!`
             TyKind::Never
         } else if self.eat(&token::BinOp(token::Star)) {
-            // Raw pointer
-            TyKind::Ptr(self.parse_ptr()?)
+            self.parse_ty_ptr()?
         } else if self.eat(&token::OpenDelim(token::Bracket)) {
             // Array or slice
             let t = self.parse_ty()?;
@@ -251,7 +250,8 @@ impl<'a> Parser<'a> {
         Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::None))
     }
 
-    fn parse_ptr(&mut self) -> PResult<'a, MutTy> {
+    /// Parses a raw pointer type: `*[const | mut] $type`.
+    fn parse_ty_ptr(&mut self) -> PResult<'a, TyKind> {
         let mutbl = self.parse_const_or_mut().unwrap_or_else(|| {
             let span = self.prev_span;
             let msg = "expected mut or const in raw pointer type";
@@ -261,8 +261,8 @@ impl<'a> Parser<'a> {
                 .emit();
             Mutability::Immutable
         });
-        let t = self.parse_ty_no_plus()?;
-        Ok(MutTy { ty: t, mutbl })
+        let ty = self.parse_ty_no_plus()?;
+        Ok(TyKind::Ptr(MutTy { ty, mutbl }))
     }
 
     fn maybe_parse_fixed_length_of_vec(&mut self) -> PResult<'a, Option<P<ast::Expr>>> {
