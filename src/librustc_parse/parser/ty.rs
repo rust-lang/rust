@@ -371,33 +371,7 @@ impl<'a> Parser<'a> {
         }
 
         if !negative_bounds.is_empty() {
-            let negative_bounds_len = negative_bounds.len();
-            let last_span = *negative_bounds.last().unwrap();
-            let mut err = self.struct_span_err(
-                negative_bounds,
-                "negative bounds are not supported",
-            );
-            err.span_label(last_span, "negative bounds are not supported");
-            if let Some(bound_list) = colon_span {
-                let bound_list = bound_list.to(self.prev_span);
-                let mut new_bound_list = String::new();
-                if !bounds.is_empty() {
-                    let mut snippets = bounds.iter().map(|bound| bound.span())
-                        .map(|span| self.span_to_snippet(span));
-                    while let Some(Ok(snippet)) = snippets.next() {
-                        new_bound_list.push_str(" + ");
-                        new_bound_list.push_str(&snippet);
-                    }
-                    new_bound_list = new_bound_list.replacen(" +", ":", 1);
-                }
-                err.span_suggestion_hidden(
-                    bound_list,
-                    &format!("remove the bound{}", pluralize!(negative_bounds_len)),
-                    new_bound_list,
-                    Applicability::MachineApplicable,
-                );
-            }
-            err.emit();
+            self.error_negative_bounds(colon_span, &bounds, negative_bounds);
         }
 
         Ok(bounds)
@@ -412,6 +386,40 @@ impl<'a> Parser<'a> {
         || self.check(&token::Question)
         || self.check_keyword(kw::For)
         || self.check(&token::OpenDelim(token::Paren))
+    }
+
+    fn error_negative_bounds(
+        &self,
+        colon_span: Option<Span>,
+        bounds: &[GenericBound],
+        negative_bounds: Vec<Span>,
+    ) {
+        let negative_bounds_len = negative_bounds.len();
+        let last_span = *negative_bounds.last().unwrap();
+        let mut err = self.struct_span_err(
+            negative_bounds,
+            "negative bounds are not supported",
+        );
+        err.span_label(last_span, "negative bounds are not supported");
+        if let Some(bound_list) = colon_span {
+            let bound_list = bound_list.to(self.prev_span);
+            let mut new_bound_list = String::new();
+            if !bounds.is_empty() {
+                let mut snippets = bounds.iter().map(|bound| self.span_to_snippet(bound.span()));
+                while let Some(Ok(snippet)) = snippets.next() {
+                    new_bound_list.push_str(" + ");
+                    new_bound_list.push_str(&snippet);
+                }
+                new_bound_list = new_bound_list.replacen(" +", ":", 1);
+            }
+            err.span_suggestion_hidden(
+                bound_list,
+                &format!("remove the bound{}", pluralize!(negative_bounds_len)),
+                new_bound_list,
+                Applicability::MachineApplicable,
+            );
+        }
+        err.emit();
     }
 
     /// Parses a bound according to the grammar:
