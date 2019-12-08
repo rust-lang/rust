@@ -558,3 +558,35 @@ fn cfg_test() {
         ⋮Foo: t v
     "###);
 }
+
+#[test]
+fn infer_multiple_namespace() {
+    let map = def_map(
+        r#"
+//- /main.rs
+mod a {
+    pub type T = ();
+    pub use crate::b::*;
+}
+
+use crate::a::T;
+
+mod b {
+    pub const T: () = ();
+}
+"#,
+    );
+
+    assert_snapshot!(map, @r###"
+    ⋮crate
+    ⋮T: t v
+    ⋮a: t
+    ⋮b: t
+    ⋮
+    ⋮crate::b
+    ⋮T: v
+    ⋮
+    ⋮crate::a
+    ⋮T: t v    
+"###);
+}

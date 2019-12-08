@@ -58,6 +58,8 @@ pub(super) fn collect_defs(db: &impl DefDatabase, mut def_map: CrateDefMap) -> C
         def_map,
         glob_imports: FxHashMap::default(),
         unresolved_imports: Vec::new(),
+        resolved_imports: Vec::new(),
+
         unexpanded_macros: Vec::new(),
         unexpanded_attribute_macros: Vec::new(),
         mod_dirs: FxHashMap::default(),
@@ -97,12 +99,41 @@ impl MacroStackMonitor {
     }
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum PartialResolvedImport {
+    /// None of any namespaces is resolved
+    Unresolved,
+    /// One of namespaces is resolved
+    Indeterminate(PerNs),
+    /// All namespaces are resolved, OR it is came from other crate
+    Resolved(PerNs),
+}
+
+impl PartialResolvedImport {
+    fn namespaces(&self) -> PerNs {
+        match self {
+            PartialResolvedImport::Unresolved => PerNs::none(),
+            PartialResolvedImport::Indeterminate(ns) => *ns,
+            PartialResolvedImport::Resolved(ns) => *ns,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct ImportDirective {
+    module_id: LocalModuleId,
+    import_id: LocalImportId,
+    import: raw::ImportData,
+    status: PartialResolvedImport,
+}
+
 /// Walks the tree of module recursively
 struct DefCollector<'a, DB> {
     db: &'a DB,
     def_map: CrateDefMap,
     glob_imports: FxHashMap<LocalModuleId, Vec<(LocalModuleId, LocalImportId)>>,
-    unresolved_imports: Vec<(LocalModuleId, LocalImportId, raw::ImportData)>,
+    unresolved_imports: Vec<ImportDirective>,
+    resolved_imports: Vec<ImportDirective>,
     unexpanded_macros: Vec<(LocalModuleId, AstId<ast::MacroCall>, Path)>,
     unexpanded_attribute_macros: Vec<(LocalModuleId, AstId<ast::ModuleItem>, Path)>,
     mod_dirs: FxHashMap<LocalModuleId, ModDir>,
@@ -148,9 +179,11 @@ where
         let mut i = 0;
         loop {
             self.db.check_canceled();
-            match (self.resolve_imports(), self.resolve_macros()) {
-                (ReachedFixedPoint::Yes, ReachedFixedPoint::Yes) => break,
-                _ => i += 1,
+            self.resolve_imports();
+
+            match self.resolve_macros() {
+                ReachedFixedPoint::Yes => break,
+                ReachedFixedPoint::No => i += 1,
             }
             if i == 1000 {
                 log::error!("name resolution is stuck");
@@ -158,10 +191,26 @@ where
             }
         }
 
+        // Resolve all indeterminate resolved imports again
+        // As some of the macros will expand newly import shadowing partial resolved imports
+        // FIXME: We maybe could skip this, if we handle the Indetermine imports in `resolve_imports`
+        // correctly
+        let partial_resolved = self.resolved_imports.iter().filter_map(|directive| {
+            if let PartialResolvedImport::Indeterminate(_) = directive.status {
+                let mut directive = directive.clone();
+                directive.status = PartialResolvedImport::Unresolved;
+                Some(directive)
+            } else {
+                None
+            }
+        });
+        self.unresolved_imports.extend(partial_resolved);
+        self.resolve_imports();
+
         let unresolved_imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
         // show unresolved imports in completion, etc
-        for (module_id, import, import_data) in unresolved_imports {
-            self.record_resolved_import(module_id, PerNs::none(), import, &import_data)
+        for directive in unresolved_imports {
+            self.record_resolved_import(&directive)
         }
     }
 
@@ -262,31 +311,43 @@ where
         }
     }
 
-    fn resolve_imports(&mut self) -> ReachedFixedPoint {
-        let mut imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
-        let mut resolved = Vec::new();
-        imports.retain(|(module_id, import, import_data)| {
-            let (def, fp) = self.resolve_import(*module_id, import_data);
-            if fp == ReachedFixedPoint::Yes {
-                resolved.push((*module_id, def, *import, import_data.clone()))
+    /// Import resolution
+    ///
+    /// This is a fix point algorithm. We resolve imports until no forward
+    /// progress in resolving imports is made
+    fn resolve_imports(&mut self) {
+        let mut n_previous_unresolved = self.unresolved_imports.len() + 1;
+
+        while self.unresolved_imports.len() < n_previous_unresolved {
+            n_previous_unresolved = self.unresolved_imports.len();
+            let imports = std::mem::replace(&mut self.unresolved_imports, Vec::new());
+            for mut directive in imports {
+                directive.status = self.resolve_import(directive.module_id, &directive.import);
+
+                match directive.status {
+                    PartialResolvedImport::Indeterminate(_) => {
+                        self.record_resolved_import(&directive);
+                        // FIXME: For avoid performance regression,
+                        // we consider an imported resolved if it is indeterminate (i.e not all namespace resolved)
+                        self.resolved_imports.push(directive)
+                    }
+                    PartialResolvedImport::Resolved(_) => {
+                        self.record_resolved_import(&directive);
+                        self.resolved_imports.push(directive)
+                    }
+                    PartialResolvedImport::Unresolved => {
+                        self.unresolved_imports.push(directive);
+                    }
+                }
             }
-            fp == ReachedFixedPoint::No
-        });
-        self.unresolved_imports = imports;
-        // Resolves imports, filling-in module scopes
-        let result =
-            if resolved.is_empty() { ReachedFixedPoint::Yes } else { ReachedFixedPoint::No };
-        for (module_id, def, import, import_data) in resolved {
-            self.record_resolved_import(module_id, def, import, &import_data)
         }
-        result
     }
 
     fn resolve_import(
         &self,
         module_id: LocalModuleId,
         import: &raw::ImportData,
-    ) -> (PerNs, ReachedFixedPoint) {
+    ) -> PartialResolvedImport {
         log::debug!("resolving import: {:?} ({:?})", import, self.def_map.edition);
         if import.is_extern_crate {
             let res = self.def_map.resolve_name_in_extern_prelude(
@@ -295,7 +356,7 @@ where
                     .as_ident()
                     .expect("extern crate should have been desugared to one-element path"),
             );
-            (res, ReachedFixedPoint::Yes)
+            PartialResolvedImport::Resolved(res)
         } else {
             let res = self.def_map.resolve_path_fp_with_macro(
                 self.db,
@@ -305,17 +366,35 @@ where
                 BuiltinShadowMode::Module,
             );
 
-            (res.resolved_def, res.reached_fixedpoint)
+            let def = res.resolved_def;
+            if res.reached_fixedpoint == ReachedFixedPoint::No {
+                return PartialResolvedImport::Unresolved;
+            }
+
+            if let Some(krate) = res.krate {
+                if krate != self.def_map.krate {
+                    return PartialResolvedImport::Resolved(def);
+                }
+            }
+
+            // Check whether all namespace is resolved
+            if def.take_types().is_some()
+                && def.take_values().is_some()
+                && def.take_macros().is_some()
+            {
+                PartialResolvedImport::Resolved(def)
+            } else {
+                PartialResolvedImport::Indeterminate(def)
+            }
         }
     }
 
-    fn record_resolved_import(
-        &mut self,
-        module_id: LocalModuleId,
-        def: PerNs,
-        import_id: LocalImportId,
-        import: &raw::ImportData,
-    ) {
+    fn record_resolved_import(&mut self, directive: &ImportDirective) {
+        let module_id = directive.module_id;
+        let import_id = directive.import_id;
+        let import = &directive.import;
+        let def = directive.status.namespaces();
+
         if import.is_glob {
             log::debug!("glob import: {:?}", import);
             match def.take_types() {
@@ -352,10 +431,10 @@ where
 
                         self.update(module_id, Some(import_id), &items);
                         // record the glob import in case we add further items
-                        self.glob_imports
-                            .entry(m.local_id)
-                            .or_default()
-                            .push((module_id, import_id));
+                        let glob = self.glob_imports.entry(m.local_id).or_default();
+                        if !glob.iter().any(|it| *it == (module_id, import_id)) {
+                            glob.push((module_id, import_id));
+                        }
                     }
                 }
                 Some(ModuleDefId::AdtId(AdtId::EnumId(e))) => {
@@ -615,10 +694,14 @@ where
                     raw::RawItemKind::Module(m) => {
                         self.collect_module(&self.raw_items[m], &item.attrs)
                     }
-                    raw::RawItemKind::Import(import_id) => self
-                        .def_collector
-                        .unresolved_imports
-                        .push((self.module_id, import_id, self.raw_items[import_id].clone())),
+                    raw::RawItemKind::Import(import_id) => {
+                        self.def_collector.unresolved_imports.push(ImportDirective {
+                            module_id: self.module_id,
+                            import_id,
+                            import: self.raw_items[import_id].clone(),
+                            status: PartialResolvedImport::Unresolved,
+                        })
+                    }
                     raw::RawItemKind::Def(def) => {
                         self.define_def(&self.raw_items[def], &item.attrs)
                     }
@@ -886,6 +969,7 @@ mod tests {
             def_map,
             glob_imports: FxHashMap::default(),
             unresolved_imports: Vec::new(),
+            resolved_imports: Vec::new(),
             unexpanded_macros: Vec::new(),
             unexpanded_attribute_macros: Vec::new(),
             mod_dirs: FxHashMap::default(),
