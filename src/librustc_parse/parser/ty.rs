@@ -74,44 +74,7 @@ impl<'a> Parser<'a> {
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
         let kind = if self.eat(&token::OpenDelim(token::Paren)) {
-            // `(TYPE)` is a parenthesized type.
-            // `(TYPE,)` is a tuple with a single field of type TYPE.
-            let mut ts = vec![];
-            let mut last_comma = false;
-            while self.token != token::CloseDelim(token::Paren) {
-                ts.push(self.parse_ty()?);
-                if self.eat(&token::Comma) {
-                    last_comma = true;
-                } else {
-                    last_comma = false;
-                    break;
-                }
-            }
-            let trailing_plus = self.prev_token_kind == PrevTokenKind::Plus;
-            self.expect(&token::CloseDelim(token::Paren))?;
-
-            if ts.len() == 1 && !last_comma {
-                let ty = ts.into_iter().nth(0).unwrap().into_inner();
-                let maybe_bounds = allow_plus && self.token.is_like_plus();
-                match ty.kind {
-                    // `(TY_BOUND_NOPAREN) + BOUND + ...`.
-                    TyKind::Path(None, ref path) if maybe_bounds => {
-                        self.parse_remaining_bounds(Vec::new(), path.clone(), lo, true)?
-                    }
-                    TyKind::TraitObject(ref bounds, TraitObjectSyntax::None)
-                            if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
-                        let path = match bounds[0] {
-                            GenericBound::Trait(ref pt, ..) => pt.trait_ref.path.clone(),
-                            GenericBound::Outlives(..) => self.bug("unexpected lifetime bound"),
-                        };
-                        self.parse_remaining_bounds(Vec::new(), path, lo, true)?
-                    }
-                    // `(TYPE)`
-                    _ => TyKind::Paren(P(ty))
-                }
-            } else {
-                TyKind::Tup(ts)
-            }
+            self.parse_ty_tuple_or_parens(allow_plus)?
         } else if self.eat(&token::Not) {
             // Never type `!`
             TyKind::Never
@@ -240,6 +203,49 @@ impl<'a> Parser<'a> {
         self.maybe_report_ambiguous_plus(allow_plus, impl_dyn_multi, &ty);
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
         self.maybe_recover_from_bad_qpath(ty, allow_qpath_recovery)
+    }
+
+    /// Parses either:
+    /// - `(TYPE)`, a parenthesized type.
+    /// - `(TYPE,)`, a tuple with a single field of type TYPE.
+    fn parse_ty_tuple_or_parens(&mut self, allow_plus: bool) -> PResult<'a, TyKind> {
+        let lo = self.token.span;
+        let mut ts = vec![];
+        let mut last_comma = false;
+        while self.token != token::CloseDelim(token::Paren) {
+            ts.push(self.parse_ty()?);
+            if self.eat(&token::Comma) {
+                last_comma = true;
+            } else {
+                last_comma = false;
+                break;
+            }
+        }
+        let trailing_plus = self.prev_token_kind == PrevTokenKind::Plus;
+        self.expect(&token::CloseDelim(token::Paren))?;
+
+        if ts.len() == 1 && !last_comma {
+            let ty = ts.into_iter().nth(0).unwrap().into_inner();
+            let maybe_bounds = allow_plus && self.token.is_like_plus();
+            match ty.kind {
+                // `(TY_BOUND_NOPAREN) + BOUND + ...`.
+                TyKind::Path(None, ref path) if maybe_bounds => {
+                    self.parse_remaining_bounds(Vec::new(), path.clone(), lo, true)
+                }
+                TyKind::TraitObject(ref bounds, TraitObjectSyntax::None)
+                        if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
+                    let path = match bounds[0] {
+                        GenericBound::Trait(ref pt, ..) => pt.trait_ref.path.clone(),
+                        GenericBound::Outlives(..) => self.bug("unexpected lifetime bound"),
+                    };
+                    self.parse_remaining_bounds(Vec::new(), path, lo, true)
+                }
+                // `(TYPE)`
+                _ => Ok(TyKind::Paren(P(ty)))
+            }
+        } else {
+            Ok(TyKind::Tup(ts))
+        }
     }
 
     fn parse_remaining_bounds(&mut self, generic_params: Vec<GenericParam>, path: ast::Path,
