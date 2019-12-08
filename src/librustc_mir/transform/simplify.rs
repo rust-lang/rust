@@ -43,7 +43,7 @@ impl SimplifyCfg {
     }
 }
 
-pub fn simplify_cfg(body: &mut BodyCache<'_>) {
+pub fn simplify_cfg(body: &mut BodyAndCache<'_>) {
     CfgSimplifier::new(body).simplify();
     remove_dead_blocks(body);
 
@@ -57,7 +57,7 @@ impl<'tcx> MirPass<'tcx> for SimplifyCfg {
     }
 
     fn run_pass(
-        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+        &self, _tcx: TyCtxt<'tcx>, _src: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
     ) {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.label, body);
         simplify_cfg(body);
@@ -70,7 +70,7 @@ pub struct CfgSimplifier<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
-    pub fn new(body: &'a mut BodyCache<'tcx>) -> Self {
+    pub fn new(body: &'a mut BodyAndCache<'tcx>) -> Self {
         let mut pred_count = IndexVec::from_elem(0u32, body.basic_blocks());
 
         // we can't use mir.predecessors() here because that counts
@@ -262,7 +262,7 @@ impl<'a, 'tcx> CfgSimplifier<'a, 'tcx> {
     }
 }
 
-pub fn remove_dead_blocks(body: &mut BodyCache<'_>) {
+pub fn remove_dead_blocks(body: &mut BodyAndCache<'_>) {
     let mut seen = BitSet::new_empty(body.basic_blocks().len());
     for (bb, _) in traversal::preorder(body) {
         seen.insert(bb.index());
@@ -296,7 +296,7 @@ pub struct SimplifyLocals;
 
 impl<'tcx> MirPass<'tcx> for SimplifyLocals {
     fn run_pass(
-        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+        &self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
     ) {
         trace!("running SimplifyLocals on {:?}", source);
         let locals = {

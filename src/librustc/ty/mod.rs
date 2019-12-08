@@ -18,7 +18,7 @@ use crate::infer::canonical::Canonical;
 use crate::middle::cstore::CrateStoreDyn;
 use crate::middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use crate::middle::resolve_lifetime::ObjectLifetimeDefault;
-use crate::mir::ReadOnlyBodyCache;
+use crate::mir::ReadOnlyBodyAndCache;
 use crate::mir::interpret::{GlobalId, ErrorHandled};
 use crate::mir::GeneratorLayout;
 use crate::session::CrateDisambiguator;
@@ -2981,7 +2981,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     /// Returns the possibly-auto-generated MIR of a `(DefId, Subst)` pair.
-    pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> ReadOnlyBodyCache<'tcx, 'tcx> {
+    pub fn instance_mir(self, instance: ty::InstanceDef<'tcx>) -> ReadOnlyBodyAndCache<'tcx, 'tcx> {
         match instance {
             ty::InstanceDef::Item(did) => {
                 self.optimized_mir(did).unwrap_read_only()

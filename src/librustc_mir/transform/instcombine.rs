@@ -1,7 +1,7 @@
 //! Performs various peephole optimizations.
 
 use rustc::mir::{
-    Constant, Location, Place, PlaceBase, PlaceRef, Body, BodyCache, Operand, ProjectionElem,
+    Constant, Location, Place, PlaceBase, PlaceRef, Body, BodyAndCache, Operand, ProjectionElem,
     Rvalue, Local, read_only
 };
 use rustc::mir::visit::{MutVisitor, Visitor};
@@ -14,7 +14,7 @@ use crate::transform::{MirPass, MirSource};
 pub struct InstCombine;
 
 impl<'tcx> MirPass<'tcx> for InstCombine {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyCache<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         // We only run when optimizing MIR (at any level).
         if tcx.sess.opts.debugging_opts.mir_opt_level == 0 {
             return

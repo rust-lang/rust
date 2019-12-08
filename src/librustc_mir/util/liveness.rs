@@ -57,7 +57,7 @@ pub struct LivenessResult {
 /// Computes which local variables are live within the given function
 /// `mir`, including drops.
 pub fn liveness_of_locals(
-    body: ReadOnlyBodyCache<'_, '_>,
+    body: ReadOnlyBodyAndCache<'_, '_>,
 ) -> LivenessResult {
     let num_live_vars = body.local_decls.len();
 

@@ -20,7 +20,7 @@
 //! future.
 
 use rustc::mir::{
-    Constant, Local, LocalKind, Location, Place, Body, BodyCache, Operand, Rvalue,
+    Constant, Local, LocalKind, Location, Place, Body, BodyAndCache, Operand, Rvalue,
     StatementKind, read_only
 };
 use rustc::mir::visit::MutVisitor;
@@ -32,7 +32,7 @@ pub struct CopyPropagation;
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
     fn run_pass(
-        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyCache<'tcx>
+        &self, tcx: TyCtxt<'tcx>, _source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>
     ) {
         // We only run when the MIR optimization level is > 1.
         // This avoids a slow pass, and messing up debug info.
@@ -250,7 +250,7 @@ impl<'tcx> Action<'tcx> {
     }
 
     fn perform(self,
-               body: &mut BodyCache<'tcx>,
+               body: &mut BodyAndCache<'tcx>,
                def_use_analysis: &DefUseAnalysis,
                dest_local: Local,
                location: Location,

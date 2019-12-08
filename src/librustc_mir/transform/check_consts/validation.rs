@@ -40,7 +40,7 @@ impl<Q: Qualif> QualifCursor<'a, 'mir, 'tcx, Q> {
         let results =
             dataflow::Engine::new(item.tcx, &item.body, item.def_id, dead_unwinds, analysis)
                 .iterate_to_fixpoint();
-        let cursor = dataflow::ResultsCursor::new(item.body.body(), results);
+        let cursor = dataflow::ResultsCursor::new(*item.body, results);
 
         let mut in_any_value_of_ty = BitSet::new_empty(item.body.local_decls.len());
         for (local, decl) in item.body.local_decls.iter_enumerated() {
@@ -175,13 +175,13 @@ impl Validator<'a, 'mir, 'tcx> {
             item.def_id,
             &item.tcx.get_attrs(item.def_id),
             &dead_unwinds,
-            old_dataflow::IndirectlyMutableLocals::new(item.tcx, item.body.body(), item.param_env),
+            old_dataflow::IndirectlyMutableLocals::new(item.tcx, *item.body, item.param_env),
             |_, local| old_dataflow::DebugFormatted::new(&local),
         );
 
         let indirectly_mutable = old_dataflow::DataflowResultsCursor::new(
             indirectly_mutable,
-            item.body.body(),
+            *item.body,
         );
 
         let qualifs = Qualifs {

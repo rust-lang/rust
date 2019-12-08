@@ -12,8 +12,8 @@ use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
-                 Local, Location, Body, BodyCache, LocalKind, BasicBlock,
-                 Promoted, ReadOnlyBodyCache};
+                 Local, Location, Body, BodyAndCache, LocalKind, BasicBlock,
+                 Promoted, ReadOnlyBodyAndCache};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_index::vec::IndexVec;
 use rustc_errors::Diagnostic;
@@ -55,8 +55,8 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body: &mut BodyCache<'tcx>,
-    promoted: &mut IndexVec<Promoted, BodyCache<'tcx>>,
+    body: &mut BodyAndCache<'tcx>,
+    promoted: &mut IndexVec<Promoted, BodyAndCache<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
@@ -158,8 +158,8 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
-    body: ReadOnlyBodyCache<'_, 'tcx>,
-    promoted: &IndexVec<Promoted, ReadOnlyBodyCache<'_, 'tcx>>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
     local_names: &IndexVec<Local, Option<Symbol>>,
     upvars: &[Upvar],
     location_table: &LocationTable,
