@@ -230,6 +230,13 @@ pub enum ObligationCauseCode<'tcx> {
         trait_item_def_id: DefId,
     },
 
+    /// Error derived when matching traits/impls; see ObligationCause for more details
+    CompareImplTypeObligation {
+        item_name: ast::Name,
+        impl_item_def_id: DefId,
+        trait_item_def_id: DefId,
+    },
+
     /// Checking that this expression can be assigned where it needs to be
     // FIXME(eddyb) #11161 is the original Expr required?
     ExprAssignable,

@@ -5,7 +5,7 @@ use rustc::ty::{self, TyCtxt, GenericParamDefKind};
 use rustc::ty::util::ExplicitSelf;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
-use rustc::ty::subst::{Subst, InternalSubsts, SubstsRef};
+use rustc::ty::subst::{Subst, InternalSubsts};
 use rustc::util::common::ErrorReported;
 use errors::{Applicability, DiagnosticId};
 
@@ -26,7 +26,7 @@ use rustc_error_codes::*;
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
 
-pub fn compare_impl_method<'tcx>(
+crate fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     impl_m_span: Span,
@@ -181,13 +181,14 @@ fn compare_predicate_entailment<'tcx>(
     let trait_m_predicates = tcx.predicates_of(trait_m.def_id);
 
     // Check region bounds.
-    check_region_bounds_on_impl_method(tcx,
-                                       impl_m_span,
-                                       impl_m,
-                                       trait_m,
-                                       &trait_m_generics,
-                                       &impl_m_generics,
-                                       trait_to_skol_substs)?;
+    check_region_bounds_on_impl_item(
+        tcx,
+        impl_m_span,
+        impl_m,
+        trait_m,
+        &trait_m_generics,
+        &impl_m_generics,
+    )?;
 
     // Create obligations for each predicate declared by the impl
     // definition in the context of the trait's parameter
@@ -361,25 +362,22 @@ fn compare_predicate_entailment<'tcx>(
     })
 }
 
-fn check_region_bounds_on_impl_method<'tcx>(
+fn check_region_bounds_on_impl_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     span: Span,
     impl_m: &ty::AssocItem,
     trait_m: &ty::AssocItem,
     trait_generics: &ty::Generics,
     impl_generics: &ty::Generics,
-    trait_to_skol_substs: SubstsRef<'tcx>,
 ) -> Result<(), ErrorReported> {
     let trait_params = trait_generics.own_counts().lifetimes;
     let impl_params = impl_generics.own_counts().lifetimes;
 
-    debug!("check_region_bounds_on_impl_method: \
+    debug!("check_region_bounds_on_impl_item: \
             trait_generics={:?} \
-            impl_generics={:?} \
-            trait_to_skol_substs={:?}",
+            impl_generics={:?}",
            trait_generics,
-           impl_generics,
-           trait_to_skol_substs);
+           impl_generics);
 
     // Must have same number of early-bound lifetime parameters.
     // Unfortunately, if the user screws up the bounds, then this
@@ -391,20 +389,25 @@ fn check_region_bounds_on_impl_method<'tcx>(
     // are zero. Since I don't quite know how to phrase things at
     // the moment, give a kind of vague error message.
     if trait_params != impl_params {
+        let item_kind = assoc_item_kind_str(impl_m);
         let def_span = tcx.sess.source_map().def_span(span);
         let span = tcx.hir().get_generics(impl_m.def_id).map(|g| g.span).unwrap_or(def_span);
         let mut err = struct_span_err!(
             tcx.sess,
             span,
             E0195,
-            "lifetime parameters or bounds on method `{}` do not match the trait declaration",
+            "lifetime parameters or bounds on {} `{}` do not match the trait declaration",
+            item_kind,
             impl_m.ident,
         );
-        err.span_label(span, "lifetimes do not match method in trait");
+        err.span_label(span, &format!("lifetimes do not match {} in trait", item_kind));
         if let Some(sp) = tcx.hir().span_if_local(trait_m.def_id) {
             let def_sp = tcx.sess.source_map().def_span(sp);
             let sp = tcx.hir().get_generics(trait_m.def_id).map(|g| g.span).unwrap_or(def_sp);
-            err.span_label(sp, "lifetimes in impl do not match this method in trait");
+            err.span_label(
+                sp,
+                &format!("lifetimes in impl do not match this {} in trait", item_kind),
+            );
         }
         err.emit();
         return Err(ErrorReported);
@@ -603,6 +606,8 @@ fn compare_number_of_generics<'tcx>(
         ("const", trait_own_counts.consts, impl_own_counts.consts),
     ];
 
+    let item_kind = assoc_item_kind_str(impl_);
+
     let mut err_occurred = false;
     for &(kind, trait_count, impl_count) in &matchings {
         if impl_count != trait_count {
@@ -647,8 +652,9 @@ fn compare_number_of_generics<'tcx>(
             let mut err = tcx.sess.struct_span_err_with_code(
                 spans,
                 &format!(
-                    "method `{}` has {} {kind} parameter{} but its trait \
+                    "{} `{}` has {} {kind} parameter{} but its trait \
                      declaration has {} {kind} parameter{}",
+                    item_kind,
                     trait_.ident,
                     impl_count,
                     pluralize!(impl_count),
@@ -961,7 +967,7 @@ fn compare_synthetic_generics<'tcx>(
     }
 }
 
-pub fn compare_const_impl<'tcx>(
+crate fn compare_const_impl<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_c: &ty::AssocItem,
     impl_c_span: Span,
@@ -1058,4 +1064,132 @@ pub fn compare_const_impl<'tcx>(
         let fcx = FnCtxt::new(&inh, param_env, impl_c_hir_id);
         fcx.regionck_item(impl_c_hir_id, impl_c_span, &[]);
     });
+}
+
+crate fn compare_ty_impl<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_ty: &ty::AssocItem,
+    impl_ty_span: Span,
+    trait_ty: &ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+    trait_item_span: Option<Span>,
+) {
+    debug!("compare_impl_type(impl_trait_ref={:?})", impl_trait_ref);
+
+    let _: Result<(), ErrorReported> = (|| {
+        compare_number_of_generics(tcx, impl_ty, impl_ty_span, trait_ty, trait_item_span)?;
+
+        compare_type_predicate_entailment(tcx, impl_ty, impl_ty_span, trait_ty, impl_trait_ref)
+    })();
+}
+
+/// The equivalent of [compare_predicate_entailment], but for associated types
+/// instead of associated functions.
+fn compare_type_predicate_entailment(
+    tcx: TyCtxt<'tcx>,
+    impl_ty: &ty::AssocItem,
+    impl_ty_span: Span,
+    trait_ty: &ty::AssocItem,
+    impl_trait_ref: ty::TraitRef<'tcx>,
+) -> Result<(), ErrorReported> {
+    let impl_substs = InternalSubsts::identity_for_item(tcx, impl_ty.def_id);
+    let trait_to_impl_substs = impl_substs.rebase_onto(tcx,
+                                                       impl_ty.container.id(),
+                                                       impl_trait_ref.substs);
+
+    let impl_ty_generics = tcx.generics_of(impl_ty.def_id);
+    let trait_ty_generics = tcx.generics_of(trait_ty.def_id);
+    let impl_ty_predicates = tcx.predicates_of(impl_ty.def_id);
+    let trait_ty_predicates = tcx.predicates_of(trait_ty.def_id);
+
+    check_region_bounds_on_impl_item(
+        tcx,
+        impl_ty_span,
+        impl_ty,
+        trait_ty,
+        &trait_ty_generics,
+        &impl_ty_generics,
+    )?;
+
+    let impl_ty_own_bounds = impl_ty_predicates.instantiate_own(tcx, impl_substs);
+
+    if impl_ty_own_bounds.is_empty() {
+        // Nothing to check.
+        return Ok(());
+    }
+
+    // This `HirId` should be used for the `body_id` field on each
+    // `ObligationCause` (and the `FnCtxt`). This is what
+    // `regionck_item` expects.
+    let impl_ty_hir_id = tcx.hir().as_local_hir_id(impl_ty.def_id).unwrap();
+    let cause = ObligationCause {
+        span: impl_ty_span,
+        body_id: impl_ty_hir_id,
+        code: ObligationCauseCode::CompareImplTypeObligation {
+            item_name: impl_ty.ident.name,
+            impl_item_def_id: impl_ty.def_id,
+            trait_item_def_id: trait_ty.def_id,
+        },
+    };
+
+    debug!("compare_type_predicate_entailment: trait_to_impl_substs={:?}", trait_to_impl_substs);
+
+    // The predicates declared by the impl definition, the trait and the
+    // associated type in the trait are assumed.
+    let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
+    let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
+    hybrid_preds.predicates.extend(
+        trait_ty_predicates.instantiate_own(tcx, trait_to_impl_substs).predicates);
+
+    debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
+
+    let normalize_cause = traits::ObligationCause::misc(impl_ty_span, impl_ty_hir_id);
+    let param_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&hybrid_preds.predicates),
+        Reveal::UserFacing,
+        None
+    );
+    let param_env = traits::normalize_param_env_or_error(tcx,
+                                                         impl_ty.def_id,
+                                                         param_env,
+                                                         normalize_cause.clone());
+    tcx.infer_ctxt().enter(|infcx| {
+        let inh = Inherited::new(infcx, impl_ty.def_id);
+        let infcx = &inh.infcx;
+
+        debug!("compare_type_predicate_entailment: caller_bounds={:?}",
+               param_env.caller_bounds);
+
+        let mut selcx = traits::SelectionContext::new(&infcx);
+
+        for predicate in impl_ty_own_bounds.predicates {
+            let traits::Normalized { value: predicate, obligations } =
+                traits::normalize(&mut selcx, param_env, normalize_cause.clone(), &predicate);
+
+            inh.register_predicates(obligations);
+            inh.register_predicate(traits::Obligation::new(cause.clone(), param_env, predicate));
+        }
+
+        // Check that all obligations are satisfied by the implementation's
+        // version.
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+            infcx.report_fulfillment_errors(errors, None, false);
+            return Err(ErrorReported);
+        }
+
+        // Finally, resolve all regions. This catches wily misuses of
+        // lifetime parameters.
+        let fcx = FnCtxt::new(&inh, param_env, impl_ty_hir_id);
+        fcx.regionck_item(impl_ty_hir_id, impl_ty_span, &[]);
+
+        Ok(())
+    })
+}
+
+fn assoc_item_kind_str(impl_item: &ty::AssocItem) -> &'static str {
+    match impl_item.kind {
+        ty::AssocKind::Const => "const",
+        ty::AssocKind::Method => "method",
+        ty::AssocKind::Type | ty::AssocKind::OpaqueTy => "type",
+    }
 }
