@@ -21,7 +21,7 @@ use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::hir::ptr::P;
 use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, TyCtxt, Ty, AdtKind};
+use rustc::ty::{self, TyCtxt, Ty, AdtKind, Lift};
 use rustc::ty::fold::TypeFolder;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, Ident};
@@ -551,7 +551,8 @@ impl<'tcx> Clean<WherePredicate> for ty::ProjectionPredicate<'tcx> {
 
 impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     fn clean(&self, cx: &DocContext<'_>) -> Type {
-        let trait_ = match self.trait_ref(cx.tcx).clean(cx) {
+        let lifted = self.lift_to_tcx(cx.tcx).unwrap();
+        let trait_ = match lifted.trait_ref(cx.tcx).clean(cx) {
             GenericBound::TraitBound(t, _) => t.trait_,
             GenericBound::Outlives(_) => panic!("cleaning a trait got a lifetime"),
         };
