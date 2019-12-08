@@ -599,6 +599,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
         &mem_discriminant::MEM_DISCRIMINANT_NON_ENUM,
         &mem_forget::MEM_FORGET,
         &mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
+        &mem_replace::MEM_REPLACE_WITH_DEFAULT,
         &mem_replace::MEM_REPLACE_WITH_UNINIT,
         &methods::CHARS_LAST_CMP,
         &methods::CHARS_NEXT_CMP,
@@ -1594,6 +1595,7 @@ pub fn register_plugins(store: &mut lint::LintStore, sess: &Session, conf: &Conf
     store.register_group(true, "clippy::nursery", Some("clippy_nursery"), vec![
         LintId::of(&attrs::EMPTY_LINE_AFTER_OUTER_ATTR),
         LintId::of(&fallible_impl_from::FALLIBLE_IMPL_FROM),
+        LintId::of(&mem_replace::MEM_REPLACE_WITH_DEFAULT),
         LintId::of(&missing_const_for_fn::MISSING_CONST_FOR_FN),
         LintId::of(&mul_add::MANUAL_MUL_ADD),
         LintId::of(&mutex_atomic::MUTEX_INTEGER),

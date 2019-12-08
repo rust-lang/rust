@@ -1100,6 +1100,13 @@ pub const ALL_LINTS: [Lint; 342] = [
         module: "mem_replace",
     },
     Lint {
+        name: "mem_replace_with_default",
+        group: "nursery",
+        desc: "replacing a value of type `T` with `T::default()` instead of using `std::mem::take`",
+        deprecation: None,
+        module: "mem_replace",
+    },
+    Lint {
         name: "mem_replace_with_uninit",
         group: "correctness",
         desc: "`mem::replace(&mut _, mem::uninitialized())` or `mem::replace(&mut _, mem::zeroed())`",
