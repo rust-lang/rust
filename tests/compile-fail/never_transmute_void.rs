@@ -6,7 +6,7 @@
 enum Void {}
 
 fn f(v: Void) -> ! {
-    match v {} //~ ERROR  entered unreachable code
+    match v {} //~ ERROR  entering unreachable code
 }
 
 fn main() {
