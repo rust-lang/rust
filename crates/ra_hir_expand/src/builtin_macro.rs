@@ -208,15 +208,20 @@ fn format_args_expand(
     _id: MacroCallId,
     tt: &tt::Subtree,
 ) -> Result<tt::Subtree, mbe::ExpandError> {
-    // We expand `format_args!("", arg1, arg2)` to
-    // `std::fmt::Arguments::new_v1(&[], &[&arg1, &arg2])`,
+    // We expand `format_args!("", a1, a2)` to
+    // ```
+    // std::fmt::Arguments::new_v1(&[], &[
+    //   std::fmt::ArgumentV1::new(&arg1,std::fmt::Display::fmt),
+    //   std::fmt::ArgumentV1::new(&arg2,std::fmt::Display::fmt),
+    // ])
+    // ```,
     // which is still not really correct, but close enough for now
     let mut args = Vec::new();
     let mut current = Vec::new();
     for tt in tt.token_trees.iter().cloned() {
         match tt {
             tt::TokenTree::Leaf(tt::Leaf::Punct(p)) if p.char == ',' => {
-                args.push(tt::Subtree { delimiter: tt::Delimiter::None, token_trees: current });
+                args.push(current);
                 current = Vec::new();
             }
             _ => {
@@ -225,13 +230,15 @@ fn format_args_expand(
         }
     }
     if !current.is_empty() {
-        args.push(tt::Subtree { delimiter: tt::Delimiter::None, token_trees: current });
+        args.push(current);
     }
     if args.is_empty() {
         return Err(mbe::ExpandError::NoMatchingRule);
     }
     let _format_string = args.remove(0);
-    let arg_tts = args.into_iter().flat_map(|arg| (quote! { & #arg , }).token_trees);
+    let arg_tts = args.into_iter().flat_map(|arg| {
+        quote! { std::fmt::ArgumentV1::new(&(##arg), std::fmt::Display::fmt), }
+    }.token_trees).collect::<Vec<_>>();
     let expanded = quote! {
         std::fmt::Arguments::new_v1(&[], &[##arg_tts])
     };
@@ -360,6 +367,6 @@ mod tests {
             BuiltinFnLikeExpander::FormatArgs,
         );
 
-        assert_eq!(expanded, r#"std::fmt::Arguments::new_v1(&[] ,&[&arg1(a,b,c),&arg2,])"#);
+        assert_eq!(expanded, r#"std::fmt::Arguments::new_v1(&[] ,&[std::fmt::ArgumentV1::new(&(arg1(a,b,c)),std::fmt::Display::fmt),std::fmt::ArgumentV1::new(&(arg2),std::fmt::Display::fmt),])"#);
     }
 }

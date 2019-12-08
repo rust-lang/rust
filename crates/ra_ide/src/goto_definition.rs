@@ -693,7 +693,6 @@ mod tests {
         );
     }
 
-    #[should_panic] // currently failing because of expr mapping problems
     #[test]
     fn goto_through_format() {
         check_goto(
