@@ -514,13 +514,16 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
             }
         }
 
+        // Emit a warning if this is the first time we have triggered the loop detector. This means
+        // we have been executing for quite some time.
         let span = ecx.frame().span;
-        ecx.machine.loop_detector.observe_and_analyze(
-            *ecx.tcx,
-            span,
-            &ecx.memory,
-            &ecx.stack[..],
-        )
+        if ecx.machine.loop_detector.is_empty() {
+            // FIXME(#49980): make this warning a lint
+            ecx.tcx.sess.span_warn(span,
+                "Constant evaluating a complex constant, this might take some time");
+        }
+
+        ecx.machine.loop_detector.observe_and_analyze(&ecx.stack, &ecx.memory)
     }
 
     #[inline(always)]

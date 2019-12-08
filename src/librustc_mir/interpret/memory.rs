@@ -935,8 +935,8 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
 
 /// A depth-first search over the allocation graph.
 ///
-/// This is based on the DFS in `rustc_data_structures`, which we cannot use directly because
-/// `AllocId` does not implement `Idx`.
+/// This is based on the DFS iterator in `rustc_data_structures`, which we cannot use directly
+/// because `AllocId` does not implement `Idx` (it is not dense).
 pub struct DepthFirstSearch<'mem, 'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     memory: &'mem Memory<'mir, 'tcx, M>,
     visited: FxHashSet<AllocId>,
