@@ -1248,10 +1248,10 @@ impl char {
         if !self.is_ascii() {
             return false;
         }
-        if self.is_digit() {
+        if self.is_digit(10) {
             return true;
         }
-        let code = (self as u8) & !0x20; // 0x20 is the case bit
+        let code = (*self as u8) & !0x20; // 0x20 is the case bit
         code >= b'A' && code <= b'F'
     }
 
