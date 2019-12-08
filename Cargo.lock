@@ -919,6 +919,8 @@ dependencies = [
  "ra_batch 0.1.0",
  "ra_db 0.1.0",
  "ra_hir 0.1.0",
+ "ra_hir_def 0.1.0",
+ "ra_hir_ty 0.1.0",
  "ra_ide 0.1.0",
  "ra_prof 0.1.0",
  "ra_syntax 0.1.0",

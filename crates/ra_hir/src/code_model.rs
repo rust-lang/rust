@@ -23,14 +23,15 @@ use hir_expand::{
     name::{self, AsName},
     MacroDefId,
 };
-use hir_ty::expr::ExprValidator;
+use hir_ty::{
+    autoderef, display::HirFormatter, expr::ExprValidator, ApplicationTy, Canonical, InEnvironment,
+    TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
+};
 use ra_db::{CrateId, Edition, FileId};
 use ra_syntax::ast;
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    ty::display::HirFormatter,
-    ty::{self, InEnvironment, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk},
     CallableDef, HirDisplay, InFile, Name,
 };
 
@@ -86,10 +87,6 @@ impl Crate {
 
     pub fn all(db: &impl DefDatabase) -> Vec<Crate> {
         db.crate_graph().iter().map(|id| Crate { id }).collect()
-    }
-
-    pub fn crate_id(self) -> CrateId {
-        self.id
     }
 }
 
@@ -937,7 +934,7 @@ impl Type {
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<(StructField, Type)> {
         if let Ty::Apply(a_ty) = &self.ty.value {
             match a_ty.ctor {
-                ty::TypeCtor::Adt(AdtId::StructId(s)) => {
+                TypeCtor::Adt(AdtId::StructId(s)) => {
                     let var_def = s.into();
                     return db
                         .field_types(var_def)
@@ -959,7 +956,7 @@ impl Type {
         let mut res = Vec::new();
         if let Ty::Apply(a_ty) = &self.ty.value {
             match a_ty.ctor {
-                ty::TypeCtor::Tuple { .. } => {
+                TypeCtor::Tuple { .. } => {
                     for ty in a_ty.parameters.iter() {
                         let ty = ty.clone().subst(&a_ty.parameters);
                         res.push(self.derived(ty));
@@ -995,10 +992,10 @@ impl Type {
     pub fn autoderef<'a>(&'a self, db: &'a impl HirDatabase) -> impl Iterator<Item = Type> + 'a {
         // There should be no inference vars in types passed here
         // FIXME check that?
-        let canonical = crate::ty::Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
         let environment = self.ty.environment.clone();
         let ty = InEnvironment { value: canonical, environment: environment.clone() };
-        ty::autoderef(db, Some(self.krate), ty)
+        autoderef(db, Some(self.krate), ty)
             .map(|canonical| canonical.value)
             .map(move |ty| self.derived(ty))
     }
@@ -1038,15 +1035,14 @@ impl Type {
     // FIXME: provide required accessors such that it becomes implementable from outside.
     pub fn is_equal_for_find_impls(&self, other: &Type) -> bool {
         match (&self.ty.value, &other.ty.value) {
-            (Ty::Apply(a_original_ty), Ty::Apply(ty::ApplicationTy { ctor, parameters })) => {
-                match ctor {
-                    TypeCtor::Ref(..) => match parameters.as_single() {
-                        Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
-                        _ => false,
-                    },
-                    _ => a_original_ty.ctor == *ctor,
-                }
-            }
+            (Ty::Apply(a_original_ty), Ty::Apply(ApplicationTy { ctor, parameters })) => match ctor
+            {
+                TypeCtor::Ref(..) => match parameters.as_single() {
+                    Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
+                    _ => false,
+                },
+                _ => a_original_ty.ctor == *ctor,
+            },
             _ => false,
         }
     }

@@ -2,8 +2,13 @@
 
 use std::{collections::HashSet, fmt::Write, path::Path, time::Instant};
 
+use hir::{
+    db::{DefDatabase, HirDatabase},
+    AssocItem, Crate, HasSource, HirDisplay, ModuleDef,
+};
+use hir_def::FunctionId;
+use hir_ty::{Ty, TypeWalk};
 use ra_db::SourceDatabaseExt;
-use ra_hir::{AssocItem, Crate, HasSource, HirDisplay, ModuleDef, Ty, TypeWalk};
 use ra_syntax::AstNode;
 
 use crate::{progress_report::ProgressReport, Result, Verbosity};
@@ -101,8 +106,9 @@ pub fn run(
                 continue;
             }
         }
-        let body = f.body(db);
-        let inference_result = f.infer(db);
+        let f_id = FunctionId::from(f);
+        let body = db.body(f_id.into());
+        let inference_result = db.infer(f_id.into());
         for (expr_id, _) in body.exprs.iter() {
             let ty = &inference_result[expr_id];
             num_exprs += 1;
@@ -122,7 +128,8 @@ pub fn run(
             if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
                 num_type_mismatches += 1;
                 if verbosity.is_verbose() {
-                    let src = f.body_source_map(db).expr_syntax(expr_id);
+                    let (_, sm) = db.body_with_source_map(f_id.into());
+                    let src = sm.expr_syntax(expr_id);
                     if let Some(src) = src {
                         // FIXME: it might be nice to have a function (on Analysis?) that goes from Source<T> -> (LineCol, LineCol) directly
                         let original_file = src.file_id.original_file(db);
