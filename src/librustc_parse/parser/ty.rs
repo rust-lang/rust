@@ -87,12 +87,7 @@ impl<'a> Parser<'a> {
             self.expect_and()?;
             self.parse_borrowed_pointee()?
         } else if self.eat_keyword_noexpect(kw::Typeof) {
-            // `typeof(EXPR)`
-            // In order to not be ambiguous, the type must be surrounded by parens.
-            self.expect(&token::OpenDelim(token::Paren))?;
-            let expr = self.parse_anon_const_expr()?;
-            self.expect(&token::CloseDelim(token::Paren))?;
-            TyKind::Typeof(expr)
+            self.parse_typeof_ty()?
         } else if self.eat_keyword(kw::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
@@ -268,7 +263,16 @@ impl<'a> Parser<'a> {
         let opt_lifetime = if self.check_lifetime() { Some(self.expect_lifetime()) } else { None };
         let mutbl = self.parse_mutability();
         let ty = self.parse_ty_no_plus()?;
-        return Ok(TyKind::Rptr(opt_lifetime, MutTy { ty, mutbl }));
+        Ok(TyKind::Rptr(opt_lifetime, MutTy { ty, mutbl }))
+    }
+
+    // Parses the `typeof(EXPR)`.
+    // To avoid ambiguity, the type is surrounded by parenthesis.
+    fn parse_typeof_ty(&mut self) -> PResult<'a, TyKind> {
+        self.expect(&token::OpenDelim(token::Paren))?;
+        let expr = self.parse_anon_const_expr()?;
+        self.expect(&token::CloseDelim(token::Paren))?;
+        Ok(TyKind::Typeof(expr))
     }
 
     /// Is the current token one of the keywords that signals a bare function type?
