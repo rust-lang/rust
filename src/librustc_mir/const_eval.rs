@@ -305,6 +305,8 @@ impl interpret::MayLeak for ! {
     }
 }
 
+pub type CtfeMemory<'mir, 'tcx> = Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
+
 impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir, 'tcx> {
     type MemoryKinds = !;
     type PointerTag = ();
@@ -445,7 +447,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     }
 
     fn ptr_to_int(
-        _mem: &Memory<'mir, 'tcx, Self>,
+        _mem: &CtfeMemory<'mir, 'tcx>,
         _ptr: Pointer,
     ) -> InterpResult<'tcx, u64> {
         Err(

@@ -63,10 +63,8 @@ use rustc::ty::layout::Size;
 use rustc_data_structures::fx::{FxHasher, FxHashMap, FxHashSet};
 
 use super::{memory, AllocId, Frame, Immediate, MemPlace, Operand};
-use crate::const_eval::CompileTimeInterpreter;
+use crate::const_eval::{CompileTimeInterpreter, CtfeMemory};
 use crate::interpret::{LocalState, LocalValue};
-
-type CtfeMemory<'mir, 'tcx> = Memory<'mir, 'tcx, CompileTimeInterpreter<'mir, 'tcx>>;
 
 #[derive(Default)]
 pub(crate) struct InfiniteLoopDetector<'mir, 'tcx> {
