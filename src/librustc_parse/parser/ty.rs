@@ -128,14 +128,7 @@ impl<'a> Parser<'a> {
             } else {
                 // FIXME(Centril): Should we just allow `...` syntactically
                 // anywhere in a type and use semantic restrictions instead?
-                struct_span_err!(
-                    self.sess.span_diagnostic,
-                    lo.to(self.prev_span),
-                    E0743,
-                    "C-variadic type `...` may not be nested inside another type",
-                )
-                .emit();
-
+                self.error_illegal_c_varadic_ty(lo);
                 TyKind::Err
             }
         } else {
@@ -333,6 +326,16 @@ impl<'a> Parser<'a> {
             // Just a type path.
             Ok(TyKind::Path(None, path))
         }
+    }
+
+    fn error_illegal_c_varadic_ty(&self, lo: Span) {
+        struct_span_err!(
+            self.sess.span_diagnostic,
+            lo.to(self.prev_span),
+            E0743,
+            "C-variadic type `...` may not be nested inside another type",
+        )
+        .emit();
     }
 
     pub(super) fn parse_generic_bounds(&mut self,
