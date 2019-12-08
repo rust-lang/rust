@@ -1,7 +1,4 @@
 //! FIXME: write short doc here
-
-pub(crate) mod src;
-
 use std::sync::Arc;
 
 use either::Either;
