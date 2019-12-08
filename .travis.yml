@@ -34,7 +34,7 @@ before_script:
 - curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain stable --profile minimal
 - export PATH=$HOME/.cargo/bin:$PATH
 - rustup default stable
-- rustup uninstall beta
+- rustup toolchain uninstall beta
 - rustup update
 # Install "master" toolchain
 - cargo install rustup-toolchain-install-master || echo "rustup-toolchain-install-master already installed"
