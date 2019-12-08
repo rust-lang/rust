@@ -448,6 +448,8 @@ impl<'a> Parser<'a> {
             self.error_opt_out_lifetime(question);
             let bound = GenericBound::Outlives(self.expect_lifetime());
             if has_parens {
+                // FIXME(Centril): Consider not erroring here and accepting `('lt)` instead,
+                // possibly introducing `GenericBound::Paren(P<GenericBound>)`?
                 self.recover_paren_lifetime(lo, inner_lo)?;
             }
             Ok(Ok(bound))
