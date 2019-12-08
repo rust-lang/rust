@@ -71,9 +71,9 @@ index 8b76080..9e65de2 100644
      // Buffer for capturing standard I/O
      let data = Arc::new(Mutex::new(Vec::new()));
 @@ -1623,7 +1611,7 @@ fn run_test_in_process(desc: TestDesc,
-     } else {
-         None
      };
+ 
+     let start = report_time.then(Instant::now);
 -    let result = catch_unwind(AssertUnwindSafe(testfn));
 +    let result = Ok::<(), Box<dyn std::any::Any + Send>>(testfn());
      let exec_time = start.map(|start| {
@@ -93,4 +93,3 @@ index 8b76080..9e65de2 100644
          let test_result = match panic_info {
 -- 
 2.20.1
-
