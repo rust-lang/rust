@@ -1210,7 +1210,7 @@ impl char {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_digit(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_digit()
+        self.is_digit(10)
     }
 
     /// Checks if the value is an ASCII hexadecimal digit:
@@ -1245,7 +1245,14 @@ impl char {
     #[stable(feature = "ascii_ctype_on_intrinsics", since = "1.24.0")]
     #[inline]
     pub fn is_ascii_hexdigit(&self) -> bool {
-        self.is_ascii() && (*self as u8).is_ascii_hexdigit()
+        if !self.is_ascii() {
+            return false;
+        }
+        if self.is_digit() {
+            return true;
+        }
+        let code = (self as u8) & !0xDF; // 0x20 is the case bit
+        code >= b'A' && code <= b'F'
     }
 
     /// Checks if the value is an ASCII punctuation character:
