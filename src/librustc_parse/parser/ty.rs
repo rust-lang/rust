@@ -386,21 +386,7 @@ impl<'a> Parser<'a> {
                     self.error_opt_out_lifetime(question);
                     bounds.push(GenericBound::Outlives(self.expect_lifetime()));
                     if has_parens {
-                        let inner_span = inner_lo.to(self.prev_span);
-                        self.expect(&token::CloseDelim(token::Paren))?;
-                        let mut err = self.struct_span_err(
-                            lo.to(self.prev_span),
-                            "parenthesized lifetime bounds are not supported"
-                        );
-                        if let Ok(snippet) = self.span_to_snippet(inner_span) {
-                            err.span_suggestion_short(
-                                lo.to(self.prev_span),
-                                "remove the parentheses",
-                                snippet.to_owned(),
-                                Applicability::MachineApplicable
-                            );
-                        }
-                        err.emit();
+                        self.recover_paren_lifetime(lo, inner_lo)?;
                     }
                 } else {
                     let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
@@ -475,6 +461,26 @@ impl<'a> Parser<'a> {
             self.struct_span_err(span, "`?` may only modify trait bounds, not lifetime bounds")
                 .emit();
         }
+    }
+
+    /// Recover on `('lifetime)` with `(` already eaten.
+    fn recover_paren_lifetime(&mut self, lo: Span, inner_lo: Span) -> PResult<'a, ()> {
+        let inner_span = inner_lo.to(self.prev_span);
+        self.expect(&token::CloseDelim(token::Paren))?;
+        let mut err = self.struct_span_err(
+            lo.to(self.prev_span),
+            "parenthesized lifetime bounds are not supported"
+        );
+        if let Ok(snippet) = self.span_to_snippet(inner_span) {
+            err.span_suggestion_short(
+                lo.to(self.prev_span),
+                "remove the parentheses",
+                snippet.to_owned(),
+                Applicability::MachineApplicable
+            );
+        }
+        err.emit();
+        Ok(())
     }
 
     pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
