@@ -376,42 +376,42 @@ impl<'a> Parser<'a> {
                 || self.check_keyword(kw::For)
                 || self.check(&token::OpenDelim(token::Paren));
 
-            if is_bound_start {
-                let lo = self.token.span;
-                let has_parens = self.eat(&token::OpenDelim(token::Paren));
-                let inner_lo = self.token.span;
-                let is_negative = self.eat(&token::Not);
-                let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
-                if self.token.is_lifetime() {
-                    self.error_opt_out_lifetime(question);
-                    bounds.push(GenericBound::Outlives(self.expect_lifetime()));
-                    if has_parens {
-                        self.recover_paren_lifetime(lo, inner_lo)?;
-                    }
-                } else {
-                    let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-                    let path = self.parse_path(PathStyle::Type)?;
-                    if has_parens {
-                        self.expect(&token::CloseDelim(token::Paren))?;
-                    }
-                    let poly_span = lo.to(self.prev_span);
-                    if is_negative {
-                        was_negative = true;
-                        if let Some(sp) = last_plus_span.or(colon_span) {
-                            negative_bounds.push(sp.to(poly_span));
-                        }
-                    } else {
-                        let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
-                        let modifier = if question.is_some() {
-                            TraitBoundModifier::Maybe
-                        } else {
-                            TraitBoundModifier::None
-                        };
-                        bounds.push(GenericBound::Trait(poly_trait, modifier));
-                    }
+            if !is_bound_start {
+                break;
+            }
+
+            let lo = self.token.span;
+            let has_parens = self.eat(&token::OpenDelim(token::Paren));
+            let inner_lo = self.token.span;
+            let is_negative = self.eat(&token::Not);
+            let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
+            if self.token.is_lifetime() {
+                self.error_opt_out_lifetime(question);
+                bounds.push(GenericBound::Outlives(self.expect_lifetime()));
+                if has_parens {
+                    self.recover_paren_lifetime(lo, inner_lo)?;
                 }
             } else {
-                break
+                let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+                let path = self.parse_path(PathStyle::Type)?;
+                if has_parens {
+                    self.expect(&token::CloseDelim(token::Paren))?;
+                }
+                let poly_span = lo.to(self.prev_span);
+                if is_negative {
+                    was_negative = true;
+                    if let Some(sp) = last_plus_span.or(colon_span) {
+                        negative_bounds.push(sp.to(poly_span));
+                    }
+                } else {
+                    let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
+                    let modifier = if question.is_some() {
+                        TraitBoundModifier::Maybe
+                    } else {
+                        TraitBoundModifier::None
+                    };
+                    bounds.push(GenericBound::Trait(poly_trait, modifier));
+                }
             }
 
             if !allow_plus || !self.eat_plus() {
