@@ -388,7 +388,7 @@ impl fmt::Display for CannotReallocInPlace {
 }
 
 /// A memory allocator that can be registered as the standard library’s default
-/// through the `#[global_allocator]` attributes.
+/// through the `#[global_allocator]` attribute.
 ///
 /// Some of the methods require that a memory block be *currently
 /// allocated* via an allocator. This means that:
