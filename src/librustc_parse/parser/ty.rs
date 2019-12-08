@@ -367,19 +367,7 @@ impl<'a> Parser<'a> {
         let mut negative_bounds = Vec::new();
         let mut last_plus_span = None;
         let mut was_negative = false;
-        loop {
-            // This needs to be synchronized with `TokenKind::can_begin_bound`.
-            let is_bound_start = self.check_path()
-                || self.check_lifetime()
-                || self.check(&token::Not) // Used for error reporting only.
-                || self.check(&token::Question)
-                || self.check_keyword(kw::For)
-                || self.check(&token::OpenDelim(token::Paren));
-
-            if !is_bound_start {
-                break;
-            }
-
+        while self.can_begin_bound() {
             let lo = self.token.span;
             let has_parens = self.eat(&token::OpenDelim(token::Paren));
             let inner_lo = self.token.span;
@@ -454,6 +442,17 @@ impl<'a> Parser<'a> {
         }
 
         return Ok(bounds);
+    }
+
+    /// Can the current token begin a bound?
+    fn can_begin_bound(&mut self) -> bool {
+        // This needs to be synchronized with `TokenKind::can_begin_bound`.
+        self.check_path()
+        || self.check_lifetime()
+        || self.check(&token::Not) // Used for error reporting only.
+        || self.check(&token::Question)
+        || self.check_keyword(kw::For)
+        || self.check(&token::OpenDelim(token::Paren))
     }
 
     fn error_opt_out_lifetime(&self, question: Option<Span>) {
