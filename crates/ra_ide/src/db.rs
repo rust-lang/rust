@@ -5,7 +5,7 @@ use std::sync::Arc;
 use ra_db::{
     salsa::{self, Database, Durability},
     Canceled, CheckCanceled, CrateId, FileId, FileLoader, FileLoaderDelegate, RelativePath,
-    SourceDatabase, SourceDatabaseExt, SourceRootId,
+    SourceDatabase, SourceRootId,
 };
 use rustc_hash::FxHashMap;
 
@@ -46,18 +46,6 @@ impl FileLoader for RootDatabase {
     }
     fn relevant_crates(&self, file_id: FileId) -> Arc<Vec<CrateId>> {
         FileLoaderDelegate(self).relevant_crates(file_id)
-    }
-}
-
-impl hir::debug::HirDebugHelper for RootDatabase {
-    fn crate_name(&self, krate: CrateId) -> Option<String> {
-        self.debug_data.crate_names.get(&krate).cloned()
-    }
-    fn file_path(&self, file_id: FileId) -> Option<String> {
-        let source_root_id = self.file_source_root(file_id);
-        let source_root_path = self.debug_data.root_paths.get(&source_root_id)?;
-        let file_path = self.file_relative_path(file_id);
-        Some(format!("{}/{}", source_root_path, file_path))
     }
 }
 

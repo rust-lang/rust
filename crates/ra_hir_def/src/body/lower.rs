@@ -437,9 +437,7 @@ where
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
-
-            // FIXME implement HIR for these:
-            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
+            // FIXME expand to statements in statement position
             ast::Expr::MacroCall(e) => match self.expander.enter_expand(self.db, e) {
                 Some((mark, expansion)) => {
                     let id = self.collect_expr(expansion);
@@ -448,6 +446,9 @@ where
                 }
                 None => self.alloc_expr(Expr::Missing, syntax_ptr),
             },
+
+            // FIXME implement HIR for these:
+            ast::Expr::Label(_e) => self.alloc_expr(Expr::Missing, syntax_ptr),
         }
     }
 

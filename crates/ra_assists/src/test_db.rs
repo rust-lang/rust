@@ -43,5 +43,3 @@ impl FileLoader for TestDB {
         FileLoaderDelegate(self).relevant_crates(file_id)
     }
 }
-
-impl hir::debug::HirDebugHelper for TestDB {}

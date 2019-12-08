@@ -1,7 +1,4 @@
 //! FIXME: write short doc here
-
-pub(crate) mod src;
-
 use std::sync::Arc;
 
 use either::Either;
@@ -987,11 +984,6 @@ impl Type {
             }
         }
         None
-    }
-
-    // FIXME: remove
-    pub fn into_ty(self) -> Ty {
-        self.ty.value
     }
 
     pub fn as_adt(&self) -> Option<Adt> {

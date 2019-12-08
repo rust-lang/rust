@@ -183,8 +183,8 @@ fn to_fragment_kind(db: &dyn AstDatabase, macro_call_id: MacroCallId) -> Fragmen
             // FIXME: Handle Pattern
             FragmentKind::Expr
         }
-        EXPR_STMT => FragmentKind::Statements,
-        BLOCK => FragmentKind::Statements,
+        // FIXME: Expand to statements in appropriate positions; HIR lowering needs to handle that
+        EXPR_STMT | BLOCK => FragmentKind::Expr,
         ARG_LIST => FragmentKind::Expr,
         TRY_EXPR => FragmentKind::Expr,
         TUPLE_EXPR => FragmentKind::Expr,

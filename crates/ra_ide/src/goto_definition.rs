@@ -693,7 +693,6 @@ mod tests {
         );
     }
 
-    #[should_panic] // currently failing because of expr mapping problems
     #[test]
     fn goto_through_format() {
         check_goto(
@@ -718,7 +717,7 @@ mod tests {
                 format!(\"{}\", fo<|>o())
             }
             ",
-            "foo FN_DEF FileId(1) [359; 376) [362; 365)",
+            "foo FN_DEF FileId(1) [398; 415) [401; 404)",
         );
     }
 
