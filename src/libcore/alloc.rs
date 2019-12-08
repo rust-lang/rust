@@ -1046,7 +1046,7 @@ pub unsafe trait Alloc {
     /// Captures a common usage pattern for allocators.
     ///
     /// The returned block is suitable for passing to the
-    /// `alloc`/`realloc` methods of this allocator.
+    /// `realloc`/`dealloc` methods of this allocator.
     ///
     /// Note to implementors: If this returns `Ok(ptr)`, then `ptr`
     /// must be considered "currently allocated" and must be
@@ -1112,7 +1112,7 @@ pub unsafe trait Alloc {
     /// Captures a common usage pattern for allocators.
     ///
     /// The returned block is suitable for passing to the
-    /// `alloc`/`realloc` methods of this allocator.
+    /// `realloc`/`dealloc` methods of this allocator.
     ///
     /// Note to implementors: If this returns `Ok(ptr)`, then `ptr`
     /// must be considered "currently allocated" and must be
@@ -1159,7 +1159,7 @@ pub unsafe trait Alloc {
     /// Captures a common usage pattern for allocators.
     ///
     /// The returned block is suitable for passing to the
-    /// `alloc`/`realloc` methods of this allocator.
+    /// `realloc`/`dealloc` methods of this allocator.
     ///
     /// # Safety
     ///
