@@ -108,20 +108,14 @@ impl<'a> Parser<'a> {
             }
         } else if self.eat_keyword(kw::Impl) {
             self.parse_impl_ty(&mut impl_dyn_multi)?
-        } else if self.check_keyword(kw::Dyn) &&
-                  (self.token.span.rust_2018() ||
-                   self.look_ahead(1, |t| t.can_begin_bound() &&
-                                          !can_continue_type_after_non_fn_ident(t))) {
-            self.bump(); // `dyn`
-            // Always parse bounds greedily for better error recovery.
-            let bounds = self.parse_generic_bounds(None)?;
-            impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
-            TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn)
-        } else if self.check(&token::Question) ||
-                  self.check_lifetime() && self.look_ahead(1, |t| t.is_like_plus()) {
+        } else if self.is_explicit_dyn_type() {
+            self.parse_dyn_ty(&mut impl_dyn_multi)?
+        } else if self.check(&token::Question)
+            || self.check_lifetime() && self.look_ahead(1, |t| t.is_like_plus())
+        {
             // Bound list (trait object type)
-            TyKind::TraitObject(self.parse_generic_bounds_common(allow_plus, None)?,
-                                TraitObjectSyntax::None)
+            let bounds = self.parse_generic_bounds_common(allow_plus, None)?;
+            TyKind::TraitObject(bounds, TraitObjectSyntax::None)
         } else if self.eat_lt() {
             // Qualified path
             let (qself, path) = self.parse_qpath(PathStyle::Type)?;
@@ -314,6 +308,26 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_generic_bounds(None)?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
+    }
+
+    /// Is a `dyn B0 + ... + Bn` type allowed here?
+    fn is_explicit_dyn_type(&mut self) -> bool {
+        self.check_keyword(kw::Dyn)
+            && (self.token.span.rust_2018()
+                || self.look_ahead(1, |t| {
+                    t.can_begin_bound() && !can_continue_type_after_non_fn_ident(t)
+                }))
+    }
+
+    /// Parses a `dyn B0 + ... + Bn` type.
+    ///
+    /// Note that this does *not* parse bare trait objects.
+    fn parse_dyn_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
+        self.bump(); // `dyn`
+        // Always parse bounds greedily for better error recovery.
+        let bounds = self.parse_generic_bounds(None)?;
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
+        Ok(TyKind::TraitObject(bounds, TraitObjectSyntax::Dyn))
     }
 
     pub(super) fn parse_generic_bounds(&mut self,
