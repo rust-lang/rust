@@ -718,7 +718,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
                                     && !op.layout.ty.is_region_ptr()
                     {
-                        'iter_fields: for i in 0..op.layout.fields.count() {
+                        for i in 0..op.layout.fields.count() {
                             let field = op.extract_field(&mut bx, i);
                             if !field.layout.is_zst() {
                                 // we found the one non-zero-sized field that is allowed
