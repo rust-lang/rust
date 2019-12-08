@@ -30,6 +30,7 @@ fn replace_with_default() {
     let _ = std::mem::replace(&mut s, String::default());
     let s = &mut String::from("foo");
     let _ = std::mem::replace(s, String::default());
+    let _ = std::mem::replace(s, Default::default());
 }
 
 fn main() {
