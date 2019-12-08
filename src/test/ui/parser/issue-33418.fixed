@@ -1,15 +1,15 @@
 // run-rustfix
 
 trait Tr {}
-//~^ ERROR negative trait bounds are not supported
+//~^ ERROR negative bounds are not supported
 trait Tr2: SuperA {}
-//~^ ERROR negative trait bounds are not supported
+//~^ ERROR negative bounds are not supported
 trait Tr3: SuperB {}
-//~^ ERROR negative trait bounds are not supported
+//~^ ERROR negative bounds are not supported
 trait Tr4: SuperB + SuperD {}
-//~^ ERROR negative trait bounds are not supported
+//~^ ERROR negative bounds are not supported
 trait Tr5 {}
-//~^ ERROR negative trait bounds are not supported
+//~^ ERROR negative bounds are not supported
 
 trait SuperA {}
 trait SuperB {}
