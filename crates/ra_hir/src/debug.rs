@@ -57,9 +57,9 @@ pub trait HirDebugDatabase {
 impl<DB: HirDebugHelper> HirDebugDatabase for DB {
     fn debug_crate(&self, krate: Crate, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut builder = fmt.debug_tuple("Crate");
-        match self.crate_name(krate.crate_id) {
+        match self.crate_name(krate.id) {
             Some(name) => builder.field(&name),
-            None => builder.field(&krate.crate_id),
+            None => builder.field(&krate.id),
         }
         .finish()
     }

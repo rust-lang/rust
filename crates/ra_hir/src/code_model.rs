@@ -25,7 +25,7 @@ use hir_expand::{
     MacroDefId,
 };
 use hir_ty::expr::ExprValidator;
-use ra_db::{CrateId, Edition};
+use ra_db::{CrateId, Edition, FileId};
 use ra_syntax::ast;
 
 use crate::{
@@ -40,7 +40,7 @@ use crate::{
 /// root module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Crate {
-    pub(crate) crate_id: CrateId,
+    pub(crate) id: CrateId,
 }
 
 #[derive(Debug)]
@@ -50,33 +50,47 @@ pub struct CrateDependency {
 }
 
 impl Crate {
-    pub fn crate_id(self) -> CrateId {
-        self.crate_id
-    }
-
     pub fn dependencies(self, db: &impl DefDatabase) -> Vec<CrateDependency> {
         db.crate_graph()
-            .dependencies(self.crate_id)
+            .dependencies(self.id)
             .map(|dep| {
-                let krate = Crate { crate_id: dep.crate_id() };
+                let krate = Crate { id: dep.crate_id() };
                 let name = dep.as_name();
                 CrateDependency { krate, name }
             })
             .collect()
     }
 
+    // FIXME: add `transitive_reverse_dependencies`.
+    pub fn reverse_dependencies(self, db: &impl DefDatabase) -> Vec<Crate> {
+        let crate_graph = db.crate_graph();
+        crate_graph
+            .iter()
+            .filter(|&krate| crate_graph.dependencies(krate).any(|it| it.crate_id == self.id))
+            .map(|id| Crate { id })
+            .collect()
+    }
+
     pub fn root_module(self, db: &impl DefDatabase) -> Option<Module> {
-        let module_id = db.crate_def_map(self.crate_id).root;
+        let module_id = db.crate_def_map(self.id).root;
         Some(Module::new(self, module_id))
+    }
+
+    pub fn root_file(self, db: &impl DefDatabase) -> FileId {
+        db.crate_graph().crate_root(self.id)
     }
 
     pub fn edition(self, db: &impl DefDatabase) -> Edition {
         let crate_graph = db.crate_graph();
-        crate_graph.edition(self.crate_id)
+        crate_graph.edition(self.id)
     }
 
     pub fn all(db: &impl DefDatabase) -> Vec<Crate> {
-        db.crate_graph().iter().map(|crate_id| Crate { crate_id }).collect()
+        db.crate_graph().iter().map(|id| Crate { id }).collect()
+    }
+
+    pub fn crate_id(self) -> CrateId {
+        self.id
     }
 }
 
@@ -115,7 +129,7 @@ pub use hir_def::attr::Attrs;
 
 impl Module {
     pub(crate) fn new(krate: Crate, crate_module_id: LocalModuleId) -> Module {
-        Module { id: ModuleId { krate: krate.crate_id, local_id: crate_module_id } }
+        Module { id: ModuleId { krate: krate.id, local_id: crate_module_id } }
     }
 
     /// Name of this module.
@@ -133,7 +147,7 @@ impl Module {
 
     /// Returns the crate this module is part of.
     pub fn krate(self) -> Crate {
-        Crate { crate_id: self.id.krate }
+        Crate { id: self.id.krate }
     }
 
     /// Topmost parent of this module. Every module has a `crate_root`, but some
@@ -142,13 +156,6 @@ impl Module {
     pub fn crate_root(self, db: &impl DefDatabase) -> Module {
         let def_map = db.crate_def_map(self.id.krate);
         self.with_module_id(def_map.root)
-    }
-
-    /// Finds a child module with the specified name.
-    pub fn child(self, db: &impl DefDatabase, name: &Name) -> Option<Module> {
-        let def_map = db.crate_def_map(self.id.krate);
-        let child_id = def_map[self.id.local_id].children.get(name)?;
-        Some(self.with_module_id(*child_id))
     }
 
     /// Iterates over all child modules.
@@ -224,7 +231,7 @@ impl Module {
         def_map[self.id.local_id].impls.iter().copied().map(ImplBlock::from).collect()
     }
 
-    fn with_module_id(self, module_id: LocalModuleId) -> Module {
+    pub(crate) fn with_module_id(self, module_id: LocalModuleId) -> Module {
         Module::new(self.krate(), module_id)
     }
 }
@@ -251,8 +258,10 @@ impl StructField {
         self.parent.variant_data(db).fields()[self.id].name.clone()
     }
 
-    pub fn ty(&self, db: &impl HirDatabase) -> Ty {
-        db.field_types(self.parent.into())[self.id].clone()
+    pub fn ty(&self, db: &impl HirDatabase) -> Type {
+        let var_id = self.parent.into();
+        let ty = db.field_types(var_id)[self.id].clone();
+        Type::new(db, self.parent.module(db).id.krate.into(), var_id, ty)
     }
 
     pub fn parent_def(&self, _db: &impl HirDatabase) -> VariantDef {
@@ -287,21 +296,8 @@ impl Struct {
             .collect()
     }
 
-    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        db.struct_data(self.id.into())
-            .variant_data
-            .fields()
-            .iter()
-            .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField { parent: self.into(), id })
-    }
-
     pub fn ty(self, db: &impl HirDatabase) -> Type {
         Type::from_def(db, self.id.module(db).krate, self.id)
-    }
-
-    pub fn constructor_ty(self, db: &impl HirDatabase) -> Ty {
-        db.value_ty(self.id.into())
     }
 
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -336,15 +332,6 @@ impl Union {
             .collect()
     }
 
-    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        db.union_data(self.id)
-            .variant_data
-            .fields()
-            .iter()
-            .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField { parent: self.into(), id })
-    }
-
     fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
         db.union_data(self.id).variant_data.clone()
     }
@@ -376,11 +363,6 @@ impl Enum {
             .collect()
     }
 
-    pub fn variant(self, db: &impl DefDatabase, name: &Name) -> Option<EnumVariant> {
-        let id = db.enum_data(self.id).variant(name)?;
-        Some(EnumVariant { parent: self, id })
-    }
-
     pub fn ty(self, db: &impl HirDatabase) -> Type {
         Type::from_def(db, self.id.module(db).krate, self.id)
     }
@@ -410,14 +392,6 @@ impl EnumVariant {
             .iter()
             .map(|(id, _)| StructField { parent: self.into(), id })
             .collect()
-    }
-
-    pub fn field(self, db: &impl HirDatabase, name: &Name) -> Option<StructField> {
-        self.variant_data(db)
-            .fields()
-            .iter()
-            .find(|(_id, data)| data.name == *name)
-            .map(|(id, _)| StructField { parent: self.into(), id })
     }
 
     pub(crate) fn variant_data(self, db: &impl DefDatabase) -> Arc<VariantData> {
@@ -543,10 +517,6 @@ impl Function {
 
     pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
         db.body(self.id.into())
-    }
-
-    pub fn ty(self, db: &impl HirDatabase) -> Ty {
-        db.value_ty(self.id.into())
     }
 
     pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
@@ -878,11 +848,11 @@ pub struct ImplBlock {
 
 impl ImplBlock {
     pub fn all_in_crate(db: &impl HirDatabase, krate: Crate) -> Vec<ImplBlock> {
-        let impls = db.impls_in_crate(krate.crate_id);
+        let impls = db.impls_in_crate(krate.id);
         impls.all_impls().map(Self::from).collect()
     }
     pub fn for_trait(db: &impl HirDatabase, krate: Crate, trait_: Trait) -> Vec<ImplBlock> {
-        let impls = db.impls_in_crate(krate.crate_id);
+        let impls = db.impls_in_crate(krate.id);
         impls.lookup_impl_blocks_for_trait(trait_.id).map(Self::from).collect()
     }
 
@@ -915,7 +885,7 @@ impl ImplBlock {
     }
 
     pub fn krate(&self, db: &impl DefDatabase) -> Crate {
-        Crate { crate_id: self.module(db).id.krate }
+        Crate { id: self.module(db).id.krate }
     }
 }
 
@@ -926,15 +896,19 @@ pub struct Type {
 }
 
 impl Type {
+    fn new(db: &impl HirDatabase, krate: CrateId, lexical_env: impl HasResolver, ty: Ty) -> Type {
+        let resolver = lexical_env.resolver(db);
+        let environment = TraitEnvironment::lower(db, &resolver);
+        Type { krate, ty: InEnvironment { value: ty, environment } }
+    }
+
     fn from_def(
         db: &impl HirDatabase,
         krate: CrateId,
         def: impl HasResolver + Into<TyDefId>,
     ) -> Type {
-        let resolver = def.resolver(db);
-        let environment = TraitEnvironment::lower(db, &resolver);
         let ty = db.ty(def.into());
-        Type { krate, ty: InEnvironment { value: ty, environment } }
+        Type::new(db, krate, def, ty)
     }
 
     pub fn is_bool(&self) -> bool {
@@ -1025,11 +999,16 @@ impl Type {
     ) -> Vec<(StructField, Type)> {
         // FIXME: check that ty and def match
         match &self.ty.value {
-            Ty::Apply(a_ty) => def
-                .fields(db)
-                .into_iter()
-                .map(|it| (it, self.derived(it.ty(db).subst(&a_ty.parameters))))
-                .collect(),
+            Ty::Apply(a_ty) => {
+                let field_types = db.field_types(def.into());
+                def.fields(db)
+                    .into_iter()
+                    .map(|it| {
+                        let ty = field_types[it.id].clone().subst(&a_ty.parameters);
+                        (it, self.derived(ty))
+                    })
+                    .collect()
+            }
             _ => Vec::new(),
         }
     }
@@ -1053,7 +1032,7 @@ impl Type {
         krate: Crate,
         mut callback: impl FnMut(AssocItem) -> Option<T>,
     ) -> Option<T> {
-        for krate in self.ty.value.def_crates(db, krate.crate_id)? {
+        for krate in self.ty.value.def_crates(db, krate.id)? {
             let impls = db.impls_in_crate(krate);
 
             for impl_block in impls.lookup_impl_blocks(&self.ty.value) {

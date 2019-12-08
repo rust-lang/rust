@@ -14,8 +14,8 @@ use crate::{
 };
 
 impl From<ra_db::CrateId> for Crate {
-    fn from(crate_id: ra_db::CrateId) -> Self {
-        Crate { crate_id }
+    fn from(id: ra_db::CrateId) -> Self {
+        Crate { id }
     }
 }
 

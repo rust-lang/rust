@@ -95,7 +95,7 @@ impl FromSource for MacroDef {
 
         let module_src = ModuleSource::from_child_node(db, src.as_ref().map(|it| it.syntax()));
         let module = Module::from_definition(db, InFile::new(src.file_id, module_src))?;
-        let krate = Some(module.krate().crate_id());
+        let krate = Some(module.krate().id);
 
         let ast_id = Some(AstId::new(src.file_id, db.ast_id_map(src.file_id).ast_id(&src.value)));
 
@@ -216,8 +216,10 @@ impl Module {
             }
         }?;
 
-        let child_name = src.value.name()?;
-        parent_module.child(db, &child_name.as_name())
+        let child_name = src.value.name()?.as_name();
+        let def_map = db.crate_def_map(parent_module.id.krate);
+        let child_id = def_map[parent_module.id.local_id].children.get(&child_name)?;
+        Some(parent_module.with_module_id(*child_id))
     }
 
     pub fn from_definition(db: &impl DefDatabase, src: InFile<ModuleSource>) -> Option<Self> {
