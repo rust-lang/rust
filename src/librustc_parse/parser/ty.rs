@@ -352,12 +352,7 @@ impl<'a> Parser<'a> {
 
     /// Parses bounds of a type parameter `BOUND + BOUND + ...`, possibly with trailing `+`.
     ///
-    /// ```
-    /// BOUND = TY_BOUND | LT_BOUND
-    /// LT_BOUND = LIFETIME (e.g., `'a`)
-    /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
-    /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
-    /// ```
+    /// See `parse_generic_bound` for the `BOUND` grammar.
     fn parse_generic_bounds_common(
         &mut self,
         allow_plus: bool,
@@ -368,39 +363,13 @@ impl<'a> Parser<'a> {
         let mut last_plus_span = None;
         let mut was_negative = false;
         while self.can_begin_bound() {
-            let lo = self.token.span;
-            let has_parens = self.eat(&token::OpenDelim(token::Paren));
-            let inner_lo = self.token.span;
-            let is_negative = self.eat(&token::Not);
-            let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
-            if self.token.is_lifetime() {
-                self.error_opt_out_lifetime(question);
-                bounds.push(GenericBound::Outlives(self.expect_lifetime()));
-                if has_parens {
-                    self.recover_paren_lifetime(lo, inner_lo)?;
-                }
-            } else {
-                let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-                let path = self.parse_path(PathStyle::Type)?;
-                if has_parens {
-                    self.expect(&token::CloseDelim(token::Paren))?;
-                }
-                let poly_span = lo.to(self.prev_span);
-                if is_negative {
-                    was_negative = true;
-                    if let Some(sp) = last_plus_span.or(colon_span) {
-                        negative_bounds.push(sp.to(poly_span));
-                    }
-                } else {
-                    let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
-                    let modifier = if question.is_some() {
-                        TraitBoundModifier::Maybe
-                    } else {
-                        TraitBoundModifier::None
-                    };
-                    bounds.push(GenericBound::Trait(poly_trait, modifier));
-                }
-            }
+            self.parse_generic_bound(
+                colon_span,
+                last_plus_span,
+                &mut bounds,
+                &mut negative_bounds,
+                &mut was_negative,
+            )?;
 
             if !allow_plus || !self.eat_plus() {
                 break
@@ -441,7 +410,7 @@ impl<'a> Parser<'a> {
             err.emit();
         }
 
-        return Ok(bounds);
+        Ok(bounds)
     }
 
     /// Can the current token begin a bound?
@@ -453,6 +422,58 @@ impl<'a> Parser<'a> {
         || self.check(&token::Question)
         || self.check_keyword(kw::For)
         || self.check(&token::OpenDelim(token::Paren))
+    }
+
+    /// Parses a bound according to the grammar:
+    ///
+    /// ```
+    /// BOUND = TY_BOUND | LT_BOUND
+    /// LT_BOUND = LIFETIME (e.g., `'a`)
+    /// TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
+    /// TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g., `?for<'a: 'b> m::Trait<'a>`)
+    /// ```
+    fn parse_generic_bound(
+        &mut self,
+        colon_span: Option<Span>,
+        last_plus_span: Option<Span>,
+        bounds: &mut Vec<GenericBound>,
+        negative_bounds: &mut Vec<Span>,
+        was_negative: &mut bool,
+    ) -> PResult<'a, ()> {
+        let lo = self.token.span;
+        let has_parens = self.eat(&token::OpenDelim(token::Paren));
+        let inner_lo = self.token.span;
+        let is_negative = self.eat(&token::Not);
+        let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
+        if self.token.is_lifetime() {
+            self.error_opt_out_lifetime(question);
+            bounds.push(GenericBound::Outlives(self.expect_lifetime()));
+            if has_parens {
+                self.recover_paren_lifetime(lo, inner_lo)?;
+            }
+        } else {
+            let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+            let path = self.parse_path(PathStyle::Type)?;
+            if has_parens {
+                self.expect(&token::CloseDelim(token::Paren))?;
+            }
+            let poly_span = lo.to(self.prev_span);
+            if is_negative {
+                *was_negative = true;
+                if let Some(sp) = last_plus_span.or(colon_span) {
+                    negative_bounds.push(sp.to(poly_span));
+                }
+            } else {
+                let poly_trait = PolyTraitRef::new(lifetime_defs, path, poly_span);
+                let modifier = if question.is_some() {
+                    TraitBoundModifier::Maybe
+                } else {
+                    TraitBoundModifier::None
+                };
+                bounds.push(GenericBound::Trait(poly_trait, modifier));
+            }
+        }
+        Ok(())
     }
 
     fn error_opt_out_lifetime(&self, question: Option<Span>) {
