@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(const_fn, track_caller)]
+#![feature(track_caller)]
 
 use std::panic::Location;
 
