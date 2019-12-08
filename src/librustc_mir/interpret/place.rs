@@ -105,6 +105,17 @@ impl<Tag> MemPlace<Tag> {
         }
     }
 
+    /// Replace any allocation IDs in this type with `()`.
+    ///
+    /// Used when comparing heap snapshots.
+    pub fn erase_alloc_id(self) -> MemPlace<Tag, ()> {
+        MemPlace {
+            ptr: self.ptr.erase_alloc_id(),
+            align: self.align,
+            meta: self.meta.map(Scalar::erase_alloc_id),
+        }
+    }
+
     #[inline(always)]
     pub fn from_scalar_ptr(ptr: Scalar<Tag>, align: Align) -> Self {
         MemPlace {

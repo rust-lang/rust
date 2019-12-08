@@ -201,6 +201,13 @@ impl<'tcx, Tag> Pointer<Tag> {
         Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }
 
+    /// Replace any allocation IDs in this type with `()`.
+    ///
+    /// Used when comparing heap snapshots.
+    pub fn erase_alloc_id(self) -> Pointer<Tag, ()> {
+        Pointer { alloc_id: (), offset: self.offset, tag: self.tag }
+    }
+
     /// Test if the pointer is "inbounds" of an allocation of the given size.
     /// A pointer is "inbounds" even if its offset is equal to the size; this is
     /// a "one-past-the-end" pointer.

@@ -91,6 +91,17 @@ impl<'tcx, Tag> Immediate<Tag> {
             Immediate::ScalarPair(a, b) => Ok((a.not_undef()?, b.not_undef()?))
         }
     }
+
+    /// Replace any allocation IDs in this type with `()`.
+    ///
+    /// Used when comparing heap snapshots.
+    pub(super) fn erase_alloc_id(self) -> Immediate<Tag, ()> {
+        match self {
+            Immediate::Scalar(a) => Immediate::Scalar(a.erase_alloc_id()),
+            Immediate::ScalarPair(a, b)
+                => Immediate::ScalarPair(a.erase_alloc_id(), b.erase_alloc_id()),
+        }
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have an immediate and a type together
@@ -174,6 +185,16 @@ impl<Tag> Operand<Tag> {
             Operand::Immediate(imm) => imm,
             _ => bug!("assert_immediate: expected Operand::Immediate, got {:?}", self),
 
+        }
+    }
+
+    /// Replace any allocation IDs in this type with `()`.
+    ///
+    /// Used when comparing heap snapshots.
+    pub(super) fn erase_alloc_id(self) -> Operand<Tag, ()> {
+        match self {
+            Operand::Immediate(imm) => Operand::Immediate(imm.erase_alloc_id()),
+            Operand::Indirect(place) => Operand::Indirect(place.erase_alloc_id()),
         }
     }
 }

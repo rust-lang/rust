@@ -153,6 +153,16 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
+    /// Replace any allocation IDs in this type with `()`.
+    ///
+    /// Used when comparing heap snapshots.
+    pub fn erase_alloc_id(self) -> Scalar<Tag, ()> {
+        match self {
+            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.erase_alloc_id()),
+            Scalar::Raw { data, size } => Scalar::Raw { data, size },
+        }
+    }
+
     #[inline]
     pub fn ptr_null(cx: &impl HasDataLayout) -> Self {
         Scalar::Raw {
@@ -505,6 +515,16 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     {
         match self {
             ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_tag()),
+            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
+        }
+    }
+
+    /// Replace any allocation IDs in this type with `()`.
+    ///
+    /// Used when comparing heap snapshots.
+    pub fn erase_alloc_id(self) -> ScalarMaybeUndef<Tag, ()> {
+        match self {
+            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_alloc_id()),
             ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
         }
     }
