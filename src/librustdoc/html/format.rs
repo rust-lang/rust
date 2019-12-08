@@ -63,6 +63,13 @@ impl Buffer {
         }
     }
 
+    crate fn new() -> Buffer {
+        Buffer {
+            for_html: false,
+            buffer: String::new(),
+        }
+    }
+
     crate fn is_empty(&self) -> bool {
         self.buffer.is_empty()
     }
@@ -105,6 +112,10 @@ impl Buffer {
         } else {
             write!(self, "{:#}", t);
         }
+    }
+
+    crate fn is_for_html(&self) -> bool {
+        self.for_html
     }
 }
 
