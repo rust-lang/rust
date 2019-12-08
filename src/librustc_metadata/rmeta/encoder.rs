@@ -866,6 +866,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.span[def_id] <- ast_item.span);
         record!(self.per_def.attributes[def_id] <- &ast_item.attrs);
         self.encode_stability(def_id);
+        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match trait_item.kind {
             ty::AssocKind::Const |
@@ -946,6 +947,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.span[def_id] <- ast_item.span);
         record!(self.per_def.attributes[def_id] <- &ast_item.attrs);
         self.encode_stability(def_id);
+        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if impl_item.kind == ty::AssocKind::Method {
@@ -1022,6 +1024,13 @@ impl EncodeContext<'tcx> {
         debug!("EncodeContext::encode_stability({:?})", def_id);
         if let Some(stab) = self.tcx.lookup_stability(def_id) {
             record!(self.per_def.stability[def_id] <- stab)
+        }
+    }
+
+    fn encode_const_stability(&mut self, def_id: DefId) {
+        debug!("EncodeContext::encode_const_stability({:?})", def_id);
+        if let Some(stab) = self.tcx.lookup_const_stability(def_id) {
+            record!(self.per_def.const_stability[def_id] <- stab)
         }
     }
 
@@ -1186,6 +1195,7 @@ impl EncodeContext<'tcx> {
             _ => {}
         }
         self.encode_stability(def_id);
+        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         match item.kind {
             hir::ItemKind::Static(..) |
@@ -1545,6 +1555,7 @@ impl EncodeContext<'tcx> {
         record!(self.per_def.span[def_id] <- nitem.span);
         record!(self.per_def.attributes[def_id] <- &nitem.attrs);
         self.encode_stability(def_id);
+        self.encode_const_stability(def_id);
         self.encode_deprecation(def_id);
         self.encode_item_type(def_id);
         if let hir::ForeignItemKind::Fn(..) = nitem.kind {

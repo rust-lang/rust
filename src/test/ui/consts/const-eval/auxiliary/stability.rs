@@ -7,5 +7,5 @@
 #![feature(staged_api)]
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature="foo")]
+#[rustc_const_unstable(feature="foo", issue = "0")]
 pub const fn foo() -> u32 { 42 }

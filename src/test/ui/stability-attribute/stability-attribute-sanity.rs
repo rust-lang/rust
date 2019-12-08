@@ -60,11 +60,10 @@ fn multiple3() { }
 #[stable(feature = "a", since = "b")]
 #[rustc_deprecated(since = "b", reason = "text")]
 #[rustc_deprecated(since = "b", reason = "text")]
-#[rustc_const_unstable(feature = "c")]
-#[rustc_const_unstable(feature = "d")]
+#[rustc_const_unstable(feature = "c", issue = "0")]
+#[rustc_const_unstable(feature = "d", issue = "0")] //~ ERROR multiple stability levels
 pub const fn multiple4() { } //~ ERROR multiple rustc_deprecated attributes [E0540]
 //~^ ERROR Invalid stability or deprecation version found
-//~| ERROR multiple rustc_const_unstable attributes
 
 #[rustc_deprecated(since = "a", reason = "text")]
 fn deprecated_without_unstable_or_stable() { }
