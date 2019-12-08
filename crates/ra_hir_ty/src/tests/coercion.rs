@@ -403,3 +403,40 @@ fn test() {
     "###
     );
 }
+
+#[test]
+fn coerce_autoderef_generic() {
+    assert_snapshot!(
+        infer_with_mismatches(r#"
+struct Foo;
+fn takes_ref<T>(x: &T) -> T { *x }
+fn test() {
+    takes_ref(&Foo);
+    takes_ref(&&Foo);
+    takes_ref(&&&Foo);
+}
+"#, true),
+        @r###"
+    [29; 30) 'x': &T
+    [41; 47) '{ *x }': T
+    [43; 45) '*x': T
+    [44; 45) 'x': &T
+    [58; 127) '{     ...oo); }': ()
+    [64; 73) 'takes_ref': fn takes_ref<Foo>(&T) -> T
+    [64; 79) 'takes_ref(&Foo)': Foo
+    [74; 78) '&Foo': &Foo
+    [75; 78) 'Foo': Foo
+    [85; 94) 'takes_ref': fn takes_ref<&Foo>(&T) -> T
+    [85; 101) 'takes_...&&Foo)': &Foo
+    [95; 100) '&&Foo': &&Foo
+    [96; 100) '&Foo': &Foo
+    [97; 100) 'Foo': Foo
+    [107; 116) 'takes_ref': fn takes_ref<&&Foo>(&T) -> T
+    [107; 124) 'takes_...&&Foo)': &&Foo
+    [117; 123) '&&&Foo': &&&Foo
+    [118; 123) '&&Foo': &&Foo
+    [119; 123) '&Foo': &Foo
+    [120; 123) 'Foo': Foo
+    "###
+    );
+}

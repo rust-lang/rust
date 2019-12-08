@@ -332,7 +332,11 @@ impl<'a, D: HirDatabase> InferenceContext<'a, D> {
                     // It will not recurse to `coerce`.
                     return self.table.unify_substs(st1, st2, 0);
                 }
-                _ => {}
+                _ => {
+                    if self.table.unify_inner_trivial(&derefed_ty, &to_ty) {
+                        return true;
+                    }
+                }
             }
         }
 
