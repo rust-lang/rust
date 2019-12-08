@@ -30,7 +30,7 @@ pub(crate) fn crate_for(db: &RootDatabase, file_id: FileId) -> Vec<CrateId> {
             None => return Vec::new(),
         };
     let krate = module.krate();
-    vec![krate.crate_id()]
+    vec![krate.into()]
 }
 
 #[cfg(test)]

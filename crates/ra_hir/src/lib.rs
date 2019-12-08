@@ -31,7 +31,6 @@ pub mod debug;
 pub mod db;
 pub mod source_binder;
 
-mod ty;
 pub mod diagnostics;
 
 mod from_id;
@@ -48,11 +47,6 @@ pub use crate::{
     },
     from_source::FromSource,
     source_binder::{PathResolution, ScopeEntryWithSyntax, SourceAnalyzer},
-    ty::{
-        display::HirDisplay,
-        primitive::{FloatBitness, FloatTy, IntBitness, IntTy, Signedness, Uncertain},
-        ApplicationTy, CallableDef, Substs, TraitRef, Ty, TypeCtor, TypeWalk,
-    },
 };
 
 pub use hir_def::{
@@ -66,3 +60,4 @@ pub use hir_def::{
 pub use hir_expand::{
     name::Name, HirFileId, InFile, MacroCallId, MacroCallLoc, MacroDefId, MacroFile,
 };
+pub use hir_ty::{display::HirDisplay, CallableDef};

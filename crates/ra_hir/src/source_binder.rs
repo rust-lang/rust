@@ -22,6 +22,10 @@ use hir_def::{
 use hir_expand::{
     hygiene::Hygiene, name::AsName, AstId, HirFileId, InFile, MacroCallId, MacroCallKind,
 };
+use hir_ty::{
+    method_resolution::{self, implements_trait},
+    Canonical, InEnvironment, InferenceResult, TraitEnvironment, Ty,
+};
 use ra_syntax::{
     ast::{self, AstNode},
     match_ast, AstPtr,
@@ -30,13 +34,9 @@ use ra_syntax::{
 };
 
 use crate::{
-    db::HirDatabase,
-    ty::{
-        method_resolution::{self, implements_trait},
-        InEnvironment, TraitEnvironment, Ty,
-    },
-    Adt, AssocItem, Const, DefWithBody, Enum, EnumVariant, FromSource, Function, ImplBlock, Local,
-    MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias, TypeParam,
+    db::HirDatabase, Adt, AssocItem, Const, DefWithBody, Enum, EnumVariant, FromSource, Function,
+    ImplBlock, Local, MacroDef, Name, Path, ScopeDef, Static, Struct, Trait, Type, TypeAlias,
+    TypeParam,
 };
 
 fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -> Option<Resolver> {
@@ -100,7 +100,7 @@ pub struct SourceAnalyzer {
     resolver: Resolver,
     body_owner: Option<DefWithBody>,
     body_source_map: Option<Arc<BodySourceMap>>,
-    infer: Option<Arc<crate::ty::InferenceResult>>,
+    infer: Option<Arc<InferenceResult>>,
     scopes: Option<Arc<ExprScopes>>,
 }
 
@@ -376,7 +376,7 @@ impl SourceAnalyzer {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = crate::ty::Canonical { value: ty.ty.value.clone(), num_vars: 0 };
+        let canonical = Canonical { value: ty.ty.value.clone(), num_vars: 0 };
         method_resolution::iterate_method_candidates(
             &canonical,
             db,
@@ -400,7 +400,7 @@ impl SourceAnalyzer {
         // There should be no inference vars in types passed here
         // FIXME check that?
         // FIXME replace Unknown by bound vars here
-        let canonical = crate::ty::Canonical { value: ty.ty.value.clone(), num_vars: 0 };
+        let canonical = Canonical { value: ty.ty.value.clone(), num_vars: 0 };
         method_resolution::iterate_method_candidates(
             &canonical,
             db,
@@ -418,7 +418,7 @@ impl SourceAnalyzer {
     // ) -> impl Iterator<Item = Ty> + 'a {
     //     // There should be no inference vars in types passed here
     //     // FIXME check that?
-    //     let canonical = crate::ty::Canonical { value: ty, num_vars: 0 };
+    //     let canonical = Canonical { value: ty, num_vars: 0 };
     //     let krate = self.resolver.krate();
     //     let environment = TraitEnvironment::lower(db, &self.resolver);
     //     let ty = crate::ty::InEnvironment { value: canonical, environment };
@@ -440,7 +440,7 @@ impl SourceAnalyzer {
             _ => return false,
         };
 
-        let canonical_ty = crate::ty::Canonical { value: ty, num_vars: 0 };
+        let canonical_ty = Canonical { value: ty, num_vars: 0 };
         implements_trait(&canonical_ty, db, &self.resolver, krate.into(), std_future_trait)
     }
 

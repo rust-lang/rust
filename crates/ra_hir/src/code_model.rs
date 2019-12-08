@@ -7,7 +7,6 @@ use std::sync::Arc;
 use either::Either;
 use hir_def::{
     adt::VariantData,
-    body::{Body, BodySourceMap},
     builtin_type::BuiltinType,
     docs::Documentation,
     expr::{BindingAnnotation, Pat, PatId},
@@ -24,14 +23,15 @@ use hir_expand::{
     name::{self, AsName},
     MacroDefId,
 };
-use hir_ty::expr::ExprValidator;
+use hir_ty::{
+    autoderef, display::HirFormatter, expr::ExprValidator, ApplicationTy, Canonical, InEnvironment,
+    TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk,
+};
 use ra_db::{CrateId, Edition, FileId};
 use ra_syntax::ast;
 
 use crate::{
     db::{DefDatabase, HirDatabase},
-    ty::display::HirFormatter,
-    ty::{self, InEnvironment, InferenceResult, TraitEnvironment, Ty, TyDefId, TypeCtor, TypeWalk},
     CallableDef, HirDisplay, InFile, Name,
 };
 
@@ -87,10 +87,6 @@ impl Crate {
 
     pub fn all(db: &impl DefDatabase) -> Vec<Crate> {
         db.crate_graph().iter().map(|id| Crate { id }).collect()
-    }
-
-    pub fn crate_id(self) -> CrateId {
-        self.id
     }
 }
 
@@ -511,44 +507,8 @@ impl Function {
         db.function_data(self.id).params.clone()
     }
 
-    pub fn body_source_map(self, db: &impl HirDatabase) -> Arc<BodySourceMap> {
-        db.body_with_source_map(self.id.into()).1
-    }
-
-    pub fn body(self, db: &impl HirDatabase) -> Arc<Body> {
-        db.body(self.id.into())
-    }
-
-    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.id.into())
-    }
-
-    /// The containing impl block, if this is a method.
-    pub fn impl_block(self, db: &impl DefDatabase) -> Option<ImplBlock> {
-        match self.container(db) {
-            Some(Container::ImplBlock(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    /// The containing trait, if this is a trait method definition.
-    pub fn parent_trait(self, db: &impl DefDatabase) -> Option<Trait> {
-        match self.container(db) {
-            Some(Container::Trait(it)) => Some(it),
-            _ => None,
-        }
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Option<Container> {
-        match self.id.lookup(db).container {
-            ContainerId::TraitId(it) => Some(Container::Trait(it.into())),
-            ContainerId::ImplId(it) => Some(Container::ImplBlock(it.into())),
-            ContainerId::ModuleId(_) => None,
-        }
-    }
-
     pub fn diagnostics(self, db: &impl HirDatabase, sink: &mut DiagnosticSink) {
-        let infer = self.infer(db);
+        let infer = db.infer(self.id.into());
         infer.add_diagnostics(db, self.id, sink);
         let mut validator = ExprValidator::new(self.id, infer, sink);
         validator.validate_body(db);
@@ -571,10 +531,6 @@ impl Const {
 
     pub fn name(self, db: &impl HirDatabase) -> Option<Name> {
         db.const_data(self.id).name.clone()
-    }
-
-    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.id.into())
     }
 
     /// The containing impl block, if this is a type alias.
@@ -614,10 +570,6 @@ impl Static {
 
     pub fn krate(self, db: &impl DefDatabase) -> Option<Crate> {
         Some(self.module(db).krate())
-    }
-
-    pub fn infer(self, db: &impl HirDatabase) -> Arc<InferenceResult> {
-        db.infer(self.id.into())
     }
 }
 
@@ -732,15 +684,6 @@ impl AssocItem {
             AssocItem::Const(c) => c.module(db),
             AssocItem::TypeAlias(t) => t.module(db),
         }
-    }
-
-    pub fn container(self, db: &impl DefDatabase) -> Container {
-        match self {
-            AssocItem::Function(f) => f.container(db),
-            AssocItem::Const(c) => c.container(db),
-            AssocItem::TypeAlias(t) => t.container(db),
-        }
-        .expect("AssocItem without container")
     }
 }
 
@@ -958,7 +901,7 @@ impl Type {
     pub fn fields(&self, db: &impl HirDatabase) -> Vec<(StructField, Type)> {
         if let Ty::Apply(a_ty) = &self.ty.value {
             match a_ty.ctor {
-                ty::TypeCtor::Adt(AdtId::StructId(s)) => {
+                TypeCtor::Adt(AdtId::StructId(s)) => {
                     let var_def = s.into();
                     return db
                         .field_types(var_def)
@@ -980,7 +923,7 @@ impl Type {
         let mut res = Vec::new();
         if let Ty::Apply(a_ty) = &self.ty.value {
             match a_ty.ctor {
-                ty::TypeCtor::Tuple { .. } => {
+                TypeCtor::Tuple { .. } => {
                     for ty in a_ty.parameters.iter() {
                         let ty = ty.clone().subst(&a_ty.parameters);
                         res.push(self.derived(ty));
@@ -1016,10 +959,10 @@ impl Type {
     pub fn autoderef<'a>(&'a self, db: &'a impl HirDatabase) -> impl Iterator<Item = Type> + 'a {
         // There should be no inference vars in types passed here
         // FIXME check that?
-        let canonical = crate::ty::Canonical { value: self.ty.value.clone(), num_vars: 0 };
+        let canonical = Canonical { value: self.ty.value.clone(), num_vars: 0 };
         let environment = self.ty.environment.clone();
         let ty = InEnvironment { value: canonical, environment: environment.clone() };
-        ty::autoderef(db, Some(self.krate), ty)
+        autoderef(db, Some(self.krate), ty)
             .map(|canonical| canonical.value)
             .map(move |ty| self.derived(ty))
     }
@@ -1059,15 +1002,14 @@ impl Type {
     // FIXME: provide required accessors such that it becomes implementable from outside.
     pub fn is_equal_for_find_impls(&self, other: &Type) -> bool {
         match (&self.ty.value, &other.ty.value) {
-            (Ty::Apply(a_original_ty), Ty::Apply(ty::ApplicationTy { ctor, parameters })) => {
-                match ctor {
-                    TypeCtor::Ref(..) => match parameters.as_single() {
-                        Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
-                        _ => false,
-                    },
-                    _ => a_original_ty.ctor == *ctor,
-                }
-            }
+            (Ty::Apply(a_original_ty), Ty::Apply(ApplicationTy { ctor, parameters })) => match ctor
+            {
+                TypeCtor::Ref(..) => match parameters.as_single() {
+                    Ty::Apply(a_ty) => a_original_ty.ctor == a_ty.ctor,
+                    _ => false,
+                },
+                _ => a_original_ty.ctor == *ctor,
+            },
             _ => false,
         }
     }
