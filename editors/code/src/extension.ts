@@ -89,9 +89,10 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // Notifications are events triggered by the language server
-    const allNotifications: Iterable<
-        [string, lc.GenericNotificationHandler]
-    > = [
+    const allNotifications: Iterable<[
+        string,
+        lc.GenericNotificationHandler
+    ]> = [
         [
             'rust-analyzer/publishDecorations',
             notifications.publishDecorations.handle
