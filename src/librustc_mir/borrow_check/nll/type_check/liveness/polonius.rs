@@ -93,15 +93,15 @@ pub(super) fn populate_access_facts(
     debug!("populate_var_liveness_facts()");
 
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
-        UseFactsExtractor {
+        let mut extractor = UseFactsExtractor {
             var_defined: &mut facts.var_defined,
             var_used: &mut facts.var_used,
             var_drop_used: drop_used,
             path_accessed_at: &mut facts.path_accessed_at,
             location_table,
             move_data,
-        }
-        .visit_body(body);
+        };
+        extractor.visit_body(body);
 
         facts.var_drop_used.extend(drop_used.iter().map(|&(local, location)| {
             (local, location_table.mid_index(location))
