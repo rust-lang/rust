@@ -5,7 +5,6 @@ use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::{Local, Location, Place, ReadOnlyBodyAndCache};
 use rustc::ty::subst::GenericArg;
-use rustc::ty::Ty;
 
 use super::TypeChecker;
 
@@ -84,17 +83,6 @@ impl Visitor<'tcx> for UseFactsExtractor<'_> {
     }
 }
 
-fn add_var_uses_regions(typeck: &mut TypeChecker<'_, 'tcx>, local: Local, ty: Ty<'tcx>) {
-    debug!("add_regions(local={:?}, type={:?})", local, ty);
-    typeck.tcx().for_each_free_region(&ty, |region| {
-        let region_vid = typeck.borrowck_context.universal_regions.to_region_vid(region);
-        debug!("add_regions for region {:?}", region_vid);
-        if let Some(facts) = typeck.borrowck_context.all_facts {
-            facts.var_uses_region.push((local, region_vid));
-        }
-    });
-}
-
 pub(super) fn populate_access_facts(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
@@ -118,10 +106,15 @@ pub(super) fn populate_access_facts(
         facts.var_drop_used.extend(drop_used.iter().map(|&(local, location)| {
             (local, location_table.mid_index(location))
         }));
-    }
 
-    for (local, local_decl) in body.local_decls.iter_enumerated() {
-        add_var_uses_regions(typeck, local, local_decl.ty);
+        for (local, local_decl) in body.local_decls.iter_enumerated() {
+            debug!("add var_uses_regions facts - local={:?}, type={:?}", local, local_decl.ty);
+            let universal_regions = &typeck.borrowck_context.universal_regions;
+            typeck.infcx.tcx.for_each_free_region(&local_decl.ty, |region| {
+                let region_vid = universal_regions.to_region_vid(region);
+                facts.var_uses_region.push((local, region_vid));
+            });
+        }
     }
 }
 
@@ -133,12 +126,11 @@ pub(super) fn add_var_drops_regions(
     kind: &GenericArg<'tcx>,
 ) {
     debug!("add_var_drops_region(local={:?}, kind={:?}", local, kind);
-    let tcx = typeck.tcx();
-
-    tcx.for_each_free_region(kind, |drop_live_region| {
-        let region_vid = typeck.borrowck_context.universal_regions.to_region_vid(drop_live_region);
-        if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+    if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+        let universal_regions = &typeck.borrowck_context.universal_regions;
+        typeck.infcx.tcx.for_each_free_region(kind, |drop_live_region| {
+            let region_vid = universal_regions.to_region_vid(drop_live_region);
             facts.var_drops_region.push((local, region_vid));
-        };
-    });
+        });
+    }
 }
