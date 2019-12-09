@@ -16,7 +16,7 @@
       "env": {
         "__RA_LSP_SERVER_DEBUG": "${workspaceFolder}/target/debug/ra_lsp_server"
       },
-      "outFiles": ["${workspaceFolder}/editors/code/out/**/*.js"],
+      "outFiles": ["${workspaceFolder}/editors/code/bundle/**/*.js"],
       "preLaunchTask": "Build All"
     },
     {

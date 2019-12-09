@@ -1,12 +1,14 @@
 import typescript from 'rollup-plugin-typescript';
 import resolve from 'rollup-plugin-node-resolve';
 import commonjs from 'rollup-plugin-commonjs';
+import sourcemaps from 'rollup-plugin-sourcemaps'
 import nodeBuiltins from 'builtin-modules';
 
 export default {
     input: './src/extension.ts',
     plugins: [
         typescript(),
+        sourcemaps(),
         resolve(),
         commonjs({
             namedExports: {
@@ -22,6 +24,7 @@ export default {
     ],
     output: {
         file: './bundle/extension.js',
+        sourcemap: true,
         format: 'cjs',
     }
 };
