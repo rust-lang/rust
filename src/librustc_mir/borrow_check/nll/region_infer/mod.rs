@@ -44,7 +44,7 @@ use crate::borrow_check::{
 
 use self::values::{LivenessValues, RegionValueElements, RegionValues};
 use super::universal_regions::UniversalRegions;
-use super::ToRegionVid;
+use super::{PoloniusOutput, ToRegionVid};
 
 mod dump_mir;
 mod graphviz;
@@ -484,6 +484,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         upvars: &[Upvar],
         mir_def_id: DefId,
         errors_buffer: &mut Vec<Diagnostic>,
+        polonius_output: Option<Rc<PoloniusOutput>>,
     ) -> Option<ClosureRegionRequirements<'tcx>> {
         self.propagate_constraints(body);
 
@@ -509,16 +510,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         // multiple problems.
         let mut region_naming = RegionErrorNamingCtx::new();
 
-        self.check_universal_regions(
-            infcx,
-            body,
-            local_names,
-            upvars,
-            mir_def_id,
-            outlives_requirements.as_mut(),
-            errors_buffer,
-            &mut region_naming,
-        );
+        // In Polonius mode, the errors about missing universal region relations are in the output
+        // and need to be emitted or propagated. Otherwise, we need to check whether the
+        // constraints were too strong, and if so, emit or propagate those errors.
+        if infcx.tcx.sess.opts.debugging_opts.polonius {
+            self.check_polonius_subset_errors(
+                infcx,
+                body,
+                local_names,
+                upvars,
+                mir_def_id,
+                outlives_requirements.as_mut(),
+                errors_buffer,
+                &mut region_naming,
+                polonius_output.expect("Polonius output is unavailable despite `-Z polonius`"),
+            );
+        } else {
+            self.check_universal_regions(
+                infcx,
+                body,
+                local_names,
+                upvars,
+                mir_def_id,
+                outlives_requirements.as_mut(),
+                errors_buffer,
+                &mut region_naming,
+            );
+        }
 
         self.check_member_constraints(infcx, mir_def_id, errors_buffer);
 
@@ -1372,6 +1390,114 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         outlives_suggestion.add_suggestion(body, self, infcx, errors_buffer, region_naming);
     }
 
+    /// Checks if Polonius has found any unexpected free region relations.
+    ///
+    /// In Polonius terms, a "subset error" (or "illegal subset relation error") is the equivalent
+    /// of NLL's "checking if any region constraints were too strong": a placeholder origin `'a`
+    /// was unexpectedly found to be a subset of another placeholder origin `'b`, and means in NLL
+    /// terms that the "longer free region" `'a` outlived the "shorter free region" `'b`.
+    ///
+    /// More details can be found in this blog post by Niko:
+    /// http://smallcultfollowing.com/babysteps/blog/2019/01/17/polonius-and-region-errors/
+    ///
+    /// In the canonical example
+    ///
+    ///     fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
+    ///
+    /// returning `x` requires `&'a u32 <: &'b u32` and hence we establish (transitively) a
+    /// constraint that `'a: 'b`. It is an error that we have no evidence that this
+    /// constraint holds.
+    ///
+    /// If `propagated_outlives_requirements` is `Some`, then we will
+    /// push unsatisfied obligations into there. Otherwise, we'll
+    /// report them as errors.
+    fn check_polonius_subset_errors(
+        &self,
+        infcx: &InferCtxt<'_, 'tcx>,
+        body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
+        upvars: &[Upvar],
+        mir_def_id: DefId,
+        mut propagated_outlives_requirements: Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
+        errors_buffer: &mut Vec<Diagnostic>,
+        region_naming: &mut RegionErrorNamingCtx,
+        polonius_output: Rc<PoloniusOutput>,
+    ) {
+        debug!(
+            "check_polonius_subset_errors: {} subset_errors",
+            polonius_output.subset_errors.len()
+        );
+
+        let mut outlives_suggestion = OutlivesSuggestionBuilder::new(mir_def_id, local_names);
+
+        // Similarly to `check_universal_regions`: a free region relation, which was not explicitly
+        // declared ("known") was found by Polonius, so emit an error, or propagate the
+        // requirements for our caller into the `propagated_outlives_requirements` vector.
+        //
+        // Polonius doesn't model regions ("origins") as CFG-subsets or durations, but the
+        // `longer_fr` and `shorter_fr` terminology will still be used here, for consistency with
+        // the rest of the NLL infrastructure. The "subset origin" is the "longer free region",
+        // and the "superset origin" is the outlived "shorter free region".
+        //
+        // Note: Polonius will produce a subset error at every point where the unexpected
+        // `longer_fr`'s "placeholder loan" is contained in the `shorter_fr`. This can be helpful
+        // for diagnostics in the future, e.g. to point more precisely at the key locations
+        // requiring this constraint to hold. However, the error and diagnostics code downstream
+        // expects that these errors are not duplicated (and that they are in a certain order).
+        // Otherwise, diagnostics messages such as the ones giving names like `'1` to elided or
+        // anonymous lifetimes for example, could give these names differently, while others like
+        // the outlives suggestions or the debug output from `#[rustc_regions]` would be
+        // duplicated. The polonius subset errors are deduplicated here, while keeping the
+        // CFG-location ordering.
+        let mut subset_errors: Vec<_> = polonius_output
+            .subset_errors
+            .iter()
+            .flat_map(|(_location, subset_errors)| subset_errors.iter())
+            .collect();
+        subset_errors.sort();
+        subset_errors.dedup();
+
+        for (longer_fr, shorter_fr) in subset_errors.into_iter() {
+            debug!("check_polonius_subset_errors: subset_error longer_fr={:?},\
+                shorter_fr={:?}", longer_fr, shorter_fr);
+
+            self.report_or_propagate_universal_region_error(
+                *longer_fr,
+                *shorter_fr,
+                infcx,
+                body,
+                local_names,
+                upvars,
+                mir_def_id,
+                &mut propagated_outlives_requirements,
+                &mut outlives_suggestion,
+                errors_buffer,
+                region_naming,
+            );
+        }
+
+        // Handle the placeholder errors as usual, until the chalk-rustc-polonius triumvirate has
+        // a more complete picture on how to separate this responsibility.
+        for (fr, fr_definition) in self.definitions.iter_enumerated() {
+            match fr_definition.origin {
+                NLLRegionVariableOrigin::FreeRegion => {
+                    // handled by polonius above
+                }
+
+                NLLRegionVariableOrigin::Placeholder(placeholder) => {
+                    self.check_bound_universal_region(infcx, body, mir_def_id, fr, placeholder);
+                }
+
+                NLLRegionVariableOrigin::Existential { .. } => {
+                    // nothing to check here
+                }
+            }
+        }
+
+        // Emit outlives suggestions
+        outlives_suggestion.add_suggestion(body, self, infcx, errors_buffer, region_naming);
+    }
+
     /// Checks the final value for the free region `fr` to see if it
     /// grew too large. In particular, examine what `end(X)` points
     /// wound up in `fr`'s final value; for each `end(X)` where `X !=
@@ -1471,8 +1597,37 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
+        self.report_or_propagate_universal_region_error(
+            longer_fr,
+            shorter_fr,
+            infcx,
+            body,
+            local_names,
+            upvars,
+            mir_def_id,
+            propagated_outlives_requirements,
+            outlives_suggestion,
+            errors_buffer,
+            region_naming,
+        )
+    }
+
+    fn report_or_propagate_universal_region_error(
+        &self,
+        longer_fr: RegionVid,
+        shorter_fr: RegionVid,
+        infcx: &InferCtxt<'_, 'tcx>,
+        body: &Body<'tcx>,
+        local_names: &IndexVec<Local, Option<Symbol>>,
+        upvars: &[Upvar],
+        mir_def_id: DefId,
+        propagated_outlives_requirements: &mut Option<&mut Vec<ClosureOutlivesRequirement<'tcx>>>,
+        outlives_suggestion: &mut OutlivesSuggestionBuilder<'_>,
+        errors_buffer: &mut Vec<Diagnostic>,
+        region_naming: &mut RegionErrorNamingCtx,
+    ) -> Option<ErrorReported> {
         debug!(
-            "check_universal_region_relation: fr={:?} does not outlive shorter_fr={:?}",
+            "report_or_propagate_universal_region_error: fr={:?} does not outlive shorter_fr={:?}",
             longer_fr, shorter_fr,
         );
 
@@ -1481,9 +1636,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // We'll call it `fr-` -- it's ever so slightly smaller than
             // `longer_fr`.
 
-            if let Some(fr_minus) = self.universal_region_relations.non_local_lower_bound(longer_fr)
-            {
-                debug!("check_universal_region: fr_minus={:?}", fr_minus);
+            if let Some(fr_minus) =
+                self.universal_region_relations.non_local_lower_bound(longer_fr) {
+                debug!("report_or_propagate_universal_region_error: fr_minus={:?}", fr_minus);
 
                 let blame_span_category =
                     self.find_outlives_blame_span(body, longer_fr,
@@ -1492,9 +1647,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // Grow `shorter_fr` until we find some non-local regions. (We
                 // always will.)  We'll call them `shorter_fr+` -- they're ever
                 // so slightly larger than `shorter_fr`.
-                let shorter_fr_plus =
-                    self.universal_region_relations.non_local_upper_bounds(&shorter_fr);
-                debug!("check_universal_region: shorter_fr_plus={:?}", shorter_fr_plus);
+                let shorter_fr_plus = self
+                    .universal_region_relations
+                    .non_local_upper_bounds(&shorter_fr);
+                debug!(
+                    "report_or_propagate_universal_region_error: shorter_fr_plus={:?}",
+                    shorter_fr_plus
+                );
                 for &&fr in &shorter_fr_plus {
                     // Push the constraint `fr-: shorter_fr+`
                     propagated_outlives_requirements.push(ClosureOutlivesRequirement {
