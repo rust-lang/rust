@@ -33,6 +33,7 @@ pub struct MiriConfig {
 /// Details of premature program termination.
 pub enum TerminationInfo {
     Exit(i64),
+    PoppedTrackedPointerTag(Item),
     Abort,
 }
 
@@ -218,6 +219,8 @@ pub fn eval_main<'tcx>(tcx: TyCtxt<'tcx>, main_id: DefId, config: MiriConfig) ->
                         .expect("invalid MachineStop payload");
                     match info {
                         TerminationInfo::Exit(code) => return Some(*code),
+                        TerminationInfo::PoppedTrackedPointerTag(item) =>
+                            format!("popped tracked tag for item {:?}", item),
                         TerminationInfo::Abort =>
                             format!("the evaluated program aborted execution")
                     }

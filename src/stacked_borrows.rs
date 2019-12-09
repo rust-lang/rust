@@ -12,7 +12,7 @@ use rustc::hir::Mutability::{Mutable, Immutable};
 use rustc::mir::RetagKind;
 
 use crate::{
-    InterpResult, HelpersEvalContextExt,
+    InterpResult, HelpersEvalContextExt, TerminationInfo,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -273,7 +273,7 @@ impl<'tcx> Stack {
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
         if let Tag::Tagged(id) = item.tag {
             if Some(id) == global.tracked_pointer_tag {
-                throw_unsup!(Unsupported(format!("disabling item {:?} for tag {:?}", item, tag)));
+                throw_machine_stop!(TerminationInfo::PoppedTrackedPointerTag(item.clone()));
             }
         }
         if let Some(call) = item.protector {
