@@ -109,6 +109,7 @@ pub(super) fn populate_access_facts(
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
             debug!("add var_uses_regions facts - local={:?}, type={:?}", local, local_decl.ty);
+            let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             let universal_regions = &typeck.borrowck_context.universal_regions;
             typeck.infcx.tcx.for_each_free_region(&local_decl.ty, |region| {
                 let region_vid = universal_regions.to_region_vid(region);
@@ -127,6 +128,7 @@ pub(super) fn add_var_drops_regions(
 ) {
     debug!("add_var_drops_region(local={:?}, kind={:?}", local, kind);
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+        let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
         let universal_regions = &typeck.borrowck_context.universal_regions;
         typeck.infcx.tcx.for_each_free_region(kind, |drop_live_region| {
             let region_vid = universal_regions.to_region_vid(drop_live_region);
