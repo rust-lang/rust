@@ -1,7 +1,7 @@
 //! Capture and compare snapshots of the compile-time interpreter state to detect when a program
 //! will loop infinitely.
 //!
-//! This lives in `interpret` because it needs access to all sots of private state.  However,
+//! This lives in `interpret` because it needs access to all sorts of private state.  However,
 //! it is not used by the general miri engine, just by CTFE.
 //!
 //! # Comparing interpreter state
