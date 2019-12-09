@@ -32,8 +32,7 @@ cfg_if! {
 }
 
 mod alloc;
-use self::alloc::Alloc;
-pub use self::alloc::Global;
+pub use self::alloc::{Alloc, Global};
 
 mod bitmask;
 

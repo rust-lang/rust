@@ -1,5 +1,5 @@
 use crate::raw::Bucket;
-use crate::raw::{RawIterRange, RawTable};
+use crate::raw::{Alloc, RawIterRange, RawTable};
 use crate::scopeguard::guard;
 use alloc::alloc::dealloc;
 use core::marker::PhantomData;
@@ -54,11 +54,11 @@ impl<T> UnindexedProducer for ParIterProducer<T> {
 }
 
 /// Parallel iterator which consumes a table and returns elements.
-pub struct RawIntoParIter<T> {
-    table: RawTable<T>,
+pub struct RawIntoParIter<T, A: Alloc + Clone> {
+    table: RawTable<T, A>,
 }
 
-impl<T: Send> ParallelIterator for RawIntoParIter<T> {
+impl<T: Send, A: Alloc + Clone> ParallelIterator for RawIntoParIter<T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -80,16 +80,16 @@ impl<T: Send> ParallelIterator for RawIntoParIter<T> {
 }
 
 /// Parallel iterator which consumes elements without freeing the table storage.
-pub struct RawParDrain<'a, T> {
+pub struct RawParDrain<'a, T, A: Alloc + Clone> {
     // We don't use a &'a mut RawTable<T> because we want RawParDrain to be
     // covariant over T.
-    table: NonNull<RawTable<T>>,
-    marker: PhantomData<&'a RawTable<T>>,
+    table: NonNull<RawTable<T, A>>,
+    marker: PhantomData<&'a RawTable<T, A>>,
 }
 
-unsafe impl<T> Send for RawParDrain<'_, T> {}
+unsafe impl<T, A: Alloc + Clone> Send for RawParDrain<'_, T, A> {}
 
-impl<T: Send> ParallelIterator for RawParDrain<'_, T> {
+impl<T: Send, A: Alloc + Clone> ParallelIterator for RawParDrain<'_, T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -107,7 +107,7 @@ impl<T: Send> ParallelIterator for RawParDrain<'_, T> {
     }
 }
 
-impl<T> Drop for RawParDrain<'_, T> {
+impl<T, A: Alloc + Clone> Drop for RawParDrain<'_, T, A> {
     fn drop(&mut self) {
         // If drive_unindexed is not called then simply clear the table.
         unsafe { self.table.as_mut().clear() }
@@ -166,7 +166,7 @@ impl<T> Drop for ParDrainProducer<T> {
     }
 }
 
-impl<T> RawTable<T> {
+impl<T, A: Alloc + Clone> RawTable<T, A> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn par_iter(&self) -> RawParIter<T> {
@@ -177,14 +177,14 @@ impl<T> RawTable<T> {
 
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn into_par_iter(self) -> RawIntoParIter<T> {
+    pub fn into_par_iter(self) -> RawIntoParIter<T, A> {
         RawIntoParIter { table: self }
     }
 
     /// Returns a parallel iterator which consumes all elements of a `RawTable`
     /// without freeing its memory allocation.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_drain(&mut self) -> RawParDrain<'_, T> {
+    pub fn par_drain(&mut self) -> RawParDrain<'_, T, A> {
         RawParDrain {
             table: NonNull::from(self),
             marker: PhantomData,
