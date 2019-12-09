@@ -13,7 +13,7 @@ export class StatusDisplay implements vscode.Disposable {
     constructor(command: string) {
         this.statusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Left,
-            10
+            10,
         );
         this.command = command;
         this.statusBarItem.hide();

@@ -19,7 +19,7 @@ export class Server {
     public static client: lc.LanguageClient;
 
     public static async start(
-        notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>
+        notificationHandlers: Iterable<[string, lc.GenericNotificationHandler]>,
     ) {
         // '.' Is the fallback if no folder is open
         // TODO?: Workspace folders support Uri's (eg: file://test.txt). It might be a good idea to test if the uri points to a file.
@@ -34,20 +34,20 @@ export class Server {
         if (platform() !== 'win32') {
             if (!(await lookpath(command))) {
                 throw new Error(
-                    `Cannot find rust-analyzer server \`${command}\` in PATH.`
+                    `Cannot find rust-analyzer server \`${command}\` in PATH.`,
                 );
             }
         }
         const run: lc.Executable = {
             command,
-            options: { cwd: folder }
+            options: { cwd: folder },
         };
         const serverOptions: lc.ServerOptions = {
             run,
-            debug: run
+            debug: run,
         };
         const traceOutputChannel = window.createOutputChannel(
-            'Rust Analyzer Language Server Trace'
+            'Rust Analyzer Language Server Trace',
         );
         const clientOptions: lc.LanguageClientOptions = {
             documentSelector: [{ scheme: 'file', language: 'rust' }],
@@ -58,16 +58,16 @@ export class Server {
                 excludeGlobs: Server.config.excludeGlobs,
                 useClientWatching: Server.config.useClientWatching,
                 featureFlags: Server.config.featureFlags,
-                withSysroot: Server.config.withSysroot
+                withSysroot: Server.config.withSysroot,
             },
-            traceOutputChannel
+            traceOutputChannel,
         };
 
         Server.client = new lc.LanguageClient(
             'rust-analyzer',
             'Rust Analyzer Language Server',
             serverOptions,
-            clientOptions
+            clientOptions,
         );
         // HACK: This is an awful way of filtering out the decorations notifications
         // However, pending proper support, this is the most effecitve approach
@@ -80,10 +80,10 @@ export class Server {
                 if (typeof messageOrDataObject === 'string') {
                     if (
                         messageOrDataObject.includes(
-                            'rust-analyzer/publishDecorations'
+                            'rust-analyzer/publishDecorations',
                         ) ||
                         messageOrDataObject.includes(
-                            'rust-analyzer/decorationsRequest'
+                            'rust-analyzer/decorationsRequest',
                         )
                     ) {
                         // Don't log publish decorations requests
@@ -95,7 +95,7 @@ export class Server {
                     // @ts-ignore
                     Server.client.logObjectTrace(messageOrDataObject);
                 }
-            }
+            },
         };
         Server.client.registerProposedFeatures();
         Server.client.onReady().then(() => {

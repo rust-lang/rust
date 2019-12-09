@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 /** Compares two `vscode.Diagnostic`s for equality */
 export function areDiagnosticsEqual(
     left: vscode.Diagnostic,
-    right: vscode.Diagnostic
+    right: vscode.Diagnostic,
 ): boolean {
     return (
         left.source === right.source &&

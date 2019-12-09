@@ -11,7 +11,7 @@ export interface SourceChange {
 
 export async function handle(change: SourceChange) {
     const wsEdit = Server.client.protocol2CodeConverter.asWorkspaceEdit(
-        change.workspaceEdit
+        change.workspaceEdit,
     );
     let created;
     let moved;
@@ -33,10 +33,10 @@ export async function handle(change: SourceChange) {
         await vscode.window.showTextDocument(doc);
     } else if (toReveal) {
         const uri = Server.client.protocol2CodeConverter.asUri(
-            toReveal.textDocument.uri
+            toReveal.textDocument.uri,
         );
         const position = Server.client.protocol2CodeConverter.asPosition(
-            toReveal.position
+            toReveal.position,
         );
         const editor = vscode.window.activeTextEditor;
         if (!editor || editor.document.uri.toString() !== uri.toString()) {
@@ -48,7 +48,7 @@ export async function handle(change: SourceChange) {
         editor.selection = new vscode.Selection(position, position);
         editor.revealRange(
             new vscode.Range(position, position),
-            vscode.TextEditorRevealType.Default
+            vscode.TextEditorRevealType.Default,
         );
     }
 }

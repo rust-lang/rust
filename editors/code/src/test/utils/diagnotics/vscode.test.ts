@@ -5,12 +5,12 @@ import { areDiagnosticsEqual } from '../../../utils/diagnostics/vscode';
 
 const range1 = new vscode.Range(
     new vscode.Position(1, 2),
-    new vscode.Position(3, 4)
+    new vscode.Position(3, 4),
 );
 
 const range2 = new vscode.Range(
     new vscode.Position(5, 6),
-    new vscode.Position(7, 8)
+    new vscode.Position(7, 8),
 );
 
 describe('areDiagnosticsEqual', () => {
@@ -18,13 +18,13 @@ describe('areDiagnosticsEqual', () => {
         const diagnostic1 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
 
         const diagnostic2 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
 
         assert(areDiagnosticsEqual(diagnostic1, diagnostic2));
@@ -34,14 +34,14 @@ describe('areDiagnosticsEqual', () => {
         const diagnostic1 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
         diagnostic1.source = 'rustc';
 
         const diagnostic2 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
         diagnostic2.source = 'clippy';
 
@@ -52,13 +52,13 @@ describe('areDiagnosticsEqual', () => {
         const diagnostic1 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
 
         const diagnostic2 = new vscode.Diagnostic(
             range2,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
 
         assert(!areDiagnosticsEqual(diagnostic1, diagnostic2));
@@ -68,13 +68,13 @@ describe('areDiagnosticsEqual', () => {
         const diagnostic1 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
 
         const diagnostic2 = new vscode.Diagnostic(
             range1,
             'Goodbye!, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
 
         assert(!areDiagnosticsEqual(diagnostic1, diagnostic2));
@@ -84,13 +84,13 @@ describe('areDiagnosticsEqual', () => {
         const diagnostic1 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Warning
+            vscode.DiagnosticSeverity.Warning,
         );
 
         const diagnostic2 = new vscode.Diagnostic(
             range1,
             'Hello, world!',
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
 
         assert(!areDiagnosticsEqual(diagnostic1, diagnostic2));
