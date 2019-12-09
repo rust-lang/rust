@@ -344,6 +344,7 @@ impl Hash for IgnoreAllocId<'_, LocalState<'tcx>> {
             layout: _,
         } = self.0;
 
+        std::mem::discriminant(value).hash(state);
         match value {
             LocalValue::Live(op) => op.erase_alloc_id().hash(state),
             LocalValue::Dead | LocalValue::Uninitialized => value.hash(state),
