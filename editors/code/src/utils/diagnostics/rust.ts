@@ -7,7 +7,7 @@ export enum SuggestionApplicability {
     MachineApplicable = 'MachineApplicable',
     HasPlaceholders = 'HasPlaceholders',
     MaybeIncorrect = 'MaybeIncorrect',
-    Unspecified = 'Unspecified'
+    Unspecified = 'Unspecified',
 }
 
 // Reference:
@@ -69,7 +69,7 @@ function mapSpanToLocation(span: RustDiagnosticSpan): vscode.Location {
 
     const range = new vscode.Range(
         new vscode.Position(span.line_start - 1, span.column_start - 1),
-        new vscode.Position(span.line_end - 1, span.column_end - 1)
+        new vscode.Position(span.line_end - 1, span.column_end - 1),
     );
 
     return new vscode.Location(fileUri, range);
@@ -81,7 +81,7 @@ function mapSpanToLocation(span: RustDiagnosticSpan): vscode.Location {
  * If the span is unlabelled this will return `undefined`.
  */
 function mapSecondarySpanToRelated(
-    span: RustDiagnosticSpan
+    span: RustDiagnosticSpan,
 ): vscode.DiagnosticRelatedInformation | undefined {
     if (!span.label) {
         // Nothing to label this with
@@ -107,7 +107,7 @@ function isUnusedOrUnnecessary(rd: RustDiagnostic): boolean {
         'unused_attributes',
         'unused_imports',
         'unused_macros',
-        'unused_variables'
+        'unused_variables',
     ].includes(rd.code.code);
 }
 
@@ -157,13 +157,13 @@ function mapRustChildDiagnostic(rd: RustDiagnostic): MappedRustChildDiagnostic {
                 title,
                 location,
                 span.suggested_replacement,
-                span.suggestion_applicability
-            )
+                span.suggestion_applicability,
+            ),
         };
     } else {
         const related = new vscode.DiagnosticRelatedInformation(
             location,
-            rd.message
+            rd.message,
         );
 
         return { related };
@@ -183,7 +183,7 @@ function mapRustChildDiagnostic(rd: RustDiagnostic): MappedRustChildDiagnostic {
  * If the diagnostic has no primary span this will return `undefined`
  */
 export function mapRustDiagnosticToVsCode(
-    rd: RustDiagnostic
+    rd: RustDiagnostic,
 ): MappedRustDiagnostic | undefined {
     const primarySpan = rd.spans.find(s => s.is_primary);
     if (!primarySpan) {
@@ -223,7 +223,7 @@ export function mapRustDiagnosticToVsCode(
     const suggestedFixes = [];
     for (const child of rd.children) {
         const { related, suggestedFix, messageLine } = mapRustChildDiagnostic(
-            child
+            child,
         );
 
         if (related) {
@@ -256,6 +256,6 @@ export function mapRustDiagnosticToVsCode(
     return {
         location,
         diagnostic: vd,
-        suggestedFixes
+        suggestedFixes,
     };
 }

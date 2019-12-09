@@ -22,7 +22,7 @@ export function terminate(process: ChildProcess, cwd?: string): boolean {
             // Ignore stderr since this is otherwise piped to parent.stderr
             // which might be already closed.
             const options: any = {
-                stdio: ['pipe', 'pipe', 'ignore']
+                stdio: ['pipe', 'pipe', 'ignore'],
             };
             if (cwd) {
                 options.cwd = cwd;
@@ -30,7 +30,7 @@ export function terminate(process: ChildProcess, cwd?: string): boolean {
             cp.execFileSync(
                 'taskkill',
                 ['/T', '/F', '/PID', process.pid.toString()],
-                options
+                options,
             );
             return true;
         } catch (err) {

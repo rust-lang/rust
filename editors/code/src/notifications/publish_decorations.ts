@@ -10,7 +10,7 @@ export interface PublishDecorationsParams {
 
 export function handle(params: PublishDecorationsParams) {
     const targetEditor = vscode.window.visibleTextEditors.find(
-        editor => editor.document.uri.toString() === params.uri
+        editor => editor.document.uri.toString() === params.uri,
     );
     if (!Server.config.highlightingOn || !targetEditor) {
         return;

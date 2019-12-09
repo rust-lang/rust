@@ -27,8 +27,9 @@
         "travis": "npm run compile && npm run test && npm run lint && npm run prettier -- --write && git diff --exit-code"
     },
     "prettier": {
+        "singleQuote": true,
         "tabWidth": 4,
-        "singleQuote": true
+        "trailingComma": "all"
     },
     "dependencies": {
         "lookpath": "^1.0.3",

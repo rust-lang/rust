@@ -33,14 +33,14 @@ export class Config {
         trace: 'off',
         arguments: '',
         command: '',
-        ignore: []
+        ignore: [],
     };
 
     private prevEnhancedTyping: null | boolean = null;
 
     constructor() {
         vscode.workspace.onDidChangeConfiguration(_ =>
-            this.userConfigChanged()
+            this.userConfigChanged(),
         );
         this.userConfigChanged();
     }
@@ -53,7 +53,7 @@ export class Config {
 
         if (config.has('rainbowHighlightingOn')) {
             this.rainbowHighlightingOn = config.get(
-                'rainbowHighlightingOn'
+                'rainbowHighlightingOn',
             ) as boolean;
         }
 
@@ -63,7 +63,7 @@ export class Config {
 
         if (config.has('enableEnhancedTyping')) {
             this.enableEnhancedTyping = config.get(
-                'enableEnhancedTyping'
+                'enableEnhancedTyping',
             ) as boolean;
 
             if (this.prevEnhancedTyping === null) {
@@ -78,12 +78,12 @@ export class Config {
             vscode.window
                 .showInformationMessage(
                     'Changing enhanced typing setting requires a reload',
-                    reloadAction
+                    reloadAction,
                 )
                 .then(selectedAction => {
                     if (selectedAction === reloadAction) {
                         vscode.commands.executeCommand(
-                            'workbench.action.reloadWindow'
+                            'workbench.action.reloadWindow',
                         );
                     }
                 });
@@ -104,28 +104,28 @@ export class Config {
         if (config.has('trace.cargo-watch')) {
             this.cargoWatchOptions.trace = config.get<CargoWatchTraceOptions>(
                 'trace.cargo-watch',
-                'off'
+                'off',
             );
         }
 
         if (config.has('cargo-watch.arguments')) {
             this.cargoWatchOptions.arguments = config.get<string>(
                 'cargo-watch.arguments',
-                ''
+                '',
             );
         }
 
         if (config.has('cargo-watch.command')) {
             this.cargoWatchOptions.command = config.get<string>(
                 'cargo-watch.command',
-                ''
+                '',
             );
         }
 
         if (config.has('cargo-watch.ignore')) {
             this.cargoWatchOptions.ignore = config.get<string[]>(
                 'cargo-watch.ignore',
-                []
+                [],
             );
         }
 
@@ -138,7 +138,7 @@ export class Config {
         }
         if (config.has('maxInlayHintLength')) {
             this.maxInlayHintLength = config.get(
-                'maxInlayHintLength'
+                'maxInlayHintLength',
             ) as number;
         }
         if (config.has('excludeGlobs')) {

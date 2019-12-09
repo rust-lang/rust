@@ -4,7 +4,7 @@ import { Range, TextDocumentIdentifier } from 'vscode-languageclient';
 import { Server } from '../server';
 import {
     handle as applySourceChange,
-    SourceChange
+    SourceChange,
 } from './apply_source_change';
 
 interface JoinLinesParams {
@@ -19,11 +19,11 @@ export async function handle() {
     }
     const request: JoinLinesParams = {
         range: Server.client.code2ProtocolConverter.asRange(editor.selection),
-        textDocument: { uri: editor.document.uri.toString() }
+        textDocument: { uri: editor.document.uri.toString() },
     };
     const change = await Server.client.sendRequest<SourceChange>(
         'rust-analyzer/joinLines',
-        request
+        request,
     );
     await applySourceChange(change);
 }

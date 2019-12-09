@@ -6,14 +6,14 @@ import {
     MappedRustDiagnostic,
     mapRustDiagnosticToVsCode,
     RustDiagnostic,
-    SuggestionApplicability
+    SuggestionApplicability,
 } from '../../../utils/diagnostics/rust';
 
 function loadDiagnosticFixture(name: string): RustDiagnostic {
     const jsonText = fs
         .readFileSync(
             // We're actually in our JavaScript output directory, climb out
-            `${__dirname}/../../../../src/test/fixtures/rust-diagnostics/${name}.json`
+            `${__dirname}/../../../../src/test/fixtures/rust-diagnostics/${name}.json`,
         )
         .toString();
 
@@ -33,12 +33,12 @@ function mapFixtureToVsCode(name: string): MappedRustDiagnostic {
 describe('mapRustDiagnosticToVsCode', () => {
     it('should map an incompatible type for trait error', () => {
         const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
-            'error/E0053'
+            'error/E0053',
         );
 
         assert.strictEqual(
             diagnostic.severity,
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
         assert.strictEqual(diagnostic.source, 'rustc');
         assert.strictEqual(
@@ -46,8 +46,8 @@ describe('mapRustDiagnosticToVsCode', () => {
             [
                 `method \`next\` has an incompatible type for trait`,
                 `expected type \`fn(&mut ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&ty::Ref<M>>\``,
-                `   found type \`fn(&ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&'list ty::Ref<M>>\``
-            ].join('\n')
+                `   found type \`fn(&ty::list_iter::ListIterator<'list, M>) -> std::option::Option<&'list ty::Ref<M>>\``,
+            ].join('\n'),
         );
         assert.strictEqual(diagnostic.code, 'E0053');
         assert.deepStrictEqual(diagnostic.tags, []);
@@ -61,24 +61,24 @@ describe('mapRustDiagnosticToVsCode', () => {
 
     it('should map an unused variable warning', () => {
         const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
-            'warning/unused_variables'
+            'warning/unused_variables',
         );
 
         assert.strictEqual(
             diagnostic.severity,
-            vscode.DiagnosticSeverity.Warning
+            vscode.DiagnosticSeverity.Warning,
         );
         assert.strictEqual(
             diagnostic.message,
             [
                 'unused variable: `foo`',
-                '#[warn(unused_variables)] on by default'
-            ].join('\n')
+                '#[warn(unused_variables)] on by default',
+            ].join('\n'),
         );
         assert.strictEqual(diagnostic.code, 'unused_variables');
         assert.strictEqual(diagnostic.source, 'rustc');
         assert.deepStrictEqual(diagnostic.tags, [
-            vscode.DiagnosticTag.Unnecessary
+            vscode.DiagnosticTag.Unnecessary,
         ]);
 
         // No related information
@@ -89,29 +89,29 @@ describe('mapRustDiagnosticToVsCode', () => {
         const [suggestedFix] = suggestedFixes;
         assert.strictEqual(
             suggestedFix.title,
-            'consider prefixing with an underscore: `_foo`'
+            'consider prefixing with an underscore: `_foo`',
         );
         assert.strictEqual(
             suggestedFix.applicability,
-            SuggestionApplicability.MachineApplicable
+            SuggestionApplicability.MachineApplicable,
         );
     });
 
     it('should map a wrong number of parameters error', () => {
         const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
-            'error/E0061'
+            'error/E0061',
         );
 
         assert.strictEqual(
             diagnostic.severity,
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
         assert.strictEqual(
             diagnostic.message,
             [
                 'this function takes 2 parameters but 3 parameters were supplied',
-                'expected 2 parameters'
-            ].join('\n')
+                'expected 2 parameters',
+            ].join('\n'),
         );
         assert.strictEqual(diagnostic.code, 'E0061');
         assert.strictEqual(diagnostic.source, 'rustc');
@@ -132,12 +132,12 @@ describe('mapRustDiagnosticToVsCode', () => {
 
     it('should map a Clippy copy pass by ref warning', () => {
         const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
-            'clippy/trivially_copy_pass_by_ref'
+            'clippy/trivially_copy_pass_by_ref',
         );
 
         assert.strictEqual(
             diagnostic.severity,
-            vscode.DiagnosticSeverity.Warning
+            vscode.DiagnosticSeverity.Warning,
         );
         assert.strictEqual(diagnostic.source, 'clippy');
         assert.strictEqual(
@@ -145,8 +145,8 @@ describe('mapRustDiagnosticToVsCode', () => {
             [
                 'this argument is passed by reference, but would be more efficient if passed by value',
                 '#[warn(clippy::trivially_copy_pass_by_ref)] implied by #[warn(clippy::all)]',
-                'for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref'
-            ].join('\n')
+                'for further information visit https://rust-lang.github.io/rust-clippy/master/index.html#trivially_copy_pass_by_ref',
+            ].join('\n'),
         );
         assert.strictEqual(diagnostic.code, 'trivially_copy_pass_by_ref');
         assert.deepStrictEqual(diagnostic.tags, []);
@@ -165,27 +165,27 @@ describe('mapRustDiagnosticToVsCode', () => {
         const [suggestedFix] = suggestedFixes;
         assert.strictEqual(
             suggestedFix.title,
-            'consider passing by value instead: `self`'
+            'consider passing by value instead: `self`',
         );
         // Clippy does not mark this with any applicability
         assert.strictEqual(
             suggestedFix.applicability,
-            SuggestionApplicability.Unspecified
+            SuggestionApplicability.Unspecified,
         );
     });
 
     it('should map a mismatched type error', () => {
         const { diagnostic, suggestedFixes } = mapFixtureToVsCode(
-            'error/E0308'
+            'error/E0308',
         );
 
         assert.strictEqual(
             diagnostic.severity,
-            vscode.DiagnosticSeverity.Error
+            vscode.DiagnosticSeverity.Error,
         );
         assert.strictEqual(
             diagnostic.message,
-            ['mismatched types', 'expected usize, found u32'].join('\n')
+            ['mismatched types', 'expected usize, found u32'].join('\n'),
         );
         assert.strictEqual(diagnostic.code, 'E0308');
         assert.strictEqual(diagnostic.source, 'rustc');

@@ -19,5 +19,5 @@ export {
     runnables,
     syntaxTree,
     onEnter,
-    inlayHints
+    inlayHints,
 };
