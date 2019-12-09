@@ -5,6 +5,7 @@
 
 pub mod inline;
 pub mod cfg;
+pub mod utils;
 mod auto_trait;
 mod blanket_impl;
 mod simplify;
@@ -40,6 +41,10 @@ use std::u32;
 
 use crate::core::{self, DocContext, ImplTraitParam};
 use crate::doctree;
+
+use utils::*;
+
+pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
 
 use self::auto_trait::AutoTraitFinder;
 use self::blanket_impl::BlanketImplFinder;

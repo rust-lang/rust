@@ -1,4 +1,23 @@
+use crate::core::DocContext;
+use crate::clean::{
+    Clean, Crate, Deprecation, ExternalCrate, FnDecl, FunctionRetTy, Generic, GenericArg,
+    GenericArgs, Generics, GenericBound, GenericParamDef, GetDefId, ImportSource, Item, ItemEnum,
+    Lifetime, MacroKind, Path, PathSegment, Primitive, PrimitiveType, Region, RegionVid,
+    ResolvedPath, Span, Stability, Type, TypeBinding, TypeKind, Visibility, WherePredicate, inline,
+};
+use crate::clean::blanket_impl::BlanketImplFinder;
+use crate::clean::auto_trait::AutoTraitFinder;
 
+use rustc::hir;
+use rustc::hir::def::{DefKind, Res};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::ty::{self, DefIdTree, Ty};
+use rustc::ty::subst::{SubstsRef, GenericArgKind};
+use rustc::util::nodemap::FxHashSet;
+use syntax_pos;
+use syntax_pos::symbol::{Symbol, kw, sym};
+
+use std::mem;
 
 pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
