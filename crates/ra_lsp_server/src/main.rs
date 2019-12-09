@@ -6,7 +6,10 @@ use ra_prof;
 
 fn main() -> Result<()> {
     setup_logging()?;
-    run_server()?;
+    match Args::parse()? {
+        Args::Version => println!("rust-analyzer {}", env!("REV")),
+        Args::Run => run_server()?,
+    }
     Ok(())
 }
 
@@ -20,6 +23,19 @@ fn setup_logging() -> Result<()> {
         Err(_) => ra_prof::Filter::disabled(),
     });
     Ok(())
+}
+
+enum Args {
+    Version,
+    Run,
+}
+
+impl Args {
+    fn parse() -> Result<Args> {
+        let res =
+            if std::env::args().any(|it| it == "--version") { Args::Version } else { Args::Run };
+        Ok(res)
+    }
 }
 
 fn run_server() -> Result<()> {
