@@ -8,16 +8,16 @@ use rustc::ty::subst::GenericArg;
 
 use super::TypeChecker;
 
-type VarPointRelations = Vec<(Local, LocationIndex)>;
-type MovePathPointRelations = Vec<(MovePathIndex, LocationIndex)>;
+type VarPointRelation = Vec<(Local, LocationIndex)>;
+type PathPointRelation = Vec<(MovePathIndex, LocationIndex)>;
 
 struct UseFactsExtractor<'me> {
-    var_defined: &'me mut VarPointRelations,
-    var_used: &'me mut VarPointRelations,
+    var_defined: &'me mut VarPointRelation,
+    var_used: &'me mut VarPointRelation,
     location_table: &'me LocationTable,
     var_drop_used: &'me mut Vec<(Local, Location)>,
     move_data: &'me MoveData<'me>,
-    path_accessed_at: &'me mut MovePathPointRelations,
+    path_accessed_at: &'me mut PathPointRelation,
 }
 
 // A Visitor to walk through the MIR and extract point-wise facts
