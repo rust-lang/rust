@@ -1,4 +1,4 @@
-#![allow(const_err)]
+#![warn(const_err)]
 
 trait ZeroSized: Sized {
     const I_AM_ZERO_SIZED: ();
@@ -6,7 +6,7 @@ trait ZeroSized: Sized {
 }
 
 impl<T: Sized> ZeroSized for T {
-    const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()];
+    const I_AM_ZERO_SIZED: ()  = [()][std::mem::size_of::<Self>()]; //~ WARN any use of this value
     fn requires_zero_size(self) {
         let () = Self::I_AM_ZERO_SIZED; //~ ERROR erroneous constant encountered
         println!("requires_zero_size called");
