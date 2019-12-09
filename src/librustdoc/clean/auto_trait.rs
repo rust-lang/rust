@@ -1,9 +1,23 @@
 use rustc::hir;
 use rustc::traits::auto_trait::{self, AutoTraitResult};
-use rustc::ty::{self, TypeFoldable};
+use rustc::ty::{self, Region, RegionVid, TypeFoldable};
+use rustc::util::nodemap::FxHashSet;
+
 use std::fmt::Debug;
 
 use super::*;
+
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+enum RegionTarget<'tcx> {
+    Region(Region<'tcx>),
+    RegionVid(RegionVid)
+}
+
+#[derive(Default, Debug, Clone)]
+struct RegionDeps<'tcx> {
+    larger: FxHashSet<RegionTarget<'tcx>>,
+    smaller: FxHashSet<RegionTarget<'tcx>>
+}
 
 pub struct AutoTraitFinder<'a, 'tcx> {
     pub cx: &'a core::DocContext<'tcx>,

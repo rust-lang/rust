@@ -23,7 +23,7 @@ use rustc::hir::def::{CtorKind, DefKind, Res};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::hir::ptr::P;
 use rustc::ty::subst::InternalSubsts;
-use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
+use rustc::ty::{self, TyCtxt, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, Ident};
@@ -2425,18 +2425,6 @@ impl Clean<TypeBindingKind> for hir::TypeBindingKind {
                 },
         }
     }
-}
-
-#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
-enum RegionTarget<'tcx> {
-    Region(Region<'tcx>),
-    RegionVid(RegionVid)
-}
-
-#[derive(Default, Debug, Clone)]
-struct RegionDeps<'tcx> {
-    larger: FxHashSet<RegionTarget<'tcx>>,
-    smaller: FxHashSet<RegionTarget<'tcx>>
 }
 
 enum SimpleBound {
