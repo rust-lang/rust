@@ -71,14 +71,16 @@ fn test_writer_hasher() {
     let ptr = 5_usize as *mut i32;
     assert_eq!(hash(&ptr), 5);
 
+    if cfg!(miri) { // Miri cannot hash pointers
+        return;
+    }
+
     let cs: &mut [u8] = &mut [1, 2, 3];
     let ptr = cs.as_ptr();
     let slice_ptr = cs as *const [u8];
-    #[cfg(not(miri))] // Miri cannot hash pointers
     assert_eq!(hash(&slice_ptr), hash(&ptr) + cs.len() as u64);
 
     let slice_ptr = cs as *mut [u8];
-    #[cfg(not(miri))] // Miri cannot hash pointers
     assert_eq!(hash(&slice_ptr), hash(&ptr) + cs.len() as u64);
 }
 

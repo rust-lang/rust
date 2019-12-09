@@ -1183,7 +1183,7 @@ fn test_rotate_right() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn brute_force_rotate_test_0() {
     // In case of edge cases involving multiple algorithms
     let n = 300;
@@ -1302,7 +1302,7 @@ fn sort_unstable() {
 
 #[test]
 #[cfg(not(target_arch = "wasm32"))]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn partition_at_index() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use rand::rngs::StdRng;
@@ -1505,7 +1505,7 @@ pub mod memchr {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
+#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_simple() {
     let bytes = [1u8, 2, 3, 4, 5, 6, 7];
     let (prefix, aligned, suffix) = unsafe { bytes.align_to::<u16>() };
@@ -1535,7 +1535,7 @@ fn test_align_to_zst() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri does not compute a maximal `mid` for `align_offset`
+#[cfg_attr(miri, ignore)] // Miri does not compute a maximal `mid` for `align_offset`
 fn test_align_to_non_trivial() {
     #[repr(align(8))]
     struct U64(u64, u64);

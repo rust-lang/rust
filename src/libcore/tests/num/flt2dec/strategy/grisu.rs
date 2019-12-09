@@ -41,7 +41,7 @@ fn shortest_sanity_test() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn exact_sanity_test() {
     // See comments in dragon.rs's exact_sanity_test for why this test is
     // ignored on MSVC
