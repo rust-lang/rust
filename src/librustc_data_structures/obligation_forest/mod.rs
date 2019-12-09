@@ -584,7 +584,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             // function call.
             if let NodeState::Success(waiting) = node.state.get() {
                 if !self.is_still_waiting(waiting) {
-                    self.find_cycles_from_node(&mut stack, processor, index);
+                    self.find_cycles_from_node(&mut stack, processor, index, index);
                 }
             }
         }
@@ -592,7 +592,8 @@ impl<O: ForestObligation> ObligationForest<O> {
         debug_assert!(stack.is_empty());
     }
 
-    fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, index: usize)
+    fn find_cycles_from_node<P>(&self, stack: &mut Vec<usize>, processor: &mut P, min_index: usize,
+                                index: usize)
         where P: ObligationProcessor<Obligation=O>
     {
         let node = &self.nodes[index];
@@ -601,8 +602,11 @@ impl<O: ForestObligation> ObligationForest<O> {
                 match stack.iter().rposition(|&n| n == index) {
                     None => {
                         stack.push(index);
-                        for &index in node.dependents.iter() {
-                            self.find_cycles_from_node(stack, processor, index);
+                        for &dep_index in node.dependents.iter() {
+                            // The index check avoids re-considering a node.
+                            if dep_index >= min_index {
+                                self.find_cycles_from_node(stack, processor, min_index, dep_index);
+                            }
                         }
                         stack.pop();
                     }
