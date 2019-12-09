@@ -240,15 +240,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let tcx = self.infcx.tcx;
                     let generics = tcx.generics_of(self.mir_def_id);
                     let param = generics.type_param(&param_ty, tcx);
-                    let generics = tcx.hir().get_generics(self.mir_def_id).unwrap();
-                    suggest_constraining_type_param(
-                        generics,
-                        &mut err,
-                        &param.name.as_str(),
-                        "Copy",
-                        tcx.sess.source_map(),
-                        span,
-                    );
+                    if let Some(generics) = tcx.hir().get_generics(self.mir_def_id) {
+                        suggest_constraining_type_param(
+                            generics,
+                            &mut err,
+                            &param.name.as_str(),
+                            "Copy",
+                            tcx.sess.source_map(),
+                            span,
+                        );
+                    }
                 }
                 let span = if let Some(local) = place.as_local() {
                     let decl = &self.body.local_decls[local];

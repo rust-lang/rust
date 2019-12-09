@@ -217,6 +217,11 @@ impl UniversalRegionRelations<'tcx> {
     crate fn regions_outlived_by(&self, fr1: RegionVid) -> Vec<&RegionVid> {
         self.outlives.reachable_from(&fr1)
     }
+
+    /// Returns the _non-transitive_ set of known `outlives` constraints between free regions.
+    crate fn known_outlives(&self) -> impl Iterator<Item=(&RegionVid, &RegionVid)> {
+        self.outlives.base_edges()
+    }
 }
 
 struct UniversalRegionRelationsBuilder<'this, 'tcx> {
