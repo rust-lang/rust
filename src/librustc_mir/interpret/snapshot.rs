@@ -18,14 +18,10 @@
 //!
 //! ```rust,ignore(const-loop)
 //! const fn inf_loop() {
-//!     // Function call to prevent promotion.
-//!     const fn zeros() -> [isize; 4] {
-//!         [0; 4]
-//!     }
-//!
 //!     loop {
-//!         let arr = &zeros();
-//!         if false {
+//!         let arr = [0isize; 4];
+//!         let parr = &arr;
+//!         if parr[0] != 0 {
 //!             break;
 //!         }
 //!     }

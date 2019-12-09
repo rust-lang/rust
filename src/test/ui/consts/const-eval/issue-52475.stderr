@@ -1,10 +1,12 @@
 error[E0744]: `while` is not allowed in a `const`
-  --> $DIR/issue-52475.rs:6:9
+  --> $DIR/issue-52475.rs:5:9
    |
 LL | /         while n < 5 {
 LL | |
+LL | |
 LL | |             n = (n + 1) % 5;
-LL | |             x = &0; // Materialize a new AllocId
+...  |
+LL | |             n += px[0];
 LL | |         }
    | |_________^
 
@@ -14,18 +16,18 @@ warning: Constant evaluating a complex constant, this might take some time
 LL |       let _ = [(); {
    |  __________________^
 LL | |
-LL | |         let mut x = &0;
 LL | |         let mut n = 0;
+LL | |         while n < 5 {
 ...  |
 LL | |         0
 LL | |     }];
    | |_____^
 
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-52475.rs:8:17
+  --> $DIR/issue-52475.rs:5:19
    |
-LL |             n = (n + 1) % 5;
-   |                 ^^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
+LL |         while n < 5 {
+   |                   ^ duplicate interpreter state observed here, const evaluation will never terminate
 
 error: aborting due to 2 previous errors
 
