@@ -265,14 +265,14 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             if let PathSource::Expr(parent) = source {
                 match &parent.map(|p| &p.kind) {
                     Some(ExprKind::Call(_, args)) if args.len() > 0 => {
-                        let mut expr_kind = &args.first().unwrap().kind;
+                        let mut expr_kind = &args[0].kind;
                         loop {
                             match expr_kind {
                                 ExprKind::Path(_, arg_name) if arg_name.segments.len() == 1 => {
                                     has_self_arg = arg_name.segments[0].ident.name == kw::SelfLower;
                                     break;
                                 },
-                                ExprKind::AddrOf(_, _, expr) => { expr_kind = &expr.kind; }
+                                ExprKind::AddrOf(_, _, expr) => expr_kind = &expr.kind,
                                 _ => break,
                             }
                         }
@@ -284,7 +284,7 @@ impl<'a> LateResolutionVisitor<'a, '_> {
             if has_self_arg {
                 err.span_suggestion(
                     span,
-                    &"try calling method instead of passing `self` as parameter",
+                    &format!("try calling `{}` as a method", ident),
                     format!("self.{}", path_str),
                     Applicability::MachineApplicable,
                 );
