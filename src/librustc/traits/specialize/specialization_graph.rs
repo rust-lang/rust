@@ -414,9 +414,7 @@ impl<'tcx> Node {
     }
 
     /// Iterate over the items defined directly by the given (impl or trait) node.
-    pub fn items(&self, tcx: TyCtxt<'tcx>)
-        -> impl Iterator<Item = ty::AssocItem> + ExactSizeIterator + Clone + 'tcx
-    {
+    pub fn items(&self, tcx: TyCtxt<'tcx>) -> ty::AssocItemsIterator<'tcx> {
         tcx.associated_items(self.def_id())
     }
 

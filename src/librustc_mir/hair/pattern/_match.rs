@@ -396,7 +396,7 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         PatStack::from_slice(&self.0[1..])
     }
 
-    fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> + ExactSizeIterator {
+    fn iter(&self) -> impl Iterator<Item = &Pat<'tcx>> {
         self.0.iter().map(|p| *p)
     }
 

@@ -11,7 +11,7 @@ pub struct FreeRegionMap<'tcx> {
 }
 
 impl<'tcx> FreeRegionMap<'tcx> {
-    pub fn elements(&self) -> impl Iterator<Item=&Region<'tcx>> + ExactSizeIterator {
+    pub fn elements(&self) -> impl Iterator<Item=&Region<'tcx>> {
         self.relation.elements()
     }
 

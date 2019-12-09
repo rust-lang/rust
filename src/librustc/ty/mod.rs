@@ -2376,7 +2376,7 @@ impl<'tcx> AdtDef {
     pub fn discriminants(
         &'tcx self,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + ExactSizeIterator + Captures<'tcx> {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx);
         let mut prev_discr = None::<Discr<'tcx>>;
@@ -2740,9 +2740,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns an iterator of the `DefId`s for all body-owners in this
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
-    pub fn body_owners(self)
-        -> impl Iterator<Item = DefId> + ExactSizeIterator + Captures<'tcx> + 'tcx
-    {
+    pub fn body_owners(self) -> impl Iterator<Item = DefId> + Captures<'tcx> + 'tcx {
         self.hir().krate()
                   .body_ids
                   .iter()
@@ -3115,12 +3113,6 @@ impl Iterator for AssocItemsIterator<'_> {
         let def_id = self.def_ids.get(self.next_index)?;
         self.next_index += 1;
         Some(self.tcx.associated_item(*def_id))
-    }
-}
-
-impl ExactSizeIterator for AssocItemsIterator<'_> {
-    fn len(&self) -> usize {
-        self.def_ids.len() - self.next_index
     }
 }
 

@@ -345,7 +345,7 @@ impl<'tcx> ClosureSubsts<'tcx> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'_>,
-    ) -> impl Iterator<Item = Ty<'tcx>> + ExactSizeIterator + 'tcx {
+    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let SplitClosureSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
         upvar_kinds.iter().map(|t| {
             if let GenericArgKind::Type(ty) = t.unpack() {
@@ -433,7 +433,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'_>,
-    ) -> impl Iterator<Item = Ty<'tcx>> + ExactSizeIterator + 'tcx {
+    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let SplitGeneratorSubsts { upvar_kinds, .. } = self.split(def_id, tcx);
         upvar_kinds.iter().map(|t| {
             if let GenericArgKind::Type(ty) = t.unpack() {
@@ -551,7 +551,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + ExactSizeIterator + Captures<'tcx>> {
+    ) -> impl Iterator<Item = impl Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
         let layout = tcx.generator_layout(def_id);
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
@@ -563,9 +563,7 @@ impl<'tcx> GeneratorSubsts<'tcx> {
     /// This is the types of the fields of a generator which are not stored in a
     /// variant.
     #[inline]
-    pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'tcx>)
-        -> impl Iterator<Item = Ty<'tcx>> + ExactSizeIterator
-    {
+    pub fn prefix_tys(self, def_id: DefId, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = Ty<'tcx>> {
         self.upvar_tys(def_id, tcx)
     }
 }
@@ -582,7 +580,7 @@ impl<'tcx> UpvarSubsts<'tcx> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = Ty<'tcx>> + ExactSizeIterator + 'tcx {
+    ) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         let upvar_kinds = match self {
             UpvarSubsts::Closure(substs) => substs.as_closure().split(def_id, tcx).upvar_kinds,
             UpvarSubsts::Generator(substs) => substs.as_generator().split(def_id, tcx).upvar_kinds,

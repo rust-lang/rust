@@ -633,16 +633,14 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<'a, R: RangeBounds<usize>>(&'a mut self, range: R)
-        -> impl Iterator<Item=T> + ExactSizeIterator + 'a
-    {
+    pub fn drain<'a, R: RangeBounds<usize>>(
+        &'a mut self, range: R) -> impl Iterator<Item=T> + 'a {
         self.raw.drain(range)
     }
 
     #[inline]
-    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(&'a mut self, range: R)
-        -> impl Iterator<Item=(I, T)> + ExactSizeIterator + 'a
-    {
+    pub fn drain_enumerated<'a, R: RangeBounds<usize>>(
+        &'a mut self, range: R) -> impl Iterator<Item=(I, T)> + 'a {
         self.raw.drain(range).enumerate().map(IntoIdx { _marker: PhantomData })
     }
 

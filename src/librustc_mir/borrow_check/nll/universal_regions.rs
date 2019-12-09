@@ -107,9 +107,7 @@ impl<'tcx> DefiningTy<'tcx> {
     /// not a closure or generator, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
     /// match up with the upvar order in the HIR, typesystem, and MIR.
-    pub fn upvar_tys(self, tcx: TyCtxt<'tcx>)
-        -> impl Iterator<Item = Ty<'tcx>> + ExactSizeIterator + 'tcx
-    {
+    pub fn upvar_tys(self, tcx: TyCtxt<'tcx>) -> impl Iterator<Item = Ty<'tcx>> + 'tcx {
         match self {
             DefiningTy::Closure(def_id, substs) => Either::Left(
                 substs.as_closure().upvar_tys(def_id, tcx)
@@ -269,7 +267,7 @@ impl<'tcx> UniversalRegions<'tcx> {
 
     /// Returns an iterator over all the RegionVids corresponding to
     /// universally quantified free regions.
-    pub fn universal_regions(&self) -> impl Iterator<Item = RegionVid> + ExactSizeIterator {
+    pub fn universal_regions(&self) -> impl Iterator<Item = RegionVid> {
         (FIRST_GLOBAL_INDEX..self.num_universals).map(RegionVid::new)
     }
 
@@ -295,7 +293,7 @@ impl<'tcx> UniversalRegions<'tcx> {
     /// Gets an iterator over all the early-bound regions that have names.
     pub fn named_universal_regions<'s>(
         &'s self,
-    ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + ExactSizeIterator + 's {
+    ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> + 's {
         self.indices.indices.iter().map(|(&r, &v)| (r, v))
     }
 
