@@ -26,6 +26,8 @@ export class Config {
     public excludeGlobs = [];
     public useClientWatching = false;
     public featureFlags = {};
+    // for internal use
+    public withSysroot: null | boolean = null;
     public cargoWatchOptions: CargoWatchOptions = {
         enableOnStartup: 'ask',
         trace: 'off',
@@ -147,6 +149,9 @@ export class Config {
         }
         if (config.has('featureFlags')) {
             this.featureFlags = config.get('featureFlags') || {};
+        }
+        if (config.has('withSysroot')) {
+            this.withSysroot = config.get('withSysroot') || false;
         }
     }
 }
