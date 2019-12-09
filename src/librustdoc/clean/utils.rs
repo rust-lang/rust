@@ -105,15 +105,15 @@ pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
 }
 
 // extract the stability index for a node from tcx, if possible
-fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
+pub fn get_stability(cx: &DocContext<'_>, def_id: DefId) -> Option<Stability> {
     cx.tcx.lookup_stability(def_id).clean(cx)
 }
 
-fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation> {
+pub fn get_deprecation(cx: &DocContext<'_>, def_id: DefId) -> Option<Deprecation> {
     cx.tcx.lookup_deprecation(def_id).clean(cx)
 }
 
-fn external_generic_args(
+pub fn external_generic_args(
     cx: &DocContext<'_>,
     trait_did: Option<DefId>,
     has_self: bool,
@@ -161,8 +161,8 @@ fn external_generic_args(
 
 // trait_did should be set to a trait's DefId if called on a TraitRef, in order to sugar
 // from Fn<(A, B,), C> to Fn(A, B) -> C
-fn external_path(cx: &DocContext<'_>, name: Symbol, trait_did: Option<DefId>, has_self: bool,
-                 bindings: Vec<TypeBinding>, substs: SubstsRef<'_>) -> Path {
+pub fn external_path(cx: &DocContext<'_>, name: Symbol, trait_did: Option<DefId>, has_self: bool,
+                     bindings: Vec<TypeBinding>, substs: SubstsRef<'_>) -> Path {
     Path {
         global: false,
         res: Res::Err,
@@ -178,7 +178,7 @@ fn external_path(cx: &DocContext<'_>, name: Symbol, trait_did: Option<DefId>, ha
 /// i.e. `[T, U]` when you have the following bounds: `T: Display, U: Option<T>` will return
 /// `[Display, Option]` (we just returns the list of the types, we don't care about the
 /// wrapped types in here).
-fn get_real_types(
+pub fn get_real_types(
     generics: &Generics,
     arg: &Type,
     cx: &DocContext<'_>,
@@ -285,7 +285,7 @@ pub fn get_all_types(
     (all_types.into_iter().collect(), ret_types)
 }
 
-fn strip_type(ty: Type) -> Type {
+pub fn strip_type(ty: Type) -> Type {
     match ty {
         Type::ResolvedPath { path, param_names, did, is_generic } => {
             Type::ResolvedPath { path: strip_path(&path), param_names, did, is_generic }
@@ -309,7 +309,7 @@ fn strip_type(ty: Type) -> Type {
     }
 }
 
-fn strip_path(path: &Path) -> Path {
+pub fn strip_path(path: &Path) -> Path {
     let segments = path.segments.iter().map(|s| {
         PathSegment {
             name: s.name.clone(),
@@ -327,7 +327,7 @@ fn strip_path(path: &Path) -> Path {
     }
 }
 
-fn qpath_to_string(p: &hir::QPath) -> String {
+pub fn qpath_to_string(p: &hir::QPath) -> String {
     let segments = match *p {
         hir::QPath::Resolved(_, ref path) => &path.segments,
         hir::QPath::TypeRelative(_, ref segment) => return segment.ident.to_string(),
@@ -345,9 +345,9 @@ fn qpath_to_string(p: &hir::QPath) -> String {
     s
 }
 
-fn build_deref_target_impls(cx: &DocContext<'_>,
-                            items: &[Item],
-                            ret: &mut Vec<Item>) {
+pub fn build_deref_target_impls(cx: &DocContext<'_>,
+                                items: &[Item],
+                                ret: &mut Vec<Item>) {
     use self::PrimitiveType::*;
     let tcx = cx.tcx;
 
@@ -420,7 +420,7 @@ impl ToSource for syntax_pos::Span {
     }
 }
 
-fn name_from_pat(p: &hir::Pat) -> String {
+pub fn name_from_pat(p: &hir::Pat) -> String {
     use rustc::hir::*;
     debug!("trying to get a name from pattern: {:?}", p);
 
@@ -458,7 +458,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
     }
 }
 
-fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
+pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
     match n.val {
         ty::ConstKind::Unevaluated(def_id, _) => {
             if let Some(hir_id) = cx.tcx.hir().as_local_hir_id(def_id) {
@@ -483,14 +483,14 @@ fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
     }
 }
 
-fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
+pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
     cx.tcx.hir().hir_to_pretty_string(body.hir_id)
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt
-fn resolve_type(cx: &DocContext<'_>,
-                path: Path,
-                id: hir::HirId) -> Type {
+pub fn resolve_type(cx: &DocContext<'_>,
+                    path: Path,
+                    id: hir::HirId) -> Type {
     if id == hir::DUMMY_HIR_ID {
         debug!("resolve_type({:?})", path);
     } else {
@@ -564,7 +564,7 @@ pub fn register_res(cx: &DocContext<'_>, res: Res) -> DefId {
     did
 }
 
-fn resolve_use_source(cx: &DocContext<'_>, path: Path) -> ImportSource {
+pub fn resolve_use_source(cx: &DocContext<'_>, path: Path) -> ImportSource {
     ImportSource {
         did: if path.res.opt_def_id().is_none() {
             None
