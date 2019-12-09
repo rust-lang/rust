@@ -775,6 +775,9 @@ impl Step for Assemble {
             t!(fs::create_dir_all(&dst));
             builder.copy(&lld_install.join("bin").join(&src_exe), &dst.join(&dst_exe));
         }
+
+        // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
+        // so that it can be found when the newly built `rustc` is run.
         dist::maybe_install_llvm_dylib(builder, target_compiler.host, &sysroot);
 
         // Link the compiler binary itself into place
