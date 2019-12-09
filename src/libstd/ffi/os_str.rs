@@ -495,11 +495,13 @@ impl OsStr {
     ///
     /// let os_str = OsStr::new("foo");
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
         s.as_ref()
     }
 
+    #[inline]
     fn from_inner(inner: &Slice) -> &OsStr {
         unsafe { &*(inner as *const Slice as *const OsStr) }
     }
@@ -658,6 +660,7 @@ impl OsStr {
     ///
     /// Note: it is *crucial* that this API is private, to avoid
     /// revealing the internal, platform-specific encodings.
+    #[inline]
     fn bytes(&self) -> &[u8] {
         unsafe { &*(&self.inner as *const _ as *const [u8]) }
     }
@@ -797,6 +800,7 @@ impl Default for &OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsStr {
+    #[inline]
     fn eq(&self, other: &OsStr) -> bool {
         self.bytes().eq(other.bytes())
     }
@@ -804,6 +808,7 @@ impl PartialEq for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsStr {
+    #[inline]
     fn eq(&self, other: &str) -> bool {
         *self == *OsStr::new(other)
     }
@@ -811,6 +816,7 @@ impl PartialEq<str> for OsStr {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsStr> for str {
+    #[inline]
     fn eq(&self, other: &OsStr) -> bool {
         *other == *OsStr::new(self)
     }
@@ -944,6 +950,7 @@ impl AsRef<OsStr> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for str {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         OsStr::from_inner(Slice::from_str(self))
     }
@@ -951,6 +958,7 @@ impl AsRef<OsStr> for str {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for String {
+    #[inline]
     fn as_ref(&self) -> &OsStr {
         (&**self).as_ref()
     }
