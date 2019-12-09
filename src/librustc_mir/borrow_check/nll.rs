@@ -22,15 +22,14 @@ use polonius_engine::{Algorithm, Output};
 
 use crate::util as mir_util;
 use crate::util::pretty;
-use crate::dataflow::indexes::BorrowIndex;
-use crate::dataflow::move_paths::{InitLocation, MoveData, MovePathIndex, InitKind};
+use crate::dataflow::move_paths::{InitLocation, MoveData, InitKind};
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
 
 use crate::borrow_check::{
     borrow_set::BorrowSet,
-    location::{LocationIndex, LocationTable},
+    location::LocationTable,
     facts::{AllFacts, AllFactsExt, RustcFacts},
     region_infer::{RegionInferenceContext, values::RegionValueElements},
     universal_regions::UniversalRegions,
