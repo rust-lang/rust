@@ -27,22 +27,22 @@ impl UseFactsExtractor<'_> {
     }
 
     fn insert_def(&mut self, local: Local, location: Location) {
-        debug!("LivenessFactsExtractor::insert_def()");
+        debug!("UseFactsExtractor::insert_def()");
         self.var_defined.push((local, self.location_to_index(location)));
     }
 
     fn insert_use(&mut self, local: Local, location: Location) {
-        debug!("LivenessFactsExtractor::insert_use()");
+        debug!("UseFactsExtractor::insert_use()");
         self.var_used.push((local, self.location_to_index(location)));
     }
 
     fn insert_drop_use(&mut self, local: Local, location: Location) {
-        debug!("LivenessFactsExtractor::insert_drop_use()");
+        debug!("UseFactsExtractor::insert_drop_use()");
         self.var_drop_used.push((local, location));
     }
 
     fn insert_path_access(&mut self, path: MovePathIndex, location: Location) {
-        debug!("LivenessFactsExtractor::insert_path_access({:?}, {:?})", path, location);
+        debug!("UseFactsExtractor::insert_path_access({:?}, {:?})", path, location);
         self.path_accessed_at.push((path, self.location_to_index(location)));
     }
 
@@ -90,7 +90,7 @@ pub(super) fn populate_access_facts(
     move_data: &MoveData<'_>,
     drop_used: &mut Vec<(Local, Location)>,
 ) {
-    debug!("populate_var_liveness_facts()");
+    debug!("populate_access_facts()");
 
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
         let mut extractor = UseFactsExtractor {
