@@ -57,7 +57,8 @@ export class Server {
                 maxInlayHintLength: Server.config.maxInlayHintLength,
                 excludeGlobs: Server.config.excludeGlobs,
                 useClientWatching: Server.config.useClientWatching,
-                featureFlags: Server.config.featureFlags
+                featureFlags: Server.config.featureFlags,
+                withSysroot: Server.config.withSysroot
             },
             traceOutputChannel
         };

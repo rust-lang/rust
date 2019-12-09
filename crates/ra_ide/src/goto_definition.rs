@@ -19,25 +19,23 @@ pub(crate) fn goto_definition(
     position: FilePosition,
 ) -> Option<RangeInfo<Vec<NavigationTarget>>> {
     let file = db.parse_or_expand(position.file_id.into())?;
-    let token = file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
-    let token = descend_into_macros(db, position.file_id, token);
+    let original_token =
+        file.token_at_offset(position.offset).filter(|it| !it.kind().is_trivia()).next()?;
+    let token = descend_into_macros(db, position.file_id, original_token.clone());
 
-    let res = match_ast! {
+    let nav_targets = match_ast! {
         match (token.value.parent()) {
             ast::NameRef(name_ref) => {
-                let navs = reference_definition(db, token.with_value(&name_ref)).to_vec();
-                RangeInfo::new(name_ref.syntax().text_range(), navs.to_vec())
+                reference_definition(db, token.with_value(&name_ref)).to_vec()
             },
             ast::Name(name) => {
-                let navs = name_definition(db, token.with_value(&name))?;
-                RangeInfo::new(name.syntax().text_range(), navs)
-
+                name_definition(db, token.with_value(&name))?
             },
             _ => return None,
         }
     };
 
-    Some(res)
+    Some(RangeInfo::new(original_token.text_range(), nav_targets))
 }
 
 #[derive(Debug)]
