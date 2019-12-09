@@ -1,4 +1,4 @@
-use crate::raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable, Global};
+use crate::raw::{Bucket, Global, RawDrain, RawIntoIter, RawIter, RawTable};
 use crate::CollectionAllocErr;
 use core::borrow::Borrow;
 use core::fmt::{self, Debug};
@@ -193,7 +193,7 @@ pub enum DefaultHashBuilder {}
 #[derive(Clone)]
 pub struct HashMap<K, V, S = DefaultHashBuilder> {
     pub(crate) hash_builder: S,
-    pub(crate) table: RawTable<Global, (K, V)>,
+    pub(crate) table: RawTable<(K, V), Global>,
 }
 
 #[cfg_attr(feature = "inline-more", inline)]
@@ -1146,7 +1146,7 @@ impl<K, V> IterMut<'_, K, V> {
 /// [`into_iter`]: struct.HashMap.html#method.into_iter
 /// [`HashMap`]: struct.HashMap.html
 pub struct IntoIter<K, V> {
-    inner: RawIntoIter<Global, (K, V)>,
+    inner: RawIntoIter<(K, V), Global>,
 }
 
 impl<K, V> IntoIter<K, V> {
@@ -1222,7 +1222,7 @@ impl<K, V: Debug> fmt::Debug for Values<'_, K, V> {
 /// [`drain`]: struct.HashMap.html#method.drain
 /// [`HashMap`]: struct.HashMap.html
 pub struct Drain<'a, K, V> {
-    inner: RawDrain<'a, Global, (K, V)>,
+    inner: RawDrain<'a, (K, V), Global>,
 }
 
 impl<K, V> Drain<'_, K, V> {
@@ -1280,7 +1280,7 @@ pub enum RawEntryMut<'a, K, V, S> {
 /// [`RawEntryMut`]: enum.RawEntryMut.html
 pub struct RawOccupiedEntryMut<'a, K, V> {
     elem: Bucket<(K, V)>,
-    table: &'a mut RawTable<Global, (K, V)>,
+    table: &'a mut RawTable<(K, V), Global>,
 }
 
 unsafe impl<K, V> Send for RawOccupiedEntryMut<'_, K, V>
@@ -1301,7 +1301,7 @@ where
 ///
 /// [`RawEntryMut`]: enum.RawEntryMut.html
 pub struct RawVacantEntryMut<'a, K, V, S> {
-    table: &'a mut RawTable<Global, (K, V)>,
+    table: &'a mut RawTable<(K, V), Global>,
     hash_builder: &'a S,
 }
 

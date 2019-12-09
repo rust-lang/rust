@@ -7,8 +7,8 @@ mod inner {
 
 #[cfg(not(feature = "nightly"))]
 mod inner {
+    use crate::alloc::alloc::{alloc, dealloc, Layout};
     use core::ptr::NonNull;
-    use crate::alloc::alloc::{Layout, alloc, dealloc};
 
     pub trait Alloc {
         unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, ()>;
@@ -19,11 +19,10 @@ mod inner {
     pub struct Global;
     impl Alloc for Global {
         unsafe fn alloc(&mut self, layout: Layout) -> Result<NonNull<u8>, ()> {
-            Ok(NonNull::new_unchecked(alloc(layout)))
+            NonNull::new(alloc(layout)).ok_or(())
         }
         unsafe fn dealloc(&mut self, ptr: NonNull<u8>, layout: Layout) {
             dealloc(ptr.as_ptr(), layout)
         }
     }
 }
-
