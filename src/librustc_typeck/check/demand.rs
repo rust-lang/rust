@@ -551,15 +551,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check for `Deref` implementations by constructing a predicate to
                 // prove: `<T as Deref>::Output == U`
                 let deref_trait = self.tcx.lang_items().deref_trait().unwrap();
-                let item_def_id = self.tcx.associated_items(deref_trait).next().unwrap().def_id;
+                let item_def_id = self.tcx.associated_items(deref_trait)
+                    .find(|item| item.kind == ty::AssocKind::Type)
+                    .unwrap()
+                    .def_id;
                 let predicate = ty::Predicate::Projection(ty::Binder::bind(ty::ProjectionPredicate {
                     // `<T as Deref>::Output`
                     projection_ty: ty::ProjectionTy {
                         // `T`
-                        substs: self.tcx.mk_substs_trait(
-                            checked_ty,
-                            self.fresh_substs_for_item(sp, item_def_id),
-                        ),
+                        substs: self.tcx.intern_substs(&[checked_ty.into()]),
                         // `Deref::Output`
                         item_def_id,
                     },
