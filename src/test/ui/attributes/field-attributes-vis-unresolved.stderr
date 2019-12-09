@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: maybe a missing crate `nonexistent`?
+  --> $DIR/field-attributes-vis-unresolved.rs:17:12
+   |
+LL |     pub(in nonexistent) field: u8
+   |            ^^^^^^^^^^^ maybe a missing crate `nonexistent`?
+
+error[E0433]: failed to resolve: maybe a missing crate `nonexistent`?
+  --> $DIR/field-attributes-vis-unresolved.rs:22:12
+   |
+LL |     pub(in nonexistent) u8
+   |            ^^^^^^^^^^^ maybe a missing crate `nonexistent`?
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0433`.

@@ -12,7 +12,7 @@ use crate::resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleIm
 use crate::{Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 use crate::{ModuleOrUniformRoot, ParentScope, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
 use crate::Namespace::{self, TypeNS, ValueNS, MacroNS};
-use crate::{ResolutionError, Determinacy, PathResult, CrateLint};
+use crate::{ResolutionError, VisResolutionError, Determinacy, PathResult, CrateLint};
 
 use rustc::bug;
 use rustc::hir::def::{self, *};
@@ -32,8 +32,7 @@ use syntax::attr;
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
 use syntax::ast::{MetaItemKind, StmtKind, TraitItem, TraitItemKind};
 use syntax::token::{self, Token};
-use syntax::print::pprust;
-use syntax::{span_err, struct_span_err};
+use syntax::span_err;
 use syntax::source_map::{respan, Spanned};
 use syntax::symbol::{kw, sym};
 use syntax::visit::{self, Visitor};
@@ -192,14 +191,25 @@ impl<'a> AsMut<Resolver<'a>> for BuildReducedGraphVisitor<'a, '_> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn resolve_visibility(&mut self, vis: &ast::Visibility) -> ty::Visibility {
+        self.resolve_visibility_speculative(vis, false).unwrap_or_else(|err| {
+            self.r.report_vis_error(err);
+            ty::Visibility::Public
+        })
+    }
+
+    fn resolve_visibility_speculative<'ast>(
+        &mut self,
+        vis: &'ast ast::Visibility,
+        speculative: bool,
+    ) -> Result<ty::Visibility, VisResolutionError<'ast>> {
         let parent_scope = &self.parent_scope;
         match vis.node {
-            ast::VisibilityKind::Public => ty::Visibility::Public,
+            ast::VisibilityKind::Public => Ok(ty::Visibility::Public),
             ast::VisibilityKind::Crate(..) => {
-                ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))
+                Ok(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX)))
             }
             ast::VisibilityKind::Inherited => {
-                ty::Visibility::Restricted(parent_scope.module.normal_ancestor_id)
+                Ok(ty::Visibility::Restricted(parent_scope.module.normal_ancestor_id))
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // For visibilities we are not ready to provide correct implementation of "uniform
@@ -209,84 +219,65 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 let ident = path.segments.get(0).expect("empty path in visibility").ident;
                 let crate_root = if ident.is_path_segment_keyword() {
                     None
-                } else if ident.span.rust_2018() {
-                    let msg = "relative paths are not supported in visibilities on 2018 edition";
-                    self.r.session.struct_span_err(ident.span, msg)
-                        .span_suggestion(
-                            path.span,
-                            "try",
-                            format!("crate::{}", pprust::path_to_string(&path)),
-                            Applicability::MaybeIncorrect,
-                        )
-                        .emit();
-                    return ty::Visibility::Public;
-                } else {
-                    let ctxt = ident.span.ctxt();
+                } else if ident.span.rust_2015() {
                     Some(Segment::from_ident(Ident::new(
-                        kw::PathRoot, path.span.shrink_to_lo().with_ctxt(ctxt)
+                        kw::PathRoot, path.span.shrink_to_lo().with_ctxt(ident.span.ctxt())
                     )))
+                } else {
+                    return Err(VisResolutionError::Relative2018(ident.span, path));
                 };
 
                 let segments = crate_root.into_iter()
                     .chain(path.segments.iter().map(|seg| seg.into())).collect::<Vec<_>>();
-                let expected_found_error = |this: &Self, res: Res| {
-                    let path_str = Segment::names_to_string(&segments);
-                    struct_span_err!(this.r.session, path.span, E0577,
-                                     "expected module, found {} `{}`", res.descr(), path_str)
-                        .span_label(path.span, "not a module").emit();
-                };
+                let expected_found_error = |res| Err(VisResolutionError::ExpectedFound(
+                    path.span, Segment::names_to_string(&segments), res
+                ));
                 match self.r.resolve_path(
                     &segments,
                     Some(TypeNS),
                     parent_scope,
-                    true,
+                    !speculative,
                     path.span,
                     CrateLint::SimplePath(id),
                 ) {
                     PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
-                        self.r.record_partial_res(id, PartialRes::new(res));
+                        if !speculative {
+                            self.r.record_partial_res(id, PartialRes::new(res));
+                        }
                         if module.is_normal() {
                             if res == Res::Err {
-                                ty::Visibility::Public
+                                Ok(ty::Visibility::Public)
                             } else {
                                 let vis = ty::Visibility::Restricted(res.def_id());
                                 if self.r.is_accessible_from(vis, parent_scope.module) {
-                                    vis
+                                    Ok(vis)
                                 } else {
-                                    struct_span_err!(self.r.session, path.span, E0742,
-                                        "visibilities can only be restricted to ancestor modules")
-                                        .emit();
-                                    ty::Visibility::Public
+                                    Err(VisResolutionError::AncestorOnly(path.span))
                                 }
                             }
                         } else {
-                            expected_found_error(self, res);
-                            ty::Visibility::Public
+                            expected_found_error(res)
                         }
                     }
-                    PathResult::Module(..) => {
-                        self.r.session.span_err(path.span, "visibility must resolve to a module");
-                        ty::Visibility::Public
-                    }
-                    PathResult::NonModule(partial_res) => {
-                        expected_found_error(self, partial_res.base_res());
-                        ty::Visibility::Public
-                    }
-                    PathResult::Failed { span, label, suggestion, .. } => {
-                        self.r.report_error(
-                            span, ResolutionError::FailedToResolve { label, suggestion }
-                        );
-                        ty::Visibility::Public
-                    }
-                    PathResult::Indeterminate => {
-                        span_err!(self.r.session, path.span, E0578,
-                                  "cannot determine resolution for the visibility");
-                        ty::Visibility::Public
-                    }
+                    PathResult::Module(..) =>
+                        Err(VisResolutionError::ModuleOnly(path.span)),
+                    PathResult::NonModule(partial_res) =>
+                        expected_found_error(partial_res.base_res()),
+                    PathResult::Failed { span, label, suggestion, .. } =>
+                        Err(VisResolutionError::FailedToResolve(span, label, suggestion)),
+                    PathResult::Indeterminate =>
+                        Err(VisResolutionError::Indeterminate(path.span)),
                 }
             }
         }
+    }
+
+    fn insert_field_names_local(&mut self, def_id: DefId, vdata: &ast::VariantData) {
+        let field_names = vdata.fields().iter().map(|field| {
+            respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
+        }).collect();
+        self.insert_field_names(def_id, field_names);
     }
 
     fn insert_field_names(&mut self, def_id: DefId, field_names: Vec<Spanned<Name>>) {
@@ -726,59 +717,52 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             }
 
             // These items live in both the type and value namespaces.
-            ItemKind::Struct(ref struct_def, _) => {
+            ItemKind::Struct(ref vdata, _) => {
                 // Define a name in the type namespace.
                 let def_id = self.r.definitions.local_def_id(item.id);
                 let res = Res::Def(DefKind::Struct, def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
-                let mut ctor_vis = vis;
-
-                let has_non_exhaustive = attr::contains_name(&item.attrs, sym::non_exhaustive);
-
-                // If the structure is marked as non_exhaustive then lower the visibility
-                // to within the crate.
-                if has_non_exhaustive && vis == ty::Visibility::Public {
-                    ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
-                }
-
                 // Record field names for error reporting.
-                let field_names = struct_def.fields().iter().map(|field| {
-                    // NOTE: The field may be an expansion placeholder, but expansion sets correct
-                    // visibilities for unnamed field placeholders specifically, so the constructor
-                    // visibility should still be determined correctly.
-                    let field_vis = self.resolve_visibility(&field.vis);
-                    if ctor_vis.is_at_least(field_vis, &*self.r) {
-                        ctor_vis = field_vis;
-                    }
-                    respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
-                }).collect();
-                let item_def_id = self.r.definitions.local_def_id(item.id);
-                self.insert_field_names(item_def_id, field_names);
+                self.insert_field_names_local(def_id, vdata);
 
                 // If this is a tuple or unit struct, define a name
                 // in the value namespace as well.
-                if let Some(ctor_node_id) = struct_def.ctor_id() {
+                if let Some(ctor_node_id) = vdata.ctor_id() {
+                    let mut ctor_vis = vis;
+                    // If the structure is marked as non_exhaustive then lower the visibility
+                    // to within the crate.
+                    if vis == ty::Visibility::Public &&
+                       attr::contains_name(&item.attrs, sym::non_exhaustive) {
+                        ctor_vis = ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX));
+                    }
+                    for field in vdata.fields() {
+                        // NOTE: The field may be an expansion placeholder, but expansion sets
+                        // correct visibilities for unnamed field placeholders specifically, so the
+                        // constructor visibility should still be determined correctly.
+                        if let Ok(field_vis) =
+                                self.resolve_visibility_speculative(&field.vis, true) {
+                            if ctor_vis.is_at_least(field_vis, &*self.r) {
+                                ctor_vis = field_vis;
+                            }
+                        }
+                    }
                     let ctor_res = Res::Def(
-                        DefKind::Ctor(CtorOf::Struct, CtorKind::from_ast(struct_def)),
+                        DefKind::Ctor(CtorOf::Struct, CtorKind::from_ast(vdata)),
                         self.r.definitions.local_def_id(ctor_node_id),
                     );
                     self.r.define(parent, ident, ValueNS, (ctor_res, ctor_vis, sp, expansion));
-                    self.r.struct_constructors.insert(res.def_id(), (ctor_res, ctor_vis));
+                    self.r.struct_constructors.insert(def_id, (ctor_res, ctor_vis));
                 }
             }
 
             ItemKind::Union(ref vdata, _) => {
-                let res = Res::Def(DefKind::Union, self.r.definitions.local_def_id(item.id));
+                let def_id = self.r.definitions.local_def_id(item.id);
+                let res = Res::Def(DefKind::Union, def_id);
                 self.r.define(parent, ident, TypeNS, (res, vis, sp, expansion));
 
                 // Record field names for error reporting.
-                let field_names = vdata.fields().iter().map(|field| {
-                    self.resolve_visibility(&field.vis);
-                    respan(field.span, field.ident.map_or(kw::Invalid, |ident| ident.name))
-                }).collect();
-                let item_def_id = self.r.definitions.local_def_id(item.id);
-                self.insert_field_names(item_def_id, field_names);
+                self.insert_field_names_local(def_id, vdata);
             }
 
             ItemKind::Impl(.., ref impl_items) => {
@@ -1281,6 +1265,7 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         if sf.is_placeholder {
             self.visit_invoc(sf.id);
         } else {
+            self.resolve_visibility(&sf.vis);
             visit::walk_struct_field(self, sf);
         }
     }
