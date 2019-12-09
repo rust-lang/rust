@@ -1,9 +1,9 @@
 use crate::core::DocContext;
 use crate::clean::{
     Clean, Crate, Deprecation, ExternalCrate, FnDecl, FunctionRetTy, Generic, GenericArg,
-    GenericArgs, Generics, GenericBound, GenericParamDef, GetDefId, ImportSource, Item, ItemEnum,
-    Lifetime, MacroKind, Path, PathSegment, Primitive, PrimitiveType, Region, RegionVid,
-    ResolvedPath, Span, Stability, Type, TypeBinding, TypeKind, Visibility, WherePredicate, inline,
+    GenericArgs, Generics, GenericBound, GetDefId, ImportSource, Item, ItemEnum, MacroKind, Path,
+    PathSegment, Primitive, PrimitiveType, ResolvedPath, Span, Stability, Type, TypeBinding,
+    TypeKind, Visibility, WherePredicate, inline,
 };
 use crate::clean::blanket_impl::BlanketImplFinder;
 use crate::clean::auto_trait::AutoTraitFinder;

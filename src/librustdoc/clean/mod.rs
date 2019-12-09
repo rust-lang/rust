@@ -20,15 +20,15 @@ use rustc::middle::stability;
 use rustc::mir::interpret::GlobalId;
 use rustc::hir;
 use rustc::hir::def::{CtorKind, DefKind, Res};
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX};
 use rustc::hir::ptr::P;
-use rustc::ty::subst::{InternalSubsts, SubstsRef, GenericArgKind};
-use rustc::ty::{self, DefIdTree, TyCtxt, Region, RegionVid, Ty, AdtKind};
+use rustc::ty::subst::InternalSubsts;
+use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
 use rustc::ty::fold::TypeFolder;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, Ident};
 use syntax::attr;
-use syntax_pos::symbol::{Symbol, kw, sym};
+use syntax_pos::symbol::{kw, sym};
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::{self, Pos};
 
@@ -45,9 +45,6 @@ use crate::doctree;
 use utils::*;
 
 pub use utils::{get_auto_trait_and_blanket_impls, krate, register_res};
-
-use self::auto_trait::AutoTraitFinder;
-use self::blanket_impl::BlanketImplFinder;
 
 pub use self::types::*;
 pub use self::types::Type::*;
