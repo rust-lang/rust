@@ -372,7 +372,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 
     fn llvm_cconv(&self) -> llvm::CallConv {
         match self.conv {
-            Conv::C => llvm::CCallConv,
+            Conv::C | Conv::Rust => llvm::CCallConv,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::ArmAapcs => llvm::ArmAapcsCallConv,
             Conv::Msp430Intr => llvm::Msp430Intr,
@@ -388,6 +388,11 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
+        // FIXME(eddyb) can this also be applied to callsites?
+        if self.ret.layout.abi.is_uninhabited() {
+            llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
+        }
+
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes, ty: Option<&Type>| {
             attrs.apply_llfn(llvm::AttributePlace::Argument(i), llfn, ty);

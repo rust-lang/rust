@@ -1,12 +1,13 @@
 //! Meta-syntax validation logic of attributes for post-expansion.
 
-use errors::{PResult, Applicability};
-use syntax::ast::{self, Attribute, AttrKind, Ident, MetaItem};
-use syntax::attr::{AttributeTemplate, mk_name_value_item_str};
-use syntax::early_buffered_lints::BufferedEarlyLintId;
-use syntax::feature_gate::BUILTIN_ATTRIBUTE_MAP;
-use syntax::token;
-use syntax::tokenstream::TokenTree;
+use crate::parse_in;
+
+use rustc_errors::{PResult, Applicability};
+use rustc_feature::{AttributeTemplate, BUILTIN_ATTRIBUTE_MAP};
+use syntax::ast::{self, Attribute, AttrKind, Ident, MacArgs, MacDelimiter, MetaItem, MetaItemKind};
+use syntax::attr::mk_name_value_item_str;
+use syntax::early_buffered_lints::ILL_FORMED_ATTRIBUTE_INPUT;
+use syntax::tokenstream::DelimSpan;
 use syntax::sess::ParseSess;
 use syntax_pos::{Symbol, sym};
 
@@ -19,11 +20,9 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
         // `rustc_dummy` doesn't have any restrictions specific to built-in attributes.
         Some((name, _, template, _)) if name != sym::rustc_dummy =>
             check_builtin_attribute(sess, attr, name, template),
-        _ => if let Some(TokenTree::Token(token)) = attr.get_normal_item().tokens.trees().next() {
-            if token == token::Eq {
-                // All key-value attributes are restricted to meta-item syntax.
-                parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
-            }
+        _ => if let MacArgs::Eq(..) = attr.get_normal_item().args {
+            // All key-value attributes are restricted to meta-item syntax.
+            parse_meta(sess, attr).map_err(|mut err| err.emit()).ok();
         }
     }
 }
@@ -31,14 +30,53 @@ pub fn check_meta(sess: &ParseSess, attr: &Attribute) {
 pub fn parse_meta<'a>(sess: &'a ParseSess, attr: &Attribute) -> PResult<'a, MetaItem> {
     Ok(match attr.kind {
         AttrKind::Normal(ref item) => MetaItem {
-            path: item.path.clone(),
-            kind: super::parse_in_attr(sess, attr, |p| p.parse_meta_item_kind())?,
             span: attr.span,
+            path: item.path.clone(),
+            kind: match &attr.get_normal_item().args {
+                MacArgs::Empty => MetaItemKind::Word,
+                MacArgs::Eq(_, t) => {
+                    let v = parse_in(sess, t.clone(), "name value", |p| p.parse_unsuffixed_lit())?;
+                    MetaItemKind::NameValue(v)
+                }
+                MacArgs::Delimited(dspan, delim, t) => {
+                    check_meta_bad_delim(sess, *dspan, *delim, "wrong meta list delimiters");
+                    let nmis = parse_in(sess, t.clone(), "meta list", |p| p.parse_meta_seq_top())?;
+                    MetaItemKind::List(nmis)
+                }
+            }
         },
         AttrKind::DocComment(comment) => {
             mk_name_value_item_str(Ident::new(sym::doc, attr.span), comment, attr.span)
         }
     })
+}
+
+crate fn check_meta_bad_delim(sess: &ParseSess, span: DelimSpan, delim: MacDelimiter, msg: &str) {
+    if let ast::MacDelimiter::Parenthesis = delim {
+        return;
+    }
+
+    sess.span_diagnostic
+        .struct_span_err(span.entire(), msg)
+        .multipart_suggestion(
+            "the delimiters should be `(` and `)`",
+            vec![
+                (span.open, "(".to_string()),
+                (span.close, ")".to_string()),
+            ],
+            Applicability::MachineApplicable,
+        )
+        .emit();
+}
+
+/// Checks that the given meta-item is compatible with this `AttributeTemplate`.
+fn is_attr_template_compatible(template: &AttributeTemplate, meta: &ast::MetaItemKind) -> bool {
+    match meta {
+        MetaItemKind::Word => template.word,
+        MetaItemKind::List(..) => template.list.is_some(),
+        MetaItemKind::NameValue(lit) if lit.kind.is_str() => template.name_value_str.is_some(),
+        MetaItemKind::NameValue(..) => false,
+    }
 }
 
 pub fn check_builtin_attribute(
@@ -57,7 +95,7 @@ pub fn check_builtin_attribute(
                              name == sym::test || name == sym::bench;
 
     match parse_meta(sess, attr) {
-        Ok(meta) => if !should_skip(name) && !template.compatible(&meta.kind) {
+        Ok(meta) => if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
             let error_msg = format!("malformed `{}` attribute input", name);
             let mut msg = "attribute must be of the form ".to_owned();
             let mut suggestions = vec![];
@@ -87,7 +125,7 @@ pub fn check_builtin_attribute(
             }
             if should_warn(name) {
                 sess.buffer_lint(
-                    BufferedEarlyLintId::IllFormedAttributeInput,
+                    &ILL_FORMED_ATTRIBUTE_INPUT,
                     meta.span,
                     ast::CRATE_NODE_ID,
                     &msg,

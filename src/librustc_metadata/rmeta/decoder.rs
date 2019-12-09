@@ -1,10 +1,10 @@
 // Decoding metadata from a single crate's metadata
 
 use crate::rmeta::*;
-use crate::rmeta::table::{FixedSizeEncoding, PerDefTable};
+use crate::rmeta::table::{FixedSizeEncoding, Table};
 
-use rustc_index::vec::IndexVec;
-use rustc_data_structures::sync::{Lrc, Lock, Once, AtomicCell};
+use rustc_index::vec::{Idx, IndexVec};
+use rustc_data_structures::sync::{Lrc, Lock, LockGuard, Once, AtomicCell};
 use rustc::hir::map::{DefKey, DefPath, DefPathData, DefPathHash};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::hir;
@@ -18,12 +18,11 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
 use rustc::dep_graph::{self, DepNodeIndex};
 use rustc::middle::lang_items;
-use rustc::mir::{self, interpret};
+use rustc::mir::{self, BodyAndCache, interpret, Promoted};
 use rustc::mir::interpret::{AllocDecodingSession, AllocDecodingState};
 use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::codec::TyDecoder;
-use rustc::mir::{Body, Promoted};
 use rustc::util::common::record_time;
 use rustc::util::captures::Captures;
 
@@ -32,7 +31,7 @@ use std::mem;
 use std::num::NonZeroUsize;
 use std::u32;
 
-use rustc_serialize::{Decodable, Decoder, Encodable, SpecializedDecoder, opaque};
+use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast::{self, Ident};
 use syntax::source_map::{self, respan, Spanned};
@@ -66,7 +65,7 @@ crate struct CrateMetadata {
     /// lifetime is only used behind `Lazy`, and therefore acts like an
     /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
     /// is being used to decode those values.
-    crate root: CrateRoot<'static>,
+    root: CrateRoot<'static>,
     /// For each definition in this crate, we encode a key. When the
     /// crate is loaded, we read all the keys and put them in this
     /// hashmap, which gives the reverse mapping. This allows us to
@@ -97,11 +96,11 @@ crate struct CrateMetadata {
     /// IDs as they are seen from the current compilation session.
     cnum_map: CrateNumMap,
     /// Same ID set as `cnum_map` plus maybe some injected crates like panic runtime.
-    crate dependencies: Lock<Vec<CrateNum>>,
+    dependencies: Lock<Vec<CrateNum>>,
     /// How to link (or not link) this crate to the currently compiled crate.
-    crate dep_kind: Lock<DepKind>,
+    dep_kind: Lock<DepKind>,
     /// Filesystem location of this crate.
-    crate source: CrateSource,
+    source: CrateSource,
     /// Whether or not this crate should be consider a private dependency
     /// for purposes of the 'exported_private_dependencies' lint
     private_dep: bool,
@@ -112,7 +111,7 @@ crate struct CrateMetadata {
 
     /// Information about the `extern crate` item or path that caused this crate to be loaded.
     /// If this is `None`, then the crate was injected (e.g., by the allocator).
-    crate extern_crate: Lock<Option<ExternCrate>>,
+    extern_crate: Lock<Option<ExternCrate>>,
 }
 
 /// Holds information about a syntax_pos::SourceFile imported from another crate.
@@ -217,7 +216,7 @@ impl<'a, 'tcx> Metadata<'a, 'tcx> for (&'a CrateMetadata, TyCtxt<'tcx>) {
     }
 }
 
-impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
+impl<'a, 'tcx, T: Decodable> Lazy<T> {
     fn decode<M: Metadata<'a, 'tcx>>(self, metadata: M) -> T {
         let mut dcx = metadata.decoder(self.position.get());
         dcx.lazy_state = LazyState::NodeStart(self.position);
@@ -225,7 +224,7 @@ impl<'a, 'tcx, T: Encodable + Decodable> Lazy<T> {
     }
 }
 
-impl<'a: 'x, 'tcx: 'x, 'x, T: Encodable + Decodable> Lazy<[T]> {
+impl<'a: 'x, 'tcx: 'x, 'x, T: Decodable> Lazy<[T]> {
     fn decode<M: Metadata<'a, 'tcx>>(
         self,
         metadata: M,
@@ -324,13 +323,13 @@ impl<'a, 'tcx> TyDecoder<'tcx> for DecodeContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<T>> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<T>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<T>, Self::Error> {
         self.read_lazy_with_meta(())
     }
 }
 
-impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a, 'tcx> {
+impl<'a, 'tcx, T> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<Lazy<[T]>, Self::Error> {
         let len = self.read_usize()?;
         if len == 0 {
@@ -341,10 +340,10 @@ impl<'a, 'tcx, T: Encodable> SpecializedDecoder<Lazy<[T]>> for DecodeContext<'a,
     }
 }
 
-impl<'a, 'tcx, T> SpecializedDecoder<Lazy<PerDefTable<T>>> for DecodeContext<'a, 'tcx>
+impl<'a, 'tcx, I: Idx, T> SpecializedDecoder<Lazy<Table<I, T>>> for DecodeContext<'a, 'tcx>
     where Option<T>: FixedSizeEncoding,
 {
-    fn specialized_decode(&mut self) -> Result<Lazy<PerDefTable<T>>, Self::Error> {
+    fn specialized_decode(&mut self) -> Result<Lazy<Table<I, T>>, Self::Error> {
         let len = self.read_usize()?;
         self.read_lazy_with_meta(len)
     }
@@ -556,6 +555,22 @@ impl<'tcx> EntryKind<'tcx> {
 impl CrateRoot<'_> {
     crate fn is_proc_macro_crate(&self) -> bool {
         self.proc_macro_data.is_some()
+    }
+
+    crate fn name(&self) -> Symbol {
+        self.name
+    }
+
+    crate fn disambiguator(&self) -> CrateDisambiguator {
+        self.disambiguator
+    }
+
+    crate fn hash(&self) -> Svh {
+        self.hash
+    }
+
+    crate fn triple(&self) -> &TargetTriple {
+        &self.triple
     }
 
     crate fn decode_crate_deps(
@@ -1064,26 +1079,32 @@ impl<'a, 'tcx> CrateMetadata {
             self.root.per_def.mir.get(self, id).is_some()
     }
 
-    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> Body<'tcx> {
-        self.root.per_def.mir.get(self, id)
+    fn get_optimized_mir(&self, tcx: TyCtxt<'tcx>, id: DefIndex) -> BodyAndCache<'tcx> {
+        let mut cache = self.root.per_def.mir.get(self, id)
             .filter(|_| !self.is_proc_macro(id))
             .unwrap_or_else(|| {
                 bug!("get_optimized_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx))
+            .decode((self, tcx));
+        cache.ensure_predecessors();
+        cache
     }
 
     fn get_promoted_mir(
         &self,
         tcx: TyCtxt<'tcx>,
         id: DefIndex,
-    ) -> IndexVec<Promoted, Body<'tcx>> {
-        self.root.per_def.promoted_mir.get(self, id)
+    ) -> IndexVec<Promoted, BodyAndCache<'tcx>> {
+        let mut cache = self.root.per_def.promoted_mir.get(self, id)
             .filter(|_| !self.is_proc_macro(id))
             .unwrap_or_else(|| {
                 bug!("get_promoted_mir: missing MIR for `{:?}`", self.local_def_id(id))
             })
-            .decode((self, tcx))
+            .decode((self, tcx));
+        for body in cache.iter_mut() {
+            body.ensure_predecessors();
+        }
+        cache
     }
 
     fn mir_const_qualif(&self, id: DefIndex) -> mir::ConstQualifs {
@@ -1339,10 +1360,16 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    // This replicates some of the logic of the crate-local `is_const_fn_raw` query, because we
+    // don't serialize constness for tuple variant and tuple struct constructors.
     fn is_const_fn_raw(&self, id: DefIndex) -> bool {
         let constness = match self.kind(id) {
             EntryKind::Method(data) => data.decode(self).fn_data.constness,
             EntryKind::Fn(data) => data.decode(self).constness,
+            // Some intrinsics can be const fn. While we could recompute this (at least until we
+            // stop having hardcoded whitelists and move to stability attributes), it seems cleaner
+            // to treat all const fns equally.
+            EntryKind::ForeignFn(data) => data.decode(self).constness,
             EntryKind::Variant(..) | EntryKind::Struct(..) => hir::Constness::Const,
             _ => hir::Constness::NotConst,
         };
@@ -1516,6 +1543,83 @@ impl<'a, 'tcx> CrateMetadata {
         }
 
         dep_node_index
+    }
+
+    crate fn dependencies(&self) -> LockGuard<'_, Vec<CrateNum>> {
+        self.dependencies.borrow()
+    }
+
+    crate fn add_dependency(&self, cnum: CrateNum) {
+        self.dependencies.borrow_mut().push(cnum);
+    }
+
+    crate fn update_extern_crate(&self, new_extern_crate: ExternCrate) -> bool {
+        let mut extern_crate = self.extern_crate.borrow_mut();
+        let update = Some(new_extern_crate.rank()) > extern_crate.as_ref().map(ExternCrate::rank);
+        if update {
+            *extern_crate = Some(new_extern_crate);
+        }
+        update
+    }
+
+    crate fn source(&self) -> &CrateSource {
+        &self.source
+    }
+
+    crate fn dep_kind(&self) -> DepKind {
+        *self.dep_kind.lock()
+    }
+
+    crate fn update_dep_kind(&self, f: impl FnOnce(DepKind) -> DepKind) {
+        self.dep_kind.with_lock(|dep_kind| *dep_kind = f(*dep_kind))
+    }
+
+    crate fn panic_strategy(&self) -> PanicStrategy {
+        self.root.panic_strategy
+    }
+
+    crate fn needs_panic_runtime(&self) -> bool {
+        self.root.needs_panic_runtime
+    }
+
+    crate fn is_panic_runtime(&self) -> bool {
+        self.root.panic_runtime
+    }
+
+    crate fn is_sanitizer_runtime(&self) -> bool {
+        self.root.sanitizer_runtime
+    }
+
+    crate fn is_profiler_runtime(&self) -> bool {
+        self.root.profiler_runtime
+    }
+
+    crate fn needs_allocator(&self) -> bool {
+        self.root.needs_allocator
+    }
+
+    crate fn has_global_allocator(&self) -> bool {
+        self.root.has_global_allocator
+    }
+
+    crate fn has_default_lib_allocator(&self) -> bool {
+        self.root.has_default_lib_allocator
+    }
+
+    crate fn is_proc_macro_crate(&self) -> bool {
+        self.root.is_proc_macro_crate()
+    }
+
+    crate fn name(&self) -> Symbol {
+        self.root.name
+    }
+
+    crate fn disambiguator(&self) -> CrateDisambiguator {
+        self.root.disambiguator
+    }
+
+    crate fn hash(&self) -> Svh {
+        self.root.hash
     }
 }
 

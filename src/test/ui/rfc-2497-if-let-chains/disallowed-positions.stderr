@@ -575,8 +575,17 @@ LL |     if (let 0 = 0)? {}
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/disallowed-positions.rs:46:8
    |
-LL |     if (let 0 = 0)? {}
-   |        ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+LL | / fn nested_within_if_expr() {
+LL | |     if &let 0 = 0 {}
+LL | |
+LL | |
+...  |
+LL | |     if (let 0 = 0)? {}
+   | |        ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+...  |
+LL | |     if let true = let true = true {}
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::from_error`
@@ -754,8 +763,17 @@ LL |     while (let 0 = 0)? {}
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/disallowed-positions.rs:110:11
    |
-LL |     while (let 0 = 0)? {}
-   |           ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+LL | / fn nested_within_while_expr() {
+LL | |     while &let 0 = 0 {}
+LL | |
+LL | |
+...  |
+LL | |     while (let 0 = 0)? {}
+   | |           ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+...  |
+LL | |     while let true = let true = true {}
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::from_error`
@@ -924,8 +942,17 @@ LL |     (let 0 = 0)?;
 error[E0277]: the `?` operator can only be used in a function that returns `Result` or `Option` (or another type that implements `std::ops::Try`)
   --> $DIR/disallowed-positions.rs:183:5
    |
-LL |     (let 0 = 0)?;
-   |     ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+LL | / fn outside_if_and_while_expr() {
+LL | |     &let 0 = 0;
+LL | |
+LL | |     !let 0 = 0;
+...  |
+LL | |     (let 0 = 0)?;
+   | |     ^^^^^^^^^^^^ cannot use the `?` operator in a function that returns `()`
+...  |
+LL | |
+LL | | }
+   | |_- this function should return `Result` or `Option` to accept `?`
    |
    = help: the trait `std::ops::Try` is not implemented for `()`
    = note: required by `std::ops::Try::from_error`

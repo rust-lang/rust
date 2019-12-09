@@ -2,7 +2,8 @@
 
 use crate::transform::{MirPass, MirSource};
 use rustc::mir::{
-    BasicBlock, BasicBlockData, Body, Local, Operand, Rvalue, StatementKind, TerminatorKind,
+    BasicBlock, BasicBlockData, Body, BodyAndCache, Local, Operand, Rvalue, StatementKind,
+    TerminatorKind,
 };
 use rustc::ty::layout::{Abi, TyLayout, Variants};
 use rustc::ty::{Ty, TyCtxt};
@@ -28,7 +29,7 @@ fn get_switched_on_type<'tcx>(
     // Only bother checking blocks which terminate by switching on a local.
     if let Some(local) = get_discriminant_local(&terminator.kind) {
         let stmt_before_term = (block_data.statements.len() > 0)
-            .then_with(|| &block_data.statements[block_data.statements.len() - 1].kind);
+            .then(|| &block_data.statements[block_data.statements.len() - 1].kind);
 
         if let Some(StatementKind::Assign(box (l, Rvalue::Discriminant(place)))) = stmt_before_term
         {
@@ -58,14 +59,14 @@ fn variant_discriminants<'tcx>(
             .iter_enumerated()
             .filter_map(|(idx, layout)| {
                 (layout.abi != Abi::Uninhabited)
-                    .then_with(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
+                    .then(|| ty.discriminant_for_variant(tcx, idx).unwrap().val)
             })
             .collect(),
     }
 }
 
 impl<'tcx> MirPass<'tcx> for UninhabitedEnumBranching {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, source: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         if source.promoted.is_some() {
             return;
         }

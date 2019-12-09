@@ -1,6 +1,6 @@
 #![unstable(reason = "not public", issue = "0", feature = "fd")]
 
-use crate::io::{self, Read, ErrorKind};
+use crate::io::{self, ErrorKind, Read};
 use crate::mem;
 use crate::sys::cvt;
 use crate::sys::hermit::abi;
@@ -16,7 +16,9 @@ impl FileDesc {
         FileDesc { fd }
     }
 
-    pub fn raw(&self) -> i32 { self.fd }
+    pub fn raw(&self) -> i32 {
+        self.fd
+    }
 
     /// Extracts the actual file descriptor without closing it.
     pub fn into_raw(self) -> i32 {
@@ -67,7 +69,9 @@ impl<'a> Read for &'a FileDesc {
 }
 
 impl AsInner<i32> for FileDesc {
-    fn as_inner(&self) -> &i32 { &self.fd }
+    fn as_inner(&self) -> &i32 {
+        &self.fd
+    }
 }
 
 impl Drop for FileDesc {

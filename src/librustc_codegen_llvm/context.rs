@@ -1,3 +1,4 @@
+use crate::abi::FnAbi;
 use crate::attributes;
 use crate::llvm;
 use crate::llvm_util;
@@ -15,7 +16,7 @@ use rustc::mir::mono::CodegenUnit;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
 use rustc::ty::layout::{
-    LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx, HasParamEnv
+    FnAbiExt, LayoutError, LayoutOf, PointeeInfo, Size, TyLayout, VariantIdx, HasParamEnv
 };
 use rustc::ty::{self, Ty, TyCtxt, Instance};
 use rustc::util::nodemap::FxHashMap;
@@ -420,7 +421,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             Abi::C
         ));
 
-        let llfn = self.declare_fn("rust_eh_unwind_resume", sig);
+        let fn_abi = FnAbi::of_fn_ptr(self, sig, &[]);
+        let llfn = self.declare_fn("rust_eh_unwind_resume", &fn_abi);
         attributes::apply_target_cpu_attr(self, llfn);
         unwresume.set(Some(llfn));
         llfn

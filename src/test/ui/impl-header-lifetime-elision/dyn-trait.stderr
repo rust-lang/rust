@@ -9,13 +9,21 @@ note: first, the lifetime cannot outlive the lifetime `'a` as defined on the fun
    |
 LL | fn with_dyn_debug_static<'a>(x: Box<dyn Debug + 'a>) {
    |                          ^^
-   = note: ...so that the expression is assignable:
-           expected std::boxed::Box<dyn std::fmt::Debug>
-              found std::boxed::Box<(dyn std::fmt::Debug + 'a)>
+note: ...so that the expression is assignable
+  --> $DIR/dyn-trait.rs:20:16
+   |
+LL |     static_val(x);
+   |                ^
+   = note: expected  `std::boxed::Box<dyn std::fmt::Debug>`
+              found  `std::boxed::Box<(dyn std::fmt::Debug + 'a)>`
    = note: but, the lifetime must be valid for the static lifetime...
-   = note: ...so that the types are compatible:
-           expected StaticTrait
-              found StaticTrait
+note: ...so that the types are compatible
+  --> $DIR/dyn-trait.rs:20:5
+   |
+LL |     static_val(x);
+   |     ^^^^^^^^^^
+   = note: expected  `StaticTrait`
+              found  `StaticTrait`
 
 error: aborting due to previous error
 

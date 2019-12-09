@@ -65,13 +65,25 @@ use syntax_pos::Span;
 // variant argument) that does not require visiting, as in
 // `is_cleanup` above.
 
+macro_rules! body_cache_type {
+    (mut $a:lifetime, $tcx:lifetime) => {
+        &mut BodyAndCache<$tcx>
+    };
+    ($a:lifetime, $tcx:lifetime) => {
+        ReadOnlyBodyAndCache<$a, $tcx>
+    };
+}
+
 macro_rules! make_mir_visitor {
     ($visitor_trait_name:ident, $($mutability:ident)?) => {
         pub trait $visitor_trait_name<'tcx> {
             // Override these, and call `self.super_xxx` to revert back to the
             // default behavior.
 
-            fn visit_body(&mut self, body: & $($mutability)? Body<'tcx>) {
+            fn visit_body(
+                &mut self,
+                body: body_cache_type!($($mutability)? '_, 'tcx)
+            ) {
                 self.super_body(body);
             }
 
@@ -221,6 +233,11 @@ macro_rules! make_mir_visitor {
                 self.super_local_decl(local, local_decl);
             }
 
+            fn visit_var_debug_info(&mut self,
+                                    var_debug_info: & $($mutability)* VarDebugInfo<'tcx>) {
+                self.super_var_debug_info(var_debug_info);
+            }
+
             fn visit_local(&mut self,
                             _local: & $($mutability)? Local,
                             _context: PlaceContext,
@@ -235,11 +252,14 @@ macro_rules! make_mir_visitor {
             // The `super_xxx` methods comprise the default behavior and are
             // not meant to be overridden.
 
-            fn super_body(&mut self,
-                         body: & $($mutability)? Body<'tcx>) {
+            fn super_body(
+                &mut self,
+                $($mutability)? body: body_cache_type!($($mutability)? '_, 'tcx)
+            ) {
+                let span = body.span;
                 if let Some(yield_ty) = &$($mutability)? body.yield_ty {
                     self.visit_ty(yield_ty, TyContext::YieldTy(SourceInfo {
-                        span: body.span,
+                        span,
                         scope: OUTERMOST_SOURCE_SCOPE,
                     }));
                 }
@@ -255,6 +275,7 @@ macro_rules! make_mir_visitor {
                     self.visit_basic_block_data(bb, data);
                 }
 
+                let body: & $($mutability)? Body<'_> = & $($mutability)? body;
                 for scope in &$($mutability)? body.source_scopes {
                     self.visit_source_scope_data(scope);
                 }
@@ -277,6 +298,10 @@ macro_rules! make_mir_visitor {
                     self.visit_user_type_annotation(
                         index, annotation
                     );
+                }
+
+                for var_debug_info in &$($mutability)? body.var_debug_info {
+                    self.visit_var_debug_info(var_debug_info);
                 }
 
                 self.visit_span(&$($mutability)? body.span);
@@ -308,6 +333,7 @@ macro_rules! make_mir_visitor {
                 let SourceScopeData {
                     span,
                     parent_scope,
+                    local_data: _,
                 } = scope_data;
 
                 self.visit_span(span);
@@ -508,7 +534,7 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(index, location);
                     }
                     Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
-                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic => {
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_) => {
                         // Nothing to visit
                     }
                 }
@@ -687,9 +713,7 @@ macro_rules! make_mir_visitor {
                     mutability: _,
                     ty,
                     user_ty,
-                    name: _,
                     source_info,
-                    visibility_scope,
                     internal: _,
                     local_info: _,
                     is_block_tail: _,
@@ -703,7 +727,23 @@ macro_rules! make_mir_visitor {
                     self.visit_user_type_projection(user_ty);
                 }
                 self.visit_source_info(source_info);
-                self.visit_source_scope(visibility_scope);
+            }
+
+            fn super_var_debug_info(&mut self,
+                                    var_debug_info: & $($mutability)? VarDebugInfo<'tcx>) {
+                let VarDebugInfo {
+                    name: _,
+                    source_info,
+                    place,
+                } = var_debug_info;
+
+                self.visit_source_info(source_info);
+                let location = START_BLOCK.start_location();
+                self.visit_place(
+                    place,
+                    PlaceContext::NonUse(NonUseContext::VarDebugInfo),
+                    location,
+                );
             }
 
             fn super_source_scope(&mut self,
@@ -766,7 +806,11 @@ macro_rules! make_mir_visitor {
 
             // Convenience methods
 
-            fn visit_location(&mut self, body: & $($mutability)? Body<'tcx>, location: Location) {
+            fn visit_location(
+                &mut self,
+                body: body_cache_type!($($mutability)? '_, 'tcx),
+                location: Location
+            ) {
                 let basic_block = & $($mutability)? body[location.block];
                 if basic_block.statements.len() == location.statement_index {
                     if let Some(ref $($mutability)? terminator) = basic_block.terminator {
@@ -1029,6 +1073,8 @@ pub enum NonUseContext {
     StorageDead,
     /// User type annotation assertions for NLL.
     AscribeUserTy,
+    /// The data of an user variable, for debug info.
+    VarDebugInfo,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

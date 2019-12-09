@@ -347,6 +347,7 @@ impl PatternFolder<'tcx> for LiteralExpander<'tcx> {
             ) => bug!("cannot deref {:#?}, {} -> {}", val, crty, rty),
 
             (_, &PatKind::Binding { subpattern: Some(ref s), .. }) => s.fold_with(self),
+            (_, &PatKind::AscribeUserType { subpattern: ref s, .. }) => s.fold_with(self),
             _ => pat.super_fold_with(self),
         }
     }
@@ -399,22 +400,37 @@ impl<'p, 'tcx> PatStack<'p, 'tcx> {
         self.0.iter().map(|p| *p)
     }
 
+    // If the first pattern is an or-pattern, expand this pattern. Otherwise, return `None`.
+    fn expand_or_pat(&self) -> Option<Vec<Self>> {
+        if self.is_empty() {
+            None
+        } else if let PatKind::Or { pats } = &*self.head().kind {
+            Some(
+                pats.iter()
+                    .map(|pat| {
+                        let mut new_patstack = PatStack::from_pattern(pat);
+                        new_patstack.0.extend_from_slice(&self.0[1..]);
+                        new_patstack
+                    })
+                    .collect(),
+            )
+        } else {
+            None
+        }
+    }
+
     /// This computes `D(self)`. See top of the file for explanations.
     fn specialize_wildcard(&self) -> Option<Self> {
         if self.head().is_wildcard() { Some(self.to_tail()) } else { None }
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize_constructor<'a, 'q>(
+    fn specialize_constructor(
         &self,
-        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &[&'q Pat<'tcx>],
-    ) -> Option<PatStack<'q, 'tcx>>
-    where
-        'a: 'q,
-        'p: 'q,
-    {
+        ctor_wild_subpatterns: &'p [Pat<'tcx>],
+    ) -> Option<PatStack<'p, 'tcx>> {
         let new_heads = specialize_one_pattern(cx, self.head(), constructor, ctor_wild_subpatterns);
         new_heads.map(|mut new_head| {
             new_head.0.extend_from_slice(&self.0[1..]);
@@ -439,6 +455,7 @@ impl<'p, 'tcx> FromIterator<&'p Pat<'tcx>> for PatStack<'p, 'tcx> {
 }
 
 /// A 2D matrix.
+#[derive(Clone)]
 pub struct Matrix<'p, 'tcx>(Vec<PatStack<'p, 'tcx>>);
 
 impl<'p, 'tcx> Matrix<'p, 'tcx> {
@@ -446,8 +463,13 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
         Matrix(vec![])
     }
 
+    /// Pushes a new row to the matrix. If the row starts with an or-pattern, this expands it.
     pub fn push(&mut self, row: PatStack<'p, 'tcx>) {
-        self.0.push(row)
+        if let Some(rows) = row.expand_or_pat() {
+            self.0.extend(rows);
+        } else {
+            self.0.push(row);
+        }
     }
 
     /// Iterate over the first component of each row
@@ -461,22 +483,16 @@ impl<'p, 'tcx> Matrix<'p, 'tcx> {
     }
 
     /// This computes `S(constructor, self)`. See top of the file for explanations.
-    fn specialize_constructor<'a, 'q>(
+    fn specialize_constructor(
         &self,
-        cx: &mut MatchCheckCtxt<'a, 'tcx>,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
         constructor: &Constructor<'tcx>,
-        ctor_wild_subpatterns: &[&'q Pat<'tcx>],
-    ) -> Matrix<'q, 'tcx>
-    where
-        'a: 'q,
-        'p: 'q,
-    {
-        Matrix(
-            self.0
-                .iter()
-                .filter_map(|r| r.specialize_constructor(cx, constructor, ctor_wild_subpatterns))
-                .collect(),
-        )
+        ctor_wild_subpatterns: &'p [Pat<'tcx>],
+    ) -> Matrix<'p, 'tcx> {
+        self.0
+            .iter()
+            .filter_map(|r| r.specialize_constructor(cx, constructor, ctor_wild_subpatterns))
+            .collect()
     }
 }
 
@@ -528,7 +544,12 @@ impl<'p, 'tcx> FromIterator<PatStack<'p, 'tcx>> for Matrix<'p, 'tcx> {
     where
         T: IntoIterator<Item = PatStack<'p, 'tcx>>,
     {
-        Matrix(iter.into_iter().collect())
+        let mut matrix = Matrix::empty();
+        for x in iter {
+            // Using `push` ensures we correctly expand or-patterns.
+            matrix.push(x);
+        }
+        matrix
     }
 }
 
@@ -747,7 +768,7 @@ impl<'tcx> Constructor<'tcx> {
                     .iter()
                     .filter_map(|c: &Constructor<'_>| match c {
                         Slice(slice) => Some(*slice),
-                        // FIXME(#65413): We ignore `ConstantValue`s here.
+                        // FIXME(oli-obk): implement `deref` for `ConstValue`
                         ConstantValue(..) => None,
                         _ => bug!("bad slice pattern constructor {:?}", c),
                     })
@@ -1005,17 +1026,19 @@ impl<'tcx> Constructor<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub enum Usefulness<'tcx> {
-    Useful,
+pub enum Usefulness<'tcx, 'p> {
+    /// Carries a list of unreachable subpatterns. Used only in the presence of or-patterns.
+    Useful(Vec<&'p Pat<'tcx>>),
+    /// Carries a list of witnesses of non-exhaustiveness.
     UsefulWithWitness(Vec<Witness<'tcx>>),
     NotUseful,
 }
 
-impl<'tcx> Usefulness<'tcx> {
+impl<'tcx, 'p> Usefulness<'tcx, 'p> {
     fn new_useful(preference: WitnessPreference) -> Self {
         match preference {
             ConstructWitness => UsefulWithWitness(vec![Witness(vec![])]),
-            LeaveOutWitness => Useful,
+            LeaveOutWitness => Useful(vec![]),
         }
     }
 
@@ -1576,13 +1599,13 @@ impl<'tcx> fmt::Debug for MissingConstructors<'tcx> {
 /// relation to preceding patterns, it is not reachable) and exhaustiveness
 /// checking (if a wildcard pattern is useful in relation to a matrix, the
 /// matrix isn't exhaustive).
-pub fn is_useful<'p, 'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+pub fn is_useful<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &PatStack<'_, 'tcx>,
+    v: &PatStack<'p, 'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
-) -> Usefulness<'tcx> {
+) -> Usefulness<'tcx, 'p> {
     let &Matrix(ref rows) = matrix;
     debug!("is_useful({:#?}, {:#?})", matrix, v);
 
@@ -1600,6 +1623,30 @@ pub fn is_useful<'p, 'a, 'tcx>(
     };
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
+
+    // If the first pattern is an or-pattern, expand it.
+    if let Some(vs) = v.expand_or_pat() {
+        // We need to push the already-seen patterns into the matrix in order to detect redundant
+        // branches like `Some(_) | Some(0)`. We also keep track of the unreachable subpatterns.
+        let mut matrix = matrix.clone();
+        let mut unreachable_pats = Vec::new();
+        let mut any_is_useful = false;
+        for v in vs {
+            let res = is_useful(cx, &matrix, &v, witness_preference, hir_id);
+            match res {
+                Useful(pats) => {
+                    any_is_useful = true;
+                    unreachable_pats.extend(pats);
+                }
+                NotUseful => unreachable_pats.push(v.head()),
+                UsefulWithWitness(_) => {
+                    bug!("Encountered or-pat in `v` during exhaustiveness checking")
+                }
+            }
+            matrix.push(v);
+        }
+        return if any_is_useful { Useful(unreachable_pats) } else { NotUseful };
+    }
 
     let (ty, span) = matrix
         .heads()
@@ -1731,21 +1778,21 @@ pub fn is_useful<'p, 'a, 'tcx>(
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
-fn is_useful_specialized<'p, 'a, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+fn is_useful_specialized<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     matrix: &Matrix<'p, 'tcx>,
-    v: &PatStack<'_, 'tcx>,
+    v: &PatStack<'p, 'tcx>,
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness_preference: WitnessPreference,
     hir_id: HirId,
-) -> Usefulness<'tcx> {
+) -> Usefulness<'tcx, 'p> {
     debug!("is_useful_specialized({:#?}, {:#?}, {:?})", v, ctor, lty);
 
-    let ctor_wild_subpatterns_owned: Vec<_> = ctor.wildcard_subpatterns(cx, lty);
-    let ctor_wild_subpatterns: Vec<_> = ctor_wild_subpatterns_owned.iter().collect();
-    let matrix = matrix.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns);
-    v.specialize_constructor(cx, &ctor, &ctor_wild_subpatterns)
+    let ctor_wild_subpatterns =
+        cx.pattern_arena.alloc_from_iter(ctor.wildcard_subpatterns(cx, lty));
+    let matrix = matrix.specialize_constructor(cx, &ctor, ctor_wild_subpatterns);
+    v.specialize_constructor(cx, &ctor, ctor_wild_subpatterns)
         .map(|v| is_useful(cx, &matrix, &v, witness_preference, hir_id))
         .map(|u| u.apply_constructor(cx, &ctor, lty))
         .unwrap_or(NotUseful)
@@ -1759,9 +1806,7 @@ fn pat_constructor<'tcx>(
     pat: &Pat<'tcx>,
 ) -> Option<Constructor<'tcx>> {
     match *pat.kind {
-        PatKind::AscribeUserType { ref subpattern, .. } => {
-            pat_constructor(tcx, param_env, subpattern)
-        }
+        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
         PatKind::Binding { .. } | PatKind::Wild => None,
         PatKind::Leaf { .. } | PatKind::Deref { .. } => Some(Single),
         PatKind::Variant { adt_def, variant_index, .. } => {
@@ -1771,7 +1816,19 @@ fn pat_constructor<'tcx>(
             if let Some(int_range) = IntRange::from_const(tcx, param_env, value, pat.span) {
                 Some(IntRange(int_range))
             } else {
-                Some(ConstantValue(value))
+                match (value.val, &value.ty.kind) {
+                    (_, ty::Array(_, n)) => {
+                        let len = n.eval_usize(tcx, param_env);
+                        Some(Slice(Slice { array_len: Some(len), kind: FixedLen(len) }))
+                    }
+                    (ty::ConstKind::Value(ConstValue::Slice { start, end, .. }), ty::Slice(_)) => {
+                        let len = (end - start) as u64;
+                        Some(Slice(Slice { array_len: None, kind: FixedLen(len) }))
+                    }
+                    // FIXME(oli-obk): implement `deref` for `ConstValue`
+                    // (ty::ConstKind::Value(ConstValue::ByRef { .. }), ty::Slice(_)) => { ... }
+                    _ => Some(ConstantValue(value)),
+                }
             }
         }
         PatKind::Range(PatRange { lo, hi, end }) => {
@@ -1802,9 +1859,7 @@ fn pat_constructor<'tcx>(
                 if slice.is_some() { VarLen(prefix, suffix) } else { FixedLen(prefix + suffix) };
             Some(Slice(Slice { array_len, kind }))
         }
-        PatKind::Or { .. } => {
-            bug!("support for or-patterns has not been fully implemented yet.");
-        }
+        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     }
 }
 
@@ -2085,32 +2140,19 @@ fn split_grouped_constructors<'p, 'tcx>(
                 let mut max_suffix_len = self_suffix;
                 let mut max_fixed_len = 0;
 
-                for row in matrix.heads() {
-                    match *row.kind {
-                        PatKind::Constant { value } => {
-                            // extract the length of an array/slice from a constant
-                            match (value.val, &value.ty.kind) {
-                                (_, ty::Array(_, n)) => {
-                                    max_fixed_len =
-                                        cmp::max(max_fixed_len, n.eval_usize(tcx, param_env))
-                                }
-                                (
-                                    ty::ConstKind::Value(ConstValue::Slice { start, end, .. }),
-                                    ty::Slice(_),
-                                ) => max_fixed_len = cmp::max(max_fixed_len, (end - start) as u64),
-                                _ => {}
+                let head_ctors =
+                    matrix.heads().filter_map(|pat| pat_constructor(tcx, param_env, pat));
+                for ctor in head_ctors {
+                    match ctor {
+                        Slice(slice) => match slice.pattern_kind() {
+                            FixedLen(len) => {
+                                max_fixed_len = cmp::max(max_fixed_len, len);
                             }
-                        }
-                        PatKind::Slice { ref prefix, slice: None, ref suffix }
-                        | PatKind::Array { ref prefix, slice: None, ref suffix } => {
-                            let fixed_len = prefix.len() as u64 + suffix.len() as u64;
-                            max_fixed_len = cmp::max(max_fixed_len, fixed_len);
-                        }
-                        PatKind::Slice { ref prefix, slice: Some(_), ref suffix }
-                        | PatKind::Array { ref prefix, slice: Some(_), ref suffix } => {
-                            max_prefix_len = cmp::max(max_prefix_len, prefix.len() as u64);
-                            max_suffix_len = cmp::max(max_suffix_len, suffix.len() as u64);
-                        }
+                            VarLen(prefix, suffix) => {
+                                max_prefix_len = cmp::max(max_prefix_len, prefix);
+                                max_suffix_len = cmp::max(max_suffix_len, suffix);
+                            }
+                        },
                         _ => {}
                     }
                 }
@@ -2218,13 +2260,13 @@ fn constructor_covered_by_range<'tcx>(
     if intersects { Some(()) } else { None }
 }
 
-fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
+fn patterns_for_variant<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
     subpatterns: &'p [FieldPat<'tcx>],
-    ctor_wild_subpatterns: &[&'p Pat<'tcx>],
+    ctor_wild_subpatterns: &'p [Pat<'tcx>],
     is_non_exhaustive: bool,
 ) -> PatStack<'p, 'tcx> {
-    let mut result = SmallVec::from_slice(ctor_wild_subpatterns);
+    let mut result: SmallVec<_> = ctor_wild_subpatterns.iter().collect();
 
     for subpat in subpatterns {
         if !is_non_exhaustive || !cx.is_uninhabited(subpat.pattern.ty) {
@@ -2248,27 +2290,21 @@ fn patterns_for_variant<'p, 'a: 'p, 'tcx>(
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
-    cx: &mut MatchCheckCtxt<'a, 'tcx>,
-    mut pat: &'q Pat<'tcx>,
+fn specialize_one_pattern<'p, 'tcx>(
+    cx: &mut MatchCheckCtxt<'p, 'tcx>,
+    pat: &'p Pat<'tcx>,
     constructor: &Constructor<'tcx>,
-    ctor_wild_subpatterns: &[&'p Pat<'tcx>],
+    ctor_wild_subpatterns: &'p [Pat<'tcx>],
 ) -> Option<PatStack<'p, 'tcx>> {
-    while let PatKind::AscribeUserType { ref subpattern, .. } = *pat.kind {
-        pat = subpattern;
-    }
-
     if let NonExhaustive = constructor {
         // Only a wildcard pattern can match the special extra constructor
         return if pat.is_wildcard() { Some(PatStack::default()) } else { None };
     }
 
     let result = match *pat.kind {
-        PatKind::AscribeUserType { .. } => bug!(), // Handled above
+        PatKind::AscribeUserType { .. } => bug!(), // Handled by `expand_pattern`
 
-        PatKind::Binding { .. } | PatKind::Wild => {
-            Some(PatStack::from_slice(ctor_wild_subpatterns))
-        }
+        PatKind::Binding { .. } | PatKind::Wild => Some(ctor_wild_subpatterns.iter().collect()),
 
         PatKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
             let ref variant = adt_def.variants[variant_index];
@@ -2378,7 +2414,6 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
                                 .chain(
                                     ctor_wild_subpatterns
                                         .iter()
-                                        .map(|p| *p)
                                         .skip(prefix.len())
                                         .take(slice_count)
                                         .chain(suffix.iter()),
@@ -2410,9 +2445,7 @@ fn specialize_one_pattern<'p, 'a: 'p, 'q: 'p, 'tcx>(
             _ => span_bug!(pat.span, "unexpected ctor {:?} for slice pat", constructor),
         },
 
-        PatKind::Or { .. } => {
-            bug!("support for or-patterns has not been fully implemented yet.");
-        }
+        PatKind::Or { .. } => bug!("Or-pattern should have been expanded earlier on."),
     };
     debug!("specialize({:#?}, {:#?}) = {:#?}", pat, ctor_wild_subpatterns, result);
 

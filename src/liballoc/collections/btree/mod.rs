@@ -1,6 +1,6 @@
+pub mod map;
 mod node;
 mod search;
-pub mod map;
 pub mod set;
 
 #[doc(hidden)]

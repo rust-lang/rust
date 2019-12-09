@@ -463,7 +463,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         &self,
         err: &mut DiagnosticBuilder<'_>,
         terr: &TypeError<'tcx>,
-        sp: Span,
     ) {
         use hir::def_id::CrateNum;
         use hir::map::DisambiguatedDefPathData;
@@ -577,14 +576,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 };
                 if same_path().unwrap_or(false) {
                     let crate_name = self.tcx.crate_name(did1.krate);
-                    err.span_note(
-                        sp,
-                        &format!(
-                            "Perhaps two different versions \
-                             of crate `{}` are being used?",
-                            crate_name
-                        ),
-                    );
+                    err.note(&format!(
+                        "perhaps two different versions of crate `{}` are being used?",
+                        crate_name
+                    ));
                 }
             }
         };
@@ -1434,7 +1429,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .unwrap_or_else(|| {
                 self.tcx.hir().body_owner_def_id(hir::BodyId { hir_id: cause.body_id })
             });
-        self.check_and_note_conflicting_crates(diag, terr, span);
+        self.check_and_note_conflicting_crates(diag, terr);
         self.tcx.note_and_explain_type_err(diag, terr, span, body_owner_def_id);
 
         // It reads better to have the error origin as the final
@@ -1550,8 +1545,20 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             infer::Types(ref exp_found) => self.expected_found_str_ty(exp_found),
             infer::Regions(ref exp_found) => self.expected_found_str(exp_found),
             infer::Consts(ref exp_found) => self.expected_found_str(exp_found),
-            infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
-            infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
+            infer::TraitRefs(ref exp_found) => {
+                let pretty_exp_found = ty::error::ExpectedFound {
+                    expected: exp_found.expected.print_only_trait_path(),
+                    found: exp_found.found.print_only_trait_path()
+                };
+                self.expected_found_str(&pretty_exp_found)
+            },
+            infer::PolyTraitRefs(ref exp_found) => {
+                let pretty_exp_found = ty::error::ExpectedFound {
+                    expected: exp_found.expected.print_only_trait_path(),
+                    found: exp_found.found.print_only_trait_path()
+                };
+                self.expected_found_str(&pretty_exp_found)
+            },
         }
     }
 
@@ -1802,12 +1809,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                             sub_region,
                             "...",
                         );
-                        err.note(&format!(
-                            "...so that the {}:\nexpected {}\n   found {}",
-                            sup_trace.cause.as_requirement_str(),
-                            sup_expected.content(),
-                            sup_found.content()
+                        err.span_note(sup_trace.cause.span, &format!(
+                            "...so that the {}",
+                            sup_trace.cause.as_requirement_str()
                         ));
+
+                        err.note_expected_found(
+                            &"",
+                            sup_expected,
+                            &"",
+                            sup_found
+                        );
                         err.emit();
                         return;
                     }

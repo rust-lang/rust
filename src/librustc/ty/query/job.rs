@@ -303,13 +303,8 @@ fn connected_to_root<'tcx>(
         return true;
     }
 
-    visit_waiters(query, |_, successor| {
-        if connected_to_root(successor, visited) {
-            Some(None)
-        } else {
-            None
-        }
-    }).is_some()
+    visit_waiters(query, |_, successor| connected_to_root(successor, visited).then_some(None))
+        .is_some()
 }
 
 // Deterministically pick an query from a list

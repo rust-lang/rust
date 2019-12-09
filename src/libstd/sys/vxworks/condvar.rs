@@ -2,15 +2,15 @@ use crate::cell::UnsafeCell;
 use crate::sys::mutex::{self, Mutex};
 use crate::time::Duration;
 
-pub struct Condvar { inner: UnsafeCell<libc::pthread_cond_t> }
+pub struct Condvar {
+    inner: UnsafeCell<libc::pthread_cond_t>,
+}
 
 unsafe impl Send for Condvar {}
 unsafe impl Sync for Condvar {}
 
-const TIMESPEC_MAX: libc::timespec = libc::timespec {
-    tv_sec: <libc::time_t>::max_value(),
-    tv_nsec: 1_000_000_000 - 1,
-};
+const TIMESPEC_MAX: libc::timespec =
+    libc::timespec { tv_sec: <libc::time_t>::max_value(), tv_nsec: 1_000_000_000 - 1 };
 
 fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
     if value > <libc::time_t>::max_value() as u64 {
@@ -77,16 +77,13 @@ impl Condvar {
             .and_then(|s| s.checked_add(now.tv_sec));
         let nsec = nsec % 1_000_000_000;
 
-        let timeout = sec.map(|s| {
-            libc::timespec { tv_sec: s, tv_nsec: nsec as _}
-        }).unwrap_or(TIMESPEC_MAX);
+        let timeout =
+            sec.map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec as _ }).unwrap_or(TIMESPEC_MAX);
 
-        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex),
-                                            &timeout);
+        let r = libc::pthread_cond_timedwait(self.inner.get(), mutex::raw(mutex), &timeout);
         assert!(r == libc::ETIMEDOUT || r == 0);
         r == 0
     }
-
 
     #[inline]
     pub unsafe fn destroy(&self) {

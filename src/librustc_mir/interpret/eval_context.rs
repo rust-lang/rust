@@ -164,6 +164,20 @@ impl<'tcx, Tag: Copy + 'static> LocalState<'tcx, Tag> {
     }
 }
 
+impl<'mir, 'tcx, Tag, Extra> Frame<'mir, 'tcx, Tag, Extra> {
+    /// Return the `SourceInfo` of the current instruction.
+    pub fn current_source_info(&self) -> Option<mir::SourceInfo> {
+        self.block.map(|block| {
+            let block = &self.body.basic_blocks()[block];
+            if self.stmt < block.statements.len() {
+                block.statements[self.stmt].source_info
+            } else {
+                block.terminator().source_info
+            }
+        })
+    }
+}
+
 impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> HasDataLayout for InterpCx<'mir, 'tcx, M> {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
@@ -236,6 +250,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         self.memory.force_bits(scalar, size)
     }
 
+    /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
+    /// the *canonical* machine pointer to the allocation.  Must never be used
+    /// for any other pointers!
+    ///
+    /// This represents a *direct* access to that memory, as opposed to access
+    /// through a pointer that was created by the program.
     #[inline(always)]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
         self.memory.tag_static_base_pointer(ptr)
@@ -292,7 +312,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         &self,
         instance: ty::InstanceDef<'tcx>,
         promoted: Option<mir::Promoted>,
-    ) -> InterpResult<'tcx, &'tcx mir::Body<'tcx>> {
+    ) -> InterpResult<'tcx, mir::ReadOnlyBodyAndCache<'tcx, 'tcx>> {
         // do not continue if typeck errors occurred (can only occur in local crate)
         let did = instance.def_id();
         if did.is_local()
@@ -303,11 +323,11 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
         trace!("load mir(instance={:?}, promoted={:?})", instance, promoted);
         if let Some(promoted) = promoted {
-            return Ok(&self.tcx.promoted_mir(did)[promoted]);
+            return Ok(self.tcx.promoted_mir(did)[promoted].unwrap_read_only());
         }
         match instance {
             ty::InstanceDef::Item(def_id) => if self.tcx.is_mir_available(did) {
-                Ok(self.tcx.optimized_mir(did))
+                Ok(self.tcx.optimized_mir(did).unwrap_read_only())
             } else {
                 throw_unsup!(NoMirFor(self.tcx.def_path_str(def_id)))
             },
@@ -548,11 +568,42 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         info!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
 
-        if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
+        if self.stack.len() > *self.tcx.sess.recursion_limit.get() {
             throw_exhaust!(StackFrameLimitReached)
         } else {
             Ok(())
         }
+    }
+
+    /// Jump to the given block.
+    #[inline]
+    pub fn go_to_block(&mut self, target: mir::BasicBlock) {
+        let frame = self.frame_mut();
+        frame.block = Some(target);
+        frame.stmt = 0;
+    }
+
+    /// *Return* to the given `target` basic block.
+    /// Do *not* use for unwinding! Use `unwind_to_block` instead.
+    ///
+    /// If `target` is `None`, that indicates the function cannot return, so we raise UB.
+    pub fn return_to_block(&mut self, target: Option<mir::BasicBlock>) -> InterpResult<'tcx> {
+        if let Some(target) = target {
+            Ok(self.go_to_block(target))
+        } else {
+            throw_ub!(Unreachable)
+        }
+    }
+
+    /// *Unwind* to the given `target` basic block.
+    /// Do *not* use for returning! Use `return_to_block` instead.
+    ///
+    /// If `target` is `None`, that indicates the function does not need cleanup during
+    /// unwinding, and we will just keep propagating that upwards.
+    pub fn unwind_to_block(&mut self, target: Option<mir::BasicBlock>) {
+        let frame = self.frame_mut();
+        frame.block = target;
+        frame.stmt = 0;
     }
 
     /// Pops the current frame from the stack, deallocating the
@@ -630,10 +681,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if cur_unwinding {
             // Follow the unwind edge.
             let unwind = next_block.expect("Encounted StackPopCleanup::None when unwinding!");
-            let next_frame = self.frame_mut();
-            // If `unwind` is `None`, we'll leave that function immediately again.
-            next_frame.block = unwind;
-            next_frame.stmt = 0;
+            self.unwind_to_block(unwind);
         } else {
             // Follow the normal return edge.
             // Validate the return value. Do this after deallocating so that we catch dangling
@@ -660,7 +708,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             // Jump to new block -- *after* validation so that the spans make more sense.
             if let Some(ret) = next_block {
-                self.goto_block(ret)?;
+                self.return_to_block(ret)?;
             }
         }
 
@@ -705,7 +753,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
-            self.memory.dump_alloc(ptr.alloc_id);
+            if log_enabled!(::log::Level::Trace) {
+                self.memory.dump_alloc(ptr.alloc_id);
+            }
             self.memory.deallocate_local(ptr)?;
         };
         Ok(())
@@ -798,34 +848,28 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
         let mut last_span = None;
         let mut frames = Vec::new();
-        for &Frame { instance, span, body, block, stmt, .. } in self.stack().iter().rev() {
+        for frame in self.stack().iter().rev() {
             // make sure we don't emit frames that are duplicates of the previous
-            if explicit_span == Some(span) {
-                last_span = Some(span);
+            if explicit_span == Some(frame.span) {
+                last_span = Some(frame.span);
                 continue;
             }
             if let Some(last) = last_span {
-                if last == span {
+                if last == frame.span {
                     continue;
                 }
             } else {
-                last_span = Some(span);
+                last_span = Some(frame.span);
             }
 
-            let lint_root = block.and_then(|block| {
-                let block = &body.basic_blocks()[block];
-                let source_info = if stmt < block.statements.len() {
-                    block.statements[stmt].source_info
-                } else {
-                    block.terminator().source_info
-                };
-                match body.source_scope_local_data {
-                    mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
+            let lint_root = frame.current_source_info().and_then(|source_info| {
+                match &frame.body.source_scopes[source_info.scope].local_data {
+                    mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
                     mir::ClearCrossCrate::Clear => None,
                 }
             });
 
-            frames.push(FrameInfo { call_site: span, instance, lint_root });
+            frames.push(FrameInfo { call_site: frame.span, instance: frame.instance, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames

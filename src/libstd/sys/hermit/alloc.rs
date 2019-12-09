@@ -13,11 +13,7 @@ unsafe impl GlobalAlloc for System {
         let addr = abi::malloc(layout.size(), layout.align());
 
         if !addr.is_null() {
-            ptr::write_bytes(
-                addr,
-                0x00,
-                layout.size()
-            );
+            ptr::write_bytes(addr, 0x00, layout.size());
         }
 
         addr

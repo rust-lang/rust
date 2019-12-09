@@ -11,12 +11,7 @@ struct DeterministicRng {
 
 impl DeterministicRng {
     fn new() -> Self {
-        DeterministicRng {
-            x: 0x193a6754,
-            y: 0xa8a7d469,
-            z: 0x97830e05,
-            w: 0x113ba7bb,
-        }
+        DeterministicRng { x: 0x193a6754, y: 0xa8a7d469, z: 0x97830e05, w: 0x113ba7bb }
     }
 
     fn next(&mut self) -> u32 {

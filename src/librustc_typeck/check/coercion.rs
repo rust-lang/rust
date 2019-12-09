@@ -644,11 +644,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
 
         if has_unsized_tuple_coercion && !self.tcx.features().unsized_tuple_coercion {
-            feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
-                                           sym::unsized_tuple_coercion,
-                                           self.cause.span,
-                                           feature_gate::GateIssue::Language,
-                                           feature_gate::EXPLAIN_UNSIZED_TUPLE_COERCION);
+            feature_gate::feature_err(
+                &self.tcx.sess.parse_sess,
+                sym::unsized_tuple_coercion,
+                self.cause.span,
+                "unsized tuple coercion is not stable enough for use and is subject to change",
+            )
+            .emit();
         }
 
         Ok(coercion)
@@ -1280,6 +1282,10 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
 
                 if let Some(augment_error) = augment_error {
                     augment_error(&mut err);
+                }
+
+                if let Some(expr) = expression {
+                    fcx.emit_coerce_suggestions(&mut err, expr, found, expected);
                 }
 
                 // Error possibly reported in `check_assign` so avoid emitting error again.

@@ -7,7 +7,6 @@ use std::fmt::Debug;
 use std::time::{Duration, Instant};
 
 use syntax::symbol::{Symbol, sym};
-use rustc_macros::HashStable;
 use crate::session::Session;
 
 #[cfg(test)]
@@ -16,10 +15,7 @@ mod tests;
 // The name of the associated type for `Fn` return types.
 pub const FN_OUTPUT_NAME: Symbol = sym::Output;
 
-// Useful type to use with `Result<>` indicate that an error has already
-// been reported to the user, so no need to continue checking.
-#[derive(Clone, Copy, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct ErrorReported;
+pub use errors::ErrorReported;
 
 thread_local!(static TIME_DEPTH: Cell<usize> = Cell::new(0));
 
@@ -92,15 +88,7 @@ pub fn print_time_passes_entry(do_it: bool, what: &str, dur: Duration) {
              what);
 }
 
-// Hack up our own formatting for the duration to make it easier for scripts
-// to parse (always use the same number of decimal places and the same unit).
-pub fn duration_to_secs_str(dur: Duration) -> String {
-    const NANOS_PER_SEC: f64 = 1_000_000_000.0;
-    let secs = dur.as_secs() as f64 +
-               dur.subsec_nanos() as f64 / NANOS_PER_SEC;
-
-    format!("{:.3}", secs)
-}
+pub use rustc_session::utils::duration_to_secs_str;
 
 pub fn to_readable_str(mut val: usize) -> String {
     let mut groups = vec![];

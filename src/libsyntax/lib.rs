@@ -7,11 +7,13 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/",
        test(attr(deny(warnings))))]
 
+#![feature(bool_to_option)]
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(const_transmute)]
 #![feature(crate_visibility_modifier)]
 #![feature(label_break_value)]
+#![feature(matches_macro)]
 #![feature(nll)]
 #![feature(try_trait)]
 #![feature(slice_patterns)]
@@ -92,13 +94,16 @@ pub mod attr;
 pub mod expand;
 pub use syntax_pos::source_map;
 pub mod entry;
-pub mod feature_gate;
+pub mod feature_gate {
+    mod check;
+    pub use check::{check_crate, check_attribute, get_features, feature_err, feature_err_issue};
+}
 pub mod mut_visit;
 pub mod ptr;
 pub mod show_span;
 pub use syntax_pos::edition;
 pub use syntax_pos::symbol;
-pub mod sess;
+pub use rustc_session::parse as sess;
 pub mod token;
 pub mod tokenstream;
 pub mod visit;

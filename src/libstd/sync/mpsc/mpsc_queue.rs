@@ -13,8 +13,8 @@
 
 pub use self::PopResult::*;
 
-use core::ptr;
 use core::cell::UnsafeCell;
+use core::ptr;
 
 use crate::boxed::Box;
 use crate::sync::atomic::{AtomicPtr, Ordering};
@@ -45,15 +45,12 @@ pub struct Queue<T> {
     tail: UnsafeCell<*mut Node<T>>,
 }
 
-unsafe impl<T: Send> Send for Queue<T> { }
-unsafe impl<T: Send> Sync for Queue<T> { }
+unsafe impl<T: Send> Send for Queue<T> {}
+unsafe impl<T: Send> Sync for Queue<T> {}
 
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
-        Box::into_raw(box Node {
-            next: AtomicPtr::new(ptr::null_mut()),
-            value: v,
-        })
+        Box::into_raw(box Node { next: AtomicPtr::new(ptr::null_mut()), value: v })
     }
 }
 
@@ -62,10 +59,7 @@ impl<T> Queue<T> {
     /// one consumer.
     pub fn new() -> Queue<T> {
         let stub = unsafe { Node::new(None) };
-        Queue {
-            head: AtomicPtr::new(stub),
-            tail: UnsafeCell::new(stub),
-        }
+        Queue { head: AtomicPtr::new(stub), tail: UnsafeCell::new(stub) }
     }
 
     /// Pushes a new value onto this queue.
@@ -101,7 +95,7 @@ impl<T> Queue<T> {
                 return Data(ret);
             }
 
-            if self.head.load(Ordering::Acquire) == tail {Empty} else {Inconsistent}
+            if self.head.load(Ordering::Acquire) == tail { Empty } else { Inconsistent }
         }
     }
 }
@@ -121,7 +115,7 @@ impl<T> Drop for Queue<T> {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use super::{Queue, Data, Empty, Inconsistent};
+    use super::{Data, Empty, Inconsistent, Queue};
     use crate::sync::mpsc::channel;
     use crate::sync::Arc;
     use crate::thread;
@@ -140,7 +134,7 @@ mod tests {
         let q = Queue::new();
         match q.pop() {
             Empty => {}
-            Inconsistent | Data(..) => panic!()
+            Inconsistent | Data(..) => panic!(),
         }
         let (tx, rx) = channel();
         let q = Arc::new(q);
@@ -148,7 +142,7 @@ mod tests {
         for _ in 0..nthreads {
             let tx = tx.clone();
             let q = q.clone();
-            thread::spawn(move|| {
+            thread::spawn(move || {
                 for i in 0..nmsgs {
                     q.push(i);
                 }
@@ -159,8 +153,8 @@ mod tests {
         let mut i = 0;
         while i < nthreads * nmsgs {
             match q.pop() {
-                Empty | Inconsistent => {},
-                Data(_) => { i += 1 }
+                Empty | Inconsistent => {}
+                Data(_) => i += 1,
             }
         }
         drop(tx);

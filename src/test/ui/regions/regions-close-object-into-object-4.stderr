@@ -15,9 +15,13 @@ note: ...so that the type `(dyn A<U> + 'a)` is not borrowed for too long
 LL |     box B(&*v) as Box<dyn X>
    |           ^^^
    = note: but, the lifetime must be valid for the static lifetime...
-   = note: ...so that the expression is assignable:
-           expected std::boxed::Box<(dyn X + 'static)>
-              found std::boxed::Box<dyn X>
+note: ...so that the expression is assignable
+  --> $DIR/regions-close-object-into-object-4.rs:10:5
+   |
+LL |     box B(&*v) as Box<dyn X>
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected  `std::boxed::Box<(dyn X + 'static)>`
+              found  `std::boxed::Box<dyn X>`
 
 error: aborting due to previous error
 

@@ -6,12 +6,13 @@
 //!   accurately with integers. SIGPLAN Not. 45, 6 (June 2010), 233-243.
 
 use crate::num::diy_float::Fp;
-use crate::num::flt2dec::{Decoded, MAX_SIG_DIGITS, round_up};
-
+use crate::num::flt2dec::{round_up, Decoded, MAX_SIG_DIGITS};
 
 // see the comments in `format_shortest_opt` for the rationale.
-#[doc(hidden)] pub const ALPHA: i16 = -60;
-#[doc(hidden)] pub const GAMMA: i16 = -32;
+#[doc(hidden)]
+pub const ALPHA: i16 = -60;
+#[doc(hidden)]
+pub const GAMMA: i16 = -32;
 
 /*
 # the following Python code generates this table:
@@ -24,92 +25,95 @@ for i in xrange(-308, 333, 8):
 */
 
 #[doc(hidden)]
-pub static CACHED_POW10: [(u64, i16, i16); 81] = [ // (f, e, k)
+pub static CACHED_POW10: [(u64, i16, i16); 81] = [
+    // (f, e, k)
     (0xe61acf033d1a45df, -1087, -308),
     (0xab70fe17c79ac6ca, -1060, -300),
     (0xff77b1fcbebcdc4f, -1034, -292),
     (0xbe5691ef416bd60c, -1007, -284),
-    (0x8dd01fad907ffc3c,  -980, -276),
-    (0xd3515c2831559a83,  -954, -268),
-    (0x9d71ac8fada6c9b5,  -927, -260),
-    (0xea9c227723ee8bcb,  -901, -252),
-    (0xaecc49914078536d,  -874, -244),
-    (0x823c12795db6ce57,  -847, -236),
-    (0xc21094364dfb5637,  -821, -228),
-    (0x9096ea6f3848984f,  -794, -220),
-    (0xd77485cb25823ac7,  -768, -212),
-    (0xa086cfcd97bf97f4,  -741, -204),
-    (0xef340a98172aace5,  -715, -196),
-    (0xb23867fb2a35b28e,  -688, -188),
-    (0x84c8d4dfd2c63f3b,  -661, -180),
-    (0xc5dd44271ad3cdba,  -635, -172),
-    (0x936b9fcebb25c996,  -608, -164),
-    (0xdbac6c247d62a584,  -582, -156),
-    (0xa3ab66580d5fdaf6,  -555, -148),
-    (0xf3e2f893dec3f126,  -529, -140),
-    (0xb5b5ada8aaff80b8,  -502, -132),
-    (0x87625f056c7c4a8b,  -475, -124),
-    (0xc9bcff6034c13053,  -449, -116),
-    (0x964e858c91ba2655,  -422, -108),
-    (0xdff9772470297ebd,  -396, -100),
-    (0xa6dfbd9fb8e5b88f,  -369,  -92),
-    (0xf8a95fcf88747d94,  -343,  -84),
-    (0xb94470938fa89bcf,  -316,  -76),
-    (0x8a08f0f8bf0f156b,  -289,  -68),
-    (0xcdb02555653131b6,  -263,  -60),
-    (0x993fe2c6d07b7fac,  -236,  -52),
-    (0xe45c10c42a2b3b06,  -210,  -44),
-    (0xaa242499697392d3,  -183,  -36),
-    (0xfd87b5f28300ca0e,  -157,  -28),
-    (0xbce5086492111aeb,  -130,  -20),
-    (0x8cbccc096f5088cc,  -103,  -12),
-    (0xd1b71758e219652c,   -77,   -4),
-    (0x9c40000000000000,   -50,    4),
-    (0xe8d4a51000000000,   -24,   12),
-    (0xad78ebc5ac620000,     3,   20),
-    (0x813f3978f8940984,    30,   28),
-    (0xc097ce7bc90715b3,    56,   36),
-    (0x8f7e32ce7bea5c70,    83,   44),
-    (0xd5d238a4abe98068,   109,   52),
-    (0x9f4f2726179a2245,   136,   60),
-    (0xed63a231d4c4fb27,   162,   68),
-    (0xb0de65388cc8ada8,   189,   76),
-    (0x83c7088e1aab65db,   216,   84),
-    (0xc45d1df942711d9a,   242,   92),
-    (0x924d692ca61be758,   269,  100),
-    (0xda01ee641a708dea,   295,  108),
-    (0xa26da3999aef774a,   322,  116),
-    (0xf209787bb47d6b85,   348,  124),
-    (0xb454e4a179dd1877,   375,  132),
-    (0x865b86925b9bc5c2,   402,  140),
-    (0xc83553c5c8965d3d,   428,  148),
-    (0x952ab45cfa97a0b3,   455,  156),
-    (0xde469fbd99a05fe3,   481,  164),
-    (0xa59bc234db398c25,   508,  172),
-    (0xf6c69a72a3989f5c,   534,  180),
-    (0xb7dcbf5354e9bece,   561,  188),
-    (0x88fcf317f22241e2,   588,  196),
-    (0xcc20ce9bd35c78a5,   614,  204),
-    (0x98165af37b2153df,   641,  212),
-    (0xe2a0b5dc971f303a,   667,  220),
-    (0xa8d9d1535ce3b396,   694,  228),
-    (0xfb9b7cd9a4a7443c,   720,  236),
-    (0xbb764c4ca7a44410,   747,  244),
-    (0x8bab8eefb6409c1a,   774,  252),
-    (0xd01fef10a657842c,   800,  260),
-    (0x9b10a4e5e9913129,   827,  268),
-    (0xe7109bfba19c0c9d,   853,  276),
-    (0xac2820d9623bf429,   880,  284),
-    (0x80444b5e7aa7cf85,   907,  292),
-    (0xbf21e44003acdd2d,   933,  300),
-    (0x8e679c2f5e44ff8f,   960,  308),
-    (0xd433179d9c8cb841,   986,  316),
-    (0x9e19db92b4e31ba9,  1013,  324),
-    (0xeb96bf6ebadf77d9,  1039,  332),
+    (0x8dd01fad907ffc3c, -980, -276),
+    (0xd3515c2831559a83, -954, -268),
+    (0x9d71ac8fada6c9b5, -927, -260),
+    (0xea9c227723ee8bcb, -901, -252),
+    (0xaecc49914078536d, -874, -244),
+    (0x823c12795db6ce57, -847, -236),
+    (0xc21094364dfb5637, -821, -228),
+    (0x9096ea6f3848984f, -794, -220),
+    (0xd77485cb25823ac7, -768, -212),
+    (0xa086cfcd97bf97f4, -741, -204),
+    (0xef340a98172aace5, -715, -196),
+    (0xb23867fb2a35b28e, -688, -188),
+    (0x84c8d4dfd2c63f3b, -661, -180),
+    (0xc5dd44271ad3cdba, -635, -172),
+    (0x936b9fcebb25c996, -608, -164),
+    (0xdbac6c247d62a584, -582, -156),
+    (0xa3ab66580d5fdaf6, -555, -148),
+    (0xf3e2f893dec3f126, -529, -140),
+    (0xb5b5ada8aaff80b8, -502, -132),
+    (0x87625f056c7c4a8b, -475, -124),
+    (0xc9bcff6034c13053, -449, -116),
+    (0x964e858c91ba2655, -422, -108),
+    (0xdff9772470297ebd, -396, -100),
+    (0xa6dfbd9fb8e5b88f, -369, -92),
+    (0xf8a95fcf88747d94, -343, -84),
+    (0xb94470938fa89bcf, -316, -76),
+    (0x8a08f0f8bf0f156b, -289, -68),
+    (0xcdb02555653131b6, -263, -60),
+    (0x993fe2c6d07b7fac, -236, -52),
+    (0xe45c10c42a2b3b06, -210, -44),
+    (0xaa242499697392d3, -183, -36),
+    (0xfd87b5f28300ca0e, -157, -28),
+    (0xbce5086492111aeb, -130, -20),
+    (0x8cbccc096f5088cc, -103, -12),
+    (0xd1b71758e219652c, -77, -4),
+    (0x9c40000000000000, -50, 4),
+    (0xe8d4a51000000000, -24, 12),
+    (0xad78ebc5ac620000, 3, 20),
+    (0x813f3978f8940984, 30, 28),
+    (0xc097ce7bc90715b3, 56, 36),
+    (0x8f7e32ce7bea5c70, 83, 44),
+    (0xd5d238a4abe98068, 109, 52),
+    (0x9f4f2726179a2245, 136, 60),
+    (0xed63a231d4c4fb27, 162, 68),
+    (0xb0de65388cc8ada8, 189, 76),
+    (0x83c7088e1aab65db, 216, 84),
+    (0xc45d1df942711d9a, 242, 92),
+    (0x924d692ca61be758, 269, 100),
+    (0xda01ee641a708dea, 295, 108),
+    (0xa26da3999aef774a, 322, 116),
+    (0xf209787bb47d6b85, 348, 124),
+    (0xb454e4a179dd1877, 375, 132),
+    (0x865b86925b9bc5c2, 402, 140),
+    (0xc83553c5c8965d3d, 428, 148),
+    (0x952ab45cfa97a0b3, 455, 156),
+    (0xde469fbd99a05fe3, 481, 164),
+    (0xa59bc234db398c25, 508, 172),
+    (0xf6c69a72a3989f5c, 534, 180),
+    (0xb7dcbf5354e9bece, 561, 188),
+    (0x88fcf317f22241e2, 588, 196),
+    (0xcc20ce9bd35c78a5, 614, 204),
+    (0x98165af37b2153df, 641, 212),
+    (0xe2a0b5dc971f303a, 667, 220),
+    (0xa8d9d1535ce3b396, 694, 228),
+    (0xfb9b7cd9a4a7443c, 720, 236),
+    (0xbb764c4ca7a44410, 747, 244),
+    (0x8bab8eefb6409c1a, 774, 252),
+    (0xd01fef10a657842c, 800, 260),
+    (0x9b10a4e5e9913129, 827, 268),
+    (0xe7109bfba19c0c9d, 853, 276),
+    (0xac2820d9623bf429, 880, 284),
+    (0x80444b5e7aa7cf85, 907, 292),
+    (0xbf21e44003acdd2d, 933, 300),
+    (0x8e679c2f5e44ff8f, 960, 308),
+    (0xd433179d9c8cb841, 986, 316),
+    (0x9e19db92b4e31ba9, 1013, 324),
+    (0xeb96bf6ebadf77d9, 1039, 332),
 ];
 
-#[doc(hidden)] pub const CACHED_POW10_FIRST_E: i16 = -1087;
-#[doc(hidden)] pub const CACHED_POW10_LAST_E: i16 = 1039;
+#[doc(hidden)]
+pub const CACHED_POW10_FIRST_E: i16 = -1087;
+#[doc(hidden)]
+pub const CACHED_POW10_LAST_E: i16 = 1039;
 
 #[doc(hidden)]
 pub fn cached_power(alpha: i16, gamma: i16) -> (i16, Fp) {
@@ -128,30 +132,39 @@ pub fn max_pow10_no_more_than(x: u32) -> (u8, u32) {
     debug_assert!(x > 0);
 
     const X9: u32 = 10_0000_0000;
-    const X8: u32 =  1_0000_0000;
-    const X7: u32 =    1000_0000;
-    const X6: u32 =     100_0000;
-    const X5: u32 =      10_0000;
-    const X4: u32 =       1_0000;
-    const X3: u32 =         1000;
-    const X2: u32 =          100;
-    const X1: u32 =           10;
+    const X8: u32 = 1_0000_0000;
+    const X7: u32 = 1000_0000;
+    const X6: u32 = 100_0000;
+    const X5: u32 = 10_0000;
+    const X4: u32 = 1_0000;
+    const X3: u32 = 1000;
+    const X2: u32 = 100;
+    const X1: u32 = 10;
 
     if x < X4 {
-        if x < X2 { if x < X1 {(0,  1)} else {(1, X1)} }
-        else      { if x < X3 {(2, X2)} else {(3, X3)} }
+        if x < X2 {
+            if x < X1 { (0, 1) } else { (1, X1) }
+        } else {
+            if x < X3 { (2, X2) } else { (3, X3) }
+        }
     } else {
-        if x < X6      { if x < X5 {(4, X4)} else {(5, X5)} }
-        else if x < X8 { if x < X7 {(6, X6)} else {(7, X7)} }
-        else           { if x < X9 {(8, X8)} else {(9, X9)} }
+        if x < X6 {
+            if x < X5 { (4, X4) } else { (5, X5) }
+        } else if x < X8 {
+            if x < X7 { (6, X6) } else { (7, X7) }
+        } else {
+            if x < X9 { (8, X8) } else { (9, X9) }
+        }
     }
 }
 
 /// The shortest mode implementation for Grisu.
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_shortest_opt(d: &Decoded,
-                           buf: &mut [u8]) -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
+pub fn format_shortest_opt(
+    d: &Decoded,
+    buf: &mut [u8],
+) -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.minus > 0);
     assert!(d.plus > 0);
@@ -208,8 +221,8 @@ pub fn format_shortest_opt(d: &Decoded,
     // we start with the correct repr within the unsafe region, and try to find the closest repr
     // to `v` which is also within the safe region. if we can't, we give up.
     let plus1 = plus.f + 1;
-//  let plus0 = plus.f - 1; // only for explanation
-//  let minus0 = minus.f + 1; // only for explanation
+    //  let plus0 = plus.f - 1; // only for explanation
+    //  let minus0 = minus.f + 1; // only for explanation
     let minus1 = minus.f - 1;
     let e = -plus.e as usize; // shared exponent
 
@@ -235,14 +248,15 @@ pub fn format_shortest_opt(d: &Decoded,
     // (e.g., `x` = 32000, `y` = 32777; `kappa` = 2 since `y mod 10^3 = 777 < y - x = 777`.)
     // the algorithm relies on the later verification phase to exclude `y`.
     let delta1 = plus1 - minus1;
-//  let delta1int = (delta1 >> e) as usize; // only for explanation
+    //  let delta1int = (delta1 >> e) as usize; // only for explanation
     let delta1frac = delta1 & ((1 << e) - 1);
 
     // render integral parts, while checking for the accuracy at each step.
     let mut kappa = max_kappa as i16;
     let mut ten_kappa = max_ten_kappa; // 10^kappa
     let mut remainder = plus1int; // digits yet to be rendered
-    loop { // we always have at least one digit to render, as `plus1 >= 10^kappa`
+    loop {
+        // we always have at least one digit to render, as `plus1 >= 10^kappa`
         // invariants:
         // - `delta1int <= remainder < 10^(kappa+1)`
         // - `plus1int = d[0..n-1] * 10^(kappa+1) + remainder`
@@ -281,7 +295,8 @@ pub fn format_shortest_opt(d: &Decoded,
     let mut remainder = plus1frac;
     let mut threshold = delta1frac;
     let mut ulp = 1;
-    loop { // the next digit should be significant as we've tested that before breaking out
+    loop {
+        // the next digit should be significant as we've tested that before breaking out
         // invariants, where `m = max_kappa + 1` (# of digits in the integral part):
         // - `remainder < 2^e`
         // - `plus1frac * 10^(n-m) = d[m..n-1] * 2^e + remainder`
@@ -300,8 +315,15 @@ pub fn format_shortest_opt(d: &Decoded,
 
         if r < threshold {
             let ten_kappa = 1 << e; // implicit divisor
-            return round_and_weed(&mut buf[..i], exp, r, threshold,
-                                  (plus1 - v.f) * ulp, ten_kappa, ulp);
+            return round_and_weed(
+                &mut buf[..i],
+                exp,
+                r,
+                threshold,
+                (plus1 - v.f) * ulp,
+                ten_kappa,
+                ulp,
+            );
         }
 
         // restore invariants
@@ -325,8 +347,15 @@ pub fn format_shortest_opt(d: &Decoded,
     // - `plus1v = (plus1 - v) * k` (and also, `threshold > plus1v` from prior invariants)
     // - `ten_kappa = 10^kappa * k`
     // - `ulp = 2^-e * k`
-    fn round_and_weed(buf: &mut [u8], exp: i16, remainder: u64, threshold: u64, plus1v: u64,
-                      ten_kappa: u64, ulp: u64) -> Option<(usize, i16)> {
+    fn round_and_weed(
+        buf: &mut [u8],
+        exp: i16,
+        remainder: u64,
+        threshold: u64,
+        plus1v: u64,
+        ten_kappa: u64,
+        ulp: u64,
+    ) -> Option<(usize, i16)> {
         assert!(!buf.is_empty());
 
         // produce two approximations to `v` (actually `plus1 - v`) within 1.5 ulps.
@@ -381,10 +410,11 @@ pub fn format_shortest_opt(d: &Decoded,
             //
             // consequently, we should stop when `TC1 || TC2 || (TC3a && TC3b)`. the following is
             // equal to its inverse, `!TC1 && !TC2 && (!TC3a || !TC3b)`.
-            while plus1w < plus1v_up &&
-                  threshold - plus1w >= ten_kappa &&
-                  (plus1w + ten_kappa < plus1v_up ||
-                   plus1v_up - plus1w >= plus1w + ten_kappa - plus1v_up) {
+            while plus1w < plus1v_up
+                && threshold - plus1w >= ten_kappa
+                && (plus1w + ten_kappa < plus1v_up
+                    || plus1v_up - plus1w >= plus1w + ten_kappa - plus1v_up)
+            {
                 *last -= 1;
                 debug_assert!(*last > b'0'); // the shortest repr cannot end with `0`
                 plus1w += ten_kappa;
@@ -395,10 +425,11 @@ pub fn format_shortest_opt(d: &Decoded,
         //
         // this is simply same to the terminating conditions for `v + 1 ulp`, with all `plus1v_up`
         // replaced by `plus1v_down` instead. overflow analysis equally holds.
-        if plus1w < plus1v_down &&
-           threshold - plus1w >= ten_kappa &&
-           (plus1w + ten_kappa < plus1v_down ||
-            plus1v_down - plus1w >= plus1w + ten_kappa - plus1v_down) {
+        if plus1w < plus1v_down
+            && threshold - plus1w >= ten_kappa
+            && (plus1w + ten_kappa < plus1v_down
+                || plus1v_down - plus1w >= plus1w + ten_kappa - plus1v_down)
+        {
             return None;
         }
 
@@ -428,8 +459,11 @@ pub fn format_shortest(d: &Decoded, buf: &mut [u8]) -> (/*#digits*/ usize, /*exp
 /// The exact and fixed mode implementation for Grisu.
 ///
 /// It returns `None` when it would return an inexact representation otherwise.
-pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
-                                -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
+pub fn format_exact_opt(
+    d: &Decoded,
+    buf: &mut [u8],
+    limit: i16,
+) -> Option<(/*#digits*/ usize, /*exp*/ i16)> {
     assert!(d.mant > 0);
     assert!(d.mant < (1 << 61)); // we need at least three bits of additional precision
     assert!(!buf.is_empty());
@@ -489,7 +523,8 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
     let mut kappa = max_kappa as i16;
     let mut ten_kappa = max_ten_kappa; // 10^kappa
     let mut remainder = vint; // digits yet to be rendered
-    loop { // we always have at least one digit to render
+    loop {
+        // we always have at least one digit to render
         // invariants:
         // - `remainder < 10^(kappa+1)`
         // - `vint = d[0..n-1] * 10^(kappa+1) + remainder`
@@ -575,8 +610,15 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
     // - `remainder = (v % 10^kappa) * k`
     // - `ten_kappa = 10^kappa * k`
     // - `ulp = 2^-e * k`
-    fn possibly_round(buf: &mut [u8], mut len: usize, mut exp: i16, limit: i16,
-                      remainder: u64, ten_kappa: u64, ulp: u64) -> Option<(usize, i16)> {
+    fn possibly_round(
+        buf: &mut [u8],
+        mut len: usize,
+        mut exp: i16,
+        limit: i16,
+        remainder: u64,
+        ten_kappa: u64,
+        ulp: u64,
+    ) -> Option<(usize, i16)> {
         debug_assert!(remainder < ten_kappa);
 
         //           10^kappa
@@ -593,7 +635,9 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
         //
         // error is too large that there are at least three possible representations
         // between `v - 1 ulp` and `v + 1 ulp`. we cannot determine which one is correct.
-        if ulp >= ten_kappa { return None; }
+        if ulp >= ten_kappa {
+            return None;
+        }
 
         //    10^kappa
         //   :<------->:
@@ -607,7 +651,9 @@ pub fn format_exact_opt(d: &Decoded, buf: &mut [u8], limit: i16)
         // in fact, 1/2 ulp is enough to introduce two possible representations.
         // (remember that we need a unique representation for both `v - 1 ulp` and `v + 1 ulp`.)
         // this won't overflow, as `ulp < ten_kappa` from the first check.
-        if ten_kappa - ulp <= ulp { return None; }
+        if ten_kappa - ulp <= ulp {
+            return None;
+        }
 
         //     remainder
         //       :<->|                           :

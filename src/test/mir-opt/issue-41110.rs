@@ -35,6 +35,7 @@ impl S {
 //    let mut _4: S;
 //    let mut _5: bool;
 //    scope 1 {
+//        debug x => _1;
 //    }
 //    ...
 //    bb0: {
@@ -47,7 +48,11 @@ impl S {
 //    let mut _5: S;
 //    let mut _6: bool;
 //    ...
+//    debug u => _1;
+//    ...
 //    let mut _2: S;
+//    ...
+//    debug v => _2;
 //    ...
 //    bb0: {
 // END rustc.test.ElaborateDrops.after.mir

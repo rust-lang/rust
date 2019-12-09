@@ -3,18 +3,16 @@ use super::item::ParamCfg;
 
 use crate::{maybe_whole, maybe_recover_from_interpolated_ty_qpath};
 
+use rustc_errors::{PResult, Applicability, pluralize};
+use rustc_error_codes::*;
 use syntax::ptr::P;
 use syntax::ast::{self, Ty, TyKind, MutTy, BareFnTy, FunctionRetTy, GenericParam, Lifetime, Ident};
 use syntax::ast::{TraitBoundModifier, TraitObjectSyntax, GenericBound, GenericBounds, PolyTraitRef};
 use syntax::ast::{Mutability, AnonConst, Mac};
 use syntax::token::{self, Token};
-use syntax::source_map::Span;
 use syntax::struct_span_fatal;
+use syntax_pos::source_map::Span;
 use syntax_pos::symbol::kw;
-
-use errors::{PResult, Applicability, pluralize};
-
-use rustc_error_codes::*;
 
 /// Returns `true` if `IDENT t` can start a type -- `IDENT::a::b`, `IDENT<u8, u8>`,
 /// `IDENT<<u8 as Trait>::AssocTy>`.
@@ -177,12 +175,10 @@ impl<'a> Parser<'a> {
             let path = self.parse_path(PathStyle::Type)?;
             if self.eat(&token::Not) {
                 // Macro invocation in type position
-                let (delim, tts) = self.expect_delimited_token_tree()?;
+                let args = self.parse_mac_args()?;
                 let mac = Mac {
                     path,
-                    tts,
-                    delim,
-                    span: lo.to(self.prev_span),
+                    args,
                     prior_type_ascription: self.last_type_ascription,
                 };
                 TyKind::Mac(mac)

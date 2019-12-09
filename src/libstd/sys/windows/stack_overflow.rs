@@ -1,7 +1,7 @@
 #![cfg_attr(test, allow(dead_code))]
 
-use crate::sys_common::util::report_overflow;
 use crate::sys::c;
+use crate::sys_common::util::report_overflow;
 
 pub struct Handler;
 
@@ -18,8 +18,7 @@ impl Handler {
     }
 }
 
-extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS)
-                                    -> c::LONG {
+extern "system" fn vectored_handler(ExceptionInfo: *mut c::EXCEPTION_POINTERS) -> c::LONG {
     unsafe {
         let rec = &(*(*ExceptionInfo).ExceptionRecord);
         let code = rec.ExceptionCode;

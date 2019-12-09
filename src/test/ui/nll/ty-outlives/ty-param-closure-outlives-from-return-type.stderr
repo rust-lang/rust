@@ -4,9 +4,7 @@ note: External requirements
 LL |     with_signature(x, |y| y)
    |                       ^^^^^
    |
-   = note: defining type: DefId(0:11 ~ ty_param_closure_outlives_from_return_type[317d]::no_region[0]::{{closure}}[0]) with closure substs [
-               '_#1r,
-               T,
+   = note: defining type: no_region::<'_#1r, T>::{{closure}}#0 with closure substs [
                i32,
                extern "rust-call" fn((std::boxed::Box<T>,)) -> std::boxed::Box<(dyn std::fmt::Debug + '_#2r)>,
            ]
@@ -25,10 +23,7 @@ LL | |
 LL | | }
    | |_^
    |
-   = note: defining type: DefId(0:8 ~ ty_param_closure_outlives_from_return_type[317d]::no_region[0]) with substs [
-               '_#1r,
-               T,
-           ]
+   = note: defining type: no_region::<'_#1r, T>
 
 error[E0309]: the parameter type `T` may not live long enough
   --> $DIR/ty-param-closure-outlives-from-return-type.rs:26:23

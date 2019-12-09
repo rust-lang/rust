@@ -1,11 +1,3 @@
-warning: the feature `track_caller` is incomplete and may cause the compiler to crash
-  --> $DIR/error-with-trait-decl.rs:1:12
-   |
-LL | #![feature(track_caller)]
-   |            ^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0738]: `#[track_caller]` may not be used on trait methods
   --> $DIR/error-with-trait-decl.rs:4:5
    |

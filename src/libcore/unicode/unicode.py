@@ -81,8 +81,8 @@ PREAMBLE = """\
 
 #![allow(missing_docs, non_upper_case_globals, non_snake_case, clippy::unreadable_literal)]
 
-use crate::unicode::version::UnicodeVersion;
 use crate::unicode::bool_trie::{{BoolTrie, SmallBoolTrie}};
+use crate::unicode::version::UnicodeVersion;
 """.format(year=datetime.datetime.now().year)
 
 # Mapping taken from Table 12 from:
@@ -555,6 +555,8 @@ def generate_table(
     if is_pub:
         pub_string = "pub "
 
+    yield "\n"
+    yield "    #[rustfmt::skip]\n"
     yield "    %sconst %s: %s = &[\n" % (pub_string, name, decl_type)
 
     data = []
@@ -568,7 +570,7 @@ def generate_table(
     for table_line in generate_table_lines("".join(data).split(","), 8):
         yield table_line
 
-    yield "\n    ];\n\n"
+    yield "\n    ];\n"
 
 
 def compute_trie(raw_data, chunk_size):
@@ -634,6 +636,9 @@ def generate_bool_trie(name, codepoint_ranges, is_pub=False):
     pub_string = ""
     if is_pub:
         pub_string = "pub "
+
+    yield "\n"
+    yield "    #[rustfmt::skip]\n"
     yield "    %sconst %s: &super::BoolTrie = &super::BoolTrie {\n" % (pub_string, name)
     yield "        r1: [\n"
     data = ("0x%016x" % chunk for chunk in chunks[:0x800 // chunk_size])
@@ -678,7 +683,7 @@ def generate_bool_trie(name, codepoint_ranges, is_pub=False):
         yield fragment
     yield "\n        ],\n"
 
-    yield "    };\n\n"
+    yield "    };\n"
 
 
 def generate_small_bool_trie(name, codepoint_ranges, is_pub=False):
@@ -700,6 +705,8 @@ def generate_small_bool_trie(name, codepoint_ranges, is_pub=False):
     if is_pub:
         pub_string = "pub "
 
+    yield "\n"
+    yield "    #[rustfmt::skip]\n"
     yield ("    %sconst %s: &super::SmallBoolTrie = &super::SmallBoolTrie {\n"
            % (pub_string, name))
 
@@ -717,7 +724,7 @@ def generate_small_bool_trie(name, codepoint_ranges, is_pub=False):
         yield fragment
     yield "\n        ],\n"
 
-    yield "    };\n\n"
+    yield "    };\n"
 
 
 def generate_property_module(mod, grouped_categories, category_subset):
@@ -726,7 +733,7 @@ def generate_property_module(mod, grouped_categories, category_subset):
     Generate Rust code for module defining properties.
     """
 
-    yield "pub(crate) mod %s {\n" % mod
+    yield "pub(crate) mod %s {" % mod
     for cat in sorted(category_subset):
         if cat in ("Cc", "White_Space"):
             generator = generate_small_bool_trie("%s_table" % cat, grouped_categories[cat])
@@ -736,9 +743,10 @@ def generate_property_module(mod, grouped_categories, category_subset):
         for fragment in generator:
             yield fragment
 
+        yield "\n"
         yield "    pub fn %s(c: char) -> bool {\n" % cat
         yield "        %s_table.lookup(c)\n" % cat
-        yield "    }\n\n"
+        yield "    }\n"
 
     yield "}\n\n"
 
@@ -753,21 +761,21 @@ def generate_conversions_module(unicode_data):
     yield """
     pub fn to_lower(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_lowercase_table) {
-            None        => [c, '\\0', '\\0'],
+            None => [c, '\\0', '\\0'],
             Some(index) => to_lowercase_table[index].1,
         }
     }
 
     pub fn to_upper(c: char) -> [char; 3] {
         match bsearch_case_table(c, to_uppercase_table) {
-            None        => [c, '\\0', '\\0'],
+            None => [c, '\\0', '\\0'],
             Some(index) => to_uppercase_table[index].1,
         }
     }
 
     fn bsearch_case_table(c: char, table: &[(char, [char; 3])]) -> Option<usize> {
         table.binary_search_by(|&(key, _)| key.cmp(&c)).ok()
-    }\n\n"""
+    }\n"""
 
     decl_type = "&[(char, [char; 3])]"
     format_conversion = lambda x: "({},[{},{},{}])".format(*(
@@ -827,13 +835,9 @@ def main():
     /// The version of [Unicode](http://www.unicode.org/) that the Unicode parts of
     /// `char` and `str` methods are based on.
     #[unstable(feature = "unicode_version", issue = "49726")]
-    pub const UNICODE_VERSION: UnicodeVersion = UnicodeVersion {{
-        major: {version.major},
-        minor: {version.minor},
-        micro: {version.micro},
-        _priv: (),
-    }};
-    """).format(version=unicode_version)
+    pub const UNICODE_VERSION: UnicodeVersion =
+        UnicodeVersion {{ major: {v.major}, minor: {v.minor}, micro: {v.micro}, _priv: () }};
+    """).format(v=unicode_version)
     buf.write(unicode_version_notice)
 
     get_path = lambda f: get_unicode_file_path(unicode_version, f)

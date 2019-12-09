@@ -11,14 +11,12 @@ use crate::path::{self, PathBuf, Path};
 use crate::ptr;
 use crate::slice;
 use crate::str;
-use crate::sys_common::mutex::Mutex;
+use crate::sys_common::mutex::{Mutex, MutexGuard};
 use crate::sys::cvt;
 /*use sys::fd; this one is probably important */
 use crate::vec;
 
 const TMPBUF_SZ: usize = 128;
-static ENV_LOCK: Mutex = Mutex::new();
-
 
 // This is a terrible fix
 use crate::sys::os_str::Buf;
@@ -200,11 +198,18 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     &mut environ
 }
 
+pub unsafe fn env_lock() -> MutexGuard<'static> {
+    // We never call `ENV_LOCK.init()`, so it is UB to attempt to
+    // acquire this mutex reentrantly!
+    static ENV_LOCK: Mutex = Mutex::new();
+    ENV_LOCK.lock()
+}
+
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         let mut environ = *environ();
         if environ == ptr::null() {
             panic!("os::env() failure getting env string from OS: {}",
@@ -244,7 +249,7 @@ pub fn getenv(k: &OsStr) -> io::Result<Option<OsString>> {
     // always None as well
     let k = CString::new(k.as_bytes())?;
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
         let ret = if s.is_null() {
             None
@@ -260,7 +265,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
     let v = CString::new(v.as_bytes())?;
 
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(|_| ())
     }
 }
@@ -269,7 +274,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
     let nbuf = CString::new(n.as_bytes())?;
 
     unsafe {
-        let _guard = ENV_LOCK.lock();
+        let _guard = env_lock();
         cvt(libc::unsetenv(nbuf.as_ptr())).map(|_| ())
     }
 }

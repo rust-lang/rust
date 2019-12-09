@@ -1,5 +1,6 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(core_intrinsics)]
@@ -68,22 +69,14 @@ impl<M> ModuleCodegen<M> {
                             emit_bc: bool,
                             emit_bc_compressed: bool,
                             outputs: &OutputFilenames) -> CompiledModule {
-        let object = if emit_obj {
-            Some(outputs.temp_path(OutputType::Object, Some(&self.name)))
-        } else {
-            None
-        };
-        let bytecode = if emit_bc {
-            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name)))
-        } else {
-            None
-        };
-        let bytecode_compressed = if emit_bc_compressed {
-            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name))
-                    .with_extension(RLIB_BYTECODE_EXTENSION))
-        } else {
-            None
-        };
+        let object = emit_obj
+            .then(|| outputs.temp_path(OutputType::Object, Some(&self.name)));
+        let bytecode = emit_bc
+            .then(|| outputs.temp_path(OutputType::Bitcode, Some(&self.name)));
+        let bytecode_compressed = emit_bc_compressed.then(|| {
+            outputs.temp_path(OutputType::Bitcode, Some(&self.name))
+                .with_extension(RLIB_BYTECODE_EXTENSION)
+        });
 
         CompiledModule {
             name: self.name.clone(),

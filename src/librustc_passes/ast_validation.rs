@@ -14,7 +14,6 @@ use rustc_parse::validate_attr;
 use syntax::ast::*;
 use syntax::attr;
 use syntax::expand::is_proc_macro_attr;
-use syntax::feature_gate::is_builtin_attr;
 use syntax::print::pprust;
 use syntax::source_map::Spanned;
 use syntax::symbol::{kw, sym};
@@ -257,7 +256,7 @@ impl<'a> AstValidator<'a> {
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| {
                 let arr = [sym::allow, sym::cfg, sym::cfg_attr, sym::deny, sym::forbid, sym::warn];
-                !arr.contains(&attr.name_or_empty()) && is_builtin_attr(attr)
+                !arr.contains(&attr.name_or_empty()) && attr::is_builtin_attr(attr)
             })
             .for_each(|attr| if attr.is_doc_comment() {
                 let mut err = self.err_handler().struct_span_err(
@@ -736,14 +735,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                       generics: &'a Generics, item_id: NodeId, _: Span) {
         self.with_banned_assoc_ty_bound(
             |this| visit::walk_enum_def(this, enum_definition, generics, item_id))
-    }
-
-    fn visit_mac(&mut self, mac: &Mac) {
-        // when a new macro kind is added but the author forgets to set it up for expansion
-        // because that's the only part that won't cause a compiler error
-        self.session.diagnostic()
-            .span_bug(mac.span, "macro invocation missed in expansion; did you forget to override \
-                                 the relevant `fold_*()` method in `PlaceholderExpander`?");
     }
 
     fn visit_impl_item(&mut self, ii: &'a ImplItem) {

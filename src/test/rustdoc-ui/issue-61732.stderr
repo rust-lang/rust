@@ -1,0 +1,11 @@
+error[E0577]: expected module, found unresolved item `crate::r#mod`
+  --> $DIR/issue-61732.rs:3:8
+   |
+LL | pub(in crate::r#mod) fn main() {}
+   |        ^^^^^^^^^^^^ not a module
+
+error: Compilation failed, aborting rustdoc
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0577`.

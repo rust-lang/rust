@@ -52,5 +52,11 @@ error: unreachable pattern
 LL |         _ => (),
    |         ^
 
-error: aborting due to 8 previous errors
+error: unreachable pattern
+  --> $DIR/slice-pattern-const.rs:51:9
+   |
+LL |         [true] => {}
+   |         ^^^^^^
+
+error: aborting due to 9 previous errors
 

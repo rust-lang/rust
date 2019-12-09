@@ -1,11 +1,3 @@
-warning: the feature `track_caller` is incomplete and may cause the compiler to crash
-  --> $DIR/error-with-naked.rs:1:29
-   |
-LL | #![feature(naked_functions, track_caller)]
-   |                             ^^^^^^^^^^^^
-   |
-   = note: `#[warn(incomplete_features)]` on by default
-
 error[E0736]: cannot use `#[track_caller]` with `#[naked]`
   --> $DIR/error-with-naked.rs:3:1
    |

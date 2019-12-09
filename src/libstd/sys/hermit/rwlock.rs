@@ -1,7 +1,7 @@
 use super::mutex::Mutex;
 
 pub struct RWLock {
-    mutex: Mutex
+    mutex: Mutex,
 }
 
 unsafe impl Send for RWLock {}
@@ -9,9 +9,7 @@ unsafe impl Sync for RWLock {}
 
 impl RWLock {
     pub const fn new() -> RWLock {
-        RWLock {
-            mutex: Mutex::new()
-        }
+        RWLock { mutex: Mutex::new() }
     }
 
     #[inline]

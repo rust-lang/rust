@@ -37,22 +37,30 @@ pub fn calc_result<'a>(
     let result = match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TestResult::TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
-            if err
+            let maybe_panic_str = err
                 .downcast_ref::<String>()
                 .map(|e| &**e)
-                .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e))
-                .map(|e| e.contains(msg))
-                .unwrap_or(false)
-            {
+                .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e));
+
+            if maybe_panic_str.map(|e| e.contains(msg)).unwrap_or(false) {
                 TestResult::TrOk
+            } else if desc.allow_fail {
+                TestResult::TrAllowedFail
+            } else if let Some(panic_str) = maybe_panic_str {
+                TestResult::TrFailedMsg(format!(
+                    r#"panic did not contain expected string
+      panic message: `{:?}`,
+ expected substring: `{:?}`"#,
+                    panic_str, msg
+                ))
             } else {
-                if desc.allow_fail {
-                    TestResult::TrAllowedFail
-                } else {
-                    TestResult::TrFailedMsg(
-                        format!("panic did not include expected string '{}'", msg)
-                    )
-                }
+                TestResult::TrFailedMsg(format!(
+                    r#"expected panic with string value,
+ found non-string value: `{:?}`
+     expected substring: `{:?}`"#,
+                    (**err).type_id(),
+                    msg
+                ))
             }
         }
         (&ShouldPanic::Yes, Ok(())) => {

@@ -15,6 +15,7 @@ impl Command {
                  -> io::Result<(Process, StdioPipes)> {
         use crate::sys::{cvt_r};
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
+        let envp = self.capture_env();
 
         if self.saw_nul() {
             return Err(io::Error::new(ErrorKind::InvalidInput,
@@ -52,12 +53,19 @@ impl Command {
                 t!(cvt(libc::chdir(cwd.as_ptr())));
             }
 
+            let c_envp = envp.as_ref().map(|c| c.as_ptr())
+                .unwrap_or_else(|| *sys::os::environ() as *const _);
+            let stack_size = thread::min_stack();
+
+            // ensure that access to the environment is synchronized
+            let _lock = sys::os::env_lock();
+
             let ret = libc::rtpSpawn(
                 self.get_argv()[0],                   // executing program
                 self.get_argv().as_ptr() as *mut *const c_char, // argv
-                *sys::os::environ() as *mut *const c_char,
+                c_envp as *mut *const c_char,
                 100 as c_int,                         // initial priority
-                thread::min_stack(),                  // initial stack size.
+                stack_size,                           // initial stack size.
                 0,                                    // options
                 0                                     // task options
             );

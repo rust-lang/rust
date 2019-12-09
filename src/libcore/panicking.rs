@@ -11,13 +11,13 @@
 //! ```
 //!
 //! This definition allows for panicking with any general message, but it does not
-//! allow for failing with a `Box<Any>` value. The reason for this is that libcore
-//! is not allowed to allocate.
+//! allow for failing with a `Box<Any>` value. (`PanicInfo` just contains a `&(dyn Any + Send)`,
+//! for which we fill in a dummy value in `PanicInfo::internal_constructor`.)
+//! The reason for this is that libcore is not allowed to allocate.
 //!
 //! This module contains a few other panicking functions, but these are just the
 //! necessary lang items for the compiler. All panics are funneled through this
-//! one function. Currently, the actual symbol is declared in the standard
-//! library, but the location of this may change over time.
+//! one function. The actual symbol is declared through the `#[panic_handler]` attribute.
 
 // ignore-tidy-undocumented-unsafe
 
@@ -72,6 +72,7 @@ pub fn panic_fmt(fmt: fmt::Arguments<'_>, location: &Location<'_>) -> ! {
     }
 
     // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
     extern "Rust" {
         #[lang = "panic_impl"]
         fn panic_impl(pi: &PanicInfo<'_>) -> !;

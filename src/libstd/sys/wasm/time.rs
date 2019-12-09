@@ -39,8 +39,7 @@ impl SystemTime {
         panic!("time not implemented on wasm32-unknown-unknown")
     }
 
-    pub fn sub_time(&self, other: &SystemTime)
-                    -> Result<Duration, Duration> {
+    pub fn sub_time(&self, other: &SystemTime) -> Result<Duration, Duration> {
         self.0.checked_sub(other.0).ok_or_else(|| other.0 - self.0)
     }
 

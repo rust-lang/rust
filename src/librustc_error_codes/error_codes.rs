@@ -18,7 +18,6 @@ E0010: include_str!("./error_codes/E0010.md"),
 E0013: include_str!("./error_codes/E0013.md"),
 E0014: include_str!("./error_codes/E0014.md"),
 E0015: include_str!("./error_codes/E0015.md"),
-E0017: include_str!("./error_codes/E0017.md"),
 E0019: include_str!("./error_codes/E0019.md"),
 E0023: include_str!("./error_codes/E0023.md"),
 E0025: include_str!("./error_codes/E0025.md"),
@@ -107,6 +106,7 @@ E0199: include_str!("./error_codes/E0199.md"),
 E0200: include_str!("./error_codes/E0200.md"),
 E0201: include_str!("./error_codes/E0201.md"),
 E0202: include_str!("./error_codes/E0202.md"),
+E0203: include_str!("./error_codes/E0203.md"),
 E0204: include_str!("./error_codes/E0204.md"),
 E0205: include_str!("./error_codes/E0205.md"),
 E0206: include_str!("./error_codes/E0206.md"),
@@ -346,6 +346,7 @@ E0622: include_str!("./error_codes/E0622.md"),
 E0623: include_str!("./error_codes/E0623.md"),
 E0624: include_str!("./error_codes/E0624.md"),
 E0626: include_str!("./error_codes/E0626.md"),
+E0631: include_str!("./error_codes/E0631.md"),
 E0633: include_str!("./error_codes/E0633.md"),
 E0635: include_str!("./error_codes/E0635.md"),
 E0636: include_str!("./error_codes/E0636.md"),
@@ -446,8 +447,6 @@ E0745: include_str!("./error_codes/E0745.md"),
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
-    E0203, // type parameter has more than one relaxed default bound,
-           // and only one is supported
     E0208,
 //  E0209, // builtin traits can only be implemented on structs or enums
     E0212, // cannot extract an associated type from a higher-ranked trait bound
@@ -581,7 +580,6 @@ E0745: include_str!("./error_codes/E0745.md"),
     // rustc_const_unstable attribute must be paired with stable/unstable
     // attribute
     E0630,
-    E0631, // type mismatch in closure arguments
     E0632, // cannot provide explicit generic arguments when `impl Trait` is
            // used in argument position
     E0634, // type has conflicting packed representaton hints

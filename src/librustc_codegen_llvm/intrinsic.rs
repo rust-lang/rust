@@ -1,4 +1,3 @@
-use crate::attributes;
 use crate::llvm;
 use crate::llvm_util;
 use crate::abi::{Abi, FnAbi, LlvmType, PassMode};
@@ -14,7 +13,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::glue;
 use rustc_codegen_ssa::base::{to_immediate, wants_msvc_seh, compare_simd_types};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
+use rustc::ty::layout::{self, FnAbiExt, LayoutOf, HasTyCtxt, Primitive};
 use rustc::mir::interpret::GlobalId;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind};
 use rustc::hir;
@@ -442,32 +441,11 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                                 let is_left = name == "rotate_left";
                                 let val = args[0].immediate();
                                 let raw_shift = args[1].immediate();
-                                if llvm_util::get_major_version() >= 7 {
-                                    // rotate = funnel shift with first two args the same
-                                    let llvm_name = &format!("llvm.fsh{}.i{}",
-                                                            if is_left { 'l' } else { 'r' }, width);
-                                    let llfn = self.get_intrinsic(llvm_name);
-                                    self.call(llfn, &[val, val, raw_shift], None)
-                                } else {
-                                    // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
-                                    // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
-                                    let width = self.const_uint(
-                                        self.type_ix(width),
-                                        width,
-                                    );
-                                    let shift = self.urem(raw_shift, width);
-                                    let width_minus_raw_shift = self.sub(width, raw_shift);
-                                    let inv_shift = self.urem(width_minus_raw_shift, width);
-                                    let shift1 = self.shl(
-                                        val,
-                                        if is_left { shift } else { inv_shift },
-                                    );
-                                    let shift2 = self.lshr(
-                                        val,
-                                        if !is_left { shift } else { inv_shift },
-                                    );
-                                    self.or(shift1, shift2)
-                                }
+                                // rotate = funnel shift with first two args the same
+                                let llvm_name = &format!("llvm.fsh{}.i{}",
+                                                        if is_left { 'l' } else { 'r' }, width);
+                                let llfn = self.get_intrinsic(llvm_name);
+                                self.call(llfn, &[val, val, raw_shift], None)
                             },
                             "saturating_add" | "saturating_sub" => {
                                 let is_add = name == "saturating_add";
@@ -538,8 +516,35 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         return;
                     }
                 }
-
             },
+
+            "float_to_int_approx_unchecked" => {
+                if float_type_width(arg_tys[0]).is_none() {
+                    span_invalid_monomorphization_error(
+                        tcx.sess, span,
+                        &format!("invalid monomorphization of `float_to_int_approx_unchecked` \
+                                  intrinsic: expected basic float type, \
+                                  found `{}`", arg_tys[0]));
+                    return;
+                }
+                match int_type_width_signed(ret_ty, self.cx) {
+                    Some((width, signed)) => {
+                        if signed {
+                            self.fptosi(args[0].immediate(), self.cx.type_ix(width))
+                        } else {
+                            self.fptoui(args[0].immediate(), self.cx.type_ix(width))
+                        }
+                    }
+                    None => {
+                        span_invalid_monomorphization_error(
+                            tcx.sess, span,
+                            &format!("invalid monomorphization of `float_to_int_approx_unchecked` \
+                                      intrinsic:  expected basic integer type, \
+                                      found `{}`", ret_ty));
+                        return;
+                    }
+                }
+            }
 
             "discriminant_value" => {
                 args[0].deref(self.cx()).codegen_get_discr(self, ret_ty)
@@ -1013,8 +1018,10 @@ fn gen_fn<'ll, 'tcx>(
         hir::Unsafety::Unsafe,
         Abi::Rust
     ));
-    let llfn = cx.define_internal_fn(name, rust_fn_sig);
-    attributes::from_fn_attrs(cx, llfn, None, rust_fn_sig);
+    let fn_abi = FnAbi::of_fn_ptr(cx, rust_fn_sig, &[]);
+    let llfn = cx.declare_fn(name, &fn_abi);
+    // FIXME(eddyb) find a nicer way to do this.
+    unsafe { llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::InternalLinkage) };
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);
     llfn
@@ -1926,7 +1933,7 @@ unsupported {} from `{}` with element `{}` of size `{}` to `{}`"#,
 fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, bool)> {
     match ty.kind {
         ty::Int(t) => Some((match t {
-            ast::IntTy::Isize => cx.tcx.sess.target.isize_ty.bit_width().unwrap() as u64,
+            ast::IntTy::Isize => cx.tcx.sess.target.ptr_width as u64,
             ast::IntTy::I8 => 8,
             ast::IntTy::I16 => 16,
             ast::IntTy::I32 => 32,
@@ -1934,7 +1941,7 @@ fn int_type_width_signed(ty: Ty<'_>, cx: &CodegenCx<'_, '_>) -> Option<(u64, boo
             ast::IntTy::I128 => 128,
         }, true)),
         ty::Uint(t) => Some((match t {
-            ast::UintTy::Usize => cx.tcx.sess.target.usize_ty.bit_width().unwrap() as u64,
+            ast::UintTy::Usize => cx.tcx.sess.target.ptr_width as u64,
             ast::UintTy::U8 => 8,
             ast::UintTy::U16 => 16,
             ast::UintTy::U32 => 32,

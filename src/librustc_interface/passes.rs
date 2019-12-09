@@ -3,6 +3,7 @@ use crate::util;
 use crate::proc_macro_decls;
 
 use log::{info, warn, log_enabled};
+use rustc::arena::Arena;
 use rustc::dep_graph::DepGraph;
 use rustc::hir;
 use rustc::hir::lowering::lower_crate;
@@ -22,15 +23,13 @@ use rustc_codegen_ssa::back::link::emit_metadata;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::filename_for_metadata;
 use rustc_data_structures::{box_region_allow_access, declare_box_region_type, parallel};
-use rustc_data_structures::sync::{Lrc, ParallelIterator, par_iter};
+use rustc_data_structures::sync::{Lrc, Once, ParallelIterator, par_iter, WorkerLocal};
 use rustc_errors::PResult;
 use rustc_incremental;
-use rustc_metadata::cstore;
 use rustc_mir as mir;
 use rustc_parse::{parse_crate_from_file, parse_crate_from_source_str};
 use rustc_passes::{self, ast_validation, hir_stats, layout_test};
 use rustc_plugin_impl as plugin;
-use rustc_plugin_impl::registry::Registry;
 use rustc_privacy;
 use rustc_resolve::{Resolver, ResolverArenas};
 use rustc_traits;
@@ -106,8 +105,7 @@ declare_box_region_type!(
     (&mut Resolver<'_>) -> (Result<ast::Crate>, ResolverOutputs)
 );
 
-/// Runs the "early phases" of the compiler: initial `cfg` processing,
-/// loading compiler plugins (including those from `addl_plugins`),
+/// Runs the "early phases" of the compiler: initial `cfg` processing, loading compiler plugins,
 /// syntax expansion, secondary `cfg` expansion, synthesis of a test
 /// harness if one is to be provided, injection of a dependency on the
 /// standard library and prelude, and name resolution.
@@ -209,32 +207,21 @@ pub fn register_plugins<'a>(
         middle::recursion_limit::update_limits(sess, &krate);
     });
 
-    let registrars = time(sess, "plugin loading", || {
-        plugin::load::load_plugins(
-            sess,
-            metadata_loader,
-            &krate,
-            Some(sess.opts.debugging_opts.extra_plugins.clone()),
-        )
-    });
-
     let mut lint_store = rustc_lint::new_lint_store(
         sess.opts.debugging_opts.no_interleave_lints,
         sess.unstable_options(),
     );
+    register_lints(&sess, &mut lint_store);
 
-    (register_lints)(&sess, &mut lint_store);
-
-    let mut registry = Registry::new(sess, &mut lint_store, krate.span);
-
+    let registrars = time(sess, "plugin loading", || {
+        plugin::load::load_plugins(sess, metadata_loader, &krate)
+    });
     time(sess, "plugin registration", || {
+        let mut registry = plugin::Registry { lint_store: &mut lint_store };
         for registrar in registrars {
-            registry.args_hidden = Some(registrar.args);
-            (registrar.fun)(&mut registry);
+            registrar(&mut registry);
         }
     });
-
-    *sess.plugin_llvm_passes.borrow_mut() = registry.llvm_passes;
 
     Ok((krate, Lrc::new(lint_store)))
 }
@@ -452,8 +439,7 @@ fn configure_and_expand_inner<'a>(
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
         for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
-            let lint = lint::Lint::from_parser_lint_id(lint_id);
-            resolver.lint_buffer().buffer_lint(lint, id, span, &msg);
+            resolver.lint_buffer().buffer_lint(lint_id, id, span, &msg);
         }
     });
 
@@ -561,13 +547,7 @@ fn output_contains_path(output_paths: &[PathBuf], input_path: &PathBuf) -> bool 
 }
 
 fn output_conflicts_with_dir(output_paths: &[PathBuf]) -> Option<PathBuf> {
-    let check = |output_path: &PathBuf| {
-        if output_path.is_dir() {
-            Some(output_path.clone())
-        } else {
-            None
-        }
-    };
+    let check = |output_path: &PathBuf| output_path.is_dir().then(|| output_path.clone());
     check_output(output_paths, check)
 }
 
@@ -728,7 +708,7 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
     rustc_passes::provide(providers);
     rustc_traits::provide(providers);
     middle::region::provide(providers);
-    cstore::provide(providers);
+    rustc_metadata::provide(providers);
     lint::provide(providers);
     rustc_lint::provide(providers);
     rustc_codegen_utils::provide(providers);
@@ -736,97 +716,81 @@ pub fn default_provide(providers: &mut ty::query::Providers<'_>) {
 }
 
 pub fn default_provide_extern(providers: &mut ty::query::Providers<'_>) {
-    cstore::provide_extern(providers);
+    rustc_metadata::provide_extern(providers);
     rustc_codegen_ssa::provide_extern(providers);
 }
 
-declare_box_region_type!(
-    pub BoxedGlobalCtxt,
-    for('tcx),
-    (&'tcx GlobalCtxt<'tcx>) -> ((), ())
-);
+pub struct QueryContext<'tcx>(&'tcx GlobalCtxt<'tcx>);
 
-impl BoxedGlobalCtxt {
+impl<'tcx> QueryContext<'tcx> {
     pub fn enter<F, R>(&mut self, f: F) -> R
     where
-        F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> R,
+        F: FnOnce(TyCtxt<'tcx>) -> R,
     {
-        self.access(|gcx| ty::tls::enter_global(gcx, |tcx| f(tcx)))
+        ty::tls::enter_global(self.0, |tcx| f(tcx))
+    }
+
+    pub fn print_stats(&self) {
+        self.0.queries.print_stats()
     }
 }
 
-pub fn create_global_ctxt(
-    compiler: &Compiler,
+pub fn create_global_ctxt<'tcx>(
+    compiler: &'tcx Compiler,
     lint_store: Lrc<lint::LintStore>,
-    mut hir_forest: hir::map::Forest,
+    hir_forest: &'tcx hir::map::Forest,
     mut resolver_outputs: ResolverOutputs,
     outputs: OutputFilenames,
     crate_name: &str,
-) -> BoxedGlobalCtxt {
-    let sess = compiler.session().clone();
-    let codegen_backend = compiler.codegen_backend().clone();
-    let crate_name = crate_name.to_string();
+    global_ctxt: &'tcx Once<GlobalCtxt<'tcx>>,
+    all_arenas: &'tcx AllArenas,
+    arena: &'tcx WorkerLocal<Arena<'tcx>>,
+) -> QueryContext<'tcx> {
+    let sess = &compiler.session();
     let defs = mem::take(&mut resolver_outputs.definitions);
-    let override_queries = compiler.override_queries;
 
-    let ((), result) = BoxedGlobalCtxt::new(static move || {
-        let sess = &*sess;
-
-        let global_ctxt: Option<GlobalCtxt<'_>>;
-        let arenas = AllArenas::new();
-
-        // Construct the HIR map.
-        let hir_map = time(sess, "indexing HIR", || {
-            hir::map::map_crate(sess, &*resolver_outputs.cstore, &mut hir_forest, &defs)
-        });
-
-        let query_result_on_disk_cache = time(sess, "load query result cache", || {
-            rustc_incremental::load_query_result_cache(sess)
-        });
-
-        let mut local_providers = ty::query::Providers::default();
-        default_provide(&mut local_providers);
-        codegen_backend.provide(&mut local_providers);
-
-        let mut extern_providers = local_providers;
-        default_provide_extern(&mut extern_providers);
-        codegen_backend.provide_extern(&mut extern_providers);
-
-        if let Some(callback) = override_queries {
-            callback(sess, &mut local_providers, &mut extern_providers);
-        }
-
-        let gcx = TyCtxt::create_global_ctxt(
-            sess,
-            lint_store,
-            local_providers,
-            extern_providers,
-            &arenas,
-            resolver_outputs,
-            hir_map,
-            query_result_on_disk_cache,
-            &crate_name,
-            &outputs
-        );
-
-        global_ctxt = Some(gcx);
-        let gcx = global_ctxt.as_ref().unwrap();
-
-        ty::tls::enter_global(gcx, |tcx| {
-            // Do some initialization of the DepGraph that can only be done with the
-            // tcx available.
-            time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
-        });
-
-        yield BoxedGlobalCtxt::initial_yield(());
-        box_region_allow_access!(for('tcx), (&'tcx GlobalCtxt<'tcx>), (gcx));
-
-        if sess.opts.debugging_opts.query_stats {
-            gcx.queries.print_stats();
-        }
+    // Construct the HIR map.
+    let hir_map = time(sess, "indexing HIR", || {
+        hir::map::map_crate(sess, &*resolver_outputs.cstore, &hir_forest, defs)
     });
 
-    result
+    let query_result_on_disk_cache = time(sess, "load query result cache", || {
+        rustc_incremental::load_query_result_cache(sess)
+    });
+
+    let codegen_backend = compiler.codegen_backend();
+    let mut local_providers = ty::query::Providers::default();
+    default_provide(&mut local_providers);
+    codegen_backend.provide(&mut local_providers);
+
+    let mut extern_providers = local_providers;
+    default_provide_extern(&mut extern_providers);
+    codegen_backend.provide_extern(&mut extern_providers);
+
+    if let Some(callback) = compiler.override_queries {
+        callback(sess, &mut local_providers, &mut extern_providers);
+    }
+
+    let gcx = global_ctxt.init_locking(|| TyCtxt::create_global_ctxt(
+        sess,
+        lint_store,
+        local_providers,
+        extern_providers,
+        &all_arenas,
+        arena,
+        resolver_outputs,
+        hir_map,
+        query_result_on_disk_cache,
+        &crate_name,
+        &outputs
+    ));
+
+    // Do some initialization of the DepGraph that can only be done with the tcx available.
+    ty::tls::enter_global(&gcx, |tcx| {
+        time(tcx.sess, "dep graph tcx init", || rustc_incremental::dep_graph_tcx_init(tcx));
+    });
+
+    QueryContext(gcx)
 }
 
 /// Runs the resolution, type-checking, region checking and other

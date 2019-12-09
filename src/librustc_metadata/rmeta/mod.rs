@@ -1,5 +1,5 @@
 use decoder::Metadata;
-use table::PerDefTable;
+use table::{Table, TableBuilder};
 
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
@@ -15,7 +15,7 @@ use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_index::vec::IndexVec;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::MetadataRef;
-use rustc_serialize::Encodable;
+use rustc_serialize::opaque::Encoder;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -59,7 +59,7 @@ trait LazyMeta {
     fn min_size(meta: Self::Meta) -> usize;
 }
 
-impl<T: Encodable> LazyMeta for T {
+impl<T> LazyMeta for T {
     type Meta = ();
 
     fn min_size(_: ()) -> usize {
@@ -68,7 +68,7 @@ impl<T: Encodable> LazyMeta for T {
     }
 }
 
-impl<T: Encodable> LazyMeta for [T] {
+impl<T> LazyMeta for [T] {
     type Meta = usize;
 
     fn min_size(len: usize) -> usize {
@@ -124,13 +124,13 @@ impl<T: ?Sized + LazyMeta> Lazy<T> {
     }
 }
 
-impl<T: Encodable> Lazy<T> {
+impl<T> Lazy<T> {
     fn from_position(position: NonZeroUsize) -> Lazy<T> {
         Lazy::from_position_and_meta(position, ())
     }
 }
 
-impl<T: Encodable> Lazy<[T]> {
+impl<T> Lazy<[T]> {
     fn empty() -> Lazy<[T]> {
         Lazy::from_position_and_meta(NonZeroUsize::new(1).unwrap(), 0)
     }
@@ -166,24 +166,23 @@ enum LazyState {
 // manually, instead of relying on the default, to get the correct variance.
 // Only needed when `T` itself contains a parameter (e.g. `'tcx`).
 macro_rules! Lazy {
-    (Table<$T:ty>) => {Lazy<Table<$T>, usize>};
-    (PerDefTable<$T:ty>) => {Lazy<PerDefTable<$T>, usize>};
+    (Table<$I:ty, $T:ty>) => {Lazy<Table<$I, $T>, usize>};
     ([$T:ty]) => {Lazy<[$T], usize>};
     ($T:ty) => {Lazy<$T, ()>};
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
 crate struct CrateRoot<'tcx> {
-    pub name: Symbol,
-    pub triple: TargetTriple,
+    name: Symbol,
+    triple: TargetTriple,
     extra_filename: String,
-    pub hash: Svh,
-    pub disambiguator: CrateDisambiguator,
-    pub panic_strategy: PanicStrategy,
+    hash: Svh,
+    disambiguator: CrateDisambiguator,
+    panic_strategy: PanicStrategy,
     edition: Edition,
-    pub has_global_allocator: bool,
+    has_global_allocator: bool,
     has_panic_handler: bool,
-    pub has_default_lib_allocator: bool,
+    has_default_lib_allocator: bool,
     plugin_registrar_fn: Option<DefIndex>,
     proc_macro_decls_static: Option<DefIndex>,
     proc_macro_stability: Option<attr::Stability>,
@@ -208,12 +207,12 @@ crate struct CrateRoot<'tcx> {
     proc_macro_data: Option<Lazy<[DefIndex]>>,
 
     compiler_builtins: bool,
-    pub needs_allocator: bool,
-    pub needs_panic_runtime: bool,
+    needs_allocator: bool,
+    needs_panic_runtime: bool,
     no_builtins: bool,
-    pub panic_runtime: bool,
-    pub profiler_runtime: bool,
-    pub sanitizer_runtime: bool,
+    panic_runtime: bool,
+    profiler_runtime: bool,
+    sanitizer_runtime: bool,
     symbol_mangling_version: SymbolManglingVersion,
 }
 
@@ -232,31 +231,53 @@ crate struct TraitImpls {
     impls: Lazy<[DefIndex]>,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
-crate struct LazyPerDefTables<'tcx> {
-    kind: Lazy!(PerDefTable<Lazy!(EntryKind<'tcx>)>),
-    visibility: Lazy!(PerDefTable<Lazy<ty::Visibility>>),
-    span: Lazy!(PerDefTable<Lazy<Span>>),
-    attributes: Lazy!(PerDefTable<Lazy<[ast::Attribute]>>),
-    children: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
-    stability: Lazy!(PerDefTable<Lazy<attr::Stability>>),
-    deprecation: Lazy!(PerDefTable<Lazy<attr::Deprecation>>),
-    ty: Lazy!(PerDefTable<Lazy!(Ty<'tcx>)>),
-    fn_sig: Lazy!(PerDefTable<Lazy!(ty::PolyFnSig<'tcx>)>),
-    impl_trait_ref: Lazy!(PerDefTable<Lazy!(ty::TraitRef<'tcx>)>),
-    inherent_impls: Lazy!(PerDefTable<Lazy<[DefIndex]>>),
-    variances: Lazy!(PerDefTable<Lazy<[ty::Variance]>>),
-    generics: Lazy!(PerDefTable<Lazy<ty::Generics>>),
-    explicit_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
+/// Define `LazyPerDefTables` and `PerDefTableBuilders` at the same time.
+macro_rules! define_per_def_tables {
+    ($($name:ident: Table<DefIndex, $T:ty>),+ $(,)?) => {
+        #[derive(RustcEncodable, RustcDecodable)]
+        crate struct LazyPerDefTables<'tcx> {
+            $($name: Lazy!(Table<DefIndex, $T>)),+
+        }
+
+        #[derive(Default)]
+        struct PerDefTableBuilders<'tcx> {
+            $($name: TableBuilder<DefIndex, $T>),+
+        }
+
+        impl PerDefTableBuilders<'tcx> {
+            fn encode(&self, buf: &mut Encoder) -> LazyPerDefTables<'tcx> {
+                LazyPerDefTables {
+                    $($name: self.$name.encode(buf)),+
+                }
+            }
+        }
+    }
+}
+
+define_per_def_tables! {
+    kind: Table<DefIndex, Lazy!(EntryKind<'tcx>)>,
+    visibility: Table<DefIndex, Lazy<ty::Visibility>>,
+    span: Table<DefIndex, Lazy<Span>>,
+    attributes: Table<DefIndex, Lazy<[ast::Attribute]>>,
+    children: Table<DefIndex, Lazy<[DefIndex]>>,
+    stability: Table<DefIndex, Lazy<attr::Stability>>,
+    deprecation: Table<DefIndex, Lazy<attr::Deprecation>>,
+    ty: Table<DefIndex, Lazy!(Ty<'tcx>)>,
+    fn_sig: Table<DefIndex, Lazy!(ty::PolyFnSig<'tcx>)>,
+    impl_trait_ref: Table<DefIndex, Lazy!(ty::TraitRef<'tcx>)>,
+    inherent_impls: Table<DefIndex, Lazy<[DefIndex]>>,
+    variances: Table<DefIndex, Lazy<[ty::Variance]>>,
+    generics: Table<DefIndex, Lazy<ty::Generics>>,
+    explicit_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
     // FIXME(eddyb) this would ideally be `Lazy<[...]>` but `ty::Predicate`
     // doesn't handle shorthands in its own (de)serialization impls,
     // as it's an `enum` for which we want to derive (de)serialization,
     // so the `ty::codec` APIs handle the whole `&'tcx [...]` at once.
     // Also, as an optimization, a missing entry indicates an empty `&[]`.
-    inferred_outlives: Lazy!(PerDefTable<Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>),
-    super_predicates: Lazy!(PerDefTable<Lazy!(ty::GenericPredicates<'tcx>)>),
-    mir: Lazy!(PerDefTable<Lazy!(mir::Body<'tcx>)>),
-    promoted_mir: Lazy!(PerDefTable<Lazy!(IndexVec<mir::Promoted, mir::Body<'tcx>>)>),
+    inferred_outlives: Table<DefIndex, Lazy!(&'tcx [(ty::Predicate<'tcx>, Span)])>,
+    super_predicates: Table<DefIndex, Lazy!(ty::GenericPredicates<'tcx>)>,
+    mir: Table<DefIndex, Lazy!(mir::BodyAndCache<'tcx>)>,
+    promoted_mir: Table<DefIndex, Lazy!(IndexVec<mir::Promoted, mir::BodyAndCache<'tcx>>)>,
 }
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]

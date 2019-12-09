@@ -10,7 +10,7 @@ use crate::traits::*;
 use rustc_incremental::{copy_cgu_workproducts_to_incr_comp_cache_dir,
                         in_incr_comp_dir, in_incr_comp_dir_sess};
 use rustc::dep_graph::{WorkProduct, WorkProductId, WorkProductFileKind};
-use rustc::dep_graph::cgu_reuse_tracker::CguReuseTracker;
+use rustc_session::cgu_reuse_tracker::CguReuseTracker;
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Lto,
                              Sanitizer, SwitchWithOptPath};
@@ -231,8 +231,6 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub total_cgus: usize,
     // Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
-    // LLVM passes added by plugins.
-    pub plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
     // Worker thread number
@@ -1028,7 +1026,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
         time_passes: sess.time_extended(),
         prof: sess.prof.clone(),
         exported_symbols,
-        plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
         remark: sess.opts.cg.remark.clone(),
         worker: 0,
         incr_comp_session_dir: sess.incr_comp_session_dir_opt().map(|r| r.clone()),
@@ -1755,7 +1752,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
             }
         };
 
-        sess.cgu_reuse_tracker.check_expected_reuse(sess);
+        sess.cgu_reuse_tracker.check_expected_reuse(sess.diagnostic());
 
         sess.abort_if_errors();
 

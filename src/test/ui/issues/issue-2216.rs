@@ -5,7 +5,7 @@ pub fn main() {
 
     'foo: loop {
         'bar: loop {
-            'quux: loop {
+            loop {
                 if 1 == 2 {
                     break 'foo;
                 }

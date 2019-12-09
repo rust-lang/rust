@@ -337,13 +337,17 @@ macro_rules! matches {
 #[rustc_deprecated(since = "1.39.0", reason = "use the `?` operator instead")]
 #[doc(alias = "?")]
 macro_rules! r#try {
-    ($expr:expr) => (match $expr {
-        $crate::result::Result::Ok(val) => val,
-        $crate::result::Result::Err(err) => {
-            return $crate::result::Result::Err($crate::convert::From::from(err))
+    ($expr:expr) => {
+        match $expr {
+            $crate::result::Result::Ok(val) => val,
+            $crate::result::Result::Err(err) => {
+                return $crate::result::Result::Err($crate::convert::From::from(err));
+            }
         }
-    });
-    ($expr:expr,) => ($crate::r#try!($expr));
+    };
+    ($expr:expr,) => {
+        $crate::r#try!($expr)
+    };
 }
 
 /// Writes formatted data into a buffer.
@@ -734,8 +738,8 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! compile_error {
-        ($msg:expr) => ({ /* compiler built-in */ });
-        ($msg:expr,) => ({ /* compiler built-in */ })
+        ($msg:expr) => {{ /* compiler built-in */ }};
+        ($msg:expr,) => {{ /* compiler built-in */ }};
     }
 
     /// Constructs parameters for the other string-formatting macros.
@@ -788,20 +792,23 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args {
-        ($fmt:expr) => ({ /* compiler built-in */ });
-        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
     /// Same as `format_args`, but adds a newline in the end.
-    #[unstable(feature = "format_args_nl", issue = "0",
-               reason = "`format_args_nl` is only for internal \
-                         language use and is subject to change")]
+    #[unstable(
+        feature = "format_args_nl",
+        issue = "0",
+        reason = "`format_args_nl` is only for internal \
+                  language use and is subject to change"
+    )]
     #[allow_internal_unstable(fmt_internals)]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! format_args_nl {
-        ($fmt:expr) => ({ /* compiler built-in */ });
-        ($fmt:expr, $($args:tt)*) => ({ /* compiler built-in */ })
+        ($fmt:expr) => {{ /* compiler built-in */ }};
+        ($fmt:expr, $($args:tt)*) => {{ /* compiler built-in */ }};
     }
 
     /// Inspects an environment variable at compile time.
@@ -839,8 +846,8 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! env {
-        ($name:expr) => ({ /* compiler built-in */ });
-        ($name:expr,) => ({ /* compiler built-in */ })
+        ($name:expr) => {{ /* compiler built-in */ }};
+        ($name:expr,) => {{ /* compiler built-in */ }};
     }
 
     /// Optionally inspects an environment variable at compile time.
@@ -866,8 +873,8 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! option_env {
-        ($name:expr) => ({ /* compiler built-in */ });
-        ($name:expr,) => ({ /* compiler built-in */ })
+        ($name:expr) => {{ /* compiler built-in */ }};
+        ($name:expr,) => {{ /* compiler built-in */ }};
     }
 
     /// Concatenates identifiers into one identifier.
@@ -894,13 +901,16 @@ pub(crate) mod builtin {
     /// // fn concat_idents!(new, fun, name) { } // not usable in this way!
     /// # }
     /// ```
-    #[unstable(feature = "concat_idents", issue = "29599",
-               reason = "`concat_idents` is not stable enough for use and is subject to change")]
+    #[unstable(
+        feature = "concat_idents",
+        issue = "29599",
+        reason = "`concat_idents` is not stable enough for use and is subject to change"
+    )]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! concat_idents {
-        ($($e:ident),+) => ({ /* compiler built-in */ });
-        ($($e:ident,)+) => ({ /* compiler built-in */ })
+        ($($e:ident),+) => {{ /* compiler built-in */ }};
+        ($($e:ident,)+) => {{ /* compiler built-in */ }};
     }
 
     /// Concatenates literals into a static string slice.
@@ -922,8 +932,8 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! concat {
-        ($($e:expr),*) => ({ /* compiler built-in */ });
-        ($($e:expr,)*) => ({ /* compiler built-in */ })
+        ($($e:expr),*) => {{ /* compiler built-in */ }};
+        ($($e:expr,)*) => {{ /* compiler built-in */ }};
     }
 
     /// Expands to the line number on which it was invoked.
@@ -950,7 +960,11 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! line { () => { /* compiler built-in */ } }
+    macro_rules! line {
+        () => {
+            /* compiler built-in */
+        };
+    }
 
     /// Expands to the column number at which it was invoked.
     ///
@@ -976,7 +990,11 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! column { () => { /* compiler built-in */ } }
+    macro_rules! column {
+        () => {
+            /* compiler built-in */
+        };
+    }
 
     /// Expands to the file name in which it was invoked.
     ///
@@ -1001,7 +1019,11 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! file { () => { /* compiler built-in */ } }
+    macro_rules! file {
+        () => {
+            /* compiler built-in */
+        };
+    }
 
     /// Stringifies its arguments.
     ///
@@ -1021,7 +1043,11 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! stringify { ($($t:tt)*) => { /* compiler built-in */ } }
+    macro_rules! stringify {
+        ($($t:tt)*) => {
+            /* compiler built-in */
+        };
+    }
 
     /// Includes a utf8-encoded file as a string.
     ///
@@ -1057,8 +1083,8 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! include_str {
-        ($file:expr) => ({ /* compiler built-in */ });
-        ($file:expr,) => ({ /* compiler built-in */ })
+        ($file:expr) => {{ /* compiler built-in */ }};
+        ($file:expr,) => {{ /* compiler built-in */ }};
     }
 
     /// Includes a file as a reference to a byte array.
@@ -1095,8 +1121,8 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! include_bytes {
-        ($file:expr) => ({ /* compiler built-in */ });
-        ($file:expr,) => ({ /* compiler built-in */ })
+        ($file:expr) => {{ /* compiler built-in */ }};
+        ($file:expr,) => {{ /* compiler built-in */ }};
     }
 
     /// Expands to a string that represents the current module path.
@@ -1119,7 +1145,11 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! module_path { () => { /* compiler built-in */ } }
+    macro_rules! module_path {
+        () => {
+            /* compiler built-in */
+        };
+    }
 
     /// Evaluates boolean combinations of configuration flags at compile-time.
     ///
@@ -1144,7 +1174,11 @@ pub(crate) mod builtin {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! cfg { ($($cfg:tt)*) => { /* compiler built-in */ } }
+    macro_rules! cfg {
+        ($($cfg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
 
     /// Parses a file as an expression or an item according to the context.
     ///
@@ -1189,8 +1223,8 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! include {
-        ($file:expr) => ({ /* compiler built-in */ });
-        ($file:expr,) => ({ /* compiler built-in */ })
+        ($file:expr) => {{ /* compiler built-in */ }};
+        ($file:expr,) => {{ /* compiler built-in */ }};
     }
 
     /// Asserts that a boolean expression is `true` at runtime.
@@ -1242,9 +1276,9 @@ pub(crate) mod builtin {
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! assert {
-        ($cond:expr) => ({ /* compiler built-in */ });
-        ($cond:expr,) => ({ /* compiler built-in */ });
-        ($cond:expr, $($arg:tt)+) => ({ /* compiler built-in */ })
+        ($cond:expr) => {{ /* compiler built-in */ }};
+        ($cond:expr,) => {{ /* compiler built-in */ }};
+        ($cond:expr, $($arg:tt)+) => {{ /* compiler built-in */ }};
     }
 
     /// Inline assembly.
@@ -1252,75 +1286,118 @@ pub(crate) mod builtin {
     /// Read the [unstable book] for the usage.
     ///
     /// [unstable book]: ../unstable-book/library-features/asm.html
-    #[unstable(feature = "asm", issue = "29722",
-               reason = "inline assembly is not stable enough for use and is subject to change")]
+    #[unstable(
+        feature = "asm",
+        issue = "29722",
+        reason = "inline assembly is not stable enough for use and is subject to change"
+    )]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! asm { ("assembly template"
+    macro_rules! asm {
+        ("assembly template"
                         : $("output"(operand),)*
                         : $("input"(operand),)*
                         : $("clobbers",)*
-                        : $("options",)*) => { /* compiler built-in */ } }
+                        : $("options",)*) => {
+            /* compiler built-in */
+        };
+    }
 
     /// Module-level inline assembly.
-    #[unstable(feature = "global_asm", issue = "35119",
-               reason = "`global_asm!` is not stable enough for use and is subject to change")]
+    #[unstable(
+        feature = "global_asm",
+        issue = "35119",
+        reason = "`global_asm!` is not stable enough for use and is subject to change"
+    )]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! global_asm { ("assembly") => { /* compiler built-in */ } }
+    macro_rules! global_asm {
+        ("assembly") => {
+            /* compiler built-in */
+        };
+    }
 
     /// Prints passed tokens into the standard output.
-    #[unstable(feature = "log_syntax", issue = "29598",
-               reason = "`log_syntax!` is not stable enough for use and is subject to change")]
+    #[unstable(
+        feature = "log_syntax",
+        issue = "29598",
+        reason = "`log_syntax!` is not stable enough for use and is subject to change"
+    )]
     #[rustc_builtin_macro]
     #[macro_export]
-    macro_rules! log_syntax { ($($arg:tt)*) => { /* compiler built-in */ } }
+    macro_rules! log_syntax {
+        ($($arg:tt)*) => {
+            /* compiler built-in */
+        };
+    }
 
     /// Enables or disables tracing functionality used for debugging other macros.
-    #[unstable(feature = "trace_macros", issue = "29598",
-               reason = "`trace_macros` is not stable enough for use and is subject to change")]
+    #[unstable(
+        feature = "trace_macros",
+        issue = "29598",
+        reason = "`trace_macros` is not stable enough for use and is subject to change"
+    )]
     #[rustc_builtin_macro]
     #[macro_export]
     macro_rules! trace_macros {
-        (true) => ({ /* compiler built-in */ });
-        (false) => ({ /* compiler built-in */ })
+        (true) => {{ /* compiler built-in */ }};
+        (false) => {{ /* compiler built-in */ }};
     }
 
     /// Attribute macro applied to a function to turn it into a unit test.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
-    pub macro test($item:item) { /* compiler built-in */ }
+    pub macro test($item:item) {
+        /* compiler built-in */
+    }
 
     /// Attribute macro applied to a function to turn it into a benchmark test.
-    #[unstable(soft, feature = "test", issue = "50297",
-               reason = "`bench` is a part of custom test frameworks which are unstable")]
+    #[unstable(
+        feature = "test",
+        issue = "50297",
+        soft,
+        reason = "`bench` is a part of custom test frameworks which are unstable"
+    )]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
-    pub macro bench($item:item) { /* compiler built-in */ }
+    pub macro bench($item:item) {
+        /* compiler built-in */
+    }
 
     /// An implementation detail of the `#[test]` and `#[bench]` macros.
-    #[unstable(feature = "custom_test_frameworks", issue = "50297",
-               reason = "custom test frameworks are an unstable feature")]
+    #[unstable(
+        feature = "custom_test_frameworks",
+        issue = "50297",
+        reason = "custom test frameworks are an unstable feature"
+    )]
     #[allow_internal_unstable(test, rustc_attrs)]
     #[rustc_builtin_macro]
-    pub macro test_case($item:item) { /* compiler built-in */ }
+    pub macro test_case($item:item) {
+        /* compiler built-in */
+    }
 
     /// Attribute macro applied to a static to register it as a global allocator.
     #[stable(feature = "global_allocator", since = "1.28.0")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
-    pub macro global_allocator($item:item) { /* compiler built-in */ }
+    pub macro global_allocator($item:item) {
+        /* compiler built-in */
+    }
 
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics, libstd_sys_internals)]
-    pub macro RustcDecodable($item:item) { /* compiler built-in */ }
+    pub macro RustcDecodable($item:item) {
+        /* compiler built-in */
+    }
 
     /// Unstable implementation detail of the `rustc` compiler, do not use.
     #[rustc_builtin_macro]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow_internal_unstable(core_intrinsics)]
-    pub macro RustcEncodable($item:item) { /* compiler built-in */ }
+    pub macro RustcEncodable($item:item) {
+        /* compiler built-in */
+    }
 }

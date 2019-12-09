@@ -1515,14 +1515,6 @@ impl<'l, 'tcx> Visitor<'l> for DumpVisitor<'l, 'tcx> {
         }
     }
 
-    fn visit_mac(&mut self, mac: &'l ast::Mac) {
-        // These shouldn't exist in the AST at this point, log a span bug.
-        span_bug!(
-            mac.span,
-            "macro invocation should have been expanded out of AST"
-        );
-    }
-
     fn visit_pat(&mut self, p: &'l ast::Pat) {
         self.process_macro_use(p.span);
         self.process_pat(p);

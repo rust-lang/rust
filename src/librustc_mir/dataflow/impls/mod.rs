@@ -71,7 +71,7 @@ pub struct MaybeInitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> MaybeInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        MaybeInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
+        MaybeInitializedPlaces { tcx, body, mdpe }
     }
 }
 
@@ -122,7 +122,7 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        MaybeUninitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
+        MaybeUninitializedPlaces { tcx, body, mdpe }
     }
 }
 
@@ -172,7 +172,7 @@ pub struct DefinitelyInitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> DefinitelyInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        DefinitelyInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
+        DefinitelyInitializedPlaces { tcx, body, mdpe }
     }
 }
 
@@ -217,7 +217,7 @@ pub struct EverInitializedPlaces<'a, 'tcx> {
 
 impl<'a, 'tcx> EverInitializedPlaces<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>, body: &'a Body<'tcx>, mdpe: &'a MoveDataParamEnv<'tcx>) -> Self {
-        EverInitializedPlaces { tcx: tcx, body: body, mdpe: mdpe }
+        EverInitializedPlaces { tcx, body, mdpe }
     }
 }
 

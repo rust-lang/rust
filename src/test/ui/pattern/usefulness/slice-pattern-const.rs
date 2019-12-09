@@ -44,4 +44,11 @@ fn main() {
         b"" => (), //~ ERROR unreachable pattern
         _ => (), //~ ERROR unreachable pattern
     }
+
+    const CONST1: &[bool; 1] = &[true];
+    match &[false] {
+        CONST1 => {}
+        [true] => {} //~ ERROR unreachable pattern
+        [false] => {}
+    }
 }

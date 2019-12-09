@@ -1,8 +1,11 @@
-error[E0017]: references in constants may only refer to immutable values
+error[E0658]: references in constants may only refer to immutable values
   --> $DIR/issue-17718-const-bad-values.rs:1:34
    |
 LL | const C1: &'static mut [usize] = &mut [];
    |                                  ^^^^^^^ constants require immutable values
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error[E0013]: constants cannot refer to statics, use a constant instead
   --> $DIR/issue-17718-const-bad-values.rs:5:46
@@ -10,13 +13,16 @@ error[E0013]: constants cannot refer to statics, use a constant instead
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                              ^
 
-error[E0017]: references in constants may only refer to immutable values
+error[E0658]: references in constants may only refer to immutable values
   --> $DIR/issue-17718-const-bad-values.rs:5:41
    |
 LL | const C2: &'static mut usize = unsafe { &mut S };
    |                                         ^^^^^^ constants require immutable values
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/57349
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0013, E0017.
+Some errors have detailed explanations: E0013, E0658.
 For more information about an error, try `rustc --explain E0013`.

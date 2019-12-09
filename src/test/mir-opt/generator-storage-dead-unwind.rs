@@ -37,8 +37,10 @@ fn main() {
 // ...
 // let mut _9: Bar;
 // scope 1 {
+//     debug a => _2;
 //     let _3: Bar;
 //     scope 2 {
+//         debug b => _3;
 //     }
 // }
 // bb0: {

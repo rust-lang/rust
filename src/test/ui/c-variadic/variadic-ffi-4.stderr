@@ -49,9 +49,13 @@ note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on th
    |
 LL |     let _ = ap.with_copy(|ap| { ap });
    |                          ^^^^^^^^^^^
-   = note: ...so that the expression is assignable:
-           expected core::ffi::VaList<'_, '_>
-              found core::ffi::VaList<'_, '_>
+note: ...so that the expression is assignable
+  --> $DIR/variadic-ffi-4.rs:16:33
+   |
+LL |     let _ = ap.with_copy(|ap| { ap });
+   |                                 ^^
+   = note: expected  `core::ffi::VaList<'_, '_>`
+              found  `core::ffi::VaList<'_, '_>`
 note: but, the lifetime must be valid for the method call at 16:13...
   --> $DIR/variadic-ffi-4.rs:16:13
    |

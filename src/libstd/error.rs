@@ -206,7 +206,7 @@ pub trait Error: Debug + Display {
         TypeId::of::<Self>()
     }
 
-    /// Returns a stack backtrace, if available, of where this error ocurred.
+    /// Returns a stack backtrace, if available, of where this error occurred.
     ///
     /// This function allows inspecting the location, in code, of where an error
     /// happened. The returned `Backtrace` contains information about the stack

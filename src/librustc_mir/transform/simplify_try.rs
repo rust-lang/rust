@@ -33,8 +33,9 @@ use itertools::Itertools as _;
 pub struct SimplifyArmIdentity;
 
 impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
-    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
-        for bb in body.basic_blocks_mut() {
+    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
+        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
+        for bb in basic_blocks {
             // Need 3 statements:
             let (s0, s1, s2) = match &mut *bb.statements {
                 [s0, s1, s2] => (s0, s1, s2),
@@ -51,7 +52,12 @@ impl<'tcx> MirPass<'tcx> for SimplifyArmIdentity {
                 Some(x) => x,
             };
             if local_tmp_s0 != local_tmp_s1
+                // The field-and-variant information match up.
                 || vf_s0 != vf_s1
+                // Source and target locals have the same type.
+                // FIXME(Centril | oli-obk): possibly relax to same layout?
+                || local_decls[local_0].ty != local_decls[local_1].ty
+                // We're setting the discriminant of `local_0` to this variant.
                 || Some((local_0, vf_s0.var_idx)) != match_set_discr(s2)
             {
                 continue;
@@ -145,7 +151,7 @@ fn match_variant_field_place<'tcx>(place: &Place<'tcx>) -> Option<(Local, VarFie
 pub struct SimplifyBranchSame;
 
 impl<'tcx> MirPass<'tcx> for SimplifyBranchSame {
-    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut Body<'tcx>) {
+    fn run_pass(&self, _: TyCtxt<'tcx>, _: MirSource<'tcx>, body: &mut BodyAndCache<'tcx>) {
         let mut did_remove_blocks = false;
         let bbs = body.basic_blocks_mut();
         for bb_idx in bbs.indices() {

@@ -1,4 +1,4 @@
-error: `[v2]` cannot be resolved, ignoring it...
+error: `[v2]` cannot be resolved, ignoring it.
   --> $DIR/deny-intra-link-resolution-failure.rs:3:6
    |
 LL | /// [v2]

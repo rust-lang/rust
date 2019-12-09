@@ -399,11 +399,7 @@ impl<Idx> RangeInclusive<Idx> {
     #[inline]
     #[rustc_promotable]
     pub const fn new(start: Idx, end: Idx) -> Self {
-        Self {
-            start,
-            end,
-            is_empty: None,
-        }
+        Self { start, end, is_empty: None }
     }
 
     /// Returns the lower bound of the range (inclusive).

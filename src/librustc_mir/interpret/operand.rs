@@ -19,15 +19,16 @@ use super::{
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
 use rustc_macros::HashStable;
+use syntax::ast;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary
-/// operations and fat pointers. This idea was taken from rustc's codegen.
+/// operations and wide pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
 pub enum Immediate<Tag=(), Id=AllocId> {
     Scalar(ScalarMaybeUndef<Tag, Id>),
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
@@ -47,6 +48,13 @@ impl<Tag> From<Scalar<Tag>> for Immediate<Tag> {
     }
 }
 
+impl<Tag> From<Pointer<Tag>> for Immediate<Tag> {
+    #[inline(always)]
+    fn from(val: Pointer<Tag>) -> Self {
+        Immediate::Scalar(Scalar::from(val).into())
+    }
+}
+
 impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(
         val: Scalar<Tag>,
@@ -60,14 +68,14 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     pub fn new_dyn_trait(val: Scalar<Tag>, vtable: Pointer<Tag>) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::Ptr(vtable).into())
+        Immediate::ScalarPair(val.into(), vtable.into())
     }
 
     #[inline]
     pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef<Tag> {
         match self {
             Immediate::Scalar(val) => val,
-            Immediate::ScalarPair(..) => bug!("Got a fat pointer where a scalar was expected"),
+            Immediate::ScalarPair(..) => bug!("Got a wide pointer where a scalar was expected"),
         }
     }
 
@@ -93,6 +101,42 @@ pub struct ImmTy<'tcx, Tag=()> {
     pub layout: TyLayout<'tcx>,
 }
 
+// `Tag: Copy` because some methods on `Scalar` consume them by value
+impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.imm {
+            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) => match s.to_bits(self.layout.size) {
+                Ok(s) => {
+                    match self.layout.ty.kind {
+                        ty::Int(_) => return write!(
+                            fmt, "{}",
+                            super::sign_extend(s, self.layout.size) as i128,
+                        ),
+                        ty::Uint(_) => return write!(fmt, "{}", s),
+                        ty::Bool if s == 0 => return fmt.write_str("false"),
+                        ty::Bool if s == 1 => return fmt.write_str("true"),
+                        ty::Char => if let Some(c) =
+                            u32::try_from(s).ok().and_then(std::char::from_u32) {
+                            return write!(fmt, "{}", c);
+                        },
+                        ty::Float(ast::FloatTy::F32) => if let Ok(u) = u32::try_from(s) {
+                            return write!(fmt, "{}", f32::from_bits(u));
+                        },
+                        ty::Float(ast::FloatTy::F64) => if let Ok(u) = u64::try_from(s) {
+                            return write!(fmt, "{}", f64::from_bits(u));
+                        },
+                        _ => {},
+                    }
+                    write!(fmt, "{:x}", s)
+                },
+                Err(_) => fmt.write_str("{pointer}"),
+            },
+            Immediate::Scalar(ScalarMaybeUndef::Undef) => fmt.write_str("{undef}"),
+            Immediate::ScalarPair(..) => fmt.write_str("{wide pointer or tuple}"),
+        }
+    }
+}
+
 impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
     type Target = Immediate<Tag>;
     #[inline(always)]
@@ -104,7 +148,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
 pub enum Operand<Tag=(), Id=AllocId> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
@@ -134,7 +178,7 @@ impl<Tag> Operand<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpTy<'tcx, Tag=()> {
     op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyLayout<'tcx>,
@@ -324,7 +368,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
-    // Turn the MPlace into a string (must already be dereferenced!)
+    // Turn the wide MPlace into a string (must already be dereferenced!)
     pub fn read_str(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,

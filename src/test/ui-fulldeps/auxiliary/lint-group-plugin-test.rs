@@ -4,8 +4,8 @@
 #![feature(box_syntax, rustc_private)]
 
 // Load rustc as a plugin to get macros.
-#[macro_use]
-extern crate rustc;
+#[macro_use] extern crate rustc;
+#[macro_use] extern crate rustc_session;
 extern crate rustc_driver;
 
 use rustc::hir;

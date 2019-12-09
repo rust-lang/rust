@@ -82,4 +82,26 @@ fn main() {
         [_, _] => {}
         [false, .., false] => {}
     }
+
+    const CONST: &[bool] = &[true];
+    match s {
+    //~^ ERROR `&[..]` not covered
+        CONST => {}
+    }
+    match s {
+    //~^ ERROR `&[true]` not covered
+        [] => {},
+        [false] => {},
+        CONST => {},
+        [_, _, ..] => {}
+    }
+    const CONST1: &[bool; 1] = &[true];
+    match s1 {
+    //~^ ERROR `&[false]` not covered
+        CONST1 => {}
+    }
+    match s1 {
+        CONST1 => {}
+        [false] => {}
+    }
 }

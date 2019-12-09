@@ -25,8 +25,8 @@ use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
 
-use rustc::dep_graph::cgu_reuse_tracker::CguReuse;
 use rustc::hir;
+use rustc_session::cgu_reuse_tracker::CguReuse;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::lang_items::StartFnLangItem;
@@ -368,13 +368,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     // release builds.
     info!("codegen_instance({})", instance);
 
-    let sig = instance.fn_sig(cx.tcx());
-    let sig = cx.tcx().normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
-
-    let lldecl = cx.get_fn(instance);
-
-    let mir = cx.tcx().instance_mir(instance.def);
-    mir::codegen_mir::<Bx>(cx, lldecl, &mir, instance, sig);
+    mir::codegen_mir::<Bx>(cx, instance);
 }
 
 /// Creates the `main` function which will initialize the rust runtime and call

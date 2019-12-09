@@ -924,7 +924,6 @@ impl<'a> ExtCtxt<'a> {
     }
     pub fn source_map(&self) -> &'a SourceMap { self.parse_sess.source_map() }
     pub fn parse_sess(&self) -> &'a ParseSess { self.parse_sess }
-    pub fn cfg(&self) -> &ast::CrateConfig { &self.parse_sess.config }
     pub fn call_site(&self) -> Span {
         self.current_expansion.id.expn_data().call_site
     }

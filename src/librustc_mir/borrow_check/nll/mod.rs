@@ -12,10 +12,12 @@ use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
-                 Local, Location, Body, LocalKind, BasicBlock, Promoted};
+                 Local, Location, Body, BodyAndCache, LocalKind, BasicBlock,
+                 Promoted, ReadOnlyBodyAndCache};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_index::vec::IndexVec;
 use rustc_errors::Diagnostic;
+use syntax_pos::symbol::Symbol;
 use std::fmt::Debug;
 use std::env;
 use std::io;
@@ -30,16 +32,16 @@ use crate::util as mir_util;
 use crate::util::pretty;
 
 mod constraint_generation;
-pub mod explain_borrow;
 mod facts;
 mod invalidation;
-crate mod region_infer;
 mod renumber;
-crate mod type_check;
-mod universal_regions;
 
-mod constraints;
 mod member_constraints;
+
+crate mod constraints;
+crate mod universal_regions;
+crate mod type_check;
+crate mod region_infer;
 
 use self::facts::AllFacts;
 use self::region_infer::RegionInferenceContext;
@@ -53,8 +55,8 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body: &mut Body<'tcx>,
-    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
+    body: &mut BodyAndCache<'tcx>,
+    promoted: &mut IndexVec<Promoted, BodyAndCache<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
@@ -156,8 +158,9 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
-    body: &Body<'tcx>,
-    promoted: &IndexVec<Promoted, Body<'tcx>>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
+    local_names: &IndexVec<Local, Option<Symbol>>,
     upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
@@ -170,15 +173,12 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>>>,
     Option<ClosureRegionRequirements<'tcx>>,
 ) {
-    let mut all_facts = if AllFacts::enabled(infcx.tcx) {
-        Some(AllFacts::default())
-    } else {
-        None
-    };
+    let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(RegionValueElements::new(body));
+    let elements
+        = &Rc::new(RegionValueElements::new(&body));
 
     // Run the MIR type-checker.
     let MirTypeckResults {
@@ -203,7 +203,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         all_facts
             .universal_region
             .extend(universal_regions.universal_regions());
-        populate_polonius_move_facts(all_facts, move_data, location_table, body);
+        populate_polonius_move_facts(all_facts, move_data, location_table, &body);
     }
 
     // Create the region inference context, taking ownership of the
@@ -236,7 +236,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         universal_regions,
         placeholder_indices,
         universal_region_relations,
-        body,
         outlives_constraints,
         member_constraints,
         closure_bounds_mapping,
@@ -251,7 +250,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         param_env,
         &mut all_facts,
         location_table,
-        &body,
+        body,
         borrow_set,
     );
 
@@ -281,7 +280,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // Solve the region constraints.
     let closure_region_requirements =
-        regioncx.solve(infcx, &body, upvars, def_id, errors_buffer);
+        regioncx.solve(infcx, &body, local_names, upvars, def_id, errors_buffer);
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
@@ -295,7 +294,13 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // We also have a `#[rustc_nll]` annotation that causes us to dump
     // information
-    dump_annotation(infcx, &body, def_id, &regioncx, &closure_region_requirements, errors_buffer);
+    dump_annotation(
+        infcx,
+        &body,
+        def_id,
+        &regioncx,
+        &closure_region_requirements,
+        errors_buffer);
 
     (regioncx, polonius_output, closure_region_requirements)
 }

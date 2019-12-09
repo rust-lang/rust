@@ -1,3 +1,4 @@
+use rustc::hir;
 use rustc::hir::def::{Res, DefKind};
 use rustc::hir::def_id::DefId;
 use rustc::lint;
@@ -7,18 +8,16 @@ use rustc::ty::adjustment;
 use rustc_data_structures::fx::FxHashMap;
 use lint::{LateContext, EarlyContext, LintContext, LintArray};
 use lint::{LintPass, EarlyLintPass, LateLintPass};
+use rustc_feature::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 
 use syntax::ast;
 use syntax::attr;
 use syntax::errors::{Applicability, pluralize};
-use syntax::feature_gate::{AttributeType, BuiltinAttribute, BUILTIN_ATTRIBUTE_MAP};
 use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
 use syntax::symbol::Symbol;
 use syntax::util::parser;
 use syntax_pos::{Span, BytePos};
-
-use rustc::hir;
 
 use log::debug;
 

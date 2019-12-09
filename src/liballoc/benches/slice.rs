@@ -1,9 +1,9 @@
 use std::{mem, ptr};
 
+use rand::distributions::{Alphanumeric, Standard};
 use rand::{thread_rng, Rng, SeedableRng};
-use rand::distributions::{Standard, Alphanumeric};
 use rand_xorshift::XorShiftRng;
-use test::{Bencher, black_box};
+use test::{black_box, Bencher};
 
 #[bench]
 fn iterator(b: &mut Bencher) {
@@ -239,7 +239,7 @@ macro_rules! sort {
             b.iter(|| v.clone().$f());
             b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
         }
-    }
+    };
 }
 
 macro_rules! sort_strings {
@@ -251,7 +251,7 @@ macro_rules! sort_strings {
             b.iter(|| v.clone().$f());
             b.bytes = $len * mem::size_of::<&str>() as u64;
         }
-    }
+    };
 }
 
 macro_rules! sort_expensive {
@@ -273,7 +273,7 @@ macro_rules! sort_expensive {
             });
             b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
         }
-    }
+    };
 }
 
 macro_rules! sort_lexicographic {
@@ -284,7 +284,7 @@ macro_rules! sort_lexicographic {
             b.iter(|| v.clone().$f(|x| x.to_string()));
             b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
         }
-    }
+    };
 }
 
 sort!(sort, sort_small_ascending, gen_ascending, 10);
@@ -325,24 +325,25 @@ macro_rules! reverse {
         fn $name(b: &mut Bencher) {
             // odd length and offset by 1 to be as unaligned as possible
             let n = 0xFFFFF;
-            let mut v: Vec<_> =
-                (0..1+(n / mem::size_of::<$ty>() as u64))
-                .map($f)
-                .collect();
+            let mut v: Vec<_> = (0..1 + (n / mem::size_of::<$ty>() as u64)).map($f).collect();
             b.iter(|| black_box(&mut v[1..]).reverse());
             b.bytes = n;
         }
-    }
+    };
 }
 
 reverse!(reverse_u8, u8, |x| x as u8);
 reverse!(reverse_u16, u16, |x| x as u16);
-reverse!(reverse_u8x3, [u8;3], |x| [x as u8, (x>>8) as u8, (x>>16) as u8]);
+reverse!(reverse_u8x3, [u8; 3], |x| [x as u8, (x >> 8) as u8, (x >> 16) as u8]);
 reverse!(reverse_u32, u32, |x| x as u32);
 reverse!(reverse_u64, u64, |x| x as u64);
 reverse!(reverse_u128, u128, |x| x as u128);
-#[repr(simd)] struct F64x4(f64, f64, f64, f64);
-reverse!(reverse_simd_f64x4, F64x4, |x| { let x = x as f64; F64x4(x,x,x,x) });
+#[repr(simd)]
+struct F64x4(f64, f64, f64, f64);
+reverse!(reverse_simd_f64x4, F64x4, |x| {
+    let x = x as f64;
+    F64x4(x, x, x, x)
+});
 
 macro_rules! rotate {
     ($name:ident, $gen:expr, $len:expr, $mid:expr) => {
@@ -350,32 +351,32 @@ macro_rules! rotate {
         fn $name(b: &mut Bencher) {
             let size = mem::size_of_val(&$gen(1)[0]);
             let mut v = $gen($len * 8 / size);
-            b.iter(|| black_box(&mut v).rotate_left(($mid*8+size-1)/size));
+            b.iter(|| black_box(&mut v).rotate_left(($mid * 8 + size - 1) / size));
             b.bytes = (v.len() * size) as u64;
         }
-    }
+    };
 }
 
 rotate!(rotate_tiny_by1, gen_random, 16, 1);
-rotate!(rotate_tiny_half, gen_random, 16, 16/2);
-rotate!(rotate_tiny_half_plus_one, gen_random, 16, 16/2+1);
+rotate!(rotate_tiny_half, gen_random, 16, 16 / 2);
+rotate!(rotate_tiny_half_plus_one, gen_random, 16, 16 / 2 + 1);
 
 rotate!(rotate_medium_by1, gen_random, 9158, 1);
 rotate!(rotate_medium_by727_u64, gen_random, 9158, 727);
 rotate!(rotate_medium_by727_bytes, gen_random_bytes, 9158, 727);
 rotate!(rotate_medium_by727_strings, gen_strings, 9158, 727);
-rotate!(rotate_medium_half, gen_random, 9158, 9158/2);
-rotate!(rotate_medium_half_plus_one, gen_random, 9158, 9158/2+1);
+rotate!(rotate_medium_half, gen_random, 9158, 9158 / 2);
+rotate!(rotate_medium_half_plus_one, gen_random, 9158, 9158 / 2 + 1);
 
 // Intended to use more RAM than the machine has cache
-rotate!(rotate_huge_by1, gen_random, 5*1024*1024, 1);
-rotate!(rotate_huge_by9199_u64, gen_random, 5*1024*1024, 9199);
-rotate!(rotate_huge_by9199_bytes, gen_random_bytes, 5*1024*1024, 9199);
-rotate!(rotate_huge_by9199_strings, gen_strings, 5*1024*1024, 9199);
-rotate!(rotate_huge_by9199_big, gen_big_random, 5*1024*1024, 9199);
-rotate!(rotate_huge_by1234577_u64, gen_random, 5*1024*1024, 1234577);
-rotate!(rotate_huge_by1234577_bytes, gen_random_bytes, 5*1024*1024, 1234577);
-rotate!(rotate_huge_by1234577_strings, gen_strings, 5*1024*1024, 1234577);
-rotate!(rotate_huge_by1234577_big, gen_big_random, 5*1024*1024, 1234577);
-rotate!(rotate_huge_half, gen_random, 5*1024*1024, 5*1024*1024/2);
-rotate!(rotate_huge_half_plus_one, gen_random, 5*1024*1024, 5*1024*1024/2+1);
+rotate!(rotate_huge_by1, gen_random, 5 * 1024 * 1024, 1);
+rotate!(rotate_huge_by9199_u64, gen_random, 5 * 1024 * 1024, 9199);
+rotate!(rotate_huge_by9199_bytes, gen_random_bytes, 5 * 1024 * 1024, 9199);
+rotate!(rotate_huge_by9199_strings, gen_strings, 5 * 1024 * 1024, 9199);
+rotate!(rotate_huge_by9199_big, gen_big_random, 5 * 1024 * 1024, 9199);
+rotate!(rotate_huge_by1234577_u64, gen_random, 5 * 1024 * 1024, 1234577);
+rotate!(rotate_huge_by1234577_bytes, gen_random_bytes, 5 * 1024 * 1024, 1234577);
+rotate!(rotate_huge_by1234577_strings, gen_strings, 5 * 1024 * 1024, 1234577);
+rotate!(rotate_huge_by1234577_big, gen_big_random, 5 * 1024 * 1024, 1234577);
+rotate!(rotate_huge_half, gen_random, 5 * 1024 * 1024, 5 * 1024 * 1024 / 2);
+rotate!(rotate_huge_half_plus_one, gen_random, 5 * 1024 * 1024, 5 * 1024 * 1024 / 2 + 1);

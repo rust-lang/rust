@@ -4,7 +4,6 @@
 use crate::ich::StableHashingContext;
 
 use syntax::ast;
-use syntax::feature_gate;
 use syntax_pos::SourceFile;
 
 use crate::hir::def_id::{DefId, CrateNum, CRATE_DEF_INDEX};
@@ -156,7 +155,7 @@ fn stable_normalized_pos(np: ::syntax_pos::NormalizedPos,
 }
 
 
-impl<'tcx> HashStable<StableHashingContext<'tcx>> for feature_gate::Features {
+impl<'tcx> HashStable<StableHashingContext<'tcx>> for rustc_feature::Features {
     fn hash_stable(&self, hcx: &mut StableHashingContext<'tcx>, hasher: &mut StableHasher) {
         // Unfortunately we cannot exhaustively list fields here, since the
         // struct is macro generated.

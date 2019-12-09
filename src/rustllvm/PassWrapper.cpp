@@ -101,11 +101,13 @@ extern "C" LLVMPassRef LLVMRustCreateModuleAddressSanitizerPass(bool Recover) {
 }
 
 extern "C" LLVMPassRef LLVMRustCreateMemorySanitizerPass(int TrackOrigins, bool Recover) {
-#if LLVM_VERSION_GE(8, 0)
+#if LLVM_VERSION_GE(9, 0)
   const bool CompileKernel = false;
 
   return wrap(createMemorySanitizerLegacyPassPass(
       MemorySanitizerOptions{TrackOrigins, Recover, CompileKernel}));
+#elif LLVM_VERSION_GE(8, 0)
+  return wrap(createMemorySanitizerLegacyPassPass(TrackOrigins, Recover));
 #else
   return wrap(createMemorySanitizerPass(TrackOrigins, Recover));
 #endif
@@ -393,7 +395,8 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     bool TrapUnreachable,
     bool Singlethread,
     bool AsmComments,
-    bool EmitStackSizeSection) {
+    bool EmitStackSizeSection,
+    bool RelaxELFRelocations) {
 
   auto OptLevel = fromRust(RustOptLevel);
   auto RM = fromRust(RustReloc);
@@ -418,6 +421,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
   Options.MCOptions.AsmVerbose = AsmComments;
   Options.MCOptions.PreserveAsmComments = AsmComments;
   Options.MCOptions.ABIName = ABIStr;
+  Options.RelaxELFRelocations = RelaxELFRelocations;
 
   if (TrapUnreachable) {
     // Tell LLVM to codegen `unreachable` into an explicit trap instruction.
@@ -445,24 +449,11 @@ extern "C" void LLVMRustDisposeTargetMachine(LLVMTargetMachineRef TM) {
   delete unwrap(TM);
 }
 
-// Unfortunately, LLVM doesn't expose a C API to add the corresponding analysis
-// passes for a target to a pass manager. We export that functionality through
-// this function.
-extern "C" void LLVMRustAddAnalysisPasses(LLVMTargetMachineRef TM,
-                                          LLVMPassManagerRef PMR,
-                                          LLVMModuleRef M) {
-  PassManagerBase *PM = unwrap(PMR);
-  PM->add(
-      createTargetTransformInfoWrapperPass(unwrap(TM)->getTargetIRAnalysis()));
-}
-
 extern "C" void LLVMRustConfigurePassManagerBuilder(
     LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
     bool MergeFunctions, bool SLPVectorize, bool LoopVectorize, bool PrepareForThinLTO,
     const char* PGOGenPath, const char* PGOUsePath) {
-#if LLVM_VERSION_GE(7, 0)
   unwrap(PMBR)->MergeFunctions = MergeFunctions;
-#endif
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
   unwrap(PMBR)->OptLevel = fromRust(OptLevel);
   unwrap(PMBR)->LoopVectorize = LoopVectorize;
@@ -569,18 +560,14 @@ LLVMRustWriteOutputFile(LLVMTargetMachineRef Target, LLVMPassManagerRef PMR,
     return LLVMRustResult::Failure;
   }
 
-#if LLVM_VERSION_GE(7, 0)
   buffer_ostream BOS(OS);
   unwrap(Target)->addPassesToEmitFile(*PM, BOS, nullptr, FileType, false);
-#else
-  unwrap(Target)->addPassesToEmitFile(*PM, OS, FileType, false);
-#endif
   PM->run(*unwrap(M));
 
   // Apparently `addPassesToEmitFile` adds a pointer to our on-the-stack output
   // stream (OS), so the only real safe place to delete this is here? Don't we
   // wish this was written in Rust?
-  delete PM;
+  LLVMDisposePassManager(PMR);
   return LLVMRustResult::Success;
 }
 
@@ -671,46 +658,11 @@ public:
   }
 };
 
-class RustPrintModulePass : public ModulePass {
-  raw_ostream* OS;
-  DemangleFn Demangle;
-public:
-  static char ID;
-  RustPrintModulePass() : ModulePass(ID), OS(nullptr), Demangle(nullptr) {}
-  RustPrintModulePass(raw_ostream &OS, DemangleFn Demangle)
-      : ModulePass(ID), OS(&OS), Demangle(Demangle) {}
-
-  bool runOnModule(Module &M) override {
-    RustAssemblyAnnotationWriter AW(Demangle);
-
-    M.print(*OS, &AW, false);
-
-    return false;
-  }
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.setPreservesAll();
-  }
-
-  static StringRef name() { return "RustPrintModulePass"; }
-};
-
 } // namespace
 
-namespace llvm {
-  void initializeRustPrintModulePassPass(PassRegistry&);
-}
-
-char RustPrintModulePass::ID = 0;
-INITIALIZE_PASS(RustPrintModulePass, "print-rust-module",
-                "Print rust module to stderr", false, false)
-
 extern "C" LLVMRustResult
-LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
-                    const char *Path, DemangleFn Demangle) {
-  llvm::legacy::PassManager *PM = unwrap<llvm::legacy::PassManager>(PMR);
+LLVMRustPrintModule(LLVMModuleRef M, const char *Path, DemangleFn Demangle) {
   std::string ErrorInfo;
-
   std::error_code EC;
   raw_fd_ostream OS(Path, EC, sys::fs::F_None);
   if (EC)
@@ -720,11 +672,9 @@ LLVMRustPrintModule(LLVMPassManagerRef PMR, LLVMModuleRef M,
     return LLVMRustResult::Failure;
   }
 
+  RustAssemblyAnnotationWriter AAW(Demangle);
   formatted_raw_ostream FOS(OS);
-
-  PM->add(new RustPrintModulePass(FOS, Demangle));
-
-  PM->run(*unwrap(M));
+  unwrap(M)->print(FOS, &AAW);
 
   return LLVMRustResult::Success;
 }
@@ -858,9 +808,7 @@ struct LLVMRustThinLTOData {
   StringMap<FunctionImporter::ExportSetTy> ExportLists;
   StringMap<GVSummaryMapTy> ModuleToDefinedGVSummaries;
 
-#if LLVM_VERSION_GE(7, 0)
   LLVMRustThinLTOData() : Index(/* HaveGVs = */ false) {}
-#endif
 };
 
 // Just an argument to the `LLVMRustCreateThinLTOData` function below.
@@ -931,7 +879,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // combined index
   //
   // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
-#if LLVM_VERSION_GE(7, 0)
   auto deadIsPrevailing = [&](GlobalValue::GUID G) {
     return PrevailingType::Unknown;
   };
@@ -943,9 +890,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
                                   deadIsPrevailing, /* ImportEnabled = */ false);
 #else
   computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols, deadIsPrevailing);
-#endif
-#else
-  computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
 #endif
   ComputeCrossModuleImport(
     Ret->Index,

@@ -8,25 +8,21 @@
 //!
 //! [#64197]: https://github.com/rust-lang/rust/issues/64197
 
-use crate::validate_attr;
+use crate::{parse_in, validate_attr};
+use rustc_feature::Features;
+use rustc_errors::Applicability;
 use syntax::attr::HasAttrs;
-use syntax::feature_gate::{
-    feature_err,
-    EXPLAIN_STMT_ATTR_SYNTAX,
-    Features,
-    get_features,
-    GateIssue,
-};
+use syntax::feature_gate::{feature_err, get_features};
 use syntax::attr;
-use syntax::ast;
+use syntax::ast::{self, Attribute, AttrItem, MetaItem};
 use syntax::edition::Edition;
 use syntax::mut_visit::*;
 use syntax::ptr::P;
 use syntax::sess::ParseSess;
 use syntax::util::map_in_place::MapInPlace;
+use syntax_pos::Span;
 use syntax_pos::symbol::sym;
 
-use errors::Applicability;
 use smallvec::SmallVec;
 
 /// A folder that strips out items that do not belong in the current configuration.
@@ -52,7 +48,7 @@ pub fn features(mut krate: ast::Crate, sess: &ParseSess, edition: Edition,
         } else { // the entire crate is unconfigured
             krate.attrs = Vec::new();
             krate.module.items = Vec::new();
-            return (krate, Features::new());
+            return (krate, Features::default());
         }
 
         features = get_features(&sess.span_diagnostic, &krate.attrs, edition, allow_features);
@@ -77,10 +73,15 @@ macro_rules! configure {
     }
 }
 
+const CFG_ATTR_GRAMMAR_HELP: &str = "#[cfg_attr(condition, attribute, other_attribute, ...)]";
+const CFG_ATTR_NOTE_REF: &str = "for more information, visit \
+    <https://doc.rust-lang.org/reference/conditional-compilation.html\
+    #the-cfg_attr-attribute>";
+
 impl<'a> StripUnconfigured<'a> {
     pub fn configure<T: HasAttrs>(&mut self, mut node: T) -> Option<T> {
         self.process_cfg_attrs(&mut node);
-        if self.in_cfg(node.attrs()) { Some(node) } else { None }
+        self.in_cfg(node.attrs()).then_some(node)
     }
 
     /// Parse and expand all `cfg_attr` attributes into a list of attributes
@@ -102,34 +103,14 @@ impl<'a> StripUnconfigured<'a> {
     /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
-    fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
+    fn process_cfg_attr(&mut self, attr: Attribute) -> Vec<Attribute> {
         if !attr.has_name(sym::cfg_attr) {
             return vec![attr];
         }
-        if attr.get_normal_item().tokens.is_empty() {
-            self.sess.span_diagnostic
-                .struct_span_err(
-                    attr.span,
-                    "malformed `cfg_attr` attribute input",
-                ).span_suggestion(
-                    attr.span,
-                    "missing condition and attribute",
-                    "#[cfg_attr(condition, attribute, other_attribute, ...)]".to_owned(),
-                    Applicability::HasPlaceholders,
-                ).note("for more information, visit \
-                       <https://doc.rust-lang.org/reference/conditional-compilation.html\
-                       #the-cfg_attr-attribute>")
-                .emit();
-            return vec![];
-        }
 
-        let res = crate::parse_in_attr(self.sess, &attr, |p| p.parse_cfg_attr());
-        let (cfg_predicate, expanded_attrs) = match res {
-            Ok(result) => result,
-            Err(mut e) => {
-                e.emit();
-                return vec![];
-            }
+        let (cfg_predicate, expanded_attrs) = match self.parse_cfg_attr(&attr) {
+            None => return vec![],
+            Some(r) => r,
         };
 
         // Lint on zero attributes in source.
@@ -140,24 +121,56 @@ impl<'a> StripUnconfigured<'a> {
         // At this point we know the attribute is considered used.
         attr::mark_used(&attr);
 
-        if attr::cfg_matches(&cfg_predicate, self.sess, self.features) {
-            // We call `process_cfg_attr` recursively in case there's a
-            // `cfg_attr` inside of another `cfg_attr`. E.g.
-            //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
-            expanded_attrs.into_iter()
-            .flat_map(|(item, span)| self.process_cfg_attr(attr::mk_attr_from_item(
-                attr.style,
-                item,
-                span,
-            )))
-            .collect()
-        } else {
-            vec![]
+        if !attr::cfg_matches(&cfg_predicate, self.sess, self.features) {
+            return vec![];
         }
+
+        // We call `process_cfg_attr` recursively in case there's a
+        // `cfg_attr` inside of another `cfg_attr`. E.g.
+        //  `#[cfg_attr(false, cfg_attr(true, some_attr))]`.
+        expanded_attrs
+            .into_iter()
+            .flat_map(|(item, span)| {
+                let attr = attr::mk_attr_from_item(attr.style, item, span);
+                self.process_cfg_attr(attr)
+            })
+            .collect()
+    }
+
+    fn parse_cfg_attr(&self, attr: &Attribute) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
+        match attr.get_normal_item().args {
+            ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
+                let msg = "wrong `cfg_attr` delimiters";
+                validate_attr::check_meta_bad_delim(self.sess, dspan, delim, msg);
+                match parse_in(self.sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
+                    Ok(r) => return Some(r),
+                    Err(mut e) => e
+                        .help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
+                        .note(CFG_ATTR_NOTE_REF)
+                        .emit(),
+                }
+            }
+            _ => self.error_malformed_cfg_attr_missing(attr.span),
+        }
+        None
+    }
+
+    fn error_malformed_cfg_attr_missing(&self, span: Span) {
+        self.sess
+            .span_diagnostic
+            .struct_span_err(span, "malformed `cfg_attr` attribute input")
+            .span_suggestion(
+                span,
+                "missing condition and attribute",
+                CFG_ATTR_GRAMMAR_HELP.to_string(),
+                Applicability::HasPlaceholders,
+            )
+            .note(CFG_ATTR_NOTE_REF)
+            .emit();
     }
 
     /// Determines if a node with the given attributes should be included in this configuration.
-    pub fn in_cfg(&self, attrs: &[ast::Attribute]) -> bool {
+    pub fn in_cfg(&self, attrs: &[Attribute]) -> bool {
         attrs.iter().all(|attr| {
             if !is_cfg(attr) {
                 return true;
@@ -204,7 +217,7 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// Visit attributes on expression and statements (but not attributes on items in blocks).
-    fn visit_expr_attrs(&mut self, attrs: &[ast::Attribute]) {
+    fn visit_expr_attrs(&mut self, attrs: &[Attribute]) {
         // flag the offending attributes
         for attr in attrs.iter() {
             self.maybe_emit_expr_attr_err(attr);
@@ -212,13 +225,12 @@ impl<'a> StripUnconfigured<'a> {
     }
 
     /// If attributes are not allowed on expressions, emit an error for `attr`
-    pub fn maybe_emit_expr_attr_err(&self, attr: &ast::Attribute) {
+    pub fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
         if !self.features.map(|features| features.stmt_expr_attributes).unwrap_or(true) {
             let mut err = feature_err(self.sess,
                                       sym::stmt_expr_attributes,
                                       attr.span,
-                                      GateIssue::Language,
-                                      EXPLAIN_STMT_ATTR_SYNTAX);
+                                      "attributes on expressions are experimental");
 
             if attr.is_doc_comment() {
                 err.help("`///` is for documentation comments. For a plain comment, use `//`.");
@@ -356,7 +368,7 @@ impl<'a> MutVisitor for StripUnconfigured<'a> {
     }
 }
 
-fn is_cfg(attr: &ast::Attribute) -> bool {
+fn is_cfg(attr: &Attribute) -> bool {
     attr.check_name(sym::cfg)
 }
 
@@ -365,8 +377,8 @@ fn is_cfg(attr: &ast::Attribute) -> bool {
 pub fn process_configure_mod(
     sess: &ParseSess,
     cfg_mods: bool,
-    attrs: &[ast::Attribute],
-) -> (bool, Vec<ast::Attribute>) {
+    attrs: &[Attribute],
+) -> (bool, Vec<Attribute>) {
     // Don't perform gated feature checking.
     let mut strip_unconfigured = StripUnconfigured { sess, features: None };
     let mut attrs = attrs.to_owned();

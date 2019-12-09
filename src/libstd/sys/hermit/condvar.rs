@@ -18,12 +18,12 @@ impl Condvar {
     }
 
     pub unsafe fn notify_one(&self) {
-         let _ = abi::notify(self.id(), 1);
+        let _ = abi::notify(self.id(), 1);
     }
 
     #[inline]
     pub unsafe fn notify_all(&self) {
-         let _ = abi::notify(self.id(), -1 /* =all */);
+        let _ = abi::notify(self.id(), -1 /* =all */);
     }
 
     pub unsafe fn wait(&self, mutex: &Mutex) {

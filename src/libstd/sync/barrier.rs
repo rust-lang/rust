@@ -1,5 +1,5 @@
 use crate::fmt;
-use crate::sync::{Mutex, Condvar};
+use crate::sync::{Condvar, Mutex};
 
 /// A barrier enables multiple threads to synchronize the beginning
 /// of some computation.
@@ -82,10 +82,7 @@ impl Barrier {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(n: usize) -> Barrier {
         Barrier {
-            lock: Mutex::new(BarrierState {
-                count: 0,
-                generation_id: 0,
-            }),
+            lock: Mutex::new(BarrierState { count: 0, generation_id: 0 }),
             cvar: Condvar::new(),
             num_threads: n,
         }
@@ -135,8 +132,7 @@ impl Barrier {
         if lock.count < self.num_threads {
             // We need a while loop to guard against spurious wakeups.
             // http://en.wikipedia.org/wiki/Spurious_wakeup
-            while local_gen == lock.generation_id &&
-                  lock.count < self.num_threads {
+            while local_gen == lock.generation_id && lock.count < self.num_threads {
                 lock = self.cvar.wait(lock).unwrap();
             }
             BarrierWaitResult(false)
@@ -152,9 +148,7 @@ impl Barrier {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for BarrierWaitResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("BarrierWaitResult")
-            .field("is_leader", &self.is_leader())
-            .finish()
+        f.debug_struct("BarrierWaitResult").field("is_leader", &self.is_leader()).finish()
     }
 }
 
@@ -176,13 +170,15 @@ impl BarrierWaitResult {
     /// println!("{:?}", barrier_wait_result.is_leader());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_leader(&self) -> bool { self.0 }
+    pub fn is_leader(&self) -> bool {
+        self.0
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::sync::{Arc, Barrier};
     use crate::sync::mpsc::{channel, TryRecvError};
+    use crate::sync::{Arc, Barrier};
     use crate::thread;
 
     #[test]
@@ -196,7 +192,7 @@ mod tests {
         for _ in 0..N - 1 {
             let c = barrier.clone();
             let tx = tx.clone();
-            thread::spawn(move|| {
+            thread::spawn(move || {
                 tx.send(c.wait().is_leader()).unwrap();
             });
         }

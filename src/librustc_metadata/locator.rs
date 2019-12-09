@@ -262,8 +262,8 @@ crate struct CrateLocator<'a> {
     // Immutable per-search configuration.
     crate_name: Symbol,
     exact_paths: Vec<PathBuf>,
-    pub hash: Option<&'a Svh>,
-    pub host_hash: Option<&'a Svh>,
+    pub hash: Option<Svh>,
+    pub host_hash: Option<Svh>,
     extra_filename: Option<&'a str>,
     pub target: &'a Target,
     pub triple: TargetTriple,
@@ -313,8 +313,8 @@ impl<'a> CrateLocator<'a> {
         sess: &'a Session,
         metadata_loader: &'a dyn MetadataLoader,
         crate_name: Symbol,
-        hash: Option<&'a Svh>,
-        host_hash: Option<&'a Svh>,
+        hash: Option<Svh>,
+        host_hash: Option<Svh>,
         extra_filename: Option<&'a str>,
         is_host: bool,
         path_kind: PathKind,
@@ -597,7 +597,7 @@ impl<'a> CrateLocator<'a> {
                                                "multiple matching crates for `{}`",
                                                self.crate_name);
                 let candidates = libraries.iter().filter_map(|(_, lib)| {
-                    let crate_name = &lib.metadata.get_root().name.as_str();
+                    let crate_name = &lib.metadata.get_root().name().as_str();
                     match &(&lib.source.dylib, &lib.source.rlib) {
                         &(&Some((ref pd, _)), &Some((ref pr, _))) => {
                             Some(format!("\ncrate `{}`: {}\n{:>padding$}",
@@ -774,35 +774,36 @@ impl<'a> CrateLocator<'a> {
         }
 
         if self.exact_paths.is_empty() {
-            if self.crate_name != root.name {
+            if self.crate_name != root.name() {
                 info!("Rejecting via crate name");
                 return None;
             }
         }
 
-        if root.triple != self.triple {
+        if root.triple() != &self.triple {
             info!("Rejecting via crate triple: expected {} got {}",
                   self.triple,
-                  root.triple);
+                  root.triple());
             self.rejected_via_triple.push(CrateMismatch {
                 path: libpath.to_path_buf(),
-                got: root.triple.to_string(),
+                got: root.triple().to_string(),
             });
             return None;
         }
 
-        if let Some(myhash) = self.hash {
-            if *myhash != root.hash {
-                info!("Rejecting via hash: expected {} got {}", *myhash, root.hash);
+        let hash = root.hash();
+        if let Some(expected_hash) = self.hash {
+            if hash != expected_hash {
+                info!("Rejecting via hash: expected {} got {}", expected_hash, hash);
                 self.rejected_via_hash.push(CrateMismatch {
                     path: libpath.to_path_buf(),
-                    got: myhash.to_string(),
+                    got: hash.to_string(),
                 });
                 return None;
             }
         }
 
-        Some(root.hash)
+        Some(hash)
     }
 
 
@@ -1021,7 +1022,7 @@ pub fn find_plugin_registrar(
 
     match library.source.dylib {
         Some(dylib) => {
-            Some((dylib.0, library.metadata.get_root().disambiguator))
+            Some((dylib.0, library.metadata.get_root().disambiguator()))
         }
         None => {
             span_err!(sess, span, E0457,

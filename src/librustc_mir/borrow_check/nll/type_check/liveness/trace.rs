@@ -7,7 +7,7 @@ use crate::dataflow::indexes::MovePathIndex;
 use crate::dataflow::move_paths::MoveData;
 use crate::dataflow::{FlowAtLocation, FlowsAtLocation, MaybeInitializedPlaces};
 use rustc::infer::canonical::QueryRegionConstraints;
-use rustc::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
+use rustc::mir::{BasicBlock, ConstraintCategory, Local, Location, ReadOnlyBodyAndCache};
 use rustc::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc::traits::query::type_op::outlives::DropckOutlives;
 use rustc::traits::query::type_op::TypeOp;
@@ -32,7 +32,7 @@ use std::rc::Rc;
 /// this respects `#[may_dangle]` annotations).
 pub(super) fn trace(
     typeck: &mut TypeChecker<'_, 'tcx>,
-    body: &Body<'tcx>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
     elements: &Rc<RegionValueElements>,
     flow_inits: &mut FlowAtLocation<'tcx, MaybeInitializedPlaces<'_, 'tcx>>,
     move_data: &MoveData<'tcx>,
@@ -71,7 +71,7 @@ struct LivenessContext<'me, 'typeck, 'flow, 'tcx> {
     elements: &'me RegionValueElements,
 
     /// MIR we are analyzing.
-    body: &'me Body<'tcx>,
+    body: ReadOnlyBodyAndCache<'me, 'tcx>,
 
     /// Mapping to/from the various indices used for initialization tracking.
     move_data: &'me MoveData<'tcx>,
@@ -249,7 +249,7 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
         // Reverse DFS. But for drops, we do it a bit differently.
         // The stack only ever stores *terminators of blocks*. Within
         // a block, we walk back the statements in an inner loop.
-        'next_block: while let Some(term_point) = self.stack.pop() {
+        while let Some(term_point) = self.stack.pop() {
             self.compute_drop_live_points_for_block(mpi, term_point);
         }
     }
@@ -302,7 +302,8 @@ impl LivenessResults<'me, 'typeck, 'flow, 'tcx> {
             }
         }
 
-        for &pred_block in self.cx.body.predecessors_for(block).iter() {
+        let body = self.cx.body;
+        for &pred_block in body.predecessors_for(block).iter() {
             debug!("compute_drop_live_points_for_block: pred_block = {:?}", pred_block,);
 
             // Check whether the variable is (at least partially)

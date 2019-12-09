@@ -8,6 +8,7 @@ use crate::session::Session;
 use crate::session::config::{BorrowckMode, OutputFilenames};
 use crate::session::config::CrateType;
 use crate::middle;
+use crate::middle::lang_items::PanicLocationLangItem;
 use crate::hir::{self, TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
 use crate::hir::def::{Res, DefKind, Export};
 use crate::hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
@@ -22,7 +23,7 @@ use crate::middle::cstore::EncodedMetadata;
 use crate::middle::lang_items;
 use crate::middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use crate::middle::stability;
-use crate::mir::{Body, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
+use crate::mir::{BodyAndCache, Field, interpret, Local, Place, PlaceElem, ProjectionKind, Promoted};
 use crate::mir::interpret::{ConstValue, Allocation, Scalar};
 use crate::ty::subst::{GenericArg, InternalSubsts, SubstsRef, Subst};
 use crate::ty::ReprOptions;
@@ -72,7 +73,6 @@ use rustc_macros::HashStable;
 use syntax::ast;
 use syntax::attr;
 use syntax::source_map::MultiSpan;
-use syntax::feature_gate;
 use syntax::symbol::{Symbol, kw, sym};
 use syntax_pos::Span;
 use syntax::expand::allocator::AllocatorKind;
@@ -995,7 +995,7 @@ impl<'tcx> Deref for TyCtxt<'tcx> {
 }
 
 pub struct GlobalCtxt<'tcx> {
-    pub arena: WorkerLocal<Arena<'tcx>>,
+    pub arena: &'tcx WorkerLocal<Arena<'tcx>>,
 
     interners: CtxtInterners<'tcx>,
 
@@ -1084,17 +1084,17 @@ impl<'tcx> TyCtxt<'tcx> {
         &self.hir_map
     }
 
-    pub fn alloc_steal_mir(self, mir: Body<'tcx>) -> &'tcx Steal<Body<'tcx>> {
+    pub fn alloc_steal_mir(self, mir: BodyAndCache<'tcx>) -> &'tcx Steal<BodyAndCache<'tcx>> {
         self.arena.alloc(Steal::new(mir))
     }
 
-    pub fn alloc_steal_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
-        &'tcx Steal<IndexVec<Promoted, Body<'tcx>>> {
+    pub fn alloc_steal_promoted(self, promoted: IndexVec<Promoted, BodyAndCache<'tcx>>) ->
+        &'tcx Steal<IndexVec<Promoted, BodyAndCache<'tcx>>> {
         self.arena.alloc(Steal::new(promoted))
     }
 
-    pub fn intern_promoted(self, promoted: IndexVec<Promoted, Body<'tcx>>) ->
-        &'tcx IndexVec<Promoted, Body<'tcx>> {
+    pub fn intern_promoted(self, promoted: IndexVec<Promoted, BodyAndCache<'tcx>>) ->
+        &'tcx IndexVec<Promoted, BodyAndCache<'tcx>> {
         self.arena.alloc(promoted)
     }
 
@@ -1170,6 +1170,7 @@ impl<'tcx> TyCtxt<'tcx> {
         local_providers: ty::query::Providers<'tcx>,
         extern_providers: ty::query::Providers<'tcx>,
         arenas: &'tcx AllArenas,
+        arena: &'tcx WorkerLocal<Arena<'tcx>>,
         resolutions: ty::ResolverOutputs,
         hir: hir_map::Map<'tcx>,
         on_disk_query_result_cache: query::OnDiskCache<'tcx>,
@@ -1225,7 +1226,7 @@ impl<'tcx> TyCtxt<'tcx> {
             sess: s,
             lint_store,
             cstore,
-            arena: WorkerLocal::new(|_| Arena::default()),
+            arena,
             interners,
             dep_graph,
             prof: s.prof.clone(),
@@ -1307,15 +1308,11 @@ impl<'tcx> TyCtxt<'tcx> {
         self.all_crate_nums(LOCAL_CRATE)
     }
 
-    pub fn injected_panic_runtime(self) -> Option<CrateNum> {
-        self.cstore.injected_panic_runtime()
-    }
-
     pub fn allocator_kind(self) -> Option<AllocatorKind> {
         self.cstore.allocator_kind()
     }
 
-    pub fn features(self) -> &'tcx feature_gate::Features {
+    pub fn features(self) -> &'tcx rustc_feature::Features {
         self.features_query(LOCAL_CRATE)
     }
 
@@ -1391,8 +1388,8 @@ impl<'tcx> TyCtxt<'tcx> {
 
     // Note that this is *untracked* and should only be used within the query
     // system if the result is otherwise tracked through queries
-    pub fn crate_data_as_any(self, cnum: CrateNum) -> &'tcx dyn Any {
-        self.cstore.crate_data_as_any(cnum)
+    pub fn cstore_as_any(self) -> &'tcx dyn Any {
+        self.cstore.as_any()
     }
 
     #[inline(always)]
@@ -1591,6 +1588,15 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Currently, only NVPTX* targets need it.
     pub fn has_strict_asm_symbol_naming(&self) -> bool {
         self.sess.target.target.arch.contains("nvptx")
+    }
+
+    /// Returns `&'static core::panic::Location<'static>`.
+    pub fn caller_location_ty(&self) -> Ty<'tcx> {
+        self.mk_imm_ref(
+            self.lifetimes.re_static,
+            self.type_of(self.require_lang_item(PanicLocationLangItem, None))
+                .subst(*self, self.mk_substs([self.lifetimes.re_static.into()].iter())),
+        )
     }
 }
 
@@ -2998,14 +3004,6 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.all_crate_nums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())
-    };
-    providers.crate_host_hash = |tcx, cnum| {
-        assert_ne!(cnum, LOCAL_CRATE);
-        tcx.cstore.crate_host_hash_untracked(cnum)
-    };
-    providers.postorder_cnums = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        tcx.arena.alloc_slice(&tcx.cstore.postorder_cnums_untracked())
     };
     providers.output_filenames = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

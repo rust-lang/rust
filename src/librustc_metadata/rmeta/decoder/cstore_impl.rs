@@ -1,4 +1,4 @@
-use crate::cstore::{self, LoadedMacro};
+use crate::creader::{CStore, LoadedMacro};
 use crate::link_args;
 use crate::native_libs;
 use crate::foreign_modules;
@@ -32,6 +32,8 @@ use syntax::source_map;
 use syntax::source_map::Spanned;
 use syntax::symbol::Symbol;
 use syntax::expand::allocator::AllocatorKind;
+use syntax::ptr::P;
+use syntax::tokenstream::DelimSpan;
 use syntax_pos::{Span, FileName};
 
 macro_rules! provide {
@@ -51,9 +53,7 @@ macro_rules! provide {
                 let ($def_id, $other) = def_id_arg.into_args();
                 assert!(!$def_id.is_local());
 
-                let $cdata = $tcx.crate_data_as_any($def_id.krate);
-                let $cdata = $cdata.downcast_ref::<rmeta::CrateMetadata>()
-                    .expect("CrateStore created data is not a CrateMetadata");
+                let $cdata = CStore::from_tcx($tcx).get_crate_data($def_id.krate);
 
                 if $tcx.dep_graph.is_fully_enabled() {
                     let crate_dep_node_index = $cdata.get_crate_dep_node_index($tcx);
@@ -192,6 +192,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     crate_disambiguator => { cdata.root.disambiguator }
     crate_hash => { cdata.root.hash }
+    crate_host_hash => { cdata.host_hash }
     original_crate_name => { cdata.root.name }
 
     extra_filename => { cdata.root.extra_filename.clone() }
@@ -377,12 +378,20 @@ pub fn provide(providers: &mut Providers<'_>) {
             assert_eq!(cnum, LOCAL_CRATE);
             Lrc::new(crate::dependency_format::calculate(tcx))
         },
+        has_global_allocator: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            CStore::from_tcx(tcx).has_global_allocator()
+        },
+        postorder_cnums: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            tcx.arena.alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(cnum))
+        },
 
         ..*providers
     };
 }
 
-impl cstore::CStore {
+impl CStore {
     pub fn export_macros_untracked(&self, cnum: CrateNum) {
         let data = self.get_crate_data(cnum);
         let mut dep_kind = data.dep_kind.lock();
@@ -420,6 +429,7 @@ impl cstore::CStore {
 
         let source_file = sess.parse_sess.source_map().new_source_file(source_name, def.body);
         let local_span = Span::with_root_ctxt(source_file.start_pos, source_file.end_pos);
+        let dspan = DelimSpan::from_single(local_span);
         let (body, mut errors) = source_file_to_stream(&sess.parse_sess, source_file, None);
         emit_unclosed_delims(&mut errors, &sess.parse_sess);
 
@@ -441,7 +451,7 @@ impl cstore::CStore {
             span: local_span,
             attrs: attrs.iter().cloned().collect(),
             kind: ast::ItemKind::MacroDef(ast::MacroDef {
-                tokens: body.into(),
+                body: P(ast::MacArgs::Delimited(dspan, ast::MacDelimiter::Brace, body)),
                 legacy: def.legacy,
             }),
             vis: source_map::respan(local_span.shrink_to_lo(), ast::VisibilityKind::Inherited),
@@ -458,9 +468,9 @@ impl cstore::CStore {
     }
 }
 
-impl CrateStore for cstore::CStore {
-    fn crate_data_as_any(&self, cnum: CrateNum) -> &dyn Any {
-        self.get_crate_data(cnum)
+impl CrateStore for CStore {
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics {
@@ -484,10 +494,6 @@ impl CrateStore for cstore::CStore {
     fn crate_hash_untracked(&self, cnum: CrateNum) -> Svh
     {
         self.get_crate_data(cnum).root.hash
-    }
-
-    fn crate_host_hash_untracked(&self, cnum: CrateNum) -> Option<Svh> {
-        self.get_crate_data(cnum).host_hash
     }
 
     /// Returns the `DefKey` for a given `DefId`. This indicates the
@@ -516,10 +522,6 @@ impl CrateStore for cstore::CStore {
         result
     }
 
-    fn postorder_cnums_untracked(&self) -> Vec<CrateNum> {
-        self.do_postorder_cnums_untracked()
-    }
-
     fn encode_metadata(&self, tcx: TyCtxt<'_>) -> EncodedMetadata {
         encoder::encode_metadata(tcx)
     }
@@ -529,11 +531,7 @@ impl CrateStore for cstore::CStore {
         rmeta::METADATA_HEADER
     }
 
-    fn injected_panic_runtime(&self) -> Option<CrateNum> {
-        self.injected_panic_runtime
-    }
-
     fn allocator_kind(&self) -> Option<AllocatorKind> {
-        self.allocator_kind
+        self.allocator_kind()
     }
 }

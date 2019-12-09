@@ -1,35 +1,31 @@
 use std::iter;
 
-use super::{LinkerFlavor, PanicStrategy, Target, TargetOptions};
+use super::{LinkerFlavor, LldFlavor, PanicStrategy, Target, TargetOptions};
 
 pub fn target() -> Result<Target, String> {
     const PRE_LINK_ARGS: &[&str] = &[
-        "-Wl,--as-needed",
-        "-Wl,-z,noexecstack",
-        "-m64",
-        "-fuse-ld=gold",
-        "-nostdlib",
-        "-shared",
-        "-Wl,-e,sgx_entry",
-        "-Wl,-Bstatic",
-        "-Wl,--gc-sections",
-        "-Wl,-z,text",
-        "-Wl,-z,norelro",
-        "-Wl,--rosegment",
-        "-Wl,--no-undefined",
-        "-Wl,--error-unresolved-symbols",
-        "-Wl,--no-undefined-version",
-        "-Wl,-Bsymbolic",
-        "-Wl,--export-dynamic",
+        "--as-needed",
+        "--eh-frame-hdr",
+        "-z" , "noexecstack",
+        "-e","sgx_entry",
+        "-Bstatic",
+        "--gc-sections",
+        "-z","text",
+        "-z","norelro",
+        "--no-undefined",
+        "--error-unresolved-symbols",
+        "--no-undefined-version",
+        "-Bsymbolic",
+        "--export-dynamic",
         // The following symbols are needed by libunwind, which is linked after
         // libstd. Make sure they're included in the link.
-        "-Wl,-u,__rust_abort",
-        "-Wl,-u,__rust_c_alloc",
-        "-Wl,-u,__rust_c_dealloc",
-        "-Wl,-u,__rust_print_err",
-        "-Wl,-u,__rust_rwlock_rdlock",
-        "-Wl,-u,__rust_rwlock_unlock",
-        "-Wl,-u,__rust_rwlock_wrlock",
+        "-u","__rust_abort",
+        "-u","__rust_c_alloc",
+        "-u","__rust_c_dealloc",
+        "-u","__rust_print_err",
+        "-u","__rust_rwlock_rdlock",
+        "-u","__rust_rwlock_unlock",
+        "-u","__rust_rwlock_wrlock"
     ];
 
     const EXPORT_SYMBOLS: &[&str] = &[
@@ -50,18 +46,20 @@ pub fn target() -> Result<Target, String> {
         dynamic_linking: false,
         executables: true,
         linker_is_gnu: true,
+        linker: Some("rust-lld".to_owned()),
         max_atomic_width: Some(64),
         panic_strategy: PanicStrategy::Unwind,
         cpu: "x86-64".into(),
         features: "+rdrnd,+rdseed".into(),
         position_independent_executables: true,
         pre_link_args: iter::once((
-            LinkerFlavor::Gcc,
+            LinkerFlavor::Lld(LldFlavor::Ld),
             PRE_LINK_ARGS.iter().cloned().map(String::from).collect(),
         ))
         .collect(),
         post_link_objects: vec!["libunwind.a".into()],
         override_export_symbols: Some(EXPORT_SYMBOLS.iter().cloned().map(String::from).collect()),
+        relax_elf_relocations: true,
         ..Default::default()
     };
     Ok(Target {
@@ -74,7 +72,7 @@ pub fn target() -> Result<Target, String> {
         target_vendor: "fortanix".into(),
         data_layout: "e-m:e-i64:64-f80:128-n8:16:32:64-S128".into(),
         arch: "x86_64".into(),
-        linker_flavor: LinkerFlavor::Gcc,
+        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
         options: opts,
     })
 }

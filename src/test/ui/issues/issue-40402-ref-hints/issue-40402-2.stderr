@@ -7,11 +7,7 @@ LL |     let (a, b) = x[0];
    |          |  ...and here
    |          data moved here
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/issue-40402-2.rs:5:10
-   |
-LL |     let (a, b) = x[0];
-   |          ^  ^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error: aborting due to previous error
 

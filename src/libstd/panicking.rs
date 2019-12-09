@@ -20,6 +20,7 @@ use crate::sys_common::rwlock::RWLock;
 use crate::sys_common::{thread_info, util};
 use crate::sys_common::backtrace::{self, RustBacktrace};
 use crate::thread;
+use crate::process;
 
 #[cfg(not(test))]
 use crate::io::set_panic;
@@ -46,6 +47,8 @@ extern {
                                 vtable_ptr: *mut usize) -> u32;
 
     /// `payload` is actually a `*mut &mut dyn BoxMeUp` but that would cause FFI warnings.
+    /// It cannot be `Box<dyn BoxMeUp>` because the other end of this call does not depend
+    /// on liballoc, and thus cannot use `Box`.
     #[unwind(allowed)]
     fn __rust_start_panic(payload: usize) -> u32;
 }
@@ -296,14 +299,6 @@ pub fn panicking() -> bool {
     update_panic_count(0) != 0
 }
 
-/// Entry point of panic from the libcore crate (`panic_impl` lang item).
-#[cfg(not(test))]
-#[panic_handler]
-#[unwind(allowed)]
-pub fn rust_begin_panic(info: &PanicInfo<'_>) -> ! {
-    continue_panic_fmt(&info)
-}
-
 /// The entry point for panicking with a formatted message.
 ///
 /// This is designed to reduce the amount of code required at the call
@@ -324,13 +319,17 @@ pub fn begin_panic_fmt(msg: &fmt::Arguments<'_>,
         unsafe { intrinsics::abort() }
     }
 
+    // Just package everything into a `PanicInfo` and continue like libcore panics.
     let (file, line, col) = *file_line_col;
     let location = Location::internal_constructor(file, line, col);
     let info = PanicInfo::internal_constructor(Some(msg), &location);
-    continue_panic_fmt(&info)
+    begin_panic_handler(&info)
 }
 
-fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
+/// Entry point of panics from the libcore crate (`panic_impl` lang item).
+#[cfg_attr(not(test), panic_handler)]
+#[unwind(allowed)]
+pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
     struct PanicPayload<'a> {
         inner: &'a fmt::Arguments<'a>,
         string: Option<String>,
@@ -345,6 +344,7 @@ fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
             use crate::fmt::Write;
 
             let inner = self.inner;
+            // Lazily, the first time this gets called, run the actual string formatting.
             self.string.get_or_insert_with(|| {
                 let mut s = String::new();
                 drop(s.write_fmt(*inner));
@@ -354,7 +354,7 @@ fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
     }
 
     unsafe impl<'a> BoxMeUp for PanicPayload<'a> {
-        fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
+        fn take_box(&mut self) -> *mut (dyn Any + Send) {
             let contents = mem::take(self.fill());
             Box::into_raw(Box::new(contents))
         }
@@ -378,7 +378,9 @@ fn continue_panic_fmt(info: &PanicInfo<'_>) -> ! {
         &file_line_col);
 }
 
-/// This is the entry point of panicking for panic!() and assert!().
+/// This is the entry point of panicking for the non-format-string variants of
+/// panic!() and assert!(). In particular, this is the only entry point that supports
+/// arbitrary payloads, not just format strings.
 #[unstable(feature = "libstd_sys_internals",
            reason = "used by the panic! macro",
            issue = "0")]
@@ -412,10 +414,10 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
     }
 
     unsafe impl<A: Send + 'static> BoxMeUp for PanicPayload<A> {
-        fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
+        fn take_box(&mut self) -> *mut (dyn Any + Send) {
             let data = match self.inner.take() {
                 Some(a) => Box::new(a) as Box<dyn Any + Send>,
-                None => Box::new(()),
+                None => process::abort(),
             };
             Box::into_raw(data)
         }
@@ -423,7 +425,7 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u3
         fn get(&mut self) -> &(dyn Any + Send) {
             match self.inner {
                 Some(ref a) => a,
-                None => &(),
+                None => process::abort(),
             }
         }
     }
@@ -457,9 +459,12 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
         let mut info = PanicInfo::internal_constructor(message, &location);
         HOOK_LOCK.read();
         match HOOK {
-            // Some platforms know that printing to stderr won't ever actually
+            // Some platforms (like wasm) know that printing to stderr won't ever actually
             // print anything, and if that's the case we can skip the default
-            // hook.
+            // hook. Since string formatting happens lazily when calling `payload`
+            // methods, this means we avoid formatting the string at all!
+            // (The panic runtime might still call `payload.take_box()` though and trigger
+            // formatting.)
             Hook::Default if panic_output().is_none() => {}
             Hook::Default => {
                 info.set_payload(payload.get());
@@ -486,14 +491,15 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
     rust_panic(payload)
 }
 
-/// Shim around rust_panic. Called by resume_unwind.
-pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
+/// This is the entry point for `resume_unwind`.
+/// It just forwards the payload to the panic runtime.
+pub fn rust_panic_without_hook(payload: Box<dyn Any + Send>) -> ! {
     update_panic_count(1);
 
     struct RewrapBox(Box<dyn Any + Send>);
 
     unsafe impl BoxMeUp for RewrapBox {
-        fn box_me_up(&mut self) -> *mut (dyn Any + Send) {
+        fn take_box(&mut self) -> *mut (dyn Any + Send) {
             Box::into_raw(mem::replace(&mut self.0, Box::new(())))
         }
 
@@ -502,7 +508,7 @@ pub fn update_count_then_panic(msg: Box<dyn Any + Send>) -> ! {
         }
     }
 
-    rust_panic(&mut RewrapBox(msg))
+    rust_panic(&mut RewrapBox(payload))
 }
 
 /// An unmangled function (through `rustc_std_internal_symbol`) on which to slap

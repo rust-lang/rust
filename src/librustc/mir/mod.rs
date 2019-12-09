@@ -6,7 +6,7 @@
 
 use crate::hir::def::{CtorKind, Namespace};
 use crate::hir::def_id::DefId;
-use crate::hir;
+use crate::hir::{self, GeneratorKind};
 use crate::mir::interpret::{GlobalAlloc, PanicInfo, Scalar};
 use crate::mir::visit::MirVisitable;
 use crate::ty::adjustment::PointerCast;
@@ -21,25 +21,25 @@ use crate::ty::{
 use polonius_engine::Atom;
 use rustc_index::bit_set::BitMatrix;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::graph::dominators::{dominators, Dominators};
-use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
+use rustc_data_structures::graph::dominators::Dominators;
+use rustc_data_structures::graph::{self, GraphSuccessors};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_data_structures::sync::Lrc;
-use rustc_data_structures::sync::MappedReadGuard;
 use rustc_macros::HashStable;
 use rustc_serialize::{Encodable, Decodable};
 use smallvec::SmallVec;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Display, Formatter, Write};
-use std::ops::{Index, IndexMut};
+use std::ops::Index;
 use std::slice;
-use std::vec::IntoIter;
 use std::{iter, mem, option, u32};
 use syntax::ast::Name;
 use syntax::symbol::Symbol;
 use syntax_pos::{Span, DUMMY_SP};
 
 pub use crate::mir::interpret::AssertMessage;
+pub use crate::mir::cache::{BodyAndCache, ReadOnlyBodyAndCache};
+pub use crate::read_only;
 
 mod cache;
 pub mod interpret;
@@ -104,18 +104,18 @@ pub struct Body<'tcx> {
     /// and used for debuginfo. Indexed by a `SourceScope`.
     pub source_scopes: IndexVec<SourceScope, SourceScopeData>,
 
-    /// Crate-local information for each source scope, that can't (and
-    /// needn't) be tracked across crates.
-    pub source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-
     /// The yield type of the function, if it is a generator.
     pub yield_ty: Option<Ty<'tcx>>,
 
     /// Generator drop glue.
-    pub generator_drop: Option<Box<Body<'tcx>>>,
+    pub generator_drop: Option<Box<BodyAndCache<'tcx>>>,
 
     /// The layout of a generator. Produced by the state transformation.
     pub generator_layout: Option<GeneratorLayout<'tcx>>,
+
+    /// If this is a generator then record the type of source expression that caused this generator
+    /// to be created.
+    pub generator_kind: Option<GeneratorKind>,
 
     /// Declarations of locals.
     ///
@@ -141,14 +141,8 @@ pub struct Body<'tcx> {
     /// This is used for the "rust-call" ABI.
     pub spread_arg: Option<Local>,
 
-    /// Names and capture modes of all the closure upvars, assuming
-    /// the first argument is either the closure or a reference to it.
-    //
-    // NOTE(eddyb) This is *strictly* a temporary hack for codegen
-    // debuginfo generation, and will be removed at some point.
-    // Do **NOT** use it for anything else; upvar information should not be
-    // in the MIR, so please rely on local crate HIR or other side-channels.
-    pub __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
+    /// Debug information pertaining to user variables, including captures.
+    pub var_debug_info: Vec<VarDebugInfo<'tcx>>,
 
     /// Mark this MIR of a const context other than const functions as having converted a `&&` or
     /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
@@ -160,23 +154,19 @@ pub struct Body<'tcx> {
 
     /// A span representing this MIR, for error reporting.
     pub span: Span,
-
-    /// A cache for various calculations.
-    cache: cache::Cache,
 }
 
 impl<'tcx> Body<'tcx> {
     pub fn new(
         basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
         source_scopes: IndexVec<SourceScope, SourceScopeData>,
-        source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
-        yield_ty: Option<Ty<'tcx>>,
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
-        __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
+        var_debug_info: Vec<VarDebugInfo<'tcx>>,
         span: Span,
         control_flow_destroyed: Vec<(Span, String)>,
+        generator_kind : Option<GeneratorKind>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place.
         assert!(
@@ -190,17 +180,16 @@ impl<'tcx> Body<'tcx> {
             phase: MirPhase::Build,
             basic_blocks,
             source_scopes,
-            source_scope_local_data,
-            yield_ty,
+            yield_ty: None,
             generator_drop: None,
             generator_layout: None,
+            generator_kind,
             local_decls,
             user_type_annotations,
             arg_count,
-            __upvar_debuginfo_codegen_only_do_not_use,
             spread_arg: None,
+            var_debug_info,
             span,
-            cache: cache::Cache::new(),
             control_flow_destroyed,
         }
     }
@@ -208,58 +197,6 @@ impl<'tcx> Body<'tcx> {
     #[inline]
     pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
         &self.basic_blocks
-    }
-
-    #[inline]
-    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
-        self.cache.invalidate();
-        &mut self.basic_blocks
-    }
-
-    #[inline]
-    pub fn basic_blocks_and_local_decls_mut(
-        &mut self,
-    ) -> (&mut IndexVec<BasicBlock, BasicBlockData<'tcx>>, &mut LocalDecls<'tcx>) {
-        self.cache.invalidate();
-        (&mut self.basic_blocks, &mut self.local_decls)
-    }
-
-    #[inline]
-    pub fn predecessors(&self) -> MappedReadGuard<'_, IndexVec<BasicBlock, Vec<BasicBlock>>> {
-        self.cache.predecessors(self)
-    }
-
-    #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> MappedReadGuard<'_, Vec<BasicBlock>> {
-        MappedReadGuard::map(self.predecessors(), |p| &p[bb])
-    }
-
-    #[inline]
-    pub fn predecessor_locations(&self, loc: Location) -> impl Iterator<Item = Location> + '_ {
-        let if_zero_locations = if loc.statement_index == 0 {
-            let predecessor_blocks = self.predecessors_for(loc.block);
-            let num_predecessor_blocks = predecessor_blocks.len();
-            Some(
-                (0..num_predecessor_blocks)
-                    .map(move |i| predecessor_blocks[i])
-                    .map(move |bb| self.terminator_loc(bb)),
-            )
-        } else {
-            None
-        };
-
-        let if_not_zero_locations = if loc.statement_index == 0 {
-            None
-        } else {
-            Some(Location { block: loc.block, statement_index: loc.statement_index - 1 })
-        };
-
-        if_zero_locations.into_iter().flatten().chain(if_not_zero_locations)
-    }
-
-    #[inline]
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
-        dominators(self)
     }
 
     /// Returns `true` if a cycle exists in the control-flow graph that is reachable from the
@@ -280,7 +217,7 @@ impl<'tcx> Body<'tcx> {
             LocalKind::ReturnPointer
         } else if index < self.arg_count + 1 {
             LocalKind::Arg
-        } else if self.local_decls[local].name.is_some() {
+        } else if self.local_decls[local].is_user_variable() {
             LocalKind::Var
         } else {
             LocalKind::Temp
@@ -305,11 +242,7 @@ impl<'tcx> Body<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
         (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].is_user_variable() {
-                Some(local)
-            } else {
-                None
-            }
+            self.local_decls[local].is_user_variable().then_some(local)
         })
     }
 
@@ -362,7 +295,7 @@ impl<'tcx> Body<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
     pub fn make_statement_nop(&mut self, location: Location) {
-        let block = &mut self[location.block];
+        let block = &mut self.basic_blocks[location.block];
         debug_assert!(location.statement_index < block.statements.len());
         block.statements[location.statement_index].make_nop()
     }
@@ -422,13 +355,6 @@ impl<'tcx> Index<BasicBlock> for Body<'tcx> {
     }
 }
 
-impl<'tcx> IndexMut<BasicBlock> for Body<'tcx> {
-    #[inline]
-    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
-        &mut self.basic_blocks_mut()[index]
-    }
-}
-
 #[derive(Copy, Clone, Debug, HashStable, TypeFoldable)]
 pub enum ClearCrossCrate<T> {
     Clear,
@@ -436,6 +362,13 @@ pub enum ClearCrossCrate<T> {
 }
 
 impl<T> ClearCrossCrate<T> {
+    pub fn as_ref(&'a self) -> ClearCrossCrate<&'a T> {
+        match self {
+            ClearCrossCrate::Clear => ClearCrossCrate::Clear,
+            ClearCrossCrate::Set(v) => ClearCrossCrate::Set(v),
+        }
+    }
+
     pub fn assert_crate_local(self) -> T {
         match self {
             ClearCrossCrate::Clear => bug!("unwrapping cross-crate data"),
@@ -450,7 +383,7 @@ impl<T: Decodable> rustc_serialize::UseSpecializedDecodable for ClearCrossCrate<
 /// Grouped information about the source code origin of a MIR entity.
 /// Intended to be inspected by diagnostics and debuginfo.
 /// Most passes can work with it as a whole, within a single function.
-// The unoffical Cranelift backend, at least as of #65828, needs `SourceInfo` to implement `Eq` and
+// The unofficial Cranelift backend, at least as of #65828, needs `SourceInfo` to implement `Eq` and
 // `Hash`. Please ping @bjorn3 if removing them.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash, HashStable)]
 pub struct SourceInfo {
@@ -728,12 +661,6 @@ pub struct LocalDecl<'tcx> {
     // FIXME(matthewjasper) Don't store in this in `Body`
     pub user_ty: UserTypeProjections,
 
-    /// The name of the local, used in debuginfo and pretty-printing.
-    ///
-    /// Note that function arguments can also have this set to `Some(_)`
-    /// to generate better debuginfo.
-    pub name: Option<Name>,
-
     /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
@@ -785,9 +712,9 @@ pub struct LocalDecl<'tcx> {
     /// `drop(x)`, we want it to refer to `x: u32`.
     ///
     /// To allow both uses to work, we need to have more than a single scope
-    /// for a local. We have the `source_info.scope` represent the
-    /// "syntactic" lint scope (with a variable being under its let
-    /// block) while the `visibility_scope` represents the "local variable"
+    /// for a local. We have the `source_info.scope` represent the "syntactic"
+    /// lint scope (with a variable being under its let block) while the
+    /// `var_debug_info.source_info.scope` represents the "local variable"
     /// scope (where the "rest" of a block is under all prior let-statements).
     ///
     /// The end result looks like this:
@@ -806,18 +733,14 @@ pub struct LocalDecl<'tcx> {
     ///  │ │
     ///  │ │ │{ let y: u32 }
     ///  │ │ │
-    ///  │ │ │← y.visibility_scope
+    ///  │ │ │← y.var_debug_info.source_info.scope
     ///  │ │ │← `y + 2`
     ///  │
     ///  │ │{ let x: u32 }
-    ///  │ │← x.visibility_scope
+    ///  │ │← x.var_debug_info.source_info.scope
     ///  │ │← `drop(x)` // This accesses `x: u32`.
     /// ```
     pub source_info: SourceInfo,
-
-    /// Source scope within which the local is visible (for debuginfo)
-    /// (see `source_info` for more details).
-    pub visibility_scope: SourceScope,
 }
 
 /// Extra information about a local that's used for diagnostics.
@@ -955,9 +878,7 @@ impl<'tcx> LocalDecl<'tcx> {
             mutability,
             ty,
             user_ty: UserTypeProjections::none(),
-            name: None,
             source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal,
             local_info: LocalInfo::Other,
             is_block_tail: None,
@@ -974,22 +895,27 @@ impl<'tcx> LocalDecl<'tcx> {
             ty: return_ty,
             user_ty: UserTypeProjections::none(),
             source_info: SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE },
-            visibility_scope: OUTERMOST_SOURCE_SCOPE,
             internal: false,
             is_block_tail: None,
-            name: None, // FIXME maybe we do want some name here?
             local_info: LocalInfo::Other,
         }
     }
 }
 
-/// A closure capture, with its name and mode.
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct UpvarDebuginfo {
-    pub debug_name: Name,
+/// Debug information pertaining to a user variable.
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
+pub struct VarDebugInfo<'tcx> {
+    pub name: Name,
 
-    /// If true, the capture is behind a reference.
-    pub by_ref: bool,
+    /// Source info of the user variable, including the scope
+    /// within which the variable is visible (to debuginfo)
+    /// (see `LocalDecl`'s `source_info` field for more details).
+    pub source_info: SourceInfo,
+
+    /// Where the data for this user variable is to be found.
+    /// NOTE(eddyb) There's an unenforced invariant that this `Place` is
+    /// based on a `Local`, not a `Static`, and contains no indexing.
+    pub place: Place<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -2035,6 +1961,10 @@ rustc_index::newtype_index! {
 pub struct SourceScopeData {
     pub span: Span,
     pub parent_scope: Option<SourceScope>,
+
+    /// Crate-local information for this source scope, that can't (and
+    /// needn't) be tracked across crates.
+    pub local_data: ClearCrossCrate<SourceScopeLocalData>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -2316,10 +2246,14 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                         }
                     }
 
-                    AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
+                    AggregateKind::Closure(def_id, substs) => ty::tls::with(|tcx| {
                         if let Some(hir_id) = tcx.hir().as_local_hir_id(def_id) {
                             let name = if tcx.sess.opts.debugging_opts.span_free_formats {
-                                format!("[closure@{:?}]", hir_id)
+                                let substs = tcx.lift(&substs).unwrap();
+                                format!(
+                                    "[closure@{}]",
+                                    tcx.def_path_str_with_substs(def_id, substs),
+                                )
                             } else {
                                 format!("[closure@{:?}]", tcx.hir().span(hir_id))
                             };
@@ -2617,15 +2551,6 @@ impl<'tcx> graph::WithStartNode for Body<'tcx> {
     }
 }
 
-impl<'tcx> graph::WithPredecessors for Body<'tcx> {
-    fn predecessors(
-        &self,
-        node: Self::Node,
-    ) -> <Self as GraphPredecessors<'_>>::Iter {
-        self.predecessors_for(node).clone().into_iter()
-    }
-}
-
 impl<'tcx> graph::WithSuccessors for Body<'tcx> {
     fn successors(
         &self,
@@ -2633,11 +2558,6 @@ impl<'tcx> graph::WithSuccessors for Body<'tcx> {
     ) -> <Self as GraphSuccessors<'_>>::Iter {
         self.basic_blocks[node].terminator().successors().cloned()
     }
-}
-
-impl<'a, 'b> graph::GraphPredecessors<'b> for Body<'a> {
-    type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
 }
 
 impl<'a, 'b> graph::GraphSuccessors<'b> for Body<'a> {
@@ -2674,7 +2594,11 @@ impl Location {
     }
 
     /// Returns `true` if `other` is earlier in the control flow graph than `self`.
-    pub fn is_predecessor_of<'tcx>(&self, other: Location, body: &Body<'tcx>) -> bool {
+    pub fn is_predecessor_of<'tcx>(
+        &self,
+        other: Location,
+        body: ReadOnlyBodyAndCache<'_, 'tcx>
+    ) -> bool {
         // If we are in the same block as the other location and are an earlier statement
         // then we are a predecessor of `other`.
         if self.block == other.block && self.statement_index < other.statement_index {
@@ -2682,13 +2606,13 @@ impl Location {
         }
 
         // If we're in another block, then we want to check that block is a predecessor of `other`.
-        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).clone();
+        let mut queue: Vec<BasicBlock> = body.predecessors_for(other.block).to_vec();
         let mut visited = FxHashSet::default();
 
         while let Some(block) = queue.pop() {
             // If we haven't visited this block before, then make sure we visit it's predecessors.
             if visited.insert(block) {
-                queue.append(&mut body.predecessors_for(block).clone());
+                queue.extend(body.predecessors_for(block).iter().cloned());
             } else {
                 continue;
             }
@@ -2758,16 +2682,6 @@ pub struct GeneratorLayout<'tcx> {
     /// have conflicts with each other are allowed to overlap in the computed
     /// layout.
     pub storage_conflicts: BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal>,
-
-    /// The names and scopes of all the stored generator locals.
-    ///
-    /// N.B., this is *strictly* a temporary hack for codegen
-    /// debuginfo generation, and will be removed at some point.
-    /// Do **NOT** use it for anything else, local information should not be
-    /// in the MIR, please rely on local crate HIR or other side-channels.
-    //
-    // FIXME(tmandry): see above.
-    pub __local_debuginfo_codegen_only_do_not_use: IndexVec<GeneratorSavedLocal, LocalDecl<'tcx>>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
@@ -2946,7 +2860,6 @@ CloneTypeFoldableAndLiftImpls! {
     MirPhase,
     Mutability,
     SourceInfo,
-    UpvarDebuginfo,
     FakeReadCause,
     RetagKind,
     SourceScope,
@@ -3000,7 +2913,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                             index: index.fold_with(folder),
                         },
                     Panic { .. } | Overflow(_) | OverflowNeg | DivisionByZero | RemainderByZero |
-                    GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                    ResumedAfterReturn(_) | ResumedAfterPanic(_)  =>
                         msg.clone(),
                 };
                 Assert { cond: cond.fold_with(folder), expected, msg, target, cleanup }
@@ -3046,7 +2959,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                             len.visit_with(visitor) || index.visit_with(visitor),
                         Panic { .. } | Overflow(_) | OverflowNeg |
                         DivisionByZero | RemainderByZero |
-                        GeneratorResumedAfterReturn | GeneratorResumedAfterPanic =>
+                        ResumedAfterReturn(_) | ResumedAfterPanic(_) =>
                             false
                     }
                 } else {
@@ -3062,6 +2975,16 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             | FalseEdges { .. }
             | FalseUnwind { .. } => false,
         }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _: &mut F) -> Self {
+        *self
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _: &mut V) -> bool {
+        false
     }
 }
 

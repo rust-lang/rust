@@ -113,7 +113,7 @@ impl Step for Std {
     }
 }
 
-/// Copies third pary objects needed by various targets.
+/// Copies third party objects needed by various targets.
 fn copy_third_party_objects(builder: &Builder<'_>, compiler: &Compiler, target: Interned<String>)
     -> Vec<PathBuf>
 {

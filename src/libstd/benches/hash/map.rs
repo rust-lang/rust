@@ -1,7 +1,7 @@
 #![cfg(test)]
 
-use test::Bencher;
 use std::collections::HashMap;
+use test::Bencher;
 
 #[bench]
 fn new_drop(b: &mut Bencher) {

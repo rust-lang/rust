@@ -3,6 +3,7 @@
 //! hand, though we've recently added some macros and proc-macros to help with the tedium.
 
 use crate::hir::def::Namespace;
+use crate::hir::def_id::CRATE_DEF_INDEX;
 use crate::mir::ProjectionKind;
 use crate::mir::interpret;
 use crate::ty::{self, Lift, Ty, TyCtxt, InferConst};
@@ -95,8 +96,11 @@ impl fmt::Debug for ty::BoundRegion {
         match *self {
             ty::BrAnon(n) => write!(f, "BrAnon({:?})", n),
             ty::BrNamed(did, name) => {
-                write!(f, "BrNamed({:?}:{:?}, {})",
-                        did.krate, did.index, name)
+                if did.index == CRATE_DEF_INDEX {
+                    write!(f, "BrNamed({})", name)
+                } else {
+                    write!(f, "BrNamed({:?}, {})", did, name)
+                }
             }
             ty::BrEnv => write!(f, "BrEnv"),
         }
@@ -223,10 +227,7 @@ impl fmt::Debug for ty::FloatVarValue {
 
 impl fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // FIXME(#59188) this is used across the compiler to print
-        // a `TraitRef` qualified (with the Self type explicit),
-        // instead of having a different way to make that choice.
-        write!(f, "<{} as {}>", self.self_ty(), self)
+        fmt::Display::fmt(self, f)
     }
 }
 

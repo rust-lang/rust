@@ -4,16 +4,17 @@ use crate::hygiene::{ExpnId, SyntaxContext, ExpnData, ExpnKind};
 use crate::mbe::macro_rules::annotate_err_with_kind;
 use crate::placeholders::{placeholder, PlaceholderExpander};
 use crate::config::StripUnconfigured;
-use rustc_parse::configure;
 
+use rustc_feature::Features;
+use rustc_parse::configure;
 use rustc_parse::DirectoryOwnership;
 use rustc_parse::parser::Parser;
 use rustc_parse::validate_attr;
 use syntax::ast::{self, AttrItem, Block, Ident, LitKind, NodeId, PatKind, Path};
-use syntax::ast::{MacStmtStyle, StmtKind, ItemKind};
-use syntax::attr::{self, HasAttrs};
+use syntax::ast::{MacArgs, MacStmtStyle, StmtKind, ItemKind};
+use syntax::attr::{self, HasAttrs, is_builtin_attr};
 use syntax::source_map::respan;
-use syntax::feature_gate::{self, Features, GateIssue, is_builtin_attr, emit_feature_err};
+use syntax::feature_gate::{self, feature_err};
 use syntax::mut_visit::*;
 use syntax::print::pprust;
 use syntax::ptr::P;
@@ -596,13 +597,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
                     self.gate_proc_macro_expansion_kind(span, fragment_kind);
-                    let tok_result = expander.expand(self.cx, span, mac.stream());
+                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let prev = self.cx.current_expansion.prior_type_ascription;
                     self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
-                    let tok_result = expander.expand(self.cx, span, mac.stream());
+                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
@@ -641,8 +642,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             => panic!("unexpected annotatable"),
                     })), DUMMY_SP).into();
                     let item = attr.unwrap_normal_item();
-                    let input = self.extract_proc_macro_attr_input(item.tokens, span);
-                    let tok_result = expander.expand(self.cx, span, input, item_tok);
+                    if let MacArgs::Eq(..) = item.args {
+                        self.cx.span_err(span, "key-value macro attributes are not supported");
+                    }
+                    let tok_result =
+                        expander.expand(self.cx, span, item.args.inner_tokens(), item_tok);
                     self.parse_ast_fragment(tok_result, fragment_kind, &item.path, span)
                 }
                 SyntaxExtensionKind::LegacyAttr(expander) => {
@@ -686,23 +690,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn extract_proc_macro_attr_input(&self, tokens: TokenStream, span: Span) -> TokenStream {
-        let mut trees = tokens.trees();
-        match trees.next() {
-            Some(TokenTree::Delimited(_, _, tts)) => {
-                if trees.next().is_none() {
-                    return tts.into()
-                }
-            }
-            Some(TokenTree::Token(..)) => {}
-            None => return TokenStream::default(),
-        }
-        self.cx.span_err(span, "custom attribute invocations must be \
-            of the form `#[foo]` or `#[foo(..)]`, the macro name must only be \
-            followed by a delimiter token");
-        TokenStream::default()
-    }
-
     fn gate_proc_macro_attr_item(&self, span: Span, item: &Annotatable) {
         let kind = match item {
             Annotatable::Item(item) => match &item.kind {
@@ -726,13 +713,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if self.cx.ecfg.proc_macro_hygiene() {
             return
         }
-        emit_feature_err(
+        feature_err(
             self.cx.parse_sess,
             sym::proc_macro_hygiene,
             span,
-            GateIssue::Language,
             &format!("custom attributes cannot be applied to {}", kind),
-        );
+        )
+        .emit();
     }
 
     fn gate_proc_macro_input(&self, annotatable: &Annotatable) {
@@ -744,13 +731,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             fn visit_item(&mut self, item: &'ast ast::Item) {
                 match &item.kind {
                     ast::ItemKind::Mod(module) if !module.inline => {
-                        emit_feature_err(
+                        feature_err(
                             self.parse_sess,
                             sym::proc_macro_hygiene,
                             item.span,
-                            GateIssue::Language,
                             "non-inline modules in proc macro input are unstable",
-                        );
+                        )
+                        .emit();
                     }
                     _ => {}
                 }
@@ -789,13 +776,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         if self.cx.ecfg.proc_macro_hygiene() {
             return
         }
-        emit_feature_err(
+        feature_err(
             self.cx.parse_sess,
             sym::proc_macro_hygiene,
             span,
-            GateIssue::Language,
             &format!("procedural macros cannot be expanded to {}", kind),
-        );
+        )
+        .emit();
     }
 
     fn parse_ast_fragment(
@@ -991,9 +978,11 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         if let Some(attr) = &attr {
             if !self.cx.ecfg.custom_inner_attributes() &&
                attr.style == ast::AttrStyle::Inner && !attr.has_name(sym::test) {
-                emit_feature_err(&self.cx.parse_sess, sym::custom_inner_attributes,
-                                 attr.span, GateIssue::Language,
-                                 "non-builtin inner attributes are unstable");
+                feature_err(
+                    &self.cx.parse_sess, sym::custom_inner_attributes, attr.span,
+                    "non-builtin inner attributes are unstable"
+                )
+                .emit();
             }
         }
         attr
@@ -1557,7 +1546,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
             let meta = attr::mk_list_item(Ident::with_dummy_span(sym::doc), items);
             *at = attr::Attribute {
                 kind: ast::AttrKind::Normal(
-                    AttrItem { path: meta.path, tokens: meta.kind.tokens(meta.span) },
+                    AttrItem { path: meta.path, args: meta.kind.mac_args(meta.span) },
                 ),
                 span: at.span,
                 id: at.id,

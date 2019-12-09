@@ -464,9 +464,9 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn le(&self, other: &Self) -> bool { other.0 <= self.0 }
     #[inline]
-    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
-    #[inline]
     fn gt(&self, other: &Self) -> bool { other.0 > self.0 }
+    #[inline]
+    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
 }
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
@@ -534,7 +534,6 @@ impl<T: Ord> Ord for Reverse<T> {
 ///     }
 /// }
 /// ```
-#[lang = "ord"]
 #[doc(alias = "<")]
 #[doc(alias = ">")]
 #[doc(alias = "<=")]
@@ -1176,9 +1175,9 @@ mod impls {
         #[inline]
         fn le(&self, other: & &B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: & &B) -> bool { PartialOrd::ge(*self, *other) }
-        #[inline]
         fn gt(&self, other: & &B) -> bool { PartialOrd::gt(*self, *other) }
+        #[inline]
+        fn ge(&self, other: & &B) -> bool { PartialOrd::ge(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &A where A: Ord {
@@ -1208,9 +1207,9 @@ mod impls {
         #[inline]
         fn le(&self, other: &&mut B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: &&mut B) -> bool { PartialOrd::ge(*self, *other) }
-        #[inline]
         fn gt(&self, other: &&mut B) -> bool { PartialOrd::gt(*self, *other) }
+        #[inline]
+        fn ge(&self, other: &&mut B) -> bool { PartialOrd::ge(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &mut A where A: Ord {

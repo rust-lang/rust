@@ -22,7 +22,7 @@ use rustc_fs_util::{path_to_c_string, link_or_copy};
 use rustc_data_structures::small_c_str::SmallCStr;
 use errors::{Handler, FatalError};
 
-use std::ffi::{CString, CStr};
+use std::ffi::CString;
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -167,7 +167,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
     let emit_stack_size_section = sess.opts.debugging_opts.emit_stack_sizes;
 
     let asm_comments = sess.asm_comments();
-
+    let relax_elf_relocations = sess.target.target.options.relax_elf_relocations;
     Arc::new(move || {
         let tm = unsafe {
             llvm::LLVMRustCreateTargetMachine(
@@ -183,6 +183,7 @@ pub fn target_machine_factory(sess: &Session, optlvl: config::OptLevel, find_fea
                 singlethread,
                 asm_comments,
                 emit_stack_size_section,
+                relax_elf_relocations,
             )
         };
 
@@ -365,27 +366,13 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
             add_sanitizer_passes(config, &mut extra_passes);
 
-            for pass_name in &cgcx.plugin_passes {
-                if let Some(pass) = find_pass(pass_name) {
-                    extra_passes.push(pass);
-                } else {
-                    diag_handler.err(&format!("a plugin asked for LLVM pass \
-                                               `{}` but LLVM does not \
-                                               recognize it", pass_name));
-                }
-
-                if pass_name == "name-anon-globals" {
-                    have_name_anon_globals_pass = true;
-                }
-            }
-
             // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
             // to make sure we run LLVM's NameAnonGlobals pass when emitting bitcode; otherwise
             // we'll get errors in LLVM.
             let using_thin_buffers = config.bitcode_needed();
             if !config.no_prepopulate_passes {
-                llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
-                llvm::LLVMRustAddAnalysisPasses(tm, mpm, llmod);
+                llvm::LLVMAddAnalysisPasses(tm, fpm);
+                llvm::LLVMAddAnalysisPasses(tm, mpm);
                 let opt_level = to_llvm_opt_settings(opt_level).0;
                 let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal ||
                     (cgcx.lto != Lto::Fat && cgcx.opts.cg.linker_plugin_lto.enabled());
@@ -509,7 +496,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             where F: FnOnce(&'ll mut PassManager<'ll>) -> R,
         {
             let cpm = llvm::LLVMCreatePassManager();
-            llvm::LLVMRustAddAnalysisPasses(tm, cpm, llmod);
+            llvm::LLVMAddAnalysisPasses(tm, cpm);
             llvm::LLVMRustAddLibraryInfo(cpm, llmod, no_builtins);
             f(cpm)
         }
@@ -601,14 +588,11 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
                     cursor.position() as size_t
                 }
 
-                with_codegen(tm, llmod, config.no_builtins, |cpm| {
-                    let result =
-                        llvm::LLVMRustPrintModule(cpm, llmod, out_c.as_ptr(), demangle_callback);
-                    llvm::LLVMDisposePassManager(cpm);
-                    result.into_result().map_err(|()| {
-                        let msg = format!("failed to write LLVM IR to {}", out.display());
-                        llvm_err(diag_handler, &msg)
-                    })
+                let result =
+                    llvm::LLVMRustPrintModule(llmod, out_c.as_ptr(), demangle_callback);
+                result.into_result().map_err(|()| {
+                    let msg = format!("failed to write LLVM IR to {}", out.display());
+                    llvm_err(diag_handler, &msg)
                 })?;
             }
 
@@ -849,8 +833,8 @@ fn create_msvc_imps(
             })
             .filter_map(|val| {
                 // Exclude some symbols that we know are not Rust symbols.
-                let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
-                if ignored(name.to_bytes()) {
+                let name = llvm::get_value_name(val);
+                if ignored(name) {
                     None
                 } else {
                     Some((val, name))
@@ -858,7 +842,7 @@ fn create_msvc_imps(
             })
             .map(move |(val, name)| {
                 let mut imp_name = prefix.as_bytes().to_vec();
-                imp_name.extend(name.to_bytes());
+                imp_name.extend(name);
                 let imp_name = CString::new(imp_name).unwrap();
                 (imp_name, val)
             })

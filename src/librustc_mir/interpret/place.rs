@@ -125,7 +125,7 @@ impl<Tag> MemPlace<Tag> {
         Self::from_scalar_ptr(ptr.into(), align)
     }
 
-    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
+    /// Turn a mplace into a (thin or wide) pointer, as a reference, pointing to the same space.
     /// This is the inverse of `ref_to_mplace`.
     #[inline(always)]
     pub fn to_ref(self) -> Immediate<Tag> {
@@ -278,7 +278,7 @@ where
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
     M::AllocExtra: AllocationExtra<Tag>,
 {
-    /// Take a value, which represents a (thin or fat) reference, and make it a place.
+    /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
     ///
     /// Only call this if you are sure the place is "valid" (aligned and inbounds), or do not
@@ -384,10 +384,8 @@ where
             layout::FieldPlacement::Array { stride, .. } => {
                 let len = base.len(self)?;
                 if field >= len {
-                    // This can be violated because the index (field) can be a runtime value
-                    // provided by the user.
-                    debug!("tried to access element {} of array/slice with length {}", field, len);
-                    throw_panic!(BoundsCheck { len, index: field });
+                    // This can only be reached in ConstProp and non-rustc-MIR.
+                    throw_ub!(BoundsCheckFailed { len, index: field });
                 }
                 stride * field
             }
@@ -651,20 +649,28 @@ where
         use rustc::mir::PlaceBase;
 
         let mut place_ty = match &place.base {
-            PlaceBase::Local(mir::RETURN_PLACE) => match self.frame().return_place {
-                Some(return_place) => {
-                    // We use our layout to verify our assumption; caller will validate
-                    // their layout on return.
-                    PlaceTy {
-                        place: *return_place,
-                        layout: self.layout_of(
-                            self.subst_from_frame_and_normalize_erasing_regions(
-                                self.frame().body.return_ty()
-                            )
-                        )?,
-                    }
+            PlaceBase::Local(mir::RETURN_PLACE) => {
+                // `return_place` has the *caller* layout, but we want to use our
+                // `layout to verify our assumption. The caller will validate
+                // their layout on return.
+                PlaceTy {
+                    place: match self.frame().return_place {
+                        Some(p) => *p,
+                        // Even if we don't have a return place, we sometimes need to
+                        // create this place, but any attempt to read from / write to it
+                        // (even a ZST read/write) needs to error, so let us make this
+                        // a NULL place.
+                        //
+                        // FIXME: Ideally we'd make sure that the place projections also
+                        // bail out.
+                        None => Place::null(&*self),
+                    },
+                    layout: self.layout_of(
+                        self.subst_from_frame_and_normalize_erasing_regions(
+                            self.frame().body.return_ty()
+                        )
+                    )?,
                 }
-                None => throw_unsup!(InvalidNullPointerUsage),
             },
             PlaceBase::Local(local) => PlaceTy {
                 // This works even for dead/uninitialized locals; we check further when writing
@@ -686,6 +692,7 @@ where
     }
 
     /// Write a scalar to a place
+    #[inline(always)]
     pub fn write_scalar(
         &mut self,
         val: impl Into<ScalarMaybeUndef<M::PointerTag>>,
@@ -791,8 +798,8 @@ where
         // to handle padding properly, which is only correct if we never look at this data with the
         // wrong type.
 
-        let ptr = match self.check_mplace_access(dest, None)
-            .expect("places should be checked on creation")
+        // Invalid places are a thing: the return place of a diverging function
+        let ptr = match self.check_mplace_access(dest, None)?
         {
             Some(ptr) => ptr,
             None => return Ok(()), // zero-sized access
@@ -1033,18 +1040,39 @@ where
         MPlaceTy::from_aligned_ptr(ptr, layout)
     }
 
+    /// Returns a wide MPlace.
+    pub fn allocate_str(
+        &mut self,
+        str: &str,
+        kind: MemoryKind<M::MemoryKinds>,
+    ) -> MPlaceTy<'tcx, M::PointerTag> {
+        let ptr = self.memory.allocate_static_bytes(str.as_bytes(), kind);
+        let meta = Scalar::from_uint(str.len() as u128, self.pointer_size());
+        let mplace = MemPlace {
+            ptr: ptr.into(),
+            align: Align::from_bytes(1).unwrap(),
+            meta: Some(meta),
+        };
+
+        let layout = self.layout_of(self.tcx.mk_static_str()).unwrap();
+        MPlaceTy { mplace, layout }
+    }
+
     pub fn write_discriminant_index(
         &mut self,
         variant_index: VariantIdx,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> InterpResult<'tcx> {
-        let variant_scalar = Scalar::from_u32(variant_index.as_u32()).into();
+
+        // Layout computation excludes uninhabited variants from consideration
+        // therefore there's no way to represent those variants in the given layout.
+        if dest.layout.for_variant(self, variant_index).abi.is_uninhabited() {
+            throw_ub!(Unreachable);
+        }
 
         match dest.layout.variants {
             layout::Variants::Single { index } => {
-                if index != variant_index {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                assert_eq!(index, variant_index);
             }
             layout::Variants::Multiple {
                 discr_kind: layout::DiscriminantKind::Tag,
@@ -1052,9 +1080,9 @@ where
                 discr_index,
                 ..
             } => {
-                if !dest.layout.ty.variant_range(*self.tcx).unwrap().contains(&variant_index) {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                // No need to validate that the discriminant here because the
+                // `TyLayout::for_variant()` call earlier already checks the variant is valid.
+
                 let discr_val =
                     dest.layout.ty.discriminant_for_variant(*self.tcx, variant_index).unwrap().val;
 
@@ -1077,9 +1105,9 @@ where
                 discr_index,
                 ..
             } => {
-                if !variant_index.as_usize() < dest.layout.ty.ty_adt_def().unwrap().variants.len() {
-                    throw_ub!(InvalidDiscriminant(variant_scalar));
-                }
+                // No need to validate that the discriminant here because the
+                // `TyLayout::for_variant()` call earlier already checks the variant is valid.
+
                 if variant_index != dataful_variant {
                     let variants_start = niche_variants.start().as_u32();
                     let variant_index_relative = variant_index.as_u32()

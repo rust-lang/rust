@@ -22,6 +22,7 @@ rustc-rayon = "0.3.0"
 rustc-rayon-core = "0.3.0"
 polonius-engine  = "0.10.0"
 rustc_apfloat = { path = "../librustc_apfloat" }
+rustc_feature = { path = "../librustc_feature" }
 rustc_target = { path = "../librustc_target" }
 rustc_macros = { path = "../librustc_macros" }
 rustc_data_structures = { path = "../librustc_data_structures" }
@@ -38,3 +39,4 @@ rustc_fs_util = { path = "../librustc_fs_util" }
 smallvec = { version = "1.0", features = ["union", "may_dangle"] }
 measureme = "0.4"
 rustc_error_codes = { path = "../librustc_error_codes" }
+rustc_session = { path = "../librustc_session" }

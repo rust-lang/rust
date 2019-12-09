@@ -1,17 +1,16 @@
 /// The underlying OsString/OsStr implementation on Windows is a
 /// wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
-
 use crate::borrow::Cow;
 use crate::fmt;
-use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
 use crate::mem;
 use crate::rc::Rc;
 use crate::sync::Arc;
-use crate::sys_common::{AsInner, IntoInner, FromInner};
+use crate::sys_common::wtf8::{Wtf8, Wtf8Buf};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 
 #[derive(Clone, Hash)]
 pub struct Buf {
-    pub inner: Wtf8Buf
+    pub inner: Wtf8Buf,
 }
 
 impl IntoInner<Wtf8Buf> for Buf {
@@ -45,7 +44,7 @@ impl fmt::Display for Buf {
 }
 
 pub struct Slice {
-    pub inner: Wtf8
+    pub inner: Wtf8,
 }
 
 impl fmt::Debug for Slice {
@@ -62,9 +61,7 @@ impl fmt::Display for Slice {
 
 impl Buf {
     pub fn with_capacity(capacity: usize) -> Buf {
-        Buf {
-            inner: Wtf8Buf::with_capacity(capacity)
-        }
+        Buf { inner: Wtf8Buf::with_capacity(capacity) }
     }
 
     pub fn clear(&mut self) {
