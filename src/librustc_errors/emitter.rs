@@ -24,7 +24,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lrc;
 use std::borrow::Cow;
 use std::io::prelude::*;
-use std::io;
+use std::{env, io};
 use std::cmp::{min, max, Reverse};
 use std::path::Path;
 use termcolor::{StandardStream, ColorChoice, ColorSpec, BufferWriter, Ansi};
@@ -458,7 +458,11 @@ impl ColorConfig {
                 }
             }
             ColorConfig::Never => ColorChoice::Never,
-            ColorConfig::Auto if atty::is(atty::Stream::Stderr) => {
+            ColorConfig::Auto
+                if env::var("CLICOLOR_FORCE").unwrap_or("0".to_string()) != "0"
+                    || (atty::is(atty::Stream::Stderr)
+                        && env::var("CLICOLOR").unwrap_or("1".to_string()) != "0") =>
+            {
                 ColorChoice::Auto
             }
             ColorConfig::Auto => ColorChoice::Never,

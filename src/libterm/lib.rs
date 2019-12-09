@@ -34,6 +34,7 @@
        html_playground_url = "https://play.rust-lang.org/",
        test(attr(deny(warnings))))]
 #![deny(missing_docs)]
+#![feature(result_map_or)]
 
 #![cfg_attr(windows, feature(libc))]
 

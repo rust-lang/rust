@@ -13,7 +13,7 @@ use crate::color;
 use crate::Terminal;
 
 use searcher::get_dbpath_for_term;
-use parser::compiled::{parse, msys_terminfo};
+use parser::compiled::{parse, ansi_terminfo};
 use parm::{expand, Variables, Param};
 
 /// A parsed terminfo database entry.
@@ -69,14 +69,18 @@ impl fmt::Display for Error {
 impl TermInfo {
     /// Creates a TermInfo based on current environment.
     pub fn from_env() -> Result<TermInfo, Error> {
+        if env::var("CLICOLOR_FORCE").unwrap_or("0".to_string()) != "0" {
+            return Ok(ansi_terminfo());
+        }
         let term = match env::var("TERM") {
             Ok(name) => TermInfo::from_name(&name),
             Err(..) => return Err(Error::TermUnset),
         };
 
-        if term.is_err() && env::var("MSYSCON").ok().map_or(false, |s| "mintty.exe" == s) {
+        if term.is_err() && (env::var("MSYSCON").map_or(false, |s| "mintty.exe" == s) ||
+           env::var("CLICOLOR").unwrap_or("0".to_string()) != "0") {
             // msys terminal
-            Ok(msys_terminfo())
+            Ok(ansi_terminfo())
         } else {
             term
         }
