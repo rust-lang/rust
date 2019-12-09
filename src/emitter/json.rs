@@ -6,10 +6,10 @@ use std::io::{self, Write};
 
 #[derive(Debug, Default)]
 pub(crate) struct JsonEmitter {
-    num_files: u32,
+    mismatched_files: Vec<MismatchedFile>,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, PartialEq, Serialize)]
 struct MismatchedBlock {
     original_begin_line: u32,
     original_end_line: u32,
@@ -19,26 +19,20 @@ struct MismatchedBlock {
     expected: String,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Debug, Default, PartialEq, Serialize)]
 struct MismatchedFile {
     name: String,
     mismatches: Vec<MismatchedBlock>,
 }
 
 impl Emitter for JsonEmitter {
-    fn emit_header(&self, output: &mut dyn Write) -> Result<(), io::Error> {
-        write!(output, "[")?;
-        Ok(())
-    }
-
     fn emit_footer(&self, output: &mut dyn Write) -> Result<(), io::Error> {
-        write!(output, "]")?;
-        Ok(())
+        writeln!(output, "{}", &to_json_string(&self.mismatched_files)?)
     }
 
     fn emit_formatted_file(
         &mut self,
-        output: &mut dyn Write,
+        _output: &mut dyn Write,
         FormattedFile {
             filename,
             original_text,
@@ -50,66 +44,61 @@ impl Emitter for JsonEmitter {
         let has_diff = !diff.is_empty();
 
         if has_diff {
-            output_json_file(output, filename, diff, self.num_files)?;
-            self.num_files += 1;
+            self.add_misformatted_file(filename, diff)?;
         }
 
         Ok(EmitterResult { has_diff })
     }
 }
 
-fn output_json_file<T>(
-    mut writer: T,
-    filename: &FileName,
-    diff: Vec<Mismatch>,
-    num_emitted_files: u32,
-) -> Result<(), io::Error>
-where
-    T: Write,
-{
-    let mut mismatches = vec![];
-    for mismatch in diff {
-        let original_begin_line = mismatch.line_number_orig;
-        let expected_begin_line = mismatch.line_number;
-        let mut original_end_line = original_begin_line;
-        let mut expected_end_line = expected_begin_line;
-        let mut original_line_counter = 0;
-        let mut expected_line_counter = 0;
-        let mut original_lines = vec![];
-        let mut expected_lines = vec![];
+impl JsonEmitter {
+    fn add_misformatted_file(
+        &mut self,
+        filename: &FileName,
+        diff: Vec<Mismatch>,
+    ) -> Result<(), io::Error> {
+        let mut mismatches = vec![];
+        for mismatch in diff {
+            let original_begin_line = mismatch.line_number_orig;
+            let expected_begin_line = mismatch.line_number;
+            let mut original_end_line = original_begin_line;
+            let mut expected_end_line = expected_begin_line;
+            let mut original_line_counter = 0;
+            let mut expected_line_counter = 0;
+            let mut original_lines = vec![];
+            let mut expected_lines = vec![];
 
-        for line in mismatch.lines {
-            match line {
-                DiffLine::Expected(msg) => {
-                    expected_end_line = expected_begin_line + expected_line_counter;
-                    expected_line_counter += 1;
-                    expected_lines.push(msg)
+            for line in mismatch.lines {
+                match line {
+                    DiffLine::Expected(msg) => {
+                        expected_end_line = expected_begin_line + expected_line_counter;
+                        expected_line_counter += 1;
+                        expected_lines.push(msg)
+                    }
+                    DiffLine::Resulting(msg) => {
+                        original_end_line = original_begin_line + original_line_counter;
+                        original_line_counter += 1;
+                        original_lines.push(msg)
+                    }
+                    DiffLine::Context(_) => continue,
                 }
-                DiffLine::Resulting(msg) => {
-                    original_end_line = original_begin_line + original_line_counter;
-                    original_line_counter += 1;
-                    original_lines.push(msg)
-                }
-                DiffLine::Context(_) => continue,
             }
-        }
 
-        mismatches.push(MismatchedBlock {
-            original_begin_line,
-            original_end_line,
-            expected_begin_line,
-            expected_end_line,
-            original: original_lines.join("\n"),
-            expected: expected_lines.join("\n"),
+            mismatches.push(MismatchedBlock {
+                original_begin_line,
+                original_end_line,
+                expected_begin_line,
+                expected_end_line,
+                original: original_lines.join("\n"),
+                expected: expected_lines.join("\n"),
+            });
+        }
+        self.mismatched_files.push(MismatchedFile {
+            name: format!("{}", filename),
+            mismatches,
         });
+        Ok(())
     }
-    let json = to_json_string(&MismatchedFile {
-        name: format!("{}", filename),
-        mismatches,
-    })?;
-    let prefix = if num_emitted_files > 0 { "," } else { "" };
-    write!(writer, "{}{}", prefix, &json)?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -120,6 +109,9 @@ mod tests {
 
     #[test]
     fn expected_line_range_correct_when_single_line_split() {
+        let mut emitter = JsonEmitter {
+            mismatched_files: vec![],
+        };
         let file = "foo/bar.rs";
         let mismatched_file = MismatchedFile {
             name: String::from(file),
@@ -144,19 +136,19 @@ mod tests {
             ],
         };
 
-        let mut writer = Vec::new();
-        let exp_json = to_json_string(&mismatched_file).unwrap();
-        let _ = output_json_file(
-            &mut writer,
-            &FileName::Real(PathBuf::from(file)),
-            vec![mismatch],
-            0,
-        );
-        assert_eq!(&writer[..], format!("{}", exp_json).as_bytes());
+        let _ = emitter
+            .add_misformatted_file(&FileName::Real(PathBuf::from(file)), vec![mismatch])
+            .unwrap();
+
+        assert_eq!(emitter.mismatched_files.len(), 1);
+        assert_eq!(emitter.mismatched_files[0], mismatched_file);
     }
 
     #[test]
     fn context_lines_ignored() {
+        let mut emitter = JsonEmitter {
+            mismatched_files: vec![],
+        };
         let file = "src/lib.rs";
         let mismatched_file = MismatchedFile {
             name: String::from(file),
@@ -189,15 +181,12 @@ mod tests {
             ],
         };
 
-        let mut writer = Vec::new();
-        let exp_json = to_json_string(&mismatched_file).unwrap();
-        let _ = output_json_file(
-            &mut writer,
-            &FileName::Real(PathBuf::from(file)),
-            vec![mismatch],
-            0,
-        );
-        assert_eq!(&writer[..], format!("{}", exp_json).as_bytes());
+        let _ = emitter
+            .add_misformatted_file(&FileName::Real(PathBuf::from(file)), vec![mismatch])
+            .unwrap();
+
+        assert_eq!(emitter.mismatched_files.len(), 1);
+        assert_eq!(emitter.mismatched_files[0], mismatched_file);
     }
 
     #[test]
@@ -217,7 +206,7 @@ mod tests {
             .unwrap();
         let _ = emitter.emit_footer(&mut writer);
         assert_eq!(result.has_diff, false);
-        assert_eq!(&writer[..], "[]".as_bytes());
+        assert_eq!(&writer[..], "[]\n".as_bytes());
     }
 
     #[test]
@@ -263,7 +252,7 @@ mod tests {
             )
             .unwrap();
         let _ = emitter.emit_footer(&mut writer);
-        let exp_json = to_json_string(&MismatchedFile {
+        let exp_json = to_json_string(&vec![MismatchedFile {
             name: String::from(file_name),
             mismatches: vec![
                 MismatchedBlock {
@@ -287,10 +276,10 @@ mod tests {
                     ),
                 },
             ],
-        })
+        }])
         .unwrap();
         assert_eq!(result.has_diff, true);
-        assert_eq!(&writer[..], format!("[{}]", exp_json).as_bytes());
+        assert_eq!(&writer[..], format!("{}\n", exp_json).as_bytes());
     }
 
     #[test]
@@ -325,7 +314,7 @@ mod tests {
             )
             .unwrap();
         let _ = emitter.emit_footer(&mut writer);
-        let exp_bin_json = to_json_string(&MismatchedFile {
+        let exp_bin = MismatchedFile {
             name: String::from(bin_file),
             mismatches: vec![MismatchedBlock {
                 original_begin_line: 2,
@@ -335,9 +324,9 @@ mod tests {
                 original: String::from("println!(\"Hello, world!\");"),
                 expected: String::from("    println!(\"Hello, world!\");"),
             }],
-        })
-        .unwrap();
-        let exp_lib_json = to_json_string(&MismatchedFile {
+        };
+
+        let exp_lib = MismatchedFile {
             name: String::from(lib_file),
             mismatches: vec![MismatchedBlock {
                 original_begin_line: 2,
@@ -347,11 +336,9 @@ mod tests {
                 original: String::from("println!(\"Greetings!\");"),
                 expected: String::from("    println!(\"Greetings!\");"),
             }],
-        })
-        .unwrap();
-        assert_eq!(
-            &writer[..],
-            format!("[{},{}]", exp_bin_json, exp_lib_json).as_bytes()
-        );
+        };
+
+        let exp_json = to_json_string(&vec![exp_bin, exp_lib]).unwrap();
+        assert_eq!(&writer[..], format!("{}\n", exp_json).as_bytes());
     }
 }
