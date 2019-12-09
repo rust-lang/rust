@@ -402,8 +402,6 @@ pub fn build_deref_target_impls(cx: &DocContext<'_>,
     }
 }
 
-// Utilities
-
 pub trait ToSource {
     fn to_src(&self, cx: &DocContext<'_>) -> String;
 }
