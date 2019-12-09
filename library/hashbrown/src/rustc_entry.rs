@@ -1,6 +1,6 @@
 use self::RustcEntry::*;
 use crate::map::{make_hash, Drain, HashMap, IntoIter, Iter, IterMut};
-use crate::raw::{Bucket, RawTable};
+use crate::raw::{Bucket, Global, RawTable};
 use core::fmt::{self, Debug};
 use core::hash::{BuildHasher, Hash};
 use core::mem;
@@ -83,7 +83,7 @@ impl<K: Debug, V: Debug> Debug for RustcEntry<'_, K, V> {
 pub struct RustcOccupiedEntry<'a, K, V> {
     key: Option<K>,
     elem: Bucket<(K, V)>,
-    table: &'a mut RawTable<(K, V)>,
+    table: &'a mut RawTable<(K, V), Global>,
 }
 
 unsafe impl<K, V> Send for RustcOccupiedEntry<'_, K, V>
@@ -115,7 +115,7 @@ impl<K: Debug, V: Debug> Debug for RustcOccupiedEntry<'_, K, V> {
 pub struct RustcVacantEntry<'a, K, V> {
     hash: u64,
     key: K,
-    table: &'a mut RawTable<(K, V)>,
+    table: &'a mut RawTable<(K, V), Global>,
 }
 
 impl<K: Debug, V> Debug for RustcVacantEntry<'_, K, V> {
