@@ -1,6 +1,6 @@
 #![allow(overflowing_literals)]
 
-use std::{i64, f32, f64};
+use std::{f32, f64, i64};
 
 mod parse;
 mod rawfp;
@@ -9,7 +9,7 @@ mod rawfp;
 // to be correct) and see if those strings are parsed back to the value of the literal.
 // Requires a *polymorphic literal*, i.e., one that can serve as f64 as well as f32.
 macro_rules! test_literal {
-    ($x: expr) => ({
+    ($x: expr) => {{
         let x32: f32 = $x;
         let x64: f64 = $x;
         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
@@ -20,7 +20,7 @@ macro_rules! test_literal {
             assert_eq!(neg_input.parse(), Ok(-x64));
             assert_eq!(neg_input.parse(), Ok(-x32));
         }
-    })
+    }};
 }
 
 #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
