@@ -1,7 +1,6 @@
-use crate::alloc::alloc::{alloc, dealloc, handle_alloc_error};
+use crate::alloc::alloc::{Layout, handle_alloc_error};
 use crate::scopeguard::guard;
 use crate::CollectionAllocErr;
-use core::alloc::Layout;
 use core::hint;
 use core::iter::FusedIterator;
 use core::marker::PhantomData;
@@ -31,6 +30,10 @@ cfg_if! {
         use generic as imp;
     }
 }
+
+mod alloc;
+pub use self::alloc::Global;
+use self::alloc::Alloc;
 
 mod bitmask;
 
@@ -329,7 +332,7 @@ impl<T> Bucket<T> {
 }
 
 /// A raw hash table with an unsafe API.
-pub struct RawTable<T> {
+pub struct RawTable<A: Alloc + Copy, T> {
     // Mask to get an index from a hash value. The value is one less than the
     // number of buckets in the table.
     bucket_mask: usize,
@@ -348,16 +351,20 @@ pub struct RawTable<T> {
 
     // Tell dropck that we own instances of T.
     marker: PhantomData<T>,
+
+    alloc: A,
 }
 
-impl<T> RawTable<T> {
+impl<A: Alloc + Copy, T> RawTable<A, T> {
     /// Creates a new empty hash table without allocating any memory.
     ///
     /// In effect this returns a table with exactly 1 bucket. However we can
     /// leave the data pointer dangling since that bucket is never written to
     /// due to our load factor forcing us to always have at least 1 free bucket.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn new() -> Self {
+    pub fn new(
+        alloc: A,
+    ) -> Self {
         Self {
             data: NonNull::dangling(),
             // Be careful to cast the entire slice to a raw pointer.
@@ -366,6 +373,7 @@ impl<T> RawTable<T> {
             items: 0,
             growth_left: 0,
             marker: PhantomData,
+            alloc,
         }
     }
 
@@ -374,13 +382,15 @@ impl<T> RawTable<T> {
     /// The control bytes are left uninitialized.
     #[cfg_attr(feature = "inline-more", inline)]
     unsafe fn new_uninitialized(
+        mut alloc: A,
         buckets: usize,
         fallability: Fallibility,
     ) -> Result<Self, CollectionAllocErr> {
         debug_assert!(buckets.is_power_of_two());
         let (layout, data_offset) =
             calculate_layout::<T>(buckets).ok_or_else(|| fallability.capacity_overflow())?;
-        let ctrl = NonNull::new(alloc(layout)).ok_or_else(|| fallability.alloc_err(layout))?;
+        let ctrl = alloc.alloc(layout)
+            .map_err(|_| fallability.alloc_err(layout))?;
         let data = NonNull::new_unchecked(ctrl.as_ptr().add(data_offset) as *mut T);
         Ok(Self {
             data,
@@ -389,22 +399,24 @@ impl<T> RawTable<T> {
             items: 0,
             growth_left: bucket_mask_to_capacity(buckets - 1),
             marker: PhantomData,
+            alloc,
         })
     }
 
     /// Attempts to allocate a new hash table with at least enough capacity
     /// for inserting the given number of elements without reallocating.
     fn try_with_capacity(
+        alloc: A,
         capacity: usize,
         fallability: Fallibility,
     ) -> Result<Self, CollectionAllocErr> {
         if capacity == 0 {
-            Ok(Self::new())
+            Ok(Self::new(alloc))
         } else {
             unsafe {
                 let buckets =
                     capacity_to_buckets(capacity).ok_or_else(|| fallability.capacity_overflow())?;
-                let result = Self::new_uninitialized(buckets, fallability)?;
+                let result = Self::new_uninitialized(alloc, buckets, fallability)?;
                 result.ctrl(0).write_bytes(EMPTY, result.num_ctrl_bytes());
 
                 Ok(result)
@@ -414,8 +426,8 @@ impl<T> RawTable<T> {
 
     /// Allocates a new hash table with at least enough capacity for inserting
     /// the given number of elements without reallocating.
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self::try_with_capacity(capacity, Fallibility::Infallible)
+    pub fn with_capacity(alloc: A, capacity: usize) -> Self {
+        Self::try_with_capacity(alloc, capacity, Fallibility::Infallible)
             .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() })
     }
 
@@ -424,7 +436,7 @@ impl<T> RawTable<T> {
     unsafe fn free_buckets(&mut self) {
         let (layout, _) =
             calculate_layout::<T>(self.buckets()).unwrap_or_else(|| hint::unreachable_unchecked());
-        dealloc(self.ctrl.as_ptr(), layout);
+        self.alloc.dealloc(NonNull::new_unchecked(self.ctrl.as_ptr()), layout);
     }
 
     /// Returns the index of a bucket from a `Bucket`.
@@ -593,7 +605,7 @@ impl<T> RawTable<T> {
         // space for.
         let min_size = usize::max(self.items, min_size);
         if min_size == 0 {
-            *self = Self::new();
+            *self = Self::new(self.alloc);
             return;
         }
 
@@ -610,7 +622,7 @@ impl<T> RawTable<T> {
         if min_buckets < self.buckets() {
             // Fast path if the table is empty
             if self.items == 0 {
-                *self = Self::with_capacity(min_size)
+                *self = Self::with_capacity(self.alloc, min_size)
             } else {
                 self.resize(min_size, hasher, Fallibility::Infallible)
                     .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
@@ -785,7 +797,7 @@ impl<T> RawTable<T> {
             debug_assert!(self.items <= capacity);
 
             // Allocate and initialize the new table.
-            let mut new_table = Self::try_with_capacity(capacity, fallability)?;
+            let mut new_table = Self::try_with_capacity(self.alloc, capacity, fallability)?;
             new_table.growth_left -= self.items;
             new_table.items = self.items;
 
@@ -950,10 +962,10 @@ impl<T> RawTable<T> {
     /// outlives the `RawDrain`. Because we cannot make the `next` method unsafe
     /// on the `RawDrain`, we have to make the `drain` method unsafe.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn drain(&mut self) -> RawDrain<'_, T> {
+    pub unsafe fn drain(&mut self) -> RawDrain<'_, A, T> {
         RawDrain {
             iter: self.iter(),
-            table: ManuallyDrop::new(mem::replace(self, Self::new())),
+            table: ManuallyDrop::new(mem::replace(self, Self::new(self.alloc))),
             orig_table: NonNull::from(self),
             marker: PhantomData,
         }
@@ -975,17 +987,17 @@ impl<T> RawTable<T> {
     }
 }
 
-unsafe impl<T> Send for RawTable<T> where T: Send {}
-unsafe impl<T> Sync for RawTable<T> where T: Sync {}
+unsafe impl<A: Alloc + Copy, T> Send for RawTable<A, T> where T: Send {}
+unsafe impl<A: Alloc + Copy, T> Sync for RawTable<A, T> where T: Sync {}
 
-impl<T: Clone> Clone for RawTable<T> {
+impl<A: Alloc + Copy, T: Clone> Clone for RawTable<A, T> {
     fn clone(&self) -> Self {
         if self.is_empty_singleton() {
-            Self::new()
+            Self::new(self.alloc)
         } else {
             unsafe {
                 let mut new_table = ManuallyDrop::new(
-                    Self::new_uninitialized(self.buckets(), Fallibility::Infallible)
+                    Self::new_uninitialized(self.alloc, self.buckets(), Fallibility::Infallible)
                         .unwrap_or_else(|_| hint::unreachable_unchecked()),
                 );
 
@@ -1031,7 +1043,7 @@ impl<T: Clone> Clone for RawTable<T> {
 }
 
 #[cfg(feature = "nightly")]
-unsafe impl<#[may_dangle] T> Drop for RawTable<T> {
+unsafe impl<A: Alloc + Copy, #[may_dangle] T> Drop for RawTable<A, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         if !self.is_empty_singleton() {
@@ -1047,7 +1059,7 @@ unsafe impl<#[may_dangle] T> Drop for RawTable<T> {
     }
 }
 #[cfg(not(feature = "nightly"))]
-impl<T> Drop for RawTable<T> {
+impl<A: Alloc + Copy, T> Drop for RawTable<A, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         if !self.is_empty_singleton() {
@@ -1063,19 +1075,21 @@ impl<T> Drop for RawTable<T> {
     }
 }
 
-impl<T> IntoIterator for RawTable<T> {
+impl<A: Alloc + Copy, T> IntoIterator for RawTable<A, T> {
     type Item = T;
-    type IntoIter = RawIntoIter<T>;
+    type IntoIter = RawIntoIter<A, T>;
 
     #[cfg_attr(feature = "inline-more", inline)]
-    fn into_iter(self) -> RawIntoIter<T> {
+    fn into_iter(self) -> RawIntoIter<A, T> {
         unsafe {
+            let allocator = self.alloc;
             let iter = self.iter();
             let alloc = self.into_alloc();
             RawIntoIter {
                 iter,
                 alloc,
                 marker: PhantomData,
+                allocator,
             }
         }
     }
@@ -1263,24 +1277,25 @@ impl<T> ExactSizeIterator for RawIter<T> {}
 impl<T> FusedIterator for RawIter<T> {}
 
 /// Iterator which consumes a table and returns elements.
-pub struct RawIntoIter<T> {
+pub struct RawIntoIter<A: Alloc + Copy, T> {
     iter: RawIter<T>,
     alloc: Option<(NonNull<u8>, Layout)>,
     marker: PhantomData<T>,
+    allocator: A,
 }
 
-impl<T> RawIntoIter<T> {
+impl<A: Alloc + Copy, T> RawIntoIter<A, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn iter(&self) -> RawIter<T> {
         self.iter.clone()
     }
 }
 
-unsafe impl<T> Send for RawIntoIter<T> where T: Send {}
-unsafe impl<T> Sync for RawIntoIter<T> where T: Sync {}
+unsafe impl<A: Alloc + Copy, T> Send for RawIntoIter<A, T> where T: Send {}
+unsafe impl<A: Alloc + Copy, T> Sync for RawIntoIter<A, T> where T: Sync {}
 
 #[cfg(feature = "nightly")]
-unsafe impl<#[may_dangle] T> Drop for RawIntoIter<T> {
+unsafe impl<A: Alloc + Copy, #[may_dangle] T> Drop for RawIntoIter<A, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         unsafe {
@@ -1293,13 +1308,13 @@ unsafe impl<#[may_dangle] T> Drop for RawIntoIter<T> {
 
             // Free the table
             if let Some((ptr, layout)) = self.alloc {
-                dealloc(ptr.as_ptr(), layout);
+                self.allocator.dealloc(ptr, layout);
             }
         }
     }
 }
 #[cfg(not(feature = "nightly"))]
-impl<T> Drop for RawIntoIter<T> {
+impl<A: Alloc + Copy, T> Drop for RawIntoIter<A, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         unsafe {
@@ -1312,13 +1327,13 @@ impl<T> Drop for RawIntoIter<T> {
 
             // Free the table
             if let Some((ptr, layout)) = self.alloc {
-                dealloc(ptr.as_ptr(), layout);
+                self.allocator.dealloc(NonNull::new_unchecked(ptr.as_ptr()), layout);
             }
         }
     }
 }
 
-impl<T> Iterator for RawIntoIter<T> {
+impl<A: Alloc+ Copy, T> Iterator for RawIntoIter<A, T> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1332,35 +1347,35 @@ impl<T> Iterator for RawIntoIter<T> {
     }
 }
 
-impl<T> ExactSizeIterator for RawIntoIter<T> {}
-impl<T> FusedIterator for RawIntoIter<T> {}
+impl<A: Alloc + Copy, T> ExactSizeIterator for RawIntoIter<A, T> {}
+impl<A: Alloc + Copy, T> FusedIterator for RawIntoIter<A, T> {}
 
 /// Iterator which consumes elements without freeing the table storage.
-pub struct RawDrain<'a, T> {
+pub struct RawDrain<'a, A: Alloc + Copy, T> {
     iter: RawIter<T>,
 
     // The table is moved into the iterator for the duration of the drain. This
     // ensures that an empty table is left if the drain iterator is leaked
     // without dropping.
-    table: ManuallyDrop<RawTable<T>>,
-    orig_table: NonNull<RawTable<T>>,
+    table: ManuallyDrop<RawTable<A, T>>,
+    orig_table: NonNull<RawTable<A, T>>,
 
     // We don't use a &'a mut RawTable<T> because we want RawDrain to be
     // covariant over T.
-    marker: PhantomData<&'a RawTable<T>>,
+    marker: PhantomData<&'a RawTable<A, T>>,
 }
 
-impl<T> RawDrain<'_, T> {
+impl<A: Alloc + Copy, T> RawDrain<'_, A, T> {
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn iter(&self) -> RawIter<T> {
+    pub fn iter(&self) -> RawIter< T> {
         self.iter.clone()
     }
 }
 
-unsafe impl<T> Send for RawDrain<'_, T> where T: Send {}
-unsafe impl<T> Sync for RawDrain<'_, T> where T: Sync {}
+unsafe impl<A: Alloc + Copy, T> Send for RawDrain<'_, A, T> where T: Send {}
+unsafe impl<A: Alloc + Copy, T> Sync for RawDrain<'_, A, T> where T: Sync {}
 
-impl<T> Drop for RawDrain<'_, T> {
+impl<A: Alloc + Copy, T> Drop for RawDrain<'_, A, T> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn drop(&mut self) {
         unsafe {
@@ -1383,7 +1398,7 @@ impl<T> Drop for RawDrain<'_, T> {
     }
 }
 
-impl<T> Iterator for RawDrain<'_, T> {
+impl<A: Alloc + Copy, T> Iterator for RawDrain<'_, A, T> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1400,5 +1415,5 @@ impl<T> Iterator for RawDrain<'_, T> {
     }
 }
 
-impl<T> ExactSizeIterator for RawDrain<'_, T> {}
-impl<T> FusedIterator for RawDrain<'_, T> {}
+impl<A: Alloc + Copy, T> ExactSizeIterator for RawDrain<'_, A, T> {}
+impl<A: Alloc + Copy, T> FusedIterator for RawDrain<'_, A, T> {}
