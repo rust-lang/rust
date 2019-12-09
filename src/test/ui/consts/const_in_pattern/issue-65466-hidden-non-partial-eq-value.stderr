@@ -1,0 +1,8 @@
+error: to use a constant of type `B` in a pattern, `B` must be annotated with `#[derive(PartialEq, Eq)]`
+  --> $DIR/issue-65466-hidden-non-partial-eq-value.rs:40:9
+   |
+LL |         C => (),
+   |         ^
+
+error: aborting due to previous error
+
