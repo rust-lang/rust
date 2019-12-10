@@ -5,7 +5,10 @@ LL | fn foo<T: Into<String>>(x: i32) {}
    |    ---    ------------ required by this bound in `foo`
 ...
 LL |     foo(42);
-   |     ^^^ cannot infer type for `T`
+   |     ^^^
+   |     |
+   |     cannot infer type for `T`
+   |     help: consider specifying the type argument in the function call: `foo::<T>`
    |
    = note: cannot resolve `_: std::convert::Into<std::string::String>`
 

@@ -1994,6 +1994,30 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 }
                 let mut err = self.need_type_info_err(body_id, span, self_ty, ErrorCode::E0283);
                 err.note(&format!("cannot resolve `{}`", predicate));
+                if let (Ok(ref snippet), ObligationCauseCode::BindingObligation(ref def_id, _)) = (
+                    self.tcx.sess.source_map().span_to_snippet(span),
+                    &obligation.cause.code,
+                ) {
+                    let generics = self.tcx.generics_of(*def_id);
+                    if !generics.params.is_empty() {
+                        err.span_suggestion(
+                            span,
+                            &format!(
+                                "consider specifying the type argument{} in the function call",
+                                if generics.params.len() > 1 {
+                                    "s"
+                                } else {
+                                    ""
+                                },
+                            ),
+                            format!("{}::<{}>", snippet, generics.params.iter()
+                                .map(|p| p.name.to_string())
+                                .collect::<Vec<String>>()
+                                .join(", ")),
+                            Applicability::HasPlaceholders,
+                        );
+                    }
+                }
                 err
             }
 
