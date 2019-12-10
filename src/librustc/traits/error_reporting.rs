@@ -1999,7 +1999,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     &obligation.cause.code,
                 ) {
                     let generics = self.tcx.generics_of(*def_id);
-                    if !generics.params.is_empty() {
+                    if !generics.params.is_empty() && !snippet.ends_with('>'){
+                        // FIXME: To avoid spurious suggestions in functions where type arguments
+                        // where already supplied, we check the snippet to make sure it doesn't
+                        // end with a turbofish. Ideally we would have access to a `PathSegment`
+                        // instead. Otherwise we would produce the following output:
+                        //
+                        // error[E0283]: type annotations needed
+                        //   --> $DIR/issue-54954.rs:3:24
+                        //    |
+                        // LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
+                        //    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                        //    |                        |
+                        //    |                        cannot infer type
+                        //    |                        help: consider specifying the type argument
+                        //    |                        in the function call:
+                        //    |                        `Tt::const_val::<[i8; 123]>::<T>`
+                        // ...
+                        // LL |     const fn const_val<T: Sized>() -> usize {
+                        //    |              --------- - required by this bound in `Tt::const_val`
+                        //    |
+                        //    = note: cannot resolve `_: Tt`
+
                         err.span_suggestion(
                             span,
                             &format!(

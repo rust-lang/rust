@@ -8,10 +8,7 @@ error[E0283]: type annotations needed
   --> $DIR/issue-54954.rs:3:24
    |
 LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |                        |
-   |                        cannot infer type
-   |                        help: consider specifying the type argument in the function call: `Tt::const_val::<[i8; 123]>::<T>`
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
 ...
 LL |     const fn const_val<T: Sized>() -> usize {
    |              --------- - required by this bound in `Tt::const_val`
