@@ -2043,8 +2043,13 @@ impl Clean<Visibility> for hir::Visibility {
             hir::VisibilityKind::Crate(_) => Visibility::Crate,
             hir::VisibilityKind::Restricted { ref path, .. } => {
                 let path = path.clean(cx);
-                let did = register_res(cx, path.res);
-                Visibility::Restricted(did, path)
+                if let Res::Err = path.res {
+                    // Ugly fix to prevent ICE.
+                    Visibility::Inherited
+                } else {
+                    let did = register_res(cx, path.res);
+                    Visibility::Restricted(did, path)
+                }
             }
         }
     }
