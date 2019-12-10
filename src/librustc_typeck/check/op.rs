@@ -372,7 +372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     Some("std::ops::Shl"))
                                 },
                                 hir::BinOpKind::Shr    => {
-                                    (format!("no implementation for `{} << {}", lhs_ty, rhs_ty),
+                                    (format!("no implementation for `{} >> {}", lhs_ty, rhs_ty),
                                     Some("std::ops::Shr"))
                                 },
                                 _ => (format!(
