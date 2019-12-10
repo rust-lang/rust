@@ -62,6 +62,10 @@ fn try_get_resolver_for_node(db: &impl HirDatabase, node: InFile<&SyntaxNode>) -
                 let src = node.with_value(it);
                 Some(ImplBlock::from_source(db, src)?.id.resolver(db))
             },
+            ast::TraitDef(it) => {
+                let src = node.with_value(it);
+                Some(Trait::from_source(db, src)?.id.resolver(db))
+            },
             _ => match node.value.kind() {
                 FN_DEF | CONST_DEF | STATIC_DEF => {
                     let def = def_with_body_from_child_node(db, node)?;
@@ -410,20 +414,6 @@ impl SourceAnalyzer {
             |ty, it| callback(ty, it.into()),
         )
     }
-
-    // pub fn autoderef<'a>(
-    //     &'a self,
-    //     db: &'a impl HirDatabase,
-    //     ty: Ty,
-    // ) -> impl Iterator<Item = Ty> + 'a {
-    //     // There should be no inference vars in types passed here
-    //     // FIXME check that?
-    //     let canonical = Canonical { value: ty, num_vars: 0 };
-    //     let krate = self.resolver.krate();
-    //     let environment = TraitEnvironment::lower(db, &self.resolver);
-    //     let ty = crate::ty::InEnvironment { value: canonical, environment };
-    //     crate::ty::autoderef(db, krate, ty).map(|canonical| canonical.value)
-    // }
 
     /// Checks that particular type `ty` implements `std::future::Future`.
     /// This function is used in `.await` syntax completion.
