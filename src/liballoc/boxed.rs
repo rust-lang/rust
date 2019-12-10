@@ -63,14 +63,25 @@
 //! T` obtained from `Box::<T>::into_raw` may be deallocated using the
 //! [`Global`] allocator with `Layout::for_value(&*value)`.
 //!
-//! `Box<T>` has the same ABI as `&mut T`. In particular, when `T: Sized`,
-//! this allows using `Box<T>` in FFI:
+//! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented as a
+//! single pointer and is also ABI-compatible with C pointers (i.e. the C type
+//! `T*`). This means that you have Rust code which passes ownership of a
+//! `Box<T>` to C code by using `Box<T>` as the type on the Rust side, and
+//! `T*` as the corresponding type on the C side. As an example, consider this
+//! C header which declares functions that create and destroy some kind of
+//! `Foo` value:
 //!
 //! ```c
 //! /* C header */
 //! struct Foo* foo_new(void); /* Returns ownership to the caller */
 //! void foo_delete(struct Foo*); /* Takes ownership from the caller */
 //! ```
+//! 
+//! These two functions might be implemented in Rust as follows. Here, the
+//! `struct Foo*` type from C is translated to `Box<Foo>`, which captures
+//! the ownership constraints. Note also that the nullable argument to
+//! `foo_delete` is represented in Rust as `Option<Box<Foo>>`, since `Box<Foo>`
+//! cannot be null.
 //!
 //! ```
 //! #[repr(C)]
@@ -84,6 +95,14 @@
 //! #[no_mangle]
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
 //! ```
+//! 
+//! Even though `Box<T>` has the same representation and C ABI as a C pointer,
+//! this does not mean that you can convert an arbitrary `T*` into a `Box<T>`
+//! and expect things to work. `Box<T>` values will always be fully aligned,
+//! non-null pointers. Moreover, the destructor for `Box<T>` will attempt to
+//! free the value with the global allocator. In general, the best practice
+//! is to only use `Box<T>` for pointers that originated from the global
+//! allocator.
 //!
 //! [dereferencing]: ../../std/ops/trait.Deref.html
 //! [`Box`]: struct.Box.html
