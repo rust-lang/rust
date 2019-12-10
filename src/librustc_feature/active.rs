@@ -53,6 +53,18 @@ macro_rules! declare_features {
                 $(f(stringify!($feature), self.$feature);)+
             }
         }
+
+        impl std::ops::Index<Symbol> for Features {
+            type Output = bool;
+
+            fn index(&self, feature: Symbol) -> &Self::Output {
+                match feature {
+                    $( sym::$feature => &self.$feature, )*
+
+                    _ => panic!("{} was not defined in `declare_features`", feature),
+                }
+            }
+        }
     };
 }
 
