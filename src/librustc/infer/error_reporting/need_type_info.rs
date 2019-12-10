@@ -376,48 +376,9 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             };
             err.span_label(pattern.span, msg);
         } else if let Some(e) = local_visitor.found_method_call {
-            if let ExprKind::MethodCall(segment, _call_sp, _args) = &e.kind {
-                if let (Ok(snippet), Some(tables), None) = (
-                    self.tcx.sess.source_map().span_to_snippet(segment.ident.span),
-                    self.in_progress_tables,
-                    &segment.args,
-                 ) {
-                    let borrow = tables.borrow();
-                    let sigs = borrow.node_method_sig();
-                    if let Some(sig) = sigs.get(e.hir_id) {
-                        let mut params = vec![];
-                        for arg in sig.inputs_and_output().skip_binder().iter() {
-                            if let ty::Param(param) = arg.kind {
-                                if param.name != kw::SelfUpper {
-                                    let name = param.name.to_string();
-                                    if !params.contains(&name) {
-                                        params.push(name);
-                                    }
-                                }
-                            }
-                        }
-                        if !params.is_empty() {
-                            err.span_suggestion(
-                                segment.ident.span,
-                                &format!(
-                                    "consider specifying the type argument{} in the method call",
-                                    if params.len() > 1 {
-                                        "s"
-                                    } else {
-                                        ""
-                                    },
-                                ),
-                                format!("{}::<{}>", snippet, params.join(", ")),
-                                Applicability::HasPlaceholders,
-                            );
-                        } else {
-                            err.span_label(e.span, &format!(
-                                "this method call resolves to `{:?}`",
-                                sig.output().skip_binder(),
-                            ));
-                        }
-                    }
-                }
+            if let ExprKind::MethodCall(segment, ..) = &e.kind {
+                // Suggest specifiying type params or point out the return type of the call.
+                self.annotate_method_call(segment, e, &mut err);
             }
         }
         // Instead of the following:
@@ -445,6 +406,57 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
 
         err
+    }
+
+    /// If the `FnSig` for the method call can be found and type arguments are identified as
+    /// needed, suggest annotating the call, otherwise point out the resulting type of the call.
+    fn annotate_method_call(
+        &self,
+        segment: &hir::ptr::P<hir::PathSegment>,
+        e: &Expr,
+        err: &mut DiagnosticBuilder<'_>,
+    ) {
+        if let (Ok(snippet), Some(tables), None) = (
+            self.tcx.sess.source_map().span_to_snippet(segment.ident.span),
+            self.in_progress_tables,
+            &segment.args,
+        ) {
+            let borrow = tables.borrow();
+            let sigs = borrow.node_method_sig();
+            if let Some(sig) = sigs.get(e.hir_id) {
+                let mut params = vec![];
+                for arg in sig.inputs_and_output().skip_binder().iter() {
+                    if let ty::Param(param) = arg.kind {
+                        if param.name != kw::SelfUpper {
+                            let name = param.name.to_string();
+                            if !params.contains(&name) {
+                                params.push(name);
+                            }
+                        }
+                    }
+                }
+                if !params.is_empty() {
+                    err.span_suggestion(
+                        segment.ident.span,
+                        &format!(
+                            "consider specifying the type argument{} in the method call",
+                            if params.len() > 1 {
+                                "s"
+                            } else {
+                                ""
+                            },
+                        ),
+                        format!("{}::<{}>", snippet, params.join(", ")),
+                        Applicability::HasPlaceholders,
+                    );
+                } else {
+                    err.span_label(e.span, &format!(
+                        "this method call resolves to `{:?}`",
+                        sig.output().skip_binder(),
+                    ));
+                }
+            }
+        }
     }
 
     pub fn need_type_info_err_in_generator(
