@@ -213,6 +213,7 @@ symbols! {
         const_indexing,
         const_in_array_repeat_expressions,
         const_let,
+        const_loop,
         const_mut_refs,
         const_panic,
         const_raw_ptr_deref,
