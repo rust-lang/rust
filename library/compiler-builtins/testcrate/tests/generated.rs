@@ -1,4 +1,3 @@
-#![feature(compiler_builtins_lib)]
 #![feature(lang_items)]
 #![allow(bad_style)]
 #![allow(unused_imports)]

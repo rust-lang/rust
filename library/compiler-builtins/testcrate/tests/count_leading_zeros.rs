@@ -1,5 +1,3 @@
-#![feature(compiler_builtins_lib)]
-
 extern crate compiler_builtins;
 
 use compiler_builtins::int::__clzsi2;
