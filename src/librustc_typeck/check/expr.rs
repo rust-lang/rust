@@ -871,7 +871,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let method = match self.lookup_method(rcvr_t, segment, span, expr, rcvr) {
             Ok(method) => {
-                let sig = self.tcx.fn_sig(method.def_id);
                 // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
                 // trigger this codepath causing `structuraly_resolved_type` to emit an error.
 
@@ -890,7 +889,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 //    |
                 //    = note: type must be known at this point
                 // ```
-                self.tables.borrow_mut().node_method_sig_mut().insert(expr.hir_id, sig);
+                self.tables.borrow_mut().node_method_def_id_mut().insert(
+                    expr.hir_id,
+                    method.def_id,
+                );
 
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)

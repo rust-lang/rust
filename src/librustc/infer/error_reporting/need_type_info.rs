@@ -377,7 +377,32 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err.span_label(pattern.span, msg);
         } else if let Some(e) = local_visitor.found_method_call {
             if let ExprKind::MethodCall(segment, ..) = &e.kind {
-                // Suggest specifiying type params or point out the return type of the call.
+                // Suggest specifiying type params or point out the return type of the call:
+                //
+                // error[E0282]: type annotations needed
+                //   --> $DIR/type-annotations-needed-expr.rs:2:39
+                //    |
+                // LL |     let _ = x.into_iter().sum() as f64;
+                //    |                           ^^^
+                //    |                           |
+                //    |                           cannot infer type for `S`
+                //    |                           help: consider specifying the type argument in
+                //    |                           the method call: `sum::<S>`
+                //    |
+                //    = note: type must be known at this point
+                //
+                // or
+                //
+                // error[E0282]: type annotations needed
+                //   --> $DIR/issue-65611.rs:59:20
+                //    |
+                // LL |     let x = buffer.last().unwrap().0.clone();
+                //    |             -------^^^^--
+                //    |             |      |
+                //    |             |      cannot infer type for `T`
+                //    |             this method call resolves to `std::option::Option<&T>`
+                //    |
+                //    = note: type must be known at this point
                 self.annotate_method_call(segment, e, &mut err);
             }
         }
@@ -422,34 +447,28 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &segment.args,
         ) {
             let borrow = tables.borrow();
-            let sigs = borrow.node_method_sig();
-            if let Some(sig) = sigs.get(e.hir_id) {
-                let mut params = vec![];
-                for arg in sig.inputs_and_output().skip_binder().iter() {
-                    if let ty::Param(param) = arg.kind {
-                        if param.name != kw::SelfUpper {
-                            let name = param.name.to_string();
-                            if !params.contains(&name) {
-                                params.push(name);
-                            }
-                        }
-                    }
-                }
-                if !params.is_empty() {
+            let method_defs = borrow.node_method_def_id();
+            if let Some(did) = method_defs.get(e.hir_id) {
+                let generics = self.tcx.generics_of(*did);
+                if !generics.params.is_empty() {
                     err.span_suggestion(
                         segment.ident.span,
                         &format!(
                             "consider specifying the type argument{} in the method call",
-                            if params.len() > 1 {
+                            if generics.params.len() > 1 {
                                 "s"
                             } else {
                                 ""
                             },
                         ),
-                        format!("{}::<{}>", snippet, params.join(", ")),
+                        format!("{}::<{}>", snippet, generics.params.iter()
+                            .map(|p| p.name.to_string())
+                            .collect::<Vec<String>>()
+                            .join(", ")),
                         Applicability::HasPlaceholders,
                     );
                 } else {
+                    let sig = self.tcx.fn_sig(*did);
                     err.span_label(e.span, &format!(
                         "this method call resolves to `{:?}`",
                         sig.output().skip_binder(),
