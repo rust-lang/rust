@@ -376,6 +376,7 @@
 
 use crate::cmp::{self, PartialEq, PartialOrd};
 use crate::fmt;
+use crate::hash::{Hash, Hasher};
 use crate::marker::{Sized, Unpin};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 
@@ -390,55 +391,78 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 /// [`Unpin`]: ../../std/marker/trait.Unpin.html
 /// [`pin` module]: ../../std/pin/index.html
 //
-// Note: the derives below, and the explicit `PartialEq` and `PartialOrd`
-// implementations, are allowed because they all only use `&P`, so they cannot move
-// the value behind `pointer`.
+// Note: the `Clone` derive below causes unsoundness as it's possible to implement
+// `Clone` for mutable references.
+// See <https://internals.rust-lang.org/t/unsoundness-in-pin/11311> for more details.
 #[stable(feature = "pin", since = "1.33.0")]
 #[lang = "pin"]
 #[fundamental]
 #[repr(transparent)]
-#[derive(Copy, Clone, Hash, Eq, Ord)]
+#[derive(Copy, Clone)]
 pub struct Pin<P> {
     pointer: P,
 }
 
-#[stable(feature = "pin_partialeq_partialord_impl_applicability", since = "1.34.0")]
-impl<P, Q> PartialEq<Pin<Q>> for Pin<P>
+// The following implementations aren't derived in order to avoid soundness
+// issues. `&self.pointer` should not be accessible to untrusted trait
+// implementations.
+//
+// See <https://internals.rust-lang.org/t/unsoundness-in-pin/11311/73> for more details.
+
+#[stable(feature = "pin_trait_impls", since = "1.41.0")]
+impl<P: Deref, Q: Deref> PartialEq<Pin<Q>> for Pin<P>
 where
-    P: PartialEq<Q>,
+    P::Target: PartialEq<Q::Target>,
 {
     fn eq(&self, other: &Pin<Q>) -> bool {
-        self.pointer == other.pointer
+        P::Target::eq(self, other)
     }
 
     fn ne(&self, other: &Pin<Q>) -> bool {
-        self.pointer != other.pointer
+        P::Target::ne(self, other)
     }
 }
 
-#[stable(feature = "pin_partialeq_partialord_impl_applicability", since = "1.34.0")]
-impl<P, Q> PartialOrd<Pin<Q>> for Pin<P>
+#[stable(feature = "pin_trait_impls", since = "1.41.0")]
+impl<P: Deref<Target: Eq>> Eq for Pin<P> {}
+
+#[stable(feature = "pin_trait_impls", since = "1.41.0")]
+impl<P: Deref, Q: Deref> PartialOrd<Pin<Q>> for Pin<P>
 where
-    P: PartialOrd<Q>,
+    P::Target: PartialOrd<Q::Target>,
 {
     fn partial_cmp(&self, other: &Pin<Q>) -> Option<cmp::Ordering> {
-        self.pointer.partial_cmp(&other.pointer)
+        P::Target::partial_cmp(self, other)
     }
 
     fn lt(&self, other: &Pin<Q>) -> bool {
-        self.pointer < other.pointer
+        P::Target::lt(self, other)
     }
 
     fn le(&self, other: &Pin<Q>) -> bool {
-        self.pointer <= other.pointer
+        P::Target::le(self, other)
     }
 
     fn gt(&self, other: &Pin<Q>) -> bool {
-        self.pointer > other.pointer
+        P::Target::gt(self, other)
     }
 
     fn ge(&self, other: &Pin<Q>) -> bool {
-        self.pointer >= other.pointer
+        P::Target::ge(self, other)
+    }
+}
+
+#[stable(feature = "pin_trait_impls", since = "1.41.0")]
+impl<P: Deref<Target: Ord>> Ord for Pin<P> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        P::Target::cmp(self, other)
+    }
+}
+
+#[stable(feature = "pin_trait_impls", since = "1.41.0")]
+impl<P: Deref<Target: Hash>> Hash for Pin<P> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        P::Target::hash(self, state);
     }
 }
 
