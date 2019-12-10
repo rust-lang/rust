@@ -201,6 +201,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     );
 
     if let Some(all_facts) = &mut all_facts {
+        let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
         all_facts
             .universal_region
             .extend(universal_regions.universal_regions());
@@ -302,6 +303,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
                 .unwrap_or_else(|_| String::from("Naive"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
+            let _prof_timer = infcx.tcx.prof.generic_activity("polonius_analysis");
             Some(Rc::new(Output::compute(
                 &all_facts,
                 algorithm,

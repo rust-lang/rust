@@ -5,20 +5,19 @@ use crate::util::liveness::{categorize, DefUse};
 use rustc::mir::visit::{MutatingUseContext, PlaceContext, Visitor};
 use rustc::mir::{Local, Location, Place, ReadOnlyBodyAndCache};
 use rustc::ty::subst::GenericArg;
-use rustc::ty::Ty;
 
 use super::TypeChecker;
 
-type VarPointRelations = Vec<(Local, LocationIndex)>;
-type MovePathPointRelations = Vec<(MovePathIndex, LocationIndex)>;
+type VarPointRelation = Vec<(Local, LocationIndex)>;
+type PathPointRelation = Vec<(MovePathIndex, LocationIndex)>;
 
 struct UseFactsExtractor<'me> {
-    var_defined: &'me mut VarPointRelations,
-    var_used: &'me mut VarPointRelations,
+    var_defined: &'me mut VarPointRelation,
+    var_used: &'me mut VarPointRelation,
     location_table: &'me LocationTable,
     var_drop_used: &'me mut Vec<(Local, Location)>,
     move_data: &'me MoveData<'me>,
-    path_accessed_at: &'me mut MovePathPointRelations,
+    path_accessed_at: &'me mut PathPointRelation,
 }
 
 // A Visitor to walk through the MIR and extract point-wise facts
@@ -28,22 +27,22 @@ impl UseFactsExtractor<'_> {
     }
 
     fn insert_def(&mut self, local: Local, location: Location) {
-        debug!("LivenessFactsExtractor::insert_def()");
+        debug!("UseFactsExtractor::insert_def()");
         self.var_defined.push((local, self.location_to_index(location)));
     }
 
     fn insert_use(&mut self, local: Local, location: Location) {
-        debug!("LivenessFactsExtractor::insert_use()");
+        debug!("UseFactsExtractor::insert_use()");
         self.var_used.push((local, self.location_to_index(location)));
     }
 
     fn insert_drop_use(&mut self, local: Local, location: Location) {
-        debug!("LivenessFactsExtractor::insert_drop_use()");
+        debug!("UseFactsExtractor::insert_drop_use()");
         self.var_drop_used.push((local, location));
     }
 
     fn insert_path_access(&mut self, path: MovePathIndex, location: Location) {
-        debug!("LivenessFactsExtractor::insert_path_access({:?}, {:?})", path, location);
+        debug!("UseFactsExtractor::insert_path_access({:?}, {:?})", path, location);
         self.path_accessed_at.push((path, self.location_to_index(location)));
     }
 
@@ -84,17 +83,6 @@ impl Visitor<'tcx> for UseFactsExtractor<'_> {
     }
 }
 
-fn add_var_uses_regions(typeck: &mut TypeChecker<'_, 'tcx>, local: Local, ty: Ty<'tcx>) {
-    debug!("add_regions(local={:?}, type={:?})", local, ty);
-    typeck.tcx().for_each_free_region(&ty, |region| {
-        let region_vid = typeck.borrowck_context.universal_regions.to_region_vid(region);
-        debug!("add_regions for region {:?}", region_vid);
-        if let Some(facts) = typeck.borrowck_context.all_facts {
-            facts.var_uses_region.push((local, region_vid));
-        }
-    });
-}
-
 pub(super) fn populate_access_facts(
     typeck: &mut TypeChecker<'_, 'tcx>,
     body: ReadOnlyBodyAndCache<'_, 'tcx>,
@@ -102,26 +90,32 @@ pub(super) fn populate_access_facts(
     move_data: &MoveData<'_>,
     drop_used: &mut Vec<(Local, Location)>,
 ) {
-    debug!("populate_var_liveness_facts()");
+    debug!("populate_access_facts()");
 
     if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
-        UseFactsExtractor {
+        let mut extractor = UseFactsExtractor {
             var_defined: &mut facts.var_defined,
             var_used: &mut facts.var_used,
             var_drop_used: drop_used,
             path_accessed_at: &mut facts.path_accessed_at,
             location_table,
             move_data,
-        }
-        .visit_body(body);
+        };
+        extractor.visit_body(body);
 
         facts.var_drop_used.extend(drop_used.iter().map(|&(local, location)| {
             (local, location_table.mid_index(location))
         }));
-    }
 
-    for (local, local_decl) in body.local_decls.iter_enumerated() {
-        add_var_uses_regions(typeck, local, local_decl.ty);
+        for (local, local_decl) in body.local_decls.iter_enumerated() {
+            debug!("add var_uses_regions facts - local={:?}, type={:?}", local, local_decl.ty);
+            let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
+            let universal_regions = &typeck.borrowck_context.universal_regions;
+            typeck.infcx.tcx.for_each_free_region(&local_decl.ty, |region| {
+                let region_vid = universal_regions.to_region_vid(region);
+                facts.var_uses_region.push((local, region_vid));
+            });
+        }
     }
 }
 
@@ -133,12 +127,12 @@ pub(super) fn add_var_drops_regions(
     kind: &GenericArg<'tcx>,
 ) {
     debug!("add_var_drops_region(local={:?}, kind={:?}", local, kind);
-    let tcx = typeck.tcx();
-
-    tcx.for_each_free_region(kind, |drop_live_region| {
-        let region_vid = typeck.borrowck_context.universal_regions.to_region_vid(drop_live_region);
-        if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+    if let Some(facts) = typeck.borrowck_context.all_facts.as_mut() {
+        let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
+        let universal_regions = &typeck.borrowck_context.universal_regions;
+        typeck.infcx.tcx.for_each_free_region(kind, |drop_live_region| {
+            let region_vid = universal_regions.to_region_vid(drop_live_region);
             facts.var_drops_region.push((local, region_vid));
-        };
-    });
+        });
+    }
 }
