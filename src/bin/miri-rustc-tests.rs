@@ -45,6 +45,7 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                                     excluded_env_vars: vec![],
                                     args: vec![],
                                     seed: None,
+                                    tracked_pointer_tag: None,
                                 };
                                 let did = self.0.hir().body_owner_def_id(body_id);
                                 println!("running test: {}", self.0.def_path_debug_str(did));
@@ -64,7 +65,8 @@ impl rustc_driver::Callbacks for MiriCompilerCalls {
                     ignore_leaks: false,
                     excluded_env_vars: vec![],
                     args: vec![],
-                    seed: None
+                    seed: None,
+                    tracked_pointer_tag: None,
                 };
                 miri::eval_main(tcx, entry_def_id, config);
 

@@ -12,7 +12,7 @@ use rustc::hir::Mutability::{Mutable, Immutable};
 use rustc::mir::RetagKind;
 
 use crate::{
-    InterpResult, HelpersEvalContextExt,
+    InterpResult, HelpersEvalContextExt, TerminationInfo,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Pointer, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -105,6 +105,8 @@ pub struct GlobalState {
     next_call_id: CallId,
     /// Those call IDs corresponding to functions that are still running.
     active_calls: HashSet<CallId>,
+    /// The id to trace in this execution run
+    tracked_pointer_tag: Option<PtrId>,
 }
 /// Memory extra state gives us interior mutable access to the global state.
 pub type MemoryExtra = Rc<RefCell<GlobalState>>;
@@ -151,18 +153,17 @@ impl fmt::Display for RefKind {
 }
 
 /// Utilities for initialization and ID generation
-impl Default for GlobalState {
-    fn default() -> Self {
+impl GlobalState {
+    pub fn new(tracked_pointer_tag: Option<PtrId>) -> Self {
         GlobalState {
             next_ptr_id: NonZeroU64::new(1).unwrap(),
             base_ptr_ids: HashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
             active_calls: HashSet::default(),
+            tracked_pointer_tag,
         }
     }
-}
 
-impl GlobalState {
     fn new_ptr(&mut self) -> PtrId {
         let id = self.next_ptr_id;
         self.next_ptr_id = NonZeroU64::new(id.get() + 1).unwrap();
@@ -270,6 +271,11 @@ impl<'tcx> Stack {
 
     /// Check if the given item is protected.
     fn check_protector(item: &Item, tag: Option<Tag>, global: &GlobalState) -> InterpResult<'tcx> {
+        if let Tag::Tagged(id) = item.tag {
+            if Some(id) == global.tracked_pointer_tag {
+                throw_machine_stop!(TerminationInfo::PoppedTrackedPointerTag(item.clone()));
+            }
+        }
         if let Some(call) = item.protector {
             if global.is_active(call) {
                 if let Some(tag) = tag {
