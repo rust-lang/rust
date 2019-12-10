@@ -1,4 +1,4 @@
-error[E0369]: binary operation `+` cannot be applied to type `T`
+error[E0369]: cannot add `T` to `T`
   --> $DIR/missing_trait_impl.rs:5:15
    |
 LL |     let z = x + y;
