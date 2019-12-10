@@ -131,7 +131,7 @@ macro_rules! from_str_radix_nzint_impl {
 }
 
 from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize
-                             NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
+NonZeroI8 NonZeroI16 NonZeroI32 NonZeroI64 NonZeroI128 NonZeroIsize }
 
 /// Provides intentionally-wrapped arithmetic on `T`.
 ///
@@ -162,8 +162,7 @@ from_str_radix_nzint_impl! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Default, Hash)]
 #[repr(transparent)]
-pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")]
-                       pub T);
+pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Wrapping<T> {
@@ -208,30 +207,33 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
 }
 
 // All these modules are technically private and only exposed for coretests:
-pub mod flt2dec;
-pub mod dec2flt;
 pub mod bignum;
+pub mod dec2flt;
 pub mod diy_float;
+pub mod flt2dec;
 
 mod wrapping;
 
 macro_rules! usize_isize_to_xe_bytes_doc {
-    () => {"
+    () => {
+        "
 
 **Note**: This function returns an array of length 2, 4 or 8 bytes
 depending on the target pointer size.
 
-"}
+"
+    };
 }
 
-
 macro_rules! usize_isize_from_xe_bytes_doc {
-    () => {"
+    () => {
+        "
 
 **Note**: This function takes an array of length 2, 4 or 8 bytes
 depending on the target pointer size.
 
-"}
+"
+    };
 }
 
 macro_rules! int_impl {
@@ -2238,67 +2240,67 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 #[lang = "i8"]
 impl i8 {
     int_impl! { i8, i8, u8, 8, -128, 127, "", "", 2, "-0x7e", "0xa", "0x12", "0x12", "0x48",
-        "[0x12]", "[0x12]", "", "" }
+    "[0x12]", "[0x12]", "", "" }
 }
 
 #[lang = "i16"]
 impl i16 {
     int_impl! { i16, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234", "0x3412",
-        "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
+    "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "i32"]
 impl i32 {
     int_impl! { i32, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
-        "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78]", "", "" }
+    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "i64"]
 impl i64 {
     int_impl! { i64, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "", 12,
-         "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
-         "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
+    "0xaa00000000006e1", "0x6e10aa", "0x1234567890123456", "0x5634129078563412",
+    "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]", "", "" }
 }
 
 #[lang = "i128"]
 impl i128 {
     int_impl! { i128, i128, u128, 128, -170141183460469231731687303715884105728,
-        170141183460469231731687303715884105727, "", "", 16,
-        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
-        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
-        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "" }
+    170141183460469231731687303715884105727, "", "", 16,
+    "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+    "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+    "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]", "", "" }
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i16, u16, 16, -32768, 32767, "", "", 4, "-0x5ffd", "0x3a", "0x1234",
-        "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x3412", "0x2c48", "[0x34, 0x12]", "[0x12, 0x34]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i32, u32, 32, -2147483648, 2147483647, "", "", 8, "0x10000b3", "0xb301",
-        "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x12345678", "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
     int_impl! { isize, i64, u64, 64, -9223372036854775808, 9223372036854775807, "", "",
-        12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
-         "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-         usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    12, "0xaa00000000006e1", "0x6e10aa",  "0x1234567890123456", "0x5634129078563412",
+     "0x6a2c48091e6a2c48", "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+     usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 macro_rules! uint_impl {
@@ -4060,8 +4062,7 @@ fn read_ne_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT),
 #[lang = "u8"]
 impl u8 {
     uint_impl! { u8, u8, 8, 255, "", "", 2, "0x82", "0xa", "0x12", "0x12", "0x48", "[0x12]",
-        "[0x12]", "", "" }
-
+    "[0x12]", "", "" }
 
     /// Checks if the value is within the ASCII range.
     ///
@@ -4227,7 +4228,7 @@ impl u8 {
     pub fn is_ascii_alphabetic(&self) -> bool {
         match *self {
             b'A'..=b'Z' | b'a'..=b'z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4262,7 +4263,7 @@ impl u8 {
     pub fn is_ascii_uppercase(&self) -> bool {
         match *self {
             b'A'..=b'Z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4297,7 +4298,7 @@ impl u8 {
     pub fn is_ascii_lowercase(&self) -> bool {
         match *self {
             b'a'..=b'z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4335,7 +4336,7 @@ impl u8 {
     pub fn is_ascii_alphanumeric(&self) -> bool {
         match *self {
             b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4370,7 +4371,7 @@ impl u8 {
     pub fn is_ascii_digit(&self) -> bool {
         match *self {
             b'0'..=b'9' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4408,7 +4409,7 @@ impl u8 {
     pub fn is_ascii_hexdigit(&self) -> bool {
         match *self {
             b'0'..=b'9' | b'A'..=b'F' | b'a'..=b'f' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4447,7 +4448,7 @@ impl u8 {
     pub fn is_ascii_punctuation(&self) -> bool {
         match *self {
             b'!'..=b'/' | b':'..=b'@' | b'['..=b'`' | b'{'..=b'~' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4482,7 +4483,7 @@ impl u8 {
     pub fn is_ascii_graphic(&self) -> bool {
         match *self {
             b'!'..=b'~' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4534,7 +4535,7 @@ impl u8 {
     pub fn is_ascii_whitespace(&self) -> bool {
         match *self {
             b'\t' | b'\n' | b'\x0C' | b'\r' | b' ' => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -4571,7 +4572,7 @@ impl u8 {
     pub fn is_ascii_control(&self) -> bool {
         match *self {
             b'\0'..=b'\x1F' | b'\x7F' => true,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -4579,59 +4580,59 @@ impl u8 {
 #[lang = "u16"]
 impl u16 {
     uint_impl! { u16, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
-        "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
+    "[0x34, 0x12]", "[0x12, 0x34]", "", "" }
 }
 
 #[lang = "u32"]
 impl u32 {
     uint_impl! { u32, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
-        "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
+    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]", "", "" }
 }
 
 #[lang = "u64"]
 impl u64 {
     uint_impl! { u64, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
-        "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
-        "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-        "", ""}
+    "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
+    "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+    "", ""}
 }
 
 #[lang = "u128"]
 impl u128 {
     uint_impl! { u128, u128, 128, 340282366920938463463374607431768211455, "", "", 16,
-        "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
-        "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
-        "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
-          0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-        "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
-          0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
-         "", ""}
+    "0x13f40000000000000000000000004f76", "0x4f7613f4", "0x12345678901234567890123456789012",
+    "0x12907856341290785634129078563412", "0x48091e6a2c48091e6a2c48091e6a2c48",
+    "[0x12, 0x90, 0x78, 0x56, 0x34, 0x12, 0x90, 0x78, \
+      0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+    "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56, \
+      0x78, 0x90, 0x12, 0x34, 0x56, 0x78, 0x90, 0x12]",
+     "", ""}
 }
 
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u16, 16, 65535, "", "", 4, "0xa003", "0x3a", "0x1234", "0x3412", "0x2c48",
-        "[0x34, 0x12]", "[0x12, 0x34]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "[0x34, 0x12]", "[0x12, 0x34]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u32, 32, 4294967295, "", "", 8, "0x10000b3", "0xb301", "0x12345678",
-        "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x78563412", "0x1e6a2c48", "[0x78, 0x56, 0x34, 0x12]", "[0x12, 0x34, 0x56, 0x78]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
     uint_impl! { usize, u64, 64, 18446744073709551615, "", "", 12, "0xaa00000000006e1", "0x6e10aa",
-        "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
-        "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
-         "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
-        usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
+    "0x1234567890123456", "0x5634129078563412", "0x6a2c48091e6a2c48",
+    "[0x56, 0x34, 0x12, 0x90, 0x78, 0x56, 0x34, 0x12]",
+     "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]",
+    usize_isize_to_xe_bytes_doc!(), usize_isize_from_xe_bytes_doc!() }
 }
 
 /// A classification of floating point numbers.
@@ -4703,10 +4704,12 @@ from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
 pub struct TryFromIntError(pub(crate) ());
 
 impl TryFromIntError {
-    #[unstable(feature = "int_error_internals",
-               reason = "available through Error trait and this method should \
-                         not be exposed publicly",
-               issue = "0")]
+    #[unstable(
+        feature = "int_error_internals",
+        reason = "available through Error trait and this method should \
+                  not be exposed publicly",
+        issue = "0"
+    )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         "out of range integral type conversion attempted"
@@ -4765,9 +4768,11 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
     use self::IntErrorKind::*;
     use self::ParseIntError as PIE;
 
-    assert!(radix >= 2 && radix <= 36,
-           "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
-           radix);
+    assert!(
+        radix >= 2 && radix <= 36,
+        "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
+        radix
+    );
 
     if src.is_empty() {
         return Err(PIE { kind: Empty });
@@ -4848,10 +4853,12 @@ pub struct ParseIntError {
 }
 
 /// Enum to store the various types of errors that can cause parsing an integer to fail.
-#[unstable(feature = "int_error_matching",
-           reason = "it can be useful to match errors when making error messages \
-                     for integer parsing",
-           issue = "22639")]
+#[unstable(
+    feature = "int_error_matching",
+    reason = "it can be useful to match errors when making error messages \
+              for integer parsing",
+    issue = "22639"
+)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
@@ -4877,17 +4884,21 @@ pub enum IntErrorKind {
 
 impl ParseIntError {
     /// Outputs the detailed cause of parsing an integer failing.
-    #[unstable(feature = "int_error_matching",
-               reason = "it can be useful to match errors when making error messages \
-                         for integer parsing",
-               issue = "22639")]
+    #[unstable(
+        feature = "int_error_matching",
+        reason = "it can be useful to match errors when making error messages \
+                  for integer parsing",
+        issue = "22639"
+    )]
     pub fn kind(&self) -> &IntErrorKind {
         &self.kind
     }
-    #[unstable(feature = "int_error_internals",
-               reason = "available through Error trait and this method should \
-                         not be exposed publicly",
-               issue = "0")]
+    #[unstable(
+        feature = "int_error_internals",
+        reason = "available through Error trait and this method should \
+                  not be exposed publicly",
+        issue = "0"
+    )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         match self.kind {

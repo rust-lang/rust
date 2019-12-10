@@ -366,3 +366,84 @@ mod ptr_try_from_impls {
     rev!(try_from_unbounded, isize, i32, i64);
     rev!(try_from_both_bounded, isize, i128);
 }
+
+// Conversion traits for non-zero integer types
+use crate::num::NonZeroI128;
+use crate::num::NonZeroI16;
+use crate::num::NonZeroI32;
+use crate::num::NonZeroI64;
+use crate::num::NonZeroI8;
+use crate::num::NonZeroIsize;
+use crate::num::NonZeroU128;
+use crate::num::NonZeroU16;
+use crate::num::NonZeroU32;
+use crate::num::NonZeroU64;
+use crate::num::NonZeroU8;
+use crate::num::NonZeroUsize;
+
+macro_rules! nzint_impl_from {
+    ($Small: ty, $Large: ty, #[$attr:meta], $doc: expr) => {
+        #[$attr]
+        #[doc = $doc]
+        impl From<$Small> for $Large {
+            #[inline]
+            fn from(small: $Small) -> $Large {
+                // SAFETY: input type guarantees the value is non-zero
+                unsafe {
+                    <$Large>::new_unchecked(small.get().into())
+                }
+            }
+        }
+    };
+    ($Small: ty, $Large: ty, #[$attr:meta]) => {
+        nzint_impl_from!($Small,
+                   $Large,
+                   #[$attr],
+                   concat!("Converts `",
+                           stringify!($Small),
+                           "` to `",
+                           stringify!($Large),
+                           "` losslessly."));
+    }
+}
+
+// Non-zero Unsigned -> Non-zero Unsigned
+nzint_impl_from! { NonZeroU8, NonZeroU16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroU32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroUsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroU32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroUsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroU64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU64, NonZeroU128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+
+// Non-zero Signed -> Non-zero Signed
+nzint_impl_from! { NonZeroI8, NonZeroI16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI8, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI16, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroI64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+
+// NonZero UnSigned -> Non-zero Signed
+nzint_impl_from! { NonZeroU8, NonZeroI16, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU8, NonZeroIsize, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroI32, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU16, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroI64, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU32, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
+nzint_impl_from! { NonZeroU64, NonZeroI128, #[stable(feature = "nz_int_conv", since = "1.41.0")] }
