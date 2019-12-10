@@ -20,7 +20,7 @@ struct FindLocalByTypeVisitor<'a, 'tcx> {
     found_arg_pattern: Option<&'tcx Pat>,
     found_ty: Option<Ty<'tcx>>,
     found_closure: Option<&'tcx ExprKind>,
-    found_method_call: Option<&'tcx ExprKind>,
+    found_method_call: Option<&'tcx Expr>,
 }
 
 impl<'a, 'tcx> FindLocalByTypeVisitor<'a, 'tcx> {
@@ -99,7 +99,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindLocalByTypeVisitor<'a, 'tcx> {
         if self.node_matches_type(expr.hir_id).is_some() {
             match expr.kind {
                 ExprKind::Closure(..) => self.found_closure = Some(&expr.kind),
-                ExprKind::MethodCall(..) => self.found_method_call = Some(&expr.kind),
+                ExprKind::MethodCall(..) => self.found_method_call = Some(&expr),
                 _ => {}
             }
         }
@@ -211,8 +211,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let mut printer = ty::print::FmtPrinter::new(self.tcx, &mut s, Namespace::TypeNS);
             let ty_vars = self.type_variables.borrow();
             let getter = move |ty_vid| {
-                if let TypeVariableOriginKind::TypeParameterDefinition(name) =
-                    ty_vars.var_origin(ty_vid).kind {
+                let var_origin = ty_vars.var_origin(ty_vid);
+                if let TypeVariableOriginKind::TypeParameterDefinition(name) = var_origin.kind {
                     return Some(name.to_string());
                 }
                 None
@@ -238,7 +238,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             span
         } else if let Some(
             ExprKind::MethodCall(_, call_span, _),
-        ) = local_visitor.found_method_call {
+        ) = local_visitor.found_method_call.map(|e| &e.kind) {
             // Point at the call instead of the whole expression:
             // error[E0284]: type annotations needed
             //  --> file.rs:2:5
@@ -375,16 +375,48 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 format!("consider giving this pattern {}", suffix)
             };
             err.span_label(pattern.span, msg);
-        } else if let Some(ExprKind::MethodCall(segment, ..)) = local_visitor.found_method_call {
-            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(segment.ident.span) {
-                if segment.args.is_none() {
-                    err.span_suggestion(
-                        segment.ident.span,
-                        "consider specifying the type argument in the method call",
-                        // FIXME: we don't know how many type arguments should be set here.
-                        format!("{}::<_>", snippet),
-                        Applicability::HasPlaceholders,
-                    );
+        } else if let Some(e) = local_visitor.found_method_call {
+            if let ExprKind::MethodCall(segment, _call_sp, _args) = &e.kind {
+                if let (Ok(snippet), Some(tables), None) = (
+                    self.tcx.sess.source_map().span_to_snippet(segment.ident.span),
+                    self.in_progress_tables,
+                    &segment.args,
+                 ) {
+                    let borrow = tables.borrow();
+                    let sigs = borrow.node_method_sig();
+                    if let Some(sig) = sigs.get(e.hir_id) {
+                        let mut params = vec![];
+                        for arg in sig.inputs_and_output().skip_binder().iter() {
+                            if let ty::Param(param) = arg.kind {
+                                if param.name != kw::SelfUpper {
+                                    let name = param.name.to_string();
+                                    if !params.contains(&name) {
+                                        params.push(name);
+                                    }
+                                }
+                            }
+                        }
+                        if !params.is_empty() {
+                            err.span_suggestion(
+                                segment.ident.span,
+                                &format!(
+                                    "consider specifying the type argument{} in the method call",
+                                    if params.len() > 1 {
+                                        "s"
+                                    } else {
+                                        ""
+                                    },
+                                ),
+                                format!("{}::<{}>", snippet, params.join(", ")),
+                                Applicability::HasPlaceholders,
+                            );
+                        } else {
+                            err.span_label(e.span, &format!(
+                                "this method call resolves to `{:?}`",
+                                sig.output().skip_binder(),
+                            ));
+                        }
+                    }
                 }
             }
         }

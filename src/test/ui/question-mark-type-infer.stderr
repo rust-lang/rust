@@ -5,7 +5,7 @@ LL |     l.iter().map(f).collect()?
    |                     ^^^^^^^
    |                     |
    |                     cannot infer type
-   |                     help: consider specifying the type argument in the method call: `collect::<_>`
+   |                     help: consider specifying the type argument in the method call: `collect::<B>`
    |
    = note: cannot resolve `<_ as std::ops::Try>::Ok == _`
 

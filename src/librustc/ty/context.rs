@@ -338,6 +338,8 @@ pub struct TypeckTables<'tcx> {
     /// typeck::check::fn_ctxt for details.
     node_types: ItemLocalMap<Ty<'tcx>>,
 
+    node_method_sig: ItemLocalMap<ty::PolyFnSig<'tcx>>,
+
     /// Stores the type parameters which were substituted to obtain the type
     /// of this node. This only applies to nodes that refer to entities
     /// parameterized by type parameters, such as generic fns, types, or
@@ -442,6 +444,7 @@ impl<'tcx> TypeckTables<'tcx> {
             user_provided_types: Default::default(),
             user_provided_sigs: Default::default(),
             node_types: Default::default(),
+            node_method_sig: Default::default(),
             node_substs: Default::default(),
             adjustments: Default::default(),
             pat_binding_modes: Default::default(),
@@ -539,6 +542,20 @@ impl<'tcx> TypeckTables<'tcx> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.node_types
+        }
+    }
+
+    pub fn node_method_sig(&self) -> LocalTableInContext<'_, ty::PolyFnSig<'tcx>> {
+        LocalTableInContext {
+            local_id_root: self.local_id_root,
+            data: &self.node_method_sig
+        }
+    }
+
+    pub fn node_method_sig_mut(&mut self) -> LocalTableInContextMut<'_, ty::PolyFnSig<'tcx>> {
+        LocalTableInContextMut {
+            local_id_root: self.local_id_root,
+            data: &mut self.node_method_sig
         }
     }
 
@@ -748,6 +765,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             ref user_provided_types,
             ref user_provided_sigs,
             ref node_types,
+            ref node_method_sig,
             ref node_substs,
             ref adjustments,
             ref pat_binding_modes,
@@ -774,6 +792,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for TypeckTables<'tcx> {
             user_provided_types.hash_stable(hcx, hasher);
             user_provided_sigs.hash_stable(hcx, hasher);
             node_types.hash_stable(hcx, hasher);
+            node_method_sig.hash_stable(hcx, hasher);
             node_substs.hash_stable(hcx, hasher);
             adjustments.hash_stable(hcx, hasher);
             pat_binding_modes.hash_stable(hcx, hasher);
