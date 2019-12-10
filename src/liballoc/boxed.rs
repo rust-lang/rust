@@ -73,8 +73,12 @@
 //!
 //! ```c
 //! /* C header */
-//! struct Foo* foo_new(void); /* Returns ownership to the caller */
-//! void foo_delete(struct Foo*); /* Takes ownership from the caller */
+//! 
+//! /* Returns ownership to the caller */
+//! struct Foo* foo_new(void);
+//! 
+//! /* Takes ownership from the caller; no-op when invoked with NULL */
+//! void foo_delete(struct Foo*);
 //! ```
 //! 
 //! These two functions might be implemented in Rust as follows. Here, the
