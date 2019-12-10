@@ -375,6 +375,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     (format!("no implementation for `{} >> {}", lhs_ty, rhs_ty),
                                     Some("std::ops::Shr"))
                                 },
+                                hir::BinOpKind::Eq |
+                                hir::BinOpKind::Ne     => {
+                                    (format!(
+                                            "binary operation `{}` cannot be applied to type `{}`",
+                                            op.node.as_str(), lhs_ty),
+                                    Some("std::cmp::PartialEq"))
+                                },
+                                hir::BinOpKind::Lt |
+                                hir::BinOpKind::Le |
+                                hir::BinOpKind::Gt |
+                                hir::BinOpKind::Ge     => {
+                                    (format!(
+                                            "binary operation `{}` cannot be applied to type `{}`",
+                                            op.node.as_str(), lhs_ty),
+                                    Some("std::cmp::PartialOrd"))
+                                }
                                 _ => (format!(
                                         "binary operation `{}` cannot be applied to type `{}`",
                                         op.node.as_str(), lhs_ty),
