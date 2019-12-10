@@ -375,7 +375,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     (format!("no implementation for `{} << {}", lhs_ty, rhs_ty),
                                     Some("std::ops::Shr"))
                                 },
-                                _ => (format!("binary operation `{}` cannot be applied to type `{}`", op.node.as_str(), lhs_ty), None)
+                                _ => (format!(
+                                        "binary operation `{}` cannot be applied to type `{}`",
+                                        op.node.as_str(), lhs_ty),
+                                    None)
                             };
                             let mut err = struct_span_err!(self.tcx.sess, op.span, E0369,
                                 "{}", message.as_str());
