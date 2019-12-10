@@ -73,14 +73,14 @@
 //!
 //! ```c
 //! /* C header */
-//! 
+//!
 //! /* Returns ownership to the caller */
 //! struct Foo* foo_new(void);
-//! 
+//!
 //! /* Takes ownership from the caller; no-op when invoked with NULL */
 //! void foo_delete(struct Foo*);
 //! ```
-//! 
+//!
 //! These two functions might be implemented in Rust as follows. Here, the
 //! `struct Foo*` type from C is translated to `Box<Foo>`, which captures
 //! the ownership constraints. Note also that the nullable argument to
@@ -99,7 +99,7 @@
 //! #[no_mangle]
 //! pub extern "C" fn foo_delete(_: Option<Box<Foo>>) {}
 //! ```
-//! 
+//!
 //! Even though `Box<T>` has the same representation and C ABI as a C pointer,
 //! this does not mean that you can convert an arbitrary `T*` into a `Box<T>`
 //! and expect things to work. `Box<T>` values will always be fully aligned,
