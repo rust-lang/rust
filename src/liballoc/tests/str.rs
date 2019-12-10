@@ -166,7 +166,7 @@ fn test_join_for_different_lengths_with_long_separator() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_unsafe_slice() {
     assert_eq!("ab", unsafe {"abc".get_unchecked(0..2)});
     assert_eq!("bc", unsafe {"abc".get_unchecked(1..3)});
@@ -483,8 +483,8 @@ mod slice_index {
     }
 
     #[test]
-    #[cfg(not(target_os = "emscripten"))] // hits an OOM
-    #[cfg(not(miri))] // Miri is too slow
+    #[cfg_attr(target_os = "emscripten", ignore)] // hits an OOM
+    #[cfg_attr(miri, ignore)] // Miri is too slow
     fn simple_big() {
         fn a_million_letter_x() -> String {
             let mut i = 0;
@@ -1069,7 +1069,7 @@ fn test_rev_iterator() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_chars_decoding() {
     let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(std::char::from_u32) {
@@ -1081,7 +1081,7 @@ fn test_chars_decoding() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_chars_rev_decoding() {
     let mut bytes = [0; 4];
     for c in (0..0x110000).filter_map(std::char::from_u32) {
@@ -1380,7 +1380,6 @@ fn test_bool_from_str() {
     assert_eq!("not even a boolean".parse::<bool>().ok(), None);
 }
 
-#[cfg(not(miri))] // Miri is too slow
 fn check_contains_all_substrings(s: &str) {
     assert!(s.contains(""));
     for i in 0..s.len() {
@@ -1391,7 +1390,7 @@ fn check_contains_all_substrings(s: &str) {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn strslice_issue_16589() {
     assert!("bananas".contains("nana"));
 
@@ -1408,7 +1407,7 @@ fn strslice_issue_16878() {
 
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_strslice_contains() {
     let x = "There are moments, Jeeves, when one asks oneself, 'Do trousers matter?'";
     check_contains_all_substrings(x);

@@ -22,16 +22,8 @@
 //
 // Therefore:
 fn branchless_to_ascii_upper_case(byte: u8) -> u8 {
-    byte &
-    !(
-        (
-            byte.wrapping_add(0x1f) &
-            !byte.wrapping_add(0x05) &
-            0x80
-        ) >> 2
-    )
+    byte & !((byte.wrapping_add(0x1f) & !byte.wrapping_add(0x05) & 0x80) >> 2)
 }
-
 
 macro_rules! benches {
     ($( fn $name: ident($arg: ident: &mut [u8]) $body: block )+ @iter $( $is_: ident, )+) => {
@@ -254,12 +246,15 @@ benches! {
 }
 
 macro_rules! repeat {
-    ($s: expr) => { concat!($s, $s, $s, $s, $s, $s, $s, $s, $s, $s) }
+    ($s: expr) => {
+        concat!($s, $s, $s, $s, $s, $s, $s, $s, $s, $s)
+    };
 }
 
 const SHORT: &'static str = "Alice's";
 const MEDIUM: &'static str = "Alice's Adventures in Wonderland";
-const LONG: &'static str = repeat!(r#"
+const LONG: &'static str = repeat!(
+    r#"
     La Guida di Bragia, a Ballad Opera for the Marionette Theatre (around 1850)
     Alice's Adventures in Wonderland (1865)
     Phantasmagoria and Other Poems (1869)
@@ -275,8 +270,10 @@ const LONG: &'static str = repeat!(r#"
     What the Tortoise Said to Achilles (1895)
     Three Sunsets and Other Poems (1898)
     The Manlet (1903)[106]
-"#);
+"#
+);
 
+#[rustfmt::skip]
 const ASCII_UPPERCASE_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -330,6 +327,7 @@ enum AsciiCharacterClass {
 }
 use self::AsciiCharacterClass::*;
 
+#[rustfmt::skip]
 static ASCII_CHARACTER_CLASS: [AsciiCharacterClass; 256] = [
 //  _0 _1 _2 _3 _4 _5 _6 _7 _8 _9 _a _b _c _d _e _f
     C, C, C, C, C, C, C, C, C, Cw,Cw,C, Cw,Cw,C, C, // 0_

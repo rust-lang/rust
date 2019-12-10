@@ -388,7 +388,7 @@ fn test_reverse() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn test_sort() {
     let mut rng = thread_rng();
 
@@ -1610,7 +1610,7 @@ fn panic_safe() {
     let moduli = &[5, 20, 50];
 
     #[cfg(miri)]
-    let lens = (1..13);
+    let lens = 1..13;
     #[cfg(miri)]
     let moduli = &[10];
 

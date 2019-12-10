@@ -1518,6 +1518,7 @@ impl<'a> State<'a> {
 
     crate fn print_variant(&mut self, v: &ast::Variant) {
         self.head("");
+        self.print_visibility(&v.vis);
         let generics = ast::Generics::default();
         self.print_struct(&v.data, &generics, v.ident, v.span, false);
         match v.disr_expr {

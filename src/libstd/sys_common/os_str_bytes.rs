@@ -139,10 +139,12 @@ impl Buf {
 }
 
 impl Slice {
+    #[inline]
     fn from_u8_slice(s: &[u8]) -> &Slice {
         unsafe { mem::transmute(s) }
     }
 
+    #[inline]
     pub fn from_str(s: &str) -> &Slice {
         Slice::from_u8_slice(s.as_bytes())
     }

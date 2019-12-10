@@ -278,15 +278,15 @@ impl<'tcx> Body<'tcx> {
 
     /// Returns an iterator over all function arguments.
     #[inline]
-    pub fn args_iter(&self) -> impl Iterator<Item = Local> {
+    pub fn args_iter(&self) -> impl Iterator<Item = Local> + ExactSizeIterator {
         let arg_count = self.arg_count;
-        (1..=arg_count).map(Local::new)
+        (1..arg_count + 1).map(Local::new)
     }
 
     /// Returns an iterator over all user-defined variables and compiler-generated temporaries (all
     /// locals that are neither arguments nor the return place).
     #[inline]
-    pub fn vars_and_temps_iter(&self) -> impl Iterator<Item = Local> {
+    pub fn vars_and_temps_iter(&self) -> impl Iterator<Item = Local> + ExactSizeIterator {
         let arg_count = self.arg_count;
         let local_count = self.local_decls.len();
         (arg_count + 1..local_count).map(Local::new)
@@ -2380,11 +2380,15 @@ impl<'tcx> UserTypeProjections {
         UserTypeProjections { contents: projs.collect() }
     }
 
-    pub fn projections_and_spans(&self) -> impl Iterator<Item = &(UserTypeProjection, Span)> {
+    pub fn projections_and_spans(&self)
+        -> impl Iterator<Item = &(UserTypeProjection, Span)> + ExactSizeIterator
+    {
         self.contents.iter()
     }
 
-    pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> {
+    pub fn projections(&self)
+        -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator
+    {
         self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
 

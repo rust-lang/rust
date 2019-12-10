@@ -11,6 +11,7 @@ use rustc::ty::{self, DefIdTree};
 use rustc::util::nodemap::FxHashSet;
 use rustc_feature::BUILTIN_ATTRIBUTES;
 use syntax::ast::{self, Ident, Path};
+use syntax::print::pprust;
 use syntax::source_map::SourceMap;
 use syntax::struct_span_err;
 use syntax::symbol::{Symbol, kw};
@@ -22,6 +23,7 @@ use crate::resolve_imports::{ImportDirective, ImportDirectiveSubclass, ImportRes
 use crate::path_names_to_string;
 use crate::{BindingError, CrateLint, HasGenericParams, LegacyScope, Module, ModuleOrUniformRoot};
 use crate::{PathResult, ParentScope, ResolutionError, Resolver, Scope, ScopeSet, Segment};
+use crate::VisResolutionError;
 
 use rustc_error_codes::*;
 
@@ -355,6 +357,44 @@ impl<'a> Resolver<'a> {
                 err
             }
         }
+    }
+
+    crate fn report_vis_error(&self, vis_resolution_error: VisResolutionError<'_>) {
+        match vis_resolution_error {
+            VisResolutionError::Relative2018(span, path) => {
+                let mut err = self.session.struct_span_err(span,
+                    "relative paths are not supported in visibilities on 2018 edition");
+                err.span_suggestion(
+                    path.span,
+                    "try",
+                    format!("crate::{}", pprust::path_to_string(&path)),
+                    Applicability::MaybeIncorrect,
+                );
+                err
+            }
+            VisResolutionError::AncestorOnly(span) => {
+                struct_span_err!(self.session, span, E0742,
+                    "visibilities can only be restricted to ancestor modules")
+            }
+            VisResolutionError::FailedToResolve(span, label, suggestion) => {
+                self.into_struct_error(
+                    span, ResolutionError::FailedToResolve { label, suggestion }
+                )
+            }
+            VisResolutionError::ExpectedFound(span, path_str, res) => {
+                let mut err = struct_span_err!(self.session, span, E0577,
+                    "expected module, found {} `{}`", res.descr(), path_str);
+                err.span_label(span, "not a module");
+                err
+            }
+            VisResolutionError::Indeterminate(span) => {
+                struct_span_err!(self.session, span, E0578,
+                    "cannot determine resolution for the visibility")
+            }
+            VisResolutionError::ModuleOnly(span) => {
+                self.session.struct_span_err(span, "visibility must resolve to a module")
+            }
+        }.emit()
     }
 
     /// Lookup typo candidate in scope for a macro or import.

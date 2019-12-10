@@ -41,7 +41,6 @@ fn array_try_from() {
     }
 }
 
-
 #[test]
 fn iterator_collect() {
     let arr = [0, 1, 2, 5, 9];
@@ -150,10 +149,7 @@ fn iterator_flat_map() {
 #[test]
 fn iterator_debug() {
     let arr = [0, 1, 2, 5, 9];
-    assert_eq!(
-        format!("{:?}", IntoIter::new(arr)),
-        "IntoIter([0, 1, 2, 5, 9])",
-    );
+    assert_eq!(format!("{:?}", IntoIter::new(arr)), "IntoIter([0, 1, 2, 5, 9])",);
 }
 
 #[test]
@@ -168,7 +164,7 @@ fn iterator_drops() {
     struct Foo<'a>(&'a Cell<usize>);
 
     impl Drop for Foo<'_> {
-       fn drop(&mut self) {
+        fn drop(&mut self) {
             self.0.set(self.0.get() + 1);
         }
     }
