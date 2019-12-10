@@ -1134,7 +1134,7 @@ mod impls {
                 -1 => Less,
                 0 => Equal,
                 1 => Greater,
-                // SAFETY: Unreachable code
+                // SAFETY: bool as i8 returns 0 or 1, so the difference can't be anything else
                 _ => unsafe { unreachable_unchecked() },
             }
         }
