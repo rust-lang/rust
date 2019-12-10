@@ -70,6 +70,14 @@
 /// }
 /// ```
 ///
+/// This crate provides defaults for  scalar types:
+///
+/// * zero (0) for integers, floating point numbers and char.
+/// * false for booleans.
+///
+/// Certain other crates provide defaults, such as an empty string for
+/// String values.
+///
 /// # Examples
 ///
 /// ```
