@@ -31,7 +31,14 @@
 /// }
 /// ```
 ///
-/// Now, you get all of the default values. Rust implements `Default` for various primitives types.
+/// Now, you get all of the default values. This crate provides defaults for scalar types:
+///
+/// * zero (0) for integer, floating point, and char values.
+/// * false for boolean values.
+///
+/// Certain other crates provide defaults, such as a ['default empty
+/// String']: struct.String.html#implementations for String
+/// values.
 ///
 /// If you want to override a particular option, but still retain the other defaults:
 ///
@@ -69,14 +76,6 @@
 ///     fn default() -> Self { Kind::A }
 /// }
 /// ```
-///
-/// This crate provides defaults for  scalar types:
-///
-/// * zero (0) for integers, floating point numbers and char.
-/// * false for booleans.
-///
-/// Certain other crates provide defaults, such as an empty string for
-/// String values.
 ///
 /// # Examples
 ///
