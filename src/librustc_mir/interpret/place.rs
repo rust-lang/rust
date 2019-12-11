@@ -451,9 +451,15 @@ where
         base: MPlaceTy<'tcx, M::PointerTag>,
         from: u64,
         to: u64,
+        from_end: bool,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let len = base.len(self)?; // also asserts that we have a type where this makes sense
-        assert!(from <= len - to);
+        let actual_to = if from_end {
+            assert!(from <= len - to);
+            len - to
+        } else {
+            to
+        };
 
         // Not using layout method because that works with usize, and does not work with slices
         // (that have count 0 in their layout).
@@ -464,7 +470,7 @@ where
         };
 
         // Compute meta and new layout
-        let inner_len = len - to - from;
+        let inner_len = actual_to - from;
         let (meta, ty) = match base.layout.ty.kind {
             // It is not nice to match on the type, but that seems to be the only way to
             // implement this.
@@ -528,8 +534,8 @@ where
                 self.mplace_field(base, index)?
             }
 
-            Subslice { from, to } =>
-                self.mplace_subslice(base, u64::from(from), u64::from(to))?,
+            Subslice { from, to, from_end } =>
+                self.mplace_subslice(base, u64::from(from), u64::from(to), from_end)?,
         })
     }
 

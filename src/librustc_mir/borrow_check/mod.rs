@@ -174,7 +174,7 @@ fn do_mir_borrowck<'a, 'tcx>(
 
     let mut errors_buffer = Vec::new();
     let (move_data, move_errors): (MoveData<'tcx>, Option<Vec<(Place<'tcx>, MoveError<'tcx>)>>) =
-        match MoveData::gather_moves(&body, tcx) {
+        match MoveData::gather_moves(&body, tcx, param_env) {
             Ok(move_data) => (move_data, None),
             Err((move_data, move_errors)) => (move_data, Some(move_errors)),
         };
@@ -1600,7 +1600,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         (prefix, place_span.0, place_span.1),
                         mpi,
                     );
-                    return; // don't bother finding other problems.
                 }
             }
             Err(NoMovePathFound::ReachedStatic) => {
@@ -1611,6 +1610,46 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
               //
               // (I.e., querying parents breaks scenario 7; but may want
               // to do such a query based on partial-init feature-gate.)
+        }
+    }
+
+    /// Subslices correspond to multiple move paths, so we iterate through the
+    /// elements of the base array. For each element we check
+    ///
+    /// * Does this element overlap with our slice.
+    /// * Is any part of it uninitialized.
+    fn check_if_subslice_element_is_moved(
+        &mut self,
+        location: Location,
+        desired_action: InitializationRequiringAction,
+        place_span: (PlaceRef<'cx, 'tcx>, Span),
+        maybe_uninits: &FlowAtLocation<'tcx, MaybeUninitializedPlaces<'cx, 'tcx>>,
+        from: u32,
+        to: u32,
+    ) {
+        if let Some(mpi) = self.move_path_for_place(place_span.0) {
+            let mut child = self.move_data.move_paths[mpi].first_child;
+            while let Some(child_mpi) = child {
+                let child_move_place = &self.move_data.move_paths[child_mpi];
+                let child_place = &child_move_place.place;
+                let last_proj = child_place.projection.last().unwrap();
+                if let ProjectionElem::ConstantIndex { offset, from_end, .. } = last_proj {
+                    debug_assert!(!from_end, "Array constant indexing shouldn't be `from_end`.");
+
+                    if (from..to).contains(offset) {
+                        if let Some(uninit_child) = maybe_uninits.has_any_child_of(child_mpi) {
+                            self.report_use_of_moved_or_uninitialized(
+                                location,
+                                desired_action,
+                                (place_span.0, place_span.0, place_span.1),
+                                uninit_child,
+                            );
+                            return; // don't bother finding other problems.
+                        }
+                    }
+                }
+                child = child_move_place.next_sibling;
+            }
         }
     }
 
@@ -1639,6 +1678,30 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // 6. Move of `a.b.c` then reinit of `a.b.c.d`, use of `a.b.c.d`
 
         self.check_if_full_path_is_moved(location, desired_action, place_span, flow_state);
+
+        if let [
+            base_proj @ ..,
+            ProjectionElem::Subslice { from, to, from_end: false },
+        ] = place_span.0.projection {
+            let place_ty = Place::ty_from(
+                place_span.0.base,
+                base_proj,
+                self.body(),
+                self.infcx.tcx,
+            );
+            if let ty::Array(..) = place_ty.ty.kind {
+                let array_place = PlaceRef { base: place_span.0.base, projection: base_proj };
+                self.check_if_subslice_element_is_moved(
+                    location,
+                    desired_action,
+                    (array_place, place_span.1),
+                    maybe_uninits,
+                    *from,
+                    *to,
+                );
+                return;
+            }
+        }
 
         // A move of any shallow suffix of `place` also interferes
         // with an attempt to use `place`. This is scenario 3 above.
@@ -1675,25 +1738,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// static variable, as we do not track those in the MoveData.
     fn move_path_closest_to(
         &mut self,
-        place: PlaceRef<'cx, 'tcx>,
+        place: PlaceRef<'_, 'tcx>,
     ) -> Result<(PlaceRef<'cx, 'tcx>, MovePathIndex), NoMovePathFound> {
-        let mut last_prefix = place.base;
-
-        for prefix in self.prefixes(place, PrefixSet::All) {
-            if let Some(mpi) = self.move_path_for_place(prefix) {
-                return Ok((prefix, mpi));
-            }
-
-            last_prefix = prefix.base;
-        }
-
-        match last_prefix {
-            PlaceBase::Local(_) => panic!("should have move path for every Local"),
-            PlaceBase::Static(_) => Err(NoMovePathFound::ReachedStatic),
+        match self.move_data.rev_lookup.find(place) {
+            LookupResult::Parent(Some(mpi))
+            | LookupResult::Exact(mpi) => Ok((self.move_data.move_paths[mpi].place.as_ref(), mpi)),
+            LookupResult::Parent(None) => Err(NoMovePathFound::ReachedStatic),
         }
     }
 
-    fn move_path_for_place(&mut self, place: PlaceRef<'cx, 'tcx>) -> Option<MovePathIndex> {
+    fn move_path_for_place(&mut self, place: PlaceRef<'_, 'tcx>) -> Option<MovePathIndex> {
         // If returns None, then there is no move path corresponding
         // to a direct owner of `place` (which means there is nothing
         // that borrowck tracks for its analysis).
