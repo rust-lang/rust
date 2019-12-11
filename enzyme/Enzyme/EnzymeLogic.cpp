@@ -336,6 +336,12 @@ std::string to_string(const std::set<unsigned>& us) {
     return s + "}";
 }
 
+std::string to_string(const std::map<Argument*, bool>& us) {
+    std::string s = "{";
+    for(auto y : us) s += y.first->getName().str() + ":" + std::to_string(y.second) + ",";
+    return s + "}";
+}
+
 // Determine if a value is needed in the reverse pass. We only use this logic in the top level function right now.
 bool is_value_needed_in_reverse(GradientUtils* gutils, Value* inst, bool topLevel, std::map<Value*, bool> seen = {}) {
   if (seen.find(inst) != seen.end()) return seen[inst];
@@ -481,11 +487,11 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
         auto ut = UndefValue::get(NewF->getReturnType());
         auto val = bb.CreateInsertValue(ut, cal, {1u});
         bb.CreateRet(val);
-        return cachedfunctions.insert_or_assign(tup, AugmentedReturn(NewF, nullptr, {}, returnMapping)).first->second;
+        return cachedfunctions.insert_or_assign(tup, AugmentedReturn(NewF, nullptr, {}, returnMapping, {}, {})).first->second;
       }
 
       //assert(st->getNumElements() > 0);
-      return cachedfunctions.insert_or_assign(tup, AugmentedReturn(foundcalled, nullptr, {}, returnMapping)).first->second; //dyn_cast<StructType>(st->getElementType(0)));
+      return cachedfunctions.insert_or_assign(tup, AugmentedReturn(foundcalled, nullptr, {}, returnMapping, {}, {})).first->second; //dyn_cast<StructType>(st->getElementType(0)));
     }
 
   if (todiff->empty()) {
@@ -496,13 +502,6 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
   AAResults AA(TLI);
   std::map<AugmentedStruct, unsigned> returnMapping;
   GradientUtils *gutils = GradientUtils::CreateFromClone(todiff, AA, TLI, constant_args, /*returnUsed*/returnUsed, /*differentialReturn*/differentialReturn, returnMapping);
-  cachedfunctions.insert_or_assign(tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping));
-  cachedfinished[tup] = false;
-
-  auto getIndex = [&](Instruction* I, std::string u)-> unsigned {
-    //std::map<std::pair<Instruction*,std::string>,unsigned>& mapping = cachedfunctions[tup].tapeIndices;
-    return gutils->getIndex( std::make_pair(I, u), cachedfunctions.find(tup)->second.tapeIndices);
-  };
 
   gutils->forceContexts();
   gutils->forceActiveDetection();
@@ -544,8 +543,15 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
   } 
   
   const std::map<Instruction*, bool> can_modref_map = can_modref_map_mutable;
-  gutils->can_modref_map = &can_modref_map;
+  
+  cachedfunctions.insert_or_assign(tup, AugmentedReturn(gutils->newFunc, nullptr, {}, returnMapping, uncacheable_args_map, can_modref_map));
+  cachedfinished[tup] = false;
 
+  auto getIndex = [&](Instruction* I, std::string u)-> unsigned {
+    //std::map<std::pair<Instruction*,std::string>,unsigned>& mapping = cachedfunctions[tup].tapeIndices;
+    return gutils->getIndex( std::make_pair(I, u), cachedfunctions.find(tup)->second.tapeIndices);
+  };
+  gutils->can_modref_map = &can_modref_map;
 
   //! Explicitly handle all returns first to ensure that all instructions know whether or not they are used
   SmallPtrSet<Instruction*, 4> returnuses;
@@ -784,6 +790,7 @@ const AugmentedReturn& CreateAugmentedPrimal(Function* todiff, AAResults &global
 
               for(unsigned i=0;i<op->getNumArgOperands(); i++) {
                 args.push_back(op->getArgOperand(i));
+                //llvm::errs() << " considering arg " << *op << " operand: " << *op->getArgOperand(i) << "\n";
                 if (gutils->isConstantValue(op->getArgOperand(i)) && !called->empty()) {
                     subconstant_args.insert(i);
                     argsInverted.push_back(DIFFE_TYPE::CONSTANT);
@@ -1558,7 +1565,6 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     modifyPrimal = true;
   }
 
-  if (called)
   for(unsigned i=0;i<op->getNumArgOperands(); i++) {
     args.push_back(gutils->lookupM(op->getArgOperand(i), Builder2));
     pre_args.push_back(op->getArgOperand(i));
@@ -1577,7 +1583,7 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
       pre_args.push_back(gutils->invertPointerM(op->getArgOperand(i), BuilderZ));
 
                 //TODO this check should consider whether this pointer has allocation/etc modifications and so on
-      if (! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
+      if (called && ! ( called->hasParamAttribute(i, Attribute::ReadOnly) || called->hasParamAttribute(i, Attribute::ReadNone)) ) {
         //llvm::errs() << "augmented modified " << called->getName() << " modified via arg " << i << "\n";
         modifyPrimal = true;
       }
@@ -1976,19 +1982,35 @@ void handleGradientCallInst(BasicBlock::reverse_iterator &I, const BasicBlock::r
     args.push_back(gutils->lookupM(tape, Builder2));
   }
 
-  if (auto NC = dyn_cast<Function>(newcalled)) {
-      if (args.size()  != NC->getFunctionType()->getNumParams()) {
+  assert(newcalled);
+  //if (auto NC = dyn_cast<Function>(newcalled)) {
+  FunctionType* FT = cast<FunctionType>(cast<PointerType>(newcalled->getType())->getElementType());
+
+  if (false) {
+badfn:;
+        auto NC = dyn_cast<Function>(newcalled);
         llvm::errs() << *gutils->oldFunc << "\n";
         llvm::errs() << *gutils->newFunc << "\n";
-        llvm::errs() << " trying to call " << NC->getName() << " " << *NC->getFunctionType() << "\n";
+        if (NC)
+        llvm::errs() << " trying to call " << NC->getName() << " " << *FT << "\n";
+        else
+        llvm::errs() << " trying to call " << *newcalled << " " << *FT << "\n";
+
         for(unsigned i=0; i<args.size(); i++) {
-            llvm::errs() << "args[" << i << "] = " << *args[i] << "\n";
+            assert(args[i]);
+            llvm::errs() << "args[" << i << "] = " << *args[i] << " FT:" << *FT->getParamType(i) << "\n";
         }
         assert(0 && "calling with wrong number of arguments");
         exit(1);
-      }
+
   }
-  assert(newcalled);
+
+  if (args.size() != FT->getNumParams()) goto badfn;
+
+  for(unsigned i=0; i<args.size(); i++) {
+    if (args[i]->getType() != FT->getParamType(i)) goto badfn;
+  }
+  
   CallInst* diffes = Builder2.CreateCall(newcalled, args);
   diffes->setCallingConv(op->getCallingConv());
   diffes->setDebugLoc(op->getDebugLoc());
@@ -2247,7 +2269,8 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
         in_arg++;
     }
   }
-  const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map =
+
+  const std::map<CallInst*, const std::map<Argument*, bool> > uncacheable_args_map = (augmenteddata) ? augmenteddata->uncacheable_args_map :
       compute_uncacheable_args_for_callsites(gutils->oldFunc, gutils->DT, TLI, AA, gutils, _uncacheable_argsPP);
 
   std::map<Instruction*, bool> can_modref_map_mutable = compute_uncacheable_load_map(gutils, AA, TLI, _uncacheable_argsPP);
@@ -2271,7 +2294,7 @@ Function* CreatePrimalAndGradient(Function* todiff, const std::set<unsigned>& co
     }
   } 
   
-  const std::map<Instruction*, bool> can_modref_map = can_modref_map_mutable;
+  const std::map<Instruction*, bool> can_modref_map = augmenteddata ? augmenteddata->can_modref_map : can_modref_map_mutable;
 
   gutils->can_modref_map = &can_modref_map;
 

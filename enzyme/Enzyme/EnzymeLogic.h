@@ -50,8 +50,13 @@ public:
     std::map<const llvm::CallInst*, const AugmentedReturn*> subaugmentations;
     //! Map from information desired from a augmented return to its index in the returned struct
     std::map<AugmentedStruct, unsigned> returns;
-    //AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType) : fn(fn), tapeType(tapeType), tapeIndices() {}
-    AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType, std::map<std::pair<llvm::Instruction*, std::string>, unsigned> tapeIndices, std::map<AugmentedStruct, unsigned> returns) : fn(fn), tapeType(tapeType), tapeIndices(tapeIndices), returns(returns) {}
+
+    std::map<llvm::CallInst*, const std::map<llvm::Argument*, bool> > uncacheable_args_map;
+  
+    std::map<llvm::Instruction*, bool> can_modref_map;
+    
+    AugmentedReturn(llvm::Function* fn, llvm::StructType* tapeType, std::map<std::pair<llvm::Instruction*, std::string>, unsigned> tapeIndices, std::map<AugmentedStruct, unsigned> returns, std::map<llvm::CallInst*, const std::map<llvm::Argument*, bool>> uncacheable_args_map, std::map<llvm::Instruction*, bool> can_modref_map)
+        : fn(fn), tapeType(tapeType), tapeIndices(tapeIndices), returns(returns), uncacheable_args_map(uncacheable_args_map), can_modref_map(can_modref_map) {}
 };
 
 const AugmentedReturn& CreateAugmentedPrimal(llvm::Function* todiff, llvm::AAResults &global_AA, const std::set<unsigned>& constant_args, llvm::TargetLibraryInfo &TLI, bool differentialReturn, bool returnUsed, const std::map<llvm::Argument*, bool> _uncacheable_args);

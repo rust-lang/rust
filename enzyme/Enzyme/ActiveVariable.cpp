@@ -56,6 +56,7 @@ bool isKnownIntegerTBAA(Instruction* inst) {
 	    if (typeNameStringRef == "long" || typeNameStringRef == "int" || typeNameStringRef == "bool") {// || typeNameStringRef == "omnipotent char") {
           if (printconst)
             llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
+          //llvm::errs() << "known tbaa " << *inst << " " << typeNameStringRef << "\n";
 		  return true; 
 	    }
 	  }
@@ -220,33 +221,37 @@ bool trackPointer(Value* v, SmallPtrSet<Value*, 4> seen, SmallPtrSet<Type*, 4> t
     return false;
 }
 
-bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse) {
-    if (intseen.find(v) != intseen.end()) {
-        if (intseen[v] == IntType::Integer) {
+bool trackInt(Value* v, std::map<std::pair<Value*,bool>, IntType> intseen, SmallPtrSet<Value*, 4> ptrseen, SmallPtrSet<Type*, 4> typeseen, Type*& floatingUse, bool& pointerUse, bool& intUse, bool& unknownUse, bool shouldConsiderUnknownUse=false) {
+    auto idx = std::pair<Value*, bool>(v, shouldConsiderUnknownUse);
+    if (intseen.find(idx) != intseen.end()) {
+        if (intseen[idx] == IntType::Integer) {
             intUse = true;
         }
         return false;
     }
-    intseen[v] = IntType::Unknown;
+    intseen[idx] = IntType::Unknown;
     
     assert(v->getType()->isIntegerTy());
 
     if (isa<UndefValue>(v)) {
         intUse = true;
-        intseen[v] = IntType::Integer;
+        intseen[idx] = IntType::Integer;
+        //llvm::errs() << "find int use of " << *v << " undef\n";
         return true;
     }
       
     if (isa<ConstantInt>(v)) {
         intUse = true;
-        intseen[v] = IntType::Integer;
+        intseen[idx] = IntType::Integer;
+        //llvm::errs() << "find int use of " << *v << " constant\n";
         return true;
     }
 
     //consider booleans to be integers
     if (cast<IntegerType>(v->getType())->getBitWidth() == 1) {
         intUse = true;
-        intseen[v] = IntType::Integer;
+        intseen[idx] = IntType::Integer;
+        //llvm::errs() << "find int use of " << *v << " is bool\n";
         return true;
     }
     bool oldunknownUse = unknownUse;
@@ -271,6 +276,8 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
                 continue;
             }
             if (ci->getDestTy()->isIntegerTy()) {
+              if (cast<IntegerType>(ci->getDestTy())->getBitWidth() < 8) continue;
+
               if (trackInt(ci, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
                 if (fast_tracking) return true;
               }
@@ -288,7 +295,9 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
         }
         
         if (auto seli = dyn_cast<SelectInst>(use)) {
-            if (trackInt(seli, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse)) {
+            assert(seli->getCondition() != v);
+            if (trackInt(seli, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, unknownUse, /*shouldconsiderUnknownUse=*/false)) {
+                //llvm::errs() << "find select use of " << *v << " in " << *seli << " intUse: " << intUse << "\n";
                 if (fast_tracking) return true;
             }
             continue;
@@ -296,8 +305,9 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
 
         if (auto gep = dyn_cast<GetElementPtrInst>(use)) {
             if (gep->getPointerOperand() != v) {
+                //llvm::errs() << "find int use of " << *v << " in " << *gep << "\n";
                 intUse = true;
-                intseen[v] = IntType::Integer;
+                intseen[idx] = IntType::Integer;
                 continue;
             }
         }
@@ -306,20 +316,23 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
             if (Function* ci = call->getCalledFunction()) {
                 if (ci->getName() == "malloc") {
                     intUse = true;
-                    intseen[v] = IntType::Integer;
+                    intseen[idx] = IntType::Integer;
+                    //llvm::errs() << "find int use of " << *v << " in " << *use << "\n";
                     continue;
                 }
                 if (ci->getIntrinsicID() == Intrinsic::memset) {
                     if (call->getArgOperand(0) != v) {
                         intUse = true;
-                        intseen[v] = IntType::Integer;
+                        intseen[idx] = IntType::Integer;
+                        //llvm::errs() << "find int use of " << *v << " in " << *use << "\n";
                         continue;
                     }
                 }
                 if (ci->getIntrinsicID() == Intrinsic::memcpy || ci->getIntrinsicID() == Intrinsic::memmove) {
                     if (call->getArgOperand(0) != v && call->getArgOperand(1) != v) {
                         intUse = true;
-                        intseen[v] = IntType::Integer;
+                        intseen[idx] = IntType::Integer;
+                        //llvm::errs() << "find int use of " << *v << " in " << *use << "\n";    
                         continue;
                     }
                 }
@@ -340,16 +353,19 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
 
         if (isa<AllocaInst>(use)) {
             intUse = true;
-            intseen[v] = IntType::Integer;
+            intseen[idx] = IntType::Integer;
+            //llvm::errs() << "find int use of " << *v << " in " << *use << "\n";    
             if (fast_tracking) return true;
             continue;
         }
+        /*
         if (isa<ExtractValueInst>(use) || isa<InsertValueInst>(use)) {
             intUse = true;
-            intseen[v] = IntType::Integer;
+            intseen[idx] = IntType::Integer;
             if (fast_tracking) return true;
             continue;
         }
+        */
         
         if (isa<IntToPtrInst>(use)) {
             //llvm::errs() << "saw(p use) of " << *v << " use " << *use << "\n";
@@ -362,7 +378,7 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
             assert(v == si->getValueOperand());
             if (isKnownIntegerTBAA(si)) {
                 intUse = true;  
-                intseen[v] = IntType::Integer;
+                intseen[idx] = IntType::Integer;
                 if (fast_tracking) return true;
             }
             if (Type* t = isKnownFloatTBAA(si)) floatingUse = t;
@@ -394,17 +410,22 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
         continue;
     }
 
-    if (unknownUse == false) {
+    //! This code isnt great if hit by a caller
+    
+    if (shouldConsiderUnknownUse &&unknownUse == false) {
         intUse = true;
-        intseen[v] = IntType::Integer;
+        intseen[idx] = IntType::Integer;
+        //llvm::errs() << "find int use of " << *v << " from lack of unknown use\n";
         if (fast_tracking) return true;
     }
+    
+
     unknownUse |= oldunknownUse;
 
     if (auto li = dyn_cast<LoadInst>(v)) {
         if (isKnownIntegerTBAA(li)) {
             intUse = true;
-            intseen[v] = IntType::Integer;
+            intseen[idx] = IntType::Integer;
             if (fast_tracking) return true;
         }
         if (Type* t = isKnownFloatTBAA(li)) floatingUse = t;
@@ -415,7 +436,7 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
    
     if (isa<FPToSIInst>(v) || isa<FPToUIInst>(v)) {
         intUse = true;
-        intseen[v] = IntType::Integer;
+        intseen[idx] = IntType::Integer;
         if (fast_tracking) return true;
     }
 
@@ -452,24 +473,24 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
     if (auto bi = dyn_cast<BinaryOperator>(v)) {
 
         bool intUse0 = false, intUse1 = false;
-        std::map<Value*, IntType> intseen0(intseen.begin(), intseen.end());
+        std::map<std::pair<Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
         SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
         SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
         bool fakeunknownuse0 = false;
         
-        if (trackInt(bi->getOperand(0), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0) && (floatingUse || pointerUse) ) {
+        if (trackInt(bi->getOperand(0), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
             if (fast_tracking) return true;
         }
 
         if (intUse0) {
-            if (trackInt(bi->getOperand(1), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse1, fakeunknownuse0) && (floatingUse || pointerUse)) {
+            if (trackInt(bi->getOperand(1), intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse1, fakeunknownuse0, true) && (floatingUse || pointerUse)) {
                 if (fast_tracking) return true;
             }
         }
         
         if (intUse0 && intUse1) {
             intUse = true;
-            intseen[v] = IntType::Integer;
+            intseen[idx] = IntType::Integer;
             /*
             if (floatingUse0) {
                 if (floatingUse != nullptr) assert(floatingUse == floatingUse0);
@@ -488,7 +509,7 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
     
     if (auto ci = dyn_cast<CallInst>(v)) {
         if (auto F = ci->getCalledFunction()) {
-            std::map<Value*, IntType> intseen0(intseen.begin(), intseen.end());
+            std::map<std::pair<Value*,bool>, IntType> intseen0(intseen.begin(), intseen.end());
             SmallPtrSet<Value*, 4> ptrseen0(ptrseen.begin(), ptrseen.end());
             SmallPtrSet<Type*, 4> typeseen0(typeseen.begin(), typeseen.end());
             bool allintUse = true;
@@ -497,7 +518,7 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
                     auto rv = ri->getReturnValue();
                     bool intUse0 = false;
                     bool fakeunknownuse0 = false;
-                    if ( trackInt(rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0) && (floatingUse || pointerUse) ) {
+                    if ( trackInt(rv, intseen0, ptrseen0, typeseen0, floatingUse, pointerUse, intUse0, fakeunknownuse0, true) && (floatingUse || pointerUse) ) {
                         intseen.insert(intseen0.begin(), intseen0.end());
                         ptrseen.insert(ptrseen0.begin(), ptrseen0.end());
                         typeseen.insert(typeseen0.begin(), typeseen0.end());
@@ -512,7 +533,7 @@ bool trackInt(Value* v, std::map<Value*, IntType> intseen, SmallPtrSet<Value*, 4
 
             if (allintUse) {
                 intUse = true;
-                intseen[v] = IntType::Integer;
+                intseen[idx] = IntType::Integer;
                 
                 intseen.insert(intseen0.begin(), intseen0.end());
                 
@@ -558,13 +579,13 @@ IntType isIntASecretFloat(Value* val, IntType defaultType) {
         Type* floatingUse = nullptr;
         bool pointerUse = false;
         bool intUse = false;
-        std::map<Value*, IntType> intseen;
+        std::map<std::pair<Value*,bool>, IntType> intseen;
         SmallPtrSet<Value*, 4> ptrseen;
         
         SmallPtrSet<Type*, 4> typeseen;
 
         bool fakeunknownuse = false;
-        trackInt(val, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse);
+        trackInt(val, intseen, ptrseen, typeseen, floatingUse, pointerUse, intUse, fakeunknownuse, /*shouldConsiderUnknownUse*/true);
         
         /*
         if (floatingUse)
@@ -934,29 +955,6 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
         }
     }
 
-    /* TODO consider constant stores
-    if (auto si = dyn_cast<StoreInst>(inst)) {
-		SmallPtrSet<Value*, 20> constants2;
-		constants2.insert(constants.begin(), constants.end());
-		SmallPtrSet<Value*, 20> nonconstant2;
-		nonconstant2.insert(nonconstant.begin(), nonconstant.end());
-		SmallPtrSet<Value*, 20> retvals2;
-		retvals2.insert(retvals.begin(), retvals.end());
-		constants2.insert(inst);
-        if (isconstantValueM(si->getValueOperand(), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
-			constants.insert(inst);
-			constants.insert(constants2.begin(), constants2.end());
-            constants.insert(constants_tmp.begin(), constants_tmp.end());
-
-			// not here since if had full updown might not have been nonconstant
-			//nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
-    		if (printconst)
-			  llvm::errs() << "constant(" << (int)directions << ") store:" << *inst << "\n";
-			return true;
-        }
-    }
-    */
-
     if (printconst)
 	  llvm::errs() << "checking if is constant[" << (int)directions << "] " << *inst << "\n";
     
@@ -1112,6 +1110,40 @@ bool isconstantM(Instruction* inst, SmallPtrSetImpl<Value*> &constants, SmallPtr
                   llvm::errs() << "constant(" << (int)directions << ")  up-call:" << *inst << "\n";
                 return true;
             }
+        } else if (auto si = dyn_cast<StoreInst>(inst)) {
+            SmallPtrSet<Value*, 20> constants2;
+            constants2.insert(constants.begin(), constants.end());
+            SmallPtrSet<Value*, 20> nonconstant2;
+            nonconstant2.insert(nonconstant.begin(), nonconstant.end());
+            SmallPtrSet<Value*, 20> retvals2;
+            retvals2.insert(retvals.begin(), retvals.end());
+            constants2.insert(inst);
+
+            if (isconstantValueM(si->getPointerOperand(), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+                // Note: not adding nonconstant here since if had full updown might not have been nonconstant
+
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ") store:" << *inst << "\n";
+                return true;
+
+            }
+
+            /* TODO consider stores of constant values 
+            if (isconstantValueM(si->getValueOperand(), constants2, nonconstant2, retvals2, originalInstructions, directions)) {
+                constants.insert(inst);
+                constants.insert(constants2.begin(), constants2.end());
+                constants.insert(constants_tmp.begin(), constants_tmp.end());
+
+                // not here since if had full updown might not have been nonconstant
+                //nonconstant.insert(nonconstant2.begin(), nonconstant2.end());
+                if (printconst)
+                  llvm::errs() << "constant(" << (int)directions << ") store:" << *inst << "\n";
+                return true;
+            }
+            */
         } else {
             bool seenuse = false;
 
@@ -1294,7 +1326,7 @@ bool isconstantValueM(Value* val, SmallPtrSetImpl<Value*> &constants, SmallPtrSe
         return true;
     }
    
-    if (!(val->getType()->isPointerTy() || val->getType()->isIntegerTy()) && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
+    if ( val->getType()->isFPOrFPVectorTy() && (directions & DOWN) && (retvals.find(val) == retvals.end()) ) { 
 		auto &constants2 = constants;
 		auto &nonconstant2 = nonconstant;
 		auto &retvals2 = retvals;

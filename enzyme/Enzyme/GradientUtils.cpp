@@ -297,8 +297,11 @@ Value* GradientUtils::invertPointerM(Value* val, IRBuilder<>& BuilderM) {
       return invertedPointers[val] = cs;
     } else if (auto fn = dyn_cast<Function>(val)) {
       //! Todo allow tape propagation
+      //  Note that specifically this should _not_ be called with topLevel=true (since it may not be valid to always assume we can recompute the augmented primal)
+      //  However, in the absence of a way to pass tape data from an indirect augmented (and also since we dont presently allow indirect augmented calls), topLevel MUST be true
+      //  otherwise subcalls will not be able to lookup the augmenteddata/subdata (triggering an assertion failure, among much worse)
       std::map<Argument*, bool> uncacheable_args;
-      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/false, /*additionalArg*/nullptr, uncacheable_args, /*map*/nullptr); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
+      auto newf = CreatePrimalAndGradient(fn, /*constant_args*/{}, TLI, AA, /*returnValue*/false, /*differentialReturn*/fn->getReturnType()->isFPOrFPVectorTy(), /*dretPtr*/false, /*topLevel*/true, /*additionalArg*/nullptr, uncacheable_args, /*map*/nullptr); //llvm::Optional<std::map<std::pair<llvm::Instruction*, std::string>, unsigned int> >({}));
       return BuilderM.CreatePointerCast(newf, fn->getType());
     } else if (auto arg = dyn_cast<CastInst>(val)) {
       auto result = BuilderM.CreateCast(arg->getOpcode(), invertPointerM(arg->getOperand(0), BuilderM), arg->getDestTy(), arg->getName()+"'ipc");

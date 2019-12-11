@@ -1,3 +1,5 @@
+; RUN: %opt < %s %loadEnzyme -enzyme -enzyme_preopt=false -mem2reg -sroa -simplifycfg -instcombine -adce -S | FileCheck %s
+
 ; ModuleID = '/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp'
 source_filename = "/home/wmoses/Enzyme/enzyme/test/Integration/simpleeigenstatic-sumsq.cpp"
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
@@ -1327,3 +1329,415 @@ attributes #14 = { noreturn nounwind }
 !18 = !{!"_ZTSN5Eigen8internal31generic_dense_assignment_kernelINS0_9evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEENS2_INS_14CwiseNullaryOpINS0_18scalar_constant_opIdEES4_EEEENS0_9assign_opIddEELi0EEE", !7, i64 0, !7, i64 8, !7, i64 16, !7, i64 24}
 !19 = !{!18, !7, i64 0}
 !20 = !{!18, !7, i64 8}
+
+; CHECK: define internal {} @diffe_ZL6matvecPKN5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EEE(%"class.Eigen::Matrix"* noalias %W, %"class.Eigen::Matrix"* %"W'", double %differeturn) #5 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %malloccall = tail call i8* @malloc(i64 1) #12
+; CHECK-NEXT:   %"malloccall'mi" = tail call noalias nonnull i8* @malloc(i64 1) #12
+; CHECK-NEXT:   store i8 0, i8* %"malloccall'mi", align 1
+; CHECK-NEXT:   %func = bitcast i8* %malloccall to %"struct.Eigen::internal::scalar_sum_op"*
+; CHECK-NEXT:   %malloccall1 = tail call i8* @malloc(i64 24) #12
+; CHECK-NEXT:   %"malloccall1'mi" = tail call noalias nonnull i8* @malloc(i64 24) #12
+; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull align 1 %"malloccall1'mi", i8 0, i64 24, i1 false)
+; CHECK-NEXT:   %thisEval = bitcast i8* %malloccall1 to %"class.Eigen::internal::redux_evaluator"*
+; CHECK-NEXT:   %"thisEval'ipc6" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
+; CHECK-NEXT:   %_augmented = call { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } @augmented__ZN5Eigen8internal15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"class.Eigen::internal::redux_evaluator"* %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc6", %"class.Eigen::Matrix"* %W, %"class.Eigen::Matrix"* %"W'")
+; CHECK-NEXT:   %0 = extractvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %_augmented, 0
+; CHECK-NEXT:   %"thisEval'ipc3" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
+; CHECK-NEXT:   %"func'ipc4" = bitcast i8* %"malloccall'mi" to %"struct.Eigen::internal::scalar_sum_op"*
+; CHECK-NEXT:   %call5_augmented = call { { <2 x double>*, <2 x double>* } } @augmented__ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc3", %"struct.Eigen::internal::scalar_sum_op"* %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'ipc4")
+; CHECK-NEXT:   %1 = extractvalue { { <2 x double>*, <2 x double>* } } %call5_augmented, 0
+; CHECK-NEXT:   %"thisEval'ipc" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
+; CHECK-NEXT:   %2 = call {} @diffenothing(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc") #12
+; CHECK-NEXT:   %"thisEval'ipc2" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
+; CHECK-NEXT:   %"func'ipc" = bitcast i8* %"malloccall'mi" to %"struct.Eigen::internal::scalar_sum_op"*
+; CHECK-NEXT:   %3 = call {} @diffe_ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc2", %"struct.Eigen::internal::scalar_sum_op"* nonnull %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'ipc", double %differeturn, { <2 x double>*, <2 x double>* } %1)
+; CHECK-NEXT:   %"thisEval'ipc5" = bitcast i8* %"malloccall1'mi" to %"class.Eigen::internal::redux_evaluator"*
+; CHECK-NEXT:   %4 = call {} @diffe_ZN5Eigen8internal15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"class.Eigen::internal::redux_evaluator"* nonnull %thisEval, %"class.Eigen::internal::redux_evaluator"* %"thisEval'ipc5", %"class.Eigen::Matrix"* nonnull %W, %"class.Eigen::Matrix"* %"W'", { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %0)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall1'mi")
+; CHECK-NEXT:   tail call void @free(i8* %malloccall1)
+; CHECK-NEXT:   tail call void @free(i8* nonnull %"malloccall'mi")
+; CHECK-NEXT:   tail call void @free(i8* %malloccall)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffenothing(%"class.Eigen::internal::redux_evaluator"* %this, %"class.Eigen::internal::redux_evaluator"* %"this'") {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal { { <2 x double>*, <2 x double>* } } @augmented__ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* dereferenceable(24) %mat, %"class.Eigen::internal::redux_evaluator"* %"mat'", %"struct.Eigen::internal::scalar_sum_op"* dereferenceable(1) %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'") local_unnamed_addr #3 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %m_data = bitcast %"class.Eigen::internal::redux_evaluator"* %mat to <2 x double>**
+; CHECK-NEXT:   %"m_data'ipc" = bitcast %"class.Eigen::internal::redux_evaluator"* %"mat'" to <2 x double>**
+; CHECK-NEXT:   %"from'ipl" = load <2 x double>*, <2 x double>** %"m_data'ipc", align 8
+; CHECK-NEXT:   %from = load <2 x double>*, <2 x double>** %m_data, align 8, !tbaa !8
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { <2 x double>*, <2 x double>* } } undef, <2 x double>* %from, 0, 0
+; CHECK-NEXT:   %.fca.0.1.insert = insertvalue { { <2 x double>*, <2 x double>* } } %.fca.0.0.insert, <2 x double>* %"from'ipl", 0, 1
+; CHECK-NEXT:   ret { { <2 x double>*, <2 x double>* } } %.fca.0.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZN5Eigen8internal10redux_implINS0_13scalar_sum_opIddEENS0_15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEELi3ELi2EE3runERKS7_RKS3_(%"class.Eigen::internal::redux_evaluator"* dereferenceable(24) %mat, %"class.Eigen::internal::redux_evaluator"* %"mat'", %"struct.Eigen::internal::scalar_sum_op"* dereferenceable(1) %func, %"struct.Eigen::internal::scalar_sum_op"* %"func'", double %differeturn, { <2 x double>*, <2 x double>* } %tapeArg) local_unnamed_addr #3 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"call3'de.0.vec.insert" = insertelement <2 x double> undef, double %differeturn, i32 0
+; CHECK-NEXT:   %"call3'de.8.vec.insert" = shufflevector <2 x double> %"call3'de.0.vec.insert", <2 x double> undef, <2 x i32> zeroinitializer
+; CHECK-NEXT:   %"from'il_phi_fromtape_unwrap" = extractvalue { <2 x double>*, <2 x double>* } %tapeArg, 1
+; CHECK-NEXT:   %0 = load <2 x double>, <2 x double>* %"from'il_phi_fromtape_unwrap", align 16
+; CHECK-NEXT:   %1 = fadd fast <2 x double> %0, %"call3'de.8.vec.insert"
+; CHECK-NEXT:   store <2 x double> %1, <2 x double>* %"from'il_phi_fromtape_unwrap", align 16
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal { {} } @augmented__ZN5Eigen8internal19variable_if_dynamicIlLi2EEC2El(%"class.Eigen::internal::variable_if_dynamic"* %this, %"class.Eigen::internal::variable_if_dynamic"* %"this'", i64 %v) unnamed_addr #3 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %cmp = icmp eq i64 %v, 2
+; CHECK-NEXT:   br i1 %cmp, label %cond.end, label %cond.false
+; CHECK: cond.false:                                       ; preds = %entry
+; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.8, i64 0, i64 0), i8* getelementptr inbounds ([58 x i8], [58 x i8]* @.str.9, i64 0, i64 0), i32 110, i8* getelementptr inbounds ([92 x i8], [92 x i8]* @__PRETTY_FUNCTION__._ZN5Eigen8internal19variable_if_dynamicIlLi2EEC2El, i64 0, i64 0)) #14
+; CHECK-NEXT:   unreachable
+; CHECK: cond.end:                                         ; preds = %entry
+; CHECK-NEXT:   ret { {} } undef
+; CHECK-NEXT: }
+
+; CHECK: define internal { { i64 }, i64 } @augmented__ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"class.Eigen::PlainObjectBase"* %this, %"class.Eigen::PlainObjectBase"* %"this'") local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %call = tail call i64 @_ZN5Eigen12DenseStorageIdLi4ELi2ELi2ELi0EE4rowsEv()
+; CHECK-NEXT:   %.fca.0.0.insert = insertvalue { { i64 }, i64 } undef, i64 %call, 0, 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { i64 }, i64 } %.fca.0.0.insert, i64 %call, 1
+; CHECK-NEXT:   ret { { i64 }, i64 } %.fca.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } @augmented__ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE7derivedEv(%"struct.Eigen::EigenBase"* %this, %"struct.Eigen::EigenBase"* %"this'") local_unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast %"struct.Eigen::EigenBase"* %this to %"class.Eigen::Matrix"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"struct.Eigen::EigenBase"* %"this'" to %"class.Eigen::Matrix"*
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } undef, %"class.Eigen::Matrix"* %0, 1
+; CHECK-NEXT:   %.fca.2.insert = insertvalue { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %.fca.1.insert, %"class.Eigen::Matrix"* %"'ipc", 2
+; CHECK-NEXT:   ret { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %.fca.2.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } @augmented__ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"struct.Eigen::EigenBase"* %this, %"struct.Eigen::EigenBase"* %"this'") local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %call_augmented = call { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } @augmented__ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE7derivedEv(%"struct.Eigen::EigenBase"* %this, %"struct.Eigen::EigenBase"* %"this'")
+; CHECK-NEXT:   %antiptr_call = extractvalue { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %call_augmented, 2
+; CHECK-NEXT:   %call = extractvalue { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %call_augmented, 1
+; CHECK-NEXT:   %"'ipge" = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %antiptr_call, i64 0, i32 0
+; CHECK-NEXT:   %0 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %call, i64 0, i32 0
+; CHECK-NEXT:   %call2_augmented = call { { i64 }, i64 } @augmented__ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"class.Eigen::PlainObjectBase"* %0, %"class.Eigen::PlainObjectBase"* %"'ipge")
+; CHECK-NEXT:   %subcache = extractvalue { { i64 }, i64 } %call2_augmented, 0
+; CHECK-NEXT:   %subcache.fca.0.extract = extractvalue { i64 } %subcache, 0
+; CHECK-NEXT:   %call2 = extractvalue { { i64 }, i64 } %call2_augmented, 1
+; CHECK-NEXT:   %.fca.0.0.0.insert = insertvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } undef, i64 %subcache.fca.0.extract, 0, 0, 0
+; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.0.0.insert, %"class.Eigen::Matrix"* %antiptr_call, 0, 2
+; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.2.insert, %"class.Eigen::Matrix"* %call, 0, 3
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.3.insert, i64 %call2, 1
+; CHECK-NEXT:   ret { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } @augmented__ZNK5Eigen9DenseBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE9innerSizeEv(%"class.Eigen::DenseBase"* %this, %"class.Eigen::DenseBase"* %"this'") local_unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast %"class.Eigen::DenseBase"* %this to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::DenseBase"* %"this'" to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %call_augmented = call { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } @augmented__ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"struct.Eigen::EigenBase"* %0, %"struct.Eigen::EigenBase"* %"'ipc")
+; CHECK-NEXT:   %subcache = extractvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %call_augmented, 0
+; CHECK-NEXT:   %subcache.fca.0.0.extract = extractvalue { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 0, 0
+; CHECK-NEXT:   %subcache.fca.2.extract = extractvalue { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 2
+; CHECK-NEXT:   %subcache.fca.3.extract = extractvalue { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 3
+; CHECK-NEXT:   %call = extractvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %call_augmented, 1
+; CHECK-NEXT:   %.fca.0.0.0.0.insert = insertvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } undef, i64 %subcache.fca.0.0.extract, 0, 0, 0, 0
+; CHECK-NEXT:   %.fca.0.0.2.insert = insertvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } %.fca.0.0.0.0.insert, %"class.Eigen::Matrix"* %subcache.fca.2.extract, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.0.3.insert = insertvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } %.fca.0.0.2.insert, %"class.Eigen::Matrix"* %subcache.fca.3.extract, 0, 0, 3
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } %.fca.0.0.3.insert, i64 %call, 1
+; CHECK-NEXT:   ret { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } %.fca.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } @augmented__ZNK5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EE11outerStrideEv(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'") local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast %"class.Eigen::Matrix"* %this to %"class.Eigen::DenseBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::Matrix"* %"this'" to %"class.Eigen::DenseBase"*
+; CHECK-NEXT:   %call_augmented = call { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } @augmented__ZNK5Eigen9DenseBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE9innerSizeEv(%"class.Eigen::DenseBase"* %0, %"class.Eigen::DenseBase"* %"'ipc")
+; CHECK-NEXT:   %subcache = extractvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } %call_augmented, 0
+; CHECK-NEXT:   %subcache.fca.0.0.0.extract = extractvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } %subcache, 0, 0, 0
+; CHECK-NEXT:   %subcache.fca.0.2.extract = extractvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } %subcache, 0, 2
+; CHECK-NEXT:   %subcache.fca.0.3.extract = extractvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } %subcache, 0, 3
+; CHECK-NEXT:   %call = extractvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } }, i64 } %call_augmented, 1
+; CHECK-NEXT:   %.fca.0.0.0.0.0.insert = insertvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } undef, i64 %subcache.fca.0.0.0.extract, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %.fca.0.0.0.2.insert = insertvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } %.fca.0.0.0.0.0.insert, %"class.Eigen::Matrix"* %subcache.fca.0.2.extract, 0, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.0.0.3.insert = insertvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } %.fca.0.0.0.2.insert, %"class.Eigen::Matrix"* %subcache.fca.0.3.extract, 0, 0, 0, 3
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } %.fca.0.0.0.3.insert, i64 %call, 1
+; CHECK-NEXT:   ret { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } %.fca.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } @augmented__ZNK5Eigen15DenseCoeffsBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEELi3EE11outerStrideEv(%"class.Eigen::DenseCoeffsBase"* %this, %"class.Eigen::DenseCoeffsBase"* %"this'") local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast %"class.Eigen::DenseCoeffsBase"* %this to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::DenseCoeffsBase"* %"this'" to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %call_augmented = call { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } @augmented__ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE7derivedEv(%"struct.Eigen::EigenBase"* %0, %"struct.Eigen::EigenBase"* %"'ipc")
+; CHECK-NEXT:   %antiptr_call = extractvalue { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %call_augmented, 2
+; CHECK-NEXT:   %call = extractvalue { {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %call_augmented, 1
+; CHECK-NEXT:   %call2_augmented = call { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } @augmented__ZNK5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EE11outerStrideEv(%"class.Eigen::Matrix"* %call, %"class.Eigen::Matrix"* %antiptr_call)
+; CHECK-NEXT:   %subcache = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } %call2_augmented, 0
+; CHECK-NEXT:   %subcache.fca.0.0.0.0.extract = extractvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } } %subcache, 0, 0, 0, 0
+; CHECK-NEXT:   %subcache.fca.0.0.2.extract = extractvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } } %subcache, 0, 0, 2
+; CHECK-NEXT:   %subcache.fca.0.0.3.extract = extractvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } } %subcache, 0, 0, 3
+; CHECK-NEXT:   %call2 = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, i64 } %call2_augmented, 1
+; CHECK-NEXT:   %.fca.0.0.0.0.0.0.insert = insertvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } undef, i64 %subcache.fca.0.0.0.0.extract, 0, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %.fca.0.0.0.0.2.insert = insertvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.0.0.0.0.0.insert, %"class.Eigen::Matrix"* %subcache.fca.0.0.2.extract, 0, 0, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.0.0.0.3.insert = insertvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.0.0.0.2.insert, %"class.Eigen::Matrix"* %subcache.fca.0.0.3.extract, 0, 0, 0, 0, 3
+; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.0.0.0.3.insert, %"class.Eigen::Matrix"* %antiptr_call, 0, 2
+; CHECK-NEXT:   %.fca.0.3.insert = insertvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.2.insert, %"class.Eigen::Matrix"* %call, 0, 3
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.0.3.insert, i64 %call2, 1
+; CHECK-NEXT:   ret { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %.fca.1.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { {}, double*, double* } @augmented__ZNK5Eigen12DenseStorageIdLi4ELi2ELi2ELi0EE4dataEv(%"class.Eigen::DenseStorage"* %this, %"class.Eigen::DenseStorage"* %"this'") local_unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"arraydecay'ipge" = getelementptr inbounds %"class.Eigen::DenseStorage", %"class.Eigen::DenseStorage"* %"this'", i64 0, i32 0, i32 0, i64 0
+; CHECK-NEXT:   %arraydecay = getelementptr inbounds %"class.Eigen::DenseStorage", %"class.Eigen::DenseStorage"* %this, i64 0, i32 0, i32 0, i64 0
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { {}, double*, double* } undef, double* %arraydecay, 1
+; CHECK-NEXT:   %.fca.2.insert = insertvalue { {}, double*, double* } %.fca.1.insert, double* %"arraydecay'ipge", 2
+; CHECK-NEXT:   ret { {}, double*, double* } %.fca.2.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { {} }, double*, double* } @augmented__ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4dataEv(%"class.Eigen::PlainObjectBase"* %this, %"class.Eigen::PlainObjectBase"* %"this'") local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"m_storage'ipge" = getelementptr inbounds %"class.Eigen::PlainObjectBase", %"class.Eigen::PlainObjectBase"* %"this'", i64 0, i32 0
+; CHECK-NEXT:   %m_storage = getelementptr inbounds %"class.Eigen::PlainObjectBase", %"class.Eigen::PlainObjectBase"* %this, i64 0, i32 0
+; CHECK-NEXT:   %call_augmented = call { {}, double*, double* } @augmented__ZNK5Eigen12DenseStorageIdLi4ELi2ELi2ELi0EE4dataEv(%"class.Eigen::DenseStorage"* %m_storage, %"class.Eigen::DenseStorage"* %"m_storage'ipge")
+; CHECK-NEXT:   %antiptr_call = extractvalue { {}, double*, double* } %call_augmented, 2
+; CHECK-NEXT:   %call = extractvalue { {}, double*, double* } %call_augmented, 1
+; CHECK-NEXT:   %.fca.1.insert = insertvalue { { {} }, double*, double* } undef, double* %call, 1
+; CHECK-NEXT:   %.fca.2.insert = insertvalue { { {} }, double*, double* } %.fca.1.insert, double* %antiptr_call, 2
+; CHECK-NEXT:   ret { { {} }, double*, double* } %.fca.2.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { {} } @augmented__ZN5Eigen8internal11noncopyableC2Ev(%"class.Eigen::internal::noncopyable"* %this, %"class.Eigen::internal::noncopyable"* %"this'") unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret { {} } undef
+; CHECK-NEXT: }
+
+; CHECK: define internal { { {} } } @augmented__ZN5Eigen8internal14evaluator_baseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2Ev(%"struct.Eigen::internal::evaluator_base"* %this, %"struct.Eigen::internal::evaluator_base"* %"this'") unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast %"struct.Eigen::internal::evaluator_base"* %this to %"class.Eigen::internal::noncopyable"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"struct.Eigen::internal::evaluator_base"* %"this'" to %"class.Eigen::internal::noncopyable"*
+; CHECK-NEXT:   %_augmented = call { {} } @augmented__ZN5Eigen8internal11noncopyableC2Ev(%"class.Eigen::internal::noncopyable"* %0, %"class.Eigen::internal::noncopyable"* %"'ipc")
+; CHECK-NEXT:   ret { { {} } } undef
+; CHECK-NEXT: }
+
+; CHECK: define internal { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } @augmented__ZN5Eigen8internal9evaluatorINS_15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEEEC2ERKS5_(%"struct.Eigen::internal::evaluator.6"* %this, %"struct.Eigen::internal::evaluator.6"* %"this'", %"class.Eigen::PlainObjectBase"* dereferenceable(32) %m, %"class.Eigen::PlainObjectBase"* %"m'") unnamed_addr #2 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast %"struct.Eigen::internal::evaluator.6"* %this to %"struct.Eigen::internal::evaluator_base"*
+; CHECK-NEXT:   %"'ipc2" = bitcast %"struct.Eigen::internal::evaluator.6"* %"this'" to %"struct.Eigen::internal::evaluator_base"*
+; CHECK-NEXT:   %_augmented3 = call { { {} } } @augmented__ZN5Eigen8internal14evaluator_baseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2Ev(%"struct.Eigen::internal::evaluator_base"* %0, %"struct.Eigen::internal::evaluator_base"* %"'ipc2")
+; CHECK-NEXT:   %"m_data'ipge" = getelementptr inbounds %"struct.Eigen::internal::evaluator.6", %"struct.Eigen::internal::evaluator.6"* %"this'", i64 0, i32 0
+; CHECK-NEXT:   %m_data = getelementptr inbounds %"struct.Eigen::internal::evaluator.6", %"struct.Eigen::internal::evaluator.6"* %this, i64 0, i32 0
+; CHECK-NEXT:   %call_augmented = call { { {} }, double*, double* } @augmented__ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4dataEv(%"class.Eigen::PlainObjectBase"* nonnull %m, %"class.Eigen::PlainObjectBase"* %"m'")
+; CHECK-NEXT:   %antiptr_call = extractvalue { { {} }, double*, double* } %call_augmented, 2
+; CHECK-NEXT:   %call = extractvalue { { {} }, double*, double* } %call_augmented, 1
+; CHECK-NEXT:   store double* %antiptr_call, double** %"m_data'ipge", align 8
+; CHECK-NEXT:   store double* %call, double** %m_data, align 8, !tbaa !8
+; CHECK-NEXT:   %"m_outerStride'ipge" = getelementptr inbounds %"struct.Eigen::internal::evaluator.6", %"struct.Eigen::internal::evaluator.6"* %"this'", i64 0, i32 1
+; CHECK-NEXT:   %m_outerStride = getelementptr inbounds %"struct.Eigen::internal::evaluator.6", %"struct.Eigen::internal::evaluator.6"* %this, i64 0, i32 1
+; CHECK-NEXT:   %1 = bitcast %"class.Eigen::PlainObjectBase"* %m to %"class.Eigen::DenseCoeffsBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::PlainObjectBase"* %"m'" to %"class.Eigen::DenseCoeffsBase"*
+; CHECK-NEXT:   %call2_augmented = call { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } @augmented__ZNK5Eigen15DenseCoeffsBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEELi3EE11outerStrideEv(%"class.Eigen::DenseCoeffsBase"* %1, %"class.Eigen::DenseCoeffsBase"* %"'ipc")
+; CHECK-NEXT:   %subcache = extractvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %call2_augmented, 0
+; CHECK-NEXT:   %subcache.fca.0.0.0.0.0.extract = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %subcache.fca.0.0.0.2.extract = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 0, 0, 0, 2
+; CHECK-NEXT:   %subcache.fca.0.0.0.3.extract = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 0, 0, 0, 3
+; CHECK-NEXT:   %subcache.fca.2.extract = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 2
+; CHECK-NEXT:   %subcache.fca.3.extract = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %subcache, 3
+; CHECK-NEXT:   %call2 = extractvalue { { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64 } %call2_augmented, 1
+; CHECK-NEXT:   %_augmented = call { {} } @augmented__ZN5Eigen8internal19variable_if_dynamicIlLi2EEC2El(%"class.Eigen::internal::variable_if_dynamic"* nonnull %m_outerStride, %"class.Eigen::internal::variable_if_dynamic"* nonnull %"m_outerStride'ipge", i64 %call2)
+; CHECK-NEXT:   %.fca.0.1.0.0.0.0.0.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } undef, i64 %subcache.fca.0.0.0.0.0.extract, 0, 1, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %.fca.0.1.0.0.0.2.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.1.0.0.0.0.0.insert, %"class.Eigen::Matrix"* %subcache.fca.0.0.0.2.extract, 0, 1, 0, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.1.0.0.0.3.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.1.0.0.0.2.insert, %"class.Eigen::Matrix"* %subcache.fca.0.0.0.3.extract, 0, 1, 0, 0, 0, 3
+; CHECK-NEXT:   %.fca.0.1.2.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.1.0.0.0.3.insert, %"class.Eigen::Matrix"* %subcache.fca.2.extract, 0, 1, 2
+; CHECK-NEXT:   %.fca.0.1.3.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.1.2.insert, %"class.Eigen::Matrix"* %subcache.fca.3.extract, 0, 1, 3
+; CHECK-NEXT:   %.fca.0.2.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.1.3.insert, i64 %call2, 0, 2
+; CHECK-NEXT:   %.fca.0.4.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.2.insert, double* %antiptr_call, 0, 4
+; CHECK-NEXT:   %.fca.0.5.insert = insertvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.4.insert, double* %call, 0, 5
+; CHECK-NEXT:   ret { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %.fca.0.5.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } @augmented__ZN5Eigen8internal9evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"struct.Eigen::internal::evaluator"* %this, %"struct.Eigen::internal::evaluator"* %"this'", %"class.Eigen::Matrix"* dereferenceable(32) %m, %"class.Eigen::Matrix"* %"m'") unnamed_addr #2 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = bitcast %"struct.Eigen::internal::evaluator"* %this to %"struct.Eigen::internal::evaluator.6"*
+; CHECK-NEXT:   %"'ipge" = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"m'", i64 0, i32 0
+; CHECK-NEXT:   %1 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %m, i64 0, i32 0
+; CHECK-NEXT:   %"'ipc" = bitcast %"struct.Eigen::internal::evaluator"* %"this'" to %"struct.Eigen::internal::evaluator.6"*
+; CHECK-NEXT:   %_augmented = call { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } @augmented__ZN5Eigen8internal9evaluatorINS_15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEEEC2ERKS5_(%"struct.Eigen::internal::evaluator.6"* %0, %"struct.Eigen::internal::evaluator.6"* %"'ipc", %"class.Eigen::PlainObjectBase"* nonnull %1, %"class.Eigen::PlainObjectBase"* %"'ipge")
+; CHECK-NEXT:   %subcache = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %_augmented, 0
+; CHECK-NEXT:   %subcache.fca.1.0.0.0.0.0.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 1, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %subcache.fca.1.0.0.0.2.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 1, 0, 0, 0, 2
+; CHECK-NEXT:   %subcache.fca.1.0.0.0.3.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 1, 0, 0, 0, 3
+; CHECK-NEXT:   %subcache.fca.1.2.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 1, 2
+; CHECK-NEXT:   %subcache.fca.1.3.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 1, 3
+; CHECK-NEXT:   %subcache.fca.2.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 2
+; CHECK-NEXT:   %subcache.fca.4.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 4
+; CHECK-NEXT:   %subcache.fca.5.extract = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %subcache, 5
+; CHECK-NEXT:   %.fca.0.0.1.0.0.0.0.0.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } undef, i64 %subcache.fca.1.0.0.0.0.0.extract, 0, 0, 1, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %.fca.0.0.1.0.0.0.2.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.1.0.0.0.0.0.insert, %"class.Eigen::Matrix"* %subcache.fca.1.0.0.0.2.extract, 0, 0, 1, 0, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.0.1.0.0.0.3.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.1.0.0.0.2.insert, %"class.Eigen::Matrix"* %subcache.fca.1.0.0.0.3.extract, 0, 0, 1, 0, 0, 0, 3
+; CHECK-NEXT:   %.fca.0.0.1.2.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.1.0.0.0.3.insert, %"class.Eigen::Matrix"* %subcache.fca.1.2.extract, 0, 0, 1, 2
+; CHECK-NEXT:   %.fca.0.0.1.3.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.1.2.insert, %"class.Eigen::Matrix"* %subcache.fca.1.3.extract, 0, 0, 1, 3
+; CHECK-NEXT:   %.fca.0.0.2.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.1.3.insert, i64 %subcache.fca.2.extract, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.0.4.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.2.insert, double* %subcache.fca.4.extract, 0, 0, 4
+; CHECK-NEXT:   %.fca.0.0.5.insert = insertvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.4.insert, double* %subcache.fca.5.extract, 0, 0, 5
+; CHECK-NEXT:   ret { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %.fca.0.0.5.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } @augmented__ZN5Eigen8internal15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"class.Eigen::internal::redux_evaluator"* %this, %"class.Eigen::internal::redux_evaluator"* %"this'", %"class.Eigen::Matrix"* dereferenceable(32) %xpr, %"class.Eigen::Matrix"* %"xpr'") unnamed_addr #2 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"m_evaluator'ipge" = getelementptr inbounds %"class.Eigen::internal::redux_evaluator", %"class.Eigen::internal::redux_evaluator"* %"this'", i64 0, i32 0
+; CHECK-NEXT:   %m_evaluator = getelementptr inbounds %"class.Eigen::internal::redux_evaluator", %"class.Eigen::internal::redux_evaluator"* %this, i64 0, i32 0
+; CHECK-NEXT:   %_augmented = call { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } @augmented__ZN5Eigen8internal9evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"struct.Eigen::internal::evaluator"* %m_evaluator, %"struct.Eigen::internal::evaluator"* %"m_evaluator'ipge", %"class.Eigen::Matrix"* nonnull %xpr, %"class.Eigen::Matrix"* %"xpr'")
+; CHECK-NEXT:   %subcache = extractvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %_augmented, 0
+; CHECK-NEXT:   %subcache.fca.0.1.0.0.0.0.0.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 1, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %subcache.fca.0.1.0.0.0.2.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 1, 0, 0, 0, 2
+; CHECK-NEXT:   %subcache.fca.0.1.0.0.0.3.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 1, 0, 0, 0, 3
+; CHECK-NEXT:   %subcache.fca.0.1.2.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 1, 2
+; CHECK-NEXT:   %subcache.fca.0.1.3.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 1, 3
+; CHECK-NEXT:   %subcache.fca.0.2.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 2
+; CHECK-NEXT:   %subcache.fca.0.4.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 4
+; CHECK-NEXT:   %subcache.fca.0.5.extract = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %subcache, 0, 5
+; CHECK-NEXT:   %"m_xpr'ipge" = getelementptr inbounds %"class.Eigen::internal::redux_evaluator", %"class.Eigen::internal::redux_evaluator"* %"this'", i64 0, i32 1
+; CHECK-NEXT:   %m_xpr = getelementptr inbounds %"class.Eigen::internal::redux_evaluator", %"class.Eigen::internal::redux_evaluator"* %this, i64 0, i32 1
+; CHECK-NEXT:   store %"class.Eigen::Matrix"* %"xpr'", %"class.Eigen::Matrix"** %"m_xpr'ipge", align 8
+; CHECK-NEXT:   store %"class.Eigen::Matrix"* %xpr, %"class.Eigen::Matrix"** %m_xpr, align 8, !tbaa !6
+; CHECK-NEXT:   %.fca.0.0.0.1.0.0.0.0.0.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } undef, i64 %subcache.fca.0.1.0.0.0.0.0.extract, 0, 0, 0, 1, 0, 0, 0, 0, 0
+; CHECK-NEXT:   %.fca.0.0.0.1.0.0.0.2.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.1.0.0.0.0.0.insert, %"class.Eigen::Matrix"* %subcache.fca.0.1.0.0.0.2.extract, 0, 0, 0, 1, 0, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.0.0.1.0.0.0.3.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.1.0.0.0.2.insert, %"class.Eigen::Matrix"* %subcache.fca.0.1.0.0.0.3.extract, 0, 0, 0, 1, 0, 0, 0, 3
+; CHECK-NEXT:   %.fca.0.0.0.1.2.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.1.0.0.0.3.insert, %"class.Eigen::Matrix"* %subcache.fca.0.1.2.extract, 0, 0, 0, 1, 2
+; CHECK-NEXT:   %.fca.0.0.0.1.3.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.1.2.insert, %"class.Eigen::Matrix"* %subcache.fca.0.1.3.extract, 0, 0, 0, 1, 3
+; CHECK-NEXT:   %.fca.0.0.0.2.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.1.3.insert, i64 %subcache.fca.0.2.extract, 0, 0, 0, 2
+; CHECK-NEXT:   %.fca.0.0.0.4.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.2.insert, double* %subcache.fca.0.4.extract, 0, 0, 0, 4
+; CHECK-NEXT:   %.fca.0.0.0.5.insert = insertvalue { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.4.insert, double* %subcache.fca.0.5.extract, 0, 0, 0, 5
+; CHECK-NEXT:   ret { { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } } %.fca.0.0.0.5.insert
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZN5Eigen8internal15redux_evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"class.Eigen::internal::redux_evaluator"* %this, %"class.Eigen::internal::redux_evaluator"* %"this'", %"class.Eigen::Matrix"* dereferenceable(32) %xpr, %"class.Eigen::Matrix"* %"xpr'", { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %tapeArg) unnamed_addr #2 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"m_evaluator'ipge" = getelementptr inbounds %"class.Eigen::internal::redux_evaluator", %"class.Eigen::internal::redux_evaluator"* %"this'", i64 0, i32 0
+; CHECK-NEXT:   %m_evaluator = getelementptr inbounds %"class.Eigen::internal::redux_evaluator", %"class.Eigen::internal::redux_evaluator"* %this, i64 0, i32 0
+; CHECK-NEXT:   %0 = extractvalue { { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } } %tapeArg, 0
+; CHECK-NEXT:   %1 = call {} @diffe_ZN5Eigen8internal9evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"struct.Eigen::internal::evaluator"* %m_evaluator, %"struct.Eigen::internal::evaluator"* %"m_evaluator'ipge", %"class.Eigen::Matrix"* nonnull %xpr, %"class.Eigen::Matrix"* %"xpr'", { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %0)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZN5Eigen8internal9evaluatorINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2ERKS3_(%"struct.Eigen::internal::evaluator"* %this, %"struct.Eigen::internal::evaluator"* %"this'", %"class.Eigen::Matrix"* dereferenceable(32) %m, %"class.Eigen::Matrix"* %"m'", { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %tapeArg) unnamed_addr #2 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"'ipge" = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"m'", i64 0, i32 0
+; CHECK-NEXT:   %0 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %m, i64 0, i32 0
+; CHECK-NEXT:   %1 = extractvalue { { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } } %tapeArg, 0
+; CHECK-NEXT:   %_unwrap = bitcast %"struct.Eigen::internal::evaluator"* %this to %"struct.Eigen::internal::evaluator.6"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"struct.Eigen::internal::evaluator"* %"this'" to %"struct.Eigen::internal::evaluator.6"*
+; CHECK-NEXT:   %2 = call {} @diffe_ZN5Eigen8internal9evaluatorINS_15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEEEC2ERKS5_(%"struct.Eigen::internal::evaluator.6"* %_unwrap, %"struct.Eigen::internal::evaluator.6"* %"'ipc", %"class.Eigen::PlainObjectBase"* nonnull %0, %"class.Eigen::PlainObjectBase"* %"'ipge", { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %1)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZN5Eigen8internal9evaluatorINS_15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEEEC2ERKS5_(%"struct.Eigen::internal::evaluator.6"* %this, %"struct.Eigen::internal::evaluator.6"* %"this'", %"class.Eigen::PlainObjectBase"* dereferenceable(32) %m, %"class.Eigen::PlainObjectBase"* %"m'", { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %tapeArg) unnamed_addr #2 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"m_outerStride'ipge" = getelementptr inbounds %"struct.Eigen::internal::evaluator.6", %"struct.Eigen::internal::evaluator.6"* %"this'", i64 0, i32 1
+; CHECK-NEXT:   %m_outerStride = getelementptr inbounds %"struct.Eigen::internal::evaluator.6", %"struct.Eigen::internal::evaluator.6"* %this, i64 0, i32 1
+; CHECK-NEXT:   %0 = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %tapeArg, 1
+; CHECK-NEXT:   %1 = extractvalue { {}, { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* }, i64, { {} }, double*, double*, { {} } } %tapeArg, 2
+; CHECK-NEXT:   %2 = call {} @diffe_ZN5Eigen8internal19variable_if_dynamicIlLi2EEC2El(%"class.Eigen::internal::variable_if_dynamic"* nonnull %m_outerStride, %"class.Eigen::internal::variable_if_dynamic"* nonnull %"m_outerStride'ipge", i64 %1, {} undef)
+; CHECK-NEXT:   %_unwrap = bitcast %"class.Eigen::PlainObjectBase"* %m to %"class.Eigen::DenseCoeffsBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::PlainObjectBase"* %"m'" to %"class.Eigen::DenseCoeffsBase"*
+; CHECK-NEXT:   %3 = call {} @diffe_ZNK5Eigen15DenseCoeffsBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEELi3EE11outerStrideEv(%"class.Eigen::DenseCoeffsBase"* %_unwrap, %"class.Eigen::DenseCoeffsBase"* %"'ipc", { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %0)
+; CHECK-NEXT:   %4 = call {} @diffe_ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4dataEv(%"class.Eigen::PlainObjectBase"* nonnull %m, %"class.Eigen::PlainObjectBase"* %"m'", { {} } undef)
+; CHECK-NEXT:   %_unwrap2 = bitcast %"struct.Eigen::internal::evaluator.6"* %this to %"struct.Eigen::internal::evaluator_base"*
+; CHECK-NEXT:   %"'ipc3" = bitcast %"struct.Eigen::internal::evaluator.6"* %"this'" to %"struct.Eigen::internal::evaluator_base"*
+; CHECK-NEXT:   %5 = call {} @diffe_ZN5Eigen8internal14evaluator_baseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2Ev(%"struct.Eigen::internal::evaluator_base"* %_unwrap2, %"struct.Eigen::internal::evaluator_base"* %"'ipc3", { {} } undef)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZN5Eigen8internal19variable_if_dynamicIlLi2EEC2El(%"class.Eigen::internal::variable_if_dynamic"* %this, %"class.Eigen::internal::variable_if_dynamic"* %"this'", i64 %v, {} %tapeArg) unnamed_addr #3 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %cmp = icmp eq i64 %v, 2
+; CHECK-NEXT:   br i1 %cmp, label %invertcond.end, label %cond.false
+; CHECK: cond.false:                                       ; preds = %entry
+; CHECK-NEXT:   tail call void @__assert_fail(i8* getelementptr inbounds ([14 x i8], [14 x i8]* @.str.8, i64 0, i64 0), i8* getelementptr inbounds ([58 x i8], [58 x i8]* @.str.9, i64 0, i64 0), i32 110, i8* getelementptr inbounds ([92 x i8], [92 x i8]* @__PRETTY_FUNCTION__._ZN5Eigen8internal19variable_if_dynamicIlLi2EEC2El, i64 0, i64 0)) #14
+; CHECK-NEXT:   unreachable
+; CHECK: invertcond.end:                                   ; preds = %entry
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen15DenseCoeffsBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEELi3EE11outerStrideEv(%"class.Eigen::DenseCoeffsBase"* %this, %"class.Eigen::DenseCoeffsBase"* %"this'", { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg) local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg, 3
+; CHECK-NEXT:   %1 = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg, 0
+; CHECK-NEXT:   %"call'ip_phi_fromtape_unwrap" = extractvalue { { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg, 2
+; CHECK-NEXT:   %2 = call {} @diffe_ZNK5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EE11outerStrideEv(%"class.Eigen::Matrix"* %0, %"class.Eigen::Matrix"* %"call'ip_phi_fromtape_unwrap", { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } } %1)
+; CHECK-NEXT:   %_unwrap = bitcast %"class.Eigen::DenseCoeffsBase"* %this to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::DenseCoeffsBase"* %"this'" to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %3 = call {} @diffe_ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE7derivedEv(%"struct.Eigen::EigenBase"* %_unwrap, %"struct.Eigen::EigenBase"* %"'ipc", {} undef)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen6MatrixIdLi2ELi2ELi0ELi2ELi2EE11outerStrideEv(%"class.Eigen::Matrix"* %this, %"class.Eigen::Matrix"* %"this'", { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } } %tapeArg) local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = extractvalue { { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } } %tapeArg, 0
+; CHECK-NEXT:   %_unwrap = bitcast %"class.Eigen::Matrix"* %this to %"class.Eigen::DenseBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::Matrix"* %"this'" to %"class.Eigen::DenseBase"*
+; CHECK-NEXT:   %1 = call {} @diffe_ZNK5Eigen9DenseBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE9innerSizeEv(%"class.Eigen::DenseBase"* %_unwrap, %"class.Eigen::DenseBase"* %"'ipc", { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } %0)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen9DenseBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE9innerSizeEv(%"class.Eigen::DenseBase"* %this, %"class.Eigen::DenseBase"* %"this'", { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } %tapeArg) local_unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = extractvalue { { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } } %tapeArg, 0
+; CHECK-NEXT:   %_unwrap = bitcast %"class.Eigen::DenseBase"* %this to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"class.Eigen::DenseBase"* %"this'" to %"struct.Eigen::EigenBase"*
+; CHECK-NEXT:   %1 = call {} @diffe_ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"struct.Eigen::EigenBase"* %_unwrap, %"struct.Eigen::EigenBase"* %"'ipc", { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %0)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"struct.Eigen::EigenBase"* %this, %"struct.Eigen::EigenBase"* %"this'", { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg) local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %0 = extractvalue { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg, 3
+; CHECK-NEXT:   %"call'ip_phi" = extractvalue { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg, 2
+; CHECK-NEXT:   %"'ipge" = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %"call'ip_phi", i64 0, i32 0
+; CHECK-NEXT:   %1 = getelementptr inbounds %"class.Eigen::Matrix", %"class.Eigen::Matrix"* %0, i64 0, i32 0
+; CHECK-NEXT:   %2 = extractvalue { { i64 }, {}, %"class.Eigen::Matrix"*, %"class.Eigen::Matrix"* } %tapeArg, 0
+; CHECK-NEXT:   %3 = call {} @diffe_ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"class.Eigen::PlainObjectBase"* %1, %"class.Eigen::PlainObjectBase"* %"'ipge", { i64 } %2)
+; CHECK-NEXT:   %4 = call {} @diffe_ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE7derivedEv(%"struct.Eigen::EigenBase"* %this, %"struct.Eigen::EigenBase"* %"this'", {} undef)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4rowsEv(%"class.Eigen::PlainObjectBase"* %this, %"class.Eigen::PlainObjectBase"* %"this'", { i64 } %tapeArg) local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen9EigenBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE7derivedEv(%"struct.Eigen::EigenBase"* %this, %"struct.Eigen::EigenBase"* %"this'", {} %tapeArg) local_unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen15PlainObjectBaseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEE4dataEv(%"class.Eigen::PlainObjectBase"* %this, %"class.Eigen::PlainObjectBase"* %"this'", { {} } %tapeArg) local_unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %"m_storage'ipge" = getelementptr inbounds %"class.Eigen::PlainObjectBase", %"class.Eigen::PlainObjectBase"* %"this'", i64 0, i32 0
+; CHECK-NEXT:   %m_storage = getelementptr inbounds %"class.Eigen::PlainObjectBase", %"class.Eigen::PlainObjectBase"* %this, i64 0, i32 0
+; CHECK-NEXT:   %0 = call {} @diffe_ZNK5Eigen12DenseStorageIdLi4ELi2ELi2ELi0EE4dataEv(%"class.Eigen::DenseStorage"* %m_storage, %"class.Eigen::DenseStorage"* %"m_storage'ipge", {} undef)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZNK5Eigen12DenseStorageIdLi4ELi2ELi2ELi0EE4dataEv(%"class.Eigen::DenseStorage"* %this, %"class.Eigen::DenseStorage"* %"this'", {} %tapeArg) local_unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZN5Eigen8internal14evaluator_baseINS_6MatrixIdLi2ELi2ELi0ELi2ELi2EEEEC2Ev(%"struct.Eigen::internal::evaluator_base"* %this, %"struct.Eigen::internal::evaluator_base"* %"this'", { {} } %tapeArg) unnamed_addr #9 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   %_unwrap = bitcast %"struct.Eigen::internal::evaluator_base"* %this to %"class.Eigen::internal::noncopyable"*
+; CHECK-NEXT:   %"'ipc" = bitcast %"struct.Eigen::internal::evaluator_base"* %"this'" to %"class.Eigen::internal::noncopyable"*
+; CHECK-NEXT:   %0 = call {} @diffe_ZN5Eigen8internal11noncopyableC2Ev(%"class.Eigen::internal::noncopyable"* %_unwrap, %"class.Eigen::internal::noncopyable"* %"'ipc", {} undef)
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }
+
+; CHECK: define internal {} @diffe_ZN5Eigen8internal11noncopyableC2Ev(%"class.Eigen::internal::noncopyable"* %this, %"class.Eigen::internal::noncopyable"* %"this'", {} %tapeArg) unnamed_addr #0 align 2 {
+; CHECK-NEXT: entry:
+; CHECK-NEXT:   ret {} undef
+; CHECK-NEXT: }

@@ -594,7 +594,7 @@ public:
 
                         Instruction* storedinto = cast ? (Instruction*)cast : (Instruction*)allocinst; 
                         for(auto use : storedinto->users()) {
-                            llvm::errs() << " found use of " << *storedinto << " of " << use << "\n";
+                            //llvm::errs() << " found use of " << *storedinto << " of " << use << "\n";
                             if (auto si = dyn_cast<StoreInst>(use)) erase(si);
                         }
 
@@ -655,6 +655,7 @@ public:
 
                 }
             }
+            //llvm::errs() << "replacing " << *malloc << " with " << *ret << "\n";
             cast<Instruction>(malloc)->replaceAllUsesWith(ret);
             std::string n = malloc->getName().str();
             erase(cast<Instruction>(malloc));
