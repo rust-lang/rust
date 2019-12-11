@@ -874,26 +874,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // We could add a "consider `foo::<params>`" suggestion here, but I wasn't able to
                 // trigger this codepath causing `structuraly_resolved_type` to emit an error.
 
-                // We could do this only when type params are present in the method to reducte
-                // memory usage, but doing it unconditionally lets us also point at the method
-                // expression and state the resolved return value:
-                // ```
-                // error[E0282]: type annotations needed
-                //    --> $DIR/issue-65611.rs:59:20
-                //    |
-                // LL |     let x = buffer.last().unwrap().0.clone();
-                //    |             -------^^^^--
-                //    |             |      |
-                //    |             |      cannot infer type for `T`
-                //    |             this method call resolves to `std::option::Option<&T>`
-                //    |
-                //    = note: type must be known at this point
-                // ```
-                self.tables.borrow_mut().node_method_def_id_mut().insert(
-                    expr.hir_id,
-                    method.def_id,
-                );
-
                 self.write_method_call(expr.hir_id, method);
                 Ok(method)
             }

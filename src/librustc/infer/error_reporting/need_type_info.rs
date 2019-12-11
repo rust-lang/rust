@@ -1,4 +1,4 @@
-use crate::hir::def::Namespace;
+use crate::hir::def::{DefKind, Namespace};
 use crate::hir::{self, Body, FunctionRetTy, Expr, ExprKind, HirId, Local, Pat};
 use crate::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use crate::infer::InferCtxt;
@@ -447,9 +447,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             &segment.args,
         ) {
             let borrow = tables.borrow();
-            let method_defs = borrow.node_method_def_id();
-            if let Some(did) = method_defs.get(e.hir_id) {
-                let generics = self.tcx.generics_of(*did);
+            if let Some((DefKind::Method, did)) = borrow.type_dependent_def(e.hir_id) {
+                let generics = self.tcx.generics_of(did);
                 if !generics.params.is_empty() {
                     err.span_suggestion(
                         segment.ident.span,
@@ -468,7 +467,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                         Applicability::HasPlaceholders,
                     );
                 } else {
-                    let sig = self.tcx.fn_sig(*did);
+                    let sig = self.tcx.fn_sig(did);
                     err.span_label(e.span, &format!(
                         "this method call resolves to `{:?}`",
                         sig.output().skip_binder(),
