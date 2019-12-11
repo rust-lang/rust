@@ -908,21 +908,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             let promoted = &mut self.promoted;
             let promoted_id = Promoted::new(next_promoted_id);
             let tcx = self.tcx;
-            let mut promoted_place = |ty, span| {
-                promoted.span = span;
-                promoted.local_decls[RETURN_PLACE] = LocalDecl::new_return_place(ty, span);
-                Place {
-                    base: PlaceBase::Static(box Static {
-                        kind: StaticKind::Promoted(
-                            promoted_id,
-                            InternalSubsts::identity_for_item(tcx, def_id),
-                        ),
-                        ty,
-                        def_id,
-                    }),
-                    projection: List::empty(),
-                }
-            };
             let (blocks, local_decls) = self.source.basic_blocks_and_local_decls_mut();
             match candidate {
                 Candidate::Ref(loc) => {
@@ -1031,8 +1016,25 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                         TerminatorKind::Call { ref mut args, .. } => {
                             let ty = args[index].ty(local_decls, self.tcx);
                             let span = terminator.source_info.span;
-                            let operand = Operand::Copy(promoted_place(ty, span));
-                            Rvalue::Use(mem::replace(&mut args[index], operand))
+
+                            promoted.span = span;
+                            promoted.local_decls[RETURN_PLACE] =
+                                LocalDecl::new_return_place(ty, span);
+
+                            let promoted_operand = Operand::Constant(Box::new(Constant {
+                                span,
+                                user_ty: None,
+                                literal: tcx.mk_const(ty::Const {
+                                    ty,
+                                    val: ty::ConstKind::Unevaluated(
+                                        def_id,
+                                        InternalSubsts::identity_for_item(tcx, def_id),
+                                        Some(promoted_id),
+                                    ),
+                                }),
+                            }));
+
+                            Rvalue::Use(mem::replace(&mut args[index], promoted_operand))
                         }
                         // We expected a `TerminatorKind::Call` for which we'd like to promote an
                         // argument. `qualify_consts` saw a `TerminatorKind::Call` here, but
