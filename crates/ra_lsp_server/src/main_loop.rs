@@ -520,8 +520,7 @@ fn on_notification(
             if let Some(file_id) = state.vfs.write().remove_file_overlay(path.as_path()) {
                 subs.remove_sub(FileId(file_id.0));
             }
-            let params =
-                req::PublishDiagnosticsParams { uri, diagnostics: Vec::new(), version: None };
+            let params = req::PublishDiagnosticsParams { uri, diagnostics: Vec::new() };
             let not = notification_new::<req::PublishDiagnostics>(params);
             msg_sender.send(not.into()).unwrap();
             return Ok(());
