@@ -17,7 +17,7 @@ use syntax::print::pprust;
 use syntax::symbol::{kw, sym};
 use syntax::symbol::Symbol;
 use syntax::util::parser;
-use syntax_pos::{MultiSpan, Span, BytePos};
+use syntax_pos::{Span, BytePos};
 
 use log::debug;
 
@@ -356,8 +356,7 @@ impl UnusedParens {
             ast::ExprKind::Paren(ref inner) => {
                 if !Self::is_expr_parens_necessary(inner, followed_by_block) &&
                     value.attrs.is_empty() &&
-                    !MultiSpan::from(value.span).primary_span()
-                        .map_or(false, |span| span.from_expansion())
+                    !value.span.from_expansion()
                 {
                     let expr_text = if let Ok(snippet) = cx.sess().source_map()
                         .span_to_snippet(value.span) {
