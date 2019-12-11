@@ -61,7 +61,7 @@ macro_rules! declare_features {
                 match feature {
                     $( sym::$feature => &self.$feature, )*
 
-                    _ => panic!("{} was not defined in `declare_features`", feature),
+                    _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
             }
         }
