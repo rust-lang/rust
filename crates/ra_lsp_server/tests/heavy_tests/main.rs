@@ -4,7 +4,8 @@ use std::{collections::HashMap, time::Instant};
 
 use lsp_types::{
     CodeActionContext, DidOpenTextDocumentParams, DocumentFormattingParams, FormattingOptions,
-    Position, Range, TextDocumentItem, TextDocumentPositionParams,
+    PartialResultParams, Position, Range, TextDocumentItem, TextDocumentPositionParams,
+    WorkDoneProgressParams,
 };
 use ra_lsp_server::req::{
     CodeActionParams, CodeActionRequest, Completion, CompletionParams, DidOpenTextDocument,
@@ -48,6 +49,8 @@ use std::collections::Spam;
             Position::new(0, 23),
         ),
         context: None,
+        partial_result_params: PartialResultParams::default(),
+        work_done_progress_params: WorkDoneProgressParams::default(),
     });
     assert!(format!("{}", res).contains("HashMap"));
     eprintln!("completion took {:?}", completion_start.elapsed());
@@ -211,8 +214,12 @@ pub use std::collections::HashMap;
             options: FormattingOptions {
                 tab_size: 4,
                 insert_spaces: false,
+                insert_final_newline: None,
+                trim_final_newlines: None,
+                trim_trailing_whitespace: None,
                 properties: HashMap::new(),
             },
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([
             {
@@ -272,7 +279,11 @@ pub use std::collections::HashMap;
                 tab_size: 4,
                 insert_spaces: false,
                 properties: HashMap::new(),
+                insert_final_newline: None,
+                trim_final_newlines: None,
+                trim_trailing_whitespace: None,
             },
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([
             {
@@ -325,6 +336,8 @@ fn main() {}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(0, 4), Position::new(0, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([
           {
@@ -356,6 +369,8 @@ fn main() {}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(2, 4), Position::new(2, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([]),
     );
@@ -404,6 +419,8 @@ fn main() {{}}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(0, 4), Position::new(0, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([
           {
@@ -435,6 +452,8 @@ fn main() {{}}
             text_document: server.doc_id("src/lib.rs"),
             range: Range::new(Position::new(2, 4), Position::new(2, 7)),
             context: empty_context(),
+            partial_result_params: PartialResultParams::default(),
+            work_done_progress_params: WorkDoneProgressParams::default(),
         },
         json!([]),
     );
