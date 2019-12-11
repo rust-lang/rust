@@ -726,21 +726,11 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-deque"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f739f8c5363aca78cfb059edf753d8f0d36908c348f3d8d1503f03d8b75d9cf3"
-dependencies = [
- "crossbeam-epoch 0.3.1",
- "crossbeam-utils 0.2.2",
-]
-
-[[package]]
-name = "crossbeam-deque"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05e44b8cf3e1a625844d1750e1f7820da46044ff6d28f4d43e455ba3e5bb2c13"
 dependencies = [
- "crossbeam-epoch 0.7.2",
+ "crossbeam-epoch",
  "crossbeam-utils 0.6.5",
 ]
 
@@ -750,23 +740,8 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b18cd2e169ad86297e6bc0ad9aa679aee9daa4f19e8163860faf7c164e4f5a71"
 dependencies = [
- "crossbeam-epoch 0.7.2",
+ "crossbeam-epoch",
  "crossbeam-utils 0.6.5",
-]
-
-[[package]]
-name = "crossbeam-epoch"
-version = "0.3.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "927121f5407de9956180ff5e936fe3cf4324279280001cd56b669d28ee7e9150"
-dependencies = [
- "arrayvec",
- "cfg-if",
- "crossbeam-utils 0.2.2",
- "lazy_static 1.3.0",
- "memoffset 0.2.1",
- "nodrop",
- "scopeguard 0.3.3",
 ]
 
 [[package]]
@@ -779,7 +754,7 @@ dependencies = [
  "cfg-if",
  "crossbeam-utils 0.6.5",
  "lazy_static 1.3.0",
- "memoffset 0.5.1",
+ "memoffset",
  "scopeguard 1.0.0",
 ]
 
@@ -790,15 +765,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7c979cd6cfe72335896575c6b5688da489e420d36a27a0b9eb0c73db574b4a4b"
 dependencies = [
  "crossbeam-utils 0.6.5",
-]
-
-[[package]]
-name = "crossbeam-utils"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2760899e32a1d58d5abb31129f8fae5de75220bc2176e77ff7c627ae45c918d9"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]
@@ -1456,7 +1422,7 @@ dependencies = [
  "markup5ever",
  "proc-macro2 1.0.3",
  "quote 1.0.2",
- "syn 1.0.5",
+ "syn 1.0.11",
 ]
 
 [[package]]
@@ -2083,12 +2049,6 @@ dependencies = [
 
 [[package]]
 name = "memoffset"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f9dc261e2b62d7a622bf416ea3c5245cdd5d9a7fcc428c0d06804dfce1775b3"
-
-[[package]]
-name = "memoffset"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ce6075db033bbbb7ee5a0bbd3a3186bbae616f57fb001c485c7ff77955f8177f"
@@ -2636,7 +2596,7 @@ checksum = "aeccfe4d5d8ea175d5f0e4a2ad0637e0f4121d63bd99d356fb1f39ab2e7c6097"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
- "syn 1.0.5",
+ "syn 1.0.11",
 ]
 
 [[package]]
@@ -2747,9 +2707,9 @@ dependencies = [
 
 [[package]]
 name = "racer"
-version = "2.1.28"
+version = "2.1.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acc70369054bad4ad0c16a3f45cd73e0695361a3af35c7b465e619ac2674f064"
+checksum = "7a6d7ffceb4da3e0a29c18986f0469c209f4db3ab9f2ffe286eaa1104a3e5028"
 dependencies = [
  "bitflags",
  "clap",
@@ -3048,7 +3008,7 @@ dependencies = [
 
 [[package]]
 name = "rls"
-version = "1.40.0"
+version = "1.41.0"
 dependencies = [
  "cargo",
  "cargo_metadata 0.8.0",
@@ -3197,8 +3157,8 @@ dependencies = [
  "num_cpus",
  "parking_lot 0.9.0",
  "polonius-engine",
- "rustc-rayon 0.3.0",
- "rustc-rayon-core 0.3.0",
+ "rustc-rayon",
+ "rustc-rayon-core",
  "rustc_apfloat",
  "rustc_data_structures",
  "rustc_error_codes",
@@ -3218,9 +3178,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-arena"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a623fd4805842e9bd0bb6e6dace63efede0ee22de4522a0b03b7c3d15a22f009"
+checksum = "7475f4c707269b56eb7144c53591e3cd6369a5aa1d66434829ea11df96d5e7e3"
 dependencies = [
  "rustc-ap-rustc_data_structures",
  "smallvec 0.6.10",
@@ -3228,15 +3188,15 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-graphviz"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee549ade784b444ef10c0240c3487ed785aa65d711071f7984246b15329a17b6"
+checksum = "6e59a55520f140a70a3e0fad80a36e807caa85e9d7016167b91a5b521ea929be"
 
 [[package]]
 name = "rustc-ap-rustc_data_structures"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca545744a5a9b42e3d0410d6290d40de96dd567253fe77f310c1de4afd213dd4"
+checksum = "6420857d5a088f680ec1ba736ffba4ee9c1964b0d397e6318f38d461f4f7d5cb"
 dependencies = [
  "cfg-if",
  "crossbeam-utils 0.6.5",
@@ -3250,17 +3210,17 @@ dependencies = [
  "rustc-ap-rustc_index",
  "rustc-ap-serialize",
  "rustc-hash",
- "rustc-rayon 0.2.0",
- "rustc-rayon-core 0.2.0",
+ "rustc-rayon",
+ "rustc-rayon-core",
  "smallvec 0.6.10",
  "stable_deref_trait",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_errors"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6967a41ed38ef4bce0f559fe9a4801d8ba12ac032f40a12a55e72f79d52c9bb"
+checksum = "8abfca0960131262254a91d02ff4903526a261ede730d7a2c75b4234c867cdc0"
 dependencies = [
  "annotate-snippets",
  "atty",
@@ -3275,9 +3235,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_index"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "457a5c204ae2fdaa5bdb5b196e58ca59896870d80445fe423063c9453496e3ea"
+checksum = "5a395509dcb90a92c1479c085639594624e06b4ab3fc7c1b795b46a61f2d4f65"
 dependencies = [
  "rustc-ap-serialize",
  "smallvec 0.6.10",
@@ -3285,31 +3245,31 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-rustc_lexer"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed0c064676f8a08e42a36b0d4e4a102465fb0f4b75e11436cb7f66d2c3fa7139"
+checksum = "64eac8a0e6efb8f55292aa24be0208c7c0538236c613e79952fd1fa3d54bcf8e"
 dependencies = [
  "unicode-xid 0.2.0",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_macros"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2d77e46159c5288c585decbcdc9d742889c65e307c31e104c7a36d63fe1f5d0"
+checksum = "f99795e8be4877e9e05d59f201e1740c1cf673364655def5848606d9e25b75af"
 dependencies = [
  "itertools 0.8.0",
- "proc-macro2 0.4.30",
- "quote 0.6.12",
- "syn 0.15.35",
- "synstructure 0.10.2",
+ "proc-macro2 1.0.3",
+ "quote 1.0.2",
+ "syn 1.0.11",
+ "synstructure 0.12.1",
 ]
 
 [[package]]
 name = "rustc-ap-rustc_target"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "86ca895350b0de14d064b499168c93fa183958d5462eb042c927d93623e41ec1"
+checksum = "f22e21fdd8e1c0030f507158fa79b9f1e080e6241aba994d0f97c14a0a07a826"
 dependencies = [
  "bitflags",
  "log",
@@ -3321,9 +3281,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-serialize"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92679240e86f4583cc05f8dcf6439bdab87bac9e6555718469176de9bd52ba20"
+checksum = "bb1cd6ef5135408d62559866e79986ca261f4c1333253d500e5e66fe66d1432e"
 dependencies = [
  "indexmap",
  "smallvec 0.6.10",
@@ -3331,9 +3291,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-syntax"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0a0c30f8e38c847dbfd9e2f1e472ab06d0bd0a23ab53ae4c5a44912842ce834e"
+checksum = "61fc1c901d2cbd24cae95d7bc5a58aa7661ec3dc5320c78c32830a52a685c33c"
 dependencies = [
  "bitflags",
  "lazy_static 1.3.0",
@@ -3351,9 +3311,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-ap-syntax_pos"
-version = "606.0.0"
+version = "610.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bdaa0fb40143b4b878256ac4e2b498885daafc269502504d91929eab4744bf4"
+checksum = "230534f638255853bb9f13987537e00a818435a0cc54b68d97221b6822c8f1bc"
 dependencies = [
  "cfg-if",
  "rustc-ap-arena",
@@ -3396,36 +3356,13 @@ dependencies = [
 
 [[package]]
 name = "rustc-rayon"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d2e07e19601f21c59aad953c2632172ba70cb27e685771514ea66e4062b3363"
-dependencies = [
- "crossbeam-deque 0.2.0",
- "either",
- "rustc-rayon-core 0.2.0",
-]
-
-[[package]]
-name = "rustc-rayon"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f32767f90d938f1b7199a174ef249ae1924f6e5bbdb9d112fea141e016f25b3a"
 dependencies = [
  "crossbeam-deque 0.7.1",
  "either",
- "rustc-rayon-core 0.3.0",
-]
-
-[[package]]
-name = "rustc-rayon-core"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79d38ca7cbc22fa59f09d8534ea4b27f67b0facf0cbe274433aceea227a02543"
-dependencies = [
- "crossbeam-deque 0.2.0",
- "lazy_static 1.3.0",
- "libc",
- "num_cpus",
+ "rustc-rayon-core",
 ]
 
 [[package]]
@@ -3560,8 +3497,8 @@ dependencies = [
  "measureme",
  "parking_lot 0.9.0",
  "rustc-hash",
- "rustc-rayon 0.3.0",
- "rustc-rayon-core 0.3.0",
+ "rustc-rayon",
+ "rustc-rayon-core",
  "rustc_index",
  "serialize",
  "smallvec 1.0.0",
@@ -3659,7 +3596,7 @@ dependencies = [
  "log",
  "once_cell",
  "rustc",
- "rustc-rayon 0.3.0",
+ "rustc-rayon",
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",
@@ -3734,7 +3671,7 @@ dependencies = [
  "itertools 0.8.0",
  "proc-macro2 1.0.3",
  "quote 1.0.2",
- "syn 1.0.5",
+ "syn 1.0.11",
  "synstructure 0.12.1",
 ]
 
@@ -3986,7 +3923,7 @@ version = "0.0.0"
 dependencies = [
  "minifier",
  "pulldown-cmark 0.5.3",
- "rustc-rayon 0.3.0",
+ "rustc-rayon",
  "tempfile",
 ]
 
@@ -4020,12 +3957,12 @@ dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
  "serde",
- "syn 1.0.5",
+ "syn 1.0.11",
 ]
 
 [[package]]
 name = "rustfmt-nightly"
-version = "1.4.9"
+version = "1.4.11"
 dependencies = [
  "annotate-snippets",
  "bytecount",
@@ -4190,7 +4127,7 @@ checksum = "cd02c7587ec314570041b2754829f84d873ced14a96d1fd1823531e11db40573"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
- "syn 1.0.5",
+ "syn 1.0.11",
 ]
 
 [[package]]
@@ -4403,7 +4340,7 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2 1.0.3",
  "quote 1.0.2",
- "syn 1.0.5",
+ "syn 1.0.11",
 ]
 
 [[package]]
@@ -4437,9 +4374,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.5"
+version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "66850e97125af79138385e9b88339cbcd037e3f28ceab8c5ad98e64f0f1f80bf"
+checksum = "dff0acdb207ae2fe6d5976617f887eb1e35a2ba52c13c7234c790960cdad9238"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
@@ -4466,7 +4403,7 @@ checksum = "3f085a5855930c0441ca1288cf044ea4aecf4f43a91668abdb870b4ba546a203"
 dependencies = [
  "proc-macro2 1.0.3",
  "quote 1.0.2",
- "syn 1.0.5",
+ "syn 1.0.11",
  "unicode-xid 0.2.0",
 ]
 
