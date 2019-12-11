@@ -134,8 +134,8 @@ impl<'tcx> CheckConstVisitor<'tcx> {
     /// Emits an error when an unsupported expression is found in a const context.
     fn const_check_violated(&self, expr: NonConstExpr, span: Span) {
         let features = self.tcx.features();
-        let gates = expr.required_feature_gates();
-        match gates {
+        let required_gates = expr.required_feature_gates();
+        match required_gates {
             // Don't emit an error if the user has enabled the requisite feature gates.
             Some(gates) if gates.iter().all(|&g| features.enabled(g)) => return,
 
@@ -154,8 +154,8 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             .expect("`const_check_violated` may only be called inside a const context");
         let msg = format!("`{}` is not allowed in a `{}`", expr.name(), const_kind);
 
-        let gates = gates.unwrap_or(&[]);
-        let missing_gates: Vec<_> = gates
+        let required_gates = required_gates.unwrap_or(&[]);
+        let missing_gates: Vec<_> = required_gates
             .iter()
             .copied()
             .filter(|&g| !features.enabled(g))
@@ -166,7 +166,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
 
             // If the user enabled `#![feature(const_loop)]` but not `#![feature(const_if_match)]`,
             // explain why their `while` loop is being rejected.
-            &[gate @ sym::const_if_match] if gates.contains(&sym::const_loop) => {
+            &[gate @ sym::const_if_match] if required_gates.contains(&sym::const_loop) => {
                 feature_err(&self.tcx.sess.parse_sess, gate, span, &msg)
                     .note("`#![feature(const_loop)]` alone is not sufficient, \
                            since this loop expression contains an implicit conditional")
