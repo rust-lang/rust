@@ -56,7 +56,7 @@ impl NonConstExpr {
             | Self::Match(WhileLetDesugar)
             => &[sym::const_loop, sym::const_if_match],
 
-            // A `for` loop's desugaring contains a call to `FromIterator::from_iter`,
+            // A `for` loop's desugaring contains a call to `IntoIterator::into_iter`,
             // so they are not yet allowed with `#![feature(const_loop)]`.
             _ => return None,
         };
@@ -167,10 +167,10 @@ impl<'tcx> CheckConstVisitor<'tcx> {
             // If the user enabled `#![feature(const_loop)]` but not `#![feature(const_if_match)]`,
             // explain why their `while` loop is being rejected.
             &[gate @ sym::const_if_match] if gates.contains(&sym::const_loop) => {
-                let mut err = feature_err(&self.tcx.sess.parse_sess, gate, span, &msg);
-                err.note("`#![feature(const_loop)]` alone is not sufficient, \
-                          since this loop expression contains an implicit conditional");
-                err.emit();
+                feature_err(&self.tcx.sess.parse_sess, gate, span, &msg)
+                    .note("`#![feature(const_loop)]` alone is not sufficient, \
+                           since this loop expression contains an implicit conditional")
+                    .emit();
             }
 
             &[missing_primary, ref missing_secondary @ ..] => {

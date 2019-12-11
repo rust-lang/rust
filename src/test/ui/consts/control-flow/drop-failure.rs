@@ -43,6 +43,8 @@ const _: Option<Vec<i32>> = {
         tmp = some;
         some = None;
 
+        // We can escape the loop with `Some` still in `tmp`,
+        // which would require that it be dropped at the end of the block.
         if i > 100 {
             break;
         }
