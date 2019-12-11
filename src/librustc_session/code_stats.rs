@@ -132,9 +132,12 @@ impl CodeStats {
 
                 let mut min_offset = discr_size;
 
-                // We want to print fields by increasing offset.
+                // We want to print fields by increasing offset. We also want
+                // zero-sized fields before non-zero-sized fields, otherwise
+                // the loop below goes wrong; hence the `f.size` in the sort
+                // key.
                 let mut fields = fields.clone();
-                fields.sort_by_key(|f| f.offset);
+                fields.sort_by_key(|f| (f.offset, f.size));
 
                 for field in fields.iter() {
                     let FieldInfo { ref name, offset, size, align } = *field;
@@ -146,7 +149,7 @@ impl CodeStats {
                     }
 
                     if offset < min_offset {
-                        // if this happens something is very wrong
+                        // If this happens it's probably a union.
                         println!("print-type-size {}field `.{}`: {} bytes, \
                                   offset: {} bytes, \
                                   alignment: {} bytes",
