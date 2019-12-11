@@ -467,7 +467,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let mut place_ty = match &place.base {
             PlaceBase::Local(index) => PlaceTy::from_ty(self.body.local_decls[*index].ty),
-            PlaceBase::Static(box Static { kind, ty, def_id }) => {
+            PlaceBase::Static(box Static { ty, def_id }) => {
                 let san_ty = self.sanitize_type(place, ty);
                 let check_err =
                     |verifier: &mut TypeVerifier<'a, 'b, 'tcx>, place: &Place<'tcx>, ty, san_ty| {
@@ -487,14 +487,10 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                             );
                         };
                     };
-                match kind {
-                    StaticKind::Static => {
-                        let ty = self.tcx().type_of(*def_id);
-                        let ty = self.cx.normalize(ty, location);
+                let ty = self.tcx().type_of(*def_id);
+                let ty = self.cx.normalize(ty, location);
 
-                        check_err(self, place, ty, san_ty);
-                    }
-                }
+                check_err(self, place, ty, san_ty);
                 PlaceTy::from_ty(san_ty)
             }
         };

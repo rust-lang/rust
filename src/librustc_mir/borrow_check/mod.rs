@@ -5,7 +5,7 @@ use rustc::lint::builtin::MUTABLE_BORROW_RESERVATION_CONFLICT;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::mir::{
     read_only, Body, BodyAndCache, ClearCrossCrate, Local, Location, Mutability, Operand, Place,
-    PlaceBase, PlaceElem, PlaceRef, ReadOnlyBodyAndCache, Static, StaticKind,
+    PlaceBase, PlaceElem, PlaceRef, ReadOnlyBodyAndCache, Static,
 };
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
 use rustc::mir::{Field, ProjectionElem, Promoted, Rvalue, Statement, StatementKind};
@@ -2196,10 +2196,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }),
                 }
             }
-            PlaceRef {
-                base: PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }),
-                projection: [],
-            } => {
+            PlaceRef { base: PlaceBase::Static(box Static { def_id, .. }), projection: [] } => {
                 if !self.infcx.tcx.is_mutable_static(*def_id) {
                     Err(place)
                 } else {

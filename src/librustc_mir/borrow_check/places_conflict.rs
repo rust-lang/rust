@@ -1,9 +1,7 @@
 use crate::borrow_check::ArtificialField;
 use crate::borrow_check::Overlap;
 use crate::borrow_check::{AccessDepth, Deep, Shallow};
-use rustc::mir::{
-    Body, BorrowKind, Place, PlaceBase, PlaceElem, PlaceRef, ProjectionElem, StaticKind,
-};
+use rustc::mir::{Body, BorrowKind, Place, PlaceBase, PlaceElem, PlaceRef, ProjectionElem};
 use rustc::ty::{self, TyCtxt};
 use rustc_hir as hir;
 use std::cmp::max;
@@ -327,20 +325,16 @@ fn place_base_conflict<'tcx>(
             }
         }
         (PlaceBase::Static(s1), PlaceBase::Static(s2)) => {
-            match (&s1.kind, &s2.kind) {
-                (StaticKind::Static, StaticKind::Static) => {
-                    if s1.def_id != s2.def_id {
-                        debug!("place_element_conflict: DISJOINT-STATIC");
-                        Overlap::Disjoint
-                    } else if tcx.is_mutable_static(s1.def_id) {
-                        // We ignore mutable statics - they can only be unsafe code.
-                        debug!("place_element_conflict: IGNORE-STATIC-MUT");
-                        Overlap::Disjoint
-                    } else {
-                        debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
-                        Overlap::EqualOrDisjoint
-                    }
-                }
+            if s1.def_id != s2.def_id {
+                debug!("place_element_conflict: DISJOINT-STATIC");
+                Overlap::Disjoint
+            } else if tcx.is_mutable_static(s1.def_id) {
+                // We ignore mutable statics - they can only be unsafe code.
+                debug!("place_element_conflict: IGNORE-STATIC-MUT");
+                Overlap::Disjoint
+            } else {
+                debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
+                Overlap::EqualOrDisjoint
             }
         }
         (PlaceBase::Local(_), PlaceBase::Static(_))

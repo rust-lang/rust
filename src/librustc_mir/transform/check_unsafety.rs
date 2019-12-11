@@ -194,8 +194,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             PlaceBase::Local(..) => {
                 // Locals are safe.
             }
-            PlaceBase::Static(box Static { kind: StaticKind::Static, .. }) => {
-                bug!("StaticKind::Static should not exist");
+            PlaceBase::Static(box Static { .. }) => {
+                bug!("Static should not exist");
             }
         }
 

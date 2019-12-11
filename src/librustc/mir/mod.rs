@@ -1687,28 +1687,11 @@ pub enum PlaceBase<'tcx> {
 )]
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
-    pub kind: StaticKind,
     /// The `DefId` of the item this static was declared in. For promoted values, usually, this is
     /// the same as the `DefId` of the `mir::Body` containing the `Place` this promoted appears in.
     /// However, after inlining, that might no longer be the case as inlined `Place`s are copied
     /// into the calling frame.
     pub def_id: DefId,
-}
-
-#[derive(
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    HashStable,
-    RustcEncodable,
-    RustcDecodable
-)]
-pub enum StaticKind {
-    Static,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1942,7 +1925,7 @@ impl Debug for PlaceBase<'_> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         match *self {
             PlaceBase::Local(id) => write!(fmt, "{:?}", id),
-            PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static, def_id }) => {
+            PlaceBase::Static(box self::Static { ty, def_id }) => {
                 write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.def_path_str(def_id)), ty)
             }
         }
@@ -3046,31 +3029,13 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<PlaceElem<'tcx>> {
 
 impl<'tcx> TypeFoldable<'tcx> for Static<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        Static {
-            ty: self.ty.fold_with(folder),
-            kind: self.kind.fold_with(folder),
-            def_id: self.def_id,
-        }
+        Static { ty: self.ty.fold_with(folder), def_id: self.def_id }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        let Static { ty, kind, def_id: _ } = self;
+        let Static { ty, def_id: _ } = self;
 
-        ty.visit_with(visitor) || kind.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for StaticKind {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> Self {
-        match self {
-            StaticKind::Static => StaticKind::Static,
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
-        match self {
-            StaticKind::Static => false,
-        }
+        ty.visit_with(visitor)
     }
 }
 

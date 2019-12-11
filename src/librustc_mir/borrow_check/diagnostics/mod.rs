@@ -2,8 +2,8 @@
 
 use rustc::mir::{
     AggregateKind, Constant, Field, Local, LocalInfo, LocalKind, Location, Operand, Place,
-    PlaceBase, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Static, StaticKind,
-    Terminator, TerminatorKind,
+    PlaceBase, PlaceRef, ProjectionElem, Rvalue, Statement, StatementKind, Static, Terminator,
+    TerminatorKind,
 };
 use rustc::ty::layout::VariantIdx;
 use rustc::ty::print::Print;
@@ -172,10 +172,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             PlaceRef { base: PlaceBase::Local(local), projection: [] } => {
                 self.append_local_to_string(*local, buf)?;
             }
-            PlaceRef {
-                base: PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }),
-                projection: [],
-            } => {
+            PlaceRef { base: PlaceBase::Static(box Static { def_id, .. }), projection: [] } => {
                 buf.push_str(&self.infcx.tcx.item_name(*def_id).to_string());
             }
             PlaceRef { base: &PlaceBase::Local(local), projection: [ProjectionElem::Deref] }

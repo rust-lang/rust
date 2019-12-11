@@ -438,12 +438,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
             }
             mir::PlaceRef {
-                base:
-                    mir::PlaceBase::Static(box mir::Static {
-                        ty,
-                        kind: mir::StaticKind::Static,
-                        def_id,
-                    }),
+                base: mir::PlaceBase::Static(box mir::Static { ty, def_id }),
                 projection: [],
             } => {
                 // NB: The layout of a static may be unsized as is the case when working

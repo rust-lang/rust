@@ -182,7 +182,7 @@ use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::mir::visit::Visitor as MirVisitor;
-use rustc::mir::{self, Location, PlaceBase, Static, StaticKind};
+use rustc::mir::{self, Location, PlaceBase, Static};
 use rustc::session::config::EntryFnType;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::ty::print::obsolete::DefPathBasedNames;
@@ -647,7 +647,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         location: Location,
     ) {
         match place_base {
-            PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }) => {
+            PlaceBase::Static(box Static { def_id, .. }) => {
                 debug!("visiting static {:?} @ {:?}", def_id, location);
 
                 let tcx = self.tcx;

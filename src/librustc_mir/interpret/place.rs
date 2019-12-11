@@ -625,33 +625,27 @@ where
         &self,
         place_static: &mir::Static<'tcx>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::StaticKind;
-
-        Ok(match place_static.kind {
-            StaticKind::Static => {
-                let ty = place_static.ty;
-                assert!(!ty.needs_subst());
-                let layout = self.layout_of(ty)?;
-                // Just create a lazy reference, so we can support recursive statics.
-                // tcx takes care of assigning every static one and only one unique AllocId.
-                // When the data here is ever actually used, memory will notice,
-                // and it knows how to deal with alloc_id that are present in the
-                // global table but not in its local memory: It calls back into tcx through
-                // a query, triggering the CTFE machinery to actually turn this lazy reference
-                // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
-                // this InterpCx uses another Machine (e.g., in miri).  This is what we
-                // want!  This way, computing statics works consistently between codegen
-                // and miri: They use the same query to eventually obtain a `ty::Const`
-                // and use that for further computation.
-                //
-                // Notice that statics have *two* AllocIds: the lazy one, and the resolved
-                // one.  Here we make sure that the interpreted program never sees the
-                // resolved ID.  Also see the doc comment of `Memory::get_static_alloc`.
-                let alloc_id = self.tcx.alloc_map.lock().create_static_alloc(place_static.def_id);
-                let ptr = self.tag_static_base_pointer(Pointer::from(alloc_id));
-                MPlaceTy::from_aligned_ptr(ptr, layout)
-            }
-        })
+        let ty = place_static.ty;
+        assert!(!ty.needs_subst());
+        let layout = self.layout_of(ty)?;
+        // Just create a lazy reference, so we can support recursive statics.
+        // tcx takes care of assigning every static one and only one unique AllocId.
+        // When the data here is ever actually used, memory will notice,
+        // and it knows how to deal with alloc_id that are present in the
+        // global table but not in its local memory: It calls back into tcx through
+        // a query, triggering the CTFE machinery to actually turn this lazy reference
+        // into a bunch of bytes.  IOW, statics are evaluated with CTFE even when
+        // this InterpCx uses another Machine (e.g., in miri).  This is what we
+        // want!  This way, computing statics works consistently between codegen
+        // and miri: They use the same query to eventually obtain a `ty::Const`
+        // and use that for further computation.
+        //
+        // Notice that statics have *two* AllocIds: the lazy one, and the resolved
+        // one.  Here we make sure that the interpreted program never sees the
+        // resolved ID.  Also see the doc comment of `Memory::get_static_alloc`.
+        let alloc_id = self.tcx.alloc_map.lock().create_static_alloc(place_static.def_id);
+        let ptr = self.tag_static_base_pointer(Pointer::from(alloc_id));
+        Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
     }
 
     /// Computes a place. You should only use this if you intend to write into this

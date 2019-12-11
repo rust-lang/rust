@@ -39,7 +39,7 @@ use crate::transform::{MirPass, MirSource};
 /// errors when promotion of `#[rustc_args_required_const]` arguments fails.
 ///
 /// After this pass is run, `promoted_fragments` will hold the MIR body corresponding to each
-/// newly created `StaticKind::Promoted`.
+/// newly created `Constant`.
 #[derive(Default)]
 pub struct PromoteTemps<'tcx> {
     pub promoted_fragments: Cell<IndexVec<Promoted, BodyAndCache<'tcx>>>,
