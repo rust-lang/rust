@@ -296,12 +296,7 @@ unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
     fn next_match(&mut self) -> Option<(usize, usize)> {
         loop {
             // get the haystack after the last character found
-            let bytes = if let Some(slice) = self.haystack.as_bytes()
-                                                 .get(self.finger..self.finger_back) {
-                slice
-            } else {
-                return None;
-            };
+            let bytes = self.haystack.as_bytes().get(self.finger..self.finger_back)?;
             // the last byte of the utf8 encoded needle
             let last_byte = unsafe { *self.utf8_encoded.get_unchecked(self.utf8_size - 1) };
             if let Some(index) = memchr::memchr(last_byte, bytes) {

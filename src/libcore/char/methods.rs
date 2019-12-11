@@ -553,8 +553,7 @@ impl char {
     pub fn is_alphabetic(self) -> bool {
         match self {
             'a'..='z' | 'A'..='Z' => true,
-            c if c > '\x7f' => derived_property::Alphabetic(c),
-            _ => false,
+            c => c > '\x7f' && derived_property::Alphabetic(c),
         }
     }
 
@@ -585,8 +584,7 @@ impl char {
     pub fn is_lowercase(self) -> bool {
         match self {
             'a'..='z' => true,
-            c if c > '\x7f' => derived_property::Lowercase(c),
-            _ => false,
+            c => c > '\x7f' && derived_property::Lowercase(c),
         }
     }
 
@@ -617,8 +615,7 @@ impl char {
     pub fn is_uppercase(self) -> bool {
         match self {
             'A'..='Z' => true,
-            c if c > '\x7f' => derived_property::Uppercase(c),
-            _ => false,
+            c => c > '\x7f' && derived_property::Uppercase(c),
         }
     }
 
@@ -646,8 +643,7 @@ impl char {
     pub fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09'..='\x0d' => true,
-            c if c > '\x7f' => property::White_Space(c),
-            _ => false,
+            c => c > '\x7f' && property::White_Space(c),
         }
     }
 
@@ -744,8 +740,7 @@ impl char {
     pub fn is_numeric(self) -> bool {
         match self {
             '0'..='9' => true,
-            c if c > '\x7f' => general_category::N(c),
-            _ => false,
+            c => c > '\x7f' && general_category::N(c),
         }
     }
 
