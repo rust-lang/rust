@@ -3616,12 +3616,8 @@ dependencies = [
  "log",
  "once_cell",
  "rustc",
-<<<<<<< HEAD
  "rustc-rayon",
-=======
- "rustc-rayon 0.3.0",
  "rustc_codegen_llvm",
->>>>>>> rustc: Link LLVM directly into rustc again
  "rustc_codegen_ssa",
  "rustc_codegen_utils",
  "rustc_data_structures",
