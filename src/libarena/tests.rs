@@ -12,12 +12,6 @@ struct Point {
 }
 
 #[test]
-pub fn test_unused() {
-    let arena: TypedArena<Point> = TypedArena::default();
-    assert!(arena.chunks.borrow().is_empty());
-}
-
-#[test]
 fn test_arena_alloc_nested() {
     struct Inner {
         value: u8,
