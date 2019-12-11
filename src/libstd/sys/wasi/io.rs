@@ -1,12 +1,9 @@
 use crate::marker::PhantomData;
 use crate::slice;
 
-use ::wasi::wasi_unstable as wasi;
-use core::ffi::c_void;
-
 #[repr(transparent)]
 pub struct IoSlice<'a> {
-    vec: wasi::CIoVec,
+    vec: wasi::Ciovec,
     _p: PhantomData<&'a [u8]>,
 }
 
@@ -14,8 +11,8 @@ impl<'a> IoSlice<'a> {
     #[inline]
     pub fn new(buf: &'a [u8]) -> IoSlice<'a> {
         IoSlice {
-            vec: wasi::CIoVec {
-                buf: buf.as_ptr() as *const c_void,
+            vec: wasi::Ciovec {
+                buf: buf.as_ptr(),
                 buf_len: buf.len(),
             },
             _p: PhantomData,
@@ -44,7 +41,7 @@ impl<'a> IoSlice<'a> {
 
 #[repr(transparent)]
 pub struct IoSliceMut<'a> {
-    vec: wasi::IoVec,
+    vec: wasi::Iovec,
     _p: PhantomData<&'a mut [u8]>,
 }
 
@@ -52,8 +49,8 @@ impl<'a> IoSliceMut<'a> {
     #[inline]
     pub fn new(buf: &'a mut [u8]) -> IoSliceMut<'a> {
         IoSliceMut {
-            vec: wasi::IoVec {
-                buf: buf.as_mut_ptr() as *mut c_void,
+            vec: wasi::Iovec {
+                buf: buf.as_mut_ptr(),
                 buf_len: buf.len()
             },
             _p: PhantomData,

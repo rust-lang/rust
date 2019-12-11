@@ -5,7 +5,7 @@
 
 struct S<const X: u32>;
 
-impl<const X: u32> S<{X}> {
+impl<const X: u32> S<X> {
     fn x() -> u32 {
         X
     }

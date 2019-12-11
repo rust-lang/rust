@@ -4,8 +4,8 @@ error[E0053]: method `call_once` has an incompatible type for trait
 LL |     fn call_once(self, _args: ()) {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected "rust-call" fn, found "Rust" fn
    |
-   = note: expected type `extern "rust-call" fn(Debuger<T>, ())`
-              found type `fn(Debuger<T>, ())`
+   = note: expected fn pointer `extern "rust-call" fn(Debuger<_>, ())`
+              found fn pointer `fn(Debuger<_>, ())`
 
 error: aborting due to previous error
 

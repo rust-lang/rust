@@ -227,11 +227,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         mutability: Mutability::Mut,
                         ty: ptr_ty,
                         user_ty: UserTypeProjections::none(),
-                        name: None,
                         source_info,
-                        visibility_scope: source_info.scope,
                         internal: true,
-                        is_user_variable: None,
+                        local_info: LocalInfo::Other,
                         is_block_tail: None,
                     });
                     let ptr_temp = Place::from(ptr_temp);
@@ -384,7 +382,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Avoid creating a temporary
             ExprKind::VarRef { .. } |
             ExprKind::SelfRef |
-            ExprKind::StaticRef { .. } |
             ExprKind::PlaceTypeAscription { .. } |
             ExprKind::ValueTypeAscription { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
@@ -426,6 +423,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Closure { .. }
             | ExprKind::Literal { .. }
+            | ExprKind::StaticRef { .. }
             | ExprKind::Yield { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     // should be handled above

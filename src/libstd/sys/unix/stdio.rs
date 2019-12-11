@@ -1,13 +1,15 @@
 use crate::io::{self, IoSlice, IoSliceMut};
-use crate::sys::fd::FileDesc;
 use crate::mem::ManuallyDrop;
+use crate::sys::fd::FileDesc;
 
 pub struct Stdin(());
 pub struct Stdout(());
 pub struct Stderr(());
 
 impl Stdin {
-    pub fn new() -> io::Result<Stdin> { Ok(Stdin(())) }
+    pub fn new() -> io::Result<Stdin> {
+        Ok(Stdin(()))
+    }
 }
 
 impl io::Read for Stdin {
@@ -21,7 +23,9 @@ impl io::Read for Stdin {
 }
 
 impl Stdout {
-    pub fn new() -> io::Result<Stdout> { Ok(Stdout(())) }
+    pub fn new() -> io::Result<Stdout> {
+        Ok(Stdout(()))
+    }
 }
 
 impl io::Write for Stdout {
@@ -39,7 +43,9 @@ impl io::Write for Stdout {
 }
 
 impl Stderr {
-    pub fn new() -> io::Result<Stderr> { Ok(Stderr(())) }
+    pub fn new() -> io::Result<Stderr> {
+        Ok(Stderr(()))
+    }
 }
 
 impl io::Write for Stderr {

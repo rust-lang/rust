@@ -14,6 +14,8 @@ LL | fn foo2(x: &'a u32, y: &'b u32) -> &'a u32 { y }
    |             |           |
    |             |           lifetime `'b` defined here
    |             lifetime `'a` defined here
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to 2 previous errors
 

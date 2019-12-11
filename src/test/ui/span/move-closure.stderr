@@ -2,10 +2,12 @@ error[E0308]: mismatched types
   --> $DIR/move-closure.rs:5:17
    |
 LL |     let x: () = move || ();
-   |                 ^^^^^^^^^^ expected (), found closure
+   |            --   ^^^^^^^^^^ expected `()`, found closure
+   |            |
+   |            expected due to this
    |
-   = note: expected type `()`
-              found type `[closure@$DIR/move-closure.rs:5:17: 5:27]`
+   = note: expected unit type `()`
+                found closure `[closure@$DIR/move-closure.rs:5:17: 5:27]`
 
 error: aborting due to previous error
 

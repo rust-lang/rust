@@ -50,6 +50,7 @@ fn test_variant_to_string() {
 
         let var = ast::Variant {
             ident,
+            vis: source_map::respan(syntax_pos::DUMMY_SP, ast::VisibilityKind::Inherited),
             attrs: Vec::new(),
             id: ast::DUMMY_NODE_ID,
             data: ast::VariantData::Unit(ast::DUMMY_NODE_ID),

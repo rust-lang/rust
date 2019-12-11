@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     ap
    |     ^^ lifetime mismatch
    |
-   = note: expected type `core::ffi::VaListImpl<'f>`
-              found type `core::ffi::VaListImpl<'_>`
+   = note: expected struct `core::ffi::VaListImpl<'f>`
+              found struct `core::ffi::VaListImpl<'_>`
 note: the scope of call-site for function at 7:78...
   --> $DIR/variadic-ffi-4.rs:7:78
    |
@@ -26,8 +26,8 @@ error[E0308]: mismatched types
 LL |     ap
    |     ^^ lifetime mismatch
    |
-   = note: expected type `core::ffi::VaListImpl<'static>`
-              found type `core::ffi::VaListImpl<'_>`
+   = note: expected struct `core::ffi::VaListImpl<'static>`
+              found struct `core::ffi::VaListImpl<'_>`
 note: the scope of call-site for function at 11:79...
   --> $DIR/variadic-ffi-4.rs:11:79
    |
@@ -49,9 +49,13 @@ note: first, the lifetime cannot outlive the anonymous lifetime #2 defined on th
    |
 LL |     let _ = ap.with_copy(|ap| { ap });
    |                          ^^^^^^^^^^^
-   = note: ...so that the expression is assignable:
-           expected core::ffi::VaList<'_, '_>
-              found core::ffi::VaList<'_, '_>
+note: ...so that the expression is assignable
+  --> $DIR/variadic-ffi-4.rs:16:33
+   |
+LL |     let _ = ap.with_copy(|ap| { ap });
+   |                                 ^^
+   = note: expected  `core::ffi::VaList<'_, '_>`
+              found  `core::ffi::VaList<'_, '_>`
 note: but, the lifetime must be valid for the method call at 16:13...
   --> $DIR/variadic-ffi-4.rs:16:13
    |
@@ -69,8 +73,8 @@ error[E0308]: mismatched types
 LL |     *ap0 = ap1;
    |            ^^^ lifetime mismatch
    |
-   = note: expected type `core::ffi::VaListImpl<'_>`
-              found type `core::ffi::VaListImpl<'_>`
+   = note: expected struct `core::ffi::VaListImpl<'_>`
+              found struct `core::ffi::VaListImpl<'_>`
 note: the scope of call-site for function at 19:87...
   --> $DIR/variadic-ffi-4.rs:19:87
    |
@@ -121,8 +125,8 @@ error[E0308]: mismatched types
 LL |     ap0 = &mut ap1;
    |           ^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `&mut core::ffi::VaListImpl<'_>`
-              found type `&mut core::ffi::VaListImpl<'_>`
+   = note: expected mutable reference `&mut core::ffi::VaListImpl<'_>`
+              found mutable reference `&mut core::ffi::VaListImpl<'_>`
 note: the scope of call-site for function at 23:83...
   --> $DIR/variadic-ffi-4.rs:23:83
    |
@@ -189,8 +193,8 @@ error[E0308]: mismatched types
 LL |     *ap0 = ap1.clone();
    |            ^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `core::ffi::VaListImpl<'_>`
-              found type `core::ffi::VaListImpl<'_>`
+   = note: expected struct `core::ffi::VaListImpl<'_>`
+              found struct `core::ffi::VaListImpl<'_>`
 note: the scope of call-site for function at 30:87...
   --> $DIR/variadic-ffi-4.rs:30:87
    |

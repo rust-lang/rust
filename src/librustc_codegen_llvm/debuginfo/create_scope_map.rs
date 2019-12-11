@@ -23,12 +23,10 @@ pub fn compute_mir_scopes(
 ) {
     // Find all the scopes with variables defined in them.
     let mut has_variables = BitSet::new_empty(mir.source_scopes.len());
-    // FIXME(eddyb) base this on `decl.name`, or even better, on debuginfo.
     // FIXME(eddyb) take into account that arguments always have debuginfo,
     // irrespective of their name (assuming full debuginfo is enabled).
-    for var in mir.vars_iter() {
-        let decl = &mir.local_decls[var];
-        has_variables.insert(decl.visibility_scope);
+    for var_debug_info in &mir.var_debug_info {
+        has_variables.insert(var_debug_info.source_info.scope);
     }
 
     // Instantiate all scopes.

@@ -1,7 +1,7 @@
 #![cfg(not(test))]
 
 // These symbols are all defined in `compiler-builtins`
-extern {
+extern "C" {
     pub fn acos(n: f64) -> f64;
     pub fn acosf(n: f32) -> f32;
     pub fn asin(n: f64) -> f64;

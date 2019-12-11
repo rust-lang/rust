@@ -2,10 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-41742.rs:24:7
    |
 LL |     H["?"].f();
-   |       ^^^ expected u32, found reference
-   |
-   = note: expected type `u32`
-              found type `&'static str`
+   |       ^^^ expected `u32`, found `&str`
 
 error: aborting due to previous error
 

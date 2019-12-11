@@ -111,14 +111,18 @@ def print_proper_powers():
     print("pub const MIN_E: i16 = {};".format(MIN_E))
     print("pub const MAX_E: i16 = {};".format(MAX_E))
     print()
+    print("#[rustfmt::skip]")
     typ = "([u64; {0}], [i16; {0}])".format(len(powers))
-    print("pub const POWERS: ", typ, " = ([", sep='')
+    print("pub const POWERS: ", typ, " = (", sep='')
+    print("    [")
     for z in powers:
-        print("    0x{:x},".format(z.sig))
-    print("], [")
+        print("        0x{:x},".format(z.sig))
+    print("    ],")
+    print("    [")
     for z in powers:
-        print("    {},".format(z.exp))
-    print("]);")
+        print("        {},".format(z.exp))
+    print("    ],")
+    print(");")
 
 
 def print_short_powers(num_bits, significand_size):
@@ -127,6 +131,7 @@ def print_short_powers(num_bits, significand_size):
     max_e = int(ceil(log(max_sig, 5)))
     e_range = range(max_e)
     typ = "[f{}; {}]".format(num_bits, len(e_range))
+    print("#[rustfmt::skip]")
     print("pub const F", num_bits, "_SHORT_POWERS: ", typ, " = [", sep='')
     for e in e_range:
         print("    1e{},".format(e))

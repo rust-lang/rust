@@ -57,7 +57,11 @@ error[E0706]: trait fns cannot be declared `async`
    |
 LL |     async fn foo() {}
    |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: `async` trait functions are not currently supported
+   = note: consider using the `async-trait` crate: https://crates.io/crates/async-trait
 
 error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0670`.
+Some errors have detailed explanations: E0670, E0706.
+For more information about an error, try `rustc --explain E0670`.

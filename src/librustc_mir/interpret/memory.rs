@@ -24,11 +24,13 @@ use super::{
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum MemoryKind<T> {
-    /// Error if deallocated except during a stack pop
+    /// Stack memory. Error if deallocated except during a stack pop.
     Stack,
-    /// Error if ever deallocated
+    /// Memory backing vtables. Error if ever deallocated.
     Vtable,
-    /// Additional memory kinds a machine wishes to distinguish from the builtin ones
+    /// Memory allocated by `caller_location` intrinsic. Error if ever deallocated.
+    CallerLocation,
+    /// Additional memory kinds a machine wishes to distinguish from the builtin ones.
     Machine(T),
 }
 
@@ -38,6 +40,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
         match self {
             MemoryKind::Stack => false,
             MemoryKind::Vtable => true,
+            MemoryKind::CallerLocation => true,
             MemoryKind::Machine(k) => k.may_leak()
         }
     }
@@ -47,7 +50,7 @@ impl<T: MayLeak> MayLeak for MemoryKind<T> {
 #[derive(Debug, Copy, Clone)]
 pub enum AllocCheck {
     /// Allocation must be live and not a function pointer.
-    Dereferencable,
+    Dereferenceable,
     /// Allocations needs to be live, but may be a function pointer.
     Live,
     /// Allocation may be dead.
@@ -140,6 +143,12 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         }
     }
 
+    /// Call this to turn untagged "global" pointers (obtained via `tcx`) into
+    /// the *canonical* machine pointer to the allocation.  Must never be used
+    /// for any other pointers!
+    ///
+    /// This represents a *direct* access to that memory, as opposed to access
+    /// through a pointer that was created by the program.
     #[inline]
     pub fn tag_static_base_pointer(&self, ptr: Pointer) -> Pointer<M::PointerTag> {
         ptr.with_tag(M::tag_static_base_pointer(&self.extra, ptr.alloc_id))
@@ -188,7 +197,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         kind: MemoryKind<M::MemoryKinds>,
     ) -> Pointer<M::PointerTag> {
         let id = self.tcx.alloc_map.lock().reserve();
-        let (alloc, tag) = M::tag_allocation(&self.extra, id, Cow::Owned(alloc), Some(kind));
+        debug_assert_ne!(Some(kind), M::STATIC_KIND.map(MemoryKind::Machine),
+            "dynamically allocating static memory");
+        let (alloc, tag) = M::init_allocation_extra(&self.extra, id, Cow::Owned(alloc), Some(kind));
         self.alloc_map.insert(id, (kind, alloc.into_owned()));
         Pointer::from(id).with_tag(tag)
     }
@@ -313,7 +324,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         size: Size,
         align: Align,
     ) -> InterpResult<'tcx, Option<Pointer<M::PointerTag>>> {
-        let align = if M::CHECK_ALIGN { Some(align) } else { None };
+        let align = M::CHECK_ALIGN.then_some(align);
         self.check_ptr_access_align(sptr, size, align, CheckInAllocMsg::MemoryAccessTest)
     }
 
@@ -347,7 +358,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             sptr
         } else {
             // A "real" access, we must get a pointer.
-            Scalar::Ptr(self.force_ptr(sptr)?)
+            Scalar::from(self.force_ptr(sptr)?)
         };
         Ok(match normalized.to_bits_or_ptr(self.pointer_size(), self) {
             Ok(bits) => {
@@ -365,7 +376,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
             Err(ptr) => {
                 let (allocation_size, alloc_align) =
-                    self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferencable)?;
+                    self.get_size_and_align(ptr.alloc_id, AllocCheck::Dereferenceable)?;
                 // Test bounds. This also ensures non-NULL.
                 // It is sufficient to check this for the end pointer. The addition
                 // checks for overflow.
@@ -470,14 +481,15 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 }
             }
         };
-        // We got tcx memory. Let the machine figure out whether and how to
-        // turn that into memory with the right pointer tag.
-        Ok(M::tag_allocation(
+        // We got tcx memory. Let the machine initialize its "extra" stuff.
+        let (alloc, tag) = M::init_allocation_extra(
             memory_extra,
             id, // always use the ID we got as input, not the "hidden" one.
             alloc,
             M::STATIC_KIND.map(MemoryKind::Machine),
-        ).0)
+        );
+        debug_assert_eq!(tag, M::tag_static_base_pointer(memory_extra, id));
+        Ok(alloc)
     }
 
     /// Gives raw access to the `Allocation`, without bounds or alignment checks.
@@ -569,7 +581,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         // # Function pointers
         // (both global from `alloc_map` and local from `extra_fn_ptr_map`)
         if let Ok(_) = self.get_fn_alloc(id) {
-            return if let AllocCheck::Dereferencable = liveness {
+            return if let AllocCheck::Dereferenceable = liveness {
                 // The caller requested no function pointers.
                 throw_unsup!(DerefFunctionPointer)
             } else {
@@ -635,7 +647,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// For debugging, print an allocation and all allocations it points to, recursively.
+    /// Print an allocation and all allocations it points to, recursively.
+    /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
+    /// control for this.
     pub fn dump_alloc(&self, id: AllocId) {
         self.dump_allocs(vec![id]);
     }
@@ -674,7 +688,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
             }
         }
 
-        trace!(
+        eprintln!(
             "{}({} bytes, alignment {}){}",
             msg,
             alloc.size.bytes(),
@@ -695,15 +709,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                 write!(msg, "└{0:─^1$}┘ ", target, relocation_width as usize).unwrap();
                 pos = i + self.pointer_size();
             }
-            trace!("{}", msg);
+            eprintln!("{}", msg);
         }
     }
 
-    /// For debugging, print a list of allocations and all allocations they point to, recursively.
+    /// Print a list of allocations and all allocations they point to, recursively.
+    /// This prints directly to stderr, ignoring RUSTC_LOG! It is up to the caller to
+    /// control for this.
     pub fn dump_allocs(&self, mut allocs: Vec<AllocId>) {
-        if !log_enabled!(::log::Level::Trace) {
-            return;
-        }
         allocs.sort();
         allocs.dedup();
         let mut allocs_to_print = VecDeque::from(allocs);
@@ -718,6 +731,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                     let extra = match kind {
                         MemoryKind::Stack => " (stack)".to_owned(),
                         MemoryKind::Vtable => " (vtable)".to_owned(),
+                        MemoryKind::CallerLocation => " (caller_location)".to_owned(),
                         MemoryKind::Machine(m) => format!(" ({:?})", m),
                     };
                     self.dump_alloc_helper(
@@ -735,13 +749,13 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
                             );
                         }
                         Some(GlobalAlloc::Function(func)) => {
-                            trace!("{} {}", msg, func);
+                            eprintln!("{} {}", msg, func);
                         }
                         Some(GlobalAlloc::Static(did)) => {
-                            trace!("{} {:?}", msg, did);
+                            eprintln!("{} {:?}", msg, did);
                         }
                         None => {
-                            trace!("{} (deallocated)", msg);
+                            eprintln!("{} (deallocated)", msg);
                         }
                     }
                 },
@@ -751,12 +765,14 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> Memory<'mir, 'tcx, M> {
     }
 
     pub fn leak_report(&self) -> usize {
-        trace!("### LEAK REPORT ###");
         let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
             if kind.may_leak() { None } else { Some(id) }
         });
         let n = leaks.len();
-        self.dump_allocs(leaks);
+        if n > 0 {
+            eprintln!("### LEAK REPORT ###");
+            self.dump_allocs(leaks);
+        }
         n
     }
 

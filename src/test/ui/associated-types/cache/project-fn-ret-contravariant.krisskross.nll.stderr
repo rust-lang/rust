@@ -8,6 +8,8 @@ LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
 ...
 LL |    (a, b)
    |    ^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/project-fn-ret-contravariant.rs:45:4
@@ -19,6 +21,10 @@ LL | fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
 ...
 LL |    (a, b)
    |    ^^^^^^ function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'b`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+
+help: `'a` and `'b` must be the same: replace one with the other
 
 error: aborting due to 2 previous errors
 

@@ -1,6 +1,6 @@
 use crate::borrow_check::location::{LocationIndex, LocationTable};
 use crate::dataflow::indexes::{BorrowIndex, MovePathIndex};
-use polonius_engine::AllFacts as PoloniusAllFacts;
+use polonius_engine::AllFacts as PoloniusFacts;
 use polonius_engine::Atom;
 use rustc::mir::Local;
 use rustc::ty::{RegionVid, TyCtxt};
@@ -11,7 +11,18 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
 
-crate type AllFacts = PoloniusAllFacts<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>;
+#[derive(Copy, Clone, Debug)]
+crate struct RustcFacts;
+
+impl polonius_engine::FactTypes for RustcFacts {
+    type Origin = RegionVid;
+    type Loan = BorrowIndex;
+    type Point = LocationIndex;
+    type Variable = Local;
+    type Path = MovePathIndex;
+}
+
+crate type AllFacts = PoloniusFacts<RustcFacts>;
 
 crate trait AllFactsExt {
     /// Returns `true` if there is a need to gather `AllFacts` given the
@@ -55,6 +66,7 @@ impl AllFactsExt for AllFacts {
             wr.write_facts_to_path(self.[
                 borrow_region,
                 universal_region,
+                placeholder,
                 cfg_edge,
                 killed,
                 outlives,
@@ -69,6 +81,7 @@ impl AllFactsExt for AllFacts {
                 initialized_at,
                 moved_out_at,
                 path_accessed_at,
+                known_subset,
             ])
         }
         Ok(())

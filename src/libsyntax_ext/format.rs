@@ -172,7 +172,8 @@ fn parse_args<'a>(
             let e = p.parse_expr()?;
             if let Some(prev) = names.get(&name) {
                 ecx.struct_span_err(e.span, &format!("duplicate argument named `{}`", name))
-                    .span_note(args[*prev].span, "previously here")
+                    .span_label(args[*prev].span, "previously here")
+                    .span_label(e.span, "duplicate argument")
                     .emit();
                 continue;
             }

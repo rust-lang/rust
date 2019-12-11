@@ -1,11 +1,11 @@
 #![allow(dead_code)]
 
 use crate::ffi::CStr;
+use crate::fmt;
 use crate::io;
+use crate::mem;
 use crate::sys::hermit::abi;
 use crate::time::Duration;
-use crate::mem;
-use crate::fmt;
 use core::u32;
 
 use crate::sys_common::thread::*;
@@ -35,7 +35,7 @@ impl fmt::Display for Priority {
 pub const NORMAL_PRIO: Priority = Priority::from(2);
 
 pub struct Thread {
-    tid: Tid
+    tid: Tid,
 }
 
 unsafe impl Send for Thread {}
@@ -44,14 +44,20 @@ unsafe impl Sync for Thread {}
 pub const DEFAULT_MIN_STACK_SIZE: usize = 262144;
 
 impl Thread {
-    pub unsafe fn new_with_coreid(_stack: usize, p: Box<dyn FnOnce()>, core_id: isize)
-        -> io::Result<Thread>
-    {
+    pub unsafe fn new_with_coreid(
+        _stack: usize,
+        p: Box<dyn FnOnce()>,
+        core_id: isize,
+    ) -> io::Result<Thread> {
         let p = box p;
         let mut tid: Tid = u32::MAX;
-        let ret = abi::spawn(&mut tid as *mut Tid, thread_start,
-                            &*p as *const _ as *const u8 as usize,
-                            Priority::into(NORMAL_PRIO), core_id);
+        let ret = abi::spawn(
+            &mut tid as *mut Tid,
+            thread_start,
+            &*p as *const _ as *const u8 as usize,
+            Priority::into(NORMAL_PRIO),
+            core_id,
+        );
 
         return if ret == 0 {
             mem::forget(p); // ownership passed to pthread_create
@@ -60,16 +66,14 @@ impl Thread {
             Err(io::Error::new(io::ErrorKind::Other, "Unable to create thread!"))
         };
 
-        extern fn thread_start(main: usize) {
+        extern "C" fn thread_start(main: usize) {
             unsafe {
                 start_thread(main as *mut u8);
             }
         }
     }
 
-    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>)
-        -> io::Result<Thread>
-    {
+    pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
         Thread::new_with_coreid(stack, p, -1 /* = no specific core */)
     }
 
@@ -99,7 +103,9 @@ impl Thread {
     }
 
     #[inline]
-    pub fn id(&self) -> Tid { self.tid }
+    pub fn id(&self) -> Tid {
+        self.tid
+    }
 
     #[inline]
     pub fn into_id(self) -> Tid {
@@ -111,6 +117,10 @@ impl Thread {
 
 pub mod guard {
     pub type Guard = !;
-    pub unsafe fn current() -> Option<Guard> { None }
-    pub unsafe fn init() -> Option<Guard> { None }
+    pub unsafe fn current() -> Option<Guard> {
+        None
+    }
+    pub unsafe fn init() -> Option<Guard> {
+        None
+    }
 }

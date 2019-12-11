@@ -59,6 +59,7 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
+#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
@@ -66,7 +67,7 @@ This API is completely unstable and subject to change.
 #![feature(in_band_lifetimes)]
 #![feature(nll)]
 #![feature(slice_patterns)]
-#![feature(never_type)]
+#![cfg_attr(bootstrap, feature(never_type))]
 
 #![recursion_limit="256"]
 
@@ -75,7 +76,8 @@ This API is completely unstable and subject to change.
 
 #[macro_use] extern crate rustc;
 
-pub mod error_codes;
+// This is used by Clippy.
+pub mod expr_use_visitor;
 
 mod astconv;
 mod check;
@@ -85,6 +87,7 @@ mod collect;
 mod constrained_generic_params;
 mod structured_errors;
 mod impl_wf_check;
+mod mem_categorization;
 mod namespace;
 mod outlives;
 mod variance;
@@ -105,6 +108,8 @@ use rustc::ty::query::Providers;
 use rustc::util;
 use syntax_pos::{DUMMY_SP, Span};
 use util::common::time;
+
+use rustc_error_codes::*;
 
 use std::iter;
 

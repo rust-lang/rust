@@ -1,11 +1,11 @@
+use crate::cmp::Ordering;
 use crate::convert::From;
-use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::fmt;
 use crate::hash;
 use crate::marker::Unsize;
 use crate::mem;
+use crate::ops::{CoerceUnsized, DispatchFromDyn};
 use crate::ptr::Unique;
-use crate::cmp::Ordering;
 
 // ignore-tidy-undocumented-unsafe
 
@@ -48,12 +48,12 @@ pub struct NonNull<T: ?Sized> {
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> !Send for NonNull<T> { }
+impl<T: ?Sized> !Send for NonNull<T> {}
 
 /// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
 // N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> !Sync for NonNull<T> { }
+impl<T: ?Sized> !Sync for NonNull<T> {}
 
 impl<T: Sized> NonNull<T> {
     /// Creates a new `NonNull` that is dangling, but well-aligned.
@@ -91,11 +91,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
-        if !ptr.is_null() {
-            Some(unsafe { Self::new_unchecked(ptr) })
-        } else {
-            None
-        }
+        if !ptr.is_null() { Some(unsafe { Self::new_unchecked(ptr) }) } else { None }
     }
 
     /// Acquires the underlying `*mut` pointer.
@@ -131,9 +127,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull_cast", since = "1.27.0")]
     #[inline]
     pub const fn cast<U>(self) -> NonNull<U> {
-        unsafe {
-            NonNull::new_unchecked(self.as_ptr() as *mut U)
-        }
+        unsafe { NonNull::new_unchecked(self.as_ptr() as *mut U) }
     }
 }
 
@@ -146,13 +140,13 @@ impl<T: ?Sized> Clone for NonNull<T> {
 }
 
 #[stable(feature = "nonnull", since = "1.25.0")]
-impl<T: ?Sized> Copy for NonNull<T> { }
+impl<T: ?Sized> Copy for NonNull<T> {}
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
-impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
+impl<T: ?Sized, U: ?Sized> CoerceUnsized<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
-impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> { }
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NonNull<U>> for NonNull<T> where T: Unsize<U> {}
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> fmt::Debug for NonNull<T> {

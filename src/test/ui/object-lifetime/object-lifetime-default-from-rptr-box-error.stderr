@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     ss.t = t;
    |            ^ lifetime mismatch
    |
-   = note: expected type `&'a std::boxed::Box<(dyn Test + 'static)>`
-              found type `&'a std::boxed::Box<(dyn Test + 'a)>`
+   = note: expected reference `&'a std::boxed::Box<(dyn Test + 'static)>`
+              found reference `&'a std::boxed::Box<(dyn Test + 'a)>`
 note: the lifetime `'a` as defined on the function body at 14:6...
   --> $DIR/object-lifetime-default-from-rptr-box-error.rs:14:6
    |

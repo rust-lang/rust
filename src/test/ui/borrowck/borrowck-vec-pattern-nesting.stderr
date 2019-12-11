@@ -97,11 +97,7 @@ LL |         &mut [_a, _b, _c] => {}
    |         |     data moved here
    |         help: consider removing the `&mut`: `[_a, _b, _c]`
    |
-note: move occurs because these variables have types that don't implement the `Copy` trait
-  --> $DIR/borrowck-vec-pattern-nesting.rs:78:15
-   |
-LL |         &mut [_a, _b, _c] => {}
-   |               ^^  ^^  ^^
+   = note: move occurs because these variables have types that don't implement the `Copy` trait
 
 error[E0508]: cannot move out of type `[std::boxed::Box<isize>]`, a non-copy slice
   --> $DIR/borrowck-vec-pattern-nesting.rs:86:13

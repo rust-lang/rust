@@ -270,7 +270,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
                     };
 
                     self.handler.struct_span_err(attr.span, &msg)
-                        .span_note(prev_attr.span, "previous attribute here")
+                        .span_label(prev_attr.span, "previous attribute here")
                         .emit();
 
                     return;

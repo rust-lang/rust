@@ -96,3 +96,4 @@ LL |     intrinsics::atomic_cxchg(p, v, v);
 
 error: aborting due to 16 previous errors
 
+For more information about this error, try `rustc --explain E0511`.

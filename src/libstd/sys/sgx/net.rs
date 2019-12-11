@@ -1,12 +1,12 @@
-use crate::fmt;
-use crate::io::{self, IoSlice, IoSliceMut};
-use crate::net::{SocketAddr, Shutdown, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
-use crate::time::Duration;
-use crate::sys::{unsupported, Void, sgx_ineffective, AsInner, FromInner, IntoInner, TryIntoInner};
-use crate::sys::fd::FileDesc;
 use crate::convert::TryFrom;
 use crate::error;
+use crate::fmt;
+use crate::io::{self, IoSlice, IoSliceMut};
+use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr, ToSocketAddrs};
 use crate::sync::Arc;
+use crate::sys::fd::FileDesc;
+use crate::sys::{sgx_ineffective, unsupported, AsInner, FromInner, IntoInner, TryIntoInner, Void};
+use crate::time::Duration;
 
 use super::abi::usercalls;
 
@@ -25,13 +25,15 @@ impl Socket {
 }
 
 impl AsInner<FileDesc> for Socket {
-    fn as_inner(&self) -> &FileDesc { &self.inner }
+    fn as_inner(&self) -> &FileDesc {
+        &self.inner
+    }
 }
 
 impl TryIntoInner<FileDesc> for Socket {
     fn try_into_inner(self) -> Result<FileDesc, Socket> {
         let Socket { inner, local_addr } = self;
-        Arc::try_unwrap(inner).map_err(|inner| Socket { inner, local_addr } )
+        Arc::try_unwrap(inner).map_err(|inner| Socket { inner, local_addr })
     }
 }
 
@@ -59,8 +61,7 @@ impl fmt::Debug for TcpStream {
             res.field("peer", peer);
         }
 
-        res.field("fd", &self.inner.inner.as_inner())
-            .finish()
+        res.field("fd", &self.inner.inner.as_inner()).finish()
     }
 }
 
@@ -69,10 +70,12 @@ fn io_err_to_addr(result: io::Result<&SocketAddr>) -> io::Result<String> {
         Ok(saddr) => Ok(saddr.to_string()),
         // need to downcast twice because io::Error::into_inner doesn't return the original
         // value if the conversion fails
-        Err(e) => if e.get_ref().and_then(|e| e.downcast_ref::<NonIpSockAddr>()).is_some() {
-            Ok(e.into_inner().unwrap().downcast::<NonIpSockAddr>().unwrap().host)
-        } else {
-            Err(e)
+        Err(e) => {
+            if e.get_ref().and_then(|e| e.downcast_ref::<NonIpSockAddr>()).is_some() {
+                Ok(e.into_inner().unwrap().downcast::<NonIpSockAddr>().unwrap().host)
+            } else {
+                Err(e)
+            }
         }
     }
 }
@@ -94,8 +97,10 @@ impl TcpStream {
 
     pub fn connect_timeout(addr: &SocketAddr, dur: Duration) -> io::Result<TcpStream> {
         if dur == Duration::default() {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                      "cannot set a 0 duration timeout"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "cannot set a 0 duration timeout",
+            ));
         }
         Self::connect(Ok(addr)) // FIXME: ignoring timeout
     }
@@ -103,20 +108,24 @@ impl TcpStream {
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         match dur {
             Some(dur) if dur == Duration::default() => {
-                return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                          "cannot set a 0 duration timeout"));
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "cannot set a 0 duration timeout",
+                ));
             }
-            _ => sgx_ineffective(())
+            _ => sgx_ineffective(()),
         }
     }
 
     pub fn set_write_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         match dur {
             Some(dur) if dur == Duration::default() => {
-                return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                                          "cannot set a 0 duration timeout"));
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "cannot set a 0 duration timeout",
+                ));
             }
-            _ => sgx_ineffective(())
+            _ => sgx_ineffective(()),
         }
     }
 
@@ -190,7 +199,9 @@ impl TcpStream {
 }
 
 impl AsInner<Socket> for TcpStream {
-    fn as_inner(&self) -> &Socket { &self.inner }
+    fn as_inner(&self) -> &Socket {
+        &self.inner
+    }
 }
 
 // `Inner` includes `peer_addr` so that a `TcpStream` maybe correctly
@@ -220,8 +231,7 @@ impl fmt::Debug for TcpListener {
             res.field("addr", addr);
         }
 
-        res.field("fd", &self.inner.inner.as_inner())
-            .finish()
+        res.field("fd", &self.inner.inner.as_inner()).finish()
     }
 }
 
@@ -273,7 +283,9 @@ impl TcpListener {
 }
 
 impl AsInner<Socket> for TcpListener {
-    fn as_inner(&self) -> &Socket { &self.inner }
+    fn as_inner(&self) -> &Socket {
+        &self.inner
+    }
 }
 
 impl IntoInner<Socket> for TcpListener {
@@ -367,23 +379,19 @@ impl UdpSocket {
         match self.0 {}
     }
 
-    pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr)
-                         -> io::Result<()> {
+    pub fn join_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
         match self.0 {}
     }
 
-    pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32)
-                         -> io::Result<()> {
+    pub fn join_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
         match self.0 {}
     }
 
-    pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr)
-                          -> io::Result<()> {
+    pub fn leave_multicast_v4(&self, _: &Ipv4Addr, _: &Ipv4Addr) -> io::Result<()> {
         match self.0 {}
     }
 
-    pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32)
-                          -> io::Result<()> {
+    pub fn leave_multicast_v6(&self, _: &Ipv6Addr, _: u32) -> io::Result<()> {
         match self.0 {}
     }
 
@@ -428,7 +436,7 @@ impl fmt::Debug for UdpSocket {
 
 #[derive(Debug)]
 pub struct NonIpSockAddr {
-    host: String
+    host: String,
 }
 
 impl error::Error for NonIpSockAddr {
@@ -511,8 +519,7 @@ pub mod netc {
     }
 
     #[derive(Copy, Clone)]
-    pub struct sockaddr {
-    }
+    pub struct sockaddr {}
 
     pub type socklen_t = usize;
 }

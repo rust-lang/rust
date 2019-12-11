@@ -373,6 +373,14 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
         }
         matrix
     }
+
+    /// Lists all the base edges in the graph: the initial _non-transitive_ set of element
+    /// relations, which will be later used as the basis for the transitive closure computation.
+    pub fn base_edges(&self) -> impl Iterator<Item=(&T, &T)> {
+        self.edges
+            .iter()
+            .map(move |edge| (&self.elements[edge.source.0], &self.elements[edge.target.0]))
+    }
 }
 
 /// Pare down is used as a step in the LUB computation. It edits the

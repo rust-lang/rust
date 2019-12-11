@@ -7,4 +7,5 @@
 - [Documentation tests](documentation-tests.md)
 - [Lints](lints.md)
 - [Passes](passes.md)
+- [Advanced Features](advanced-features.md)
 - [Unstable features](unstable-features.md)

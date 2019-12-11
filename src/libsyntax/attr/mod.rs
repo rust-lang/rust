@@ -10,7 +10,7 @@ pub use crate::ast::Attribute;
 
 use crate::ast;
 use crate::ast::{AttrItem, AttrId, AttrKind, AttrStyle, Name, Ident, Path, PathSegment};
-use crate::ast::{MetaItem, MetaItemKind, NestedMetaItem};
+use crate::ast::{MacArgs, MacDelimiter, MetaItem, MetaItemKind, NestedMetaItem};
 use crate::ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind, GenericParam};
 use crate::mut_visit::visit_clobber;
 use crate::source_map::{BytePos, Spanned};
@@ -198,7 +198,7 @@ impl Attribute {
 
     pub fn is_word(&self) -> bool {
         if let AttrKind::Normal(item) = &self.kind {
-            item.tokens.is_empty()
+            matches!(item.args, MacArgs::Empty)
         } else {
             false
         }
@@ -278,17 +278,9 @@ impl MetaItem {
 
 impl AttrItem {
     pub fn meta(&self, span: Span) -> Option<MetaItem> {
-        let mut tokens = self.tokens.trees().peekable();
         Some(MetaItem {
             path: self.path.clone(),
-            kind: if let Some(kind) = MetaItemKind::from_tokens(&mut tokens) {
-                if tokens.peek().is_some() {
-                    return None;
-                }
-                kind
-            } else {
-                return None;
-            },
+            kind: MetaItemKind::from_mac_args(&self.args)?,
             span,
         })
     }
@@ -362,8 +354,8 @@ crate fn mk_attr_id() -> AttrId {
     AttrId(id)
 }
 
-pub fn mk_attr(style: AttrStyle, path: Path, tokens: TokenStream, span: Span) -> Attribute {
-    mk_attr_from_item(style, AttrItem { path, tokens }, span)
+pub fn mk_attr(style: AttrStyle, path: Path, args: MacArgs, span: Span) -> Attribute {
+    mk_attr_from_item(style, AttrItem { path, args }, span)
 }
 
 pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attribute {
@@ -377,12 +369,12 @@ pub fn mk_attr_from_item(style: AttrStyle, item: AttrItem, span: Span) -> Attrib
 
 /// Returns an inner attribute with the given value and span.
 pub fn mk_attr_inner(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Inner, item.path, item.kind.tokens(item.span), item.span)
+    mk_attr(AttrStyle::Inner, item.path, item.kind.mac_args(item.span), item.span)
 }
 
 /// Returns an outer attribute with the given value and span.
 pub fn mk_attr_outer(item: MetaItem) -> Attribute {
-    mk_attr(AttrStyle::Outer, item.path, item.kind.tokens(item.span), item.span)
+    mk_attr(AttrStyle::Outer, item.path, item.kind.mac_args(item.span), item.span)
 }
 
 pub fn mk_doc_comment(style: AttrStyle, comment: Symbol, span: Span) -> Attribute {
@@ -520,7 +512,26 @@ impl MetaItem {
 }
 
 impl MetaItemKind {
-    pub fn token_trees_and_joints(&self, span: Span) -> Vec<TreeAndJoint> {
+    pub fn mac_args(&self, span: Span) -> MacArgs {
+        match self {
+            MetaItemKind::Word => MacArgs::Empty,
+            MetaItemKind::NameValue(lit) => MacArgs::Eq(span, lit.token_tree().into()),
+            MetaItemKind::List(list) => {
+                let mut tts = Vec::new();
+                for (i, item) in list.iter().enumerate() {
+                    if i > 0 {
+                        tts.push(TokenTree::token(token::Comma, span).into());
+                    }
+                    tts.extend(item.token_trees_and_joints())
+                }
+                MacArgs::Delimited(
+                    DelimSpan::from_single(span), MacDelimiter::Parenthesis, TokenStream::new(tts)
+                )
+            }
+        }
+    }
+
+    fn token_trees_and_joints(&self, span: Span) -> Vec<TreeAndJoint> {
         match *self {
             MetaItemKind::Word => vec![],
             MetaItemKind::NameValue(ref lit) => {
@@ -548,33 +559,8 @@ impl MetaItemKind {
         }
     }
 
-    // Premature conversions of `TokenTree`s to `TokenStream`s can hurt
-    // performance. Do not use this function if `token_trees_and_joints()` can
-    // be used instead.
-    pub fn tokens(&self, span: Span) -> TokenStream {
-        TokenStream::new(self.token_trees_and_joints(span))
-    }
-
-    fn from_tokens<I>(tokens: &mut iter::Peekable<I>) -> Option<MetaItemKind>
-        where I: Iterator<Item = TokenTree>,
-    {
-        let delimited = match tokens.peek().cloned() {
-            Some(TokenTree::Token(token)) if token == token::Eq => {
-                tokens.next();
-                return if let Some(TokenTree::Token(token)) = tokens.next() {
-                    Lit::from_token(&token).ok().map(MetaItemKind::NameValue)
-                } else {
-                    None
-                };
-            }
-            Some(TokenTree::Delimited(_, delim, ref tts)) if delim == token::Paren => {
-                tokens.next();
-                tts.clone()
-            }
-            _ => return Some(MetaItemKind::Word),
-        };
-
-        let mut tokens = delimited.into_trees().peekable();
+    fn list_from_tokens(tokens: TokenStream) -> Option<MetaItemKind> {
+        let mut tokens = tokens.into_trees().peekable();
         let mut result = Vec::new();
         while let Some(..) = tokens.peek() {
             let item = NestedMetaItem::from_tokens(&mut tokens)?;
@@ -585,6 +571,47 @@ impl MetaItemKind {
             }
         }
         Some(MetaItemKind::List(result))
+    }
+
+    fn name_value_from_tokens(
+        tokens: &mut impl Iterator<Item = TokenTree>,
+    ) -> Option<MetaItemKind> {
+        match tokens.next() {
+            Some(TokenTree::Token(token)) =>
+                Lit::from_token(&token).ok().map(MetaItemKind::NameValue),
+            _ => None,
+        }
+    }
+
+    fn from_mac_args(args: &MacArgs) -> Option<MetaItemKind> {
+        match args {
+            MacArgs::Delimited(_, MacDelimiter::Parenthesis, tokens) =>
+                MetaItemKind::list_from_tokens(tokens.clone()),
+            MacArgs::Delimited(..) => None,
+            MacArgs::Eq(_, tokens) => {
+                assert!(tokens.len() == 1);
+                MetaItemKind::name_value_from_tokens(&mut tokens.trees())
+            }
+            MacArgs::Empty => Some(MetaItemKind::Word),
+        }
+    }
+
+    fn from_tokens(
+        tokens: &mut iter::Peekable<impl Iterator<Item = TokenTree>>,
+    ) -> Option<MetaItemKind> {
+        match tokens.peek() {
+            Some(TokenTree::Delimited(_, token::Paren, inner_tokens)) => {
+                let inner_tokens = inner_tokens.clone();
+                tokens.next();
+                MetaItemKind::list_from_tokens(inner_tokens)
+            }
+            Some(TokenTree::Delimited(..)) => None,
+            Some(TokenTree::Token(Token { kind: token::Eq, .. })) => {
+                tokens.next();
+                MetaItemKind::name_value_from_tokens(tokens)
+            }
+            _ => Some(MetaItemKind::Word),
+        }
     }
 }
 

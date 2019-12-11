@@ -4,17 +4,16 @@ use crate::slice;
 pub fn hashmap_random_keys() -> (u64, u64) {
     let mut v = (0, 0);
     unsafe {
-        let view = slice::from_raw_parts_mut(&mut v as *mut _ as *mut u8,
-                                             mem::size_of_val(&v));
+        let view = slice::from_raw_parts_mut(&mut v as *mut _ as *mut u8, mem::size_of_val(&v));
         imp::fill_bytes(view);
     }
-    return v
+    return v;
 }
 
 mod imp {
-    use libc;
     use crate::io;
     use core::sync::atomic::{AtomicBool, Ordering::Relaxed};
+    use libc;
 
     pub fn fill_bytes(v: &mut [u8]) {
         static RNG_INIT: AtomicBool = AtomicBool::new(false);

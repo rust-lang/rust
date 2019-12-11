@@ -5,7 +5,10 @@ LL | fn is_copy<T: Copy>(_: T) {}
    |    -------    ---- required by this bound in `is_copy`
 ...
 LL |     is_copy(B { a: 1, b: C });
-   |             ^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `C`
+   |             ^^^^^^^^^^^^^^^^
+   |             |
+   |             expected an implementor of trait `std::marker::Copy`
+   |             help: consider borrowing here: `&B { a: 1, b: C }`
    |
    = note: required because of the requirements on the impl of `std::marker::Copy` for `B<C>`
 
@@ -16,7 +19,10 @@ LL | fn is_clone<T: Clone>(_: T) {}
    |    --------    ----- required by this bound in `is_clone`
 ...
 LL |     is_clone(B { a: 1, b: C });
-   |              ^^^^^^^^^^^^^^^^ the trait `std::clone::Clone` is not implemented for `C`
+   |              ^^^^^^^^^^^^^^^^
+   |              |
+   |              expected an implementor of trait `std::clone::Clone`
+   |              help: consider borrowing here: `&B { a: 1, b: C }`
    |
    = note: required because of the requirements on the impl of `std::clone::Clone` for `B<C>`
 
@@ -27,7 +33,10 @@ LL | fn is_copy<T: Copy>(_: T) {}
    |    -------    ---- required by this bound in `is_copy`
 ...
 LL |     is_copy(B { a: 1, b: D });
-   |             ^^^^^^^^^^^^^^^^ the trait `std::marker::Copy` is not implemented for `D`
+   |             ^^^^^^^^^^^^^^^^
+   |             |
+   |             expected an implementor of trait `std::marker::Copy`
+   |             help: consider borrowing here: `&B { a: 1, b: D }`
    |
    = note: required because of the requirements on the impl of `std::marker::Copy` for `B<D>`
 

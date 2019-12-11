@@ -1,14 +1,14 @@
 #![allow(unused)]
 
-use crate::ptr::{self, NonNull};
-use crate::mem;
 use crate::cell::UnsafeCell;
+use crate::mem;
+use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
+use crate::ptr::{self, NonNull};
 use crate::slice;
-use crate::ops::{Deref, DerefMut, Index, IndexMut, CoerceUnsized};
 use crate::slice::SliceIndex;
 
-use fortanix_sgx_abi::*;
 use super::super::mem::is_user_range;
+use fortanix_sgx_abi::*;
 
 /// A type that can be safely read from or written to userspace.
 ///
@@ -109,9 +109,7 @@ pub unsafe trait UserSafe {
     /// * the pointer is null.
     /// * the pointed-to range is not in user memory.
     unsafe fn check_ptr(ptr: *const Self) {
-        let is_aligned = |p| -> bool {
-            0 == (p as usize) & (Self::align_of() - 1)
-        };
+        let is_aligned = |p| -> bool { 0 == (p as usize) & (Self::align_of() - 1) };
 
         assert!(is_aligned(ptr as *const u8));
         assert!(is_user_range(ptr as _, mem::size_of_val(&*ptr)));
@@ -183,7 +181,10 @@ impl<T: ?Sized> NewUserRef<NonNull<T>> for NonNull<UserRef<T>> {
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> User<T> where T: UserSafe {
+impl<T: ?Sized> User<T>
+where
+    T: UserSafe,
+{
     // This function returns memory that is practically uninitialized, but is
     // not considered "unspecified" or "undefined" for purposes of an
     // optimizing compiler. This is achieved by returning a pointer from
@@ -211,7 +212,7 @@ impl<T: ?Sized> User<T> where T: UserSafe {
             ptr::copy(
                 val as *const T as *const u8,
                 ret.0.as_ptr() as *mut u8,
-                mem::size_of_val(val)
+                mem::size_of_val(val),
             );
             ret
         }
@@ -244,7 +245,10 @@ impl<T: ?Sized> User<T> where T: UserSafe {
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> User<T> where T: UserSafe {
+impl<T> User<T>
+where
+    T: UserSafe,
+{
     /// Allocate space for `T` in user memory.
     pub fn uninitialized() -> Self {
         Self::new_uninit_bytes(mem::size_of::<T>())
@@ -252,7 +256,10 @@ impl<T> User<T> where T: UserSafe {
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> User<[T]> where [T]: UserSafe {
+impl<T> User<[T]>
+where
+    [T]: UserSafe,
+{
     /// Allocate space for a `[T]` of `n` elements in user memory.
     pub fn uninitialized(n: usize) -> Self {
         Self::new_uninit_bytes(n * mem::size_of::<T>())
@@ -278,7 +285,10 @@ impl<T> User<[T]> where [T]: UserSafe {
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> UserRef<T> where T: UserSafe {
+impl<T: ?Sized> UserRef<T>
+where
+    T: UserSafe,
+{
     /// Creates a `&UserRef<[T]>` from a raw pointer.
     ///
     /// # Safety
@@ -309,7 +319,7 @@ impl<T: ?Sized> UserRef<T> where T: UserSafe {
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_mut_ptr<'a>(ptr: *mut T) -> &'a mut Self {
         T::check_ptr(ptr);
-        &mut*(ptr as *mut Self)
+        &mut *(ptr as *mut Self)
     }
 
     /// Copies `val` into user memory.
@@ -319,11 +329,11 @@ impl<T: ?Sized> UserRef<T> where T: UserSafe {
     /// the source. This can happen for dynamically-sized types such as slices.
     pub fn copy_from_enclave(&mut self, val: &T) {
         unsafe {
-            assert_eq!(mem::size_of_val(val), mem::size_of_val( &*self.0.get() ));
+            assert_eq!(mem::size_of_val(val), mem::size_of_val(&*self.0.get()));
             ptr::copy(
                 val as *const T as *const u8,
                 self.0.get() as *mut T as *mut u8,
-                mem::size_of_val(val)
+                mem::size_of_val(val),
             );
         }
     }
@@ -335,11 +345,11 @@ impl<T: ?Sized> UserRef<T> where T: UserSafe {
     /// the source. This can happen for dynamically-sized types such as slices.
     pub fn copy_to_enclave(&self, dest: &mut T) {
         unsafe {
-            assert_eq!(mem::size_of_val(dest), mem::size_of_val( &*self.0.get() ));
+            assert_eq!(mem::size_of_val(dest), mem::size_of_val(&*self.0.get()));
             ptr::copy(
                 self.0.get() as *const T as *const u8,
                 dest as *mut T as *mut u8,
-                mem::size_of_val(dest)
+                mem::size_of_val(dest),
             );
         }
     }
@@ -356,7 +366,10 @@ impl<T: ?Sized> UserRef<T> where T: UserSafe {
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> UserRef<T> where T: UserSafe {
+impl<T> UserRef<T>
+where
+    T: UserSafe,
+{
     /// Copies the value from user memory into enclave memory.
     pub fn to_enclave(&self) -> T {
         unsafe { ptr::read(self.0.get()) }
@@ -364,7 +377,10 @@ impl<T> UserRef<T> where T: UserSafe {
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> UserRef<[T]> where [T]: UserSafe {
+impl<T> UserRef<[T]>
+where
+    [T]: UserSafe,
+{
     /// Creates a `&UserRef<[T]>` from a raw thin pointer and a slice length.
     ///
     /// # Safety
@@ -396,7 +412,7 @@ impl<T> UserRef<[T]> where [T]: UserSafe {
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts_mut<'a>(ptr: *mut T, len: usize) -> &'a mut Self {
-        &mut*(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *mut Self)
+        &mut *(<[T]>::from_raw_sized(ptr as _, len * mem::size_of::<T>()).as_ptr() as *mut Self)
     }
 
     /// Obtain a raw pointer to the first element of this user slice.
@@ -439,20 +455,18 @@ impl<T> UserRef<[T]> where [T]: UserSafe {
 
     /// Returns an iterator over the slice.
     pub fn iter(&self) -> Iter<'_, T>
-        where T: UserSafe // FIXME: should be implied by [T]: UserSafe?
+    where
+        T: UserSafe, // FIXME: should be implied by [T]: UserSafe?
     {
-        unsafe {
-            Iter((&*self.as_raw_ptr()).iter())
-        }
+        unsafe { Iter((&*self.as_raw_ptr()).iter()) }
     }
 
     /// Returns an iterator that allows modifying each value.
     pub fn iter_mut(&mut self) -> IterMut<'_, T>
-        where T: UserSafe // FIXME: should be implied by [T]: UserSafe?
+    where
+        T: UserSafe, // FIXME: should be implied by [T]: UserSafe?
     {
-        unsafe {
-            IterMut((&mut*self.as_raw_mut_ptr()).iter_mut())
-        }
+        unsafe { IterMut((&mut *self.as_raw_mut_ptr()).iter_mut()) }
     }
 }
 
@@ -468,9 +482,7 @@ impl<'a, T: UserSafe> Iterator for Iter<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        unsafe {
-            self.0.next().map(|e| UserRef::from_ptr(e))
-        }
+        unsafe { self.0.next().map(|e| UserRef::from_ptr(e)) }
     }
 }
 
@@ -486,14 +498,15 @@ impl<'a, T: UserSafe> Iterator for IterMut<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        unsafe {
-            self.0.next().map(|e| UserRef::from_mut_ptr(e))
-        }
+        unsafe { self.0.next().map(|e| UserRef::from_mut_ptr(e)) }
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> Deref for User<T> where T: UserSafe {
+impl<T: ?Sized> Deref for User<T>
+where
+    T: UserSafe,
+{
     type Target = UserRef<T>;
 
     fn deref(&self) -> &Self::Target {
@@ -502,18 +515,24 @@ impl<T: ?Sized> Deref for User<T> where T: UserSafe {
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> DerefMut for User<T> where T: UserSafe {
+impl<T: ?Sized> DerefMut for User<T>
+where
+    T: UserSafe,
+{
     fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut*self.0.as_ptr() }
+        unsafe { &mut *self.0.as_ptr() }
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> Drop for User<T> where T: UserSafe {
+impl<T: ?Sized> Drop for User<T>
+where
+    T: UserSafe,
+{
     fn drop(&mut self) {
         unsafe {
             let ptr = (*self.0.as_ptr()).0.get();
-            super::free(ptr as _, mem::size_of_val(&mut*ptr), T::align_of());
+            super::free(ptr as _, mem::size_of_val(&mut *ptr), T::align_of());
         }
     }
 }
@@ -550,7 +569,7 @@ where
     #[inline]
     fn index_mut(&mut self, index: I) -> &mut UserRef<I::Output> {
         unsafe {
-            if let Some(slice) = index.get_mut(&mut*self.as_raw_mut_ptr()) {
+            if let Some(slice) = index.get_mut(&mut *self.as_raw_mut_ptr()) {
                 UserRef::from_mut_ptr(slice)
             } else {
                 rtabort!("index out of range for user slice");

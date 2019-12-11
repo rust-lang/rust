@@ -30,6 +30,8 @@ use syntax_pos::Span;
 use crate::hir::intravisit::{self, NestedVisitorMap, Visitor};
 use crate::hir::{self, GenericParamKind, LifetimeParamKind};
 
+use rustc_error_codes::*;
+
 /// The origin of a named lifetime definition.
 ///
 /// This is used to prevent the usage of in-band lifetimes in `Fn`/`fn` syntax.
@@ -205,19 +207,13 @@ struct NamedRegionMap {
 }
 
 /// See [`NamedRegionMap`].
-#[derive(Default)]
+#[derive(Default, HashStable)]
 pub struct ResolveLifetimes {
     defs: FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Region>>,
     late_bound: FxHashMap<LocalDefId, FxHashSet<ItemLocalId>>,
     object_lifetime_defaults:
         FxHashMap<LocalDefId, FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>>,
 }
-
-impl_stable_hash_for!(struct crate::middle::resolve_lifetime::ResolveLifetimes {
-    defs,
-    late_bound,
-    object_lifetime_defaults
-});
 
 struct LifetimeContext<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,

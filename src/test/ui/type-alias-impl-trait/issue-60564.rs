@@ -18,7 +18,7 @@ where
 {
     type BitsIter = IterBitsIter<T, E, u8>;
     fn iter_bits(self, n: u8) -> Self::BitsIter {
-    //~^ ERROR type parameter `E` is part of concrete type but not used
+    //~^ ERROR defining opaque type use does not fully define opaque type
         (0u8..n)
             .rev()
             .map(move |shift| ((self >> T::from(shift)) & T::from(1)).try_into().unwrap())

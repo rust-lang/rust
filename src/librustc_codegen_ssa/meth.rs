@@ -1,8 +1,7 @@
-use rustc_target::abi::call::FnAbi;
-
 use crate::traits::*;
 
 use rustc::ty::{self, Ty, Instance};
+use rustc_target::abi::call::FnAbi;
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(u64);
@@ -20,7 +19,7 @@ impl<'a, 'tcx> VirtualIndex {
         self,
         bx: &mut Bx,
         llvtable: Bx::Value,
-        fn_abi: &FnAbi<'tcx, Ty<'tcx>>
+        fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
     ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
@@ -33,7 +32,7 @@ impl<'a, 'tcx> VirtualIndex {
         let gep = bx.inbounds_gep(llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(gep, ptr_align);
         bx.nonnull_metadata(ptr);
-        // Vtable loads are invariant
+        // Vtable loads are invariant.
         bx.set_invariant_load(ptr);
         ptr
     }
@@ -41,7 +40,7 @@ impl<'a, 'tcx> VirtualIndex {
     pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
         self,
         bx: &mut Bx,
-        llvtable: Bx::Value
+        llvtable: Bx::Value,
     ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
@@ -50,7 +49,7 @@ impl<'a, 'tcx> VirtualIndex {
         let usize_align = bx.tcx().data_layout.pointer_align.abi;
         let gep = bx.inbounds_gep(llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(gep, usize_align);
-        // Vtable loads are invariant
+        // Vtable loads are invariant.
         bx.set_invariant_load(ptr);
         ptr
     }
@@ -63,7 +62,7 @@ impl<'a, 'tcx> VirtualIndex {
 ///
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<dyn Trait>` from a value of type `Foo<T>`, then
-/// `trait_ref` would map `T:Trait`.
+/// `trait_ref` would map `T: Trait`.
 pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
     ty: Ty<'tcx>,
@@ -78,7 +77,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
         return val;
     }
 
-    // Not in the cache. Build it.
+    // Not in the cache; build it.
     let nullptr = cx.const_null(cx.type_i8p());
 
     let methods_root;
@@ -105,7 +104,7 @@ pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     let layout = cx.layout_of(ty);
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // If you touch this code, be sure to also make the corresponding changes to
-    // `get_vtable` in rust_mir/interpret/traits.rs
+    // `get_vtable` in `rust_mir/interpret/traits.rs`.
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
         cx.get_fn_addr(Instance::resolve_drop_in_place(cx.tcx(), ty)),

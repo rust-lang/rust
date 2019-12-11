@@ -118,6 +118,12 @@ LL |     match 0u128 {
    |
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
-error: aborting due to 14 previous errors
+error: unreachable pattern
+  --> $DIR/exhaustive_integer_patterns.rs:162:9
+   |
+LL |         &FOO => {}
+   |         ^^^^
+
+error: aborting due to 15 previous errors
 
 For more information about this error, try `rustc --explain E0004`.

@@ -1,6 +1,6 @@
 use crate::any::Any;
 use crate::error::Error as StdError;
-use crate::ffi::{OsString, OsStr, CString, CStr};
+use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::marker::PhantomData;
@@ -19,7 +19,7 @@ pub unsafe fn env_lock() -> impl Any {
 }
 
 pub fn errno() -> i32 {
-    extern {
+    extern "C" {
         #[thread_local]
         static errno: libc::c_int;
     }
@@ -64,7 +64,9 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsRef<OsStr>
+where
+    I: Iterator<Item = T>,
+    T: AsRef<OsStr>,
 {
     Err(JoinPathsError)
 }
@@ -91,10 +93,13 @@ pub struct Env {
 
 impl Iterator for Env {
     type Item = (OsString, OsString);
-    fn next(&mut self) -> Option<(OsString, OsString)> { self.iter.next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
+    fn next(&mut self) -> Option<(OsString, OsString)> {
+        self.iter.next()
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
 }
-
 
 pub fn env() -> Env {
     unsafe {
@@ -107,10 +112,7 @@ pub fn env() -> Env {
             }
             environ = environ.offset(1);
         }
-        return Env {
-            iter: result.into_iter(),
-            _dont_send_or_sync_me: PhantomData,
-        }
+        return Env { iter: result.into_iter(), _dont_send_or_sync_me: PhantomData };
     }
 
     // See src/libstd/sys/unix/os.rs, same as that
@@ -119,10 +121,12 @@ pub fn env() -> Env {
             return None;
         }
         let pos = memchr::memchr(b'=', &input[1..]).map(|p| p + 1);
-        pos.map(|p| (
-            OsStringExt::from_vec(input[..p].to_vec()),
-            OsStringExt::from_vec(input[p+1..].to_vec()),
-        ))
+        pos.map(|p| {
+            (
+                OsStringExt::from_vec(input[..p].to_vec()),
+                OsStringExt::from_vec(input[p + 1..].to_vec()),
+            )
+        })
     }
 }
 
@@ -168,9 +172,7 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe {
-        libc::exit(code)
-    }
+    unsafe { libc::exit(code) }
 }
 
 pub fn getpid() -> u32 {
@@ -193,9 +195,5 @@ macro_rules! impl_is_minus_one {
 impl_is_minus_one! { i8 i16 i32 i64 isize }
 
 fn cvt<T: IsMinusOne>(t: T) -> io::Result<T> {
-    if t.is_minus_one() {
-        Err(io::Error::last_os_error())
-    } else {
-        Ok(t)
-    }
+    if t.is_minus_one() { Err(io::Error::last_os_error()) } else { Ok(t) }
 }

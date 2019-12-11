@@ -191,23 +191,23 @@ pub enum ObligationCauseCode<'tcx> {
     /// Obligation incurred due to a coercion.
     Coercion { source: Ty<'tcx>, target: Ty<'tcx> },
 
-    // Various cases where expressions must be sized/copy/etc:
-    /// L = X implies that L is Sized
+    /// Various cases where expressions must be `Sized` / `Copy` / etc.
+    /// `L = X` implies that `L` is `Sized`.
     AssignmentLhsSized,
-    /// (x1, .., xn) must be Sized
+    /// `(x1, .., xn)` must be `Sized`.
     TupleInitializerSized,
-    /// S { ... } must be Sized
+    /// `S { ... }` must be `Sized`.
     StructInitializerSized,
-    /// Type of each variable must be Sized
+    /// Type of each variable must be `Sized`.
     VariableType(hir::HirId),
-    /// Argument type must be Sized
+    /// Argument type must be `Sized`.
     SizedArgumentType,
-    /// Return type must be Sized
+    /// Return type must be `Sized`.
     SizedReturnType,
-    /// Yield type must be Sized
+    /// Yield type must be `Sized`.
     SizedYieldType,
-    /// [T,..n] --> T must be Copy. If `true`, suggest `const_in_array_repeat_expression` feature
-    /// flag.
+    /// `[T, ..n]` implies that `T` must be `Copy`.
+    /// If `true`, suggest `const_in_array_repeat_expressions` feature flag.
     RepeatVec(bool),
 
     /// Types of fields (other than the last, except for packed structs) in a struct must be sized.
@@ -216,7 +216,7 @@ pub enum ObligationCauseCode<'tcx> {
     /// Constant expressions must be sized.
     ConstSized,
 
-    /// Static items must have `Sync` type
+    /// `static` items must have `Sync` type.
     SharedStatic,
 
     BuiltinDerivedObligation(DerivedObligationCause<'tcx>),
@@ -334,7 +334,7 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 /// are used for representing the trait system in the form of
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum WhereClause<'tcx> {
     Implemented(ty::TraitPredicate<'tcx>),
     ProjectionEq(ty::ProjectionPredicate<'tcx>),
@@ -342,19 +342,19 @@ pub enum WhereClause<'tcx> {
     TypeOutlives(ty::TypeOutlivesPredicate<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum WellFormed<'tcx> {
     Trait(ty::TraitPredicate<'tcx>),
     Ty(Ty<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum FromEnv<'tcx> {
     Trait(ty::TraitPredicate<'tcx>),
     Ty(Ty<'tcx>),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum DomainGoal<'tcx> {
     Holds(WhereClause<'tcx>),
     WellFormed(WellFormed<'tcx>),
@@ -370,7 +370,7 @@ pub enum QuantifierKind {
     Existential,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable, Lift)]
 pub enum GoalKind<'tcx> {
     Implies(Clauses<'tcx>, Goal<'tcx>),
     And(Goal<'tcx>, Goal<'tcx>),
@@ -416,7 +416,7 @@ impl<'tcx> GoalKind<'tcx> {
 
 /// This matches the definition from Page 7 of "A Proof Procedure for the Logic of Hereditary
 /// Harrop Formulas".
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
 pub enum Clause<'tcx> {
     Implies(ProgramClause<'tcx>),
     ForAll(ty::Binder<ProgramClause<'tcx>>),
@@ -440,7 +440,7 @@ pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
 /// it with the reverse implication operator `:-` to emphasize the way
 /// that programs are actually solved (via backchaining, which starts
 /// with the goal to solve and proceeds from there).
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
 pub struct ProgramClause<'tcx> {
     /// This goal will be considered true ...
     pub goal: DomainGoal<'tcx>,
@@ -460,7 +460,7 @@ pub enum ProgramClauseCategory {
 }
 
 /// A set of clauses that we assume to be true.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
 pub struct Environment<'tcx> {
     pub clauses: Clauses<'tcx>,
 }
@@ -475,7 +475,7 @@ impl Environment<'tcx> {
 }
 
 /// Something (usually a goal), along with an environment.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, HashStable, TypeFoldable)]
 pub struct InEnvironment<'tcx, G> {
     pub environment: Environment<'tcx>,
     pub goal: G,
@@ -483,7 +483,7 @@ pub struct InEnvironment<'tcx, G> {
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,TypeFoldable)]
 pub enum SelectionError<'tcx> {
     Unimplemented,
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
@@ -492,16 +492,6 @@ pub enum SelectionError<'tcx> {
     TraitNotObjectSafe(DefId),
     ConstEvalFailure(ErrorHandled),
     Overflow,
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for SelectionError<'tcx> {
-        (SelectionError::Unimplemented),
-        (SelectionError::OutputTypeParameterMismatch)(a, b, c),
-        (SelectionError::TraitNotObjectSafe)(a),
-        (SelectionError::ConstEvalFailure)(a),
-        (SelectionError::Overflow),
-    }
 }
 
 pub struct FulfillmentError<'tcx> {
@@ -568,7 +558,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -612,18 +602,18 @@ pub enum Vtable<'tcx, N> {
 /// the impl's type parameters.
 ///
 /// The type parameter `N` indicates the type used for "nested
-/// obligations" that are required by the impl. During type check, this
+/// obligations" that are required by the impl. During type-check, this
 /// is `Obligation`, as one might expect. During codegen, however, this
 /// is `()`, because codegen only requires a shallow resolution of an
 /// impl, and nested obligations are satisfied later.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableGeneratorData<'tcx, N> {
     pub generator_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -632,7 +622,7 @@ pub struct VtableGeneratorData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableClosureData<'tcx, N> {
     pub closure_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -641,20 +631,20 @@ pub struct VtableClosureData<'tcx, N> {
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableAutoImplData<N> {
     pub trait_def_id: DefId,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableBuiltinData<N> {
     pub nested: Vec<N>
 }
 
 /// A vtable for some object-safe trait `Foo` automatically derived
 /// for the object type `Foo`.
-#[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(PartialEq, Eq, Clone, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableObjectData<'tcx, N> {
     /// `Foo` upcast to the obligation trait. This will be some supertrait of `Foo`.
     pub upcast_trait_ref: ty::PolyTraitRef<'tcx>,
@@ -667,13 +657,13 @@ pub struct VtableObjectData<'tcx, N> {
     pub nested: Vec<N>,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableFnPointerData<'tcx, N> {
     pub fn_ty: Ty<'tcx>,
     pub nested: Vec<N>
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, HashStable, TypeFoldable)]
 pub struct VtableTraitAliasData<'tcx, N> {
     pub alias_def_id: DefId,
     pub substs: SubstsRef<'tcx>,
@@ -1056,8 +1046,7 @@ fn vtable_methods<'tcx>(
                     return None;
                 }
 
-                // the method may have some early-bound lifetimes, add
-                // regions for those
+                // The method may have some early-bound lifetimes; add regions for those.
                 let substs = trait_ref.map_bound(|trait_ref|
                     InternalSubsts::for_item(tcx, def_id, |param, _|
                         match param.kind {
@@ -1070,15 +1059,15 @@ fn vtable_methods<'tcx>(
                     )
                 );
 
-                // the trait type may have higher-ranked lifetimes in it;
-                // so erase them if they appear, so that we get the type
-                // at some particular call site
+                // The trait type may have higher-ranked lifetimes in it;
+                // erase them if they appear, so that we get the type
+                // at some particular call site.
                 let substs = tcx.normalize_erasing_late_bound_regions(
                     ty::ParamEnv::reveal_all(),
                     &substs
                 );
 
-                // It's possible that the method relies on where clauses that
+                // It's possible that the method relies on where-clauses that
                 // do not hold for this particular set of type parameters.
                 // Note that this method could then never be called, so we
                 // do not want to try and codegen it, in that case (see #23435).

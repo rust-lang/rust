@@ -29,7 +29,6 @@ use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::GenericArg;
 use crate::ty::{self, Ty, TyCtxt, InferConst};
 use crate::infer::{ConstVariableValue, ConstVarValue};
-use crate::mir::interpret::ConstValue;
 use rustc_data_structures::fx::FxHashMap;
 use std::fmt::Debug;
 
@@ -626,7 +625,7 @@ where
         }
 
         match b.val {
-            ConstValue::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
                 bug!("unexpected inference var {:?}", b)
             }
@@ -999,13 +998,13 @@ where
         _: &'tcx ty::Const<'tcx>,
     ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
         match a.val {
-            ConstValue::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
+            ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 bug!(
                     "unexpected inference variable encountered in NLL generalization: {:?}",
                     a
                 );
             }
-            ConstValue::Infer(InferConst::Var(vid)) => {
+            ty::ConstKind::Infer(InferConst::Var(vid)) => {
                 let mut variable_table = self.infcx.const_unification_table.borrow_mut();
                 let var_value = variable_table.probe_value(vid);
                 match var_value.val.known() {

@@ -15,6 +15,8 @@ use rustc::ty::{self, CrateInherentImpls, TyCtxt};
 use syntax::ast;
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls(
     tcx: TyCtxt<'_>,

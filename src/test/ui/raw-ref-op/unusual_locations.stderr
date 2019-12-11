@@ -1,0 +1,18 @@
+error: raw borrows are not yet implemented
+  --> $DIR/unusual_locations.rs:5:36
+   |
+LL | const USES_PTR: () = { let u = (); &raw const u; };
+   |                                    ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64490
+
+error: raw borrows are not yet implemented
+  --> $DIR/unusual_locations.rs:6:42
+   |
+LL | static ALSO_USES_PTR: () = { let u = (); &raw const u; };
+   |                                          ^^^^^^^^^^^^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/64490
+
+error: aborting due to 2 previous errors
+

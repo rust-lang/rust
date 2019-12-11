@@ -6,6 +6,7 @@ use crate::hair::*;
 use rustc::hir;
 use rustc::middle::region;
 use rustc::mir::*;
+use syntax_pos::symbol::sym;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
@@ -62,6 +63,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // tail expression of a block whose result is ignored.
             if let Some(tail_info) = this.block_context.currently_in_block_tail() {
                 local_decl = local_decl.block_tail(tail_info);
+            }
+            if let ExprKind::StaticRef { def_id, .. } = expr.kind {
+                let is_thread_local = this.hir.tcx().has_attr(def_id, sym::thread_local);
+                local_decl.local_info = LocalInfo::StaticRef {def_id, is_thread_local };
             }
             this.local_decls.push(local_decl)
         };

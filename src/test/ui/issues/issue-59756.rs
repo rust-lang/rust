@@ -1,4 +1,8 @@
 // run-rustfix
+// ignore-test
+//
+// FIXME: Re-enable this test once we support choosing
+// between multiple mutually exclusive suggestions for the same span
 
 #![allow(warnings)]
 

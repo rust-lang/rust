@@ -29,11 +29,7 @@ pub struct Weak<F> {
 
 impl<F> Weak<F> {
     pub const fn new(name: &'static str) -> Weak<F> {
-        Weak {
-            name,
-            addr: AtomicUsize::new(1),
-            _marker: marker::PhantomData,
-        }
+        Weak { name, addr: AtomicUsize::new(1), _marker: marker::PhantomData }
     }
 
     pub fn get(&self) -> Option<F> {
@@ -56,5 +52,5 @@ unsafe fn fetch(name: &str) -> usize {
         Err(..) => return 0,
     };
     assert!(false, "FIXME: fetch");
-   libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
+    libc::dlsym(libc::RTLD_DEFAULT, name.as_ptr()) as usize
 }

@@ -33,7 +33,6 @@ pub extern "sysv64" fn all_the_registers(rdi: i64, rsi: i64, rdx: i64,
 
 // this struct contains 8 i64's, while only 6 can be passed in registers.
 #[cfg(target_arch = "x86_64")]
-#[repr(C)]
 #[derive(PartialEq, Eq, Debug)]
 pub struct LargeStruct(i64, i64, i64, i64, i64, i64, i64, i64);
 

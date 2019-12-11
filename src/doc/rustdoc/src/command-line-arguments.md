@@ -355,7 +355,38 @@ $ rustdoc src/lib.rs --edition 2018
 $ rustdoc --test src/lib.rs --edition 2018
 ```
 
-This flag allows rustdoc to treat your rust code as the given edition. It will compile doctests with
+This flag allows `rustdoc` to treat your rust code as the given edition. It will compile doctests with
 the given edition as well. As with `rustc`, the default edition that `rustdoc` will use is `2015`
 (the first edition).
 
+## `--theme`: add a theme to the documentation output
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc src/lib.rs --theme /path/to/your/custom-theme.css
+```
+
+`rustdoc`'s default output includes two themes: `light` (the default) and
+`dark`. This flag allows you to add custom themes to the output. Giving a CSS
+file to this flag adds it to your documentation as an additional theme choice.
+The theme's name is determined by its filename; a theme file named
+`custom-theme.css` will add a theme named `custom-theme` to the documentation.
+
+## `--check-theme`: verify custom themes against the default theme
+
+Using this flag looks like this:
+
+```bash
+$ rustdoc --check-theme /path/to/your/custom-theme.css
+```
+
+While `rustdoc`'s HTML output is more-or-less consistent between versions, there
+is no guarantee that a theme file will have the same effect. The `--theme` flag
+will still allow you to add the theme to your documentation, but to ensure that
+your theme works as expected, you can use this flag to verify that it implements
+the same CSS rules as the official `light` theme.
+
+`--check-theme` is a separate mode in `rustdoc`. When `rustdoc` sees the
+`--check-theme` flag, it discards all other flags and only performs the CSS rule
+comparison operation.

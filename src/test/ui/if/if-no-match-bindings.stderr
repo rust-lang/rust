@@ -4,11 +4,8 @@ error[E0308]: mismatched types
 LL |     if b_ref() {}
    |        ^^^^^^^
    |        |
-   |        expected bool, found &bool
+   |        expected `bool`, found `&bool`
    |        help: consider dereferencing the borrow: `*b_ref()`
-   |
-   = note: expected type `bool`
-              found type `&bool`
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:19:8
@@ -16,11 +13,8 @@ error[E0308]: mismatched types
 LL |     if b_mut_ref() {}
    |        ^^^^^^^^^^^
    |        |
-   |        expected bool, found &mut bool
+   |        expected `bool`, found `&mut bool`
    |        help: consider dereferencing the borrow: `*b_mut_ref()`
-   |
-   = note: expected type `bool`
-              found type `&mut bool`
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:20:8
@@ -28,11 +22,8 @@ error[E0308]: mismatched types
 LL |     if &true {}
    |        ^^^^^
    |        |
-   |        expected bool, found &bool
+   |        expected `bool`, found `&bool`
    |        help: consider removing the borrow: `true`
-   |
-   = note: expected type `bool`
-              found type `&bool`
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:21:8
@@ -40,11 +31,8 @@ error[E0308]: mismatched types
 LL |     if &mut true {}
    |        ^^^^^^^^^
    |        |
-   |        expected bool, found &mut bool
+   |        expected `bool`, found `&mut bool`
    |        help: consider removing the borrow: `true`
-   |
-   = note: expected type `bool`
-              found type `&mut bool`
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:24:11
@@ -52,11 +40,8 @@ error[E0308]: mismatched types
 LL |     while b_ref() {}
    |           ^^^^^^^
    |           |
-   |           expected bool, found &bool
+   |           expected `bool`, found `&bool`
    |           help: consider dereferencing the borrow: `*b_ref()`
-   |
-   = note: expected type `bool`
-              found type `&bool`
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:25:11
@@ -64,11 +49,8 @@ error[E0308]: mismatched types
 LL |     while b_mut_ref() {}
    |           ^^^^^^^^^^^
    |           |
-   |           expected bool, found &mut bool
+   |           expected `bool`, found `&mut bool`
    |           help: consider dereferencing the borrow: `*b_mut_ref()`
-   |
-   = note: expected type `bool`
-              found type `&mut bool`
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:26:11
@@ -76,11 +58,8 @@ error[E0308]: mismatched types
 LL |     while &true {}
    |           ^^^^^
    |           |
-   |           expected bool, found &bool
+   |           expected `bool`, found `&bool`
    |           help: consider removing the borrow: `true`
-   |
-   = note: expected type `bool`
-              found type `&bool`
 
 error[E0308]: mismatched types
   --> $DIR/if-no-match-bindings.rs:27:11
@@ -88,11 +67,8 @@ error[E0308]: mismatched types
 LL |     while &mut true {}
    |           ^^^^^^^^^
    |           |
-   |           expected bool, found &mut bool
+   |           expected `bool`, found `&mut bool`
    |           help: consider removing the borrow: `true`
-   |
-   = note: expected type `bool`
-              found type `&mut bool`
 
 error: aborting due to 8 previous errors
 

@@ -1,6 +1,6 @@
 #![allow(overflowing_literals)]
 
-use std::{i64, f32, f64};
+use std::{f32, f64, i64};
 
 mod parse;
 mod rawfp;
@@ -9,7 +9,7 @@ mod rawfp;
 // to be correct) and see if those strings are parsed back to the value of the literal.
 // Requires a *polymorphic literal*, i.e., one that can serve as f64 as well as f32.
 macro_rules! test_literal {
-    ($x: expr) => ({
+    ($x: expr) => {{
         let x32: f32 = $x;
         let x64: f64 = $x;
         let inputs = &[stringify!($x).into(), format!("{:?}", x64), format!("{:e}", x64)];
@@ -20,7 +20,7 @@ macro_rules! test_literal {
             assert_eq!(neg_input.parse(), Ok(-x64));
             assert_eq!(neg_input.parse(), Ok(-x32));
         }
-    })
+    }};
 }
 
 #[cfg_attr(all(target_arch = "wasm32", target_os = "emscripten"), ignore)] // issue 42630
@@ -31,7 +31,11 @@ fn ordinary() {
     test_literal!(0.1);
     test_literal!(12345.);
     test_literal!(0.9999999);
-    #[cfg(not(miri))] // Miri is too slow
+
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
+
     test_literal!(2.2250738585072014e-308);
 }
 
@@ -53,7 +57,7 @@ fn large() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn subnormals() {
     test_literal!(5e-324);
     test_literal!(91e-324);
@@ -65,7 +69,7 @@ fn subnormals() {
 }
 
 #[test]
-#[cfg(not(miri))] // Miri is too slow
+#[cfg_attr(miri, ignore)] // Miri is too slow
 fn infinity() {
     test_literal!(1e400);
     test_literal!(1e309);
@@ -77,9 +81,12 @@ fn infinity() {
 fn zero() {
     test_literal!(0.0);
     test_literal!(1e-325);
-    #[cfg(not(miri))] // Miri is too slow
+
+    if cfg!(miri) { // Miri is too slow
+        return;
+    }
+
     test_literal!(1e-326);
-    #[cfg(not(miri))] // Miri is too slow
     test_literal!(1e-500);
 }
 

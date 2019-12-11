@@ -59,10 +59,10 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use crate::ffi::{OsString, OsStr};
+use crate::ffi::{OsStr, OsString};
 use crate::sys::os_str::Buf;
 use crate::sys_common::wtf8::Wtf8Buf;
-use crate::sys_common::{FromInner, AsInner};
+use crate::sys_common::{AsInner, FromInner};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use crate::sys_common::wtf8::EncodeWide;

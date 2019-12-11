@@ -15,4 +15,6 @@ fn bar(f: impl T<O=()>) {}
 
 fn main() {
     bar(foo); //~ERROR E0277
+    let closure = || S;
+    bar(closure); //~ERROR E0277
 }

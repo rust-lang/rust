@@ -1,8 +1,8 @@
-mod flt2dec;
 mod dec2flt;
+mod flt2dec;
 
-use test::Bencher;
 use std::str::FromStr;
+use test::Bencher;
 
 const ASCII_NUMBERS: [&str; 19] = [
     "0",
@@ -27,7 +27,7 @@ const ASCII_NUMBERS: [&str; 19] = [
 ];
 
 macro_rules! from_str_bench {
-    ($mac:ident, $t:ty) => (
+    ($mac:ident, $t:ty) => {
         #[bench]
         fn $mac(b: &mut Bencher) {
             b.iter(|| {
@@ -35,15 +35,15 @@ macro_rules! from_str_bench {
                     .iter()
                     .cycle()
                     .take(5_000)
-                    .filter_map(|s| <($t)>::from_str(s).ok())
+                    .filter_map(|s| <$t>::from_str(s).ok())
                     .max()
             })
         }
-    )
+    };
 }
 
 macro_rules! from_str_radix_bench {
-    ($mac:ident, $t:ty, $radix:expr) => (
+    ($mac:ident, $t:ty, $radix:expr) => {
         #[bench]
         fn $mac(b: &mut Bencher) {
             b.iter(|| {
@@ -51,11 +51,11 @@ macro_rules! from_str_radix_bench {
                     .iter()
                     .cycle()
                     .take(5_000)
-                    .filter_map(|s| <($t)>::from_str_radix(s, $radix).ok())
+                    .filter_map(|s| <$t>::from_str_radix(s, $radix).ok())
                     .max()
             })
         }
-    )
+    };
 }
 
 from_str_bench!(bench_u8_from_str, u8);

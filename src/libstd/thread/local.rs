@@ -142,9 +142,7 @@ macro_rules! thread_local {
 }
 
 #[doc(hidden)]
-#[unstable(feature = "thread_local_internals",
-           reason = "should not be necessary",
-           issue = "0")]
+#[unstable(feature = "thread_local_internals", reason = "should not be necessary", issue = "0")]
 #[macro_export]
 #[allow_internal_unstable(thread_local_internals, cfg_target_thread_local, thread_local)]
 #[allow_internal_unsafe]
@@ -214,13 +212,13 @@ impl Error for AccessError {}
 
 impl<T: 'static> LocalKey<T> {
     #[doc(hidden)]
-    #[unstable(feature = "thread_local_internals",
-               reason = "recently added to create a key",
-               issue = "0")]
+    #[unstable(
+        feature = "thread_local_internals",
+        reason = "recently added to create a key",
+        issue = "0"
+    )]
     pub const unsafe fn new(inner: unsafe fn() -> Option<&'static T>) -> LocalKey<T> {
-        LocalKey {
-            inner,
-        }
+        LocalKey { inner }
     }
 
     /// Acquires a reference to the value in this TLS key.
@@ -235,9 +233,13 @@ impl<T: 'static> LocalKey<T> {
     /// previously been run for this thread.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
-                      where F: FnOnce(&T) -> R {
-        self.try_with(f).expect("cannot access a Thread Local Storage value \
-                                 during or after destruction")
+    where
+        F: FnOnce(&T) -> R,
+    {
+        self.try_with(f).expect(
+            "cannot access a Thread Local Storage value \
+             during or after destruction",
+        )
     }
 
     /// Acquires a reference to the value in this TLS key.
@@ -256,9 +258,7 @@ impl<T: 'static> LocalKey<T> {
         F: FnOnce(&T) -> R,
     {
         unsafe {
-            let thread_local = (self.inner)().ok_or(AccessError {
-                _private: (),
-            })?;
+            let thread_local = (self.inner)().ok_or(AccessError { _private: () })?;
             Ok(f(thread_local))
         }
     }
@@ -266,8 +266,8 @@ impl<T: 'static> LocalKey<T> {
 
 mod lazy {
     use crate::cell::UnsafeCell;
-    use crate::mem;
     use crate::hint;
+    use crate::mem;
 
     pub struct LazyKeyInner<T> {
         inner: UnsafeCell<Option<T>>,
@@ -275,9 +275,7 @@ mod lazy {
 
     impl<T> LazyKeyInner<T> {
         pub const fn new() -> LazyKeyInner<T> {
-            LazyKeyInner {
-                inner: UnsafeCell::new(None),
-            }
+            LazyKeyInner { inner: UnsafeCell::new(None) }
         }
 
         pub unsafe fn get(&self) -> Option<&'static T> {
@@ -334,7 +332,7 @@ pub mod statik {
         inner: LazyKeyInner<T>,
     }
 
-    unsafe impl<T> Sync for Key<T> { }
+    unsafe impl<T> Sync for Key<T> {}
 
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -344,9 +342,7 @@ pub mod statik {
 
     impl<T> Key<T> {
         pub const fn new() -> Key<T> {
-            Key {
-                inner: LazyKeyInner::new(),
-            }
+            Key { inner: LazyKeyInner::new() }
         }
 
         pub unsafe fn get(&self, init: fn() -> T) -> Option<&'static T> {
@@ -404,10 +400,7 @@ pub mod fast {
 
     impl<T> Key<T> {
         pub const fn new() -> Key<T> {
-            Key {
-                inner: LazyKeyInner::new(),
-                dtor_state: Cell::new(DtorState::Unregistered),
-            }
+            Key { inner: LazyKeyInner::new(), dtor_state: Cell::new(DtorState::Unregistered) }
         }
 
         pub unsafe fn get<F: FnOnce() -> T>(&self, init: F) -> Option<&'static T> {
@@ -441,8 +434,7 @@ pub mod fast {
             match self.dtor_state.get() {
                 DtorState::Unregistered => {
                     // dtor registration happens before initialization.
-                    register_dtor(self as *const _ as *mut u8,
-                                destroy_value::<T>);
+                    register_dtor(self as *const _ as *mut u8, destroy_value::<T>);
                     self.dtor_state.set(DtorState::Registered);
                     true
                 }
@@ -450,14 +442,12 @@ pub mod fast {
                     // recursively initialized
                     true
                 }
-                DtorState::RunningOrHasRun => {
-                    false
-                }
+                DtorState::RunningOrHasRun => false,
             }
         }
     }
 
-    unsafe extern fn destroy_value<T>(ptr: *mut u8) {
+    unsafe extern "C" fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
 
         // Right before we run the user destructor be sure to set the
@@ -491,7 +481,7 @@ pub mod os {
         }
     }
 
-    unsafe impl<T> Sync for Key<T> { }
+    unsafe impl<T> Sync for Key<T> {}
 
     struct Value<T: 'static> {
         inner: LazyKeyInner<T>,
@@ -500,10 +490,7 @@ pub mod os {
 
     impl<T: 'static> Key<T> {
         pub const fn new() -> Key<T> {
-            Key {
-                os: OsStaticKey::new(Some(destroy_value::<T>)),
-                marker: marker::PhantomData
-            }
+            Key { os: OsStaticKey::new(Some(destroy_value::<T>)), marker: marker::PhantomData }
         }
 
         pub unsafe fn get(&'static self, init: fn() -> T) -> Option<&'static T> {
@@ -523,16 +510,13 @@ pub mod os {
             let ptr = self.os.get() as *mut Value<T>;
             if ptr as usize == 1 {
                 // destructor is running
-                return None
+                return None;
             }
 
             let ptr = if ptr.is_null() {
                 // If the lookup returned null, we haven't initialized our own
                 // local copy, so do that now.
-                let ptr: Box<Value<T>> = box Value {
-                    inner: LazyKeyInner::new(),
-                    key: self,
-                };
+                let ptr: Box<Value<T>> = box Value { inner: LazyKeyInner::new(), key: self };
                 let ptr = Box::into_raw(ptr);
                 self.os.set(ptr as *mut u8);
                 ptr
@@ -545,7 +529,7 @@ pub mod os {
         }
     }
 
-    unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
+    unsafe extern "C" fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
         // ensure that any future calls to `get` for this thread will return
@@ -563,8 +547,8 @@ pub mod os {
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
-    use crate::sync::mpsc::{channel, Sender};
     use crate::cell::{Cell, UnsafeCell};
+    use crate::sync::mpsc::{channel, Sender};
     use crate::thread;
 
     struct Foo(Sender<()>);
@@ -585,7 +569,7 @@ mod tests {
             f.set(2);
         });
         let (tx, rx) = channel();
-        let _t = thread::spawn(move|| {
+        let _t = thread::spawn(move || {
             FOO.with(|f| {
                 assert_eq!(f.get(), 1);
             });
@@ -610,7 +594,10 @@ mod tests {
 
         thread::spawn(|| {
             assert!(FOO.try_with(|_| ()).is_ok());
-        }).join().ok().expect("thread panicked");
+        })
+        .join()
+        .ok()
+        .expect("thread panicked");
     }
 
     #[test]
@@ -618,7 +605,7 @@ mod tests {
         thread_local!(static FOO: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
 
         let (tx, rx) = channel();
-        let _t = thread::spawn(move|| unsafe {
+        let _t = thread::spawn(move || unsafe {
             let mut tx = Some(tx);
             FOO.with(|f| {
                 *f.get() = Some(Foo(tx.take().unwrap()));
@@ -662,9 +649,12 @@ mod tests {
             }
         }
 
-        thread::spawn(move|| {
+        thread::spawn(move || {
             drop(S1);
-        }).join().ok().expect("thread panicked");
+        })
+        .join()
+        .ok()
+        .expect("thread panicked");
     }
 
     #[test]
@@ -678,9 +668,12 @@ mod tests {
             }
         }
 
-        thread::spawn(move|| unsafe {
+        thread::spawn(move || unsafe {
             K1.with(|s| *s.get() = Some(S1));
-        }).join().ok().expect("thread panicked");
+        })
+        .join()
+        .ok()
+        .expect("thread panicked");
     }
 
     // Note that this test will deadlock if TLS destructors aren't run (this
@@ -701,7 +694,7 @@ mod tests {
         }
 
         let (tx, rx) = channel();
-        let _t = thread::spawn(move|| unsafe {
+        let _t = thread::spawn(move || unsafe {
             let mut tx = Some(tx);
             K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
         });
@@ -716,7 +709,9 @@ mod dynamic_tests {
 
     #[test]
     fn smoke() {
-        fn square(i: i32) -> i32 { i * i }
+        fn square(i: i32) -> i32 {
+            i * i
+        }
         thread_local!(static FOO: i32 = square(3));
 
         FOO.with(|f| {

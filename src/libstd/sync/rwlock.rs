@@ -87,7 +87,7 @@ unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
-    __lock: &'a RwLock<T>,
+    lock: &'a RwLock<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -108,8 +108,8 @@ unsafe impl<T: ?Sized + Sync> Sync for RwLockReadGuard<'_, T> {}
 #[must_use = "if unused the RwLock will immediately unlock"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
-    __lock: &'a RwLock<T>,
-    __poison: poison::Guard,
+    lock: &'a RwLock<T>,
+    poison: poison::Guard,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -465,7 +465,7 @@ impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
                   -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |_| {
             RwLockReadGuard {
-                __lock: lock,
+                lock: lock,
             }
         })
     }
@@ -476,8 +476,8 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
                   -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
             RwLockWriteGuard {
-                __lock: lock,
-                __poison: guard,
+                lock: lock,
+                poison: guard,
             }
         })
     }
@@ -487,7 +487,7 @@ impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
 impl<T: fmt::Debug> fmt::Debug for RwLockReadGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RwLockReadGuard")
-            .field("lock", &self.__lock)
+            .field("lock", &self.lock)
             .finish()
     }
 }
@@ -503,7 +503,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RwLockReadGuard<'_, T> {
 impl<T: fmt::Debug> fmt::Debug for RwLockWriteGuard<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RwLockWriteGuard")
-            .field("lock", &self.__lock)
+            .field("lock", &self.lock)
             .finish()
     }
 }
@@ -520,7 +520,7 @@ impl<T: ?Sized> Deref for RwLockReadGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        unsafe { &*self.lock.data.get() }
     }
 }
 
@@ -529,29 +529,29 @@ impl<T: ?Sized> Deref for RwLockWriteGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        unsafe { &*self.__lock.data.get() }
+        unsafe { &*self.lock.data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for RwLockWriteGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut T {
-        unsafe { &mut *self.__lock.data.get() }
+        unsafe { &mut *self.lock.data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for RwLockReadGuard<'_, T> {
     fn drop(&mut self) {
-        unsafe { self.__lock.inner.read_unlock(); }
+        unsafe { self.lock.inner.read_unlock(); }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Drop for RwLockWriteGuard<'_, T> {
     fn drop(&mut self) {
-        self.__lock.poison.done(&self.__poison);
-        unsafe { self.__lock.inner.write_unlock(); }
+        self.lock.poison.done(&self.poison);
+        unsafe { self.lock.inner.write_unlock(); }
     }
 }
 

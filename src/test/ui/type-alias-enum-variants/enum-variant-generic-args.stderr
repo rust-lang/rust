@@ -5,10 +5,10 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 LL |     fn ts_variant() {
 LL |         Self::TSVariant(());
-   |                         ^^ expected type parameter `T`, found ()
+   |                         ^^ expected type parameter `T`, found `()`
    |
-   = note: expected type `T`
-              found type `()`
+   = note: expected type parameter `T`
+                   found unit type `()`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
@@ -31,10 +31,10 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::<()>::TSVariant(());
-   |                               ^^ expected type parameter `T`, found ()
+   |                               ^^ expected type parameter `T`, found `()`
    |
-   = note: expected type `T`
-              found type `()`
+   = note: expected type parameter `T`
+                   found unit type `()`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
@@ -57,10 +57,10 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::SVariant { v: () };
-   |                             ^^ expected type parameter `T`, found ()
+   |                             ^^ expected type parameter `T`, found `()`
    |
-   = note: expected type `T`
-              found type `()`
+   = note: expected type parameter `T`
+                   found unit type `()`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
@@ -77,10 +77,10 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::SVariant::<()> { v: () };
-   |                                   ^^ expected type parameter `T`, found ()
+   |                                   ^^ expected type parameter `T`, found `()`
    |
-   = note: expected type `T`
-              found type `()`
+   = note: expected type parameter `T`
+                   found unit type `()`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
@@ -97,10 +97,10 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::<()>::SVariant { v: () };
-   |                                   ^^ expected type parameter `T`, found ()
+   |                                   ^^ expected type parameter `T`, found `()`
    |
-   = note: expected type `T`
-              found type `()`
+   = note: expected type parameter `T`
+                   found unit type `()`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 
@@ -123,10 +123,10 @@ LL | impl<T> Enum<T> {
    |      - this type parameter
 ...
 LL |         Self::<()>::SVariant::<()> { v: () };
-   |                                         ^^ expected type parameter `T`, found ()
+   |                                         ^^ expected type parameter `T`, found `()`
    |
-   = note: expected type `T`
-              found type `()`
+   = note: expected type parameter `T`
+                   found unit type `()`
    = help: type parameters must be constrained to match other types
    = note: for more information, visit https://doc.rust-lang.org/book/ch10-02-traits.html#traits-as-parameters
 

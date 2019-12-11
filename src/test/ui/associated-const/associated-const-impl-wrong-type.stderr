@@ -5,7 +5,7 @@ LL |     const BAR: u32;
    |                --- type in trait
 ...
 LL |     const BAR: i32 = -1;
-   |                ^^^ expected u32, found i32
+   |                ^^^ expected `u32`, found `i32`
 
 error: aborting due to previous error
 

@@ -17,6 +17,7 @@ use rustc::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_index::bit_set::BitSet;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use smallvec::{SmallVec, smallvec};
 use syntax::ast::Name;
 use syntax_pos::Span;
 
@@ -166,7 +167,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         |(pattern, pre_binding_block)| {
                             Candidate {
                                 span: pattern.span,
-                                match_pairs: vec![
+                                match_pairs: smallvec![
                                     MatchPair::new(scrutinee_place.clone(), pattern),
                                 ],
                                 bindings: vec![],
@@ -421,7 +422,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // create a dummy candidate
         let mut candidate = Candidate {
             span: irrefutable_pat.span,
-            match_pairs: vec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
+            match_pairs: smallvec![MatchPair::new(initializer.clone(), &irrefutable_pat)],
             bindings: vec![],
             ascriptions: vec![],
 
@@ -458,10 +459,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             for binding in &candidate.bindings {
                 let local = self.var_local_id(binding.var_id, OutsideGuard);
 
-                if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                if let LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
                     opt_match_place: Some((ref mut match_place, _)),
                     ..
-                }))) = self.local_decls[local].is_user_variable
+                }))) = self.local_decls[local].local_info
                 {
                     *match_place = Some(initializer.clone());
                 } else {
@@ -671,7 +672,7 @@ pub struct Candidate<'pat, 'tcx> {
     span: Span,
 
     // all of these must be satisfied...
-    match_pairs: Vec<MatchPair<'pat, 'tcx>>,
+    match_pairs: SmallVec<[MatchPair<'pat, 'tcx>; 1]>,
 
     // ...these bindings established...
     bindings: Vec<Binding<'tcx>>,
@@ -1720,6 +1721,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
 
         let tcx = self.hir.tcx();
+        let debug_source_info = SourceInfo {
+            span: source_info.span,
+            scope: visibility_scope,
+        };
         let binding_mode = match mode {
             BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
             BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability.into()),
@@ -1729,23 +1734,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             mutability,
             ty: var_ty,
             user_ty,
-            name: Some(name),
             source_info,
-            visibility_scope,
             internal: false,
             is_block_tail: None,
-            is_user_variable: Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                binding_mode,
-                // hypothetically, `visit_bindings` could try to unzip
-                // an outermost hir::Ty as we descend, matching up
-                // idents in pat; but complex w/ unclear UI payoff.
-                // Instead, just abandon providing diagnostic info.
-                opt_ty_info: None,
-                opt_match_place,
-                pat_span,
-            }))),
+            local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::Var(
+                VarBindingForm {
+                    binding_mode,
+                    // hypothetically, `visit_bindings` could try to unzip
+                    // an outermost hir::Ty as we descend, matching up
+                    // idents in pat; but complex w/ unclear UI payoff.
+                    // Instead, just abandon providing diagnostic info.
+                    opt_ty_info: None,
+                    opt_match_place,
+                    pat_span,
+                },
+            ))),
         };
         let for_arm_body = self.local_decls.push(local);
+        self.var_debug_info.push(VarDebugInfo {
+            name,
+            source_info: debug_source_info,
+            place: for_arm_body.into(),
+        });
         let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 // This variable isn't mutated but has a name, so has to be
@@ -1753,12 +1763,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 mutability: Mutability::Not,
                 ty: tcx.mk_imm_ref(tcx.lifetimes.re_erased, var_ty),
                 user_ty: UserTypeProjections::none(),
-                name: Some(name),
                 source_info,
-                visibility_scope,
                 internal: false,
                 is_block_tail: None,
-                is_user_variable: Some(ClearCrossCrate::Set(BindingForm::RefForGuard)),
+                local_info: LocalInfo::User(ClearCrossCrate::Set(BindingForm::RefForGuard)),
+            });
+            self.var_debug_info.push(VarDebugInfo {
+                name,
+                source_info: debug_source_info,
+                place: ref_for_guard.into(),
             });
             LocalsForNode::ForGuard {
                 ref_for_guard,

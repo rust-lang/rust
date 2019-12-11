@@ -2,9 +2,9 @@ error[E0382]: use of moved value: `blk`
   --> $DIR/once-cant-call-twice-on-heap.rs:9:5
    |
 LL | fn foo<F:FnOnce()>(blk: F) {
-   |        -           --- move occurs because `blk` has type `F`, which does not implement the `Copy` trait
+   |        --          --- move occurs because `blk` has type `F`, which does not implement the `Copy` trait
    |        |
-   |        consider adding a `Copy` constraint to this type argument
+   |        help: consider further restricting this bound: `F: Copy +`
 LL |     blk();
    |     --- value moved here
 LL |     blk();

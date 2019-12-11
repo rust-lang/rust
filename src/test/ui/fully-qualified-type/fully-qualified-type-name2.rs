@@ -11,8 +11,6 @@ mod y {
 fn bar(x: x::Foo) -> y::Foo {
     return x;
     //~^ ERROR mismatched types
-    //~| expected type `y::Foo`
-    //~| found type `x::Foo`
     //~| expected enum `y::Foo`, found enum `x::Foo`
 }
 

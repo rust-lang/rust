@@ -33,7 +33,7 @@ def check_lib(lib):
     print('verifying if {} is an unstable crate'.format(lib['name']))
     stdout, stderr = exec_command([os.environ['RUSTC'], '-', '--crate-type', 'rlib',
                                    '--extern', '{}={}'.format(lib['name'], lib['path'])],
-                                  to_input='extern crate {};'.format(lib['name']))
+                                  to_input=('extern crate {};'.format(lib['name'])).encode('utf-8'))
     if not 'use of unstable library feature' in '{}{}'.format(stdout, stderr):
         print('crate {} "{}" is not unstable'.format(lib['name'], lib['path']))
         print('{}{}'.format(stdout, stderr))

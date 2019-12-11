@@ -18,7 +18,7 @@ mod _test2_inner {
           //~| ERROR: non-builtin inner attributes are unstable
 }
 
-#[empty_attr = "y"] //~ ERROR: must only be followed by a delimiter token
+#[empty_attr = "y"] //~ ERROR: key-value macro attributes are not supported
 fn _test3() {}
 
 fn attrs() {

@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of undeclared type or module `E`
-  --> $DIR/pattern-error-continue.rs:35:9
+  --> $DIR/pattern-error-continue.rs:33:9
    |
 LL |         E::V => {}
    |         ^ use of undeclared type or module `E`
@@ -30,16 +30,13 @@ error[E0308]: mismatched types
 LL |     match 'c' {
    |           --- this match expression has type `char`
 LL |         S { .. } => (),
-   |         ^^^^^^^^ expected char, found struct `S`
-   |
-   = note: expected type `char`
-              found type `S`
+   |         ^^^^^^^^ expected `char`, found struct `S`
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-error-continue.rs:30:7
+  --> $DIR/pattern-error-continue.rs:28:7
    |
 LL |     f(true);
-   |       ^^^^ expected char, found bool
+   |       ^^^^ expected `char`, found `bool`
 
 error: aborting due to 5 previous errors
 

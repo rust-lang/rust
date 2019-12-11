@@ -60,6 +60,7 @@ impl<T> Sharded<T> {
         }
     }
 
+    /// The shard is selected by hashing `val` with `FxHasher`.
     #[inline]
     pub fn get_shard_by_value<K: Hash + ?Sized>(&self, val: &K) -> &Lock<T> {
         if SHARDS == 1 {
@@ -69,6 +70,11 @@ impl<T> Sharded<T> {
         }
     }
 
+    /// Get a shard with a pre-computed hash value. If `get_shard_by_value` is
+    /// ever used in combination with `get_shard_by_hash` on a single `Sharded`
+    /// instance, then `hash` must be computed with `FxHasher`. Otherwise,
+    /// `hash` can be computed with any hasher, so long as that hasher is used
+    /// consistently for each `Sharded` instance.
     #[inline]
     pub fn get_shard_by_hash(&self, hash: u64) -> &Lock<T> {
         let hash_len = mem::size_of::<usize>();

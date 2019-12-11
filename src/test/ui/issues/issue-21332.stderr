@@ -4,8 +4,8 @@ error[E0053]: method `next` has an incompatible type for trait
 LL |     fn next(&mut self) -> Result<i32, i32> { Ok(7) }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `std::option::Option`, found enum `std::result::Result`
    |
-   = note: expected type `fn(&mut S) -> std::option::Option<i32>`
-              found type `fn(&mut S) -> std::result::Result<i32, i32>`
+   = note: expected fn pointer `fn(&mut S) -> std::option::Option<i32>`
+              found fn pointer `fn(&mut S) -> std::result::Result<i32, i32>`
 
 error: aborting due to previous error
 

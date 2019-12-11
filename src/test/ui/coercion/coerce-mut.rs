@@ -4,7 +4,7 @@ fn main() {
     let x = 0;
     f(&x);
     //~^ ERROR mismatched types
-    //~| expected type `&mut i32`
-    //~| found type `&{integer}`
+    //~| expected mutable reference `&mut i32`
+    //~| found reference `&{integer}`
     //~| types differ in mutability
 }

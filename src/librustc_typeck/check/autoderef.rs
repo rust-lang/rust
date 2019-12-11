@@ -12,6 +12,8 @@ use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 use syntax_pos::Span;
 use syntax::ast::Ident;
 
+use rustc_error_codes::*;
+
 use std::iter;
 
 #[derive(Copy, Clone, Debug)]

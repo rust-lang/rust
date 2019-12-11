@@ -8,6 +8,8 @@ LL | fn use_<'short,'long>(c: Covariant<'long>,
 ...
 LL |     let _: Covariant<'short> = c;
    |            ^^^^^^^^^^^^^^^^^ type annotation requires that `'short` must outlive `'long`
+   |
+   = help: consider adding the following bound: `'short: 'long`
 
 error: aborting due to previous error
 

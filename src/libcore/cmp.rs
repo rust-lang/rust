@@ -135,10 +135,15 @@ use self::Ordering::*;
 /// By changing `impl PartialEq for Book` to `impl PartialEq<BookFormat> for Book`,
 /// we allow `BookFormat`s to be compared with `Book`s.
 ///
-/// You can also combine these implementations to let the `==` operator work with
-/// two different types:
+/// A comparison like the one above, which ignores some fields of the struct,
+/// can be dangerous. It can easily lead to an unintended violation of the
+/// requirements for a partial equivalence relation. For example, if we kept
+/// the above implementation of `PartialEq<Book>` for `BookFormat` and added an
+/// implementation of `PartialEq<Book>` for `Book` (either via a `#[derive]` or
+/// via the manual implementation from the first example) then the result would
+/// violate transitivity:
 ///
-/// ```
+/// ```should_panic
 /// #[derive(PartialEq)]
 /// enum BookFormat {
 ///     Paperback,
@@ -146,6 +151,7 @@ use self::Ordering::*;
 ///     Ebook,
 /// }
 ///
+/// #[derive(PartialEq)]
 /// struct Book {
 ///     isbn: i32,
 ///     format: BookFormat,
@@ -163,18 +169,16 @@ use self::Ordering::*;
 ///     }
 /// }
 ///
-/// impl PartialEq for Book {
-///     fn eq(&self, other: &Book) -> bool {
-///         self.isbn == other.isbn
-///     }
+/// fn main() {
+///     let b1 = Book { isbn: 1, format: BookFormat::Paperback };
+///     let b2 = Book { isbn: 2, format: BookFormat::Paperback };
+///
+///     assert!(b1 == BookFormat::Paperback);
+///     assert!(BookFormat::Paperback == b2);
+///
+///     // The following should hold by transitivity but doesn't.
+///     assert!(b1 == b2); // <-- PANICS
 /// }
-///
-/// let b1 = Book { isbn: 3, format: BookFormat::Paperback };
-/// let b2 = Book { isbn: 3, format: BookFormat::Ebook };
-///
-/// assert!(b1 == BookFormat::Paperback);
-/// assert!(BookFormat::Ebook != b1);
-/// assert!(b1 == b2);
 /// ```
 ///
 /// # Examples
@@ -460,9 +464,9 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn le(&self, other: &Self) -> bool { other.0 <= self.0 }
     #[inline]
-    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
-    #[inline]
     fn gt(&self, other: &Self) -> bool { other.0 > self.0 }
+    #[inline]
+    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
 }
 
 #[stable(feature = "reverse_cmp_key", since = "1.19.0")]
@@ -530,7 +534,6 @@ impl<T: Ord> Ord for Reverse<T> {
 ///     }
 /// }
 /// ```
-#[lang = "ord"]
 #[doc(alias = "<")]
 #[doc(alias = ">")]
 #[doc(alias = "<=")]
@@ -1128,24 +1131,24 @@ mod impls {
 
     ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "1.41.0")]
     impl PartialEq for ! {
         fn eq(&self, _: &!) -> bool {
             *self
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "1.41.0")]
     impl Eq for ! {}
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "1.41.0")]
     impl PartialOrd for ! {
         fn partial_cmp(&self, _: &!) -> Option<Ordering> {
             *self
         }
     }
 
-    #[unstable(feature = "never_type", issue = "35121")]
+    #[stable(feature = "never_type", since = "1.41.0")]
     impl Ord for ! {
         fn cmp(&self, _: &!) -> Ordering {
             *self
@@ -1172,9 +1175,9 @@ mod impls {
         #[inline]
         fn le(&self, other: & &B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: & &B) -> bool { PartialOrd::ge(*self, *other) }
-        #[inline]
         fn gt(&self, other: & &B) -> bool { PartialOrd::gt(*self, *other) }
+        #[inline]
+        fn ge(&self, other: & &B) -> bool { PartialOrd::ge(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &A where A: Ord {
@@ -1204,9 +1207,9 @@ mod impls {
         #[inline]
         fn le(&self, other: &&mut B) -> bool { PartialOrd::le(*self, *other) }
         #[inline]
-        fn ge(&self, other: &&mut B) -> bool { PartialOrd::ge(*self, *other) }
-        #[inline]
         fn gt(&self, other: &&mut B) -> bool { PartialOrd::gt(*self, *other) }
+        #[inline]
+        fn ge(&self, other: &&mut B) -> bool { PartialOrd::ge(*self, *other) }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &mut A where A: Ord {

@@ -1,12 +1,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::fs;
-use crate::os::windows::raw;
+use crate::io;
 use crate::net;
-use crate::sys_common::{self, AsInner, FromInner, IntoInner};
+use crate::os::windows::raw;
 use crate::sys;
 use crate::sys::c;
-use crate::io;
+use crate::sys_common::{self, AsInner, FromInner, IntoInner};
 
 /// Raw HANDLEs.
 #[stable(feature = "rust1", since = "1.0.0")]

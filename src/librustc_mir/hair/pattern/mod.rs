@@ -28,6 +28,8 @@ use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
+use rustc_error_codes::*;
+
 #[derive(Clone, Debug)]
 pub enum PatternError {
     AssocConstInPattern(Span),
@@ -1152,13 +1154,7 @@ pub fn compare_const_vals<'tcx>(
 ) -> Option<Ordering> {
     trace!("compare_const_vals: {:?}, {:?}", a, b);
 
-    let from_bool = |v: bool| {
-        if v {
-            Some(Ordering::Equal)
-        } else {
-            None
-        }
-    };
+    let from_bool = |v: bool| v.then_some(Ordering::Equal);
 
     let fallback = || from_bool(a == b);
 
@@ -1197,9 +1193,10 @@ pub fn compare_const_vals<'tcx>(
 
     if let ty::Str = ty.kind {
         match (a.val, b.val) {
-            (ConstValue::Slice { .. }, ConstValue::Slice { .. }) => {
-                let a_bytes = get_slice_bytes(&tcx, a.val);
-                let b_bytes = get_slice_bytes(&tcx, b.val);
+            (ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
+             ty::ConstKind::Value(b_val @ ConstValue::Slice { .. })) => {
+                let a_bytes = get_slice_bytes(&tcx, a_val);
+                let b_bytes = get_slice_bytes(&tcx, b_val);
                 return from_bool(a_bytes == b_bytes);
             }
             _ => (),

@@ -142,10 +142,6 @@ function getSearchElement() {
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
     var TY_KEYWORD = itemTypes.indexOf("keyword");
 
-    onEachLazy(document.getElementsByClassName("js-only"), function(e) {
-        removeClass(e, "js-only");
-    });
-
     function getQueryStringParams() {
         var params = {};
         window.location.search.substring(1).split("&").
@@ -396,38 +392,51 @@ function getSearchElement() {
 
     document.onkeypress = handleShortcut;
     document.onkeydown = handleShortcut;
+
+    var handleSourceHighlight = (function() {
+        var prev_line_id = 0;
+
+        var set_fragment = function(name) {
+            var x = window.scrollX,
+                y = window.scrollY;
+            if (browserSupportsHistoryApi()) {
+                history.replaceState(null, null, "#" + name);
+                highlightSourceLines();
+            } else {
+                location.replace("#" + name);
+            }
+            // Prevent jumps when selecting one or many lines
+            window.scrollTo(x, y);
+        };
+
+        return function(ev) {
+            var cur_line_id = parseInt(ev.target.id, 10);
+            ev.preventDefault();
+
+            if (ev.shiftKey && prev_line_id) {
+                // Swap selection if needed
+                if (prev_line_id > cur_line_id) {
+                    var tmp = prev_line_id;
+                    prev_line_id = cur_line_id;
+                    cur_line_id = tmp;
+                }
+
+                set_fragment(prev_line_id + "-" + cur_line_id);
+            } else {
+                prev_line_id = cur_line_id;
+
+                set_fragment(cur_line_id);
+            }
+        }
+    })();
+
     document.onclick = function(ev) {
         if (hasClass(ev.target, "collapse-toggle")) {
             collapseDocs(ev.target, "toggle");
         } else if (hasClass(ev.target.parentNode, "collapse-toggle")) {
             collapseDocs(ev.target.parentNode, "toggle");
         } else if (ev.target.tagName === "SPAN" && hasClass(ev.target.parentNode, "line-numbers")) {
-            var prev_id = 0;
-
-            var set_fragment = function(name) {
-                if (browserSupportsHistoryApi()) {
-                    history.replaceState(null, null, "#" + name);
-                    highlightSourceLines();
-                } else {
-                    location.replace("#" + name);
-                }
-            };
-
-            var cur_id = parseInt(ev.target.id, 10);
-
-            if (ev.shiftKey && prev_id) {
-                if (prev_id > cur_id) {
-                    var tmp = prev_id;
-                    prev_id = cur_id;
-                    cur_id = tmp;
-                }
-
-                set_fragment(prev_id + "-" + cur_id);
-            } else {
-                prev_id = cur_id;
-
-                set_fragment(cur_id);
-            }
+            handleSourceHighlight(ev);
         } else if (hasClass(getHelpElement(), "hidden") === false) {
             var help = getHelpElement();
             var is_inside_help_popup = ev.target !== help && help.contains(ev.target);
@@ -511,21 +520,6 @@ function getSearchElement() {
         var INPUTS_DATA = 0;
         var OUTPUT_DATA = 1;
         var params = getQueryStringParams();
-
-        // Set the crate filter from saved storage, if the current page has the saved crate filter.
-        //
-        // If not, ignore the crate filter -- we want to support filtering for crates on sites like
-        // doc.rust-lang.org where the crates may differ from page to page while on the same domain.
-        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
-        if (savedCrate !== null) {
-            onEachLazy(document.getElementById("crate-search").getElementsByTagName("option"),
-                       function(e) {
-                if (e.value === savedCrate) {
-                    document.getElementById("crate-search").value = e.value;
-                    return true;
-                }
-            });
-        }
 
         // Populate search bar with query string search term when provided,
         // but only if the input bar is empty. This avoid the obnoxious issue
@@ -1081,14 +1075,13 @@ function getSearchElement() {
                 val = paths[paths.length - 1];
                 var contains = paths.slice(0, paths.length > 1 ? paths.length - 1 : 1);
 
+                var lev;
+                var lev_distance;
                 for (j = 0; j < nSearchWords; ++j) {
-                    var lev;
-                    var lev_distance;
                     ty = searchIndex[j];
                     if (!ty || (filterCrates !== undefined && ty.crate !== filterCrates)) {
                         continue;
                     }
-                    var lev_distance;
                     var lev_add = 0;
                     if (paths.length > 1) {
                         lev = checkPath(contains, paths[paths.length - 1], ty);
@@ -1228,7 +1221,7 @@ function getSearchElement() {
                     // then an exact path match
                     path.indexOf(keys[i]) > -1 ||
                     // next if there is a parent, check for exact parent match
-                    (parent !== undefined &&
+                    (parent !== undefined && parent.name !== undefined &&
                         parent.name.toLowerCase().indexOf(keys[i]) > -1) ||
                     // lastly check to see if the name was a levenshtein match
                     levenshtein(name, keys[i]) <= MAX_LEV_DISTANCE)) {
@@ -1633,7 +1626,7 @@ function getSearchElement() {
             }
 
             var filterCrates = getFilterCrates();
-            showResults(execSearch(query, index, filterCrates), filterCrates);
+            showResults(execSearch(query, index, filterCrates));
         }
 
         function buildIndex(rawSearchIndex) {
@@ -2621,12 +2614,26 @@ function getSearchElement() {
             }
             return 0;
         });
+        var savedCrate = getCurrentValue("rustdoc-saved-filter-crate");
         for (var i = 0; i < crates_text.length; ++i) {
             var option = document.createElement("option");
             option.value = crates_text[i];
             option.innerText = crates_text[i];
             elem.appendChild(option);
+            // Set the crate filter from saved storage, if the current page has the saved crate
+            // filter.
+            //
+            // If not, ignore the crate filter -- we want to support filtering for crates on sites
+            // like doc.rust-lang.org where the crates may differ from page to page while on the
+            // same domain.
+            if (crates_text[i] === savedCrate) {
+                elem.value = savedCrate;
+            }
         }
+
+        if (search_input) {
+            search_input.removeAttribute('disabled');
+        };
     }
 
     window.addSearchOptions = addSearchOptions;

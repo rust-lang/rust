@@ -2,19 +2,19 @@ error[E0308]: mismatched types
   --> $DIR/lit.rs:7:13
    |
 LL |             "abc" => true,
-   |             ^^^^^ expected &str, found str
+   |             ^^^^^ expected `&str`, found `str`
    |
-   = note: expected type `&&str`
-              found type `&'static str`
+   = note:   expected type `&&str`
+           found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/lit.rs:16:9
    |
 LL |         b"abc" => true,
-   |         ^^^^^^ expected &[u8], found array of 3 elements
+   |         ^^^^^^ expected `&[u8]`, found array `[u8; 3]`
    |
-   = note: expected type `&&[u8]`
-              found type `&'static [u8; 3]`
+   = note:   expected type `&&[u8]`
+           found reference `&'static [u8; 3]`
 
 error: aborting due to 2 previous errors
 

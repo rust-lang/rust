@@ -41,7 +41,7 @@ MAINTAINERS = {
         'ryankurte', 'thejpster', 'therealprof',
     },
     'edition-guide': {'ehuss', 'Centril', 'steveklabnik'},
-    'rustc-guide': {'mark-i-m', 'spastorino', 'amanjeev'},
+    'rustc-guide': {'mark-i-m', 'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
 REPOS = {
@@ -50,11 +50,11 @@ REPOS = {
     'rls': 'https://github.com/rust-lang/rls',
     'rustfmt': 'https://github.com/rust-lang/rustfmt',
     'book': 'https://github.com/rust-lang/book',
-    'nomicon': 'https://github.com/rust-lang-nursery/nomicon',
-    'reference': 'https://github.com/rust-lang-nursery/reference',
+    'nomicon': 'https://github.com/rust-lang/nomicon',
+    'reference': 'https://github.com/rust-lang/reference',
     'rust-by-example': 'https://github.com/rust-lang/rust-by-example',
     'embedded-book': 'https://github.com/rust-embedded/book',
-    'edition-guide': 'https://github.com/rust-lang-nursery/edition-guide',
+    'edition-guide': 'https://github.com/rust-lang/edition-guide',
     'rustc-guide': 'https://github.com/rust-lang/rustc-guide',
 }
 

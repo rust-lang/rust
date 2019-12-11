@@ -286,7 +286,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, 'tcx, M
                     "non-integer slice length in wide pointer", self.path);
                 // We do not check that `len * elem_size <= isize::MAX`:
                 // that is only required for references, and there it falls out of the
-                // "dereferencable" check performed by Stacked Borrows.
+                // "dereferenceable" check performed by Stacked Borrows.
             }
             ty::Foreign(..) => {
                 // Unsized, but not wide.
@@ -404,7 +404,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 if place.layout.is_unsized() {
                     self.check_wide_ptr_meta(place.meta, place.layout)?;
                 }
-                // Make sure this is dereferencable and all.
+                // Make sure this is dereferenceable and all.
                 let (size, align) = self.ecx.size_and_align_of(place.meta, place.layout)?
                     // for the purpose of validity, consider foreign types to have
                     // alignment and size determined by the layout (size will be 0,

@@ -16,10 +16,7 @@ steps:
 - checkout: self
   fetchDepth: 2
 
-- script: |
-    export MESSAGE_FILE=$(mktemp -t msg.XXXXXX)
-    . src/ci/docker/x86_64-gnu-tools/repo.sh
-    commit_toolstate_change "$MESSAGE_FILE" "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN"
+- script: src/ci/publish_toolstate.sh
   displayName: Publish toolstate
   env:
     TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)

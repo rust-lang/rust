@@ -18,6 +18,8 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::hygiene::MacroKind;
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 type Res = def::Res<ast::NodeId>;
 
 /// A field or associated item from self type suggested in case of resolution failure.

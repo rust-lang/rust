@@ -1,5 +1,5 @@
 use crate::error::Error as StdError;
-use crate::ffi::{OsString, OsStr};
+use crate::ffi::{OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::path::{self, PathBuf};
@@ -39,7 +39,9 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(_paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsRef<OsStr>
+where
+    I: Iterator<Item = T>,
+    T: AsRef<OsStr>,
 {
     Err(JoinPathsError)
 }

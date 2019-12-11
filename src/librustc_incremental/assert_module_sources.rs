@@ -22,7 +22,7 @@
 //! was re-used.
 
 use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::dep_graph::cgu_reuse_tracker::*;
+use rustc_session::cgu_reuse_tracker::*;
 use rustc::mir::mono::CodegenUnitNameBuilder;
 use rustc::ty::TyCtxt;
 use std::collections::BTreeSet;

@@ -157,9 +157,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             }
 
             BinaryOp(bin_op, ref left, ref right) => {
-                let layout = if binop_left_homogeneous(bin_op) { Some(dest.layout) } else { None };
+                let layout = binop_left_homogeneous(bin_op).then_some(dest.layout);
                 let left = self.read_immediate(self.eval_operand(left, layout)?)?;
-                let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
+                let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(self.eval_operand(right, layout)?)?;
                 self.binop_ignore_overflow(
                     bin_op,
@@ -172,7 +172,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             CheckedBinaryOp(bin_op, ref left, ref right) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
                 let left = self.read_immediate(self.eval_operand(left, None)?)?;
-                let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
+                let layout = binop_right_homogeneous(bin_op).then_some(left.layout);
                 let right = self.read_immediate(self.eval_operand(right, layout)?)?;
                 self.binop_with_overflow(
                     bin_op,
@@ -304,7 +304,9 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         if !self.stack.is_empty() {
             // This should change *something*
             debug_assert!(self.cur_frame() != old_stack || self.frame().block != old_bb);
-            info!("// {:?}", self.frame().block);
+            if let Some(block) = self.frame().block {
+                info!("// executing {:?}", block);
+            }
         }
         Ok(())
     }

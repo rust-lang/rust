@@ -159,11 +159,6 @@ where
     }
 }
 
-impl_stable_hash_for!(enum ::syntax::ast::Mutability {
-    Immutable,
-    Mutable
-});
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
     type KeyType = region::Scope;
 

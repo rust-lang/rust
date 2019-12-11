@@ -77,6 +77,6 @@ pub fn find_best_match_for_name<'a, T>(iter_names: T,
     if let Some(candidate) = case_insensitive_match {
         Some(candidate) // exact case insensitive match has a higher priority
     } else {
-        if let Some((candidate, _)) = levenstein_match { Some(candidate) } else { None }
+        levenstein_match.map(|(candidate, _)| candidate)
     }
 }

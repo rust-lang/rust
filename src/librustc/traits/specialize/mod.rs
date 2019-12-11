@@ -24,6 +24,8 @@ use crate::ty::subst::{Subst, InternalSubsts, SubstsRef};
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
+use rustc_error_codes::*;
+
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
 pub struct OverlapError {
@@ -415,7 +417,7 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> 
         w.push('>');
     }
 
-    write!(w, " {} for {}", trait_ref, tcx.type_of(impl_def_id)).unwrap();
+    write!(w, " {} for {}", trait_ref.print_only_trait_path(), tcx.type_of(impl_def_id)).unwrap();
 
     // The predicates will contain default bounds like `T: Sized`. We need to
     // remove these bounds, and add `T: ?Sized` to any untouched type parameters.

@@ -1,10 +1,9 @@
 use crate::borrow_check::borrow_set::BorrowSet;
-use crate::borrow_check::location::{LocationIndex, LocationTable};
+use crate::borrow_check::location::LocationTable;
 use crate::borrow_check::nll::facts::AllFactsExt;
 use crate::borrow_check::nll::type_check::{MirTypeckResults, MirTypeckRegionConstraints};
 use crate::borrow_check::nll::region_infer::values::RegionValueElements;
-use crate::dataflow::indexes::BorrowIndex;
-use crate::dataflow::move_paths::{InitLocation, MoveData, MovePathIndex, InitKind};
+use crate::dataflow::move_paths::{InitLocation, MoveData, InitKind};
 use crate::dataflow::FlowAtLocation;
 use crate::dataflow::MaybeInitializedPlaces;
 use crate::transform::MirSource;
@@ -12,10 +11,12 @@ use crate::borrow_check::Upvar;
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
 use rustc::mir::{ClosureOutlivesSubject, ClosureRegionRequirements,
-                 Local, Location, Body, LocalKind, BasicBlock, Promoted};
+                 Local, Location, Body, BodyAndCache, LocalKind, BasicBlock,
+                 Promoted, ReadOnlyBodyAndCache};
 use rustc::ty::{self, RegionKind, RegionVid};
 use rustc_index::vec::IndexVec;
 use rustc_errors::Diagnostic;
+use syntax_pos::symbol::Symbol;
 use std::fmt::Debug;
 use std::env;
 use std::io;
@@ -30,20 +31,22 @@ use crate::util as mir_util;
 use crate::util::pretty;
 
 mod constraint_generation;
-pub mod explain_borrow;
 mod facts;
 mod invalidation;
-crate mod region_infer;
 mod renumber;
-crate mod type_check;
-mod universal_regions;
 
-mod constraints;
 mod member_constraints;
 
-use self::facts::AllFacts;
+crate mod constraints;
+crate mod universal_regions;
+crate mod type_check;
+crate mod region_infer;
+
+use self::facts::{AllFacts, RustcFacts};
 use self::region_infer::RegionInferenceContext;
 use self::universal_regions::UniversalRegions;
+
+crate type PoloniusOutput = Output<RustcFacts>;
 
 /// Rewrites the regions in the MIR to use NLL variables, also
 /// scraping out the set of universal regions (e.g., region parameters)
@@ -53,8 +56,8 @@ pub(in crate::borrow_check) fn replace_regions_in_mir<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     param_env: ty::ParamEnv<'tcx>,
-    body: &mut Body<'tcx>,
-    promoted: &mut IndexVec<Promoted, Body<'tcx>>,
+    body: &mut BodyAndCache<'tcx>,
+    promoted: &mut IndexVec<Promoted, BodyAndCache<'tcx>>,
 ) -> UniversalRegions<'tcx> {
     debug!("replace_regions_in_mir(def_id={:?})", def_id);
 
@@ -156,8 +159,9 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
     def_id: DefId,
     universal_regions: UniversalRegions<'tcx>,
-    body: &Body<'tcx>,
-    promoted: &IndexVec<Promoted, Body<'tcx>>,
+    body: ReadOnlyBodyAndCache<'_, 'tcx>,
+    promoted: &IndexVec<Promoted, ReadOnlyBodyAndCache<'_, 'tcx>>,
+    local_names: &IndexVec<Local, Option<Symbol>>,
     upvars: &[Upvar],
     location_table: &LocationTable,
     param_env: ty::ParamEnv<'tcx>,
@@ -167,18 +171,15 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     errors_buffer: &mut Vec<Diagnostic>,
 ) -> (
     RegionInferenceContext<'tcx>,
-    Option<Rc<Output<RegionVid, BorrowIndex, LocationIndex, Local, MovePathIndex>>>,
+    Option<Rc<PoloniusOutput>>,
     Option<ClosureRegionRequirements<'tcx>>,
 ) {
-    let mut all_facts = if AllFacts::enabled(infcx.tcx) {
-        Some(AllFacts::default())
-    } else {
-        None
-    };
+    let mut all_facts = AllFacts::enabled(infcx.tcx).then_some(AllFacts::default());
 
     let universal_regions = Rc::new(universal_regions);
 
-    let elements = &Rc::new(RegionValueElements::new(body));
+    let elements
+        = &Rc::new(RegionValueElements::new(&body));
 
     // Run the MIR type-checker.
     let MirTypeckResults {
@@ -203,7 +204,40 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         all_facts
             .universal_region
             .extend(universal_regions.universal_regions());
-        populate_polonius_move_facts(all_facts, move_data, location_table, body);
+        populate_polonius_move_facts(all_facts, move_data, location_table, &body);
+
+        // Emit universal regions facts, and their relations, for Polonius.
+        //
+        // 1: universal regions are modeled in Polonius as a pair:
+        // - the universal region vid itself.
+        // - a "placeholder loan" associated to this universal region. Since they don't exist in
+        //   the `borrow_set`, their `BorrowIndex` are synthesized as the universal region index
+        //   added to the existing number of loans, as if they succeeded them in the set.
+        //
+        let borrow_count = borrow_set.borrows.len();
+        debug!(
+            "compute_regions: polonius placeholders, num_universals={}, borrow_count={}",
+            universal_regions.len(),
+            borrow_count
+        );
+
+        for universal_region in universal_regions.universal_regions() {
+            let universal_region_idx = universal_region.index();
+            let placeholder_loan_idx = borrow_count + universal_region_idx;
+            all_facts.placeholder.push((universal_region, placeholder_loan_idx.into()));
+        }
+
+        // 2: the universal region relations `outlives` constraints are emitted as
+        //  `known_subset` facts.
+        for (fr1, fr2) in universal_region_relations.known_outlives() {
+            if fr1 != fr2 {
+                debug!(
+                    "compute_regions: emitting polonius `known_subset` fr1={:?}, fr2={:?}",
+                    fr1, fr2
+                );
+                all_facts.known_subset.push((*fr1, *fr2));
+            }
+        }
     }
 
     // Create the region inference context, taking ownership of the
@@ -236,7 +270,6 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         universal_regions,
         placeholder_indices,
         universal_region_relations,
-        body,
         outlives_constraints,
         member_constraints,
         closure_bounds_mapping,
@@ -251,7 +284,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
         param_env,
         &mut all_facts,
         location_table,
-        &body,
+        body,
         borrow_set,
     );
 
@@ -266,7 +299,7 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
         if infcx.tcx.sess.opts.debugging_opts.polonius {
             let algorithm = env::var("POLONIUS_ALGORITHM")
-                .unwrap_or_else(|_| String::from("Hybrid"));
+                .unwrap_or_else(|_| String::from("Naive"));
             let algorithm = Algorithm::from_str(&algorithm).unwrap();
             debug!("compute_regions: using polonius algorithm {:?}", algorithm);
             Some(Rc::new(Output::compute(
@@ -280,8 +313,15 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
     });
 
     // Solve the region constraints.
-    let closure_region_requirements =
-        regioncx.solve(infcx, &body, upvars, def_id, errors_buffer);
+    let closure_region_requirements = regioncx.solve(
+        infcx,
+        &body,
+        local_names,
+        upvars,
+        def_id,
+        errors_buffer,
+        polonius_output.clone(),
+    );
 
     // Dump MIR results into a file, if that is enabled. This let us
     // write unit-tests, as well as helping with debugging.
@@ -295,7 +335,13 @@ pub(in crate::borrow_check) fn compute_regions<'cx, 'tcx>(
 
     // We also have a `#[rustc_nll]` annotation that causes us to dump
     // information
-    dump_annotation(infcx, &body, def_id, &regioncx, &closure_region_requirements, errors_buffer);
+    dump_annotation(
+        infcx,
+        &body,
+        def_id,
+        &regioncx,
+        &closure_region_requirements,
+        errors_buffer);
 
     (regioncx, polonius_output, closure_region_requirements)
 }

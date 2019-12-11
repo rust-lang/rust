@@ -68,9 +68,11 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
     let utf8 = match str::from_utf8(&data[..len]) {
         Ok(s) => s,
         Err(ref e) if e.valid_up_to() == 0 => {
-            return Err(io::Error::new(io::ErrorKind::InvalidData,
-                "Windows stdio in console mode does not support writing non-UTF-8 byte sequences"))
-        },
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "Windows stdio in console mode does not support writing non-UTF-8 byte sequences",
+            ));
+        }
         Err(e) => str::from_utf8(&data[..e.valid_up_to()]).unwrap(),
     };
     let mut utf16 = [0u16; MAX_BUFFER_SIZE / 2];
@@ -93,18 +95,19 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
         // write the missing surrogate out now.
         // Buffering it would mean we have to lie about the number of bytes written.
         let first_char_remaining = utf16[written];
-        if first_char_remaining >= 0xDCEE && first_char_remaining <= 0xDFFF { // low surrogate
+        if first_char_remaining >= 0xDCEE && first_char_remaining <= 0xDFFF {
+            // low surrogate
             // We just hope this works, and give up otherwise
-            let _ = write_u16s(handle, &utf16[written..written+1]);
+            let _ = write_u16s(handle, &utf16[written..written + 1]);
             written += 1;
         }
         // Calculate the number of bytes of `utf8` that were actually written.
         let mut count = 0;
         for ch in utf16[..written].iter() {
             count += match ch {
-                0x0000 ..= 0x007F => 1,
-                0x0080 ..= 0x07FF => 2,
-                0xDCEE ..= 0xDFFF => 1, // Low surrogate. We already counted 3 bytes for the other.
+                0x0000..=0x007F => 1,
+                0x0080..=0x07FF => 2,
+                0xDCEE..=0xDFFF => 1, // Low surrogate. We already counted 3 bytes for the other.
                 _ => 3,
             };
         }
@@ -116,11 +119,13 @@ fn write(handle_id: c::DWORD, data: &[u8]) -> io::Result<usize> {
 fn write_u16s(handle: c::HANDLE, data: &[u16]) -> io::Result<usize> {
     let mut written = 0;
     cvt(unsafe {
-        c::WriteConsoleW(handle,
-                         data.as_ptr() as c::LPCVOID,
-                         data.len() as u32,
-                         &mut written,
-                         ptr::null_mut())
+        c::WriteConsoleW(
+            handle,
+            data.as_ptr() as c::LPCVOID,
+            data.len() as u32,
+            &mut written,
+            ptr::null_mut(),
+        )
     })?;
     Ok(written as usize)
 }
@@ -144,9 +149,11 @@ impl io::Read for Stdin {
         if buf.len() == 0 {
             return Ok(0);
         } else if buf.len() < 4 {
-            return Err(io::Error::new(io::ErrorKind::InvalidInput,
-                        "Windows stdin in console mode does not support a buffer too small to \
-                        guarantee holding one arbitrary UTF-8 character (4 bytes)"))
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "Windows stdin in console mode does not support a buffer too small to \
+                 guarantee holding one arbitrary UTF-8 character (4 bytes)",
+            ));
         }
 
         let mut utf16_buf = [0u16; MAX_BUFFER_SIZE / 2];
@@ -160,15 +167,15 @@ impl io::Read for Stdin {
     }
 }
 
-
 // We assume that if the last `u16` is an unpaired surrogate they got sliced apart by our
 // buffer size, and keep it around for the next read hoping to put them together.
 // This is a best effort, and may not work if we are not the only reader on Stdin.
-fn read_u16s_fixup_surrogates(handle: c::HANDLE,
-                              buf: &mut [u16],
-                              mut amount: usize,
-                              surrogate: &mut u16) -> io::Result<usize>
-{
+fn read_u16s_fixup_surrogates(
+    handle: c::HANDLE,
+    buf: &mut [u16],
+    mut amount: usize,
+    surrogate: &mut u16,
+) -> io::Result<usize> {
     // Insert possibly remaining unpaired surrogate from last read.
     let mut start = 0;
     if *surrogate != 0 {
@@ -186,7 +193,8 @@ fn read_u16s_fixup_surrogates(handle: c::HANDLE,
 
     if amount > 0 {
         let last_char = buf[amount - 1];
-        if last_char >= 0xD800 && last_char <= 0xDBFF { // high surrogate
+        if last_char >= 0xD800 && last_char <= 0xDBFF {
+            // high surrogate
             *surrogate = last_char;
             amount -= 1;
         }
@@ -209,11 +217,13 @@ fn read_u16s(handle: c::HANDLE, buf: &mut [u16]) -> io::Result<usize> {
 
     let mut amount = 0;
     cvt(unsafe {
-        c::ReadConsoleW(handle,
-                        buf.as_mut_ptr() as c::LPVOID,
-                        buf.len() as u32,
-                        &mut amount,
-                        &mut input_control as c::PCONSOLE_READCONSOLE_CONTROL)
+        c::ReadConsoleW(
+            handle,
+            buf.as_mut_ptr() as c::LPVOID,
+            buf.len() as u32,
+            &mut amount,
+            &mut input_control as c::PCONSOLE_READCONSOLE_CONTROL,
+        )
     })?;
 
     if amount > 0 && buf[amount as usize - 1] == CTRL_Z {
@@ -233,9 +243,11 @@ fn utf16_to_utf8(utf16: &[u16], utf8: &mut [u8]) -> io::Result<usize> {
             }
             Err(_) => {
                 // We can't really do any better than forget all data and return an error.
-                return Err(io::Error::new(io::ErrorKind::InvalidData,
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
                     "Windows stdin in console mode does not support non-UTF-16 input; \
-                    encountered unpaired surrogate"))
+                     encountered unpaired surrogate",
+                ));
             }
         }
     }

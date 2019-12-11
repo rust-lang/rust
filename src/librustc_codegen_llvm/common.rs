@@ -245,11 +245,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             let (mut lo, mut hi) = (0u64, 0u64);
             let success = llvm::LLVMRustConstInt128Get(v, sign_ext,
                                                         &mut hi, &mut lo);
-            if success {
-                Some(hi_lo_to_u128(lo, hi))
-            } else {
-                None
-            }
+            success.then_some(hi_lo_to_u128(lo, hi))
         })
     }
 

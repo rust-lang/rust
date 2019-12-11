@@ -50,9 +50,12 @@ LL | fn is_send<T: Send>(_: T) {}
    |    -------    ---- required by this bound in `is_send`
 ...
 LL |     is_send(Box::new(TestType));
-   |             ^^^^^^^^^^^^^^^^^^ `dummy2::TestType` cannot be sent between threads safely
+   |             ^^^^^^^^^^^^^^^^^^
+   |             |
+   |             expected an implementor of trait `std::marker::Send`
+   |             help: consider borrowing here: `&Box::new(TestType)`
    |
-   = help: the trait `std::marker::Send` is not implemented for `dummy2::TestType`
+   = note: the trait bound `dummy2::TestType: std::marker::Send` is not satisfied
    = note: required because of the requirements on the impl of `std::marker::Send` for `std::ptr::Unique<dummy2::TestType>`
    = note: required because it appears within the type `std::boxed::Box<dummy2::TestType>`
 
@@ -77,9 +80,12 @@ LL | fn is_sync<T: Sync>(_: T) {}
    |    -------    ---- required by this bound in `is_sync`
 ...
 LL |     is_sync(Outer2(TestType));
-   |             ^^^^^^^^^^^^^^^^ `main::TestType` cannot be sent between threads safely
+   |             ^^^^^^^^^^^^^^^^
+   |             |
+   |             expected an implementor of trait `std::marker::Sync`
+   |             help: consider borrowing here: `&Outer2(TestType)`
    |
-   = help: the trait `std::marker::Send` is not implemented for `main::TestType`
+   = note: the trait bound `main::TestType: std::marker::Sync` is not satisfied
    = note: required because of the requirements on the impl of `std::marker::Sync` for `Outer2<main::TestType>`
 
 error: aborting due to 7 previous errors

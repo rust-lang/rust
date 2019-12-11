@@ -11,6 +11,8 @@ use syntax_pos::Span;
 use syntax::ast::Ident;
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Checks a `a <op>= b`
     pub fn check_binop_assign(
@@ -31,7 +33,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return_ty
         };
 
-        if !lhs_expr.is_place_expr() {
+        if !lhs_expr.is_syntactic_place_expr() {
             struct_span_err!(
                 self.tcx.sess, lhs_expr.span,
                 E0067, "invalid left-hand side expression")

@@ -13,8 +13,10 @@ use rustc_macros::HashStable;
 use rustc_target::spec::abi::Abi;
 use syntax_pos::{Pos, Span};
 use syntax::symbol::Symbol;
+use hir::GeneratorKind;
+use std::{fmt, env, any::Any};
 
-use std::{fmt, env};
+use rustc_error_codes::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable, RustcEncodable, RustcDecodable)]
 pub enum ErrorHandled {
@@ -42,14 +44,14 @@ CloneTypeFoldableImpls! {
 pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Debug)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
     pub error: crate::mir::interpret::InterpError<'tcx>,
     pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
-#[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Debug)]
 pub struct FrameInfo<'tcx> {
     /// This span is in the caller.
     pub call_site: Span,
@@ -136,6 +138,7 @@ impl<'tcx> ConstEvalErr<'tcx> {
         lint_root: Option<hir::HirId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         let must_error = match self.error {
+            InterpError::MachineStop(_) => bug!("CTFE does not stop"),
             err_inval!(Layout(LayoutError::Unknown(_))) |
             err_inval!(TooGeneric) =>
                 return Err(ErrorHandled::TooGeneric),
@@ -183,11 +186,11 @@ pub fn struct_error<'tcx>(tcx: TyCtxtAt<'tcx>, msg: &str) -> DiagnosticBuilder<'
 }
 
 /// Packages the kind of error we got from the const code interpreter
-/// up with a Rust-level backtrace of where the error occured.
+/// up with a Rust-level backtrace of where the error occurred.
 /// Thsese should always be constructed by calling `.into()` on
 /// a `InterpError`. In `librustc_mir::interpret`, we have `throw_err_*`
 /// macros for this.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InterpErrorInfo<'tcx> {
     pub kind: InterpError<'tcx>,
     backtrace: Option<Box<Backtrace>>,
@@ -246,7 +249,7 @@ impl<'tcx> From<InterpError<'tcx>> for InterpErrorInfo<'tcx> {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
+#[derive(Clone, RustcEncodable, RustcDecodable, HashStable, PartialEq)]
 pub enum PanicInfo<O> {
     Panic {
         msg: Symbol,
@@ -262,8 +265,8 @@ pub enum PanicInfo<O> {
     OverflowNeg,
     DivisionByZero,
     RemainderByZero,
-    GeneratorResumedAfterReturn,
-    GeneratorResumedAfterPanic,
+    ResumedAfterReturn(GeneratorKind),
+    ResumedAfterPanic(GeneratorKind),
 }
 
 /// Type for MIR `Assert` terminator error messages.
@@ -298,10 +301,14 @@ impl<O> PanicInfo<O> {
                 "attempt to divide by zero",
             RemainderByZero =>
                 "attempt to calculate the remainder with a divisor of zero",
-            GeneratorResumedAfterReturn =>
+            ResumedAfterReturn(GeneratorKind::Gen) =>
                 "generator resumed after completion",
-            GeneratorResumedAfterPanic =>
+            ResumedAfterReturn(GeneratorKind::Async(_)) =>
+                "`async fn` resumed after completion",
+            ResumedAfterPanic(GeneratorKind::Gen) =>
                 "generator resumed after panicking",
+            ResumedAfterPanic(GeneratorKind::Async(_)) =>
+                "`async fn` resumed after panicking",
             Panic { .. } | BoundsCheck { .. } =>
                 bug!("Unexpected PanicInfo"),
         }
@@ -325,7 +332,6 @@ impl<O: fmt::Debug> fmt::Debug for PanicInfo<O> {
 /// Error information for when the program we executed turned out not to actually be a valid
 /// program. This cannot happen in stand-alone Miri, but it can happen during CTFE/ConstProp
 /// where we work on generic code or execution does not have all information available.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InvalidProgramInfo<'tcx> {
     /// Resolution can fail if we are in a too generic context.
     TooGeneric,
@@ -355,7 +361,6 @@ impl fmt::Debug for InvalidProgramInfo<'tcx> {
 }
 
 /// Error information for when the program caused Undefined Behavior.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UndefinedBehaviorInfo {
     /// Free-form case. Only for errors that are never caught!
     Ub(String),
@@ -365,6 +370,14 @@ pub enum UndefinedBehaviorInfo {
     Unreachable,
     /// An enum discriminant was set to a value which was outside the range of valid values.
     InvalidDiscriminant(ScalarMaybeUndef),
+    /// A slice/array index projection went out-of-bounds.
+    BoundsCheckFailed { len: u64, index: u64 },
+    /// Something was divided by 0 (x / 0).
+    DivisionByZero,
+    /// Something was "remainded" by 0 (x % 0).
+    RemainderByZero,
+    /// Overflowing inbounds pointer arithmetic.
+    PointerArithOverflow,
 }
 
 impl fmt::Debug for UndefinedBehaviorInfo {
@@ -374,9 +387,18 @@ impl fmt::Debug for UndefinedBehaviorInfo {
             Ub(msg) | UbExperimental(msg) =>
                 write!(f, "{}", msg),
             Unreachable =>
-                write!(f, "entered unreachable code"),
+                write!(f, "entering unreachable code"),
             InvalidDiscriminant(val) =>
-                write!(f, "encountered invalid enum discriminant {}", val),
+                write!(f, "encountering invalid enum discriminant {}", val),
+            BoundsCheckFailed { ref len, ref index } =>
+                write!(f, "indexing out of bounds: the len is {:?} but the index is {:?}",
+                    len, index),
+            DivisionByZero =>
+                write!(f, "dividing by zero"),
+            RemainderByZero =>
+                write!(f, "calculating the remainder with a divisor of zero"),
+            PointerArithOverflow =>
+                write!(f, "overflowing in-bounds pointer arithmetic"),
         }
     }
 }
@@ -388,10 +410,13 @@ impl fmt::Debug for UndefinedBehaviorInfo {
 ///
 /// Currently, we also use this as fall-back error kind for errors that have not been
 /// categorized yet.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum UnsupportedOpInfo<'tcx> {
     /// Free-form case. Only for errors that are never caught!
     Unsupported(String),
+
+    /// When const-prop encounters a situation it does not support, it raises this error.
+    /// This must not allocate for performance reasons.
+    ConstPropUnsupported(&'tcx str),
 
     // -- Everything below is not categorized yet --
     FunctionAbiMismatch(Abi, Abi),
@@ -553,13 +578,14 @@ impl fmt::Debug for UnsupportedOpInfo<'tcx> {
                     not a power of two"),
             Unsupported(ref msg) =>
                 write!(f, "{}", msg),
+            ConstPropUnsupported(ref msg) =>
+                write!(f, "Constant propagation encountered an unsupported situation: {}", msg),
         }
     }
 }
 
 /// Error information for when the program exhausted the resources granted to it
 /// by the interpreter.
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum ResourceExhaustionInfo {
     /// The stack grew too big.
     StackFrameLimitReached,
@@ -580,7 +606,6 @@ impl fmt::Debug for ResourceExhaustionInfo {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, HashStable)]
 pub enum InterpError<'tcx> {
     /// The program panicked.
     Panic(PanicInfo<u64>),
@@ -589,14 +614,14 @@ pub enum InterpError<'tcx> {
     /// The program did something the interpreter does not support (some of these *might* be UB
     /// but the interpreter is not sure).
     Unsupported(UnsupportedOpInfo<'tcx>),
-    /// The program was invalid (ill-typed, not sufficiently monomorphized, ...).
+    /// The program was invalid (ill-typed, bad MIR, not sufficiently monomorphized, ...).
     InvalidProgram(InvalidProgramInfo<'tcx>),
     /// The program exhausted the interpreter's resources (stack/heap too big,
-    /// execution takes too long, ..).
+    /// execution takes too long, ...).
     ResourceExhaustion(ResourceExhaustionInfo),
-    /// Not actually an interpreter error -- used to signal that execution has exited
-    /// with the given status code.  Used by Miri, but not by CTFE.
-    Exit(i32),
+    /// Stop execution for a machine-controlled reason. This is never raised by
+    /// the core engine itself.
+    MachineStop(Box<dyn Any + Send>),
 }
 
 pub type InterpResult<'tcx, T = ()> = Result<T, InterpErrorInfo<'tcx>>;
@@ -622,8 +647,8 @@ impl fmt::Debug for InterpError<'_> {
                 write!(f, "{:?}", msg),
             Panic(ref msg) =>
                 write!(f, "{:?}", msg),
-            Exit(code) =>
-                write!(f, "exited with status code {}", code),
+            MachineStop(_) =>
+                write!(f, "machine caused execution to stop"),
         }
     }
 }

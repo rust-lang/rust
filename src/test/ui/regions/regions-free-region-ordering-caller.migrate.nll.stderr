@@ -7,6 +7,8 @@ LL | fn call2<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          lifetime `'a` defined here
 LL |     let z: Option<&'b &'a usize> = None;
    |            ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/regions-free-region-ordering-caller.rs:17:12
@@ -18,6 +20,8 @@ LL | fn call3<'a, 'b>(a: &'a usize, b: &'b usize) {
 LL |     let y: Paramd<'a> = Paramd { x: a };
 LL |     let z: Option<&'b Paramd<'a>> = None;
    |            ^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
   --> $DIR/regions-free-region-ordering-caller.rs:22:12
@@ -28,6 +32,8 @@ LL | fn call4<'a, 'b>(a: &'a usize, b: &'b usize) {
    |          lifetime `'a` defined here
 LL |     let z: Option<&'a &'b usize> = None;
    |            ^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to 3 previous errors
 

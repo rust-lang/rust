@@ -629,6 +629,8 @@ impl<T> Vec<T> {
     /// The capacity will remain at least as large as both the length
     /// and the supplied value.
     ///
+    /// # Panics
+    ///
     /// Panics if the current capacity is smaller than the supplied
     /// minimum capacity.
     ///
@@ -727,25 +729,20 @@ impl<T> Vec<T> {
     /// [`drain`]: #method.drain
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
-        if mem::needs_drop::<T>() {
-            let current_len = self.len;
-            unsafe {
-                let mut ptr = self.as_mut_ptr().add(self.len);
-                // Set the final length at the end, keeping in mind that
-                // dropping an element might panic. Works around a missed
-                // optimization, as seen in the following issue:
-                // https://github.com/rust-lang/rust/issues/51802
-                let mut local_len = SetLenOnDrop::new(&mut self.len);
-
-                // drop any extra elements
-                for _ in len..current_len {
-                    local_len.decrement_len(1);
-                    ptr = ptr.offset(-1);
-                    ptr::drop_in_place(ptr);
-                }
+        // This is safe because:
+        //
+        // * the slice passed to `drop_in_place` is valid; the `len > self.len`
+        //   case avoids creating an invalid slice, and
+        // * the `len` of the vector is shrunk before calling `drop_in_place`,
+        //   such that no value will be dropped twice in case `drop_in_place`
+        //   were to panic once (if it panics twice, the program aborts).
+        unsafe {
+            if len > self.len {
+                return;
             }
-        } else if len <= self.len {
+            let s = self.get_unchecked_mut(len..) as *mut _;
             self.len = len;
+            ptr::drop_in_place(s);
         }
     }
 
@@ -861,7 +858,7 @@ impl<T> Vec<T> {
     ///
     /// [`truncate`]: #method.truncate
     /// [`resize`]: #method.resize
-    /// [`extend`]: #method.extend-1
+    /// [`extend`]: ../../std/iter/trait.Extend.html#tymethod.extend
     /// [`clear`]: #method.clear
     ///
     /// # Safety
@@ -1338,10 +1335,9 @@ impl<T> Vec<T> {
 
     /// Splits the collection into two at the given index.
     ///
-    /// Returns a newly allocated `Self`. `self` contains elements `[0, at)`,
-    /// and the returned `Self` contains elements `[at, len)`.
-    ///
-    /// Note that the capacity of `self` does not change.
+    /// Returns a newly allocated vector containing the elements in the range
+    /// `[at, len)`. After the call, the original vector will be left containing
+    /// the elements `[0, at)` with its previous capacity unchanged.
     ///
     /// # Panics
     ///
@@ -1629,11 +1625,6 @@ impl<'a> SetLenOnDrop<'a> {
     #[inline]
     fn increment_len(&mut self, increment: usize) {
         self.local_len += increment;
-    }
-
-    #[inline]
-    fn decrement_len(&mut self, decrement: usize) {
-        self.local_len -= decrement;
     }
 }
 
@@ -2712,6 +2703,9 @@ impl<T> ExactSizeIterator for Drain<'_, T> {
     }
 }
 
+#[unstable(feature = "trusted_len", issue = "37572")]
+unsafe impl<T> TrustedLen for Drain<'_, T> {}
+
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T> FusedIterator for Drain<'_, T> {}
 
@@ -2848,7 +2842,7 @@ pub struct DrainFilter<'a, T, F>
     old_len: usize,
     /// The filter test predicate.
     pred: F,
-    /// A flag that indicates a panic has occured in the filter test prodicate.
+    /// A flag that indicates a panic has occurred in the filter test prodicate.
     /// This is used as a hint in the drop implmentation to prevent consumption
     /// of the remainder of the `DrainFilter`. Any unprocessed items will be
     /// backshifted in the `vec`, but no further items will be dropped or

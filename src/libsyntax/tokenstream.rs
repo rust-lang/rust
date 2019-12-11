@@ -16,6 +16,8 @@
 use crate::token::{self, DelimToken, Token, TokenKind};
 
 use syntax_pos::{Span, DUMMY_SP};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
+use rustc_macros::HashStable_Generic;
 use rustc_data_structures::sync::Lrc;
 use smallvec::{SmallVec, smallvec};
 
@@ -33,7 +35,7 @@ use std::{iter, mem};
 ///
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
-#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub enum TokenTree {
     /// A single token
     Token(Token),
@@ -112,6 +114,16 @@ impl TokenTree {
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(span: DelimSpan, delim: DelimToken) -> TokenTree {
         TokenTree::token(token::CloseDelim(delim), span.close)
+    }
+}
+
+impl<CTX> HashStable<CTX> for TokenStream
+    where CTX: crate::HashStableContext
+{
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        for sub_tt in self.trees() {
+            sub_tt.hash_stable(hcx, hasher);
+        }
     }
 }
 
@@ -211,6 +223,14 @@ impl TokenStream {
 
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        match &**self.0 {
+            [] => None,
+            [(tt, _)] => Some(tt.span()),
+            [(tt_start, _), .., (tt_end, _)] => Some(tt_start.span().to(tt_end.span())),
+        }
     }
 
     pub fn from_streams(mut streams: SmallVec<[TokenStream; 2]>) -> TokenStream {
@@ -444,7 +464,7 @@ impl Cursor {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, HashStable_Generic)]
 pub struct DelimSpan {
     pub open: Span,
     pub close: Span,

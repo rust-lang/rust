@@ -7,6 +7,8 @@ LL | fn foo<'a,'b>(x: &mut Vec<&'a u8>, y: &'b u8) {
    |        lifetime `'a` defined here
 LL |     x.push(y);
    |     ^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to previous error
 

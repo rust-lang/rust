@@ -1,5 +1,5 @@
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedEnum` is non-empty
-  --> $DIR/match_with_exhaustive_patterns.rs:22:11
+  --> $DIR/match_with_exhaustive_patterns.rs:21:11
    |
 LL |     match x {}
    |           ^
@@ -7,7 +7,7 @@ LL |     match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedStruct` is non-empty
-  --> $DIR/match_with_exhaustive_patterns.rs:26:11
+  --> $DIR/match_with_exhaustive_patterns.rs:25:11
    |
 LL |     match x {}
    |           ^
@@ -15,7 +15,7 @@ LL |     match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedTupleStruct` is non-empty
-  --> $DIR/match_with_exhaustive_patterns.rs:30:11
+  --> $DIR/match_with_exhaustive_patterns.rs:29:11
    |
 LL |     match x {}
    |           ^
@@ -23,7 +23,7 @@ LL |     match x {}
    = help: ensure that all possible cases are being handled, possibly by adding wildcards or more match arms
 
 error[E0004]: non-exhaustive patterns: type `uninhabited::UninhabitedVariants` is non-empty
-  --> $DIR/match_with_exhaustive_patterns.rs:34:11
+  --> $DIR/match_with_exhaustive_patterns.rs:33:11
    |
 LL |     match x {}
    |           ^

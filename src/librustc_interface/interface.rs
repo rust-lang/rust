@@ -1,4 +1,3 @@
-use crate::queries::Queries;
 use crate::util;
 pub use crate::passes::BoxedResolver;
 
@@ -11,6 +10,7 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::OnDrop;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
+use rustc_errors::registry::Registry;
 use rustc_parse::new_parser_from_source_str;
 use rustc::ty;
 use std::path::PathBuf;
@@ -20,7 +20,6 @@ use syntax::ast::{self, MetaItemKind};
 use syntax::token;
 use syntax::source_map::{FileName, FileLoader, SourceMap};
 use syntax::sess::ParseSess;
-use syntax_expand::config::process_configure_mod;
 use syntax_pos::edition;
 
 pub type Result<T> = result::Result<T, ErrorReported>;
@@ -36,7 +35,6 @@ pub struct Compiler {
     pub(crate) input_path: Option<PathBuf>,
     pub(crate) output_dir: Option<PathBuf>,
     pub(crate) output_file: Option<PathBuf>,
-    pub(crate) queries: Queries,
     pub(crate) crate_name: Option<String>,
     pub(crate) register_lints: Option<Box<dyn Fn(&Session, &mut lint::LintStore) + Send + Sync>>,
     pub(crate) override_queries:
@@ -68,7 +66,7 @@ impl Compiler {
 pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String>)> {
     syntax::with_default_globals(move || {
         let cfg = cfgspecs.into_iter().map(|s| {
-            let sess = ParseSess::with_silent_emitter(process_configure_mod);
+            let sess = ParseSess::with_silent_emitter();
             let filename = FileName::cfg_spec_source_code(&s);
             let mut parser = new_parser_from_source_str(&sess, filename, s.to_string());
 
@@ -141,12 +139,16 @@ pub struct Config {
     /// The second parameter is local providers and the third parameter is external providers.
     pub override_queries:
         Option<fn(&Session, &mut ty::query::Providers<'_>, &mut ty::query::Providers<'_>)>,
+
+    /// Registry of diagnostics codes.
+    pub registry: Registry,
 }
 
-pub fn run_compiler_in_existing_thread_pool<F, R>(config: Config, f: F) -> R
-where
-    F: FnOnce(&Compiler) -> R,
-{
+pub fn run_compiler_in_existing_thread_pool<R>(
+    config: Config,
+    f: impl FnOnce(&Compiler) -> R,
+) -> R {
+    let registry = &config.registry;
     let (sess, codegen_backend, source_map) = util::create_session(
         config.opts,
         config.crate_cfg,
@@ -154,6 +156,7 @@ where
         config.file_loader,
         config.input_path.clone(),
         config.lint_caps,
+        registry.clone(),
     );
 
     let compiler = Compiler {
@@ -164,24 +167,19 @@ where
         input_path: config.input_path,
         output_dir: config.output_dir,
         output_file: config.output_file,
-        queries: Default::default(),
         crate_name: config.crate_name,
         register_lints: config.register_lints,
         override_queries: config.override_queries,
     };
 
     let _sess_abort_error = OnDrop(|| {
-        compiler.sess.diagnostic().print_error_count(&util::diagnostics_registry());
+        compiler.sess.diagnostic().print_error_count(registry);
     });
 
     f(&compiler)
 }
 
-pub fn run_compiler<F, R>(mut config: Config, f: F) -> R
-where
-    F: FnOnce(&Compiler) -> R + Send,
-    R: Send,
-{
+pub fn run_compiler<R: Send>(mut config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
     let stderr = config.stderr.take();
     util::spawn_thread_pool(
         config.opts.edition,
@@ -191,11 +189,7 @@ where
     )
 }
 
-pub fn default_thread_pool<F, R>(edition: edition::Edition, f: F) -> R
-where
-    F: FnOnce() -> R + Send,
-    R: Send,
-{
+pub fn default_thread_pool<R: Send>(edition: edition::Edition, f: impl FnOnce() -> R + Send) -> R {
     // the 1 here is duplicating code in config.opts.debugging_opts.threads
     // which also defaults to 1; it ultimately doesn't matter as the default
     // isn't threaded, and just ignores this parameter

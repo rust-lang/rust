@@ -7,7 +7,7 @@ LL |     x = 5;
    |         expected enum `std::option::Option`, found integer
    |         help: try using a variant of the expected enum: `Some(5)`
    |
-   = note: expected type `std::option::Option<usize>`
+   = note: expected enum `std::option::Option<usize>`
               found type `{integer}`
 
 error: aborting due to previous error

@@ -56,7 +56,7 @@ impl Mutex {
     #[inline]
     fn ptr(&self) -> *mut i32 {
         assert_eq!(mem::size_of::<usize>(), mem::size_of::<i32>());
-        &self.locked as *const AtomicUsize as *mut isize as *mut i32
+        self.locked.as_mut_ptr() as *mut i32
     }
 }
 
@@ -145,6 +145,6 @@ impl ReentrantMutex {
 
     #[inline]
     fn ptr(&self) -> *mut i32 {
-        &self.owner as *const AtomicU32 as *mut i32
+        self.owner.as_mut_ptr() as *mut i32
     }
 }

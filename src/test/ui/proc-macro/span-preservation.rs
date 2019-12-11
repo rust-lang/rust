@@ -1,8 +1,7 @@
-//~ ERROR mismatched types
-// aux-build:test-macros.rs
-
 // For each of these, we should get the appropriate type mismatch error message,
 // and the function should be echoed.
+
+// aux-build:test-macros.rs
 
 #[macro_use]
 extern crate test_macros;
@@ -35,16 +34,23 @@ fn c() {
     let y = Foo { a: 10, b: 10isize }; //~ ERROR has no field named `b`
 }
 
-// FIXME: This doesn't work at the moment. See the one below. The pretty-printer
-// injects a "C" between `extern` and `fn` which causes a "probably_eq"
-// `TokenStream` mismatch. The lack of `"C"` should be preserved in the AST.
 #[recollect_attr]
 extern fn bar() {
-    0
+    0 //~ ERROR mismatched types
 }
 
 #[recollect_attr]
 extern "C" fn baz() {
+    0 //~ ERROR mismatched types
+}
+
+#[recollect_attr]
+extern "Rust" fn rust_abi() {
+    0 //~ ERROR mismatched types
+}
+
+#[recollect_attr]
+extern "\x43" fn c_abi_escaped() {
     0 //~ ERROR mismatched types
 }
 

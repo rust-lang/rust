@@ -10,10 +10,12 @@ fn main() {
 // START rustc.main.ConstProp.before.mir
 //  bb0: {
 //      ...
-//      _2 = (FOO: u8);
+//      _3 = const Scalar(AllocId(0).0x0) : &u8;
+//      _2 = (*_3);
 //      ...
-//      _3 = (FOO: u8);
-//      _1 = Add(move _2, move _3);
+//      _5 = const Scalar(AllocId(0).0x0) : &u8;
+//      _4 = (*_5);
+//      _1 = Add(move _2, move _4);
 //      ...
 //  }
 // END rustc.main.ConstProp.before.mir
@@ -22,8 +24,8 @@ fn main() {
 //      ...
 //      _2 = const 2u8;
 //      ...
-//      _3 = const 2u8;
-//      _1 = Add(move _2, move _3);
+//      _4 = const 2u8;
+//      _1 = Add(move _2, move _4);
 //      ...
 //  }
 // END rustc.main.ConstProp.after.mir

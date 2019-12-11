@@ -5,10 +5,7 @@ LL | fn foo<T>(t: T) where T: Trait<AssociatedType=u32> {
    |    ---                         ------------------ required by this bound in `foo`
 ...
 LL |     foo(3_i8);
-   |     ^^^ expected u32, found reference
-   |
-   = note: expected type `u32`
-              found type `&'static str`
+   |     ^^^ expected `u32`, found `&str`
 
 error: aborting due to previous error
 

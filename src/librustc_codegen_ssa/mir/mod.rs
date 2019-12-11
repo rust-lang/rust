@@ -1,6 +1,6 @@
 use rustc::ty::{self, Ty, TypeFoldable, Instance};
 use rustc::ty::layout::{TyLayout, HasTyCtxt, FnAbiExt};
-use rustc::mir::{self, Body};
+use rustc::mir;
 use rustc_target::abi::call::{FnAbi, PassMode};
 use crate::base;
 use crate::traits::*;
@@ -21,7 +21,7 @@ use self::operand::{OperandRef, OperandValue};
 pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     instance: Instance<'tcx>,
 
-    mir: &'a mir::Body<'tcx>,
+    mir: mir::ReadOnlyBodyAndCache<'tcx, 'tcx>,
 
     debug_context: Option<FunctionDebugContext<Bx::DIScope>>,
 
@@ -74,7 +74,12 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// notably `expect`.
     locals: IndexVec<mir::Local, LocalRef<'tcx, Bx::Value>>,
 
-    per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<debuginfo::VarDebugInfo<'tcx>>>>,
+    /// All `VarDebuginfo` from the MIR body, partitioned by `Local`.
+    /// This is `None` if no variable debuginfo/names are needed.
+    per_local_var_debug_info: Option<IndexVec<mir::Local, Vec<&'tcx mir::VarDebugInfo<'tcx>>>>,
+
+    /// Caller location propagated if this function has `#[track_caller]`.
+    caller_location: Option<OperandRef<'tcx, Bx::Value>>,
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -119,18 +124,18 @@ impl<'a, 'tcx, V: CodegenObject> LocalRef<'tcx, V> {
 
 pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx: &'a Bx::CodegenCx,
-    llfn: Bx::Function,
-    mir: &'a Body<'tcx>,
     instance: Instance<'tcx>,
-    sig: ty::FnSig<'tcx>,
 ) {
     assert!(!instance.substs.needs_infer());
 
-    let fn_abi = FnAbi::new(cx, sig, &[]);
+    let llfn = cx.get_fn(instance);
+
+    let mir = cx.tcx().instance_mir(instance.def);
+
+    let fn_abi = FnAbi::of_instance(cx, instance, &[]);
     debug!("fn_abi: {:?}", fn_abi);
 
-    let debug_context =
-        cx.create_function_debug_context(instance, sig, llfn, mir);
+    let debug_context = cx.create_function_debug_context(instance, &fn_abi, llfn, &mir);
 
     let mut bx = Bx::new_block(cx, llfn, "start");
 
@@ -153,8 +158,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             }
         }).collect();
 
-    let (landing_pads, funclets) = create_funclets(mir, &mut bx, &cleanup_kinds, &block_bxs);
-
+    let (landing_pads, funclets) = create_funclets(&mir, &mut bx, &cleanup_kinds, &block_bxs);
+    let mir_body: &mir::Body<'_> = *mir;
     let mut fx = FunctionCx {
         instance,
         mir,
@@ -169,17 +174,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         funclets,
         locals: IndexVec::new(),
         debug_context,
-        per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir),
+        per_local_var_debug_info: debuginfo::per_local_var_debug_info(cx.tcx(), mir_body),
+        caller_location: None,
     };
 
     let memory_locals = analyze::non_ssa_locals(&fx);
 
     // Allocate variable and temp allocas
     fx.locals = {
-        let args = arg_local_refs(&mut bx, &fx, &memory_locals);
+        let args = arg_local_refs(&mut bx, &mut fx, &memory_locals);
 
         let mut allocate_local = |local| {
-            let decl = &mir.local_decls[local];
+            let decl = &mir_body.local_decls[local];
             let layout = bx.layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
@@ -205,7 +211,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let retptr = allocate_local(mir::RETURN_PLACE);
         iter::once(retptr)
             .chain(args.into_iter())
-            .chain(mir.vars_and_temps_iter().map(allocate_local))
+            .chain(mir_body.vars_and_temps_iter().map(allocate_local))
             .collect()
     };
 
@@ -224,8 +230,8 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         debug_context.source_locations_enabled = true;
     }
 
-    let rpo = traversal::reverse_postorder(&mir);
-    let mut visited = BitSet::new_empty(mir.basic_blocks().len());
+    let rpo = traversal::reverse_postorder(&mir_body);
+    let mut visited = BitSet::new_empty(mir_body.basic_blocks().len());
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in rpo {
@@ -235,7 +241,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Remove blocks that haven't been visited, or have no
     // predecessors.
-    for bb in mir.basic_blocks().indices() {
+    for bb in mir_body.basic_blocks().indices() {
         // Unreachable block
         if !visited.contains(bb.index()) {
             debug!("codegen_mir: block {:?} was not visited", bb);
@@ -247,7 +253,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 }
 
 fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    mir: &'a Body<'tcx>,
+    mir: &'tcx mir::Body<'tcx>,
     bx: &mut Bx,
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>,
@@ -318,14 +324,14 @@ fn create_funclets<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 /// indirect.
 fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    fx: &FunctionCx<'a, 'tcx, Bx>,
+    fx: &mut FunctionCx<'a, 'tcx, Bx>,
     memory_locals: &BitSet<mir::Local>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
     let mir = fx.mir;
     let mut idx = 0;
     let mut llarg_idx = fx.fn_abi.ret.is_indirect() as usize;
 
-    mir.args_iter().enumerate().map(|(arg_index, local)| {
+    let args = mir.args_iter().enumerate().map(|(arg_index, local)| {
         let arg_decl = &mir.local_decls[local];
 
         if Some(local) == mir.spread_arg {
@@ -421,7 +427,27 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             bx.store_fn_arg(arg, &mut llarg_idx, tmp);
             LocalRef::Place(tmp)
         }
-    }).collect()
+    }).collect::<Vec<_>>();
+
+    if fx.instance.def.requires_caller_location(bx.tcx()) {
+        assert_eq!(
+            fx.fn_abi.args.len(), args.len() + 1,
+            "#[track_caller] fn's must have 1 more argument in their ABI than in their MIR",
+        );
+
+        let arg = fx.fn_abi.args.last().unwrap();
+        match arg.mode {
+            PassMode::Direct(_) => (),
+            _ => bug!("caller location must be PassMode::Direct, found {:?}", arg.mode),
+        }
+
+        fx.caller_location = Some(OperandRef {
+            val: OperandValue::Immediate(bx.get_param(llarg_idx)),
+            layout: arg.layout,
+        });
+    }
+
+    args
 }
 
 mod analyze;

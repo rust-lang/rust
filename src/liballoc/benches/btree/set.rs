@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use rand::{thread_rng, Rng};
-use test::{black_box, Bencher};
+use test::Bencher;
 
 fn random(n: usize) -> BTreeSet<usize> {
     let mut rng = thread_rng();
@@ -31,7 +31,6 @@ fn pos(n: usize) -> BTreeSet<i32> {
     set
 }
 
-
 fn stagger(n1: usize, factor: usize) -> [BTreeSet<u32>; 2] {
     let n2 = n1 * factor;
     let mut sets = [BTreeSet::new(), BTreeSet::new()];
@@ -52,10 +51,7 @@ macro_rules! set_bench {
             let sets = $sets;
 
             // measure
-            b.iter(|| {
-                let x = sets[0].$set_func(&sets[1]).$result_func();
-                black_box(x);
-            })
+            b.iter(|| sets[0].$set_func(&sets[1]).$result_func())
         }
     };
 }

@@ -35,6 +35,8 @@ use std::mem;
 use std::ops::Deref;
 use std::cmp::max;
 
+use rustc_error_codes::*;
+
 use smallvec::{smallvec, SmallVec};
 
 use self::CandidateKind::*;
@@ -1103,11 +1105,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref = Some(mutbl);
-                pick.unsize = if step.unsize {
-                    Some(self_ty)
-                } else {
-                    None
-                };
+                pick.unsize = step.unsize.then_some(self_ty);
                 pick
             })
         })

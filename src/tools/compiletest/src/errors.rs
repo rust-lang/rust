@@ -7,7 +7,9 @@ use std::io::BufReader;
 use std::path::Path;
 use std::str::FromStr;
 
+use lazy_static::lazy_static;
 use log::*;
+use regex::Regex;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ErrorKind {
@@ -85,20 +87,16 @@ pub fn load_errors(testfile: &Path, cfg: Option<&str>) -> Vec<Error> {
     // updating it in the map callback below.)
     let mut last_nonfollow_error = None;
 
-    let tag = match cfg {
-        Some(rev) => format!("//[{}]~", rev),
-        None => "//~".to_string(),
-    };
-
     rdr.lines()
         .enumerate()
         .filter_map(|(line_num, line)| {
-            parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), &tag).map(
+            parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), cfg).map(
                 |(which, error)| {
                     match which {
                         FollowPrevious(_) => {}
                         _ => last_nonfollow_error = Some(error.line_num),
                     }
+
                     error
                 },
             )
@@ -110,46 +108,54 @@ fn parse_expected(
     last_nonfollow_error: Option<usize>,
     line_num: usize,
     line: &str,
-    tag: &str,
+    cfg: Option<&str>,
 ) -> Option<(WhichLine, Error)> {
-    let start = line.find(tag)?;
-    let (follow, adjusts) = if line[start + tag.len()..].chars().next().unwrap() == '|' {
-        (true, 0)
-    } else {
-        (
-            false,
-            line[start + tag.len()..]
-                .chars()
-                .take_while(|c| *c == '^')
-                .count(),
-        )
+    // Matches comments like:
+    //     //~
+    //     //~|
+    //     //~^
+    //     //~^^^^^
+    //     //[cfg1]~
+    //     //[cfg1,cfg2]~^^
+    lazy_static! {
+        static ref RE: Regex =
+            Regex::new(r"//(?:\[(?P<cfgs>[\w,]+)])?~(?P<adjust>\||\^*)").unwrap();
+    }
+
+    let captures = RE.captures(line)?;
+
+    match (cfg, captures.name("cfgs")) {
+        // Only error messages that contain our `cfg` betweeen the square brackets apply to us.
+        (Some(cfg), Some(filter)) if !filter.as_str().split(',').any(|s| s == cfg)
+            => return None,
+        (Some(_), Some(_)) => {}
+
+        (None, Some(_)) => panic!("Only tests with revisions should use `//[X]~`"),
+
+        // If an error has no list of revisions, it applies to all revisions.
+        (Some(_), None) | (None, None) => {}
+    }
+
+    let (follow, adjusts) = match &captures["adjust"] {
+        "|" => (true, 0),
+        circumflexes => (false, circumflexes.len()),
     };
-    let kind_start = start + tag.len() + adjusts + (follow as usize);
-    let (kind, msg);
-    match line[kind_start..]
+
+    // Get the part of the comment after the sigil (e.g. `~^^` or ~|).
+    let whole_match = captures.get(0).unwrap();
+    let (_, mut msg) = line.split_at(whole_match.end());
+
+    let first_word = msg
         .split_whitespace()
         .next()
-        .expect("Encountered unexpected empty comment")
-        .parse::<ErrorKind>()
-    {
-        Ok(k) => {
-            // If we find `//~ ERROR foo` or something like that:
-            kind = Some(k);
-            let letters = line[kind_start..].chars();
-            msg = letters
-                .skip_while(|c| c.is_whitespace())
-                .skip_while(|c| !c.is_whitespace())
-                .collect::<String>();
-        }
-        Err(_) => {
-            // Otherwise we found `//~ foo`:
-            kind = None;
-            let letters = line[kind_start..].chars();
-            msg = letters
-                .skip_while(|c| c.is_whitespace())
-                .collect::<String>();
-        }
+        .expect("Encountered unexpected empty comment");
+
+    // If we find `//~ ERROR foo` or something like that, skip the first word.
+    let kind = first_word.parse::<ErrorKind>().ok();
+    if let Some(_) = kind {
+        msg = &msg.trim_start().split_at(first_word.len()).1;
     }
+
     let msg = msg.trim().to_owned();
 
     let (which, line_num) = if follow {
@@ -171,7 +177,7 @@ fn parse_expected(
 
     debug!(
         "line={} tag={:?} which={:?} kind={:?} msg={:?}",
-        line_num, tag, which, kind, msg
+        line_num, whole_match.as_str(), which, kind, msg
     );
     Some((
         which,

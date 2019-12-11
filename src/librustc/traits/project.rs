@@ -400,7 +400,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, TypeFoldable)]
 pub struct Normalized<'tcx,T> {
     pub value: T,
     pub obligations: Vec<PredicateObligation<'tcx>>,

@@ -9,9 +9,6 @@ error[E0308]: mismatched types
    |
 LL |     A::C = 1;
    |            ^ expected struct `A::C`, found integer
-   |
-   = note: expected type `A::C`
-              found type `{integer}`
 
 error[E0070]: invalid left-hand side expression
   --> $DIR/issue-13407.rs:6:5

@@ -16,6 +16,8 @@ use syntax_pos::Span;
 
 use rustc::hir;
 
+use rustc_error_codes::*;
+
 /// Checks that it is legal to call methods of the trait corresponding
 /// to `trait_id` (this only cares about the trait, not the specific
 /// method that is called).

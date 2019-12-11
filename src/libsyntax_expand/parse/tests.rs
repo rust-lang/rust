@@ -1,4 +1,3 @@
-use crate::config::process_configure_mod;
 use crate::tests::{matches_codepattern, string_to_stream, with_error_checking_parse};
 
 use rustc_parse::new_parser_from_source_str;
@@ -19,7 +18,7 @@ use errors::PResult;
 use std::path::PathBuf;
 
 fn sess() -> ParseSess {
-    ParseSess::new(FilePathMapping::empty(), process_configure_mod)
+    ParseSess::new(FilePathMapping::empty())
 }
 
 /// Parses an item.
@@ -273,7 +272,7 @@ fn ttdelim_span() {
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
         let tts: Vec<_> = match expr.kind {
-            ast::ExprKind::Mac(ref mac) => mac.stream().trees().collect(),
+            ast::ExprKind::Mac(ref mac) => mac.args.inner_tokens().trees().collect(),
             _ => panic!("not a macro"),
         };
 

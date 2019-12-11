@@ -1,9 +1,9 @@
 use crate::io::{self, IoSlice, IoSliceMut};
-use libc::{self /*, c_int apparently not used? */};
 use crate::mem;
-use crate::sync::atomic::{AtomicBool};
+use crate::sync::atomic::AtomicBool;
 use crate::sys::fd::FileDesc;
 use crate::sys::{cvt, cvt_r};
+use libc::{self /*, c_int apparently not used? */};
 
 pub struct AnonPipe(FileDesc);
 
@@ -25,29 +25,29 @@ impl AnonPipe {
         self.0.read(buf)
     }
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-                self.0.read_vectored(bufs)
-        }
+        self.0.read_vectored(bufs)
+    }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
         self.0.write(buf)
     }
 
-        pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-                self.0.write_vectored(bufs)
-        }
+    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
 
-    pub fn fd(&self) -> &FileDesc { &self.0 }
-    pub fn into_fd(self) -> FileDesc { self.0 }
+    pub fn fd(&self) -> &FileDesc {
+        &self.0
+    }
+    pub fn into_fd(self) -> FileDesc {
+        self.0
+    }
     pub fn diverge(&self) -> ! {
         panic!()
-     }
+    }
 }
 
-pub fn read2(p1: AnonPipe,
-             v1: &mut Vec<u8>,
-             p2: AnonPipe,
-             v2: &mut Vec<u8>) -> io::Result<()> {
-
+pub fn read2(p1: AnonPipe, v1: &mut Vec<u8>, p2: AnonPipe, v2: &mut Vec<u8>) -> io::Result<()> {
     // Set both pipes into nonblocking mode as we're gonna be reading from both
     // in the `select` loop below, and we wouldn't want one to block the other!
     let p1 = p1.into_fd();
@@ -83,8 +83,9 @@ pub fn read2(p1: AnonPipe,
         match fd.read_to_end(dst) {
             Ok(_) => Ok(true),
             Err(e) => {
-                if e.raw_os_error() == Some(libc::EWOULDBLOCK) ||
-                   e.raw_os_error() == Some(libc::EAGAIN) {
+                if e.raw_os_error() == Some(libc::EWOULDBLOCK)
+                    || e.raw_os_error() == Some(libc::EAGAIN)
+                {
                     Ok(false)
                 } else {
                     Err(e)

@@ -158,7 +158,6 @@ impl From<u8> for char {
     }
 }
 
-
 /// An error which can be returned when parsing a char.
 #[stable(feature = "char_from_str", since = "1.20.0")]
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -167,16 +166,16 @@ pub struct ParseCharError {
 }
 
 impl ParseCharError {
-    #[unstable(feature = "char_error_internals",
-               reason = "this method should not be available publicly",
-               issue = "0")]
+    #[unstable(
+        feature = "char_error_internals",
+        reason = "this method should not be available publicly",
+        issue = "0"
+    )]
     #[doc(hidden)]
     pub fn __description(&self) -> &str {
         match self.kind {
-            CharErrorKind::EmptyString => {
-                "cannot parse char from empty string"
-            },
-            CharErrorKind::TooManyChars => "too many characters in string"
+            CharErrorKind::EmptyString => "cannot parse char from empty string",
+            CharErrorKind::TooManyChars => "too many characters in string",
         }
     }
 }
@@ -194,7 +193,6 @@ impl fmt::Display for ParseCharError {
     }
 }
 
-
 #[stable(feature = "char_from_str", since = "1.20.0")]
 impl FromStr for char {
     type Err = ParseCharError;
@@ -203,17 +201,12 @@ impl FromStr for char {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut chars = s.chars();
         match (chars.next(), chars.next()) {
-            (None, _) => {
-                Err(ParseCharError { kind: CharErrorKind::EmptyString })
-            },
+            (None, _) => Err(ParseCharError { kind: CharErrorKind::EmptyString }),
             (Some(c), None) => Ok(c),
-            _ => {
-                Err(ParseCharError { kind: CharErrorKind::TooManyChars })
-            }
+            _ => Err(ParseCharError { kind: CharErrorKind::TooManyChars }),
         }
     }
 }
-
 
 #[stable(feature = "try_from", since = "1.34.0")]
 impl TryFrom<u32> for char {
@@ -304,11 +297,7 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
     }
     if num < radix {
         let num = num as u8;
-        if num < 10 {
-            Some((b'0' + num) as char)
-        } else {
-            Some((b'a' + num - 10) as char)
-        }
+        if num < 10 { Some((b'0' + num) as char) } else { Some((b'a' + num - 10) as char) }
     } else {
         None
     }

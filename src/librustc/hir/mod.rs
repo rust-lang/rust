@@ -21,7 +21,8 @@ use syntax_pos::{Span, DUMMY_SP, MultiSpan};
 use syntax::source_map::Spanned;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, AsmDialect};
 use syntax::ast::{Attribute, Label, LitKind, StrStyle, FloatTy, IntTy, UintTy};
-pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy, IsAuto, ImplPolarity};
+pub use syntax::ast::{Mutability, Constness, Unsafety, Movability, CaptureBy};
+pub use syntax::ast::{IsAuto, ImplPolarity, BorrowKind};
 use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::symbol::{Symbol, kw};
 use syntax::tokenstream::TokenStream;
@@ -1215,7 +1216,7 @@ impl UnOp {
 }
 
 /// A statement.
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(RustcEncodable, RustcDecodable, HashStable)]
 pub struct Stmt {
     pub hir_id: HirId,
     pub kind: StmtKind,
@@ -1457,7 +1458,7 @@ pub struct Expr {
 
 // `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
 #[cfg(target_arch = "x86_64")]
-static_assert_size!(Expr, 72);
+static_assert_size!(Expr, 64);
 
 impl Expr {
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1493,8 +1494,20 @@ impl Expr {
         }
     }
 
-    pub fn is_place_expr(&self) -> bool {
-         match self.kind {
+    // Whether this looks like a place expr, without checking for deref
+    // adjustments.
+    // This will return `true` in some potentially surprising cases such as
+    // `CONSTANT.field`.
+    pub fn is_syntactic_place_expr(&self) -> bool {
+        self.is_place_expr(|_| true)
+    }
+
+    // Whether this is a place expression.
+    // `allow_projections_from` should return `true` if indexing a field or
+    // index expression based on the given expression should be considered a
+    // place expression.
+    pub fn is_place_expr(&self, mut allow_projections_from: impl FnMut(&Self) -> bool) -> bool {
+        match self.kind {
             ExprKind::Path(QPath::Resolved(_, ref path)) => {
                 match path.res {
                     Res::Local(..)
@@ -1504,14 +1517,19 @@ impl Expr {
                 }
             }
 
+            // Type ascription inherits its place expression kind from its
+            // operand. See:
+            // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
             ExprKind::Type(ref e, _) => {
-                e.is_place_expr()
+                e.is_place_expr(allow_projections_from)
             }
 
-            ExprKind::Unary(UnDeref, _) |
-            ExprKind::Field(..) |
-            ExprKind::Index(..) => {
-                true
+            ExprKind::Unary(UnDeref, _) => true,
+
+            ExprKind::Field(ref base, _) |
+            ExprKind::Index(ref base, _) => {
+                allow_projections_from(base)
+                    || base.is_place_expr(allow_projections_from)
             }
 
             // Partially qualified paths in expressions can only legally
@@ -1646,8 +1664,8 @@ pub enum ExprKind {
     /// Path to a definition, possibly containing lifetime or type parameters.
     Path(QPath),
 
-    /// A referencing operation (i.e., `&a` or `&mut a`).
-    AddrOf(Mutability, P<Expr>),
+    /// A referencing operation (i.e., `&a`, `&mut a`, `&raw const a`, or `&raw mut a`).
+    AddrOf(BorrowKind, Mutability, P<Expr>),
     /// A `break`, with an optional label to break.
     Break(Destination, Option<P<Expr>>),
     /// A `continue`, with an optional label.
@@ -1656,7 +1674,7 @@ pub enum ExprKind {
     Ret(Option<P<Expr>>),
 
     /// Inline assembly (from `asm!`), with its outputs and inputs.
-    InlineAsm(P<InlineAsm>, HirVec<Expr>, HirVec<Expr>),
+    InlineAsm(P<InlineAsm>),
 
     /// A struct or struct-like variant literal expression.
     ///
@@ -1749,6 +1767,20 @@ pub enum MatchSource {
     AwaitDesugar,
 }
 
+impl MatchSource {
+    pub fn name(self) -> &'static str {
+        use MatchSource::*;
+        match self {
+            Normal => "match",
+            IfDesugar { .. } | IfLetDesugar { .. } => "if",
+            WhileDesugar | WhileLetDesugar => "while",
+            ForLoopDesugar => "for",
+            TryDesugar => "?",
+            AwaitDesugar => ".await",
+        }
+    }
+}
+
 /// The loop type that yielded an `ExprKind::Loop`.
 #[derive(Copy, Clone, PartialEq, RustcEncodable, RustcDecodable, Debug, HashStable)]
 pub enum LoopSource {
@@ -1766,8 +1798,7 @@ impl LoopSource {
     pub fn name(self) -> &'static str {
         match self {
             LoopSource::Loop => "loop",
-            LoopSource::While => "while",
-            LoopSource::WhileLet => "while let",
+            LoopSource::While | LoopSource::WhileLet => "while",
             LoopSource::ForLoop => "for",
         }
     }
@@ -1919,8 +1950,9 @@ pub enum ImplItemKind {
 /// Bindings like `A: Debug` are represented as a special type `A =
 /// $::Debug` that is understood by the astconv code.
 ///
-/// FIXME(alexreg) -- why have a separate type for the binding case,
-/// wouldn't it be better to make the `ty` field an enum like:
+/// FIXME(alexreg): why have a separate type for the binding case,
+/// wouldn't it be better to make the `ty` field an enum like the
+/// following?
 ///
 /// ```
 /// enum TypeBindingKind {
@@ -2052,7 +2084,7 @@ pub enum TyKind {
     Err,
 }
 
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, HashStable, PartialEq)]
 pub struct InlineAsmOutput {
     pub constraint: Symbol,
     pub is_rw: bool,
@@ -2062,8 +2094,8 @@ pub struct InlineAsmOutput {
 
 // NOTE(eddyb) This is used within MIR as well, so unlike the rest of the HIR,
 // it needs to be `Clone` and use plain `Vec<T>` instead of `HirVec<T>`.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable)]
-pub struct InlineAsm {
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug, HashStable, PartialEq)]
+pub struct InlineAsmInner {
     pub asm: Symbol,
     pub asm_str_style: StrStyle,
     pub outputs: Vec<InlineAsmOutput>,
@@ -2072,6 +2104,13 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
+}
+
+#[derive(RustcEncodable, RustcDecodable, Debug, HashStable)]
+pub struct InlineAsm {
+    pub inner: InlineAsmInner,
+    pub outputs_exprs: HirVec<Expr>,
+    pub inputs_exprs: HirVec<Expr>,
 }
 
 /// Represents a parameter in a function header.

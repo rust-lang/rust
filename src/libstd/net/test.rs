@@ -1,7 +1,7 @@
 #![allow(warnings)] // not used on emscripten
 
 use crate::env;
-use crate::net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
+use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 use crate::sync::atomic::{AtomicUsize, Ordering};
 
 static PORT: AtomicUsize = AtomicUsize::new(0);
@@ -13,8 +13,7 @@ pub fn next_test_ip4() -> SocketAddr {
 
 pub fn next_test_ip6() -> SocketAddr {
     let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();
-    SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
-                                     port, 0, 0))
+    SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1), port, 0, 0))
 }
 
 pub fn sa4(a: Ipv4Addr, p: u16) -> SocketAddr {
@@ -41,11 +40,21 @@ fn base_port() -> u16 {
     } else {
         env::current_dir().unwrap().into_os_string().into_string().unwrap()
     };
-    let dirs = ["32-opt", "32-nopt",
-                "musl-64-opt", "cross-opt",
-                "64-opt", "64-nopt", "64-opt-vg", "64-debug-opt",
-                "all-opt", "snap3", "dist", "sgx"];
-    dirs.iter().enumerate().find(|&(_, dir)| {
-        cwd.contains(dir)
-    }).map(|p| p.0).unwrap_or(0) as u16 * 1000 + 19600
+    let dirs = [
+        "32-opt",
+        "32-nopt",
+        "musl-64-opt",
+        "cross-opt",
+        "64-opt",
+        "64-nopt",
+        "64-opt-vg",
+        "64-debug-opt",
+        "all-opt",
+        "snap3",
+        "dist",
+        "sgx",
+    ];
+    dirs.iter().enumerate().find(|&(_, dir)| cwd.contains(dir)).map(|p| p.0).unwrap_or(0) as u16
+        * 1000
+        + 19600
 }

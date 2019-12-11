@@ -14,28 +14,27 @@ use diagnostics::Error;
 use crate::{Directory, DirectoryOwnership};
 use crate::lexer::UnmatchedBrace;
 
-use syntax::ast::{
-    self, Abi, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Ident,
-    IsAsync, MacDelimiter, Mutability, StrStyle, Visibility, VisibilityKind, Unsafety,
-};
-
+use rustc_errors::{PResult, Applicability, DiagnosticBuilder, FatalError};
+use rustc_data_structures::thin_vec::ThinVec;
+use syntax::ast::{self, DUMMY_NODE_ID, AttrStyle, Attribute, CrateSugar, Extern, Ident, StrLit};
+use syntax::ast::{IsAsync, MacArgs, MacDelimiter, Mutability, Visibility, VisibilityKind, Unsafety};
 use syntax::print::pprust;
 use syntax::ptr::P;
 use syntax::token::{self, Token, TokenKind, DelimToken};
 use syntax::tokenstream::{self, DelimSpan, TokenTree, TokenStream, TreeAndJoint};
 use syntax::sess::ParseSess;
-use syntax::source_map::respan;
 use syntax::struct_span_err;
 use syntax::util::comments::{doc_comment_style, strip_doc_comment_decoration};
+use syntax_pos::source_map::respan;
 use syntax_pos::symbol::{kw, sym, Symbol};
 use syntax_pos::{Span, BytePos, DUMMY_SP, FileName};
-use rustc_data_structures::thin_vec::ThinVec;
-use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, FatalError};
 use log::debug;
 
 use std::borrow::Cow;
 use std::{cmp, mem, slice};
 use std::path::PathBuf;
+
+use rustc_error_codes::*;
 
 bitflags::bitflags! {
     struct Restrictions: u8 {
@@ -346,6 +345,8 @@ impl SeqSep {
     }
 }
 
+pub enum FollowedByType { Yes, No }
+
 impl<'a> Parser<'a> {
     pub fn new(
         sess: &'a ParseSess,
@@ -443,7 +444,9 @@ impl<'a> Parser<'a> {
     crate fn unexpected<T>(&mut self) -> PResult<'a, T> {
         match self.expect_one_of(&[], &[]) {
             Err(e) => Err(e),
-            Ok(_) => unreachable!(),
+            // We can get `Ok(true)` from `recover_closing_delimiter`
+            // which is called in `expected_one_of_not_found`.
+            Ok(_) => FatalError.raise(),
         }
     }
 
@@ -799,21 +802,39 @@ impl<'a> Parser<'a> {
                             recovered = true;
                             break;
                         }
-                        Err(mut e) => {
+                        Err(mut expect_err) => {
+                            let sp = self.sess.source_map().next_point(self.prev_span);
+                            let token_str = pprust::token_kind_to_string(t);
+
                             // Attempt to keep parsing if it was a similar separator.
                             if let Some(ref tokens) = t.similar_tokens() {
                                 if tokens.contains(&self.token.kind) {
                                     self.bump();
                                 }
                             }
-                            e.emit();
+
                             // Attempt to keep parsing if it was an omitted separator.
                             match f(self) {
                                 Ok(t) => {
+                                    // Parsed successfully, therefore most probably the code only
+                                    // misses a separator.
+                                    expect_err
+                                        .span_suggestion_short(
+                                            sp,
+                                            &format!("missing `{}`", token_str),
+                                            token_str,
+                                            Applicability::MaybeIncorrect,
+                                        )
+                                        .emit();
+
                                     v.push(t);
                                     continue;
                                 },
                                 Err(mut e) => {
+                                    // Parsing failed, therefore it must be something more serious
+                                    // than just a missing separator.
+                                    expect_err.emit();
+
                                     e.cancel();
                                     break;
                                 }
@@ -986,27 +1007,49 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (MacDelimiter, TokenStream)> {
-        let delim = match self.token.kind {
-            token::OpenDelim(delim) => delim,
-            _ => {
-                let msg = "expected open delimiter";
-                let mut err = self.fatal(msg);
-                err.span_label(self.token.span, msg);
-                return Err(err)
+    fn parse_mac_args(&mut self) -> PResult<'a, P<MacArgs>> {
+        self.parse_mac_args_common(true).map(P)
+    }
+
+    fn parse_attr_args(&mut self) -> PResult<'a, MacArgs> {
+        self.parse_mac_args_common(false)
+    }
+
+    fn parse_mac_args_common(&mut self, delimited_only: bool) -> PResult<'a, MacArgs> {
+        Ok(if self.check(&token::OpenDelim(DelimToken::Paren)) ||
+                       self.check(&token::OpenDelim(DelimToken::Bracket)) ||
+                       self.check(&token::OpenDelim(DelimToken::Brace)) {
+            match self.parse_token_tree() {
+                TokenTree::Delimited(dspan, delim, tokens) =>
+                    // We've confirmed above that there is a delimiter so unwrapping is OK.
+                    MacArgs::Delimited(dspan, MacDelimiter::from_token(delim).unwrap(), tokens),
+                _ => unreachable!(),
             }
-        };
-        let tts = match self.parse_token_tree() {
-            TokenTree::Delimited(_, _, tts) => tts,
-            _ => unreachable!(),
-        };
-        let delim = match delim {
-            token::Paren => MacDelimiter::Parenthesis,
-            token::Bracket => MacDelimiter::Bracket,
-            token::Brace => MacDelimiter::Brace,
-            token::NoDelim => self.bug("unexpected no delimiter"),
-        };
-        Ok((delim, tts.into()))
+        } else if !delimited_only {
+            if self.eat(&token::Eq) {
+                let eq_span = self.prev_span;
+                let mut is_interpolated_expr = false;
+                if let token::Interpolated(nt) = &self.token.kind {
+                    if let token::NtExpr(..) = **nt {
+                        is_interpolated_expr = true;
+                    }
+                }
+                let token_tree = if is_interpolated_expr {
+                    // We need to accept arbitrary interpolated expressions to continue
+                    // supporting things like `doc = $expr` that work on stable.
+                    // Non-literal interpolated expressions are rejected after expansion.
+                    self.parse_token_tree()
+                } else {
+                    self.parse_unsuffixed_lit()?.token_tree()
+                };
+
+                MacArgs::Eq(eq_span, token_tree.into())
+            } else {
+                MacArgs::Empty
+            }
+        } else {
+            return self.unexpected();
+        })
     }
 
     fn parse_or_use_outer_attributes(
@@ -1116,7 +1159,7 @@ impl<'a> Parser<'a> {
     /// If the following element can't be a tuple (i.e., it's a function definition), then
     /// it's not a tuple struct field), and the contents within the parentheses isn't valid,
     /// so emit a proper diagnostic.
-    pub fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
+    pub fn parse_visibility(&mut self, fbt: FollowedByType) -> PResult<'a, Visibility> {
         maybe_whole!(self, NtVis, |x| x);
 
         self.expected_tokens.push(TokenType::Keyword(kw::Crate));
@@ -1171,7 +1214,9 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                 };
                 return Ok(respan(lo.to(self.prev_span), vis));
-            } else if !can_take_tuple { // Provide this diagnostic if this is not a tuple struct.
+            } else if let FollowedByType::No = fbt {
+                // Provide this diagnostic if a type cannot follow;
+                // in particular, if this is not a tuple struct.
                 self.recover_incorrect_vis_restriction()?;
                 // Emit diagnostic, but continue with public visibility.
             }
@@ -1208,52 +1253,46 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses `extern string_literal?`.
-    /// If `extern` is not found, the Rust ABI is used.
-    /// If `extern` is found and a `string_literal` does not follow, the C ABI is used.
-    fn parse_extern_abi(&mut self) -> PResult<'a, Abi> {
+    fn parse_extern(&mut self) -> PResult<'a, Extern> {
         Ok(if self.eat_keyword(kw::Extern) {
-            self.parse_opt_abi()?
+            Extern::from_abi(self.parse_abi())
         } else {
-            Abi::default()
+            Extern::None
         })
     }
 
     /// Parses a string literal as an ABI spec.
-    /// If one is not found, the "C" ABI is used.
-    fn parse_opt_abi(&mut self) -> PResult<'a, Abi> {
-        let span = if self.token.can_begin_literal_or_bool() {
-            let ast::Lit { span, kind, .. } = self.parse_lit()?;
-            match kind {
-                ast::LitKind::Str(symbol, _) => return Ok(Abi::new(symbol, span)),
-                ast::LitKind::Err(_) => {}
+    fn parse_abi(&mut self) -> Option<StrLit> {
+        match self.parse_str_lit() {
+            Ok(str_lit) => Some(str_lit),
+            Err(Some(lit)) => match lit.kind {
+                ast::LitKind::Err(_) => None,
                 _ => {
-                    self.struct_span_err(span, "non-string ABI literal")
+                    self.struct_span_err(lit.span, "non-string ABI literal")
                         .span_suggestion(
-                            span,
+                            lit.span,
                             "specify the ABI with a string literal",
                             "\"C\"".to_string(),
                             Applicability::MaybeIncorrect,
                         )
                         .emit();
+                    None
                 }
             }
-            span
-        } else {
-            self.prev_span
-        };
-        Ok(Abi::new(sym::C, span))
+            Err(None) => None,
+        }
     }
 
     /// We are parsing `async fn`. If we are on Rust 2015, emit an error.
     fn ban_async_in_2015(&self, async_span: Span) {
         if async_span.rust_2015() {
-            self.diagnostic()
-                .struct_span_err_with_code(
-                    async_span,
-                    "`async fn` is not permitted in the 2015 edition",
-                    DiagnosticId::Error("E0670".into())
-                )
-                .emit();
+            struct_span_err!(
+                self.diagnostic(),
+                async_span,
+                E0670,
+                "`async fn` is not permitted in the 2015 edition",
+            )
+            .emit();
         }
     }
 
@@ -1332,34 +1371,6 @@ impl<'a> Parser<'a> {
         self.check(&token::ModSep) &&
             self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace) ||
                                    *t == token::BinOp(token::Star))
-    }
-
-    fn parse_optional_str(&mut self) -> Option<(Symbol, ast::StrStyle, Option<ast::Name>)> {
-        let ret = match self.token.kind {
-            token::Literal(token::Lit { kind: token::Str, symbol, suffix }) =>
-                (symbol, ast::StrStyle::Cooked, suffix),
-            token::Literal(token::Lit { kind: token::StrRaw(n), symbol, suffix }) =>
-                (symbol, ast::StrStyle::Raw(n), suffix),
-            _ => return None
-        };
-        self.bump();
-        Some(ret)
-    }
-
-    pub fn parse_str(&mut self) -> PResult<'a, (Symbol, StrStyle)> {
-        match self.parse_optional_str() {
-            Some((s, style, suf)) => {
-                let sp = self.prev_span;
-                self.expect_no_suffix(sp, "a string literal", suf);
-                Ok((s, style))
-            }
-            _ => {
-                let msg = "expected string literal";
-                let mut err = self.fatal(msg);
-                err.span_label(self.token.span, msg);
-                Err(err)
-            }
-        }
     }
 }
 

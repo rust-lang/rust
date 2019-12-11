@@ -1,20 +1,19 @@
 use super::{BlockMode, PathStyle, SemiColonMode, TokenType, TokenExpectType, SeqSep, Parser};
 
-use syntax::ast::{
-    self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item, ItemKind,
-    Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind,
-};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{self, PResult, Applicability, DiagnosticBuilder, Handler, pluralize};
+use rustc_error_codes::*;
+use syntax::ast::{self, Param, BinOpKind, BindingMode, BlockCheckMode, Expr, ExprKind, Ident, Item};
+use syntax::ast::{ItemKind, Mutability, Pat, PatKind, PathSegment, QSelf, Ty, TyKind};
 use syntax::token::{self, TokenKind, token_can_begin_expr};
 use syntax::print::pprust;
 use syntax::ptr::P;
-use syntax::symbol::{kw, sym};
 use syntax::ThinVec;
 use syntax::util::parser::AssocOp;
 use syntax::struct_span_err;
-
-use errors::{PResult, Applicability, DiagnosticBuilder, DiagnosticId, pluralize};
-use rustc_data_structures::fx::FxHashSet;
+use syntax_pos::symbol::{kw, sym};
 use syntax_pos::{Span, DUMMY_SP, MultiSpan, SpanSnippetError};
+
 use log::{debug, trace};
 use std::mem;
 
@@ -59,10 +58,10 @@ pub enum Error {
 }
 
 impl Error {
-    fn span_err<S: Into<MultiSpan>>(
+    fn span_err(
         self,
-        sp: S,
-        handler: &errors::Handler,
+        sp: impl Into<MultiSpan>,
+        handler: &Handler,
     ) -> DiagnosticBuilder<'_> {
         match self {
             Error::FileNotFoundForModule {
@@ -210,7 +209,7 @@ impl<'a> Parser<'a> {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
 
-    pub(super) fn diagnostic(&self) -> &'a errors::Handler {
+    pub(super) fn diagnostic(&self) -> &'a Handler {
         &self.sess.span_diagnostic
     }
 
@@ -223,8 +222,21 @@ impl<'a> Parser<'a> {
             self.token.span,
             &format!("expected identifier, found {}", self.this_token_descr()),
         );
+        let valid_follow = &[
+            TokenKind::Eq,
+            TokenKind::Colon,
+            TokenKind::Comma,
+            TokenKind::Semi,
+            TokenKind::ModSep,
+            TokenKind::OpenDelim(token::DelimToken::Brace),
+            TokenKind::OpenDelim(token::DelimToken::Paren),
+            TokenKind::CloseDelim(token::DelimToken::Brace),
+            TokenKind::CloseDelim(token::DelimToken::Paren),
+        ];
         if let token::Ident(name, false) = self.token.kind {
-            if Ident::new(name, self.token.span).is_raw_guess() {
+            if Ident::new(name, self.token.span).is_raw_guess() &&
+                self.look_ahead(1, |t| valid_follow.contains(&t.kind))
+            {
                 err.span_suggestion(
                     self.token.span,
                     "you can escape reserved keywords to use them as identifiers",
@@ -724,7 +736,7 @@ impl<'a> Parser<'a> {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
-                    s.print_mutability(mut_ty.mutbl);
+                    s.print_mutability(mut_ty.mutbl, false);
                     s.popen();
                     s.print_type(&mut_ty.ty);
                     s.print_type_bounds(" +", &bounds);
@@ -1187,26 +1199,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Recovers from `pub` keyword in places where it seems _reasonable_ but isn't valid.
-    pub(super) fn eat_bad_pub(&mut self) {
-        // When `unclosed_delims` is populated, it means that the code being parsed is already
-        // quite malformed, which might mean that, for example, a pub struct definition could be
-        // parsed as being a trait item, which is invalid and this error would trigger
-        // unconditionally, resulting in misleading diagnostics. Because of this, we only attempt
-        // this nice to have recovery for code that is otherwise well formed.
-        if self.token.is_keyword(kw::Pub) && self.unclosed_delims.is_empty() {
-            match self.parse_visibility(false) {
-                Ok(vis) => {
-                    self.diagnostic()
-                        .struct_span_err(vis.span, "unnecessary visibility qualifier")
-                        .span_label(vis.span, "`pub` not permitted here")
-                        .emit();
-                }
-                Err(mut err) => err.emit(),
-            }
-        }
-    }
-
     /// Eats tokens until we can be relatively sure we reached the end of the
     /// statement. This is something of a best-effort heuristic.
     ///
@@ -1411,19 +1403,19 @@ impl<'a> Parser<'a> {
         self.expect(&token::Colon)?;
         let ty = self.parse_ty()?;
 
-        self.diagnostic()
-            .struct_span_err_with_code(
-                pat.span,
-                "patterns aren't allowed in methods without bodies",
-                DiagnosticId::Error("E0642".into()),
-            )
-            .span_suggestion_short(
-                pat.span,
-                "give this argument a name or use an underscore to ignore it",
-                "_".to_owned(),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+        struct_span_err!(
+            self.diagnostic(),
+            pat.span,
+            E0642,
+            "patterns aren't allowed in methods without bodies",
+        )
+        .span_suggestion_short(
+            pat.span,
+            "give this argument a name or use an underscore to ignore it",
+            "_".to_owned(),
+            Applicability::MachineApplicable,
+        )
+        .emit();
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
         let pat = P(Pat {
@@ -1520,11 +1512,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Replace duplicated recovered parameters with `_` pattern to avoid unecessary errors.
+    /// Replace duplicated recovered parameters with `_` pattern to avoid unnecessary errors.
     ///
     /// This is necessary because at this point we don't know whether we parsed a function with
     /// anonymous parameters or a function with names but no types. In order to minimize
-    /// unecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
+    /// unnecessary errors, we assume the parameters are in the shape of `fn foo(a, b, c)` where
     /// the parameters are *names* (so we don't emit errors about not being able to find `b` in
     /// the local scope), but if we find the same name multiple times, like in `fn foo(i8, i8)`,
     /// we deduplicate them to not complain about duplicated parameter names.

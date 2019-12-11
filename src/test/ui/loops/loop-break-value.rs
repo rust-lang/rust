@@ -1,5 +1,3 @@
-#![feature(never_type)]
-
 fn main() {
     let val: ! = loop { break break; };
     //~^ ERROR mismatched types
@@ -35,19 +33,19 @@ fn main() {
     }
 
     while let Some(_) = Some(()) {
-        if break () { //~ ERROR `break` with value from a `while let` loop
+        if break () { //~ ERROR `break` with value from a `while` loop
         }
     }
 
     while let Some(_) = Some(()) {
         break None;
-        //~^ ERROR `break` with value from a `while let` loop
+        //~^ ERROR `break` with value from a `while` loop
     }
 
     'while_let_loop: while let Some(_) = Some(()) {
         loop {
             break 'while_let_loop "nope";
-            //~^ ERROR `break` with value from a `while let` loop
+            //~^ ERROR `break` with value from a `while` loop
             break 33;
         };
     }

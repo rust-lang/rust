@@ -141,17 +141,28 @@ pub fn check(path: &Path, bad: &mut bool) {
     super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h"];
+        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md"];
         if extensions.iter().all(|e| !filename.ends_with(e)) ||
            filename.starts_with(".#") {
             return
+        }
+
+        if filename.ends_with(".md") &&
+           file.parent()
+               .unwrap()
+               .file_name()
+               .unwrap()
+               .to_string_lossy() != "error_codes" {
+            // We don't want to check all ".md" files (almost of of them aren't compliant
+            // currently), just the long error code explanation ones.
+            return;
         }
 
         if contents.is_empty() {
             tidy_error!(bad, "{}: empty file", file.display());
         }
 
-        let max_columns = if filename == "error_codes.rs" {
+        let max_columns = if filename == "error_codes.rs" || filename.ends_with(".md") {
             ERROR_CODE_COLS
         } else {
             COLS

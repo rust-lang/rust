@@ -1,9 +1,9 @@
 #![cfg(not(test))]
 
-use libc::{c_float, c_double};
+use libc::{c_double, c_float};
 
 #[link_name = "m"]
-extern {
+extern "C" {
     pub fn acos(n: c_double) -> c_double;
     pub fn acosf(n: c_float) -> c_float;
     pub fn asin(n: c_double) -> c_double;

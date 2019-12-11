@@ -11,6 +11,8 @@ LL |               gimme::<$t2>(None::<$t1>);
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | |                                     fn(Inv<'y>)) }
    | |__________________________________________________- in this macro invocation
+   |
+   = help: consider adding the following bound: `'x: 'y`
 
 error: lifetime may not live long enough
   --> $DIR/hr-subtype.rs:39:13
@@ -25,6 +27,8 @@ LL |               gimme::<$t1>(None::<$t2>);
 LL | / check! { free_inv_x_vs_free_inv_y: (fn(Inv<'x>),
 LL | |                                     fn(Inv<'y>)) }
    | |__________________________________________________- in this macro invocation
+   |
+   = help: consider adding the following bound: `'x: 'y`
 
 error: aborting due to 2 previous errors
 

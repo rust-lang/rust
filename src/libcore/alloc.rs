@@ -53,7 +53,7 @@ pub struct Layout {
 
 impl Layout {
     /// Constructs a `Layout` from a given `size` and `align`,
-    /// or returns `LayoutErr` if either of the following conditions
+    /// or returns `LayoutErr` if any of the following conditions
     /// are not met:
     ///
     /// * `align` must not be zero,
@@ -137,7 +137,7 @@ impl Layout {
     #[inline]
     pub fn for_value<T: ?Sized>(t: &T) -> Self {
         let (size, align) = (mem::size_of_val(t), mem::align_of_val(t));
-        // See rationale in `new` for why this us using an unsafe variant below
+        // See rationale in `new` for why this is using an unsafe variant below
         debug_assert!(Layout::from_size_align(size, align).is_ok());
         unsafe {
             Layout::from_size_align_unchecked(size, align)
@@ -196,7 +196,7 @@ impl Layout {
         //    valid.
         //
         // 2. `len + align - 1` can overflow by at most `align - 1`,
-        //    so the &-mask wth `!(align - 1)` will ensure that in the
+        //    so the &-mask with `!(align - 1)` will ensure that in the
         //    case of overflow, `len_rounded_up` will itself be 0.
         //    Thus the returned padding, when added to `len`, yields 0,
         //    which trivially satisfies the alignment `align`.
@@ -213,18 +213,19 @@ impl Layout {
     /// Creates a layout by rounding the size of this layout up to a multiple
     /// of the layout's alignment.
     ///
-    /// Returns `Err` if the padded size would overflow.
-    ///
     /// This is equivalent to adding the result of `padding_needed_for`
     /// to the layout's current size.
     #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
-    pub fn pad_to_align(&self) -> Result<Layout, LayoutErr> {
+    pub fn pad_to_align(&self) -> Layout {
         let pad = self.padding_needed_for(self.align());
-        let new_size = self.size().checked_add(pad)
-            .ok_or(LayoutErr { private: () })?;
+        // This cannot overflow. Quoting from the invariant of Layout:
+        // > `size`, when rounded up to the nearest multiple of `align`,
+        // > must not overflow (i.e., the rounded value must be less than
+        // > `usize::MAX`)
+        let new_size = self.size() + pad;
 
-        Layout::from_size_align(new_size, self.align())
+        Layout::from_size_align(new_size, self.align()).unwrap()
     }
 
     /// Creates a layout describing the record for `n` instances of
@@ -309,8 +310,7 @@ impl Layout {
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutErr> {
         let new_size = self.size().checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
-        let layout = Layout::from_size_align(new_size, self.align())?;
-        Ok(layout)
+        Layout::from_size_align(new_size, self.align())
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
@@ -1142,9 +1142,9 @@ pub unsafe trait Alloc {
         where Self: Sized
     {
         match Layout::array::<T>(n) {
-            Ok(ref layout) if layout.size() > 0 => {
+            Ok(layout) if layout.size() > 0 => {
                 unsafe {
-                    self.alloc(layout.clone()).map(|p| p.cast())
+                    self.alloc(layout).map(|p| p.cast())
                 }
             }
             _ => Err(AllocErr),
@@ -1192,9 +1192,9 @@ pub unsafe trait Alloc {
         where Self: Sized
     {
         match (Layout::array::<T>(n_old), Layout::array::<T>(n_new)) {
-            (Ok(ref k_old), Ok(ref k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
+            (Ok(k_old), Ok(k_new)) if k_old.size() > 0 && k_new.size() > 0 => {
                 debug_assert!(k_old.align() == k_new.align());
-                self.realloc(ptr.cast(), k_old.clone(), k_new.size()).map(NonNull::cast)
+                self.realloc(ptr.cast(), k_old, k_new.size()).map(NonNull::cast)
             }
             _ => {
                 Err(AllocErr)
@@ -1226,8 +1226,8 @@ pub unsafe trait Alloc {
         where Self: Sized
     {
         match Layout::array::<T>(n) {
-            Ok(ref k) if k.size() > 0 => {
-                Ok(self.dealloc(ptr.cast(), k.clone()))
+            Ok(k) if k.size() > 0 => {
+                Ok(self.dealloc(ptr.cast(), k))
             }
             _ => {
                 Err(AllocErr)

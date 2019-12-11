@@ -1,7 +1,8 @@
 //! Parsing and validation of builtin attributes
 
+use super::{mark_used, MetaItemKind};
 use crate::ast::{self, Attribute, MetaItem, NestedMetaItem};
-use crate::feature_gate::{Features, GatedCfg};
+use crate::feature_gate::feature_err;
 use crate::print::pprust;
 use crate::sess::ParseSess;
 
@@ -9,8 +10,14 @@ use errors::{Applicability, Handler};
 use std::num::NonZeroU32;
 use syntax_pos::hygiene::Transparency;
 use syntax_pos::{symbol::Symbol, symbol::sym, Span};
+use rustc_feature::{Features, find_gated_cfg, GatedCfg, is_builtin_attr_name};
+use rustc_macros::HashStable_Generic;
 
-use super::{mark_used, MetaItemKind};
+use rustc_error_codes::*;
+
+pub fn is_builtin_attr(attr: &Attribute) -> bool {
+    attr.ident().filter(|ident| is_builtin_attr_name(ident.name)).is_some()
+}
 
 enum AttrError {
     MultipleItem(String),
@@ -19,31 +26,6 @@ enum AttrError {
     MissingFeature,
     MultipleStabilityLevels,
     UnsupportedLiteral(&'static str, /* is_bytestr */ bool),
-}
-
-/// A template that the attribute input must match.
-/// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
-#[derive(Clone, Copy)]
-pub struct AttributeTemplate {
-    pub word: bool,
-    pub list: Option<&'static str>,
-    pub name_value_str: Option<&'static str>,
-}
-
-impl AttributeTemplate {
-    pub fn only_word() -> Self {
-        Self { word: true, list: None, name_value_str: None }
-    }
-
-    /// Checks that the given meta-item is compatible with this template.
-    pub fn compatible(&self, meta_item_kind: &ast::MetaItemKind) -> bool {
-        match meta_item_kind {
-            ast::MetaItemKind::Word => self.word,
-            ast::MetaItemKind::List(..) => self.list.is_some(),
-            ast::MetaItemKind::NameValue(lit) if lit.kind.is_str() => self.name_value_str.is_some(),
-            ast::MetaItemKind::NameValue(..) => false,
-        }
-    }
 }
 
 fn handle_errors(sess: &ParseSess, span: Span, error: AttrError) {
@@ -139,7 +121,8 @@ pub fn find_unwind_attr(diagnostic: Option<&Handler>, attrs: &[Attribute]) -> Op
 }
 
 /// Represents the #[stable], #[unstable], #[rustc_{deprecated,const_unstable}] attributes.
-#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, Copy, Clone, Debug,
+         PartialEq, Eq, Hash, HashStable_Generic)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: Symbol,
@@ -155,7 +138,8 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd,
+         Copy, Clone, Debug, Eq, Hash, HashStable_Generic)]
 pub enum StabilityLevel {
     // Reason for the current stability level and the relevant rust-lang issue
     Unstable { reason: Option<Symbol>, issue: Option<NonZeroU32>, is_soft: bool },
@@ -179,7 +163,8 @@ impl StabilityLevel {
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Copy, Clone, Debug, Eq, Hash)]
+#[derive(RustcEncodable, RustcDecodable, PartialEq, PartialOrd,
+         Copy, Clone, Debug, Eq, Hash, HashStable_Generic)]
 pub struct RustcDeprecation {
     pub since: Symbol,
     pub reason: Symbol,
@@ -549,8 +534,9 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<Symbol> {
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Features>) -> bool {
     eval_condition(cfg, sess, &mut |cfg| {
-        if let (Some(feats), Some(gated_cfg)) = (features, GatedCfg::gate(cfg)) {
-            gated_cfg.check_and_emit(sess, feats);
+        let gate = find_gated_cfg(|sym| cfg.check_name(sym));
+        if let (Some(feats), Some(gated_cfg)) = (features, gate) {
+            gate_cfg(&gated_cfg, cfg.span, sess, feats);
         }
         let error = |span, msg| { sess.span_diagnostic.span_err(span, msg); true };
         if cfg.path.segments.len() != 1 {
@@ -579,12 +565,21 @@ pub fn cfg_matches(cfg: &ast::MetaItem, sess: &ParseSess, features: Option<&Feat
     })
 }
 
+fn gate_cfg(gated_cfg: &GatedCfg, cfg_span: Span, sess: &ParseSess, features: &Features) {
+    let (cfg, feature, has_feature) = gated_cfg;
+    if !has_feature(features) && !cfg_span.allows_unstable(*feature) {
+        let explain = format!("`cfg({})` is experimental and subject to change", cfg);
+        feature_err(sess, *feature, cfg_span, &explain).emit()
+    }
+}
+
 /// Evaluate a cfg-like condition (with `any` and `all`), using `eval` to
 /// evaluate individual items.
-pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
-                         -> bool
-    where F: FnMut(&ast::MetaItem) -> bool
-{
+pub fn eval_condition(
+    cfg: &ast::MetaItem,
+    sess: &ParseSess,
+    eval: &mut impl FnMut(&ast::MetaItem) -> bool,
+) -> bool {
     match cfg.kind {
         ast::MetaItemKind::List(ref mis) => {
             for mi in mis.iter() {
@@ -634,7 +629,7 @@ pub fn eval_condition<F>(cfg: &ast::MetaItem, sess: &ParseSess, eval: &mut F)
     }
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone)]
+#[derive(RustcEncodable, RustcDecodable, Clone, HashStable_Generic)]
 pub struct Deprecation {
     pub since: Option<Symbol>,
     pub note: Option<Symbol>,
@@ -665,7 +660,10 @@ fn find_deprecation_generic<'a, I>(sess: &ParseSess,
             break
         }
 
-        let meta = attr.meta().unwrap();
+        let meta = match attr.meta() {
+            Some(meta) => meta,
+            None => continue,
+        };
         depr = match &meta.kind {
             MetaItemKind::Word => Some(Deprecation { since: None, note: None }),
             MetaItemKind::NameValue(..) => {
@@ -758,7 +756,7 @@ pub enum ReprAttr {
     ReprAlign(u32),
 }
 
-#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+#[derive(Eq, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone, HashStable_Generic)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

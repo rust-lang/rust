@@ -18,15 +18,17 @@ use super::{
     MemPlace, MPlaceTy, PlaceTy, Place,
 };
 pub use rustc::mir::interpret::ScalarMaybeUndef;
+use rustc_macros::HashStable;
+use syntax::ast;
 
 /// An `Immediate` represents a single immediate self-contained Rust value.
 ///
 /// For optimization of a few very common cases, there is also a representation for a pair of
 /// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary
-/// operations and fat pointers. This idea was taken from rustc's codegen.
+/// operations and wide pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
 /// defined on `Immediate`, and do not have to work with a `Place`.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
 pub enum Immediate<Tag=(), Id=AllocId> {
     Scalar(ScalarMaybeUndef<Tag, Id>),
     ScalarPair(ScalarMaybeUndef<Tag, Id>, ScalarMaybeUndef<Tag, Id>),
@@ -46,6 +48,13 @@ impl<Tag> From<Scalar<Tag>> for Immediate<Tag> {
     }
 }
 
+impl<Tag> From<Pointer<Tag>> for Immediate<Tag> {
+    #[inline(always)]
+    fn from(val: Pointer<Tag>) -> Self {
+        Immediate::Scalar(Scalar::from(val).into())
+    }
+}
+
 impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(
         val: Scalar<Tag>,
@@ -59,14 +68,14 @@ impl<'tcx, Tag> Immediate<Tag> {
     }
 
     pub fn new_dyn_trait(val: Scalar<Tag>, vtable: Pointer<Tag>) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::Ptr(vtable).into())
+        Immediate::ScalarPair(val.into(), vtable.into())
     }
 
     #[inline]
     pub fn to_scalar_or_undef(self) -> ScalarMaybeUndef<Tag> {
         match self {
             Immediate::Scalar(val) => val,
-            Immediate::ScalarPair(..) => bug!("Got a fat pointer where a scalar was expected"),
+            Immediate::ScalarPair(..) => bug!("Got a wide pointer where a scalar was expected"),
         }
     }
 
@@ -92,6 +101,42 @@ pub struct ImmTy<'tcx, Tag=()> {
     pub layout: TyLayout<'tcx>,
 }
 
+// `Tag: Copy` because some methods on `Scalar` consume them by value
+impl<Tag: Copy> std::fmt::Display for ImmTy<'tcx, Tag> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.imm {
+            Immediate::Scalar(ScalarMaybeUndef::Scalar(s)) => match s.to_bits(self.layout.size) {
+                Ok(s) => {
+                    match self.layout.ty.kind {
+                        ty::Int(_) => return write!(
+                            fmt, "{}",
+                            super::sign_extend(s, self.layout.size) as i128,
+                        ),
+                        ty::Uint(_) => return write!(fmt, "{}", s),
+                        ty::Bool if s == 0 => return fmt.write_str("false"),
+                        ty::Bool if s == 1 => return fmt.write_str("true"),
+                        ty::Char => if let Some(c) =
+                            u32::try_from(s).ok().and_then(std::char::from_u32) {
+                            return write!(fmt, "{}", c);
+                        },
+                        ty::Float(ast::FloatTy::F32) => if let Ok(u) = u32::try_from(s) {
+                            return write!(fmt, "{}", f32::from_bits(u));
+                        },
+                        ty::Float(ast::FloatTy::F64) => if let Ok(u) = u64::try_from(s) {
+                            return write!(fmt, "{}", f64::from_bits(u));
+                        },
+                        _ => {},
+                    }
+                    write!(fmt, "{:x}", s)
+                },
+                Err(_) => fmt.write_str("{pointer}"),
+            },
+            Immediate::Scalar(ScalarMaybeUndef::Undef) => fmt.write_str("{undef}"),
+            Immediate::ScalarPair(..) => fmt.write_str("{wide pointer or tuple}"),
+        }
+    }
+}
+
 impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
     type Target = Immediate<Tag>;
     #[inline(always)]
@@ -103,7 +148,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ImmTy<'tcx, Tag> {
 /// An `Operand` is the result of computing a `mir::Operand`. It can be immediate,
 /// or still in memory. The latter is an optimization, to delay reading that chunk of
 /// memory and to avoid having to store arbitrary-sized data here.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, HashStable, Hash)]
 pub enum Operand<Tag=(), Id=AllocId> {
     Immediate(Immediate<Tag, Id>),
     Indirect(MemPlace<Tag, Id>),
@@ -133,9 +178,9 @@ impl<Tag> Operand<Tag> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct OpTy<'tcx, Tag=()> {
-    op: Operand<Tag>, // Keep this private, it helps enforce invariants
+    op: Operand<Tag>, // Keep this private; it helps enforce invariants.
     pub layout: TyLayout<'tcx>,
 }
 
@@ -202,7 +247,7 @@ pub(super) fn from_known_layout<'tcx>(
             if cfg!(debug_assertions) {
                 let layout2 = compute()?;
                 assert_eq!(layout.details, layout2.details,
-                    "Mismatch in layout of supposedly equal-layout types {:?} and {:?}",
+                    "mismatch in layout of supposedly equal-layout types {:?} and {:?}",
                     layout.ty, layout2.ty);
             }
             Ok(layout)
@@ -315,17 +360,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         }
     }
 
-    /// Read vector length and element type
-    pub fn read_vector_ty(
-        &self, op: OpTy<'tcx, M::PointerTag>
-    ) -> (u64, &rustc::ty::TyS<'tcx>) {
-        if let layout::Abi::Vector { .. } = op.layout.abi {
-            (op.layout.ty.simd_size(*self.tcx) as _, op.layout.ty.simd_type(*self.tcx))
-        } else {
-            bug!("Type `{}` is not a SIMD vector type", op.layout.ty)
-        }
-    }
-
     /// Read a scalar from a place
     pub fn read_scalar(
         &self,
@@ -334,7 +368,7 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.read_immediate(op)?.to_scalar_or_undef())
     }
 
-    // Turn the MPlace into a string (must already be dereferenced!)
+    // Turn the wide MPlace into a string (must already be dereferenced!)
     pub fn read_str(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
@@ -545,23 +579,27 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Scalar::Raw { data, size } => Scalar::Raw { data, size },
         };
         // Early-return cases.
-        match val.val {
-            ConstValue::Param(_) =>
+        let val_val = match val.val {
+            ty::ConstKind::Param(_) =>
                 throw_inval!(TooGeneric),
-            ConstValue::Unevaluated(def_id, substs) => {
+            ty::ConstKind::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 return Ok(OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
                 })?));
             }
-            _ => {}
-        }
+            ty::ConstKind::Infer(..) |
+            ty::ConstKind::Bound(..) |
+            ty::ConstKind::Placeholder(..) =>
+                bug!("eval_const_to_op: Unexpected ConstKind {:?}", val),
+            ty::ConstKind::Value(val_val) => val_val,
+        };
         // Other cases need layout.
         let layout = from_known_layout(layout, || {
             self.layout_of(val.ty)
         })?;
-        let op = match val.val {
+        let op = match val_val {
             ConstValue::ByRef { alloc, offset } => {
                 let id = self.tcx.alloc_map.lock().create_memory_alloc(alloc);
                 // We rely on mutability being set correctly in that allocation to prevent writes
@@ -583,12 +621,6 @@ impl<'mir, 'tcx, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     self,
                 ))
             }
-            ConstValue::Param(..) |
-            ConstValue::Infer(..) |
-            ConstValue::Bound(..) |
-            ConstValue::Placeholder(..) |
-            ConstValue::Unevaluated(..) =>
-                bug!("eval_const_to_op: Unexpected ConstValue {:?}", val),
         };
         Ok(OpTy { op, layout })
     }

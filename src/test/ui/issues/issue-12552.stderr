@@ -6,8 +6,8 @@ LL |   match t {
 LL |     Some(k) => match k {
    |     ^^^^^^^ expected enum `std::result::Result`, found enum `std::option::Option`
    |
-   = note: expected type `std::result::Result<_, {integer}>`
-              found type `std::option::Option<_>`
+   = note: expected enum `std::result::Result<_, {integer}>`
+              found enum `std::option::Option<_>`
 
 error[E0308]: mismatched types
   --> $DIR/issue-12552.rs:9:5
@@ -15,8 +15,8 @@ error[E0308]: mismatched types
 LL |     None => ()
    |     ^^^^ expected enum `std::result::Result`, found enum `std::option::Option`
    |
-   = note: expected type `std::result::Result<_, {integer}>`
-              found type `std::option::Option<_>`
+   = note: expected enum `std::result::Result<_, {integer}>`
+              found enum `std::option::Option<_>`
 
 error: aborting due to 2 previous errors
 

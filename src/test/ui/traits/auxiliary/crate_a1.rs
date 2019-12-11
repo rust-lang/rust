@@ -1,11 +1,9 @@
-pub struct Foo;
+pub trait Bar {}
 
-pub trait Bar{}
+pub fn try_foo(x: impl Bar) {}
 
-pub fn bar() -> Box<Bar> {
-    unimplemented!()
+pub struct ImplementsTraitForUsize<T> {
+    _marker: std::marker::PhantomData<T>,
 }
 
-
-pub fn try_foo(x: Foo){}
-pub fn try_bar(x: Box<Bar>){}
+impl Bar for ImplementsTraitForUsize<usize> {}

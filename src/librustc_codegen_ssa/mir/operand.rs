@@ -1,18 +1,17 @@
+use super::{FunctionCx, LocalRef};
+use super::place::PlaceRef;
+
+use crate::MemFlags;
+use crate::base;
+use crate::glue;
+use crate::traits::*;
+
 use rustc::mir::interpret::{ConstValue, ErrorHandled, Pointer, Scalar};
 use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, Size};
 
-use crate::base;
-use crate::MemFlags;
-use crate::glue;
-
-use crate::traits::*;
-
 use std::fmt;
-
-use super::{FunctionCx, LocalRef};
-use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -75,12 +74,12 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             return OperandRef::new_zst(bx, layout);
         }
 
-        let val = match val.val {
-            ConstValue::Unevaluated(..) => bug!("unevaluated constant in `OperandRef::from_const`"),
-            ConstValue::Param(_) => bug!("encountered a ConstValue::Param in codegen"),
-            ConstValue::Infer(_) => bug!("encountered a ConstValue::Infer in codegen"),
-            ConstValue::Bound(..) => bug!("encountered a ConstValue::Bound in codegen"),
-            ConstValue::Placeholder(_) => bug!("encountered a ConstValue::Placeholder in codegen"),
+        let val_val = match val.val {
+            ty::ConstKind::Value(val_val) => val_val,
+            _ => bug!("encountered bad ConstKind in codegen"),
+        };
+
+        let val = match val_val {
             ConstValue::Scalar(x) => {
                 let scalar = match layout.abi {
                     layout::Abi::Scalar(ref x) => x,
@@ -343,6 +342,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandValue<V> {
             }
         }
     }
+
     pub fn store_unsized<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         self,
         bx: &mut Bx,
@@ -465,8 +465,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                self.eval_mir_constant(constant)
-                    .map(|c| OperandRef::from_const(bx, c))
+                self.eval_mir_constant_to_operand(bx, constant)
                     .unwrap_or_else(|err| {
                         match err {
                             // errored or at least linted
@@ -476,9 +475,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             },
                         }
                         // Allow RalfJ to sleep soundly knowing that even refactorings that remove
-                        // the above error (or silence it under some conditions) will not cause UB
+                        // the above error (or silence it under some conditions) will not cause UB.
                         bx.abort();
-                        // We've errored, so we don't have to produce working code.
+                        // We still have to return an operand but it doesn't matter,
+                        // this code is unreachable.
                         let ty = self.monomorphize(&constant.literal.ty);
                         let layout = bx.cx().layout_of(ty);
                         bx.load_operand(PlaceRef::new_sized(

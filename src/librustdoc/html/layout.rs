@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use crate::externalfiles::ExternalHtml;
+use crate::html::escape::Escape;
 use crate::html::render::ensure_trailing_slash;
 use crate::html::format::{Buffer, Print};
 
@@ -86,10 +87,11 @@ pub fn render<T: Print, S: Print>(
     </div>\
     <script src=\"{static_root_path}theme{suffix}.js\"></script>\
     <nav class=\"sub\">\
-        <form class=\"search-form js-only\">\
+        <form class=\"search-form\">\
             <div class=\"search-container\">\
                 <div>{filter_crates}\
                     <input class=\"search-input\" name=\"search\" \
+                           disabled \
                            autocomplete=\"off\" \
                            spellcheck=\"false\" \
                            placeholder=\"Click or press ‘S’ to search, ‘?’ for more options…\" \
@@ -166,10 +168,11 @@ pub fn render<T: Print, S: Print>(
     themes = themes.iter()
                    .filter_map(|t| t.file_stem())
                    .filter_map(|t| t.to_str())
-                   .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}{}{}.css">"#,
-                                    static_root_path,
-                                    t,
-                                    page.resource_suffix))
+                   .map(|t| format!(r#"<link rel="stylesheet" type="text/css" href="{}.css">"#,
+                                    Escape(&format!("{}{}{}",
+                                                    static_root_path,
+                                                    t,
+                                                    page.resource_suffix))))
                    .collect::<String>(),
     suffix=page.resource_suffix,
     static_extra_scripts=page.static_extra_scripts.iter().map(|e| {

@@ -12,7 +12,7 @@ use super::{FusedIterator, TrustedLen};
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat<A> {
-    element: A
+    element: A,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -20,15 +20,21 @@ impl<A: Clone> Iterator for Repeat<A> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<A> { Some(self.element.clone()) }
+    fn next(&mut self) -> Option<A> {
+        Some(self.element.clone())
+    }
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     #[inline]
-    fn next_back(&mut self) -> Option<A> { Some(self.element.clone()) }
+    fn next_back(&mut self) -> Option<A> {
+        Some(self.element.clone())
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
@@ -91,7 +97,7 @@ unsafe impl<A: Clone> TrustedLen for Repeat<A> {}
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
-    Repeat{element: elt}
+    Repeat { element: elt }
 }
 
 /// An iterator that repeats elements of type `A` endlessly by
@@ -104,7 +110,7 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 #[derive(Copy, Clone, Debug)]
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub struct RepeatWith<F> {
-    repeater: F
+    repeater: F,
 }
 
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
@@ -112,10 +118,14 @@ impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
     type Item = A;
 
     #[inline]
-    fn next(&mut self) -> Option<A> { Some((self.repeater)()) }
+    fn next(&mut self) -> Option<A> {
+        Some((self.repeater)())
+    }
 
     #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None)
+    }
 }
 
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
@@ -213,7 +223,7 @@ impl<T> Iterator for Empty<T> {
         None
     }
 
-    fn size_hint(&self) -> (usize, Option<usize>){
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (0, Some(0))
     }
 }
@@ -283,7 +293,7 @@ pub const fn empty<T>() -> Empty<T> {
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
-    inner: crate::option::IntoIter<T>
+    inner: crate::option::IntoIter<T>,
 }
 
 #[stable(feature = "iter_once", since = "1.2.0")]
@@ -530,7 +540,8 @@ pub fn once_with<A, F: FnOnce() -> A>(gen: F) -> OnceWith<F> {
 #[inline]
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub fn from_fn<T, F>(f: F) -> FromFn<F>
-    where F: FnMut() -> Option<T>
+where
+    F: FnMut() -> Option<T>,
 {
     FromFn(f)
 }
@@ -547,7 +558,8 @@ pub struct FromFn<F>(F);
 
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 impl<T, F> Iterator for FromFn<F>
-    where F: FnMut() -> Option<T>
+where
+    F: FnMut() -> Option<T>,
 {
     type Item = T;
 
@@ -577,15 +589,13 @@ impl<F> fmt::Debug for FromFn<F> {
 /// ```
 #[stable(feature = "iter_successors", since = "1.34.0")]
 pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
-    where F: FnMut(&T) -> Option<T>
+where
+    F: FnMut(&T) -> Option<T>,
 {
     // If this function returned `impl Iterator<Item=T>`
     // it could be based on `unfold` and not need a dedicated type.
     // However having a named `Successors<T, F>` type allows it to be `Clone` when `T` and `F` are.
-    Successors {
-        next: first,
-        succ,
-    }
+    Successors { next: first, succ }
 }
 
 /// An new iterator where each successive item is computed based on the preceding one.
@@ -603,7 +613,8 @@ pub struct Successors<T, F> {
 
 #[stable(feature = "iter_successors", since = "1.34.0")]
 impl<T, F> Iterator for Successors<T, F>
-    where F: FnMut(&T) -> Option<T>
+where
+    F: FnMut(&T) -> Option<T>,
 {
     type Item = T;
 
@@ -616,24 +627,16 @@ impl<T, F> Iterator for Successors<T, F>
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.next.is_some() {
-            (1, None)
-        } else {
-            (0, Some(0))
-        }
+        if self.next.is_some() { (1, None) } else { (0, Some(0)) }
     }
 }
 
 #[stable(feature = "iter_successors", since = "1.34.0")]
-impl<T, F> FusedIterator for Successors<T, F>
-    where F: FnMut(&T) -> Option<T>
-{}
+impl<T, F> FusedIterator for Successors<T, F> where F: FnMut(&T) -> Option<T> {}
 
 #[stable(feature = "iter_successors", since = "1.34.0")]
 impl<T: fmt::Debug, F> fmt::Debug for Successors<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Successors")
-            .field("next", &self.next)
-            .finish()
+        f.debug_struct("Successors").field("next", &self.next).finish()
     }
 }

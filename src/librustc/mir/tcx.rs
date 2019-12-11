@@ -10,7 +10,7 @@ use crate::ty::layout::VariantIdx;
 use crate::hir;
 use crate::ty::util::IntTypeExt;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, TypeFoldable)]
 pub struct PlaceTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Downcast to a particular variant of an enum, if included.
@@ -81,7 +81,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 let ty = self.ty
                              .builtin_deref(true)
                              .unwrap_or_else(|| {
-                                 bug!("deref projection of non-dereferencable ty {:?}", self)
+                                 bug!("deref projection of non-dereferenceable ty {:?}", self)
                              })
                              .ty;
                 PlaceTy::from_ty(ty)
@@ -108,13 +108,6 @@ impl<'tcx> PlaceTy<'tcx> {
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
         answer
-    }
-}
-
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for PlaceTy<'tcx> {
-        ty,
-        variant_index,
     }
 }
 

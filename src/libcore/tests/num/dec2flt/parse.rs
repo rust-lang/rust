@@ -1,5 +1,5 @@
-use core::num::dec2flt::parse::{Decimal, parse_decimal};
-use core::num::dec2flt::parse::ParseResult::{Valid, Invalid};
+use core::num::dec2flt::parse::ParseResult::{Invalid, Valid};
+use core::num::dec2flt::parse::{parse_decimal, Decimal};
 
 #[test]
 fn missing_pieces() {

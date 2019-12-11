@@ -17,6 +17,8 @@ use rustc::hir::def_id::DefId;
 use hir::Node;
 use rustc::hir::{self, ItemKind};
 
+use rustc_error_codes::*;
+
 pub fn check_trait(tcx: TyCtxt<'_>, trait_def_id: DefId) {
     Checker { tcx, trait_def_id }
         .check(tcx.lang_items().drop_trait(), visit_implementation_of_drop)

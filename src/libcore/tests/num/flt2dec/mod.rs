@@ -1,4 +1,3 @@
-use std::prelude::v1::*;
 use std::{str, i16, f32, f64, fmt};
 
 use core::num::flt2dec::{decode, DecodableFloat, FullDecoded, Decoded};
@@ -257,7 +256,6 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     check_shortest!(f(minf32) => b"1", -44);
 }
 
-#[cfg(not(miri))] // Miri is too slow
 pub fn f32_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     let minf32 = ldexp_f32(1.0, -149);
@@ -363,7 +361,6 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     check_shortest!(f(minf64) => b"5", -323);
 }
 
-#[cfg(not(miri))] // Miri is too slow
 pub fn f64_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     let minf64 = ldexp_f64(1.0, -1074);

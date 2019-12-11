@@ -60,3 +60,4 @@ LL |         let _: bool = simd_reduce_any(z);
 
 error: aborting due to 10 previous errors
 
+For more information about this error, try `rustc --explain E0511`.

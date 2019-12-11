@@ -23,6 +23,8 @@ use syntax::source_map::{respan, DesugaringKind};
 use syntax::symbol::{kw, sym};
 use syntax_pos::Span;
 
+use rustc_error_codes::*;
+
 pub(super) struct ItemLowerer<'tcx, 'interner> {
     pub(super) lctx: &'tcx mut LoweringContext<'interner>,
 }
@@ -231,7 +233,7 @@ impl LoweringContext<'_> {
 
         if let ItemKind::MacroDef(ref def) = i.kind {
             if !def.legacy || attr::contains_name(&i.attrs, sym::macro_export) {
-                let body = self.lower_token_stream(def.stream());
+                let body = self.lower_token_stream(def.body.inner_tokens());
                 let hir_id = self.lower_node_id(i.id);
                 self.exported_macros.push(hir::MacroDef {
                     name: ident.name,
@@ -335,20 +337,22 @@ impl LoweringContext<'_> {
             ItemKind::Mod(ref m) => hir::ItemKind::Mod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemKind::ForeignMod(self.lower_foreign_mod(nm)),
             ItemKind::GlobalAsm(ref ga) => hir::ItemKind::GlobalAsm(self.lower_global_asm(ga)),
-            ItemKind::TyAlias(ref t, ref generics) => hir::ItemKind::TyAlias(
-                self.lower_ty(t, ImplTraitContext::disallowed()),
-                self.lower_generics(generics, ImplTraitContext::disallowed()),
-            ),
-            ItemKind::OpaqueTy(ref b, ref generics) => hir::ItemKind::OpaqueTy(
-                hir::OpaqueTy {
-                    generics: self.lower_generics(generics,
-                        ImplTraitContext::OpaqueTy(None)),
-                    bounds: self.lower_param_bounds(b,
-                        ImplTraitContext::OpaqueTy(None)),
-                    impl_trait_fn: None,
-                    origin: hir::OpaqueTyOrigin::TypeAlias,
+            ItemKind::TyAlias(ref ty, ref generics) => match ty.kind.opaque_top_hack() {
+                None => {
+                    let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                    let generics = self.lower_generics(generics, ImplTraitContext::disallowed());
+                    hir::ItemKind::TyAlias(ty, generics)
                 },
-            ),
+                Some(bounds) => {
+                    let ty = hir::OpaqueTy {
+                        generics: self.lower_generics(generics, ImplTraitContext::OpaqueTy(None)),
+                        bounds: self.lower_param_bounds(bounds, ImplTraitContext::OpaqueTy(None)),
+                        impl_trait_fn: None,
+                        origin: hir::OpaqueTyOrigin::TypeAlias,
+                    };
+                    hir::ItemKind::OpaqueTy(ty)
+                }
+            }
             ItemKind::Enum(ref enum_definition, ref generics) => {
                 hir::ItemKind::Enum(
                     hir::EnumDef {
@@ -731,7 +735,7 @@ impl LoweringContext<'_> {
 
     fn lower_foreign_mod(&mut self, fm: &ForeignMod) -> hir::ForeignMod {
         hir::ForeignMod {
-            abi: self.lower_abi(fm.abi),
+            abi: fm.abi.map_or(abi::Abi::C, |abi| self.lower_abi(abi)),
             items: fm.items
                 .iter()
                 .map(|x| self.lower_foreign_item(x))
@@ -914,16 +918,20 @@ impl LoweringContext<'_> {
 
                 (generics, hir::ImplItemKind::Method(sig, body_id))
             }
-            ImplItemKind::TyAlias(ref ty) => (
-                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::ImplItemKind::TyAlias(self.lower_ty(ty, ImplTraitContext::disallowed())),
-            ),
-            ImplItemKind::OpaqueTy(ref bounds) => (
-                self.lower_generics(&i.generics, ImplTraitContext::disallowed()),
-                hir::ImplItemKind::OpaqueTy(
-                    self.lower_param_bounds(bounds, ImplTraitContext::disallowed()),
-                ),
-            ),
+            ImplItemKind::TyAlias(ref ty) => {
+                let generics = self.lower_generics(&i.generics, ImplTraitContext::disallowed());
+                let kind = match ty.kind.opaque_top_hack() {
+                    None => {
+                        let ty = self.lower_ty(ty, ImplTraitContext::disallowed());
+                        hir::ImplItemKind::TyAlias(ty)
+                    }
+                    Some(bs) => {
+                        let bounds = self.lower_param_bounds(bs, ImplTraitContext::disallowed());
+                        hir::ImplItemKind::OpaqueTy(bounds)
+                    }
+                };
+                (generics, kind)
+            },
             ImplItemKind::Macro(..) => bug!("`TyMac` should have been expanded by now"),
         };
 
@@ -948,11 +956,13 @@ impl LoweringContext<'_> {
             span: i.span,
             vis: self.lower_visibility(&i.vis, Some(i.id)),
             defaultness: self.lower_defaultness(i.defaultness, true /* [1] */),
-            kind: match i.kind {
+            kind: match &i.kind {
                 ImplItemKind::Const(..) => hir::AssocItemKind::Const,
-                ImplItemKind::TyAlias(..) => hir::AssocItemKind::Type,
-                ImplItemKind::OpaqueTy(..) => hir::AssocItemKind::OpaqueTy,
-                ImplItemKind::Method(ref sig, _) => hir::AssocItemKind::Method {
+                ImplItemKind::TyAlias(ty) => match ty.kind.opaque_top_hack() {
+                    None => hir::AssocItemKind::Type,
+                    Some(_) => hir::AssocItemKind::OpaqueTy,
+                },
+                ImplItemKind::Method(sig, _) => hir::AssocItemKind::Method {
                     has_self: sig.decl.has_self(),
                 },
                 ImplItemKind::Macro(..) => unimplemented!(),
@@ -1273,18 +1283,26 @@ impl LoweringContext<'_> {
             unsafety: h.unsafety,
             asyncness: self.lower_asyncness(h.asyncness.node),
             constness: h.constness.node,
-            abi: self.lower_abi(h.abi),
+            abi: self.lower_extern(h.ext),
         }
     }
 
-    pub(super) fn lower_abi(&mut self, abi: Abi) -> abi::Abi {
-        abi::lookup(&abi.symbol.as_str()).unwrap_or_else(|| {
+    pub(super) fn lower_abi(&mut self, abi: StrLit) -> abi::Abi {
+        abi::lookup(&abi.symbol_unescaped.as_str()).unwrap_or_else(|| {
             self.error_on_invalid_abi(abi);
             abi::Abi::Rust
         })
     }
 
-    fn error_on_invalid_abi(&self, abi: Abi) {
+    pub(super) fn lower_extern(&mut self, ext: Extern) -> abi::Abi {
+        match ext {
+            Extern::None => abi::Abi::Rust,
+            Extern::Implicit => abi::Abi::C,
+            Extern::Explicit(abi) => self.lower_abi(abi),
+        }
+    }
+
+    fn error_on_invalid_abi(&self, abi: StrLit) {
         struct_span_err!(
             self.sess,
             abi.span,

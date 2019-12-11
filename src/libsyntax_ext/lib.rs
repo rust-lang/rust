@@ -3,6 +3,7 @@
 
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(bool_to_option)]
 #![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
 #![feature(nll)]
@@ -18,8 +19,6 @@ use syntax::edition::Edition;
 use syntax::symbol::sym;
 use syntax_expand::base::{Resolver, SyntaxExtension, SyntaxExtensionKind, MacroExpanderFn};
 use syntax_expand::proc_macro::BangProcMacro;
-
-mod error_codes;
 
 mod asm;
 mod assert;
@@ -40,7 +39,6 @@ mod trace_macros;
 mod util;
 
 pub mod cmdline_attrs;
-pub mod plugin_macro_defs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;

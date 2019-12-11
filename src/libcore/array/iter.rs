@@ -92,6 +92,18 @@ where
             mem::transmute::<&[MaybeUninit<T>], &[T]>(slice)
         }
     }
+
+    /// Returns a mutable slice of all elements that have not been yielded yet.
+    fn as_mut_slice(&mut self) -> &mut [T] {
+        // This transmute is safe, same as in `as_slice` above.
+        let slice = &mut self.data[self.alive.clone()];
+        // SAFETY: This transmute is safe. As mentioned in `new`, `MaybeUninit` retains
+        // the size and alignment of `T`. Furthermore, we know that all
+        // elements within `alive` are properly initialized.
+        unsafe {
+            mem::transmute::<&mut [MaybeUninit<T>], &mut [T]>(slice)
+        }
+    }
 }
 
 
@@ -184,10 +196,12 @@ where
     [T; N]: LengthAtMost32,
 {
     fn drop(&mut self) {
-        // We simply drop each element via `for_each`. This should not incur
-        // any significant runtime overhead and avoids adding another `unsafe`
-        // block.
-        self.by_ref().for_each(drop);
+        // SAFETY: This is safe: `as_mut_slice` returns exactly the sub-slice
+        // of elements that have not been moved out yet and that remain
+        // to be dropped.
+        unsafe {
+            ptr::drop_in_place(self.as_mut_slice())
+        }
     }
 }
 

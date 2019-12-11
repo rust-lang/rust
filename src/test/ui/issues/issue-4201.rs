@@ -3,9 +3,7 @@ fn main() {
         0
     } else if false {
 //~^ ERROR if may be missing an else clause
-//~| expected type `()`
-//~| found type `{integer}`
-//~| expected (), found integer
+//~| expected `()`, found integer
         1
     };
 }

@@ -12,8 +12,8 @@ LL |     match [5..4, 99..105, 43..44] {
 LL |         [..9, 99..100, _] => {},
    |          ^^^ expected struct `std::ops::Range`, found integer
    |
-   = note: expected type `std::ops::Range<{integer}>`
-              found type `{integer}`
+   = note: expected struct `std::ops::Range<{integer}>`
+                found type `{integer}`
 
 error[E0308]: mismatched types
   --> $DIR/exclusive_range_pattern_syntax_collision3.rs:5:15
@@ -23,8 +23,8 @@ LL |     match [5..4, 99..105, 43..44] {
 LL |         [..9, 99..100, _] => {},
    |               ^^^^^^^ expected struct `std::ops::Range`, found integer
    |
-   = note: expected type `std::ops::Range<{integer}>`
-              found type `{integer}`
+   = note: expected struct `std::ops::Range<{integer}>`
+                found type `{integer}`
 
 error: aborting due to 3 previous errors
 

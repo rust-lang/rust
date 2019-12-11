@@ -40,10 +40,7 @@ impl RawWaker {
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
-        RawWaker {
-            data,
-            vtable,
-        }
+        RawWaker { data, vtable }
     }
 }
 
@@ -160,12 +157,7 @@ impl RawWakerVTable {
         wake_by_ref: unsafe fn(*const ()),
         drop: unsafe fn(*const ()),
     ) -> Self {
-        Self {
-            clone,
-            wake,
-            wake_by_ref,
-            drop,
-        }
+        Self { clone, wake, wake_by_ref, drop }
     }
 }
 
@@ -188,10 +180,7 @@ impl<'a> Context<'a> {
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[inline]
     pub fn from_waker(waker: &'a Waker) -> Self {
-        Context {
-            waker,
-            _marker: PhantomData,
-        }
+        Context { waker, _marker: PhantomData }
     }
 
     /// Returns a reference to the `Waker` for the current task.
@@ -205,9 +194,7 @@ impl<'a> Context<'a> {
 #[stable(feature = "futures_api", since = "1.36.0")]
 impl fmt::Debug for Context<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Context")
-            .field("waker", &self.waker)
-            .finish()
+        f.debug_struct("Context").field("waker", &self.waker).finish()
     }
 }
 
@@ -291,9 +278,7 @@ impl Waker {
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
     pub unsafe fn from_raw(waker: RawWaker) -> Waker {
-        Waker {
-            waker,
-        }
+        Waker { waker }
     }
 }
 

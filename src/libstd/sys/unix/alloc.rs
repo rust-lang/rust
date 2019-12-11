@@ -1,6 +1,6 @@
-use crate::ptr;
-use crate::sys_common::alloc::{MIN_ALIGN, realloc_fallback};
 use crate::alloc::{GlobalAlloc, Layout, System};
+use crate::ptr;
+use crate::sys_common::alloc::{realloc_fallback, MIN_ALIGN};
 
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
 unsafe impl GlobalAlloc for System {
@@ -16,7 +16,7 @@ unsafe impl GlobalAlloc for System {
             #[cfg(target_os = "macos")]
             {
                 if layout.align() > (1 << 31) {
-                    return ptr::null_mut()
+                    return ptr::null_mut();
                 }
             }
             aligned_malloc(&layout)
@@ -52,9 +52,7 @@ unsafe impl GlobalAlloc for System {
     }
 }
 
-#[cfg(any(target_os = "android",
-          target_os = "redox",
-          target_os = "solaris"))]
+#[cfg(any(target_os = "android", target_os = "redox", target_os = "solaris"))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     // On android we currently target API level 9 which unfortunately
@@ -77,9 +75,7 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     libc::memalign(layout.align(), layout.size()) as *mut u8
 }
 
-#[cfg(not(any(target_os = "android",
-              target_os = "redox",
-              target_os = "solaris")))]
+#[cfg(not(any(target_os = "android", target_os = "redox", target_os = "solaris")))]
 #[inline]
 unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     let mut out = ptr::null_mut();
@@ -87,9 +83,5 @@ unsafe fn aligned_malloc(layout: &Layout) -> *mut u8 {
     // Since these are all powers of 2, we can just use max.
     let align = layout.align().max(crate::mem::size_of::<usize>());
     let ret = libc::posix_memalign(&mut out, align, layout.size());
-    if ret != 0 {
-        ptr::null_mut()
-    } else {
-        out as *mut u8
-    }
+    if ret != 0 { ptr::null_mut() } else { out as *mut u8 }
 }

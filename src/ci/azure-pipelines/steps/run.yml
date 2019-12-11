@@ -8,6 +8,13 @@
 
 steps:
 
+# Configure our CI_JOB_NAME variable which log analyzers can use for the main
+# step to see what's going on.
+- bash: |
+    builder=$(echo $AGENT_JOBNAME | cut -d ' ' -f 2)
+    echo "##vso[task.setvariable variable=CI_JOB_NAME]$builder"
+  displayName: Configure Job Name
+
 # Disable automatic line ending conversion, which is enabled by default on
 # Azure's Windows image. Having the conversion enabled caused regressions both
 # in our test suite (it broke miri tests) and in the ecosystem, since we
@@ -21,51 +28,39 @@ steps:
 - checkout: self
   fetchDepth: 2
 
+- bash: src/ci/scripts/setup-environment.sh
+  displayName: Setup environment
+
 - bash: src/ci/scripts/should-skip-this.sh
   displayName: Decide whether to run this job
 
-# Spawn a background process to collect CPU usage statistics which we'll upload
-# at the end of the build. See the comments in the script here for more
-# information.
-- bash: python src/ci/cpu-usage-over-time.py &> cpu-usage.csv &
-  displayName: "Collect CPU-usage statistics in the background"
+- bash: src/ci/scripts/collect-cpu-stats.sh
+  displayName: Collect CPU-usage statistics in the background
 
 - bash: src/ci/scripts/dump-environment.sh
   displayName: Show the current environment
 
 - bash: src/ci/scripts/install-sccache.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Install sccache
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-clang.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Install clang
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/switch-xcode.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Switch to Xcode 9.3
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-wix.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Install wix
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-innosetup.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Install InnoSetup
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/windows-symlink-build-dir.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Ensure the build happens on C:\ instead of D:\
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
@@ -74,35 +69,22 @@ steps:
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-msys2.sh
-  env:
-    AGENT_OS: $(Agent.OS)
-    SYSTEM_WORKFOLDER: $(System.Workfolder)
   displayName: Install msys2
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-msys2-packages.sh
-  env:
-    AGENT_OS: $(Agent.OS)
-    SYSTEM_WORKFOLDER: $(System.Workfolder)
   displayName: Install msys2 packages
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-mingw.sh
-  env:
-    AGENT_OS: $(Agent.OS)
-    SYSTEM_WORKFOLDER: $(System.Workfolder)
   displayName: Install MinGW
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/install-ninja.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Install ninja
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/enable-docker-ipv6.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Enable IPv6 on Docker
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
@@ -116,67 +98,22 @@ steps:
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/checkout-submodules.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Checkout submodules
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 - bash: src/ci/scripts/verify-line-endings.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   displayName: Verify line endings
   condition: and(succeeded(), not(variables.SKIP_JOB))
 
 # Ensure the `aws` CLI is installed so we can deploy later on, cache docker
 # images, etc.
 - bash: src/ci/scripts/install-awscli.sh
-  env:
-    AGENT_OS: $(Agent.OS)
   condition: and(succeeded(), not(variables.SKIP_JOB))
   displayName: Install awscli
 
-# Configure our CI_JOB_NAME variable which log analyzers can use for the main
-# step to see what's going on.
-- bash: |
-    builder=$(echo $AGENT_JOBNAME | cut -d ' ' -f 2)
-    echo "##vso[task.setvariable variable=CI_JOB_NAME]$builder"
-  displayName: Configure Job Name
-
-# As a quick smoke check on the otherwise very fast mingw-check linux builder
-# check our own internal scripts.
-- bash: |
-    set -e
-    git clone --depth=1 https://github.com/rust-lang-nursery/rust-toolstate.git
-    cd rust-toolstate
-    python2.7 "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "" ""
-    # Only check maintainers if this build is supposed to publish toolstate.
-    # Builds that are not supposed to publish don't have the access token.
-    if [ -n "${TOOLSTATE_PUBLISH+is_set}" ]; then
-      TOOLSTATE_VALIDATE_MAINTAINERS_REPO=rust-lang/rust python2.7 "${BUILD_SOURCESDIRECTORY}/src/tools/publish_toolstate.py"
-    fi
-    cd ..
-    rm -rf rust-toolstate
-  env:
-    TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)
-  condition: and(succeeded(), not(variables.SKIP_JOB), eq(variables['IMAGE'], 'mingw-check'))
-  displayName: Verify the publish_toolstate script works
-
-- bash: |
-    set -e
-    # Remove any preexisting rustup installation since it can interfere
-    # with the cargotest step and its auto-detection of things like Clippy in
-    # the environment
-    rustup self uninstall -y || true
-    if [ "$IMAGE" = "" ]; then
-      src/ci/run.sh
-    else
-      src/ci/docker/run.sh $IMAGE
-    fi
-  #timeoutInMinutes: 180
+- bash: src/ci/scripts/run-build-from-ci.sh
   timeoutInMinutes: 600
   env:
-    CI: true
-    SRC: .
     AWS_ACCESS_KEY_ID: $(SCCACHE_AWS_ACCESS_KEY_ID)
     AWS_SECRET_ACCESS_KEY: $(SCCACHE_AWS_SECRET_ACCESS_KEY)
     TOOLSTATE_REPO_ACCESS_TOKEN: $(TOOLSTATE_REPO_ACCESS_TOKEN)

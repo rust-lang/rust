@@ -1,4 +1,4 @@
-error[E0744]: `while let` is not allowed in a `const`
+error[E0744]: `while` is not allowed in a `const`
   --> $DIR/issue-51714.rs:11:17
    |
 LL |     [(); return while let Some(n) = Some(0) {}];

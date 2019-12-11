@@ -1,30 +1,42 @@
 //! Redox-specific raw type definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
-#![rustc_deprecated(since = "1.8.0",
-                    reason = "these type aliases are no longer supported by \
-                              the standard library, the `libc` crate on \
-                              crates.io should be used instead for the correct \
-                              definitions")]
+#![rustc_deprecated(
+    since = "1.8.0",
+    reason = "these type aliases are no longer supported by \
+              the standard library, the `libc` crate on \
+              crates.io should be used instead for the correct \
+              definitions"
+)]
 #![allow(deprecated)]
 #![allow(missing_debug_implementations)]
 
 use crate::os::raw::{c_char, c_int, c_long, c_ulong, c_void};
 
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type dev_t = c_long;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type gid_t = c_int;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type mode_t = c_int;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type uid_t = c_int;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type dev_t = c_long;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type gid_t = c_int;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type mode_t = c_int;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type uid_t = c_int;
 
 #[stable(feature = "pthread_t", since = "1.8.0")]
 pub type pthread_t = *mut c_void;
 
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type blkcnt_t = c_ulong;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type blksize_t = c_ulong;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type ino_t = c_ulong;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type nlink_t = c_ulong;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type off_t = c_long;
-#[stable(feature = "raw_ext", since = "1.1.0")] pub type time_t = c_long;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type blkcnt_t = c_ulong;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type blksize_t = c_ulong;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type ino_t = c_ulong;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type nlink_t = c_ulong;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type off_t = c_long;
+#[stable(feature = "raw_ext", since = "1.1.0")]
+pub type time_t = c_long;
 
 #[repr(C)]
 #[derive(Clone)]

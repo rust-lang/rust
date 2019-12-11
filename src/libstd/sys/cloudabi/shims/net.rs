@@ -1,9 +1,9 @@
+use crate::convert::TryFrom;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
-use crate::time::Duration;
 use crate::sys::{unsupported, Void};
-use crate::convert::TryFrom;
+use crate::time::Duration;
 
 #[allow(unused_extern_crates)]
 pub extern crate libc as netc;

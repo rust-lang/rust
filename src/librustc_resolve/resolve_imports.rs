@@ -30,6 +30,8 @@ use syntax::{struct_span_err, unwrap_or};
 use syntax_pos::hygiene::ExpnId;
 use syntax_pos::{MultiSpan, Span};
 
+use rustc_error_codes::*;
+
 use log::*;
 
 use std::cell::Cell;
@@ -1158,8 +1160,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     .emit();
             } else {
                 let msg = format!("`{}` is private, and cannot be re-exported", ident);
-                let note_msg =
-                    format!("consider marking `{}` as `pub` in the imported module", ident);
+                let note_msg = format!(
+                    "consider marking `{}` as `pub` in the imported module",
+                    ident,
+                );
                 struct_span_err!(self.r.session, directive.span, E0364, "{}", &msg)
                     .span_note(directive.span, &note_msg)
                     .emit();

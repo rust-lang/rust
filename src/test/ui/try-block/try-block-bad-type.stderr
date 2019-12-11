@@ -17,19 +17,13 @@ error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::op
   --> $DIR/try-block-bad-type.rs:12:9
    |
 LL |         ""
-   |         ^^ expected i32, found &str
-   |
-   = note: expected type `i32`
-              found type `&str`
+   |         ^^ expected `i32`, found `&str`
 
 error[E0271]: type mismatch resolving `<std::result::Result<i32, i32> as std::ops::Try>::Ok == ()`
   --> $DIR/try-block-bad-type.rs:15:39
    |
 LL |     let res: Result<i32, i32> = try { };
-   |                                       ^ expected i32, found ()
-   |
-   = note: expected type `i32`
-              found type `()`
+   |                                       ^ expected `i32`, found `()`
 
 error[E0277]: the trait bound `(): std::ops::Try` is not satisfied
   --> $DIR/try-block-bad-type.rs:17:23

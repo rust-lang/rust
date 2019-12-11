@@ -1,4 +1,4 @@
-static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];   //~ ERROR E0017
+static buf: &mut [u8] = &mut [1u8,2,3,4,5,7];   //~ ERROR E0658
 fn write<T: AsRef<[u8]>>(buffer: T) { }
 
 fn main() {

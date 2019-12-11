@@ -2,7 +2,6 @@
 // ignore-wasm32-bare compiled with panic=abort by default
 
 #![feature(fn_traits)]
-#![feature(never_type)]
 
 use std::panic;
 

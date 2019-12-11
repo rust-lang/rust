@@ -9,12 +9,12 @@ fn function() -> u32 {
 
 struct Wrapper<const F: fn() -> u32>;
 
-impl<const F: fn() -> u32> Wrapper<{F}> {
+impl<const F: fn() -> u32> Wrapper<F> {
     fn call() -> u32 {
         F()
     }
 }
 
 fn main() {
-    assert_eq!(Wrapper::<{function}>::call(), 17);
+    assert_eq!(Wrapper::<function>::call(), 17);
 }

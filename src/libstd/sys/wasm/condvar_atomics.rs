@@ -89,6 +89,6 @@ impl Condvar {
     #[inline]
     fn ptr(&self) -> *mut i32 {
         assert_eq!(mem::size_of::<usize>(), mem::size_of::<i32>());
-        &self.cnt as *const AtomicUsize as *mut i32
+        self.cnt.as_mut_ptr() as *mut i32
     }
 }

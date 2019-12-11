@@ -1,5 +1,5 @@
-use std::io::{self, Write as IoWrite};
 use std::fmt::{self, Write as FmtWrite};
+use std::io::{self, Write as IoWrite};
 use test::Bencher;
 
 #[bench]

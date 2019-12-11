@@ -260,7 +260,7 @@ install!((self, builder, _config),
     };
     Rustc, "src/librustc", true, only_hosts: true, {
         builder.ensure(dist::Rustc {
-            compiler: self.compiler,
+            compiler: builder.compiler(builder.top_stage, self.target),
         });
         install_rustc(builder, self.compiler.stage, self.target);
     };

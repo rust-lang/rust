@@ -42,8 +42,6 @@ pub enum NonMacroAttrKind {
     DeriveHelper,
     /// Single-segment custom attribute registered with `#[register_attr]`.
     Registered,
-    /// Single-segment custom attribute registered by a legacy plugin (`register_attribute`).
-    LegacyPluginHelper,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, HashStable)]
@@ -127,6 +125,34 @@ impl DefKind {
             | DefKind::OpaqueTy => "an",
             DefKind::Macro(macro_kind) => macro_kind.article(),
             _ => "a",
+        }
+    }
+
+    pub fn matches_ns(&self, ns: Namespace) -> bool {
+        match self {
+            DefKind::Mod
+            | DefKind::Struct
+            | DefKind::Union
+            | DefKind::Enum
+            | DefKind::Variant
+            | DefKind::Trait
+            | DefKind::OpaqueTy
+            | DefKind::TyAlias
+            | DefKind::ForeignTy
+            | DefKind::TraitAlias
+            | DefKind::AssocTy
+            | DefKind::AssocOpaqueTy
+            | DefKind::TyParam => ns == Namespace::TypeNS,
+
+            DefKind::Fn
+            | DefKind::Const
+            | DefKind::ConstParam
+            | DefKind::Static
+            | DefKind::Ctor(..)
+            | DefKind::Method
+            | DefKind::AssocConst => ns == Namespace::ValueNS,
+
+            DefKind::Macro(..) => ns == Namespace::MacroNS,
         }
     }
 }
@@ -330,7 +356,6 @@ impl NonMacroAttrKind {
             NonMacroAttrKind::Tool => "tool attribute",
             NonMacroAttrKind::DeriveHelper => "derive helper attribute",
             NonMacroAttrKind::Registered => "explicitly registered attribute",
-            NonMacroAttrKind::LegacyPluginHelper => "legacy plugin helper attribute",
         }
     }
 
@@ -345,8 +370,7 @@ impl NonMacroAttrKind {
     pub fn is_used(self) -> bool {
         match self {
             NonMacroAttrKind::Tool | NonMacroAttrKind::DeriveHelper => true,
-            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered |
-            NonMacroAttrKind::LegacyPluginHelper => false,
+            NonMacroAttrKind::Builtin | NonMacroAttrKind::Registered  => false,
         }
     }
 }
@@ -429,6 +453,16 @@ impl<Id> Res<Id> {
             Res::Def(DefKind::Macro(kind), _) => Some(kind),
             Res::NonMacroAttr(..) => Some(MacroKind::Attr),
             _ => None,
+        }
+    }
+
+    pub fn matches_ns(&self, ns: Namespace) -> bool {
+        match self {
+            Res::Def(kind, ..) => kind.matches_ns(ns),
+            Res::PrimTy(..) | Res::SelfTy(..) | Res::ToolMod => ns == Namespace::TypeNS,
+            Res::SelfCtor(..) | Res::Local(..) => ns == Namespace::ValueNS,
+            Res::NonMacroAttr(..) => ns == Namespace::MacroNS,
+            Res::Err => true,
         }
     }
 }

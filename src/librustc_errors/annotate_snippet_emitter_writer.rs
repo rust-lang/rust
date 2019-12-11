@@ -6,9 +6,10 @@
 //! [annotate_snippets]: https://docs.rs/crate/annotate-snippets/
 
 use syntax_pos::{SourceFile, MultiSpan, Loc};
+use syntax_pos::source_map::SourceMap;
 use crate::{
     Level, CodeSuggestion, Diagnostic, Emitter,
-    SourceMapperDyn, SubDiagnostic, DiagnosticId
+    SubDiagnostic, DiagnosticId
 };
 use crate::emitter::FileWithAnnotatedLines;
 use rustc_data_structures::sync::Lrc;
@@ -20,7 +21,7 @@ use annotate_snippets::formatter::DisplayListFormatter;
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitterWriter {
-    source_map: Option<Lrc<SourceMapperDyn>>,
+    source_map: Option<Lrc<SourceMap>>,
     /// If true, hides the longer explanation text
     short_message: bool,
     /// If true, will normalize line numbers with `LL` to prevent noise in UI test diffs.
@@ -49,7 +50,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
                                    &suggestions);
     }
 
-    fn source_map(&self) -> Option<&Lrc<SourceMapperDyn>> {
+    fn source_map(&self) -> Option<&Lrc<SourceMap>> {
         self.source_map.as_ref()
     }
 
@@ -61,7 +62,7 @@ impl Emitter for AnnotateSnippetEmitterWriter {
 /// Collects all the data needed to generate the data structures needed for the
 /// `annotate-snippets` library.
 struct DiagnosticConverter<'a> {
-    source_map: Option<Lrc<SourceMapperDyn>>,
+    source_map: Option<Lrc<SourceMap>>,
     level: Level,
     message: String,
     code: Option<DiagnosticId>,
@@ -168,7 +169,7 @@ impl<'a>  DiagnosticConverter<'a> {
 
 impl AnnotateSnippetEmitterWriter {
     pub fn new(
-        source_map: Option<Lrc<SourceMapperDyn>>,
+        source_map: Option<Lrc<SourceMap>>,
         short_message: bool,
         external_macro_backtrace: bool,
     ) -> Self {

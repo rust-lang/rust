@@ -5,10 +5,10 @@ LL | fn generic<T>() -> <T as Foo>::Assoc {
    |                    ----------------- expected `<T as Foo>::Assoc` because of return type
 ...
 LL |     ()
-   |     ^^ expected associated type, found ()
+   |     ^^ expected associated type, found `()`
    |
-   = note: expected type `<T as Foo>::Assoc`
-              found type `()`
+   = note: expected associated type `<T as Foo>::Assoc`
+                    found unit type `()`
    = note: consider constraining the associated type `<T as Foo>::Assoc` to `()` or calling a method that returns `<T as Foo>::Assoc`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
@@ -21,10 +21,10 @@ LL | fn monomorphic() -> () {
 LL |     generic::<()>()
    |     ^^^^^^^^^^^^^^^- help: try adding a semicolon: `;`
    |     |
-   |     expected (), found associated type
+   |     expected `()`, found associated type
    |
-   = note: expected type `()`
-              found type `<() as Foo>::Assoc`
+   = note:    expected unit type `()`
+           found associated type `<() as Foo>::Assoc`
    = note: consider constraining the associated type `<() as Foo>::Assoc` to `()`
    = note: for more information, visit https://doc.rust-lang.org/book/ch19-03-advanced-traits.html
 
