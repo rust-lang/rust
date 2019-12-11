@@ -1,5 +1,5 @@
 // check-pass
-#![feature(never_type_fallback)]
+#![feature(never_type, never_type_fallback)]
 #![allow(unreachable_code)]
 
 use std::error::Error;

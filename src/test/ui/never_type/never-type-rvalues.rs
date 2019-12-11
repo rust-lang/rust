@@ -1,5 +1,6 @@
 // run-pass
 
+#![feature(never_type)]
 #![allow(dead_code)]
 #![allow(path_statements)]
 #![allow(unreachable_patterns)]
