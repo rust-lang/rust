@@ -5,7 +5,7 @@ use lsp_types::{
     DocumentOnTypeFormattingOptions, FoldingRangeProviderCapability, GenericCapability,
     ImplementationProviderCapability, RenameOptions, RenameProviderCapability, ServerCapabilities,
     SignatureHelpOptions, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextDocumentSyncOptions, TypeDefinitionProviderCapability,
+    TextDocumentSyncOptions, TypeDefinitionProviderCapability, WorkDoneProgressOptions,
 };
 
 pub fn server_capabilities() -> ServerCapabilities {
@@ -21,10 +21,14 @@ pub fn server_capabilities() -> ServerCapabilities {
         completion_provider: Some(CompletionOptions {
             resolve_provider: None,
             trigger_characters: Some(vec![":".to_string(), ".".to_string()]),
+            work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
         signature_help_provider: Some(SignatureHelpOptions {
             trigger_characters: Some(vec!["(".to_string(), ",".to_string(), ")".to_string()]),
+            retrigger_characters: None,
+            work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
+        declaration_provider: None,
         definition_provider: Some(true),
         type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
         implementation_provider: Some(ImplementationProviderCapability::Simple(true)),
@@ -44,6 +48,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
         rename_provider: Some(RenameProviderCapability::Options(RenameOptions {
             prepare_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         })),
         document_link_provider: None,
         color_provider: None,
