@@ -31,13 +31,13 @@
 /// }
 /// ```
 ///
-/// Now, you get all of the default values. This crate provides defaults for scalar types:
+/// Now, you get all of the default values. Default provides values for scalar types:
 ///
-/// * zero (0) for integer, floating point, and char values.
-/// * false for boolean values.
+/// * default zero (0) for integer, floating point, and char values.
+/// * default false for boolean values.
 ///
-/// Certain other crates provide defaults, such as a ['default empty
-/// String']: struct.String.html#implementations for String
+/// Certain other crates provide defaults, such as an [' empty
+/// String']: struct.String.html#implementations for Default String
 /// values.
 ///
 /// If you want to override a particular option, but still retain the other defaults:
