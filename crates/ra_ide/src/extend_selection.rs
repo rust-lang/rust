@@ -34,6 +34,7 @@ fn try_extend_selection(root: &SyntaxNode, range: TextRange) -> Option<TextRange
         ARG_LIST,
         ARRAY_EXPR,
         TUPLE_EXPR,
+        TUPLE_TYPE,
         WHERE_CLAUSE,
     ];
 
@@ -174,12 +175,7 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
         TYPE_BOUND => T![+],
         _ => T![,],
     };
-    if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Prev) {
-        return Some(TextRange::from_to(
-            delimiter_node.text_range().start(),
-            node.text_range().end(),
-        ));
-    }
+
     if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Next) {
         // Include any following whitespace when delimiter is after list item.
         let final_node = delimiter_node
@@ -189,6 +185,12 @@ fn extend_list_item(node: &SyntaxNode) -> Option<TextRange> {
             .unwrap_or(delimiter_node);
 
         return Some(TextRange::from_to(node.text_range().start(), final_node.text_range().end()));
+    }
+    if let Some(delimiter_node) = nearby_delimiter(delimiter, node, Direction::Prev) {
+        return Some(TextRange::from_to(
+            delimiter_node.text_range().start(),
+            node.text_range().end(),
+        ));
     }
 
     None
@@ -250,14 +252,14 @@ mod tests {
     fn test_extend_selection_list() {
         do_check(r#"fn foo(<|>x: i32) {}"#, &["x", "x: i32"]);
         do_check(r#"fn foo(<|>x: i32, y: i32) {}"#, &["x", "x: i32", "x: i32, "]);
-        do_check(r#"fn foo(<|>x: i32,y: i32) {}"#, &["x", "x: i32", "x: i32,"]);
+        do_check(r#"fn foo(<|>x: i32,y: i32) {}"#, &["x", "x: i32", "x: i32,", "(x: i32,y: i32)"]);
         do_check(r#"fn foo(x: i32, <|>y: i32) {}"#, &["y", "y: i32", ", y: i32"]);
-        do_check(r#"fn foo(x: i32, <|>y: i32, ) {}"#, &["y", "y: i32", ", y: i32"]);
+        do_check(r#"fn foo(x: i32, <|>y: i32, ) {}"#, &["y", "y: i32", "y: i32, "]);
         do_check(r#"fn foo(x: i32,<|>y: i32) {}"#, &["y", "y: i32", ",y: i32"]);
 
         do_check(r#"const FOO: [usize; 2] = [ 22<|> , 33];"#, &["22", "22 , "]);
         do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|>];"#, &["33", ", 33"]);
-        do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|> ,];"#, &["33", ", 33"]);
+        do_check(r#"const FOO: [usize; 2] = [ 22 , 33<|> ,];"#, &["33", "33 ,", "[ 22 , 33 ,]"]);
 
         do_check(r#"fn main() { (1, 2<|>) }"#, &["2", ", 2", "(1, 2)"]);
 
@@ -276,7 +278,7 @@ const FOO: [usize; 2] = [
     22
     , 33<|>,
 ]"#,
-            &["33", ", 33"],
+            &["33", "33,"],
         );
     }
 
@@ -424,7 +426,7 @@ fn foo<R>()
         do_check(r#"fn foo<T>() where T: <|>Copy +Display"#, &["Copy", "Copy +"]);
         do_check(r#"fn foo<T>() where T: <|>Copy+Display"#, &["Copy", "Copy+"]);
         do_check(r#"fn foo<T>() where T: Copy + <|>Display"#, &["Display", "+ Display"]);
-        do_check(r#"fn foo<T>() where T: Copy + <|>Display + Sync"#, &["Display", "+ Display"]);
+        do_check(r#"fn foo<T>() where T: Copy + <|>Display + Sync"#, &["Display", "Display + "]);
         do_check(r#"fn foo<T>() where T: Copy +<|>Display"#, &["Display", "+Display"]);
     }
 
@@ -435,7 +437,7 @@ fn foo<R>()
         do_check(r#"fn foo<T: <|>Copy +Display>() {}"#, &["Copy", "Copy +"]);
         do_check(r#"fn foo<T: <|>Copy+Display>() {}"#, &["Copy", "Copy+"]);
         do_check(r#"fn foo<T: Copy + <|>Display>() {}"#, &["Display", "+ Display"]);
-        do_check(r#"fn foo<T: Copy + <|>Display + Sync>() {}"#, &["Display", "+ Display"]);
+        do_check(r#"fn foo<T: Copy + <|>Display + Sync>() {}"#, &["Display", "Display + "]);
         do_check(r#"fn foo<T: Copy +<|>Display>() {}"#, &["Display", "+Display"]);
         do_check(
             r#"fn foo<T: Copy<|> + Display, U: Copy>() {}"#,
@@ -446,6 +448,58 @@ fn foo<R>()
                 "T: Copy + Display",
                 "T: Copy + Display, ",
                 "<T: Copy + Display, U: Copy>",
+            ],
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_on_tuple_in_type() {
+        do_check(
+            r#"fn main() { let _: (krate, <|>_crate_def_map, module_id) = (); }"#,
+            &["_crate_def_map", "_crate_def_map, ", "(krate, _crate_def_map, module_id)"],
+        );
+        // white space variations
+        do_check(
+            r#"fn main() { let _: (krate,<|>_crate_def_map,module_id) = (); }"#,
+            &["_crate_def_map", "_crate_def_map,", "(krate,_crate_def_map,module_id)"],
+        );
+        do_check(
+            r#"
+fn main() { let _: (
+    krate,
+    _crate<|>_def_map,
+    module_id
+) = (); }"#,
+            &[
+                "_crate_def_map",
+                "_crate_def_map,",
+                "(\n    krate,\n    _crate_def_map,\n    module_id\n)",
+            ],
+        );
+    }
+
+    #[test]
+    fn test_extend_selection_on_tuple_in_rvalue() {
+        do_check(
+            r#"fn main() { let var = (krate, _crate_def_map<|>, module_id); }"#,
+            &["_crate_def_map", "_crate_def_map, ", "(krate, _crate_def_map, module_id)"],
+        );
+        // white space variations
+        do_check(
+            r#"fn main() { let var = (krate,_crate<|>_def_map,module_id); }"#,
+            &["_crate_def_map", "_crate_def_map,", "(krate,_crate_def_map,module_id)"],
+        );
+        do_check(
+            r#"
+fn main() { let var = (
+    krate,
+    _crate_def_map<|>,
+    module_id
+); }"#,
+            &[
+                "_crate_def_map",
+                "_crate_def_map,",
+                "(\n    krate,\n    _crate_def_map,\n    module_id\n)",
             ],
         );
     }
