@@ -46,7 +46,6 @@ use syntax::ast::{self, Expr};
 use syntax::attr::{self, HasAttrs};
 use syntax::errors::{Applicability, DiagnosticBuilder};
 use syntax::print::pprust::{self, expr_to_string};
-use syntax::ptr::P;
 use syntax::tokenstream::{TokenStream, TokenTree};
 use syntax::visit::FnKind;
 
@@ -1309,11 +1308,13 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
 
         /// If `pat` is a `...` pattern, return the start and end of the range, as well as the span
         /// corresponding to the ellipsis.
-        fn matches_ellipsis_pat(pat: &ast::Pat) -> Option<(&P<Expr>, &P<Expr>, Span)> {
+        fn matches_ellipsis_pat(pat: &ast::Pat) -> Option<(Option<&Expr>, &Expr, Span)> {
             match &pat.kind {
-                PatKind::Range(a, b, Spanned { span, node: RangeEnd::Included(DotDotDot), .. }) => {
-                    Some((a, b, *span))
-                }
+                PatKind::Range(
+                    a,
+                    Some(b),
+                    Spanned { span, node: RangeEnd::Included(DotDotDot) },
+                ) => Some((a.as_deref(), b, *span)),
                 _ => None,
             }
         }
@@ -1328,11 +1329,16 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
             let suggestion = "use `..=` for an inclusive range";
             if parenthesise {
                 self.node_id = Some(pat.id);
+                let end = expr_to_string(&end);
+                let replace = match start {
+                    Some(start) => format!("&({}..={})", expr_to_string(&start), end),
+                    None => format!("&(..={})", end),
+                };
                 let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, msg);
                 err.span_suggestion(
                     pat.span,
                     suggestion,
-                    format!("&({}..={})", expr_to_string(&start), expr_to_string(&end)),
+                    replace,
                     Applicability::MachineApplicable,
                 );
                 err.emit();
