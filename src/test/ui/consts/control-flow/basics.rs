@@ -1,9 +1,10 @@
-// Test basic functionality of `if` and `match` in a const context.
+// Test basic functionality of control flow in a const context.
 
 // run-pass
 
 #![feature(const_panic)]
 #![feature(const_if_match)]
+#![feature(const_loop)]
 #![feature(const_fn)]
 
 const X: u32 = 4;
@@ -30,15 +31,57 @@ const fn gcd(a: u32, b: u32) -> u32 {
     gcd(b, a % b)
 }
 
+const fn fib(n: u64) -> u64 {
+    if n == 0 {
+        return 0;
+    }
+
+    let mut fib = (0, 1);
+    let mut i = 1;
+    while i < n {
+        fib = (fib.1, fib.0 + fib.1);
+        i += 1;
+    }
+
+    fib.1
+}
+
+const fn is_prime(n: u64) -> bool {
+    if n % 2 == 0 {
+        return false;
+    }
+
+    let mut div = 3;
+    loop {
+        if n % div == 0 {
+            return false;
+        }
+
+        if div * div > n {
+            return true;
+        }
+
+        div += 2;
+    }
+}
+
+macro_rules! const_assert {
+    ($expr:expr) => {
+        const _: () = assert!($expr);
+        assert!($expr);
+    }
+}
+
 fn main() {
-    const _: () = assert!(abs_diff(4, 5) == abs_diff(5, 4));
-    assert_eq!(abs_diff(4, 5), abs_diff(5, 4));
+    const_assert!(abs_diff(4, 5) == abs_diff(5, 4));
+    const_assert!(ABS_DIFF == abs_diff(5, 4));
 
-    const _: () = assert!(ABS_DIFF == abs_diff(5, 4));
-    assert_eq!(ABS_DIFF, abs_diff(5, 4));
+    const_assert!(gcd(48, 18) == 6);
+    const_assert!(gcd(18, 48) == 6);
 
-    const _: () = assert!(gcd(48, 18) == 6);
-    const _: () = assert!(gcd(18, 48) == 6);
-    assert_eq!(gcd(48, 18), 6);
-    assert_eq!(gcd(18, 48), 6);
+    const_assert!(fib(2) == 1);
+    const_assert!(fib(8) == 21);
+
+    const_assert!(is_prime(113));
+    const_assert!(!is_prime(117));
 }
