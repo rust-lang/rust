@@ -648,6 +648,7 @@ pub fn handle_code_action(
             diagnostics: None,
             edit: None,
             command: Some(command),
+            is_preferred: None,
         };
         res.push(action.into());
     }
@@ -670,6 +671,7 @@ pub fn handle_code_action(
             diagnostics: None,
             edit: None,
             command: Some(command),
+            is_preferred: None,
         };
         res.push(action.into());
     }
@@ -828,9 +830,10 @@ pub fn publish_diagnostics(
             source: Some("rust-analyzer".to_string()),
             message: d.message,
             related_information: None,
+            tags: None,
         })
         .collect();
-    Ok(req::PublishDiagnosticsParams { uri, diagnostics })
+    Ok(req::PublishDiagnosticsParams { uri, diagnostics, version: None })
 }
 
 pub fn publish_decorations(
