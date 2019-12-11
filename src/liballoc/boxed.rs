@@ -65,7 +65,7 @@
 //!
 //! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented as a
 //! single pointer and is also ABI-compatible with C pointers (i.e. the C type
-//! `T*`). This means that you have Rust code which passes ownership of a
+//! `T*`). This means that you can have Rust code which passes ownership of a
 //! `Box<T>` to C code by using `Box<T>` as the type on the Rust side, and
 //! `T*` as the corresponding type on the C side. As an example, consider this
 //! C header which declares functions that create and destroy some kind of
