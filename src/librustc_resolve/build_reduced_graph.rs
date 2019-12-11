@@ -647,8 +647,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(parent, ident, TypeNS, imported_binding);
             }
 
-            ItemKind::GlobalAsm(..) => {}
-
             ItemKind::Mod(..) if ident.name == kw::Invalid => {} // Crate root
 
             ItemKind::Mod(..) => {
@@ -666,9 +664,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 // Descend into the module.
                 self.parent_scope.module = module;
             }
-
-            // Handled in `rustc_metadata::{native_libs,link_args}`
-            ItemKind::ForeignMod(..) => {}
 
             // These items live in the value namespace.
             ItemKind::Static(..) => {
@@ -765,12 +760,6 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.insert_field_names_local(def_id, vdata);
             }
 
-            ItemKind::Impl(.., ref impl_items) => {
-                for impl_item in impl_items {
-                    self.resolve_visibility(&impl_item.vis);
-                }
-            }
-
             ItemKind::Trait(..) => {
                 let def_id = self.r.definitions.local_def_id(item.id);
 
@@ -784,6 +773,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 self.r.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.parent_scope.module = module;
             }
+
+            // These items do not add names to modules.
+            ItemKind::Impl(..) | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
         }
@@ -1118,7 +1110,6 @@ macro_rules! method {
 }
 
 impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
-    method!(visit_impl_item: ast::ImplItem, ast::ImplItemKind::Macro, walk_impl_item);
     method!(visit_expr:      ast::Expr,     ast::ExprKind::Mac,       walk_expr);
     method!(visit_pat:       ast::Pat,      ast::PatKind::Mac,        walk_pat);
     method!(visit_ty:        ast::Ty,       ast::TyKind::Mac,         walk_ty);
@@ -1200,6 +1191,15 @@ impl<'a, 'b> Visitor<'b> for BuildReducedGraphVisitor<'a, 'b> {
         self.r.define(parent, item.ident, ns, (res, vis, item.span, expansion));
 
         visit::walk_trait_item(self, item);
+    }
+
+    fn visit_impl_item(&mut self, item: &'b ast::ImplItem) {
+        if let ast::ImplItemKind::Macro(..) = item.kind {
+            self.visit_invoc(item.id);
+        } else {
+            self.resolve_visibility(&item.vis);
+            visit::walk_impl_item(self, item);
+        }
     }
 
     fn visit_token(&mut self, t: Token) {

@@ -1,0 +1,9 @@
+error[E0433]: failed to resolve: there are too many initial `super`s.
+  --> $DIR/impl-items-vis-unresolved.rs:21:13
+   |
+LL |         pub(super) fn new() {}
+   |             ^^^^^ there are too many initial `super`s.
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0433`.
