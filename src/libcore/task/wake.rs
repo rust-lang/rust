@@ -39,8 +39,8 @@ impl RawWaker {
     /// function in the `vtable` of the underlying `RawWaker` will be called.
     #[rustc_promotable]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> RawWaker {
-        RawWaker { data, vtable }
+    pub const fn new(data: *const (), vtable: &'static RawWakerVTable) -> Self {
+        Self { data, vtable }
     }
 }
 
@@ -180,7 +180,7 @@ impl<'a> Context<'a> {
     #[stable(feature = "futures_api", since = "1.36.0")]
     #[inline]
     pub fn from_waker(waker: &'a Waker) -> Self {
-        Context { waker, _marker: PhantomData }
+        Self { waker, _marker: PhantomData }
     }
 
     /// Returns a reference to the `Waker` for the current task.
@@ -277,8 +277,8 @@ impl Waker {
     /// [`RawWakerVTable`]: struct.RawWakerVTable.html
     #[inline]
     #[stable(feature = "futures_api", since = "1.36.0")]
-    pub unsafe fn from_raw(waker: RawWaker) -> Waker {
-        Waker { waker }
+    pub unsafe fn from_raw(waker: RawWaker) -> Self {
+        Self { waker }
     }
 }
 
