@@ -2260,15 +2260,26 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 
         // Look for a type inside the generator interior that matches the target type to get
         // a span.
+        let target_ty_erased = self.tcx.erase_regions(&target_ty);
         let target_span = tables.generator_interior_types.iter()
             .find(|ty::GeneratorInteriorTypeCause { ty, .. }| {
-                let ty = ty.builtin_deref(false).map(|ty_and_mut| ty_and_mut.ty).unwrap_or(ty);
-                let target_ty = target_ty.builtin_deref(false)
-                    .map(|ty_and_mut| ty_and_mut.ty)
-                    .unwrap_or(target_ty);
-                let eq = ty::TyS::same_type(ty, target_ty);
-                debug!("maybe_note_obligation_cause_for_async_await: ty={:?} \
-                        target_ty={:?} eq={:?}", ty, target_ty, eq);
+                // Careful: the regions for types that appear in the
+                // generator interior are not generally known, so we
+                // want to erase them when comparing (and anyway,
+                // `Send` and other bounds are generally unaffected by
+                // the choice of region).  When erasing regions, we
+                // also have to erase late-bound regions. This is
+                // because the types that appear in the generator
+                // interior generally contain "bound regions" to
+                // represent regions that are part of the suspended
+                // generator frame. Bound regions are preserved by
+                // `erase_regions` and so we must also call
+                // `erase_late_bound_regions`.
+                let ty_erased = self.tcx.erase_late_bound_regions(&ty::Binder::bind(*ty));
+                let ty_erased = self.tcx.erase_regions(&ty_erased);
+                let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
+                debug!("maybe_note_obligation_cause_for_async_await: ty_erased={:?} \
+                        target_ty_erased={:?} eq={:?}", ty_erased, target_ty_erased, eq);
                 eq
             })
             .map(|ty::GeneratorInteriorTypeCause { span, scope_span, .. }|
