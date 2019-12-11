@@ -29,7 +29,7 @@ LL |             break;
    |             ^^^^^
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:36:12
+  --> $DIR/loop-break-value.rs:38:12
    |
 LL |         if break () {
    |            ^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -40,7 +40,7 @@ LL |         if break {
    |            ^^^^^
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:41:9
+  --> $DIR/loop-break-value.rs:43:9
    |
 LL |         break None;
    |         ^^^^^^^^^^ can only break with a value inside `loop` or breakable block
@@ -51,7 +51,7 @@ LL |         break;
    |         ^^^^^
 
 error[E0571]: `break` with value from a `while` loop
-  --> $DIR/loop-break-value.rs:47:13
+  --> $DIR/loop-break-value.rs:49:13
    |
 LL |             break 'while_let_loop "nope";
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ can only break with a value inside `loop` or breakable block
