@@ -1,4 +1,4 @@
-error[E0744]: `while` is not allowed in a `const`
+error[E0658]: `while` is not allowed in a `const`
   --> $DIR/infinite_loop.rs:7:9
    |
 LL | /         while n != 0 {
@@ -8,6 +8,10 @@ LL | |
 LL | |
 LL | |         }
    | |_________^
+   |
+   = note: for more information, see https://github.com/rust-lang/rust/issues/52000
+   = help: add `#![feature(const_loop)]` to the crate attributes to enable
+   = help: add `#![feature(const_if_match)]` to the crate attributes to enable
 
 error[E0658]: `if` is not allowed in a `const`
   --> $DIR/infinite_loop.rs:9:17
@@ -39,5 +43,5 @@ LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
 
 error: aborting due to 3 previous errors
 
-Some errors have detailed explanations: E0080, E0658, E0744.
+Some errors have detailed explanations: E0080, E0658.
 For more information about an error, try `rustc --explain E0080`.
