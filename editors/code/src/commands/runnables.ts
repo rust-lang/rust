@@ -73,7 +73,7 @@ function createTask(spec: Runnable): vscode.Task {
 }
 
 let prevRunnable: RunnableQuickPick | undefined;
-export async function handle() {
+export async function handle(): Promise<vscode.TaskExecution | undefined> {
     const editor = vscode.window.activeTextEditor;
     if (editor == null || editor.document.languageId !== 'rust') {
         return;
@@ -105,12 +105,14 @@ export async function handle() {
         items.push(new RunnableQuickPick(r));
     }
     const item = await vscode.window.showQuickPick(items);
-    if (item) {
-        item.detail = 'rerun';
-        prevRunnable = item;
-        const task = createTask(item.runnable);
-        return await vscode.tasks.executeTask(task);
+    if (!item) {
+        return;
     }
+
+    item.detail = 'rerun';
+    prevRunnable = item;
+    const task = createTask(item.runnable);
+    return await vscode.tasks.executeTask(task);
 }
 
 export async function handleSingle(runnable: Runnable) {

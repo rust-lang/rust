@@ -8,7 +8,8 @@
         "rootDir": "src",
         "strict": true,
         "noUnusedLocals": true,
-        "noUnusedParameters": true
+        "noUnusedParameters": true,
+        "noImplicitReturns": true
     },
     "exclude": ["node_modules", ".vscode-test"]
 }

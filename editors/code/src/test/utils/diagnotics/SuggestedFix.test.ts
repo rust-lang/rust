@@ -114,7 +114,8 @@ describe('SuggestedFix', () => {
 
             const edit = codeAction.edit;
             if (!edit) {
-                return assert.fail('Code Action edit unexpectedly missing');
+                assert.fail('Code Action edit unexpectedly missing');
+                return;
             }
 
             const editEntries = edit.entries();
