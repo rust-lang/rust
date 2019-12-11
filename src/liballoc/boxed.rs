@@ -63,13 +63,14 @@
 //! T` obtained from `Box::<T>::into_raw` may be deallocated using the
 //! [`Global`] allocator with `Layout::for_value(&*value)`.
 //!
-//! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented as a
-//! single pointer and is also ABI-compatible with C pointers (i.e. the C type
-//! `T*`). This means that you can have Rust code which passes ownership of a
-//! `Box<T>` to C code by using `Box<T>` as the type on the Rust side, and
-//! `T*` as the corresponding type on the C side. As an example, consider this
-//! C header which declares functions that create and destroy some kind of
-//! `Foo` value:
+//! So long as `T: Sized`, a `Box<T>` is guaranteed to be represented
+//! as a single pointer and is also ABI-compatible with C pointers
+//! (i.e. the C type `T*`). This means that if you have extern "C"
+//! Rust functions that will be called from C, you can define those
+//! Rust functions using `Box<T>` types, and use `T*` as corresponding
+//! type on the C side. As an example, consider this C header which
+//! declares functions that create and destroy some kind of `Foo`
+//! value:
 //!
 //! ```c
 //! /* C header */
@@ -108,6 +109,14 @@
 //! is to only use `Box<T>` for pointers that originated from the global
 //! allocator.
 //!
+//! **Important.** At least at present, you should avoid using
+//! `Box<T>` types for functions that are defined in C but invoked
+//! from Rust. In those cases, you should directly mirror the C types
+//! as closely as possible. Using types like `Box<T>` where the C
+//! definition is just using `T*` can lead to undefined behavior, as
+//! described in [rust-lang/unsafe-code-guidelines#198][ucg#198].
+//!
+//! [ucg#198]: https://github.com/rust-lang/unsafe-code-guidelines/issues/198
 //! [dereferencing]: ../../std/ops/trait.Deref.html
 //! [`Box`]: struct.Box.html
 //! [`Global`]: ../alloc/struct.Global.html
