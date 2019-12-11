@@ -8,16 +8,17 @@ use crate::clean::{
 };
 use crate::core::DocContext;
 
+use itertools::Itertools;
 use rustc::hir;
 use rustc::hir::def::{DefKind, Res};
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::mir::interpret::{sign_extend, ConstValue, Scalar};
 use rustc::ty::subst::{GenericArgKind, SubstsRef};
 use rustc::ty::{self, DefIdTree, Ty};
 use rustc::util::nodemap::FxHashSet;
+use std::mem;
 use syntax_pos;
 use syntax_pos::symbol::{kw, sym, Symbol};
-
-use std::mem;
 
 pub fn krate(mut cx: &mut DocContext<'_>) -> Crate {
     use crate::visit_lib::LibEmbargoVisitor;
@@ -482,8 +483,78 @@ pub fn print_const(cx: &DocContext<'_>, n: &ty::Const<'_>) -> String {
     }
 }
 
+pub fn print_evaluated_const(cx: &DocContext<'_>, def_id: DefId) -> Option<String> {
+    let value =
+        cx.tcx.const_eval_poly(def_id).ok().and_then(|value| match (value.val, &value.ty.kind) {
+            (_, ty::Ref(..)) => None,
+            (ty::ConstKind::Value(ConstValue::Scalar(_)), ty::Adt(_, _)) => None,
+            (ty::ConstKind::Value(ConstValue::Scalar(_)), _) => {
+                Some(print_const_with_custom_print_scalar(cx, value))
+            }
+            _ => None,
+        });
+
+    value
+}
+
+fn format_integer_with_underscore_sep(num: &str) -> String {
+    let num_chars: Vec<_> = num.chars().collect();
+    let num_start_index = if num_chars.get(0) == Some(&'-') { 1 } else { 0 };
+
+    num_chars[..num_start_index]
+        .iter()
+        .chain(num_chars[num_start_index..].rchunks(3).rev().intersperse(&['_']).flatten())
+        .collect()
+}
+
+fn print_const_with_custom_print_scalar(cx: &DocContext<'_>, ct: &'tcx ty::Const<'tcx>) -> String {
+    // Use a slightly different format for integer types which always shows the actual value.
+    // For all other types, fallback to the original `pretty_print_const`.
+    match (ct.val, &ct.ty.kind) {
+        (ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, .. })), ty::Uint(ui)) => {
+            format!("{}{}", format_integer_with_underscore_sep(&data.to_string()), ui.name_str())
+        }
+        (ty::ConstKind::Value(ConstValue::Scalar(Scalar::Raw { data, .. })), ty::Int(i)) => {
+            let ty = cx.tcx.lift(&ct.ty).unwrap();
+            let size = cx.tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
+            let sign_extended_data = sign_extend(data, size) as i128;
+
+            format!(
+                "{}{}",
+                format_integer_with_underscore_sep(&sign_extended_data.to_string()),
+                i.name_str()
+            )
+        }
+        _ => ct.to_string(),
+    }
+}
+
+pub fn is_literal_expr(cx: &DocContext<'_>, hir_id: hir::HirId) -> bool {
+    if let hir::Node::Expr(expr) = cx.tcx.hir().get(hir_id) {
+        if let hir::ExprKind::Lit(_) = &expr.kind {
+            return true;
+        }
+
+        if let hir::ExprKind::Unary(hir::UnOp::UnNeg, expr) = &expr.kind {
+            if let hir::ExprKind::Lit(_) = &expr.kind {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 pub fn print_const_expr(cx: &DocContext<'_>, body: hir::BodyId) -> String {
-    cx.tcx.hir().hir_to_pretty_string(body.hir_id)
+    let value = &cx.tcx.hir().body(body).value;
+
+    let snippet = if !value.span.from_expansion() {
+        cx.sess().source_map().span_to_snippet(value.span).ok()
+    } else {
+        None
+    };
+
+    snippet.unwrap_or_else(|| cx.tcx.hir().hir_to_pretty_string(body.hir_id))
 }
 
 /// Given a type Path, resolve it to a Type using the TyCtxt

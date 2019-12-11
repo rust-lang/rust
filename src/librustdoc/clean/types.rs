@@ -1460,6 +1460,8 @@ pub struct Static {
 pub struct Constant {
     pub type_: Type,
     pub expr: String,
+    pub value: Option<String>,
+    pub is_literal: bool,
 }
 
 #[derive(Clone, PartialEq, Debug)]
