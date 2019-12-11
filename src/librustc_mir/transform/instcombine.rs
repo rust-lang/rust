@@ -3,7 +3,7 @@
 use crate::transform::{MirPass, MirSource};
 use rustc::mir::visit::{MutVisitor, Visitor};
 use rustc::mir::{
-    read_only, Body, BodyAndCache, Constant, Local, Location, Operand, Place, PlaceBase, PlaceRef,
+    read_only, Body, BodyAndCache, Constant, Local, Location, Operand, Place, PlaceRef,
     ProjectionElem, Rvalue,
 };
 use rustc::ty::{self, TyCtxt};
@@ -55,7 +55,7 @@ impl<'tcx> MutVisitor<'tcx> for InstCombineVisitor<'tcx> {
 
                         Place {
                             // Replace with dummy
-                            base: mem::replace(&mut place.base, PlaceBase::Local(Local::new(0))),
+                            local: mem::replace(&mut place.local, Local::new(0)),
                             projection: self.tcx().intern_place_elems(proj_l),
                         }
                     } else {
@@ -92,10 +92,10 @@ impl OptimizationFinder<'b, 'tcx> {
 impl Visitor<'tcx> for OptimizationFinder<'b, 'tcx> {
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         if let Rvalue::Ref(_, _, place) = rvalue {
-            if let PlaceRef { base, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
+            if let PlaceRef { local, projection: &[ref proj_base @ .., ProjectionElem::Deref] } =
                 place.as_ref()
             {
-                if Place::ty_from(base, proj_base, self.body, self.tcx).ty.is_region_ptr() {
+                if Place::ty_from(local, proj_base, self.body, self.tcx).ty.is_region_ptr() {
                     self.optimizations.and_stars.insert(location);
                 }
             }

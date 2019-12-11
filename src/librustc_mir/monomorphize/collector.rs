@@ -182,7 +182,7 @@ use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::mir::visit::Visitor as MirVisitor;
-use rustc::mir::{self, Location, PlaceBase};
+use rustc::mir::{self, Local, Location};
 use rustc::session::config::EntryFnType;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::ty::print::obsolete::DefPathBasedNames;
@@ -642,15 +642,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
     fn visit_place_base(
         &mut self,
-        place_base: &mir::PlaceBase,
+        _place_local: &Local,
         _context: mir::visit::PlaceContext,
         _location: Location,
     ) {
-        match place_base {
-            PlaceBase::Local(_) => {
-                // Locals have no relevance for collector.
-            }
-        }
     }
 }
 

@@ -208,11 +208,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
 
             self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
 
-            match borrowed_place.base {
-                mir::PlaceBase::Local(local) => {
-                    self.local_map.entry(local).or_default().insert(idx);
-                }
-            }
+            self.local_map.entry(borrowed_place.local).or_default().insert(idx);
         }
 
         self.super_assign(assigned_place, rvalue, location)

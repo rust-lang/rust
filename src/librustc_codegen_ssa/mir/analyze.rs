@@ -128,17 +128,13 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             };
             if is_consume {
                 let base_ty =
-                    mir::Place::ty_from(place_ref.base, proj_base, *self.fx.mir, cx.tcx());
+                    mir::Place::ty_from(place_ref.local, proj_base, *self.fx.mir, cx.tcx());
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
                 let elem_ty = base_ty.projection_ty(cx.tcx(), elem).ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
-                let span = match place_ref.base {
-                    mir::PlaceBase::Local(index) => {
-                        self.fx.mir.local_decls[*index].source_info.span
-                    }
-                };
+                let span = self.fx.mir.local_decls[*place_ref.local].source_info.span;
                 if cx.spanned_layout_of(elem_ty, span).is_zst() {
                     return;
                 }
@@ -178,9 +174,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                     // We use `NonUseContext::VarDebugInfo` for the base,
                     // which might not force the base local to memory,
                     // so we have to do it manually.
-                    match place_ref.base {
-                        mir::PlaceBase::Local(local) => self.visit_local(&local, context, location),
-                    }
+                    self.visit_local(place_ref.local, context, location);
                 }
             }
 
@@ -191,7 +185,7 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
             }
 
             self.process_place(
-                &mir::PlaceRef { base: place_ref.base, projection: proj_base },
+                &mir::PlaceRef { local: place_ref.local, projection: proj_base },
                 base_context,
                 location,
             );
@@ -218,8 +212,8 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 };
             }
 
-            self.visit_place_base(place_ref.base, context, location);
-            self.visit_projection(place_ref.base, place_ref.projection, context, location);
+            self.visit_place_base(place_ref.local, context, location);
+            self.visit_projection(place_ref.local, place_ref.projection, context, location);
         }
     }
 }

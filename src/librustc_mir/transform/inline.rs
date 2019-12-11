@@ -430,9 +430,7 @@ impl Inliner<'tcx> {
                         }
                     }
 
-                    match place.base {
-                        _ => false,
-                    }
+                    false
                 }
 
                 let dest = if dest_needs_borrow(&destination.0) {
@@ -644,9 +642,7 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
 
     fn make_integrate_local(&self, local: &Local) -> Local {
         if *local == RETURN_PLACE {
-            match self.destination.base {
-                PlaceBase::Local(l) => return l,
-            }
+            return self.destination.local;
         }
 
         let idx = local.index() - 1;
@@ -668,18 +664,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
     }
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
-        match &mut place.base {
-            PlaceBase::Local(l) => {
-                // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
-                let dest_proj_len = self.destination.projection.len();
-                if *l == RETURN_PLACE && dest_proj_len > 0 {
-                    let mut projs = Vec::with_capacity(dest_proj_len + place.projection.len());
-                    projs.extend(self.destination.projection);
-                    projs.extend(place.projection);
+        // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
+        let dest_proj_len = self.destination.projection.len();
+        if place.local == RETURN_PLACE && dest_proj_len > 0 {
+            let mut projs = Vec::with_capacity(dest_proj_len + place.projection.len());
+            projs.extend(self.destination.projection);
+            projs.extend(place.projection);
 
-                    place.projection = self.tcx.intern_place_elems(&*projs);
-                }
-            }
+            place.projection = self.tcx.intern_place_elems(&*projs);
         }
         // Handles integrating any locals that occur in the base
         // or projections

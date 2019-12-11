@@ -465,9 +465,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
     ) -> PlaceTy<'tcx> {
         debug!("sanitize_place: {:?}", place);
 
-        let mut place_ty = match &place.base {
-            PlaceBase::Local(index) => PlaceTy::from_ty(self.body.local_decls[*index].ty),
-        };
+        let mut place_ty = PlaceTy::from_ty(self.body.local_decls[place.local].ty);
 
         if place.projection.is_empty() {
             if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
@@ -2389,7 +2387,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             match elem {
                 ProjectionElem::Deref => {
                     let tcx = self.infcx.tcx;
-                    let base_ty = Place::ty_from(&borrowed_place.base, proj_base, body, tcx).ty;
+                    let base_ty = Place::ty_from(&borrowed_place.local, proj_base, body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind {

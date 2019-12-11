@@ -1655,19 +1655,13 @@ impl Debug for Statement<'_> {
 /// changing or disturbing program state.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, HashStable)]
 pub struct Place<'tcx> {
-    pub base: PlaceBase,
+    pub local: Local,
 
     /// projection out of a place (access a field, deref a pointer, etc)
     pub projection: &'tcx List<PlaceElem<'tcx>>,
 }
 
 impl<'tcx> rustc_serialize::UseSpecializedDecodable for Place<'tcx> {}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, HashStable)]
-pub enum PlaceBase {
-    /// local variable
-    Local(Local),
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(RustcEncodable, RustcDecodable, HashStable)]
@@ -1756,14 +1750,14 @@ rustc_index::newtype_index! {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PlaceRef<'a, 'tcx> {
-    pub base: &'a PlaceBase,
+    pub local: &'a Local,
     pub projection: &'a [PlaceElem<'tcx>],
 }
 
 impl<'tcx> Place<'tcx> {
     // FIXME change this to a const fn by also making List::empty a const fn.
     pub fn return_place() -> Place<'tcx> {
-        Place { base: PlaceBase::Local(RETURN_PLACE), projection: List::empty() }
+        Place { local: RETURN_PLACE, projection: List::empty() }
     }
 
     /// Returns `true` if this `Place` contains a `Deref` projection.
@@ -1780,10 +1774,8 @@ impl<'tcx> Place<'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self.as_ref() {
-            PlaceRef { base: &PlaceBase::Local(local), projection: &[] }
-            | PlaceRef { base: &PlaceBase::Local(local), projection: &[ProjectionElem::Deref] } => {
-                Some(local)
-            }
+            PlaceRef { local, projection: &[] }
+            | PlaceRef { local, projection: &[ProjectionElem::Deref] } => Some(*local),
             _ => None,
         }
     }
@@ -1795,19 +1787,13 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn as_ref(&self) -> PlaceRef<'_, 'tcx> {
-        PlaceRef { base: &self.base, projection: &self.projection }
+        PlaceRef { local: &self.local, projection: &self.projection }
     }
 }
 
 impl From<Local> for Place<'_> {
     fn from(local: Local) -> Self {
-        Place { base: local.into(), projection: List::empty() }
-    }
-}
-
-impl From<Local> for PlaceBase {
-    fn from(local: Local) -> Self {
-        PlaceBase::Local(local)
+        Place { local: local.into(), projection: List::empty() }
     }
 }
 
@@ -1818,10 +1804,8 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
     // FIXME: can we safely swap the semantics of `fn base_local` below in here instead?
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match self {
-            PlaceRef { base: PlaceBase::Local(local), projection: [] }
-            | PlaceRef { base: PlaceBase::Local(local), projection: [ProjectionElem::Deref] } => {
-                Some(*local)
-            }
+            PlaceRef { local, projection: [] }
+            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(**local),
             _ => None,
         }
     }
@@ -1830,7 +1814,7 @@ impl<'a, 'tcx> PlaceRef<'a, 'tcx> {
     /// projections, return `Some(_X)`.
     pub fn as_local(&self) -> Option<Local> {
         match self {
-            PlaceRef { base: PlaceBase::Local(l), projection: [] } => Some(*l),
+            PlaceRef { local, projection: [] } => Some(**local),
             _ => None,
         }
     }
@@ -1852,7 +1836,7 @@ impl Debug for Place<'_> {
             }
         }
 
-        write!(fmt, "{:?}", self.base)?;
+        write!(fmt, "{:?}", self.local)?;
 
         for elem in self.projection.iter() {
             match elem {
@@ -1893,14 +1877,6 @@ impl Debug for Place<'_> {
         }
 
         Ok(())
-    }
-}
-
-impl Debug for PlaceBase {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        match *self {
-            PlaceBase::Local(id) => write!(fmt, "{:?}", id),
-        }
     }
 }
 
@@ -2964,25 +2940,11 @@ impl<'tcx> TypeFoldable<'tcx> for GeneratorKind {
 
 impl<'tcx> TypeFoldable<'tcx> for Place<'tcx> {
     fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        Place { base: self.base.fold_with(folder), projection: self.projection.fold_with(folder) }
+        Place { local: self.local.fold_with(folder), projection: self.projection.fold_with(folder) }
     }
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.base.visit_with(visitor) || self.projection.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for PlaceBase {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
-        match self {
-            PlaceBase::Local(local) => PlaceBase::Local(local.fold_with(folder)),
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        match self {
-            PlaceBase::Local(local) => local.visit_with(visitor),
-        }
+        self.local.visit_with(visitor) || self.projection.visit_with(visitor)
     }
 }
 

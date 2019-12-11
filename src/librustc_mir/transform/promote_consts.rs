@@ -308,17 +308,14 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                         // We can only promote interior borrows of promotable temps (non-temps
                         // don't get promoted anyway).
-                        let base = match place.base {
-                            PlaceBase::Local(local) => local,
-                        };
-                        self.validate_local(base)?;
+                        self.validate_local(place.local)?;
 
                         if place.projection.contains(&ProjectionElem::Deref) {
                             return Err(Unpromotable);
                         }
 
                         let mut has_mut_interior =
-                            self.qualif_local::<qualifs::HasMutInterior>(base);
+                            self.qualif_local::<qualifs::HasMutInterior>(place.local);
                         // HACK(eddyb) this should compute the same thing as
                         // `<HasMutInterior as Qualif>::in_projection` from
                         // `check_consts::qualifs` but without recursion.
@@ -332,7 +329,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                                 // FIXME(eddyb) this is probably excessive, with
                                 // the exception of `union` member accesses.
                                 let ty =
-                                    Place::ty_from(&place.base, proj_base, *self.body, self.tcx)
+                                    Place::ty_from(&place.local, proj_base, *self.body, self.tcx)
                                         .projection_ty(self.tcx, elem)
                                         .ty;
                                 if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
@@ -348,7 +345,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                         if has_mut_interior {
                             return Err(Unpromotable);
                         }
-                        if self.qualif_local::<qualifs::NeedsDrop>(base) {
+                        if self.qualif_local::<qualifs::NeedsDrop>(place.local) {
                             return Err(Unpromotable);
                         }
 
@@ -478,10 +475,8 @@ impl<'tcx> Validator<'_, 'tcx> {
 
     fn validate_place(&self, place: PlaceRef<'_, 'tcx>) -> Result<(), Unpromotable> {
         match place {
-            PlaceRef { base: PlaceBase::Local(local), projection: [] } => {
-                self.validate_local(*local)
-            }
-            PlaceRef { base: _, projection: [proj_base @ .., elem] } => {
+            PlaceRef { local, projection: [] } => self.validate_local(*local),
+            PlaceRef { local: _, projection: [proj_base @ .., elem] } => {
                 match *elem {
                     ProjectionElem::Deref | ProjectionElem::Downcast(..) => {
                         return Err(Unpromotable);
@@ -496,7 +491,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     ProjectionElem::Field(..) => {
                         if self.const_kind.is_none() {
                             let base_ty =
-                                Place::ty_from(place.base, proj_base, *self.body, self.tcx).ty;
+                                Place::ty_from(place.local, proj_base, *self.body, self.tcx).ty;
                             if let Some(def) = base_ty.ty_adt_def() {
                                 // No promotion of union field accesses.
                                 if def.is_union() {
@@ -507,7 +502,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                     }
                 }
 
-                self.validate_place(PlaceRef { base: place.base, projection: proj_base })
+                self.validate_place(PlaceRef { local: place.local, projection: proj_base })
             }
         }
     }
@@ -594,10 +589,12 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Raw reborrows can come from reference to pointer coercions,
                 // so are allowed.
                 if let [proj_base @ .., ProjectionElem::Deref] = place.projection.as_ref() {
-                    let base_ty = Place::ty_from(&place.base, proj_base, *self.body, self.tcx).ty;
+                    let base_ty = Place::ty_from(&place.local, proj_base, *self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
-                        return self
-                            .validate_place(PlaceRef { base: &place.base, projection: proj_base });
+                        return self.validate_place(PlaceRef {
+                            local: &place.local,
+                            projection: proj_base,
+                        });
                     }
                 }
                 Err(Unpromotable)
@@ -631,9 +628,9 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // Special-case reborrows to be more like a copy of the reference.
                 let mut place = place.as_ref();
                 if let [proj_base @ .., ProjectionElem::Deref] = &place.projection {
-                    let base_ty = Place::ty_from(&place.base, proj_base, *self.body, self.tcx).ty;
+                    let base_ty = Place::ty_from(&place.local, proj_base, *self.body, self.tcx).ty;
                     if let ty::Ref(..) = base_ty.kind {
-                        place = PlaceRef { base: &place.base, projection: proj_base };
+                        place = PlaceRef { local: &place.local, projection: proj_base };
                     }
                 }
 
@@ -642,16 +639,15 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // HACK(eddyb) this should compute the same thing as
                 // `<HasMutInterior as Qualif>::in_projection` from
                 // `check_consts::qualifs` but without recursion.
-                let mut has_mut_interior = match place.base {
-                    PlaceBase::Local(local) => self.qualif_local::<qualifs::HasMutInterior>(*local),
-                };
+                let mut has_mut_interior =
+                    self.qualif_local::<qualifs::HasMutInterior>(*place.local);
                 if has_mut_interior {
                     let mut place_projection = place.projection;
                     // FIXME(eddyb) use a forward loop instead of a reverse one.
                     while let [proj_base @ .., elem] = place_projection {
                         // FIXME(eddyb) this is probably excessive, with
                         // the exception of `union` member accesses.
-                        let ty = Place::ty_from(place.base, proj_base, *self.body, self.tcx)
+                        let ty = Place::ty_from(place.local, proj_base, *self.body, self.tcx)
                             .projection_ty(self.tcx, elem)
                             .ty;
                         if ty.is_freeze(self.tcx, self.param_env, DUMMY_SP) {
@@ -930,7 +926,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             Rvalue::Ref(ref mut region, borrow_kind, ref mut place),
                         )) => {
                             // Use the underlying local for this (necessarily interior) borrow.
-                            let ty = place.base.ty(local_decls).ty;
+                            let ty = local_decls.local_decls()[place.local].ty;
                             let span = statement.source_info.span;
 
                             let ref_ty = tcx.mk_ref(
@@ -965,10 +961,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                                 tcx.lifetimes.re_static,
                                 borrow_kind,
                                 Place {
-                                    base: mem::replace(
-                                        &mut place.base,
-                                        PlaceBase::Local(promoted_ref),
-                                    ),
+                                    local: mem::replace(&mut place.local, promoted_ref),
                                     projection: List::empty(),
                                 },
                             )

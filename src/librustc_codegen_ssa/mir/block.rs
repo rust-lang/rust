@@ -1109,7 +1109,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         } else {
             self.codegen_place(
                 bx,
-                &mir::PlaceRef { base: &dest.base, projection: &dest.projection },
+                &mir::PlaceRef { local: &dest.local, projection: &dest.projection },
             )
         };
         if fn_ret.is_indirect() {

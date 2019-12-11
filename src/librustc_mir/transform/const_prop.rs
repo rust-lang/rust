@@ -10,7 +10,7 @@ use rustc::mir::visit::{
 };
 use rustc::mir::{
     read_only, AggregateKind, BasicBlock, BinOp, Body, BodyAndCache, ClearCrossCrate, Constant,
-    Local, LocalDecl, LocalKind, Location, Operand, Place, PlaceBase, ReadOnlyBodyAndCache, Rvalue,
+    Local, LocalDecl, LocalKind, Location, Operand, Place, ReadOnlyBodyAndCache, Rvalue,
     SourceInfo, SourceScope, SourceScopeData, Statement, StatementKind, Terminator, TerminatorKind,
     UnOp, RETURN_PLACE,
 };
@@ -872,9 +872,7 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         // doesn't use the invalid value
                         match cond {
                             Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                match place.base {
-                                    PlaceBase::Local(local) => self.remove_const(local),
-                                }
+                                self.remove_const(place.local);
                             }
                             Operand::Constant(_) => {}
                         }

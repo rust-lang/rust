@@ -258,9 +258,7 @@ pub fn per_local_var_debug_info(
     if tcx.sess.opts.debuginfo == DebugInfo::Full || !tcx.sess.fewer_names() {
         let mut per_local = IndexVec::from_elem(vec![], &body.local_decls);
         for var in &body.var_debug_info {
-            match var.place.base {
-                mir::PlaceBase::Local(local) => per_local[local].push(var),
-            }
+            per_local[var.place.local].push(var);
         }
         Some(per_local)
     } else {

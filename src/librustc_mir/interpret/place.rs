@@ -624,10 +624,8 @@ where
         &mut self,
         place: &mir::Place<'tcx>,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
-        use rustc::mir::PlaceBase;
-
-        let mut place_ty = match &place.base {
-            PlaceBase::Local(mir::RETURN_PLACE) => {
+        let mut place_ty = match place.local {
+            mir::RETURN_PLACE => {
                 // `return_place` has the *caller* layout, but we want to use our
                 // `layout to verify our assumption. The caller will validate
                 // their layout on return.
@@ -648,10 +646,10 @@ where
                     ))?,
                 }
             }
-            PlaceBase::Local(local) => PlaceTy {
+            local => PlaceTy {
                 // This works even for dead/uninitialized locals; we check further when writing
-                place: Place::Local { frame: self.cur_frame(), local: *local },
-                layout: self.layout_of_local(self.frame(), *local, None)?,
+                place: Place::Local { frame: self.cur_frame(), local: local },
+                layout: self.layout_of_local(self.frame(), local, None)?,
             },
         };
 

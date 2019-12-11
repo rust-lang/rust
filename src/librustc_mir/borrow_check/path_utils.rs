@@ -3,7 +3,7 @@ use crate::borrow_check::places_conflict;
 use crate::borrow_check::AccessDepth;
 use crate::dataflow::indexes::BorrowIndex;
 use rustc::mir::BorrowKind;
-use rustc::mir::{BasicBlock, Body, Location, Place, PlaceBase};
+use rustc::mir::{BasicBlock, Body, Location, Place};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
 
@@ -131,9 +131,7 @@ pub(super) fn is_active<'tcx>(
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield expressions on movable generators
 pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
-    match place.base {
-        // Reborrow of already borrowed data is ignored
-        // Any errors will be caught on the initial borrow
-        PlaceBase::Local(_) => !place.is_indirect(),
-    }
+    // Reborrow of already borrowed data is ignored
+    // Any errors will be caught on the initial borrow
+    !place.is_indirect()
 }
