@@ -56,8 +56,8 @@ impl NonConstExpr {
             | Self::Match(WhileLetDesugar)
             => &[sym::const_loop, sym::const_if_match],
 
-            // `for` loops desugar to a call to `FromIterator::from_iterator`,
-            // so they are not yet supported behind a feature flag.
+            // A `for` loop's desugaring contains a call to `FromIterator::from_iter`,
+            // so they are not yet allowed with `#![feature(const_loop)]`.
             _ => return None,
         };
 
