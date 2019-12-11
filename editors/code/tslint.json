@@ -4,6 +4,8 @@
     "rules": {
         "quotemark": [true, "single"],
         "interface-name": false,
-        "object-literal-sort-keys": false
+        "object-literal-sort-keys": false,
+        // Allow `_bar` to sort with tsc's `noUnusedParameters` option
+        "variable-name": [true, "allow-leading-underscore"]
     }
 }

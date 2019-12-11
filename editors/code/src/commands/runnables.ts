@@ -178,7 +178,7 @@ export async function startCargoWatch(
         }
 
         const label = 'install-cargo-watch';
-        const taskFinished = new Promise((resolve, reject) => {
+        const taskFinished = new Promise((resolve, _reject) => {
             const disposable = vscode.tasks.onDidEndTask(({ execution }) => {
                 if (execution.task.name === label) {
                     disposable.dispose();
