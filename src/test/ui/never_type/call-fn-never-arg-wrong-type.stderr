@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/call-fn-never-arg-wrong-type.rs:8:9
+  --> $DIR/call-fn-never-arg-wrong-type.rs:10:9
    |
 LL |     foo("wow");
    |         ^^^^^ expected `!`, found `&str`

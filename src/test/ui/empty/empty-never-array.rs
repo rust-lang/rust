@@ -1,3 +1,5 @@
+#![feature(never_type)]
+
 enum Helper<T, U> {
     T(T, [!; 0]),
     #[allow(dead_code)]
