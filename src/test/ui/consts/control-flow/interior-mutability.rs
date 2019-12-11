@@ -30,6 +30,10 @@ const Z: Option<Cell<i32>> = {
             z = Some(Cell::new(4));
         }
 
+        if i == 9 {
+            z = None;
+        }
+
         i += 1;
     }
     z
