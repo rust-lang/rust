@@ -328,8 +328,9 @@ impl<'a> CrateLocator<'a> {
             crate_name,
             exact_paths: if hash.is_none() {
                 sess.opts.externs.get(&crate_name.as_str()).into_iter()
-                    .flat_map(|entry| entry.locations.iter())
-                    .filter_map(|location| location.clone().map(PathBuf::from)).collect()
+                    .filter_map(|entry| entry.files())
+                    .flatten()
+                    .map(|location| PathBuf::from(location)).collect()
             } else {
                 // SVH being specified means this is a transitive dependency,
                 // so `--extern` options do not apply.

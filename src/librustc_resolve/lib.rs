@@ -1136,8 +1136,10 @@ impl<'a> Resolver<'a> {
         definitions.create_root_def(crate_name, session.local_crate_disambiguator());
 
         let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> =
-            session.opts.externs.iter().map(|kv| (Ident::from_str(kv.0), Default::default()))
-                                       .collect();
+            session.opts.externs.iter()
+                .filter(|(_, entry)| entry.add_prelude)
+                .map(|(name, _)| (Ident::from_str(name), Default::default()))
+                .collect();
 
         if !attr::contains_name(&krate.attrs, sym::no_core) {
             extern_prelude.insert(Ident::with_dummy_span(sym::core), Default::default());
