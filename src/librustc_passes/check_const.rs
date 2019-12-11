@@ -137,7 +137,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         let gates = expr.required_feature_gates();
         match gates {
             // Don't emit an error if the user has enabled the requisite feature gates.
-            Some(gates) if gates.iter().all(|&g| features[g]) => return,
+            Some(gates) if gates.iter().all(|&g| features.enabled(g)) => return,
 
             // `-Zunleash-the-miri-inside-of-you` only works for expressions that don't have a
             // corresponding feature gate. This encourages nightly users to use feature gates when
@@ -158,7 +158,7 @@ impl<'tcx> CheckConstVisitor<'tcx> {
         let missing_gates: Vec<_> = gates
             .iter()
             .copied()
-            .filter(|&g| !features[g])
+            .filter(|&g| !features.enabled(g))
             .collect();
 
         match missing_gates.as_slice() {

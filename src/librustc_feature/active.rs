@@ -52,14 +52,10 @@ macro_rules! declare_features {
             pub fn walk_feature_fields(&self, mut f: impl FnMut(&str, bool)) {
                 $(f(stringify!($feature), self.$feature);)+
             }
-        }
 
-        impl std::ops::Index<Symbol> for Features {
-            type Output = bool;
-
-            fn index(&self, feature: Symbol) -> &Self::Output {
+            pub fn enabled(&self, feature: Symbol) -> bool {
                 match feature {
-                    $( sym::$feature => &self.$feature, )*
+                    $( sym::$feature => self.$feature, )*
 
                     _ => panic!("`{}` was not listed in `declare_features`", feature),
                 }
