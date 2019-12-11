@@ -248,7 +248,9 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
         ..
     } = options;
 
-    let extern_names: Vec<String> = externs.iter().map(|(s,_)| s).cloned().collect();
+    let extern_names: Vec<String> = externs.iter()
+        .filter(|(_, entry)| entry.add_prelude)
+        .map(|(name, _)| name).cloned().collect();
 
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
