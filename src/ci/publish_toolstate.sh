@@ -1,6 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 
-set -eu
+set -euo pipefail
+IFS=$'\n\t'
+
+source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 # The following lines are also found in src/bootstrap/toolstate.rs,
 # so if updating here, please also update that file.
@@ -21,7 +24,7 @@ cd rust-toolstate
 FAILURE=1
 for RETRY_COUNT in 1 2 3 4 5; do
     #  The purpose is to publish the new "current" toolstate in the toolstate repo.
-    "$BUILD_SOURCESDIRECTORY/src/tools/publish_toolstate.py" "$GIT_COMMIT" \
+    "$(ciCheckoutPath)/src/tools/publish_toolstate.py" "$GIT_COMMIT" \
         "$GIT_COMMIT_MSG" \
         "$MESSAGE_FILE" \
         "$TOOLSTATE_REPO_ACCESS_TOKEN"
