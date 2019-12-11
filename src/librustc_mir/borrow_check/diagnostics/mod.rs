@@ -173,12 +173,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 self.append_local_to_string(*local, buf)?;
             }
             PlaceRef {
-                base: PlaceBase::Static(box Static { kind: StaticKind::Promoted(..), .. }),
-                projection: [],
-            } => {
-                buf.push_str("promoted");
-            }
-            PlaceRef {
                 base: PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }),
                 projection: [],
             } => {

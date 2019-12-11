@@ -9,7 +9,7 @@ use crate::MemFlags;
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use rustc::ty::layout::{self, Align, HasTyCtxt, LayoutOf, TyLayout, VariantIdx};
-use rustc::ty::{self, Instance, Ty};
+use rustc::ty::{self, Ty};
 
 #[derive(Copy, Clone, Debug)]
 pub struct PlaceRef<'tcx, V> {
@@ -434,39 +434,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                     LocalRef::Operand(..) => {
                         bug!("using operand local {:?} as place", place_ref);
-                    }
-                }
-            }
-            mir::PlaceRef {
-                base:
-                    mir::PlaceBase::Static(box mir::Static {
-                        ty,
-                        kind: mir::StaticKind::Promoted(promoted, substs),
-                        def_id,
-                    }),
-                projection: [],
-            } => {
-                let instance = Instance::new(*def_id, self.monomorphize(substs));
-                let layout = cx.layout_of(self.monomorphize(&ty));
-                match bx.tcx().const_eval_promoted(instance, *promoted) {
-                    Ok(val) => match val.val {
-                        ty::ConstKind::Value(mir::interpret::ConstValue::ByRef {
-                            alloc,
-                            offset,
-                        }) => bx.cx().from_const_alloc(layout, alloc, offset),
-                        _ => bug!("promoteds should have an allocation: {:?}", val),
-                    },
-                    Err(_) => {
-                        // This is unreachable as long as runtime
-                        // and compile-time agree perfectly.
-                        // With floats that won't always be true,
-                        // so we generate a (safe) abort.
-                        bx.abort();
-                        // We still have to return a place but it doesn't matter,
-                        // this code is unreachable.
-                        let llval =
-                            bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(layout)));
-                        PlaceRef::new_sized(llval, layout)
                     }
                 }
             }

@@ -1687,7 +1687,7 @@ pub enum PlaceBase<'tcx> {
 )]
 pub struct Static<'tcx> {
     pub ty: Ty<'tcx>,
-    pub kind: StaticKind<'tcx>,
+    pub kind: StaticKind,
     /// The `DefId` of the item this static was declared in. For promoted values, usually, this is
     /// the same as the `DefId` of the `mir::Body` containing the `Place` this promoted appears in.
     /// However, after inlining, that might no longer be the case as inlined `Place`s are copied
@@ -1707,11 +1707,7 @@ pub struct Static<'tcx> {
     RustcEncodable,
     RustcDecodable
 )]
-pub enum StaticKind<'tcx> {
-    /// Promoted references consist of an id (`Promoted`) and the substs necessary to monomorphize
-    /// it. Usually, these substs are just the identity substs for the item. However, the inliner
-    /// will adjust these substs when it inlines a function based on the substs at the callsite.
-    Promoted(Promoted, SubstsRef<'tcx>),
+pub enum StaticKind {
     Static,
 }
 
@@ -1949,11 +1945,6 @@ impl Debug for PlaceBase<'_> {
             PlaceBase::Static(box self::Static { ty, kind: StaticKind::Static, def_id }) => {
                 write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.def_path_str(def_id)), ty)
             }
-            PlaceBase::Static(box self::Static {
-                ty,
-                kind: StaticKind::Promoted(promoted, _),
-                def_id: _,
-            }) => write!(fmt, "({:?}: {:?})", promoted, ty),
         }
     }
 }
@@ -3069,21 +3060,15 @@ impl<'tcx> TypeFoldable<'tcx> for Static<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for StaticKind<'tcx> {
-    fn super_fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self {
+impl<'tcx> TypeFoldable<'tcx> for StaticKind {
+    fn super_fold_with<F: TypeFolder<'tcx>>(&self, _folder: &mut F) -> Self {
         match self {
-            StaticKind::Promoted(promoted, substs) => {
-                StaticKind::Promoted(promoted.fold_with(folder), substs.fold_with(folder))
-            }
             StaticKind::Static => StaticKind::Static,
         }
     }
 
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, _visitor: &mut V) -> bool {
         match self {
-            StaticKind::Promoted(promoted, substs) => {
-                promoted.visit_with(visitor) || substs.visit_with(visitor)
-            }
             StaticKind::Static => false,
         }
     }

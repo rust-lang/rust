@@ -488,15 +488,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
                         };
                     };
                 match kind {
-                    StaticKind::Promoted(promoted, _) => {
-                        if !self.errors_reported {
-                            let promoted_body_cache = self.promoted[*promoted];
-                            self.sanitize_promoted(promoted_body_cache, location);
-
-                            let promoted_ty = promoted_body_cache.return_ty();
-                            check_err(self, place, promoted_ty, san_ty);
-                        }
-                    }
                     StaticKind::Static => {
                         let ty = self.tcx().type_of(*def_id);
                         let ty = self.cx.normalize(ty, location);
@@ -510,38 +501,28 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         if place.projection.is_empty() {
             if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-                let is_promoted = match place.as_ref() {
-                    PlaceRef {
-                        base: &PlaceBase::Static(box Static { kind: StaticKind::Promoted(..), .. }),
-                        projection: &[],
-                    } => true,
-                    _ => false,
+                let tcx = self.tcx();
+                let trait_ref = ty::TraitRef {
+                    def_id: tcx.lang_items().copy_trait().unwrap(),
+                    substs: tcx.mk_substs_trait(place_ty.ty, &[]),
                 };
 
-                if !is_promoted {
-                    let tcx = self.tcx();
-                    let trait_ref = ty::TraitRef {
-                        def_id: tcx.lang_items().copy_trait().unwrap(),
-                        substs: tcx.mk_substs_trait(place_ty.ty, &[]),
-                    };
-
-                    // To have a `Copy` operand, the type `T` of the
-                    // value must be `Copy`. Note that we prove that `T: Copy`,
-                    // rather than using the `is_copy_modulo_regions`
-                    // test. This is important because
-                    // `is_copy_modulo_regions` ignores the resulting region
-                    // obligations and assumes they pass. This can result in
-                    // bounds from `Copy` impls being unsoundly ignored (e.g.,
-                    // #29149). Note that we decide to use `Copy` before knowing
-                    // whether the bounds fully apply: in effect, the rule is
-                    // that if a value of some type could implement `Copy`, then
-                    // it must.
-                    self.cx.prove_trait_ref(
-                        trait_ref,
-                        location.to_locations(),
-                        ConstraintCategory::CopyBound,
-                    );
-                }
+                // To have a `Copy` operand, the type `T` of the
+                // value must be `Copy`. Note that we prove that `T: Copy`,
+                // rather than using the `is_copy_modulo_regions`
+                // test. This is important because
+                // `is_copy_modulo_regions` ignores the resulting region
+                // obligations and assumes they pass. This can result in
+                // bounds from `Copy` impls being unsoundly ignored (e.g.,
+                // #29149). Note that we decide to use `Copy` before knowing
+                // whether the bounds fully apply: in effect, the rule is
+                // that if a value of some type could implement `Copy`, then
+                // it must.
+                self.cx.prove_trait_ref(
+                    trait_ref,
+                    location.to_locations(),
+                    ConstraintCategory::CopyBound,
+                );
             }
         }
 

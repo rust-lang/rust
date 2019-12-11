@@ -2196,16 +2196,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }),
                 }
             }
-            // The rules for promotion are made by `qualify_consts`, there wouldn't even be a
-            // `Place::Promoted` if the promotion weren't 100% legal. So we just forward this
-            PlaceRef {
-                base: PlaceBase::Static(box Static { kind: StaticKind::Promoted(..), .. }),
-                projection: [],
-            } => Ok(RootPlace {
-                place_base: place.base,
-                place_projection: place.projection,
-                is_local_mutation_allowed,
-            }),
             PlaceRef {
                 base: PlaceBase::Static(box Static { kind: StaticKind::Static, def_id, .. }),
                 projection: [],

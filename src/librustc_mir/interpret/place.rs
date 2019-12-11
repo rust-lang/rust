@@ -15,9 +15,9 @@ use rustc::ty::{self, Ty};
 use rustc_macros::HashStable;
 
 use super::{
-    AllocId, AllocMap, Allocation, AllocationExtra, GlobalId, ImmTy, Immediate, InterpCx,
-    InterpResult, LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic,
-    RawConst, Scalar, ScalarMaybeUndef,
+    AllocId, AllocMap, Allocation, AllocationExtra, ImmTy, Immediate, InterpCx, InterpResult,
+    LocalValue, Machine, MemoryKind, OpTy, Operand, Pointer, PointerArithmetic, RawConst, Scalar,
+    ScalarMaybeUndef,
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable)]
@@ -628,19 +628,6 @@ where
         use rustc::mir::StaticKind;
 
         Ok(match place_static.kind {
-            StaticKind::Promoted(promoted, promoted_substs) => {
-                let substs = self.subst_from_frame_and_normalize_erasing_regions(promoted_substs);
-                let instance = ty::Instance::new(place_static.def_id, substs);
-
-                // Even after getting `substs` from the frame, this instance may still be
-                // polymorphic because `ConstProp` will try to promote polymorphic MIR.
-                if instance.needs_subst() {
-                    throw_inval!(TooGeneric);
-                }
-
-                self.const_eval_raw(GlobalId { instance, promoted: Some(promoted) })?
-            }
-
             StaticKind::Static => {
                 let ty = place_static.ty;
                 assert!(!ty.needs_subst());

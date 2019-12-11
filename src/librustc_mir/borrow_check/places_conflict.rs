@@ -310,7 +310,7 @@ fn place_components_conflict<'tcx>(
 // between `elem1` and `elem2`.
 fn place_base_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
+    _param_env: ty::ParamEnv<'tcx>,
     elem1: &PlaceBase<'tcx>,
     elem2: &PlaceBase<'tcx>,
 ) -> Overlap {
@@ -340,28 +340,6 @@ fn place_base_conflict<'tcx>(
                         debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
                         Overlap::EqualOrDisjoint
                     }
-                }
-                (StaticKind::Promoted(promoted_1, _), StaticKind::Promoted(promoted_2, _)) => {
-                    if promoted_1 == promoted_2 {
-                        if let ty::Array(_, len) = s1.ty.kind {
-                            if let Some(0) = len.try_eval_usize(tcx, param_env) {
-                                // Ignore conflicts with promoted [T; 0].
-                                debug!("place_element_conflict: IGNORE-LEN-0-PROMOTED");
-                                return Overlap::Disjoint;
-                            }
-                        }
-                        // the same promoted - base case, equal
-                        debug!("place_element_conflict: DISJOINT-OR-EQ-PROMOTED");
-                        Overlap::EqualOrDisjoint
-                    } else {
-                        // different promoteds - base case, disjoint
-                        debug!("place_element_conflict: DISJOINT-PROMOTED");
-                        Overlap::Disjoint
-                    }
-                }
-                (_, _) => {
-                    debug!("place_element_conflict: DISJOINT-STATIC-PROMOTED");
-                    Overlap::Disjoint
                 }
             }
         }
