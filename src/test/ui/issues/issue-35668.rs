@@ -1,6 +1,6 @@
 fn func<'a, T>(a: &'a [T]) -> impl Iterator<Item=&'a T> {
     a.iter().map(|a| a*a)
-    //~^ ERROR binary operation `*` cannot be applied to type `&T`
+    //~^ ERROR cannot multiply `&T` to `&T`
 }
 
 fn main() {
