@@ -25,6 +25,7 @@ use crate::infer::{self, InferCtxt};
 use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use crate::session::DiagnosticMessageId;
 use crate::ty::{self, AdtKind, DefIdTree, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
+use crate::ty::TypeckTables;
 use crate::ty::GenericParamDefKind;
 use crate::ty::error::ExpectedFound;
 use crate::ty::fast_reject;
@@ -2104,52 +2105,69 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     ) {
         // First, attempt to add note to this error with an async-await-specific
         // message, and fall back to regular note otherwise.
-        if !self.note_obligation_cause_for_async_await(err, obligation) {
+        if !self.maybe_note_obligation_cause_for_async_await(err, obligation) {
             self.note_obligation_cause_code(err, &obligation.predicate, &obligation.cause.code,
                                             &mut vec![]);
         }
     }
 
-    /// Adds an async-await specific note to the diagnostic:
+    /// Adds an async-await specific note to the diagnostic when the future does not implement
+    /// an auto trait because of a captured type.
     ///
     /// ```ignore (diagnostic)
-    /// note: future does not implement `std::marker::Send` because this value is used across an
-    ///       await
-    ///   --> $DIR/issue-64130-non-send-future-diags.rs:15:5
+    /// note: future does not implement `Qux` as this value is used across an await
+    ///   --> $DIR/issue-64130-3-other.rs:17:5
     ///    |
-    /// LL |     let g = x.lock().unwrap();
-    ///    |         - has type `std::sync::MutexGuard<'_, u32>`
+    /// LL |     let x = Foo;
+    ///    |         - has type `Foo`
     /// LL |     baz().await;
-    ///    |     ^^^^^^^^^^^ await occurs here, with `g` maybe used later
+    ///    |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
     /// LL | }
-    ///    | - `g` is later dropped here
+    ///    | - `x` is later dropped here
+    /// ```
+    ///
+    /// When the diagnostic does not implement `Send` or `Sync` specifically, then the diagnostic
+    /// is "replaced" with a different message and a more specific error.
+    ///
+    /// ```ignore (diagnostic)
+    /// error: future cannot be sent between threads safely
+    ///   --> $DIR/issue-64130-2-send.rs:21:5
+    ///    |
+    /// LL | fn is_send<T: Send>(t: T) { }
+    ///    |    -------    ---- required by this bound in `is_send`
+    /// ...
+    /// LL |     is_send(bar());
+    ///    |     ^^^^^^^ future returned by `bar` is not send
+    ///    |
+    ///    = help: within `impl std::future::Future`, the trait `std::marker::Send` is not
+    ///            implemented for `Foo`
+    /// note: future is not send as this value is used across an await
+    ///   --> $DIR/issue-64130-2-send.rs:15:5
+    ///    |
+    /// LL |     let x = Foo;
+    ///    |         - has type `Foo`
+    /// LL |     baz().await;
+    ///    |     ^^^^^^^^^^^ await occurs here, with `x` maybe used later
+    /// LL | }
+    ///    | - `x` is later dropped here
     /// ```
     ///
     /// Returns `true` if an async-await specific note was added to the diagnostic.
-    fn note_obligation_cause_for_async_await(
+    fn maybe_note_obligation_cause_for_async_await(
         &self,
         err: &mut DiagnosticBuilder<'_>,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
-        debug!("note_obligation_cause_for_async_await: obligation.predicate={:?} \
+        debug!("maybe_note_obligation_cause_for_async_await: obligation.predicate={:?} \
                 obligation.cause.span={:?}", obligation.predicate, obligation.cause.span);
         let source_map = self.tcx.sess.source_map();
 
-        // Look into the obligation predicate to determine the type in the generator which meant
-        // that the predicate was not satisifed.
-        let (trait_ref, target_ty) = match obligation.predicate {
-            ty::Predicate::Trait(trait_predicate) =>
-                (trait_predicate.skip_binder().trait_ref, trait_predicate.skip_binder().self_ty()),
-            _ => return false,
-        };
-        debug!("note_obligation_cause_for_async_await: target_ty={:?}", target_ty);
-
         // Attempt to detect an async-await error by looking at the obligation causes, looking
-        // for only generators, generator witnesses, opaque types or `std::future::GenFuture` to
-        // be present.
+        // for a generator to be present.
         //
         // When a future does not implement a trait because of a captured type in one of the
         // generators somewhere in the call stack, then the result is a chain of obligations.
+        //
         // Given a `async fn` A that calls a `async fn` B which captures a non-send type and that
         // future is passed as an argument to a function C which requires a `Send` type, then the
         // chain looks something like this:
@@ -2166,100 +2184,222 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         // - `BuiltinDerivedObligation` with `impl std::future::Future` (A)
         // - `BindingObligation` with `impl_send (Send requirement)
         //
-        // The first obligations in the chain can be used to get the details of the type that is
-        // captured but the entire chain must be inspected to detect this case.
+        // The first obligation in the chain is the most useful and has the generator that captured
+        // the type. The last generator has information about where the bound was introduced. At
+        // least one generator should be present for this diagnostic to be modified.
+        let (mut trait_ref, mut target_ty) = match obligation.predicate {
+            ty::Predicate::Trait(p) =>
+                (Some(p.skip_binder().trait_ref), Some(p.skip_binder().self_ty())),
+            _ => (None, None),
+        };
         let mut generator = None;
+        let mut last_generator = None;
         let mut next_code = Some(&obligation.cause.code);
         while let Some(code) = next_code {
-            debug!("note_obligation_cause_for_async_await: code={:?}", code);
+            debug!("maybe_note_obligation_cause_for_async_await: code={:?}", code);
             match code {
                 ObligationCauseCode::BuiltinDerivedObligation(derived_obligation) |
                 ObligationCauseCode::ImplDerivedObligation(derived_obligation) => {
-                    debug!("note_obligation_cause_for_async_await: self_ty.kind={:?}",
-                           derived_obligation.parent_trait_ref.self_ty().kind);
-                    match derived_obligation.parent_trait_ref.self_ty().kind {
-                        ty::Adt(ty::AdtDef { did, .. }, ..) if
-                            self.tcx.is_diagnostic_item(sym::gen_future, *did) => {},
-                        ty::Generator(did, ..) => generator = generator.or(Some(did)),
-                        ty::GeneratorWitness(_) | ty::Opaque(..) => {},
-                        _ => return false,
+                    let ty = derived_obligation.parent_trait_ref.self_ty();
+                    debug!("maybe_note_obligation_cause_for_async_await: \
+                            parent_trait_ref={:?} self_ty.kind={:?}",
+                           derived_obligation.parent_trait_ref, ty.kind);
+
+                    match ty.kind {
+                        ty::Generator(did, ..) => {
+                            generator = generator.or(Some(did));
+                            last_generator = Some(did);
+                        },
+                        ty::GeneratorWitness(..) => {},
+                        _ if generator.is_none() => {
+                            trait_ref = Some(*derived_obligation.parent_trait_ref.skip_binder());
+                            target_ty = Some(ty);
+                        },
+                        _ => {},
                     }
 
                     next_code = Some(derived_obligation.parent_code.as_ref());
                 },
-                ObligationCauseCode::ItemObligation(_) | ObligationCauseCode::BindingObligation(..)
-                    if generator.is_some() => break,
-                _ => return false,
+                _ => break,
             }
         }
 
-        let generator_did = generator.expect("can only reach this if there was a generator");
-
-        // Only continue to add a note if the generator is from an `async` function.
-        let parent_node = self.tcx.parent(generator_did)
-            .and_then(|parent_did| self.tcx.hir().get_if_local(parent_did));
-        debug!("note_obligation_cause_for_async_await: parent_node={:?}", parent_node);
-        if let Some(hir::Node::Item(hir::Item {
-            kind: hir::ItemKind::Fn(sig, _, _),
-            ..
-        })) = parent_node {
-            debug!("note_obligation_cause_for_async_await: header={:?}", sig.header);
-            if sig.header.asyncness != hir::IsAsync::Async {
-                return false;
-            }
-        }
+        // Only continue if a generator was found.
+        debug!("maybe_note_obligation_cause_for_async_await: generator={:?} trait_ref={:?} \
+                target_ty={:?}", generator, trait_ref, target_ty);
+        let (generator_did, trait_ref, target_ty) = match (generator, trait_ref, target_ty) {
+            (Some(generator_did), Some(trait_ref), Some(target_ty)) =>
+                (generator_did, trait_ref, target_ty),
+            _ => return false,
+        };
 
         let span = self.tcx.def_span(generator_did);
+
         // Do not ICE on closure typeck (#66868).
         if let None = self.tcx.hir().as_local_hir_id(generator_did) {
             return false;
         }
-        let tables = self.tcx.typeck_tables_of(generator_did);
-        debug!("note_obligation_cause_for_async_await: generator_did={:?} span={:?} ",
-               generator_did, span);
+
+        // Get the tables from the infcx if the generator is the function we are
+        // currently type-checking; otherwise, get them by performing a query.
+        // This is needed to avoid cycles.
+        let in_progress_tables = self.in_progress_tables.map(|t| t.borrow());
+        let generator_did_root = self.tcx.closure_base_def_id(generator_did);
+        debug!("maybe_note_obligation_cause_for_async_await: generator_did={:?} \
+             generator_did_root={:?} in_progress_tables.local_id_root={:?} span={:?}",
+            generator_did, generator_did_root,
+            in_progress_tables.as_ref().map(|t| t.local_id_root), span);
+        let query_tables;
+        let tables: &TypeckTables<'tcx> = match &in_progress_tables {
+            Some(t) if t.local_id_root == Some(generator_did_root) => t,
+            _ => {
+                query_tables = self.tcx.typeck_tables_of(generator_did);
+                &query_tables
+            }
+        };
 
         // Look for a type inside the generator interior that matches the target type to get
         // a span.
+        let target_ty_erased = self.tcx.erase_regions(&target_ty);
         let target_span = tables.generator_interior_types.iter()
-            .find(|ty::GeneratorInteriorTypeCause { ty, .. }| ty::TyS::same_type(*ty, target_ty))
+            .find(|ty::GeneratorInteriorTypeCause { ty, .. }| {
+                // Careful: the regions for types that appear in the
+                // generator interior are not generally known, so we
+                // want to erase them when comparing (and anyway,
+                // `Send` and other bounds are generally unaffected by
+                // the choice of region).  When erasing regions, we
+                // also have to erase late-bound regions. This is
+                // because the types that appear in the generator
+                // interior generally contain "bound regions" to
+                // represent regions that are part of the suspended
+                // generator frame. Bound regions are preserved by
+                // `erase_regions` and so we must also call
+                // `erase_late_bound_regions`.
+                let ty_erased = self.tcx.erase_late_bound_regions(&ty::Binder::bind(*ty));
+                let ty_erased = self.tcx.erase_regions(&ty_erased);
+                let eq = ty::TyS::same_type(ty_erased, target_ty_erased);
+                debug!("maybe_note_obligation_cause_for_async_await: ty_erased={:?} \
+                        target_ty_erased={:?} eq={:?}", ty_erased, target_ty_erased, eq);
+                eq
+            })
             .map(|ty::GeneratorInteriorTypeCause { span, scope_span, .. }|
                  (span, source_map.span_to_snippet(*span), scope_span));
+        debug!("maybe_note_obligation_cause_for_async_await: target_ty={:?} \
+                generator_interior_types={:?} target_span={:?}",
+                target_ty, tables.generator_interior_types, target_span);
         if let Some((target_span, Ok(snippet), scope_span)) = target_span {
-            // Look at the last interior type to get a span for the `.await`.
-            let await_span = tables.generator_interior_types.iter().map(|i| i.span).last().unwrap();
-            let mut span = MultiSpan::from_span(await_span);
-            span.push_span_label(
-                await_span, format!("await occurs here, with `{}` maybe used later", snippet));
-
-            span.push_span_label(*target_span, format!("has type `{}`", target_ty));
-
-            // If available, use the scope span to annotate the drop location.
-            if let Some(scope_span) = scope_span {
-                span.push_span_label(
-                    source_map.end_point(*scope_span),
-                    format!("`{}` is later dropped here", snippet),
-                );
-            }
-
-            err.span_note(span, &format!(
-                "future does not implement `{}` as this value is used across an await",
-                trait_ref.print_only_trait_path(),
-            ));
-
-            // Add a note for the item obligation that remains - normally a note pointing to the
-            // bound that introduced the obligation (e.g. `T: Send`).
-            debug!("note_obligation_cause_for_async_await: next_code={:?}", next_code);
-            self.note_obligation_cause_code(
-                err,
-                &obligation.predicate,
-                next_code.unwrap(),
-                &mut Vec::new(),
+            self.note_obligation_cause_for_async_await(
+                err, *target_span, scope_span, snippet, generator_did, last_generator,
+                trait_ref, target_ty, tables, obligation, next_code,
             );
-
             true
         } else {
             false
         }
+    }
+
+    /// Unconditionally adds the diagnostic note described in
+    /// `maybe_note_obligation_cause_for_async_await`'s documentation comment.
+    fn note_obligation_cause_for_async_await(
+        &self,
+        err: &mut DiagnosticBuilder<'_>,
+        target_span: Span,
+        scope_span: &Option<Span>,
+        snippet: String,
+        first_generator: DefId,
+        last_generator: Option<DefId>,
+        trait_ref: ty::TraitRef<'_>,
+        target_ty: Ty<'tcx>,
+        tables: &ty::TypeckTables<'_>,
+        obligation: &PredicateObligation<'tcx>,
+        next_code: Option<&ObligationCauseCode<'tcx>>,
+    ) {
+        let source_map = self.tcx.sess.source_map();
+
+        let is_async_fn = self.tcx.parent(first_generator)
+            .map(|parent_did| self.tcx.asyncness(parent_did))
+            .map(|parent_asyncness| parent_asyncness == hir::IsAsync::Async)
+            .unwrap_or(false);
+        let is_async_move = self.tcx.hir().as_local_hir_id(first_generator)
+            .and_then(|hir_id| self.tcx.hir().maybe_body_owned_by(hir_id))
+            .map(|body_id| self.tcx.hir().body(body_id))
+            .and_then(|body| body.generator_kind())
+            .map(|generator_kind| match generator_kind {
+                hir::GeneratorKind::Async(..) => true,
+                _ => false,
+            })
+            .unwrap_or(false);
+        let await_or_yield = if is_async_fn || is_async_move { "await" } else { "yield" };
+
+        // Special case the primary error message when send or sync is the trait that was
+        // not implemented.
+        let is_send = self.tcx.is_diagnostic_item(sym::send_trait, trait_ref.def_id);
+        let is_sync = self.tcx.is_diagnostic_item(sym::sync_trait, trait_ref.def_id);
+        let trait_explanation = if is_send || is_sync {
+            let (trait_name, trait_verb) = if is_send {
+                ("`Send`", "sent")
+            } else {
+                ("`Sync`", "shared")
+            };
+
+            err.clear_code();
+            err.set_primary_message(
+                format!("future cannot be {} between threads safely", trait_verb)
+            );
+
+            let original_span = err.span.primary_span().unwrap();
+            let mut span = MultiSpan::from_span(original_span);
+
+            let message = if let Some(name) = last_generator
+                .and_then(|generator_did| self.tcx.parent(generator_did))
+                .and_then(|parent_did| self.tcx.hir().as_local_hir_id(parent_did))
+                .map(|parent_hir_id| self.tcx.hir().name(parent_hir_id))
+            {
+                format!("future returned by `{}` is not {}", name, trait_name)
+            } else {
+                format!("future is not {}", trait_name)
+            };
+
+            span.push_span_label(original_span, message);
+            err.set_span(span);
+
+            format!("is not {}", trait_name)
+        } else {
+            format!("does not implement `{}`", trait_ref.print_only_trait_path())
+        };
+
+        // Look at the last interior type to get a span for the `.await`.
+        let await_span = tables.generator_interior_types.iter().map(|i| i.span).last().unwrap();
+        let mut span = MultiSpan::from_span(await_span);
+        span.push_span_label(
+            await_span,
+            format!("{} occurs here, with `{}` maybe used later", await_or_yield, snippet));
+
+        span.push_span_label(target_span, format!("has type `{}`", target_ty));
+
+        // If available, use the scope span to annotate the drop location.
+        if let Some(scope_span) = scope_span {
+            span.push_span_label(
+                source_map.end_point(*scope_span),
+                format!("`{}` is later dropped here", snippet),
+            );
+        }
+
+        err.span_note(span, &format!(
+            "future {} as this value is used across an {}",
+            trait_explanation,
+            await_or_yield,
+        ));
+
+        // Add a note for the item obligation that remains - normally a note pointing to the
+        // bound that introduced the obligation (e.g. `T: Send`).
+        debug!("note_obligation_cause_for_async_await: next_code={:?}", next_code);
+        self.note_obligation_cause_code(
+            err,
+            &obligation.predicate,
+            next_code.unwrap(),
+            &mut Vec::new(),
+        );
     }
 
     fn note_obligation_cause_code<T>(&self,

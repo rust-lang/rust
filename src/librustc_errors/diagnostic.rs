@@ -498,8 +498,18 @@ impl Diagnostic {
         self
     }
 
+    pub fn clear_code(&mut self) -> &mut Self {
+        self.code = None;
+        self
+    }
+
     pub fn get_code(&self) -> Option<DiagnosticId> {
         self.code.clone()
+    }
+
+    pub fn set_primary_message<M: Into<String>>(&mut self, msg: M) -> &mut Self {
+        self.message[0] = (msg.into(), Style::NoStyle);
+        self
     }
 
     pub fn message(&self) -> String {
