@@ -16,7 +16,6 @@ use crate::borrow_check::{
 
 pub(super) fn generate_constraints<'cx, 'tcx>(
     infcx: &InferCtxt<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
@@ -30,7 +29,6 @@ pub(super) fn generate_constraints<'cx, 'tcx>(
         location_table,
         all_facts,
         body,
-        param_env,
     };
 
     for (bb, data) in body.basic_blocks().iter_enumerated() {
@@ -41,7 +39,6 @@ pub(super) fn generate_constraints<'cx, 'tcx>(
 /// 'cg = the duration of the constraint generation process itself.
 struct ConstraintGeneration<'cg, 'cx, 'tcx> {
     infcx: &'cg InferCtxt<'cx, 'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
     liveness_constraints: &'cg mut LivenessValues<RegionVid>,
@@ -226,7 +223,6 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                         for &borrow_index in borrow_indices {
                             let places_conflict = places_conflict::places_conflict(
                                 self.infcx.tcx,
-                                self.param_env,
                                 self.body,
                                 &self.borrow_set.borrows[borrow_index].borrowed_place,
                                 place,

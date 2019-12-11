@@ -23,7 +23,6 @@ crate enum PlaceConflictBias {
 /// dataflow).
 crate fn places_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     access_place: &Place<'tcx>,
@@ -31,7 +30,6 @@ crate fn places_conflict<'tcx>(
 ) -> bool {
     borrow_conflicts_with_place(
         tcx,
-        param_env,
         body,
         borrow_place,
         BorrowKind::Mut { allow_two_phase_borrow: true },
@@ -47,7 +45,6 @@ crate fn places_conflict<'tcx>(
 /// order to make the conservative choice and preserve soundness.
 pub(super) fn borrow_conflicts_with_place<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
@@ -68,21 +65,11 @@ pub(super) fn borrow_conflicts_with_place<'tcx>(
         }
     }
 
-    place_components_conflict(
-        tcx,
-        param_env,
-        body,
-        borrow_place,
-        borrow_kind,
-        access_place,
-        access,
-        bias,
-    )
+    place_components_conflict(tcx, body, borrow_place, borrow_kind, access_place, access, bias)
 }
 
 fn place_components_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
     body: &Body<'tcx>,
     borrow_place: &Place<'tcx>,
     borrow_kind: BorrowKind,
@@ -135,7 +122,7 @@ fn place_components_conflict<'tcx>(
     let borrow_base = &borrow_place.base;
     let access_base = access_place.base;
 
-    match place_base_conflict(tcx, param_env, borrow_base, access_base) {
+    match place_base_conflict(tcx, borrow_base, access_base) {
         Overlap::Arbitrary => {
             bug!("Two base can't return Arbitrary");
         }
@@ -308,7 +295,6 @@ fn place_components_conflict<'tcx>(
 // between `elem1` and `elem2`.
 fn place_base_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
-    _param_env: ty::ParamEnv<'tcx>,
     elem1: &PlaceBase<'tcx>,
     elem2: &PlaceBase<'tcx>,
 ) -> Overlap {
