@@ -207,10 +207,6 @@ impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
                     );
                 }
 
-                PlaceRef { base: &PlaceBase::Static(_), .. } => {
-                    // Ignore kills of static or static mut variables.
-                }
-
                 PlaceRef { base: &PlaceBase::Local(local), projection: &[.., _] } => {
                     // Kill conflicting borrows of the innermost local.
                     debug!(

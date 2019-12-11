@@ -310,7 +310,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                         // don't get promoted anyway).
                         let base = match place.base {
                             PlaceBase::Local(local) => local,
-                            _ => return Err(Unpromotable),
                         };
                         self.validate_local(base)?;
 
@@ -482,9 +481,6 @@ impl<'tcx> Validator<'_, 'tcx> {
             PlaceRef { base: PlaceBase::Local(local), projection: [] } => {
                 self.validate_local(*local)
             }
-            PlaceRef { base: PlaceBase::Static(_), projection: [] } => {
-                bug!("qualifying already promoted MIR")
-            }
             PlaceRef { base: _, projection: [proj_base @ .., elem] } => {
                 match *elem {
                     ProjectionElem::Deref | ProjectionElem::Downcast(..) => {
@@ -648,7 +644,6 @@ impl<'tcx> Validator<'_, 'tcx> {
                 // `check_consts::qualifs` but without recursion.
                 let mut has_mut_interior = match place.base {
                     PlaceBase::Local(local) => self.qualif_local::<qualifs::HasMutInterior>(*local),
-                    PlaceBase::Static(_) => false,
                 };
                 if has_mut_interior {
                     let mut place_projection = place.projection;

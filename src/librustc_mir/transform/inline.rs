@@ -431,9 +431,6 @@ impl Inliner<'tcx> {
                     }
 
                     match place.base {
-                        // Static variables need a borrow because the callee
-                        // might modify the same static.
-                        PlaceBase::Static(_) => true,
                         _ => false,
                     }
                 }
@@ -649,7 +646,6 @@ impl<'a, 'tcx> Integrator<'a, 'tcx> {
         if *local == RETURN_PLACE {
             match self.destination.base {
                 PlaceBase::Local(l) => return l,
-                PlaceBase::Static(ref s) => bug!("Return place is {:?}, not local", s),
             }
         }
 
@@ -673,7 +669,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
 
     fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         match &mut place.base {
-            PlaceBase::Static(_) => {}
             PlaceBase::Local(l) => {
                 // If this is the `RETURN_PLACE`, we need to rebase any projections onto it.
                 let dest_proj_len = self.destination.projection.len();

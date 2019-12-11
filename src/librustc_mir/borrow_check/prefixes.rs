@@ -69,39 +69,22 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
 
         'cursor: loop {
             match &cursor {
-                PlaceRef {
-                    base: PlaceBase::Local(_),
-                    projection: [],
-                }
-                | // search yielded this leaf
-                PlaceRef {
-                    base: PlaceBase::Static(_),
-                    projection: [],
-                } => {
+                PlaceRef { base: PlaceBase::Local(_), projection: [] } => {
                     self.next = None;
                     return Some(cursor);
                 }
-                PlaceRef {
-                    base: _,
-                    projection: [proj_base @ .., elem],
-                } => {
+                PlaceRef { base: _, projection: [proj_base @ .., elem] } => {
                     match elem {
                         ProjectionElem::Field(_ /*field*/, _ /*ty*/) => {
                             // FIXME: add union handling
-                            self.next = Some(PlaceRef {
-                                base: cursor.base,
-                                projection: proj_base,
-                            });
+                            self.next = Some(PlaceRef { base: cursor.base, projection: proj_base });
                             return Some(cursor);
                         }
-                        ProjectionElem::Downcast(..) |
-                        ProjectionElem::Subslice { .. } |
-                        ProjectionElem::ConstantIndex { .. } |
-                        ProjectionElem::Index(_) => {
-                            cursor = PlaceRef {
-                                base: cursor.base,
-                                projection: proj_base,
-                            };
+                        ProjectionElem::Downcast(..)
+                        | ProjectionElem::Subslice { .. }
+                        | ProjectionElem::ConstantIndex { .. }
+                        | ProjectionElem::Index(_) => {
+                            cursor = PlaceRef { base: cursor.base, projection: proj_base };
                             continue 'cursor;
                         }
                         ProjectionElem::Deref => {
@@ -122,10 +105,7 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
                         PrefixSet::All => {
                             // All prefixes: just blindly enqueue the base
                             // of the projection.
-                            self.next = Some(PlaceRef {
-                                base: cursor.base,
-                                projection: proj_base,
-                            });
+                            self.next = Some(PlaceRef { base: cursor.base, projection: proj_base });
                             return Some(cursor);
                         }
                         PrefixSet::Supporting => {
@@ -140,35 +120,20 @@ impl<'cx, 'tcx> Iterator for Prefixes<'cx, 'tcx> {
 
                     let ty = Place::ty_from(cursor.base, proj_base, *self.body, self.tcx).ty;
                     match ty.kind {
-                        ty::RawPtr(_) |
-                        ty::Ref(
-                            _, /*rgn*/
-                            _, /*ty*/
-                            hir::Mutability::Not
-                            ) => {
+                        ty::RawPtr(_) | ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Not) => {
                             // don't continue traversing over derefs of raw pointers or shared
                             // borrows.
                             self.next = None;
                             return Some(cursor);
                         }
 
-                        ty::Ref(
-                            _, /*rgn*/
-                            _, /*ty*/
-                            hir::Mutability::Mut,
-                            ) => {
-                            self.next = Some(PlaceRef {
-                                base: cursor.base,
-                                projection: proj_base,
-                            });
+                        ty::Ref(_ /*rgn*/, _ /*ty*/, hir::Mutability::Mut) => {
+                            self.next = Some(PlaceRef { base: cursor.base, projection: proj_base });
                             return Some(cursor);
                         }
 
                         ty::Adt(..) if ty.is_box() => {
-                            self.next = Some(PlaceRef {
-                                base: cursor.base,
-                                projection: proj_base,
-                            });
+                            self.next = Some(PlaceRef { base: cursor.base, projection: proj_base });
                             return Some(cursor);
                         }
 

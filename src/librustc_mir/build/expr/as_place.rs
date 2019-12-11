@@ -20,7 +20,7 @@ use rustc_index::vec::Idx;
 /// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
 #[derive(Clone)]
 struct PlaceBuilder<'tcx> {
-    base: PlaceBase<'tcx>,
+    base: PlaceBase,
     projection: Vec<PlaceElem<'tcx>>,
 }
 
@@ -53,8 +53,8 @@ impl From<Local> for PlaceBuilder<'tcx> {
     }
 }
 
-impl From<PlaceBase<'tcx>> for PlaceBuilder<'tcx> {
-    fn from(base: PlaceBase<'tcx>) -> Self {
+impl From<PlaceBase> for PlaceBuilder<'tcx> {
+    fn from(base: PlaceBase) -> Self {
         Self { base, projection: Vec::new() }
     }
 }

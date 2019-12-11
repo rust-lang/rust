@@ -14,7 +14,6 @@ use rustc::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_span::DUMMY_SP;
 
 pub fn non_ssa_locals<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     fx: &FunctionCx<'a, 'tcx, Bx>,
@@ -135,10 +134,10 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                 // ZSTs don't require any actual memory access.
                 let elem_ty = base_ty.projection_ty(cx.tcx(), elem).ty;
                 let elem_ty = self.fx.monomorphize(&elem_ty);
-                let span = if let mir::PlaceBase::Local(index) = place_ref.base {
-                    self.fx.mir.local_decls[*index].source_info.span
-                } else {
-                    DUMMY_SP
+                let span = match place_ref.base {
+                    mir::PlaceBase::Local(index) => {
+                        self.fx.mir.local_decls[*index].source_info.span
+                    }
                 };
                 if cx.spanned_layout_of(elem_ty, span).is_zst() {
                     return;
@@ -179,8 +178,8 @@ impl<Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx, Bx> {
                     // We use `NonUseContext::VarDebugInfo` for the base,
                     // which might not force the base local to memory,
                     // so we have to do it manually.
-                    if let mir::PlaceBase::Local(local) = place_ref.base {
-                        self.visit_local(&local, context, location);
+                    match place_ref.base {
+                        mir::PlaceBase::Local(local) => self.visit_local(&local, context, location),
                     }
                 }
             }

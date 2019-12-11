@@ -115,15 +115,13 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         match stmt.kind {
             StatementKind::StorageDead(l) => sets.kill(l),
             StatementKind::Assign(box (ref place, _))
-            | StatementKind::SetDiscriminant { box ref place, .. } => {
-                if let PlaceBase::Local(local) = place.base {
-                    sets.gen(local);
-                }
-            }
+            | StatementKind::SetDiscriminant { box ref place, .. } => match place.base {
+                PlaceBase::Local(local) => sets.gen(local),
+            },
             StatementKind::InlineAsm(box InlineAsm { ref outputs, .. }) => {
                 for p in &**outputs {
-                    if let PlaceBase::Local(local) = p.base {
-                        sets.gen(local);
+                    match p.base {
+                        PlaceBase::Local(local) => sets.gen(local),
                     }
                 }
             }
@@ -171,8 +169,10 @@ impl<'mir, 'tcx> BitDenotation<'tcx> for RequiresStorage<'mir, 'tcx> {
         _dest_bb: mir::BasicBlock,
         dest_place: &mir::Place<'tcx>,
     ) {
-        if let PlaceBase::Local(local) = dest_place.base {
-            in_out.insert(local);
+        match dest_place.base {
+            PlaceBase::Local(local) => {
+                in_out.insert(local);
+            }
         }
     }
 }

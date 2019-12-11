@@ -182,7 +182,7 @@ use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::mir::interpret::{ErrorHandled, GlobalAlloc, Scalar};
 use rustc::mir::mono::{InstantiationMode, MonoItem};
 use rustc::mir::visit::Visitor as MirVisitor;
-use rustc::mir::{self, Location, PlaceBase, Static};
+use rustc::mir::{self, Location, PlaceBase};
 use rustc::session::config::EntryFnType;
 use rustc::ty::adjustment::{CustomCoerceUnsized, PointerCast};
 use rustc::ty::print::obsolete::DefPathBasedNames;
@@ -642,20 +642,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
     fn visit_place_base(
         &mut self,
-        place_base: &mir::PlaceBase<'tcx>,
+        place_base: &mir::PlaceBase,
         _context: mir::visit::PlaceContext,
-        location: Location,
+        _location: Location,
     ) {
         match place_base {
-            PlaceBase::Static(box Static { def_id, .. }) => {
-                debug!("visiting static {:?} @ {:?}", def_id, location);
-
-                let tcx = self.tcx;
-                let instance = Instance::mono(tcx, *def_id);
-                if should_monomorphize_locally(tcx, &instance) {
-                    self.output.push(MonoItem::Static(*def_id));
-                }
-            }
             PlaceBase::Local(_) => {
                 // Locals have no relevance for collector.
             }

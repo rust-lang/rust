@@ -872,8 +872,8 @@ impl<'mir, 'tcx> MutVisitor<'tcx> for ConstPropagator<'mir, 'tcx> {
                         // doesn't use the invalid value
                         match cond {
                             Operand::Move(ref place) | Operand::Copy(ref place) => {
-                                if let PlaceBase::Local(local) = place.base {
-                                    self.remove_const(local);
+                                match place.base {
+                                    PlaceBase::Local(local) => self.remove_const(local),
                                 }
                             }
                             Operand::Constant(_) => {}

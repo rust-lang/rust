@@ -226,7 +226,7 @@ pub fn decode_place<D>(decoder: &mut D) -> Result<mir::Place<'tcx>, D::Error>
 where
     D: TyDecoder<'tcx>,
 {
-    let base: mir::PlaceBase<'tcx> = Decodable::decode(decoder)?;
+    let base: mir::PlaceBase = Decodable::decode(decoder)?;
     let len = decoder.read_usize()?;
     let projection: &'tcx List<mir::PlaceElem<'tcx>> =
         decoder.tcx().mk_place_elems((0..len).map(|_| Decodable::decode(decoder)))?;

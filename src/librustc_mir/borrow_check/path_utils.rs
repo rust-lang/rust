@@ -132,8 +132,6 @@ pub(super) fn is_active<'tcx>(
 /// This is called for all Yield expressions on movable generators
 pub(super) fn borrow_of_local_data(place: &Place<'_>) -> bool {
     match place.base {
-        PlaceBase::Static(_) => false,
-
         // Reborrow of already borrowed data is ignored
         // Any errors will be caught on the initial borrow
         PlaceBase::Local(_) => !place.is_indirect(),

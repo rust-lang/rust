@@ -164,7 +164,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_place_base(&mut self,
-                                base: & $($mutability)? PlaceBase<'tcx>,
+                                base: & $($mutability)? PlaceBase,
                                 context: PlaceContext,
                                 location: Location) {
                 self.super_place_base(base, context, location);
@@ -705,15 +705,12 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_place_base(&mut self,
-                                place_base: & $($mutability)? PlaceBase<'tcx>,
+                                place_base: & $($mutability)? PlaceBase,
                                 context: PlaceContext,
                                 location: Location) {
                 match place_base {
                     PlaceBase::Local(local) => {
                         self.visit_local(local, context, location);
-                    }
-                    PlaceBase::Static(box Static { ty, def_id: _ }) => {
-                        self.visit_ty(& $($mutability)? *ty, TyContext::Location(location));
                     }
                 }
             }
@@ -889,7 +886,7 @@ macro_rules! visit_place_fns {
     () => (
         fn visit_projection(
             &mut self,
-            base: &PlaceBase<'tcx>,
+            base: &PlaceBase,
             projection: &[PlaceElem<'tcx>],
             context: PlaceContext,
             location: Location,
@@ -899,7 +896,7 @@ macro_rules! visit_place_fns {
 
         fn visit_projection_elem(
             &mut self,
-            base: &PlaceBase<'tcx>,
+            base: &PlaceBase,
             proj_base: &[PlaceElem<'tcx>],
             elem: &PlaceElem<'tcx>,
             context: PlaceContext,
@@ -934,7 +931,7 @@ macro_rules! visit_place_fns {
 
         fn super_projection(
             &mut self,
-            base: &PlaceBase<'tcx>,
+            base: &PlaceBase,
             projection: &[PlaceElem<'tcx>],
             context: PlaceContext,
             location: Location,
@@ -948,7 +945,7 @@ macro_rules! visit_place_fns {
 
         fn super_projection_elem(
             &mut self,
-            _base: &PlaceBase<'tcx>,
+            _base: &PlaceBase,
             _proj_base: &[PlaceElem<'tcx>],
             elem: &PlaceElem<'tcx>,
             _context: PlaceContext,

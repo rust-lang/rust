@@ -467,32 +467,6 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         let mut place_ty = match &place.base {
             PlaceBase::Local(index) => PlaceTy::from_ty(self.body.local_decls[*index].ty),
-            PlaceBase::Static(box Static { ty, def_id }) => {
-                let san_ty = self.sanitize_type(place, ty);
-                let check_err =
-                    |verifier: &mut TypeVerifier<'a, 'b, 'tcx>, place: &Place<'tcx>, ty, san_ty| {
-                        if let Err(terr) = verifier.cx.eq_types(
-                            san_ty,
-                            ty,
-                            location.to_locations(),
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                                verifier,
-                                place,
-                                "bad promoted type ({:?}: {:?}): {:?}",
-                                ty,
-                                san_ty,
-                                terr
-                            );
-                        };
-                    };
-                let ty = self.tcx().type_of(*def_id);
-                let ty = self.cx.normalize(ty, location);
-
-                check_err(self, place, ty, san_ty);
-                PlaceTy::from_ty(san_ty)
-            }
         };
 
         if place.projection.is_empty() {

@@ -47,7 +47,6 @@ impl<'tcx> PlaceExt<'tcx> for Place<'tcx> {
                     }
                 }
             },
-            PlaceBase::Static(_) => return true,
         };
 
         for (i, elem) in self.projection.iter().enumerate() {

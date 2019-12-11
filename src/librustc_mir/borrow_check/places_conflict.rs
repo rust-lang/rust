@@ -122,7 +122,7 @@ fn place_components_conflict<'tcx>(
     let borrow_base = &borrow_place.base;
     let access_base = access_place.base;
 
-    match place_base_conflict(tcx, borrow_base, access_base) {
+    match place_base_conflict(borrow_base, access_base) {
         Overlap::Arbitrary => {
             bug!("Two base can't return Arbitrary");
         }
@@ -293,11 +293,7 @@ fn place_components_conflict<'tcx>(
 // Given that the bases of `elem1` and `elem2` are always either equal
 // or disjoint (and have the same type!), return the overlap situation
 // between `elem1` and `elem2`.
-fn place_base_conflict<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    elem1: &PlaceBase<'tcx>,
-    elem2: &PlaceBase<'tcx>,
-) -> Overlap {
+fn place_base_conflict(elem1: &PlaceBase, elem2: &PlaceBase) -> Overlap {
     match (elem1, elem2) {
         (PlaceBase::Local(l1), PlaceBase::Local(l2)) => {
             if l1 == l2 {
@@ -310,24 +306,6 @@ fn place_base_conflict<'tcx>(
                 Overlap::Disjoint
             }
         }
-        (PlaceBase::Static(s1), PlaceBase::Static(s2)) => {
-            if s1.def_id != s2.def_id {
-                debug!("place_element_conflict: DISJOINT-STATIC");
-                Overlap::Disjoint
-            } else if tcx.is_mutable_static(s1.def_id) {
-                // We ignore mutable statics - they can only be unsafe code.
-                debug!("place_element_conflict: IGNORE-STATIC-MUT");
-                Overlap::Disjoint
-            } else {
-                debug!("place_element_conflict: DISJOINT-OR-EQ-STATIC");
-                Overlap::EqualOrDisjoint
-            }
-        }
-        (PlaceBase::Local(_), PlaceBase::Static(_))
-        | (PlaceBase::Static(_), PlaceBase::Local(_)) => {
-            debug!("place_element_conflict: DISJOINT-STATIC-LOCAL-PROMOTED");
-            Overlap::Disjoint
-        }
     }
 }
 
@@ -337,7 +315,7 @@ fn place_base_conflict<'tcx>(
 fn place_projection_conflict<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    pi1_base: &PlaceBase<'tcx>,
+    pi1_base: &PlaceBase,
     pi1_proj_base: &[PlaceElem<'tcx>],
     pi1_elem: &PlaceElem<'tcx>,
     pi2_elem: &PlaceElem<'tcx>,

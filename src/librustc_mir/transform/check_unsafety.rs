@@ -194,9 +194,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             PlaceBase::Local(..) => {
                 // Locals are safe.
             }
-            PlaceBase::Static(box Static { .. }) => {
-                bug!("Static should not exist");
-            }
         }
 
         for (i, elem) in place.projection.iter().enumerate() {

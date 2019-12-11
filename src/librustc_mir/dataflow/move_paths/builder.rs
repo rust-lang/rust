@@ -98,9 +98,6 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
         debug!("lookup({:?})", place);
         let mut base = match place.base {
             PlaceBase::Local(local) => self.builder.data.rev_lookup.locals[local],
-            PlaceBase::Static(..) => {
-                return Err(MoveError::cannot_move_out_of(self.loc, Static));
-            }
         };
 
         // The move path index of the first union that we find. Once this is

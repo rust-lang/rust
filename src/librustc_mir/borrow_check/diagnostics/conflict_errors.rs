@@ -688,7 +688,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         assert!(root_place.projection.is_empty());
         let proper_span = match root_place.base {
             PlaceBase::Local(local) => self.body.local_decls[*local].source_info.span,
-            _ => drop_span,
         };
 
         let root_place_projection = self.infcx.tcx.intern_place_elems(root_place.projection);
@@ -709,12 +708,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             borrow_span,
         ));
 
-        if let PlaceBase::Local(local) = borrow.borrowed_place.base {
-            if self.body.local_decls[local].is_ref_to_thread_local() {
-                let err = self
-                    .report_thread_local_value_does_not_live_long_enough(drop_span, borrow_span);
-                err.buffer(&mut self.errors_buffer);
-                return;
+        match borrow.borrowed_place.base {
+            PlaceBase::Local(local) => {
+                if self.body.local_decls[local].is_ref_to_thread_local() {
+                    let err = self.report_thread_local_value_does_not_live_long_enough(
+                        drop_span,
+                        borrow_span,
+                    );
+                    err.buffer(&mut self.errors_buffer);
+                    return;
+                }
             }
         };
 
