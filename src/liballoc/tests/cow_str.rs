@@ -138,4 +138,7 @@ fn check_cow_clone_from() {
     let c2: Cow<'_, str> = Cow::Owned(s);
     c1.clone_from(&c2);
     assert!(c1.into_owned().capacity() >= 25);
+    let mut c3: Cow<'_, str> = Cow::Borrowed("bye");
+    c3.clone_from(&c2);
+    assert_eq!(c2, c3);
 }
