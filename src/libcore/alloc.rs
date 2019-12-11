@@ -253,7 +253,7 @@ impl Layout {
 
     /// Creates a layout describing the record for `self` followed by
     /// `next`, including any necessary padding to ensure that `next`
-    /// will be properly aligned. Note that the result layout will
+    /// will be properly aligned. Note that the resulting layout will
     /// satisfy the alignment properties of both `self` and `next`.
     ///
     /// The resulting layout will be the same as that of a C struct containing
@@ -387,7 +387,7 @@ impl fmt::Display for CannotReallocInPlace {
 }
 
 /// A memory allocator that can be registered as the standard library’s default
-/// though the `#[global_allocator]` attributes.
+/// through the `#[global_allocator]` attribute.
 ///
 /// Some of the methods require that a memory block be *currently
 /// allocated* via an allocator. This means that:
@@ -458,7 +458,7 @@ pub unsafe trait GlobalAlloc {
     /// # Errors
     ///
     /// Returning a null pointer indicates that either memory is exhausted
-    /// or `layout` does not meet allocator's size or alignment constraints.
+    /// or `layout` does not meet this allocator's size or alignment constraints.
     ///
     /// Implementations are encouraged to return null on memory
     /// exhaustion rather than aborting, but this is not
@@ -1045,7 +1045,7 @@ pub unsafe trait Alloc {
     /// Captures a common usage pattern for allocators.
     ///
     /// The returned block is suitable for passing to the
-    /// `alloc`/`realloc` methods of this allocator.
+    /// `realloc`/`dealloc` methods of this allocator.
     ///
     /// Note to implementors: If this returns `Ok(ptr)`, then `ptr`
     /// must be considered "currently allocated" and must be
@@ -1111,7 +1111,7 @@ pub unsafe trait Alloc {
     /// Captures a common usage pattern for allocators.
     ///
     /// The returned block is suitable for passing to the
-    /// `alloc`/`realloc` methods of this allocator.
+    /// `realloc`/`dealloc` methods of this allocator.
     ///
     /// Note to implementors: If this returns `Ok(ptr)`, then `ptr`
     /// must be considered "currently allocated" and must be
@@ -1158,7 +1158,7 @@ pub unsafe trait Alloc {
     /// Captures a common usage pattern for allocators.
     ///
     /// The returned block is suitable for passing to the
-    /// `alloc`/`realloc` methods of this allocator.
+    /// `realloc`/`dealloc` methods of this allocator.
     ///
     /// # Safety
     ///

@@ -182,7 +182,7 @@ pub(crate) fn type_check<'tcx>(
                 move_data,
                 location_table);
 
-            translate_outlives_facts(cx.borrowck_context);
+            translate_outlives_facts(&mut cx);
         },
     );
 
@@ -228,8 +228,10 @@ fn type_check_internal<'a, 'tcx, R>(
     extra(&mut checker)
 }
 
-fn translate_outlives_facts(cx: &mut BorrowCheckContext<'_, '_>) {
+fn translate_outlives_facts(typeck: &mut TypeChecker<'_, '_>) {
+    let cx = &mut typeck.borrowck_context;
     if let Some(facts) = cx.all_facts {
+        let _prof_timer = typeck.infcx.tcx.prof.generic_activity("polonius_fact_generation");
         let location_table = cx.location_table;
         facts
             .outlives
@@ -2489,6 +2491,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // that occurs when we are borrowing an unsafe place, for
         // example).
         if let Some(all_facts) = all_facts {
+            let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
             if let Some(borrow_index) = borrow_set.location_map.get(&location) {
                 let region_vid = borrow_region.to_region_vid();
                 all_facts.borrow_region.push((

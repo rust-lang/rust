@@ -16,6 +16,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         constant: &mir::Constant<'tcx>,
     ) -> Result<OperandRef<'tcx, Bx::Value>, ErrorHandled> {
         match constant.literal.val {
+            // Special case unevaluated statics, because statics have an identity and thus should
+            // use `get_static` to get at their id.
+            // FIXME(oli-obk): can we unify this somehow, maybe by making const eval of statics
+            // always produce `&STATIC`. This may also simplify how const eval works with statics.
             ty::ConstKind::Unevaluated(def_id, substs)
                 if self.cx.tcx().is_static(def_id) => {
                     assert!(substs.is_empty(), "we don't support generic statics yet");
@@ -46,7 +50,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     instance,
                     promoted: None,
                 };
-                self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid))
+                self.cx.tcx().const_eval(ty::ParamEnv::reveal_all().and(cid)).map_err(|err| {
+                    self.cx.tcx().sess.span_err(constant.span, "erroneous constant encountered");
+                    err
+                })
             },
             _ => Ok(self.monomorphize(&constant.literal)),
         }

@@ -2282,12 +2282,23 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut Buffer,
 fn render_impls(cx: &Context, w: &mut Buffer,
                 traits: &[&&Impl],
                 containing_item: &clean::Item) {
-    for i in traits {
-        let did = i.trait_did().unwrap();
-        let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
-        render_impl(w, cx, i, assoc_link,
-                    RenderMode::Normal, containing_item.stable_since(), true, None, false, true);
-    }
+    let mut impls = traits.iter()
+        .map(|i| {
+            let did = i.trait_did().unwrap();
+            let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
+            let mut buffer = if w.is_for_html() {
+                Buffer::html()
+            } else {
+                Buffer::new()
+            };
+            render_impl(&mut buffer, cx, i, assoc_link,
+                        RenderMode::Normal, containing_item.stable_since(),
+                        true, None, false, true);
+            buffer.into_inner()
+        })
+        .collect::<Vec<_>>();
+    impls.sort();
+    w.write_str(&impls.join(""));
 }
 
 fn bounds(t_bounds: &[clean::GenericBound], trait_alias: bool) -> String {
