@@ -2,10 +2,11 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::infer::{
-    error_reporting::nice_region_error::NiceRegionError, InferCtxt, NLLRegionVariableOrigin,
+    error_reporting::nice_region_error::NiceRegionError, region_constraints::GenericKind,
+    InferCtxt, NLLRegionVariableOrigin,
 };
 use rustc::mir::{Body, ConstraintCategory, Local, Location};
-use rustc::ty::{self, RegionVid};
+use rustc::ty::{self, RegionVid, Ty};
 use rustc_errors::DiagnosticBuilder;
 use rustc_index::vec::IndexVec;
 use std::collections::VecDeque;
@@ -47,11 +48,72 @@ impl ConstraintDescription for ConstraintCategory {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum Trace {
     StartRegion,
     FromOutlivesConstraint(OutlivesConstraint),
     NotVisited,
+}
+
+/// A collection of errors encountered during region inference. This is needed to efficiently
+/// report errors after borrow checking.
+///
+/// Usually we expect this to either be empty or contain a small number of items, so we can avoid
+/// allocation most of the time.
+crate type RegionErrors<'tcx> = Vec<RegionErrorKind<'tcx>>;
+
+#[derive(Clone, Debug)]
+crate enum RegionErrorKind<'tcx> {
+    /// An error for a type test: `T: 'a` does not live long enough.
+    TypeTestDoesNotLiveLongEnough {
+        /// The span of the type test.
+        span: Span,
+        /// The generic type of the type test.
+        generic: GenericKind<'tcx>,
+    },
+
+    /// A generic bound failure for a type test.
+    TypeTestGenericBoundError {
+        /// The span of the type test.
+        span: Span,
+        /// The generic type of the type test.
+        generic: GenericKind<'tcx>,
+        /// The lower bound region.
+        lower_bound_region: ty::Region<'tcx>,
+    },
+
+    /// An unexpected hidden region for an opaque type.
+    UnexpectedHiddenRegion {
+        /// The def id of the opaque type.
+        opaque_type_def_id: DefId,
+        /// The hidden type.
+        hidden_ty: Ty<'tcx>,
+        /// The unexpected region.
+        member_region: ty::Region<'tcx>,
+    },
+
+    /// Higher-ranked subtyping error.
+    BoundUniversalRegionError {
+        /// The placeholder free region.
+        longer_fr: RegionVid,
+        /// The region that erroneously must be outlived by `longer_fr`.
+        error_region: RegionVid,
+        /// The origin of the placeholder region.
+        fr_origin: NLLRegionVariableOrigin,
+    },
+
+    /// Any other lifetime error.
+    RegionError {
+        /// The origin of the region.
+        fr_origin: NLLRegionVariableOrigin,
+        /// The region that should outlive `shorter_fr`.
+        longer_fr: RegionVid,
+        /// The region that should be shorter, but we can't prove it.
+        shorter_fr: RegionVid,
+        /// Indicates whether this is a reported error. We currently only report the first error
+        /// encountered and leave the rest unreported so as not to overwhelm the user.
+        is_reported: bool,
+    },
 }
 
 /// Various pieces of state used when reporting borrow checker errors.
