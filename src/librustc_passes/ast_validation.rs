@@ -920,8 +920,12 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 self.check_expr_within_pat(expr, false);
             }
             PatKind::Range(ref start, ref end, _) => {
-                self.check_expr_within_pat(start, true);
-                self.check_expr_within_pat(end, true);
+                if let Some(expr) = start {
+                    self.check_expr_within_pat(expr, true);
+                }
+                if let Some(expr) = end {
+                    self.check_expr_within_pat(expr, true);
+                }
             }
             _ => {}
         }
