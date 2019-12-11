@@ -3,12 +3,13 @@
 use rustc::hir::def_id::DefId;
 use rustc::infer::{
     error_reporting::nice_region_error::NiceRegionError,
+    region_constraints::GenericKind,
     InferCtxt, NLLRegionVariableOrigin,
 };
 use rustc::mir::{
     ConstraintCategory, Local, Location, Body,
 };
-use rustc::ty::{self, RegionVid};
+use rustc::ty::{self, RegionVid, Ty};
 use rustc_index::vec::IndexVec;
 use rustc_errors::DiagnosticBuilder;
 use std::collections::VecDeque;
@@ -53,11 +54,59 @@ impl ConstraintDescription for ConstraintCategory {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum Trace {
     StartRegion,
     FromOutlivesConstraint(OutlivesConstraint),
     NotVisited,
+}
+
+/// A collection of errors encountered during region inference. This is needed to efficiently
+/// report errors after borrow checking.
+#[derive(Clone, Debug)]
+crate struct RegionErrors<'tcx> {
+    errors: smallvec::SmallVec<[RegionErrorKind<'tcx>; 4]>,
+}
+
+#[derive(Clone, Debug)]
+crate enum RegionErrorKind<'tcx> {
+    /// An error for a type test: `T: 'a` does not live long enough
+    TypeTestDoesNotLiveLongEnough {
+        /// The span of the type test
+        span: Span,
+        /// The generic type of the type test
+        generic: GenericKind<'tcx>,
+    },
+
+    /// A generic bound failure for a type test
+    TypeTestGenericBoundError {
+        /// The span of the type test
+        span: Span,
+        /// The generic type of the type test
+        generic: GenericKind<'tcx>,
+        /// The lower bound region
+        lower_bound_region: ty::Region<'tcx>,
+    },
+
+    /// An unexpected hidden region for an opaque type
+    UnexpectedHiddenRegion {
+        /// The def id of the opaque type
+        opaque_type_def_id: DefId,
+        /// The hidden type
+        hidden_ty: Ty<'tcx>,
+        /// The unexpected region
+        member_region: ty::Region<'tcx>,
+    },
+
+    /// Any other lifetime error
+    RegionError {
+        /// The origin of the region
+        fr_origin: NLLRegionVariableOrigin,
+        /// The region that should outlive `shorter_fr`
+        longer_fr: RegionVid,
+        /// The region that should be shorter, but we can't prove it
+        shorter_fr: RegionVid,
+    },
 }
 
 /// Various pieces of state used when reporting borrow checker errors.
@@ -93,6 +142,22 @@ pub struct ErrorConstraintInfo {
     // Category and span for best blame constraint
     pub(super) category: ConstraintCategory,
     pub(super) span: Span,
+}
+
+impl<'tcx> RegionErrors<'tcx> {
+    pub fn new() -> Self {
+        RegionErrors {
+            errors: smallvec::SmallVec::new(),
+        }
+    }
+
+    pub fn push(&mut self, error: RegionErrorKind<'tcx>) {
+        self.errors.push(error)
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item=RegionErrorKind<'tcx>> {
+        self.errors.into_iter()
+    }
 }
 
 impl<'tcx> RegionInferenceContext<'tcx> {

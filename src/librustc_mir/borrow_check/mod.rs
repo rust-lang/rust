@@ -3,7 +3,7 @@
 use rustc::hir::{self, HirId};
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
+use rustc::infer::{opaque_types, InferCtxt};
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::lint::builtin::{MUTABLE_BORROW_RESERVATION_CONFLICT};
 use rustc::mir::{AggregateKind, BasicBlock, BorrowCheckResult, BorrowKind};
@@ -39,12 +39,15 @@ use crate::dataflow::MoveDataParamEnv;
 use crate::dataflow::{do_dataflow, DebugFormatted};
 use crate::dataflow::EverInitializedPlaces;
 use crate::dataflow::{MaybeInitializedPlaces, MaybeUninitializedPlaces};
+use crate::transform::MirSource;
 
 use self::flows::Flows;
 use self::location::LocationTable;
 use self::prefixes::PrefixSet;
 use self::MutateMode::{JustWrite, WriteAndRead};
-use self::diagnostics::AccessKind;
+use self::diagnostics::{
+    AccessKind, RegionErrors, RegionErrorKind, OutlivesSuggestionBuilder, RegionErrorNamingCtx,
+};
 
 use self::path_utils::*;
 
@@ -211,20 +214,40 @@ fn do_mir_borrowck<'a, 'tcx>(
     let borrow_set = Rc::new(BorrowSet::build(
         tcx, body, locals_are_invalidated_at_exit, &mdpe.move_data));
 
-    // If we are in non-lexical mode, compute the non-lexical lifetimes.
-    let (regioncx, polonius_output, opt_closure_req) = nll::compute_regions(
+    // Compute non-lexical lifetimes.
+    let nll::NllOutput {
+        regioncx, polonius_output, opt_closure_req, nll_errors
+    } = nll::compute_regions(
         infcx,
         def_id,
         free_regions,
         body,
         &promoted,
-        &local_names,
-        &upvars,
         location_table,
         param_env,
         &mut flow_inits,
         &mdpe.move_data,
         &borrow_set,
+    );
+
+    // Dump MIR results into a file, if that is enabled. This let us
+    // write unit-tests, as well as helping with debugging.
+    nll::dump_mir_results(
+        infcx,
+        MirSource::item(def_id),
+        &body,
+        &regioncx,
+        &opt_closure_req,
+    );
+
+    // We also have a `#[rustc_nll]` annotation that causes us to dump
+    // information.
+    nll::dump_annotation(
+        infcx,
+        &body,
+        def_id,
+        &regioncx,
+        &opt_closure_req,
         &mut errors_buffer,
     );
 
@@ -296,6 +319,9 @@ fn do_mir_borrowck<'a, 'tcx>(
         upvars,
         local_names,
     };
+
+    // Compute and report region errors, if any.
+    mbcx.report_region_errors(nll_errors);
 
     let mut state = Flows::new(
         flow_borrows,
@@ -1558,6 +1584,89 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // We do not need to call `check_if_path_or_subpath_is_moved`
             // again, as we already called it when we made the
             // initial reservation.
+        }
+    }
+
+    /// Produces nice borrowck error diagnostics for all the errors collected in `nll_errors`.
+    fn report_region_errors(&mut self, nll_errors: RegionErrors<'tcx>) {
+        // Iterate through all the errors, producing a diagnostic for each one. The diagnostics are
+        // buffered in the `MirBorrowckCtxt`.
+
+        // TODO(mark-i-m): Would be great to get rid of the naming context.
+        let mut region_naming = RegionErrorNamingCtx::new();
+        let mut outlives_suggestion = OutlivesSuggestionBuilder::new(self.mir_def_id, &self.local_names);
+
+        for nll_error in nll_errors.into_iter() {
+            match nll_error {
+                RegionErrorKind::TypeTestDoesNotLiveLongEnough { span, generic } => {
+                    // FIXME. We should handle this case better. It
+                    // indicates that we have e.g., some region variable
+                    // whose value is like `'a+'b` where `'a` and `'b` are
+                    // distinct unrelated univesal regions that are not
+                    // known to outlive one another. It'd be nice to have
+                    // some examples where this arises to decide how best
+                    // to report it; we could probably handle it by
+                    // iterating over the universal regions and reporting
+                    // an error that multiple bounds are required.
+                   self.infcx.tcx.sess
+                       .struct_span_err(
+                           span,
+                           &format!("`{}` does not live long enough", generic),
+                       )
+                       .buffer(&mut self.errors_buffer);
+                },
+
+                RegionErrorKind::TypeTestGenericBoundError {
+                    span, generic, lower_bound_region
+                } => {
+                    let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
+                    self.infcx
+                        .construct_generic_bound_failure(
+                            region_scope_tree,
+                            span,
+                            None,
+                            generic,
+                            lower_bound_region,
+                        )
+                        .buffer(&mut self.errors_buffer);
+                },
+
+                RegionErrorKind::UnexpectedHiddenRegion {
+                    opaque_type_def_id, hidden_ty, member_region,
+                } => {
+                    let region_scope_tree = &self.infcx.tcx.region_scope_tree(self.mir_def_id);
+                    opaque_types::unexpected_hidden_region_diagnostic(
+                        self.infcx.tcx,
+                        Some(region_scope_tree),
+                        opaque_type_def_id,
+                        hidden_ty,
+                        member_region,
+                    )
+                    .buffer(&mut self.errors_buffer);
+                }
+
+                RegionErrorKind::RegionError {
+                    fr_origin, longer_fr, shorter_fr,
+                } => {
+                    let db = self.nonlexical_regioncx.report_error(
+                        &self.body,
+                        &self.local_names,
+                        &self.upvars,
+                        self.infcx,
+                        self.mir_def_id,
+                        longer_fr,
+                        fr_origin,
+                        shorter_fr,
+                        &mut outlives_suggestion,
+                        &mut region_naming,
+                    );
+
+                    db.buffer(&mut self.errors_buffer);
+
+                    // Emit outlives suggestions
+                    //outlives_suggestion.add_suggestion(body, self, infcx, errors_buffer, region_naming);
+                }
+            }
         }
     }
 }
