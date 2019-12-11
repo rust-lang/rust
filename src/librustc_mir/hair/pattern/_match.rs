@@ -1778,8 +1778,9 @@ pub fn is_useful<'p, 'tcx>(
             // satisfied with `(_, _, true)`. In this case,
             // `used_ctors` is empty.
             // The exception is: if we are at the top-level, for example in an empty match, we
-            // prefer reporting the list of constructors instead of just `_`.
-            if missing_ctors.all_ctors_are_missing() && !is_top_level {
+            // sometimes prefer reporting the list of constructors instead of just `_`.
+            let report_ctors_rather_than_wildcard = is_top_level && !IntRange::is_integral(pcx.ty);
+            if missing_ctors.all_ctors_are_missing() && !report_ctors_rather_than_wildcard {
                 // All constructors are unused. Add a wild pattern
                 // rather than each individual constructor.
                 usefulness.apply_wildcard(pcx.ty)

@@ -77,7 +77,7 @@ fn main() {
     //~^ ERROR `V1`, `V2`, `V3` and 2 more not covered
 
     match_false!(0u8);
-    //~^ ERROR `0u8..=std::u8::MAX` not covered
+    //~^ ERROR `_` not covered
     match_false!(NonEmptyStruct(true));
     //~^ ERROR `NonEmptyStruct(_)` not covered
     match_false!((NonEmptyUnion1 { foo: () }));
