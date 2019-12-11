@@ -8,8 +8,6 @@
 // Note, however, that we run on lots older linuxes, as well as cross
 // compiling from a newer linux to an older linux, so we also have a
 // fallback implementation to use as well.
-//
-// Due to rust-lang/rust#18804, make sure this is not generic!
 #[cfg(any(
     target_os = "linux",
     target_os = "fuchsia",
