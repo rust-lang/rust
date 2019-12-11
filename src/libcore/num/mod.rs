@@ -4731,7 +4731,7 @@ impl From<Infallible> for TryFromIntError {
     }
 }
 
-#[stable(feature = "never_type", since = "1.41.0")]
+#[unstable(feature = "never_type", issue = "35121")]
 impl From<!> for TryFromIntError {
     fn from(never: !) -> TryFromIntError {
         // Match rather than coerce to make sure that code like

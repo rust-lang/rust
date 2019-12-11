@@ -14,7 +14,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
-#![cfg_attr(bootstrap, feature(never_type))]
+#![feature(never_type)]
 #![feature(unicode_internals)]
 
 #![recursion_limit="256"]

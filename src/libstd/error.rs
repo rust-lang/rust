@@ -465,7 +465,7 @@ impl<'a> From<Cow<'a, str>> for Box<dyn Error> {
     }
 }
 
-#[stable(feature = "never_type", since = "1.41.0")]
+#[unstable(feature = "never_type", issue = "35121")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
 }

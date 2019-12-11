@@ -87,7 +87,7 @@
 #![feature(iter_once_with)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
-#![cfg_attr(bootstrap, feature(never_type))]
+#![feature(never_type)]
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
 #![feature(no_core)]

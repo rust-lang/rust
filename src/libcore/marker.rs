@@ -776,7 +776,7 @@ mod copy_impls {
         bool char
     }
 
-    #[stable(feature = "never_type", since = "1.41.0")]
+    #[unstable(feature = "never_type", issue = "35121")]
     impl Copy for ! {}
 
     #[stable(feature = "rust1", since = "1.0.0")]
