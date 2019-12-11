@@ -1,4 +1,4 @@
-// Ensure that loops are forbidden in a const context unless `#![feature(const_loop)]` are enabled.
+// Ensure that loops are forbidden in a const context unless `#![feature(const_loop)]` is enabled.
 // `while` loops require `#![feature(const_if_match)]` to be enabled as well.
 
 // gate-test-const_loop
