@@ -53,7 +53,8 @@ describe('SuggestedFixCollection', () => {
 
         const { diagnostics } = codeAction;
         if (!diagnostics) {
-            return assert.fail('Diagnostics unexpectedly missing');
+            assert.fail('Diagnostics unexpectedly missing');
+            return;
         }
 
         assert.strictEqual(diagnostics.length, 1);
@@ -114,7 +115,8 @@ describe('SuggestedFixCollection', () => {
         const { diagnostics } = codeAction;
 
         if (!diagnostics) {
-            return assert.fail('Diagnostics unexpectedly missing');
+            assert.fail('Diagnostics unexpectedly missing');
+            return;
         }
 
         // We should be associated with both diagnostics

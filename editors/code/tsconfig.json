@@ -7,7 +7,10 @@
         "sourceMap": true,
         "rootDir": "src",
         "strict": true,
-        "noUnusedLocals": true
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true
     },
     "exclude": ["node_modules", ".vscode-test"]
 }

@@ -120,7 +120,8 @@ describe('mapRustDiagnosticToVsCode', () => {
         // One related information for the original definition
         const relatedInformation = diagnostic.relatedInformation;
         if (!relatedInformation) {
-            return assert.fail('Related information unexpectedly undefined');
+            assert.fail('Related information unexpectedly undefined');
+            return;
         }
         assert.strictEqual(relatedInformation.length, 1);
         const [related] = relatedInformation;
@@ -154,7 +155,8 @@ describe('mapRustDiagnosticToVsCode', () => {
         // One related information for the lint definition
         const relatedInformation = diagnostic.relatedInformation;
         if (!relatedInformation) {
-            return assert.fail('Related information unexpectedly undefined');
+            assert.fail('Related information unexpectedly undefined');
+            return;
         }
         assert.strictEqual(relatedInformation.length, 1);
         const [related] = relatedInformation;

@@ -11,7 +11,7 @@ export class ExpandMacroContentProvider
     public eventEmitter = new vscode.EventEmitter<vscode.Uri>();
 
     public provideTextDocumentContent(
-        uri: vscode.Uri,
+        _uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         async function handle() {
             const editor = vscode.window.activeTextEditor;

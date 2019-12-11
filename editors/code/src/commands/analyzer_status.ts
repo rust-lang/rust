@@ -9,7 +9,7 @@ export class TextDocumentContentProvider
     public syntaxTree: string = 'Not available';
 
     public provideTextDocumentContent(
-        uri: vscode.Uri,
+        _uri: vscode.Uri,
     ): vscode.ProviderResult<string> {
         const editor = vscode.window.activeTextEditor;
         if (editor == null) {
