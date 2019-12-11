@@ -535,7 +535,7 @@ declare_features! (
     (active, const_mut_refs, "1.41.0", Some(57349), None),
 
     /// Allows the use of `loop` and `while` in constants.
-    (active, const_loop, "1.42.0", Some(52000), None),
+    (active, const_loop, "1.41.0", Some(52000), None),
 
     // -------------------------------------------------------------------------
     // feature-group-end: actual feature gates
