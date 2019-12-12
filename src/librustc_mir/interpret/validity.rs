@@ -60,7 +60,7 @@ macro_rules! try_validation {
             Ok(x) => x,
             Err(_) => throw_validation_failure!($what, $where),
         }
-    }}
+    }};
 }
 
 /// We want to show a nice path to the invalid field for diagnostics,
@@ -428,7 +428,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                             err_unsup!(InvalidNullPointerUsage) =>
                                 throw_validation_failure!("NULL reference", self.path),
                             err_unsup!(AlignmentCheckFailed { required, has }) =>
-                                throw_validation_failure!(format!("unaligned reference \
+                                throw_validation_failure!(format_args!("unaligned reference \
                                     (required {} byte alignment but found {})",
                                     required.bytes(), has.bytes()), self.path),
                             err_unsup!(ReadBytesAsPointer) =>
@@ -519,7 +519,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
         let value = try_validation!(value.not_undef(),
             value,
             self.path,
-            format!(
+            format_args!(
                 "something {}",
                 wrapping_range_format(&layout.valid_range, max_hi),
             )
@@ -532,7 +532,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                         throw_validation_failure!(
                             "a potentially NULL pointer",
                             self.path,
-                            format!(
+                            format_args!(
                                 "something that cannot possibly fail to be {}",
                                 wrapping_range_format(&layout.valid_range, max_hi)
                             )
@@ -545,7 +545,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     throw_validation_failure!(
                         "a pointer",
                         self.path,
-                        format!(
+                        format_args!(
                             "something that cannot possibly fail to be {}",
                             wrapping_range_format(&layout.valid_range, max_hi)
                         )
@@ -562,7 +562,7 @@ impl<'rt, 'mir, 'tcx, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
             throw_validation_failure!(
                 bits,
                 self.path,
-                format!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
+                format_args!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
             )
         }
     }
