@@ -136,11 +136,15 @@ fn convert_doc_comment(token: &ra_syntax::SyntaxToken) -> Option<Vec<tt::TokenTr
     }
 
     fn mk_punct(c: char) -> tt::TokenTree {
-        tt::TokenTree::from(tt::Leaf::from(tt::Punct { char: c, spacing: tt::Spacing::Alone }))
+        tt::TokenTree::from(tt::Leaf::from(tt::Punct {
+            char: c,
+            spacing: tt::Spacing::Alone,
+            id: tt::TokenId::unspecified(),
+        }))
     }
 
     fn mk_doc_literal(comment: &ast::Comment) -> tt::TokenTree {
-        let lit = tt::Literal { text: doc_comment_text(comment) };
+        let lit = tt::Literal { text: doc_comment_text(comment), id: tt::TokenId::unspecified() };
 
         tt::TokenTree::from(tt::Leaf::from(lit))
     }
@@ -223,24 +227,29 @@ impl Convertor {
                             .take(token.text().len() - 1)
                             .chain(std::iter::once(last_spacing));
                         for (char, spacing) in token.text().chars().zip(spacing_iter) {
-                            token_trees.push(tt::Leaf::from(tt::Punct { char, spacing }).into());
+                            let id = self.alloc(token.text_range());
+                            token_trees
+                                .push(tt::Leaf::from(tt::Punct { char, spacing, id }).into());
                         }
                     } else {
-                        let child: tt::TokenTree =
-                            if token.kind() == T![true] || token.kind() == T![false] {
-                                tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
-                            } else if token.kind().is_keyword()
-                                || token.kind() == IDENT
-                                || token.kind() == LIFETIME
-                            {
-                                let id = self.alloc(token.text_range());
-                                let text = token.text().clone();
-                                tt::Leaf::from(tt::Ident { text, id }).into()
-                            } else if token.kind().is_literal() {
-                                tt::Leaf::from(tt::Literal { text: token.text().clone() }).into()
-                            } else {
-                                return None;
-                            };
+                        let child: tt::TokenTree = if token.kind() == T![true]
+                            || token.kind() == T![false]
+                        {
+                            let id = self.alloc(token.text_range());
+                            tt::Leaf::from(tt::Literal { text: token.text().clone(), id }).into()
+                        } else if token.kind().is_keyword()
+                            || token.kind() == IDENT
+                            || token.kind() == LIFETIME
+                        {
+                            let id = self.alloc(token.text_range());
+                            let text = token.text().clone();
+                            tt::Leaf::from(tt::Ident { text, id }).into()
+                        } else if token.kind().is_literal() {
+                            let id = self.alloc(token.text_range());
+                            tt::Leaf::from(tt::Literal { text: token.text().clone(), id }).into()
+                        } else {
+                            return None;
+                        };
                         token_trees.push(child);
                     }
                 }

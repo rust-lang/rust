@@ -108,7 +108,12 @@ fn expand_var(ctx: &mut ExpandCtx, v: &SmolStr) -> Result<Fragment, ExpandError>
         let tt = tt::Subtree {
             delimiter: None,
             token_trees: vec![
-                tt::Leaf::from(tt::Punct { char: '$', spacing: tt::Spacing::Alone }).into(),
+                tt::Leaf::from(tt::Punct {
+                    char: '$',
+                    spacing: tt::Spacing::Alone,
+                    id: tt::TokenId::unspecified(),
+                })
+                .into(),
                 tt::Leaf::from(tt::Ident { text: v.clone(), id: tt::TokenId::unspecified() })
                     .into(),
             ],

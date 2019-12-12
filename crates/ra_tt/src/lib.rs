@@ -64,12 +64,14 @@ pub enum Delimiter {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Literal {
     pub text: SmolStr,
+    pub id: TokenId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Punct {
     pub char: char,
     pub spacing: Spacing,
+    pub id: TokenId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
