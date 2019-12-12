@@ -355,7 +355,9 @@ impl UnusedParens {
         match value.kind {
             ast::ExprKind::Paren(ref inner) => {
                 if !Self::is_expr_parens_necessary(inner, followed_by_block) &&
-                    value.attrs.is_empty() {
+                    value.attrs.is_empty() &&
+                    !value.span.from_expansion()
+                {
                     let expr_text = if let Ok(snippet) = cx.sess().source_map()
                         .span_to_snippet(value.span) {
                             snippet
